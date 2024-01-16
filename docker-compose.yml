@@ -3,6 +3,7 @@ version: '3'
 services:
   node0:
     container_name: evmosnode0
+    platform: linux/amd64
     image: "evmos/node"
     ports:
       - "26656-26657:26656-26657"
@@ -16,6 +17,7 @@ services:
 
   node1:
     container_name: evmosnode1
+    platform: linux/amd64
     image: "evmos/node"
     ports:
       - "26659-26660:26656-26657"
@@ -29,6 +31,7 @@ services:
 
   node2:
     container_name: evmosnode2
+    platform: linux/amd64
     image: "evmos/node"
     ports:
       - "26661-26662:26656-26657"
@@ -42,6 +45,7 @@ services:
 
   node3:
     container_name: evmosnode3
+    platform: linux/amd64
     image: "evmos/node"
     ports:
       - "26663-26664:26656-26657"
