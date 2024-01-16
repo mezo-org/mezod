@@ -489,7 +489,7 @@ localnet-build:
 
 # Start a 4-node testnet locally
 localnet-start: localnet-stop
-	@if ! [ -f build/node0/$(EVMOS_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/evmos:Z meso/node "./evmosd testnet init-files --v 4 -o /evmos --keyring-backend=test --starting-ip-address 192.167.10.2"; fi
+	@if ! [ -f build/node0/$(EVMOS_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/evmos:Z meso/node "./evmosd testnet init-files --v 4 -o /evmos --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id evmos_9000-10"; fi
 	docker-compose up -d
 
 # Stop testnet
