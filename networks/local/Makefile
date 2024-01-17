@@ -1,4 +1,4 @@
 all:
-	docker build --no-cache --tag evmos/node ../.. -f evmos/Dockerfile
+	docker build --platform linux/amd64 --no-cache --tag meso/node ../.. -f evmos/Dockerfile
 
 .PHONY: all
