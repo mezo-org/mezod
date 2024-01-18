@@ -6,7 +6,7 @@
 
 To start a single client instance locally please use the `local_node.sh` script.
 The script will compile the client, perform genesis, and start a local client
-instance. 
+instance.
 
 ### Multiple client instances
 
@@ -14,15 +14,20 @@ There is a set of Make formulas allowing to set up multiple client instances
 connected to each other locally. The formulas use Docker Compose to set up the
 cluster so a Docker Desktop must be running locally.
 
-To build the local network, use `make localnet-build` command. This command will
-build and install `meso/node` image locally. 
+```bash
+# Build and install the `meso/node` image locally.
+$ make localnet-build
+# Start four client instances.
+$ make localnet-start
+# Stop client instances started with localnet-start.
+$ make localnet-stop
+# Show logs of all four client instances together.
+$ make localnet-show-logstream
+```
 
-The `make localnet-start` and `make localnet-stop` are used to start and stop
-the four client instances. The client build takes some time and it is not
-executed as a part of the `make localnet-start` command to save time. To rebuild
-the client after changes in the code, you need to use `make localnet-build`. 
-
-To see the logs of four client instances, please use `make localnet-show-logstream`.
+The client build can take some time even if there have been no changes, so it is
+not executed as part of the `localnet-start` target to save time. To rebuild the
+client after code changes, please explicitly re-run the `localnet-build` target.
 
 The configuration for the four nodes is available in the `build` directory.
 
