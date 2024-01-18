@@ -1,20 +1,14 @@
-:toc: macro
+# Local development
 
-= Local development
+## Running the client locally
 
-:icons: font
-:numbered:
-toc::[]
-
-== Running the client locally
-
-=== Single instance
+### Single instance
 
 To start a single client instance locally please use the `local_node.sh` script.
 The script will compile the client, perform genesis, and start a local client
 instance. 
 
-=== Multiple client instances
+### Multiple client instances
 
 There is a set of Make formulas allowing to set up multiple client instances
 connected to each other locally. The formulas use Docker Compose to set up the
