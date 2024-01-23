@@ -7,8 +7,9 @@ on:
 
 jobs:
   Gosec:
-    # permissions:
-    #   security-events: write
+    permissions:
+      security-events: write
+      contents: read
 
     runs-on: ubuntu-latest
     env:
