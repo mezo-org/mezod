@@ -20,9 +20,10 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - name: "Dependency Review"
-        uses: actions/dependency-review-action@v3
-        if: env.GIT_DIFF
+      # TODO: Uncomment once repo is public or we enable GitHub Advanced Security.
+      # - name: "Dependency Review"
+      #   uses: actions/dependency-review-action@v3
+      #   if: env.GIT_DIFF
       - name: "Go vulnerability check"
         run: make vulncheck
         if: env.GIT_DIFF
