@@ -34,8 +34,10 @@ jobs:
         run: |
           make test-unit-cover
         if: env.GIT_DIFF
-      - uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.txt
-          fail_ci_if_error: true
-        if: env.GIT_DIFF
+      # TODO: Delete or uncomment, depending on whether we decide to use Codedev.
+      # If we decide to use it, we need to set `CODECOV_TOKEN` as a secret.
+      # - uses: codecov/codecov-action@v3
+      #   with:
+      #     file: ./coverage.txt
+      #     fail_ci_if_error: true
+      #   if: env.GIT_DIFF
