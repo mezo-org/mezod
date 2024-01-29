@@ -1,6 +1,7 @@
 name: Protobuf
-# Protobuf runs buf (https://buf.build/) lint and check-breakage
-# This workflow is only run when a .proto file has been changed
+# The workflow builds, lints and checks breakage for Protocol Buffers (`.proto`)
+# files using the `buf` tool. It runs on pull requests when changes are made to
+# files within the `proto` directory.
 on:
   pull_request:
     paths:

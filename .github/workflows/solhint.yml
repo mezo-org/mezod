@@ -1,5 +1,6 @@
 name: Solhint
-# This workflow is only run when a .sol file has been changed
+# The workflow runs the Solhint linter for Solidity contracts. It runs when
+# changes are made to files within the `contracts` directory.
 on:
   pull_request:
     paths:

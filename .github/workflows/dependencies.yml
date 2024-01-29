@@ -1,4 +1,8 @@
 name: "Dependency Review"
+# This workflow is supposed to do two things on Go files:
+# - Scan pull requests for dependency changes and raise an error if any
+#   vulnerabilities or invalid licenses are being introduced.
+# - Run a custom `make vulncheck` command
 on: pull_request
 
 permissions:

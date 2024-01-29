@@ -1,4 +1,7 @@
 name: Tests
+# The workflow runs unit tests and generates a coverage report for Go and
+# Solidity code. It triggers on pull requests and pushes to the main branch or
+# any branch that starts with `release/`.
 on:
   pull_request:
   push:

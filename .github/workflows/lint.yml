@@ -1,7 +1,8 @@
 name: Lint
-# Lint runs golangci-lint over the entire Evmos repository This workflow is
-# run on every pull request and push to main The `golangci` will pass without
-# running if no *.{go, mod, sum} files have been changed.
+# The workflow runs linting checks on the repository for both Go code and
+# Markdown files, based on the names of the files being changed. The Markdown
+# linting is done according to rules specified in the `.markdownlint.yml` and 
+# `.markdownlintignore` files.
 on:
   pull_request:
   push:

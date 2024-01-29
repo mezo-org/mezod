@@ -1,4 +1,6 @@
 name: Build
+# The workflow sets up the Go environment, checks for changes in specific file
+# patterns, and triggers the build process if necessary.
 on:
   pull_request:
     branches:

@@ -1,4 +1,6 @@
 name: Check Markdown links
+# The workflow uses `markdown-link-check` to find broken links in the Markdown
+# files.
 on: 
   pull_request:
     paths:

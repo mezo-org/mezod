@@ -1,4 +1,9 @@
 name: "Close stale issues & pull requests"
+# The workflow runs on a daily schedule to identify and close stale issues and
+# pull requests. After 45 days of inactivity a `Status: Stale` label will be
+# added to a stale issue/PR and an appropriate comment will be posted. If after
+# that there's no activity for the next 7 days, the issue/PR gets automatically
+# closed (some types of issues/PRs are exempt from this).
 on:
   schedule:
     - cron: "0 0 * * *"

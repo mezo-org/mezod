@@ -10,6 +10,8 @@
 # supported CodeQL languages.
 #
 name: "CodeQL"
+# The workflow is designed to analyze Go code using CodeQL with predefined
+# queries from the `crypto-com/cosmos-sdk-codeql` repository.
 
 on:
   push:

@@ -1,4 +1,7 @@
 name: "Pull Request Labeler"
+# The workflow automatically labels new pull requests based on the paths of
+# files being changed or the branch name. The rules for the labeling are
+# specified in the `.github/labeler.yml` file.
 on:
   pull_request:
   push:

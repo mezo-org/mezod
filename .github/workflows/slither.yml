@@ -1,4 +1,8 @@
 name: Slither Analysis
+# The workflow analyzes Solidity contracts using Slither, which outputs the
+# report to a `.sarif` file and then uploads it to GitHub, so that the results
+# could be browsed in GH in the repo's 'Security' tab. The check is triggered by
+# pull requests and pushes to the `main` branch that modify Solidity files.
 
 on:
   pull_request:

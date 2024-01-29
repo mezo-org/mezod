@@ -1,4 +1,7 @@
 name: E2E Test
+# The workflow runs a custom `make test-e2e` command for pull-requests targeting
+# the `main` branch and for pushes to this branch, if certain files were
+# modified.
 on:
   pull_request:
     branches:
