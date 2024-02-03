@@ -6,6 +6,7 @@ services:
     platform: linux/amd64
     image: "meso/node"
     ports:
+      - "8545-8546:8545-8546"
       - "26656-26657:26656-26657"
     volumes:
       - ./build/node0/evmosd:/evmos:Z
@@ -20,6 +21,7 @@ services:
     platform: linux/amd64
     image: "meso/node"
     ports:
+      - "8547-8548:8545-8546"
       - "26659-26660:26656-26657"
     volumes:
       - ./build/node1/evmosd:/evmos:Z
@@ -34,6 +36,7 @@ services:
     platform: linux/amd64
     image: "meso/node"
     ports:
+      - "8549-8550:8545-8546"
       - "26661-26662:26656-26657"
     volumes:
       - ./build/node2/evmosd:/evmos:Z
@@ -48,6 +51,7 @@ services:
     platform: linux/amd64
     image: "meso/node"
     ports:
+      - "8551-8552:8545-8546"
       - "26663-26664:26656-26657"
     volumes:
       - ./build/node3/evmosd:/evmos:Z
