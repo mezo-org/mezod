@@ -10,9 +10,9 @@ instance.
 
 ### Multiple client instances
 
-There is a set of Make formulas allowing to set up multiple client instances
+There is a set of `make` targets allowing to set up multiple client instances
 connected to each other locally. The formulas use Docker Compose to set up the
-cluster so a Docker Desktop must be running locally.
+cluster so on macOS, Docker Desktop must be running locally.
 
 ```bash
 # Build and install the `meso/node` image locally.
