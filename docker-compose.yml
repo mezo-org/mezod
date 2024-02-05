@@ -2,7 +2,7 @@ version: '3'
 
 services:
   node0:
-    container_name: evmosnode0
+    container_name: mezo-node0
     platform: linux/amd64
     image: "meso/node"
     ports:
@@ -17,7 +17,7 @@ services:
         ipv4_address: 192.167.10.2
 
   node1:
-    container_name: evmosnode1
+    container_name: mezo-node1
     platform: linux/amd64
     image: "meso/node"
     ports:
@@ -32,7 +32,7 @@ services:
         ipv4_address: 192.167.10.3
 
   node2:
-    container_name: evmosnode2
+    container_name: mezo-node2
     platform: linux/amd64
     image: "meso/node"
     ports:
@@ -47,7 +47,7 @@ services:
         ipv4_address: 192.167.10.4
 
   node3:
-    container_name: evmosnode3
+    container_name: mezo-node3
     platform: linux/amd64
     image: "meso/node"
     ports:

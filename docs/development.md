@@ -40,7 +40,7 @@ available from the host machine.
 
 | Instance  | JSON-RPC HTTP | JSON-RPC WS |
 |-----------|---------------|-------------|
-| mezonode0 | 8545          | 8546        |
-| mezonode1 | 8547          | 8548        |
-| mezonode3 | 8549          | 8550        |
-| mezonode4 | 8551          | 8552        |
+| mezo-node0 | 8545          | 8546        |
+| mezo-node1 | 8547          | 8548        |
+| mezo-node3 | 8549          | 8550        |
+| mezo-node4 | 8551          | 8552        |
