@@ -26,7 +26,7 @@ require (
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.1
 	github.com/onsi/ginkgo/v2 v2.9.0
 	github.com/onsi/gomega v1.27.2
-	github.com/ory/dockertest/v3 v3.9.1
+	github.com/ory/dockertest/v3 v3.10.0
 	github.com/pkg/errors v0.9.1
 	github.com/rakyll/statik v0.1.7
 	github.com/rs/cors v1.8.3
@@ -164,7 +164,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
-	github.com/opencontainers/runc v1.1.4 // indirect
+	github.com/opencontainers/runc v1.1.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
 	github.com/petermattis/goid v0.0.0-20230317030725-371a4b8eda08 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -202,12 +202,12 @@ require (
 	github.com/zondax/ledger-go v0.14.1 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/mod v0.8.0 // indirect
+	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/oauth2 v0.5.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
-	golang.org/x/tools v0.6.0 // indirect
+	golang.org/x/tools v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.110.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -229,8 +229,7 @@ replace (
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.7
 	// use cosmos flavored protobufs
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	// Informal Tendermint fork
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
-	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
-
