@@ -31,7 +31,7 @@ require (
 	github.com/rakyll/statik v0.1.7
 	github.com/rs/cors v1.8.3
 	github.com/spf13/cast v1.5.0
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
 	github.com/tendermint/tendermint v0.34.28
@@ -141,7 +141,7 @@ require (
 	github.com/holiman/uint256 v1.2.1 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
-	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
@@ -229,8 +229,7 @@ replace (
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.7
 	// use cosmos flavored protobufs
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	// Informal Tendermint fork
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
-	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
-
