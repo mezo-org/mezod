@@ -34,3 +34,13 @@ The configuration for the four nodes is available in the `build` directory.
 When `make localnet-start` is used for the first time, a configuration for the
 four nodes is generated. To clear the chain state and reset the configuration,
 use `make localnet-clean` followed by `make localnet-start`.
+
+All client instances expose JSON-RPC HTTP and JSON-RPC WebSocket services
+available from the host machine.
+
+| Instance  | JSON-RPC HTTP | JSON-RPC WS |
+|-----------|---------------|-------------|
+| mezo-node0 | 8545          | 8546        |
+| mezo-node1 | 8547          | 8548        |
+| mezo-node3 | 8549          | 8550        |
+| mezo-node4 | 8551          | 8552        |

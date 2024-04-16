@@ -243,6 +243,8 @@ func initTestnetFiles(
 	appConfig.Telemetry.PrometheusRetentionTime = 60
 	appConfig.Telemetry.EnableHostnameLabel = false
 	appConfig.Telemetry.GlobalLabels = [][]string{{"chain_id", args.chainID}}
+	appConfig.JSONRPC.Address = "0.0.0.0:8545"
+	appConfig.JSONRPC.WsAddress = "0.0.0.0:8546"
 
 	var (
 		genAccounts []authtypes.GenesisAccount
