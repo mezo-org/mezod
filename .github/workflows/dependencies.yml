@@ -1,4 +1,8 @@
 name: "Dependency Review"
+# This workflow is supposed to do two things on Go files:
+# - Scan pull requests for dependency changes and raise an error if any
+#   vulnerabilities or invalid licenses are being introduced.
+# - Run a custom `make vulncheck` command
 on: pull_request
 
 permissions:
@@ -8,21 +12,22 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.20'
           check-latest: true
       - name: "Checkout Repository"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: technote-space/get-diff-action@v6.1.2
         with:
           PATTERNS: |
             **/**.go
             go.mod
             go.sum
-      - name: "Dependency Review"
-        uses: actions/dependency-review-action@v3
-        if: env.GIT_DIFF
+      # TODO: Uncomment once repo is public or we enable GitHub Advanced Security.
+      # - name: "Dependency Review"
+      #   uses: actions/dependency-review-action@v3
+      #   if: env.GIT_DIFF
       - name: "Go vulnerability check"
         run: make vulncheck
         if: env.GIT_DIFF

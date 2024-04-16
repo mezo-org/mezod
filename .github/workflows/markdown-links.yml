@@ -1,4 +1,6 @@
 name: Check Markdown links
+# The workflow uses `markdown-link-check` to find broken links in the Markdown
+# files.
 on: 
   pull_request:
     paths:
@@ -13,7 +15,7 @@ jobs:
   markdown-link-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: gaurav-nelson/github-action-markdown-link-check@master
         with:
           check-modified-files-only: "yes"

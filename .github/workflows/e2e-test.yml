@@ -1,4 +1,7 @@
 name: E2E Test
+# The workflow runs a custom `make test-e2e` command for pull-requests targeting
+# the `main` branch and for pushes to this branch, if certain files were
+# modified.
 on:
   pull_request:
     branches:
@@ -11,11 +14,11 @@ jobs:
   test-e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.20'
           check-latest: true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: technote-space/get-diff-action@v6.1.2
         with:
           PATTERNS: |

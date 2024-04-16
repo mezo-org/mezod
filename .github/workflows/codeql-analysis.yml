@@ -10,6 +10,8 @@
 # supported CodeQL languages.
 #
 name: "CodeQL"
+# The workflow is designed to analyze Go code using CodeQL with predefined
+# queries from the `crypto-com/cosmos-sdk-codeql` repository.
 
 on:
   push:
@@ -39,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: technote-space/get-diff-action@v6.1.2
         with:
           PATTERNS: |

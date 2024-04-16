@@ -1,4 +1,10 @@
 name: Run Gosec
+# The workflow runs a security scan on a Go code and outputs the report to a
+# `.sarif` file and then uploads it to GitHub, so that the results could be
+# browsed in GH in the repo's 'Security' tab. The security scan is done using
+# `cosmos/gosec@master` action which got forked from
+# https://github.com/securego/gosec and introduced some new rules targeting the
+# Cosmos-SDK.
 on:
   pull_request:
   push:
@@ -9,13 +15,14 @@ jobs:
   Gosec:
     permissions:
       security-events: write
+      contents: read
 
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Get Diff
         uses: technote-space/get-diff-action@v6.1.2
         with:

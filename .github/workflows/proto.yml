@@ -1,6 +1,7 @@
 name: Protobuf
-# Protobuf runs buf (https://buf.build/) lint and check-breakage
-# This workflow is only run when a .proto file has been changed
+# The workflow builds, lints and checks breakage for Protocol Buffers (`.proto`)
+# files using the `buf` tool. It runs on pull requests when changes are made to
+# files within the `proto` directory.
 on:
   pull_request:
     paths:
@@ -10,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: technote-space/get-diff-action@v6.1.2
         id: git_diff
         with:
@@ -27,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: bufbuild/buf-setup-action@v1.15.1
       - uses: bufbuild/buf-lint-action@v1
         with:
@@ -36,7 +37,7 @@ jobs:
   break-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: bufbuild/buf-setup-action@v1.15.1
       - uses: bufbuild/buf-breaking-action@v1
         with:

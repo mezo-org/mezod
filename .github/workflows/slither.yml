@@ -1,4 +1,8 @@
 name: Slither Analysis
+# The workflow analyzes Solidity contracts using Slither, which outputs the
+# report to a `.sarif` file and then uploads it to GitHub, so that the results
+# could be browsed in GH in the repo's 'Security' tab. The check is triggered by
+# pull requests and pushes to the `main` branch that modify Solidity files.
 
 on:
   pull_request:
@@ -15,7 +19,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Get Diff
         uses: technote-space/get-diff-action@v6.1.2
         with:
