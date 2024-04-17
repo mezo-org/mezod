@@ -53,7 +53,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 	expAck := ibcmock.MockAcknowledgement
 
 	coins := sdk.NewCoins(
-		sdk.NewCoin("aevmos", sdk.NewInt(1000)),
+		sdk.NewCoin("abtc", sdk.NewInt(1000)),
 		sdk.NewCoin(ibcAtomDenom, sdk.NewInt(1000)),
 		sdk.NewCoin(ibcOsmoDenom, sdk.NewInt(1000)),
 		sdk.NewCoin(erc20Denom, sdk.NewInt(1000)),
@@ -324,7 +324,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 				authtypes.NewModuleAddress(govtypes.ModuleName),
 				suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.IBCKeeper.ChannelKeeper, mockTransferKeeper, suite.app.ClaimsKeeper)
 
-			// Fund receiver account with EVMOS, ERC20 coins and IBC vouchers
+			// Fund receiver account with BTC, ERC20 coins and IBC vouchers
 			err = testutil.FundAccount(suite.ctx, suite.app.BankKeeper, secpAddr, coins)
 			suite.Require().NoError(err)
 
@@ -362,14 +362,14 @@ func (suite *KeeperTestSuite) TestGetIBCDenomDestinationIdentifiers() {
 	}{
 		{
 			"invalid native denom",
-			"aevmos",
+			"abtc",
 			func() {},
 			true,
 			"", "",
 		},
 		{
 			"invalid IBC denom hash",
-			"ibc/aevmos",
+			"ibc/abtc",
 			func() {},
 			true,
 			"", "",
@@ -583,9 +583,9 @@ func (suite *KeeperTestSuite) TestOnRecvPacketFailTransfer() {
 				authtypes.NewModuleAddress(govtypes.ModuleName),
 				suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.IBCKeeper.ChannelKeeper, mockTransferKeeper, suite.app.ClaimsKeeper)
 
-			// Fund receiver account with EVMOS
+			// Fund receiver account with BTC
 			coins := sdk.NewCoins(
-				sdk.NewCoin("aevmos", sdk.NewInt(1000)),
+				sdk.NewCoin("abtc", sdk.NewInt(1000)),
 				sdk.NewCoin(ibcAtomDenom, sdk.NewInt(1000)),
 			)
 			err = testutil.FundAccount(suite.ctx, suite.app.BankKeeper, secpAddr, coins)
