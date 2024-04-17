@@ -640,7 +640,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					addr[:],
 					sdk.NewCoins(
 						sdk.NewCoin(
-							"evmos",
+							"btc",
 							sdk.NewInt(1),
 						),
 					),
@@ -670,7 +670,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					addr[:],
 					sdk.NewCoins(
 						sdk.NewCoin(
-							"evmos",
+							"btc",
 							sdk.NewInt(1),
 						),
 					),
@@ -700,7 +700,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					addr[:],
 					sdk.NewCoins(
 						sdk.NewCoin(
-							"evmos",
+							"btc",
 							sdk.NewInt(1),
 						),
 					),
@@ -755,7 +755,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					addr[:],
 					sdk.NewCoins(
 						sdk.NewCoin(
-							"evmos",
+							"btc",
 							sdk.NewInt(1),
 						),
 					),
@@ -785,7 +785,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					addr[:],
 					sdk.NewCoins(
 						sdk.NewCoin(
-							"evmos",
+							"btc",
 							sdk.NewInt(1),
 						),
 					),
@@ -845,7 +845,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					addr[:],
 					sdk.NewCoins(
 						sdk.NewCoin(
-							"evmos",
+							"btc",
 							sdk.NewInt(1),
 						),
 					),
@@ -879,7 +879,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					addr[:],
 					sdk.NewCoins(
 						sdk.NewCoin(
-							"evmos",
+							"btc",
 							sdk.NewInt(1),
 						),
 					),
@@ -909,7 +909,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					addr[:],
 					sdk.NewCoins(
 						sdk.NewCoin(
-							"evmos",
+							"btc",
 							sdk.NewInt(1),
 						),
 					),

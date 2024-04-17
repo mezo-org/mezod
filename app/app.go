@@ -191,7 +191,7 @@ func init() {
 
 	DefaultNodeHome = filepath.Join(userHomeDir, ".evmosd")
 
-	// manually update the power reduction by replacing micro (u) -> atto (a) evmos
+	// manually update the power reduction by replacing micro (u) -> atto (a) btc
 	sdk.DefaultPowerReduction = evmostypes.PowerReduction
 	// modify fee market parameter defaults through global
 	feemarkettypes.DefaultMinGasPrice = MainnetMinGasPrices

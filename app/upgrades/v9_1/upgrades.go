@@ -92,7 +92,7 @@ func ReturnFundsFromCommunityPool(ctx sdk.Context, dk distrKeeper.Keeper) error 
 func ReturnFundsFromCommunityPoolToAccount(ctx sdk.Context, dk distrKeeper.Keeper, account string, amount sdkmath.Int) error {
 	to := sdk.MustAccAddressFromBech32(account)
 	balance := sdk.Coin{
-		Denom:  "aevmos",
+		Denom:  "abtc",
 		Amount: amount,
 	}
 	return dk.DistributeFromFeePool(ctx, sdk.Coins{balance}, to)

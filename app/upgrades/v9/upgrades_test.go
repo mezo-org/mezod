@@ -84,7 +84,7 @@ func (suite *UpgradeTestSuite) TestReturnFundsFromCommunityPool() {
 	address := common.BytesToAddress(priv.PubKey().Address().Bytes())
 	sender := sdk.AccAddress(address.Bytes())
 	res, _ := sdk.NewIntFromString(v9.MaxRecover)
-	coins := sdk.NewCoins(sdk.NewCoin("aevmos", res))
+	coins := sdk.NewCoins(sdk.NewCoin("abtc", res))
 	err = suite.app.BankKeeper.MintCoins(suite.ctx, types.ModuleName, coins)
 	suite.Require().NoError(err)
 	err = suite.app.BankKeeper.SendCoinsFromModuleToAccount(suite.ctx, types.ModuleName, sender, coins)
@@ -93,7 +93,7 @@ func (suite *UpgradeTestSuite) TestReturnFundsFromCommunityPool() {
 	suite.Require().NoError(err)
 
 	balanceBefore := suite.app.DistrKeeper.GetFeePoolCommunityCoins(suite.ctx)
-	suite.Require().Equal(balanceBefore.AmountOf("aevmos"), sdk.NewDecFromInt(res))
+	suite.Require().Equal(balanceBefore.AmountOf("abtc"), sdk.NewDecFromInt(res))
 
 	// return funds to accounts affected
 	err = v9.ReturnFundsFromCommunityPool(suite.ctx, suite.app.DistrKeeper)
@@ -103,7 +103,7 @@ func (suite *UpgradeTestSuite) TestReturnFundsFromCommunityPool() {
 	for i := range v9.Accounts {
 		addr := sdk.MustAccAddressFromBech32(v9.Accounts[i][0])
 		res, _ := sdk.NewIntFromString(v9.Accounts[i][1])
-		balance := suite.app.BankKeeper.GetBalance(suite.ctx, addr, "aevmos")
+		balance := suite.app.BankKeeper.GetBalance(suite.ctx, addr, "abtc")
 		suite.Require().Equal(balance.Amount, res)
 	}
 
