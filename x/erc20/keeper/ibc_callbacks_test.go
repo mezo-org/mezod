@@ -351,7 +351,7 @@ func (suite *KeeperTestSuite) TestOnRecvPacket() {
 				suite.app.ClaimsKeeper,
 			)
 
-			// Fund receiver account with EVMOS, ERC20 coins and IBC vouchers
+			// Fund receiver account with BTC, ERC20 coins and IBC vouchers
 			// We do this since we are interested in the conversion portion w/ OnRecvPacket
 			err = testutil.FundAccount(suite.ctx, suite.app.BankKeeper, tc.receiver, coins)
 			suite.Require().NoError(err)
@@ -406,14 +406,14 @@ func (suite *KeeperTestSuite) TestConvertCoinToERC20FromPacket() {
 		{
 			name: "error - invalid sender",
 			malleate: func() transfertypes.FungibleTokenPacketData {
-				return transfertypes.NewFungibleTokenPacketData("aevmos", "10", "", "", "")
+				return transfertypes.NewFungibleTokenPacketData("abtc", "10", "", "", "")
 			},
 			expPass: false,
 		},
 		{
 			name: "pass - is base denom",
 			malleate: func() transfertypes.FungibleTokenPacketData {
-				return transfertypes.NewFungibleTokenPacketData("aevmos", "10", senderAddr, "", "")
+				return transfertypes.NewFungibleTokenPacketData("abtc", "10", senderAddr, "", "")
 			},
 			expPass: true,
 		},
@@ -540,7 +540,7 @@ func (suite *KeeperTestSuite) TestOnAcknowledgementPacket() {
 
 				sender = sdk.AccAddress(senderPk.PubKey().Address())
 
-				// Fund receiver account with EVMOS, ERC20 coins and IBC vouchers
+				// Fund receiver account with BTC, ERC20 coins and IBC vouchers
 				// We do this since we are interested in the conversion portion w/ OnRecvPacket
 				err := testutil.FundAccount(
 					suite.ctx,
@@ -567,7 +567,7 @@ func (suite *KeeperTestSuite) TestOnAcknowledgementPacket() {
 
 				sender = sdk.AccAddress(senderPk.PubKey().Address())
 
-				// Fund receiver account with EVMOS, ERC20 coins and IBC vouchers
+				// Fund receiver account with BTC, ERC20 coins and IBC vouchers
 				// We do this since we are interested in the conversion portion w/ OnRecvPacket
 				err := testutil.FundAccount(
 					suite.ctx,
