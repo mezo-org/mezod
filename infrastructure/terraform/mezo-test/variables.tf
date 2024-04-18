@@ -24,7 +24,7 @@ variable "region" {
 
   default = {
     name  = "us-central1"
-    zones = ["us-central1-a", "us-central1-b", "us-central1-c", "us-central1-f"]
+    zones = ["us-central1-a", "us-central1-b", "us-central1-c"]
   }
 }
 
@@ -60,5 +60,22 @@ variable "cloud_nat" {
   default = {
     name        = "mezo-test-cloud-nat"
     router_name = "mezo-test-cloud-router"
+  }
+}
+
+variable "gke_cluster" {
+  type        = object({
+    name                   = string
+    node_pool_name         = string
+    node_pool_machine_type = string
+    node_pool_size         = number
+  })
+  description = "GKE cluster info"
+
+  default = {
+    name                   = "mezo-test-gke-cluster"
+    node_pool_name         = "mezo-test-gke-node-pool"
+    node_pool_machine_type = "n2-standard-2"
+    node_pool_size         = 1
   }
 }
