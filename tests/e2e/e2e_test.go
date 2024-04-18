@@ -11,6 +11,11 @@ import (
 // and finally upgrades the chain.
 // If the chain can be restarted after the upgrade(s), the test passes.
 func (s *IntegrationTestSuite) TestUpgrade() {
+	// TODO: The upgrade test leverages public stable versions of the Evmos node.
+	//       Mezo does not have any public stable versions yet, so this test
+	//       cannot be adjusted for now.
+	s.T().Skip("skipping upgrade test; this must be adjusted to Mezo first")
+
 	for idx, version := range s.upgradeParams.Versions {
 		if idx == 0 {
 			// start initial node

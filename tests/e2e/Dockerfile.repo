@@ -1,10 +1,12 @@
 FROM golang:1.20.0-bullseye AS build-env
 
 ARG BRANCH_NAME
+ARG GITHUB_TOKEN
 
 WORKDIR /go/src/github.com/evmos/
 
-RUN git clone "https://github.com/evmos/evmos.git"
+# TODO: Override cloned repository for now. Do a proper rename od working directories when the time comes.
+RUN git clone https://${GITHUB_TOKEN}@github.com/thesis/mezo.git evmos
 
 WORKDIR /go/src/github.com/evmos/evmos
 

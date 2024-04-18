@@ -106,12 +106,21 @@ func (s *IntegrationTestSuite) runNodeWithCurrentChanges() {
 	branch, err := getCurrentBranch()
 	s.Require().NoError(err)
 
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	s.Require().NotEmpty(githubToken,
+		"GITHUB_TOKEN env var is required; " +
+		"token must point to an account with read access to the thesis/mezo private repository",
+	)
+
 	err = s.upgradeManager.BuildImage(
 		name,
 		version,
 		repoDockerFile,
 		".",
-		map[string]string{"BRANCH_NAME": branch},
+		map[string]string{
+			"BRANCH_NAME": branch,
+			"GITHUB_TOKEN": githubToken,
+		},
 	)
 	s.Require().NoError(err, "can't build container for e2e test")
 
