@@ -33,4 +33,26 @@ Type the project ID when prompted. Once done, the bucket will be created.
 
 ### Create infrastructure resources
 
-TODO
+To create the infrastructure resources, move to the `mezo-test` root directory
+follow the steps below. Type the project ID when prompted.
+1. Initialize Terraform (**this action needs to be done only once**):
+    ```shell
+    terraform init
+    ``` 
+
+2. Plan the changes:
+    ```shell
+    terraform plan
+    ```
+
+3. Apply the changes:
+    ```shell
+    terraform apply
+    ```
+   
+In order to avoid typing the project ID every time, you can put it in an 
+environment variable `TF_VAR_project_id`:
+```shell
+export TF_VAR_project_id=<project-id>
+```
+or set it using [another way supported by Terraform.](https://developer.hashicorp.com/terraform/language/values/variables#assigning-values-to-root-module-variables)
