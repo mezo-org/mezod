@@ -52,3 +52,13 @@ variable "gke_subnet" {
     services_ip_range      = "10.101.0.0/16"
   }
 }
+
+variable "cloud_nat" {
+  type        = map(string)
+  description = "Cloud NAT info"
+
+  default = {
+    name        = "mezo-test-cloud-nat"
+    router_name = "mezo-test-cloud-router"
+  }
+}
