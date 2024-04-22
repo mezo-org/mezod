@@ -101,17 +101,31 @@ func (s *IntegrationTestSuite) runNodeWithCurrentChanges() {
 		name    = "e2e-test/evmos"
 		version = "latest"
 	)
-	// get the current branch name
-	// to run the tests against the last changes
-	branch, err := getCurrentBranch()
-	s.Require().NoError(err)
 
-	err = s.upgradeManager.BuildImage(
+	branch := os.Getenv("BRANCH")
+	if len(branch) == 0 {
+		// get the current branch name
+		// to run the tests against the last changes
+		var err error
+		branch, err = getCurrentBranch()
+		s.Require().NoError(err)
+	}
+
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	s.Require().NotEmpty(githubToken,
+		"GITHUB_TOKEN env var is required; " +
+		"token must point to an account with read access to the thesis/mezo private repository",
+	)
+
+	err := s.upgradeManager.BuildImage(
 		name,
 		version,
 		repoDockerFile,
 		".",
-		map[string]string{"BRANCH_NAME": branch},
+		map[string]string{
+			"BRANCH_NAME": branch,
+			"GITHUB_TOKEN": githubToken,
+		},
 	)
 	s.Require().NoError(err, "can't build container for e2e test")
 
@@ -144,7 +158,7 @@ func (s *IntegrationTestSuite) proposeUpgrade(name, target string) {
 		s.upgradeParams.ChainID,
 		s.upgradeManager.UpgradeHeight,
 		isLegacyProposal,
-		"--fees=500aevmos",
+		"--fees=500abtc",
 		"--gas=500000",
 	)
 	s.Require().NoErrorf(
@@ -176,7 +190,7 @@ func (s *IntegrationTestSuite) proposeUpgrade(name, target string) {
 func (s *IntegrationTestSuite) voteForProposal(id int) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	exec, err := s.upgradeManager.CreateVoteProposalExec(s.upgradeParams.ChainID, id, "--fees=500aevmos", "--gas=500000")
+	exec, err := s.upgradeManager.CreateVoteProposalExec(s.upgradeParams.ChainID, id, "--fees=500abtc", "--gas=500000")
 	s.Require().NoError(err, "can't create vote for proposal exec")
 	outBuf, errBuf, err := s.upgradeManager.RunExec(ctx, exec)
 	s.Require().NoErrorf(

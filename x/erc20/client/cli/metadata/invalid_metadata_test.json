@@ -4,18 +4,18 @@
       "description": 1,
       "denom_units": [
         {
-          "denom": "aevmos",
+          "denom": "abtc",
           "exponent": 0
         },
         {
-          "denom": "evmos",
+          "denom": "btc",
           "exponent": 18
         }
       ],
-      "base": "aevmos",
-      "display": "aevmos",
-      "name": "aevmos",
-      "symbol": "EVMOS"
+      "base": "abtc",
+      "display": "abtc",
+      "name": "abtc",
+      "symbol": "BTC"
     }
   ]
 }

@@ -11,6 +11,11 @@ import (
 // and finally upgrades the chain.
 // If the chain can be restarted after the upgrade(s), the test passes.
 func (s *IntegrationTestSuite) TestUpgrade() {
+	// TODO: The upgrade test leverages public stable versions of the Evmos node.
+	//       Mezo does not have any public stable versions yet, so this test
+	//       cannot be adjusted for now.
+	s.T().Skip("skipping upgrade test; this must be adjusted to Mezo first")
+
 	for idx, version := range s.upgradeParams.Versions {
 		if idx == 0 {
 			// start initial node
@@ -45,8 +50,8 @@ func (s *IntegrationTestSuite) TestCLITxs() {
 					s.upgradeParams.ChainID,
 					5000,
 					true,
-					"--fees=5000000000aevmos",
-					"--gas-prices=50000aevmos",
+					"--fees=5000000000abtc",
+					"--gas-prices=50000abtc",
 				)
 			},
 			expPass:   false,
@@ -74,7 +79,7 @@ func (s *IntegrationTestSuite) TestCLITxs() {
 					s.upgradeParams.ChainID,
 					5000,
 					true,
-					"--fees=10aevmos",
+					"--fees=10abtc",
 					"--gas=50000",
 				)
 			},
@@ -89,7 +94,7 @@ func (s *IntegrationTestSuite) TestCLITxs() {
 					s.upgradeParams.ChainID,
 					5000,
 					true,
-					"--fees=500000000000aevmos",
+					"--fees=500000000000abtc",
 					"--gas=1000",
 				)
 			},
@@ -104,7 +109,7 @@ func (s *IntegrationTestSuite) TestCLITxs() {
 					s.upgradeParams.ChainID,
 					5000,
 					true,
-					"--fees=10000000000000000aevmos",
+					"--fees=10000000000000000abtc",
 					"--gas=1500000",
 				)
 			},
@@ -118,7 +123,7 @@ func (s *IntegrationTestSuite) TestCLITxs() {
 					s.upgradeParams.ChainID,
 					5000,
 					true,
-					"--gas-prices=1000000000aevmos",
+					"--gas-prices=1000000000abtc",
 					"--gas=1500000",
 				)
 			},
@@ -130,7 +135,7 @@ func (s *IntegrationTestSuite) TestCLITxs() {
 				return s.upgradeManager.CreateVoteProposalExec(
 					s.upgradeParams.ChainID,
 					1,
-					"--fees=10aevmos",
+					"--fees=10abtc",
 					"--gas=500000",
 				)
 			},
@@ -145,7 +150,7 @@ func (s *IntegrationTestSuite) TestCLITxs() {
 					1,
 					"--gas=auto",
 					"--gas-adjustment=1.5",
-					"--fees=10000000000000000aevmos",
+					"--fees=10000000000000000abtc",
 				)
 			},
 			expPass: true,

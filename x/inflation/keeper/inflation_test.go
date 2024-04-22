@@ -87,7 +87,7 @@ func (suite *KeeperTestSuite) TestMintAndAllocateInflation() {
 func (suite *KeeperTestSuite) TestGetCirculatingSupplyAndInflationRate() {
 	// the total bonded tokens for the 2 accounts initialized on the setup
 	bondedAmt := sdkmath.NewInt(1000100000000000000)
-	bondedCoins := sdk.NewDecCoin(evmostypes.AttoEvmos, bondedAmt)
+	bondedCoins := sdk.NewDecCoin(evmostypes.AttoBtc, bondedAmt)
 
 	testCases := []struct {
 		name             string

@@ -113,7 +113,7 @@ func (suite KeeperTestSuite) TestRegisterIncentive() { //nolint:govet // we can 
 				)
 				suite.Require().NoError(err)
 			},
-			[]sdk.DecCoin{allocations[1], allocations[0]},
+			[]sdk.DecCoin{allocations[0], allocations[1]},
 			true,
 		},
 	}
