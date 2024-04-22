@@ -27,8 +27,13 @@ jobs:
             go.mod
             go.sum
             tests/e2e/*
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
       - name: Test E2E
         env:
+          BRANCH: ${{ steps.extract_branch.outputs.branch }}
           GITHUB_TOKEN: ${{ secrets.CI_GITHUB_TOKEN }}
         run: |
           make test-e2e

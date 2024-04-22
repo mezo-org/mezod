@@ -101,10 +101,15 @@ func (s *IntegrationTestSuite) runNodeWithCurrentChanges() {
 		name    = "e2e-test/evmos"
 		version = "latest"
 	)
-	// get the current branch name
-	// to run the tests against the last changes
-	branch, err := getCurrentBranch()
-	s.Require().NoError(err)
+
+	branch := os.Getenv("BRANCH")
+	if len(branch) == 0 {
+		// get the current branch name
+		// to run the tests against the last changes
+		var err error
+		branch, err = getCurrentBranch()
+		s.Require().NoError(err)
+	}
 
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	s.Require().NotEmpty(githubToken,
@@ -112,7 +117,7 @@ func (s *IntegrationTestSuite) runNodeWithCurrentChanges() {
 		"token must point to an account with read access to the thesis/mezo private repository",
 	)
 
-	err = s.upgradeManager.BuildImage(
+	err := s.upgradeManager.BuildImage(
 		name,
 		version,
 		repoDockerFile,
