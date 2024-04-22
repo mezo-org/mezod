@@ -11,7 +11,7 @@ variable "services" {
 
 variable "project_name" {
   description = "Project name"
-  default = "mezo-test"
+  default = "mezo-staging"
 }
 
 variable "project_id" {
@@ -33,7 +33,7 @@ variable "vpc_network" {
   description = "VPC network data"
 
   default = {
-    name = "mezo-test-vpc-network"
+    name = "mezo-staging-vpc-network"
   }
 }
 
@@ -42,13 +42,13 @@ variable "gke_subnet" {
   description = "Subnet for deploying GKE cluster resources"
 
   default = {
-    name             = "mezo-test-gke-subnet"
+    name             = "mezo-staging-gke-subnet"
     primary_ip_range = "10.1.0.0/16"
 
-    pods_ip_range_name = "mezo-test-gke-pods-ip-range"
+    pods_ip_range_name = "mezo-staging-gke-pods-ip-range"
     pods_ip_range      = "10.100.0.0/16"
 
-    services_ip_range_name = "mezo-test-gke-services-ip-range"
+    services_ip_range_name = "mezo-staging-gke-services-ip-range"
     services_ip_range      = "10.101.0.0/16"
   }
 }
@@ -58,8 +58,8 @@ variable "cloud_nat" {
   description = "Cloud NAT info"
 
   default = {
-    name        = "mezo-test-cloud-nat"
-    router_name = "mezo-test-cloud-router"
+    name        = "mezo-staging-cloud-nat"
+    router_name = "mezo-staging-cloud-router"
   }
 }
 
@@ -73,8 +73,8 @@ variable "gke_cluster" {
   description = "GKE cluster info"
 
   default = {
-    name                   = "mezo-test-gke-cluster"
-    node_pool_name         = "mezo-test-gke-node-pool"
+    name                   = "mezo-staging-gke-cluster"
+    node_pool_name         = "mezo-staging-gke-node-pool"
     node_pool_machine_type = "n2-standard-2"
     node_pool_size         = 1
   }

@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "mezo-test-terraform-backend-bucket"
+    bucket = "mezo-staging-terraform-backend-bucket"
     prefix = "terraform/state"
   }
 

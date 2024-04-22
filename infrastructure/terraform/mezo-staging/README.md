@@ -1,10 +1,10 @@
-# Terraform: mezo-test
+# Terraform: mezo-staging
 
-This module contains Terraform configuration for the `mezo-test` GCP project.
+This module contains Terraform configuration for the `mezo-staging` GCP project.
 
 ### Prerequisites
 
-- The `mezo-test` GCP project
+- The `mezo-staging` GCP project
 - JSON key of the Terraform service account (with **Editor** role)
 - Terraform (at least v1.8.1)
 
@@ -20,7 +20,7 @@ export GOOGLE_CREDENTIALS=<service-account-json-key-file>
 
 ### Terraform state
 
-Terraform requires a GCP bucket named `mezo-test-terraform-backend-bucket` to 
+Terraform requires a GCP bucket named `mezo-staging-terraform-backend-bucket` to 
 store its state. If the bucket already exists, you can skip this step. 
 Otherwise, you can create it by moving to the
 `remote-state` directory and invoking:
@@ -33,7 +33,7 @@ Type the project ID when prompted. Once done, the bucket will be created.
 
 ### Create infrastructure resources
 
-To create the infrastructure resources, move to the `mezo-test` root directory
+To create the infrastructure resources, move to the `mezo-staging` root directory
 follow the steps below. Type the project ID when prompted.
 1. Initialize Terraform (**this action needs to be done only once**):
     ```shell

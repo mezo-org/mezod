@@ -19,7 +19,7 @@ provider "google" {
 
 # Terraform backend storage bucket.
 resource "google_storage_bucket" "terraform_backend" {
-  name     = "mezo-test-terraform-backend-bucket"
+  name     = "mezo-staging-terraform-backend-bucket"
   location = "US"
 
   uniform_bucket_level_access = true
