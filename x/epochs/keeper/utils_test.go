@@ -19,7 +19,7 @@ func (suite *KeeperTestSuite) DoSetupTest() {
 
 	// setup context
 	header := testutil.NewHeader(
-		1, time.Now().UTC(), "evmos_9001-1", suite.consAddress, nil, nil,
+		1, time.Now().UTC(), "mezo_31612-1", suite.consAddress, nil, nil,
 	)
 	suite.ctx = suite.app.BaseApp.NewContext(checkTx, header)
 

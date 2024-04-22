@@ -37,7 +37,7 @@ func (suite *KeeperTestSuite) SetupApp() {
 	require.NoError(t, err)
 	suite.consAddress = sdk.ConsAddress(privCons.PubKey().Address())
 	header := testutil.NewHeader(
-		1, time.Now().UTC(), "evmos_9001-1", suite.consAddress, nil, nil,
+		1, time.Now().UTC(), "mezo_31612-1", suite.consAddress, nil, nil,
 	)
 	suite.ctx = suite.app.BaseApp.NewContext(false, header)
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())

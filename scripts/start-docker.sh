@@ -1,7 +1,7 @@
 #!/bin/bash
 
 KEY="dev0"
-CHAINID="evmos_9000-1"
+CHAINID="mezo_31611-1"
 MONIKER="mymoniker"
 DATA_DIR=$(mktemp -d -t evmos-datadir.XXXXX)
 

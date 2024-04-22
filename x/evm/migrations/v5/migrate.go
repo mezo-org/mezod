@@ -20,6 +20,7 @@ import (
 	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/evmos/evmos/v12/x/evm/types"
+	"strings"
 
 	v5types "github.com/evmos/evmos/v12/x/evm/migrations/v5/types"
 )
@@ -47,7 +48,8 @@ func MigrateStore(
 	cdc.MustUnmarshal(extraEIPsBz, &extraEIPs)
 
 	// revert ExtraEIP change for Evmos testnet
-	if ctx.ChainID() == "evmos_9000-4" {
+	// TODO: Revisit this for Mezo.
+	if strings.Contains(ctx.ChainID(),"mezo_31611") {
 		extraEIPs.EIPs = []int64{}
 	}
 
