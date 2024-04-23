@@ -4,18 +4,25 @@ This module contains Terraform configuration for the `mezo-staging` GCP project.
 
 ### Prerequisites
 
-- The `mezo-staging` GCP project
-- JSON key of the Terraform service account (with **Editor** role)
-- Terraform (at least v1.8.1). Recommended approach is using [tfenv](https://github.com/tfutils/tfenv) version manager.
+- The `mezo-staging` GCP project. The GCP project ID should be set in the `.env` file
+- Service account with email `terraform@<project-id>.iam.gserviceaccount.com` (**Editor** role assigned)
+- Terraform (at least v1.8.1). Recommended approach is using the [tfenv](https://github.com/tfutils/tfenv) version manager
+- [dotenv](https://www.npmjs.com/package/dotenv) with a plugin loading env 
+  variables to your shell ([example for oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/dotenv)).
+  This is necessary to load the environment variables from the `.env` file.
+  An alternative is to set the environment variables from this file manually
 
-### Terraform authentication
+### Authentication
 
-Terraform uses a service account to authenticate with GCP. To make it possible, 
-the `GOOGLE_CREDENTIALS` environment variable should point to the service 
-account's JSON key file:
+Terraform impersonates the service account `terraform@<project-id>.iam.gserviceaccount.com` 
+to perform operations on the GCP project. This is configured through the
+`GOOGLE_IMPERSONATE_SERVICE_ACCOUNT` variable in the `.env` file.
 
+In order to make it work, your personal GCP account needs to have the 
+`roles/iam.serviceAccountTokenCreator` role assigned. You also need to
+authenticate by doing:
 ```shell
-export GOOGLE_CREDENTIALS=<service-account-json-key-file>
+gcloud auth application-default login
 ```
 
 ### Terraform state
@@ -28,13 +35,10 @@ Otherwise, you can create it by moving to the
 terraform init && terraform apply
 ```
 
-Type the project ID when prompted. Once done, the bucket will be created.
-**This action needs to be done only once.**
-
 ### Create and modify infrastructure resources
 
 To create (or modify) the infrastructure resources, move to the `mezo-staging` root directory
-follow the steps below. Type the project ID when prompted.
+follow the steps below.
 1. Initialize Terraform (**this action needs to be done only once**):
     ```shell
     terraform init
@@ -49,10 +53,3 @@ follow the steps below. Type the project ID when prompted.
     ```shell
     terraform apply
     ```
-   
-In order to avoid typing the project ID every time, you can put it in an 
-environment variable `TF_VAR_project_id`:
-```shell
-export TF_VAR_project_id=<project-id>
-```
-or set it using [another way supported by Terraform.](https://developer.hashicorp.com/terraform/language/values/variables#assigning-values-to-root-module-variables)
