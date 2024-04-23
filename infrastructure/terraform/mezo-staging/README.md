@@ -31,9 +31,9 @@ terraform init && terraform apply
 Type the project ID when prompted. Once done, the bucket will be created.
 **This action needs to be done only once.**
 
-### Create infrastructure resources
+### Create and modify infrastructure resources
 
-To create the infrastructure resources, move to the `mezo-staging` root directory
+To create (or modify) the infrastructure resources, move to the `mezo-staging` root directory
 follow the steps below. Type the project ID when prompted.
 1. Initialize Terraform (**this action needs to be done only once**):
     ```shell
