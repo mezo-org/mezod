@@ -12,12 +12,6 @@ terraform {
   }
 }
 
-provider "google" {
-  project = var.project_id
-  region  = var.region.name
-  zone    = var.region.zones[0]
-}
-
 # Service Usage API must be enabled manually to use this resource:
 # https://console.cloud.google.com/apis/api/serviceusage.googleapis.com
 resource "google_project_service" "services" {
