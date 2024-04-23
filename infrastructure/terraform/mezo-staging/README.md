@@ -6,7 +6,7 @@ This module contains Terraform configuration for the `mezo-staging` GCP project.
 
 - The `mezo-staging` GCP project
 - JSON key of the Terraform service account (with **Editor** role)
-- Terraform (at least v1.8.1)
+- Terraform (at least v1.8.1). Recommended approach is using [tfenv](https://github.com/tfutils/tfenv) version manager.
 
 ### Terraform authentication
 
