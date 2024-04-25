@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # TODO: Add faucet account to genesis.
-# TODO: Add more explanatory comments.
 
 HOMEDIR=./.public-testnet
 
