@@ -27,8 +27,6 @@ KEYRING_PASSWORDS=()
 for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_HOMEDIR="$HOMEDIR/$NODE_NAME"
   NODE_KEY_NAME="$NODE_NAME-key"
-  NODE_APP_TOML="$NODE_HOMEDIR/config/app.toml"
-  NODE_CONFIG_TOML="$NODE_HOMEDIR/config/config.toml"
   KEYRING_PASSWORD=$(openssl rand -hex 32)
 
   # Set some configuration options for the node to not repeat them in the commands.
@@ -56,18 +54,6 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   yes "$MNEMONIC" | ./build/evmosd --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover &> /dev/null
 
   echo "[$NODE_NAME] init action done"
-
-  # Set the default minimum gas prices to 1 satoshi.
-  sed -i.bak 's/minimum-gas-prices = "0abtc"/minimum-gas-prices = "10000000000abtc"/g' "$NODE_APP_TOML"
-  # Set the pruning mode to nothing to make this an archiving node
-  sed -i.bak 's/pruning = "default"/pruning = "nothing"/g' "$NODE_APP_TOML"
-  # Enable Prometheus metrics.
-  sed -i.bak 's/prometheus = false/prometheus = true/' "$NODE_CONFIG_TOML"
-  sed -i.bak 's/prometheus-retention-time  = "0"/prometheus-retention-time  = "1000000000000"/g' "$NODE_APP_TOML"
-  sed -i.bak 's/enabled = false/enabled = true/g' "$NODE_APP_TOML"
-
-  # Remove all backup files created by sed.
-  rm $NODE_HOMEDIR/config/*.bak
 
   # Adding the account to the local node's genesis file is not strictly necessary
   # as this will be done for the global genesis file. However, it's needed to execute
@@ -124,7 +110,9 @@ printf "%s\n" "${SEEDS[@]}" > $HOMEDIR/seeds.txt
 
 for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_HOMEDIR="$HOMEDIR/$NODE_NAME"
-  NODE_CONFIG_TOML="$NODE_HOMEDIR/config/config.toml"
+  NODE_CONFIGDIR="$NODE_HOMEDIR/config"
+  NODE_APP_TOML="$NODE_CONFIGDIR/app.toml"
+  NODE_CONFIG_TOML="$NODE_CONFIGDIR/config.toml"
 
   # All initial validators should maintain connections to each other.
   # This is why the seeds.txt is used to populate the persistent_peers field
@@ -132,8 +120,19 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   sed -i.bak -e "s/^seeds =.*/seeds = \"\"/" $NODE_CONFIG_TOML
   sed -i.bak -e "s/^persistent_peers =.*/persistent_peers = \"$(paste -s -d, $HOMEDIR/seeds.txt)\"/" $NODE_CONFIG_TOML
 
+  # Set the default minimum gas prices to 1 satoshi.
+  sed -i.bak 's/minimum-gas-prices = "0abtc"/minimum-gas-prices = "10000000000abtc"/g' "$NODE_APP_TOML"
+
+  # Set the pruning mode to nothing to make this an archiving node
+  sed -i.bak 's/pruning = "default"/pruning = "nothing"/g' "$NODE_APP_TOML"
+
+  # Enable Prometheus metrics.
+  sed -i.bak 's/prometheus = false/prometheus = true/' "$NODE_CONFIG_TOML"
+  sed -i.bak 's/prometheus-retention-time  = "0"/prometheus-retention-time  = "1000000000000"/g' "$NODE_APP_TOML"
+  sed -i.bak 's/enabled = false/enabled = true/g' "$NODE_APP_TOML"
+
   # Remove all backup files created by sed.
-  rm $NODE_HOMEDIR/config/*.bak
+  rm $NODE_CONFIGDIR/*.bak
 
   echo "[$NODE_NAME] configuration files prepared"
 done
