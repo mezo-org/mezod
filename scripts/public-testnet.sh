@@ -2,7 +2,11 @@
 
 HOMEDIR=./.public-testnet
 
-# TODO: Fail if HOMEDIR already exists.
+if [ -d "$HOMEDIR" ]; then
+  echo "directory $HOMEDIR already exist; remove it to run this script"
+  exit 1
+fi
+
 # TODO: Add more explanatory comments.
 # TODO: Add console output to show progress.
 # TODO: Add faucet account to genesis.
