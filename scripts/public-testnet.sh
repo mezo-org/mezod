@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# TODO: Add faucet account to genesis.
+# TODO: Add more explanatory comments.
+
 HOMEDIR=./.public-testnet
 
 if [ -d "$HOMEDIR" ]; then
@@ -7,15 +10,16 @@ if [ -d "$HOMEDIR" ]; then
   exit 1
 fi
 
-# TODO: Add more explanatory comments.
-# TODO: Add console output to show progress.
-# TODO: Add faucet account to genesis.
-
 CHAIN_ID=mezo_31611-1
 STAKE_AMOUNT=100000000000000000000abtc
 NODE_DOMAIN=test.mezo.org
-
 NODE_NAMES=("mezo-node-0" "mezo-node-1" "mezo-node-2" "mezo-node-3" "mezo-node-4")
+
+echo "using chain-id: $CHAIN_ID"
+echo "using stake amount: $STAKE_AMOUNT"
+echo "using node domain: $NODE_DOMAIN"
+echo "using node names: ${NODE_NAMES[@]}"
+
 NODE_HOMEDIRS=()
 NODE_ADDRESSES=()
 KEYRING_PASSWORDS=()
@@ -27,6 +31,7 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_CONFIG_TOML="$NODE_HOMEDIR/config/config.toml"
   KEYRING_PASSWORD=$(openssl rand -hex 32)
 
+  # Set some configuration options for the node to not repeat them in the commands.
   ./build/evmosd --home=$NODE_HOMEDIR config chain-id $CHAIN_ID
   ./build/evmosd --home=$NODE_HOMEDIR config keyring-backend file
 
@@ -38,6 +43,8 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   KEYS_SHOW_OUT=$(yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR keys show $NODE_KEY_NAME --output=json)
   NODE_ADDRESS=$(echo $KEYS_SHOW_OUT | jq -r '.address')
 
+  echo "[$NODE_NAME] account key generated"
+
   # By default, the init command generates:
   # - A new consensus key to participate in the CometBFT protocol
   # - A new network key for peer-to-peer authentication
@@ -46,7 +53,9 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # Worth noting that recover mode does not refer to the network key which is always
   # generated anew. However, the network key is not critical and can be replaced
   # without any consequences.
-  yes "$MNEMONIC" | ./build/evmosd --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover
+  yes "$MNEMONIC" | ./build/evmosd --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover &> /dev/null
+
+  echo "[$NODE_NAME] init action done"
 
   # Set the default minimum gas prices to 1 satoshi.
   sed -i.bak 's/minimum-gas-prices = "0abtc"/minimum-gas-prices = "10000000000abtc"/g' "$NODE_APP_TOML"
@@ -63,11 +72,15 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # Adding the account to the local node's genesis file is not strictly necessary
   # as this will be done for the global genesis file. However, it's needed to execute
   # the gentx command that checks the account balance in the local genesis file.
-  yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR add-genesis-account $NODE_KEY_NAME $STAKE_AMOUNT
-  yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR gentx $NODE_KEY_NAME $STAKE_AMOUNT --ip="$NODE_NAME.$NODE_DOMAIN"
+  yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR add-genesis-account $NODE_KEY_NAME $STAKE_AMOUNT &> /dev/null
+  yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR gentx $NODE_KEY_NAME $STAKE_AMOUNT --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
+
+  echo "[$NODE_NAME] gentx done"
 
   echo $KEYRING_PASSWORD > $NODE_HOMEDIR/keyring_password.txt
   echo $MNEMONIC > $NODE_HOMEDIR/mnemonic.txt
+
+  echo "[$NODE_NAME] keyring password and mnemonic saved to files"
 
   NODE_HOMEDIRS+=("$NODE_HOMEDIR")
   NODE_ADDRESSES+=("$NODE_ADDRESS")
@@ -92,16 +105,18 @@ for i in "${!NODE_NAMES[@]}"; do
   rm $NODE_HOMEDIR/config/genesis.json
 
   # Node's account balance must be added to the global genesis file explicitly.
-  ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $STAKE_AMOUNT
+  ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $STAKE_AMOUNT &> /dev/null
 done
 
 # Aggregate all gentx files into the global genesis file.
-./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR collect-gentxs
+./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR collect-gentxs &> /dev/null
 rm -rf $GLOBAL_GENESIS_HOMEDIR/config/gentx
 
 # Validate the global genesis file and move it to the root directory.
-./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis
+./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
 mv $GLOBAL_GENESIS_HOMEDIR/config/genesis.json $HOMEDIR/genesis.json
+
+echo "global genesis file built and validated"
 
 SEEDS=$(jq -r '.app_state.genutil.gen_txs | .[] | .body.memo' $HOMEDIR/genesis.json)
 printf "%s\n" "${SEEDS[@]}" > $HOMEDIR/seeds.txt
@@ -119,4 +134,6 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
 
   # Remove all backup files created by sed.
   rm $NODE_HOMEDIR/config/*.bak
+
+  echo "[$NODE_NAME] configuration files prepared"
 done
