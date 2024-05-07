@@ -1,0 +1,210 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mezo-node-config
+  namespace: default
+data:
+  app.toml: |
+    minimum-gas-prices = "10000000000abtc"
+    pruning = "nothing"
+    pruning-keep-recent = "0"
+    pruning-interval = "0"
+    halt-height = 0
+    halt-time = 0
+    min-retain-blocks = 0
+    inter-block-cache = true
+    index-events = []
+    iavl-cache-size = 781250
+    iavl-disable-fastnode = false
+    iavl-lazy-loading = false
+    app-db-backend = ""
+    [telemetry]    
+      service-name = ""
+      enabled = true
+      enable-hostname = false
+      enable-hostname-label = false
+      enable-service-label = false
+      prometheus-retention-time = 0
+      global-labels = []
+    [api]
+      enable = false
+      swagger = false
+      address = "tcp://0.0.0.0:1317"
+      max-open-connections = 1000
+      rpc-read-timeout = 10
+      rpc-write-timeout = 0
+      rpc-max-body-bytes = 1000000
+      enabled-unsafe-cors = false
+    [rosetta]
+      enable = false
+      address = ":8080"
+      blockchain = "app"
+      network = "network"
+      retries = 3
+      offline = false
+      enable-fee-suggestion = false
+      gas-to-suggest = 200000
+      denom-to-suggest = "uatom"    
+    [grpc]
+      enable = true
+      address = "0.0.0.0:9090"
+      max-recv-msg-size = "10485760"
+      max-send-msg-size = "2147483647"
+    [grpc-web]
+      enable = true
+      address = "0.0.0.0:9091"
+      enable-unsafe-cors = false
+    [state-sync]
+      snapshot-interval = 5000
+      snapshot-keep-recent = 2
+    [store]
+      streamers = []
+    [streamers]
+    [streamers.file]
+      keys = ["*", ]
+      write_dir = ""
+      prefix = ""
+      output-metadata = "true"
+      stop-node-on-error = "true"
+      fsync = "false"
+    [evm]
+      tracer = ""
+      max-tx-gas-wanted = 0
+    [json-rpc]
+      enable = true
+      address = "127.0.0.1:8545"
+      ws-address = "127.0.0.1:8546"
+      api = "eth,net,web3"
+      gas-cap = 25000000
+      evm-timeout = "5s"
+      txfee-cap = 1
+      filter-cap = 200
+      feehistory-cap = 100
+      logs-cap = 10000
+      block-range-cap = 10000
+      http-timeout = "30s"
+      http-idle-timeout = "2m0s"
+      allow-unprotected-txs = false
+      max-open-connections = 0
+      enable-indexer = false
+      metrics-address = "127.0.0.1:6065"
+      fix-revert-gas-refund-height = 0
+    [tls]
+      certificate-path = ""
+      key-path = ""
+
+  client.toml: |
+    chain-id = "mezo_31611-1"
+    keyring-backend = "file"
+    output = "text"
+    node = "tcp://localhost:26657"
+    broadcast-mode = "sync"
+
+  config.toml: |
+    proxy_app = "tcp://127.0.0.1:26658"
+    moniker = "mezo-node-0"
+    fast_sync = true
+    db_backend = "goleveldb"
+    db_dir = "data"
+    log_level = "info"
+    log_format = "plain"
+    genesis_file = "config/genesis.json"
+    priv_validator_key_file = "config/priv_validator_key.json"
+    priv_validator_state_file = "data/priv_validator_state.json"
+    priv_validator_laddr = ""
+    node_key_file = "config/node_key.json"
+    abci = "socket"
+    filter_peers = false
+    [rpc]
+      laddr = "tcp://127.0.0.1:26657"
+      cors_allowed_origins = []
+      cors_allowed_methods = ["HEAD", "GET", "POST", ]
+      cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time", ]
+      grpc_laddr = ""
+      grpc_max_open_connections = 900
+      unsafe = false
+      max_open_connections = 900
+      max_subscription_clients = 100
+      max_subscriptions_per_client = 5
+      experimental_subscription_buffer_size = 200
+      experimental_websocket_write_buffer_size = 200
+      experimental_close_on_slow_client = false
+      timeout_broadcast_tx_commit = "10s"
+      max_body_bytes = 1000000
+      max_header_bytes = 1048576
+      tls_cert_file = ""
+      tls_key_file = ""
+      pprof_laddr = "localhost:6060"
+    [p2p]
+      laddr = "tcp://0.0.0.0:26656"
+      external_address = ""
+      seeds = ""
+      persistent_peers = "01a4a40099411953b78a4806063a177cbc67a267@mezo-node-2.test.mezo.org:26656,1bbefaa3b94f1c0ed97bc694f17198fe3cd566d6@mezo-node-1.test.mezo.org:26656,57a3e4c28f18f0a3ea7b513d71547f87d4d1bc62@mezo-node-3.test.mezo.org:26656,60bc33432c9724f7100738769d177427832f826c@mezo-node-0.test.mezo.org:26656,7c979569d6d8d52b59039ada226add5095628549@mezo-node-4.test.mezo.org:26656"
+      upnp = false
+      addr_book_file = "config/addrbook.json"
+      addr_book_strict = true
+      max_num_inbound_peers = 240
+      max_num_outbound_peers = 30
+      unconditional_peer_ids = ""
+      persistent_peers_max_dial_period = "0s"
+      flush_throttle_timeout = "100ms"
+      max_packet_msg_payload_size = 1024
+      send_rate = 5120000
+      recv_rate = 5120000
+      pex = true
+      seed_mode = false
+      private_peer_ids = ""
+      allow_duplicate_ip = false
+      handshake_timeout = "20s"
+      dial_timeout = "3s"
+    [mempool]
+      version = "v0"
+      recheck = true
+      broadcast = true
+      wal_dir = ""
+      size = 10000
+      max_txs_bytes = 1073741824
+      cache_size = 10000
+      keep-invalid-txs-in-cache = false
+      max_tx_bytes = 1048576
+      max_batch_bytes = 0
+      ttl-duration = "0s"
+      ttl-num-blocks = 0
+    [statesync]
+      enable = false
+      rpc_servers = ""
+      trust_height = 0
+      trust_hash = ""
+      trust_period = "112h0m0s"
+      discovery_time = "15s"
+      temp_dir = ""
+      chunk_request_timeout = "10s"
+      chunk_fetchers = "4"
+    [fastsync]
+      version = "v0"
+    [consensus]
+      wal_file = "data/cs.wal/wal"
+      timeout_propose = "3s"
+      timeout_propose_delta = "500ms"
+      timeout_prevote = "1s"
+      timeout_prevote_delta = "500ms"
+      timeout_precommit = "1s"
+      timeout_precommit_delta = "500ms"
+      timeout_commit = "5s"
+      double_sign_check_height = 0
+      skip_timeout_commit = false
+      create_empty_blocks = true
+      create_empty_blocks_interval = "0s"
+      peer_gossip_sleep_duration = "100ms"
+      peer_query_maj23_sleep_duration = "2s"
+    [storage]
+      discard_abci_responses = false
+    [tx_index]
+      indexer = "kv"
+      psql-conn = ""
+    [instrumentation]
+      prometheus = true
+      prometheus_listen_addr = ":26660"
+      max_open_connections = 3
+      namespace = "cometbft"
+
