@@ -4,6 +4,8 @@ metadata:
   name: mezo-node-config
   namespace: default
 data:
+  # All files below were generated using the `scripts/public-testnet.sh` script
+  # and cleaned up from comments and blank lines to reduce size.
   app.toml: |
     minimum-gas-prices = "10000000000abtc"
     pruning = "nothing"
