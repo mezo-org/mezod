@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mezo-node-0
+  namespace: default
+  labels:
+    app: mezo
+    type: node
+    id: "0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mezo
+      type: node
+      id: "0"
+  serviceName: mezo-node-0
+  template:
+    metadata:
+      labels:
+        app: mezo
+        type: node
+        id: "0"
+    spec:
+      volumes:
+        - name: mezo-node-data
+          persistentVolumeClaim:
+            claimName: mezo-node-data
+        - name: mezo-node-config
+          configMap:
+            name: mezo-node-config
+        - name: mezo-genesis-config
+          configMap:
+            name: mezo-genesis-config
+        - name: mezo-node-keystore
+          secret:
+            secretName: mezo-node-0-keystore
+      containers:
+        - name: mezo-node
+          image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-internal/mezo-node:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 1200m
+              memory: 4096Mi
+          ports:
+            - name: p2p
+              containerPort: 26656
+            - name: rpc
+              containerPort: 26657
+            - name: api
+              containerPort: 1317
+            - name: grpc
+              containerPort: 9090
+            - name: json-rpc
+              containerPort: 8545
+            - name: json-rpc-ws
+              containerPort: 8546
+          volumeMounts:
+            - name: mezo-node-data
+              mountPath: /mnt/.mezod/data
+            - name: mezo-node-config
+              mountPath: /mnt/.mezod/config/app.toml
+              subPath: app.toml
+            - name: mezo-node-config
+              mountPath: /mnt/.mezod/config/client.toml
+              subPath: client.toml
+            - name: mezo-node-config
+              mountPath: /mnt/.mezod/config/config.toml
+              subPath: config.toml
+            - name: mezo-genesis-config
+              mountPath: /mnt/.mezod/config/genesis.json
+              subPath: genesis.json
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/config/node_key.json
+              subPath: node_key.json
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/config/priv_validator_key.json
+              subPath: priv_validator_key.json
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/keyring-file/keyhash
+              subPath: keyhash
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/keyring-file/mezo-node-0-key.info
+              subPath: mezo-node-0-key.info
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/keyring-file/834ae61ab2ccadc32cbf5d0ab46303a619d6b1e4.address
+              subPath: 834ae61ab2ccadc32cbf5d0ab46303a619d6b1e4.address
+          command:
+            - evmosd
+            - start
+          args:
+            - --home
+            - /mnt/.mezod
+  volumeClaimTemplates:
+    - metadata:
+        name: mezo-node-data
+      spec:
+        storageClassName: premium-rwo # SSD storage
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi
