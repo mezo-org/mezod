@@ -177,7 +177,7 @@ data:
         },
         "crisis": {
           "constant_fee": {
-            "denom": "stake",
+            "denom": "abtc",
             "amount": "1000"
           }
         },
@@ -600,7 +600,7 @@ data:
           "deposit_params": {
             "min_deposit": [
               {
-                "denom": "stake",
+                "denom": "abtc",
                 "amount": "10000000"
               }
             ],
@@ -733,7 +733,7 @@ data:
             "max_validators": 100,
             "max_entries": 7,
             "historical_entries": 10000,
-            "bond_denom": "stake",
+            "bond_denom": "abtc",
             "min_commission_rate": "0.050000000000000000"
           },
           "last_total_power": "0",
