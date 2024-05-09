@@ -11,7 +11,10 @@ services:
     volumes:
       - ./build/node0/evmosd:/evmos:Z
     command:
-      - /evmosd start --home /evmos
+      - >
+        /evmosd start --home /evmos
+        --json-rpc.address="0.0.0.0:8545" --json-rpc.ws-address="0.0.0.0:8546"
+        --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
       localnet:
         ipv4_address: 192.167.10.2
@@ -26,7 +29,10 @@ services:
     volumes:
       - ./build/node1/evmosd:/evmos:Z
     command:
-      - /evmosd start --home /evmos
+      - >
+        /evmosd start --home /evmos
+        --json-rpc.address="0.0.0.0:8547" --json-rpc.ws-address="0.0.0.0:8548"
+        --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
       localnet:
         ipv4_address: 192.167.10.3
@@ -41,7 +47,10 @@ services:
     volumes:
       - ./build/node2/evmosd:/evmos:Z
     command:
-      - /evmosd start --home /evmos
+      - >
+        /evmosd start --home /evmos
+        --json-rpc.address="0.0.0.0:8549"--json-rpc.ws-address="0.0.0.0:8550"
+        --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
       localnet:
         ipv4_address: 192.167.10.4
@@ -56,7 +65,10 @@ services:
     volumes:
       - ./build/node3/evmosd:/evmos:Z
     command:
-      - /evmosd start --home /evmos
+      - >
+        /evmosd start --home /evmos
+        --json-rpc.address="0.0.0.0:8551" --json-rpc.ws-address="0.0.0.0:8552"
+        --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
       localnet:
         ipv4_address: 192.167.10.5
