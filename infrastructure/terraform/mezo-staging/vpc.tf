@@ -27,3 +27,8 @@ module "vpc" {
     ]
   }
 }
+
+resource "google_compute_address" "external_ip_addresses" {
+  for_each = toset(var.external_ip_addresses)
+  name = each.key
+}
