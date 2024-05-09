@@ -1,0 +1,168 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mezo-node-4
+  namespace: default
+  labels:
+    app: mezo
+    type: node
+    id: "4"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mezo
+      type: node
+      id: "4"
+  serviceName: mezo-node-4
+  template:
+    metadata:
+      labels:
+        app: mezo
+        type: node
+        id: "4"
+    spec:
+      volumes:
+        - name: mezo-node-data
+          persistentVolumeClaim:
+            claimName: mezo-node-data
+        - name: mezo-node-config
+          configMap:
+            name: mezo-node-config
+        - name: mezo-genesis-config
+          configMap:
+            name: mezo-genesis-config
+        - name: mezo-node-keystore
+          secret:
+            secretName: mezo-node-4-keystore
+      initContainers:
+        - name: mezo-node-validator-state-initcontainer
+          image: alpine:3
+          volumeMounts:
+            - name: mezo-node-data
+              mountPath: /mnt/.mezod/data
+          command:
+            - /bin/sh
+            - -c
+            - |
+              STATE_FILE=/mnt/.mezod/data/priv_validator_state.json
+              
+              if [ -f $STATE_FILE ]; then
+                echo "Private validator state already exists; skipping initialization"
+                exit 0
+              fi
+              
+              INITIAL_STATE='{"height": "0","round": 0,"step": 0}'
+
+              echo $INITIAL_STATE >> $STATE_FILE
+              echo "Private validator state has been initialized from scratch"
+              exit 0
+      containers:
+        - name: mezo-node
+          image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-internal/mezo-node:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 1200m
+              memory: 4096Mi
+          ports:
+            - name: p2p
+              containerPort: 26656
+            - name: rpc
+              containerPort: 26657
+            - name: api
+              containerPort: 1317
+            - name: grpc
+              containerPort: 9090
+            - name: json-rpc
+              containerPort: 8545
+            - name: json-rpc-ws
+              containerPort: 8546
+          volumeMounts:
+            - name: mezo-node-data
+              mountPath: /mnt/.mezod/data
+            - name: mezo-node-config
+              mountPath: /mnt/.mezod/config/app.toml
+              subPath: app.toml
+            - name: mezo-node-config
+              mountPath: /mnt/.mezod/config/client.toml
+              subPath: client.toml
+            - name: mezo-node-config
+              mountPath: /mnt/.mezod/config/config.toml
+              subPath: config.toml
+            - name: mezo-genesis-config
+              mountPath: /mnt/.mezod/config/genesis.json
+              subPath: genesis.json
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/config/node_key.json
+              subPath: node_key.json
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/config/priv_validator_key.json
+              subPath: priv_validator_key.json
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/keyring-file/keyhash
+              subPath: keyhash
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/keyring-file/mezo-node-4-key.info
+              subPath: mezo-node-4-key.info
+            - name: mezo-node-keystore
+              mountPath: /mnt/.mezod/keyring-file/2726c9d0d24584ccd0fc57be84f0c8d294665f54.address
+              subPath: 2726c9d0d24584ccd0fc57be84f0c8d294665f54.address
+          command:
+            - evmosd
+            - start
+          args:
+            - --home
+            - /mnt/.mezod
+  volumeClaimTemplates:
+    - metadata:
+        name: mezo-node-data
+      spec:
+        storageClassName: premium-rwo # SSD storage
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mezo-node-4
+  namespace: default
+  annotations:
+    # This annotation is necessary to make networking.gke.io/load-balancer-ip-addresses work.
+    cloud.google.com/l4-rbs: "enabled"
+    # This annotation requires GKE 1.29 or later. Older versions will ignore it
+    # and reserve a new static IP address.
+    networking.gke.io/load-balancer-ip-addresses: "mezo-staging-node-4-external-ip"
+  labels:
+    app: mezo
+    type: node
+    id: "4"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: p2p
+      port: 26656
+      targetPort: p2p
+    - name: rpc
+      port: 26657
+      targetPort: rpc
+    - name: api
+      port: 1317
+      targetPort: api
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+    - name: json-rpc
+      port: 8545
+      targetPort: json-rpc
+    - name: json-rpc-ws
+      port: 8546
+      targetPort: json-rpc-ws
+  selector:
+    app: mezo
+    type: node
+    id: "4"
