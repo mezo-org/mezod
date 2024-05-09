@@ -35,6 +35,28 @@ spec:
         - name: mezo-node-keystore
           secret:
             secretName: mezo-node-0-keystore
+      initContainers:
+        - name: mezo-node-validator-state-initcontainer
+          image: alpine:3
+          volumeMounts:
+            - name: mezo-node-data
+              mountPath: /mnt/.mezod/data
+          command:
+            - /bin/sh
+            - -c
+            - |
+              STATE_FILE=/mnt/.mezod/data/priv_validator_state.json
+              
+              if [ -f $STATE_FILE ]; then
+                echo "Private validator state already exists; skipping initialization"
+                exit 0
+              fi
+              
+              INITIAL_STATE='{"height": "0","round": 0,"step": 0}'
+
+              echo $INITIAL_STATE >> $STATE_FILE
+              echo "Private validator state has been initialized from scratch"
+              exit 0
       containers:
         - name: mezo-node
           image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-internal/mezo-node:latest
