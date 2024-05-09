@@ -124,3 +124,45 @@ spec:
         resources:
           requests:
             storage: 100Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mezo-node-0
+  namespace: default
+  annotations:
+    # This annotation is necessary to make networking.gke.io/load-balancer-ip-addresses work.
+    cloud.google.com/l4-rbs: "enabled"
+    # This annotation requires GKE 1.29 or later. Older versions will ignore it
+    # and reserve a new static IP address.
+    networking.gke.io/load-balancer-ip-addresses: "mezo-staging-node-0-external-ip"
+  labels:
+    app: mezo
+    type: node
+    id: "0"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: p2p
+      port: 26656
+      targetPort: p2p
+    - name: rpc
+      port: 26657
+      targetPort: rpc
+    - name: api
+      port: 1317
+      targetPort: api
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+    - name: json-rpc
+      port: 8545
+      targetPort: json-rpc
+    - name: json-rpc-ws
+      port: 8546
+      targetPort: json-rpc-ws
+  selector:
+    app: mezo
+    type: node
+    id: "0"
