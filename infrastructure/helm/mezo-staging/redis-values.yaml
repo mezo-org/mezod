@@ -1,0 +1,7 @@
+# This file is used to override the default values in the Bitnami Redis chart.
+# See: https://github.com/bitnami/charts/blob/main/bitnami/redis/values.yaml
+
+architecture: standalone # No need for replication in testnet environment
+
+image:
+  tag: 7.2 # Use version supported by Blockscout

@@ -9,3 +9,15 @@ resource "helm_release" "postgresql" {
     file("../../helm/mezo-staging/postgresql-values.yaml")
   ]
 }
+
+resource "helm_release" "redis" {
+  depends_on = [module.gke]
+  name       = "redis"
+  repository = "oci://registry-1.docker.io/bitnamicharts"
+  chart      = "redis"
+  version    = "19.3.0"
+
+  values = [
+    file("../../helm/mezo-staging/redis-values.yaml")
+  ]
+}
