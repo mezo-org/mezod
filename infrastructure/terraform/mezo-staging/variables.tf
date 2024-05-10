@@ -75,7 +75,7 @@ variable "gke_cluster" {
   default = {
     name                   = "mezo-staging-gke-cluster"
     node_pool_name         = "mezo-staging-gke-node-pool"
-    node_pool_machine_type = "n2-standard-2"
+    node_pool_machine_type = "n2-standard-8"
     node_pool_size         = 1
   }
 }
