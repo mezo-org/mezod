@@ -141,6 +141,9 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   sed -i.bak 's/prometheus-retention-time  = "0"/prometheus-retention-time  = "1000000000000"/g' "$NODE_APP_TOML"
   sed -i.bak 's/enabled = false/enabled = true/g' "$NODE_APP_TOML"
 
+  # Enable the necessary JSON-RPC namespaces to empower block explorers.
+  sed -i.bak 's/api = "eth,net,web3"/api = "eth,net,web3,debug,miner,txpool,personal"/g' "$NODE_APP_TOML"
+
   # Remove all backup files created by sed.
   rm $NODE_CONFIGDIR/*.bak
 
