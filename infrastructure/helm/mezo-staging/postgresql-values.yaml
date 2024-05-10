@@ -1,0 +1,14 @@
+# This file is used to override the default values in the Bitnami PostgreSQL chart.
+# See: https://github.com/bitnami/charts/blob/main/bitnami/postgresql/values.yaml
+
+global:
+  postgresql:
+    auth:
+      database: blockscout
+
+image:
+  tag: 15 # Use version supported by Blockscout
+
+primary:
+  persistence:
+    size: 100Gi # Default is only 8Gi
