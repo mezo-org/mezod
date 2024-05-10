@@ -90,5 +90,7 @@ variable "external_ip_addresses" {
     "mezo-staging-node-2-external-ip",
     "mezo-staging-node-3-external-ip",
     "mezo-staging-node-4-external-ip",
+    "mezo-staging-blockscout-api-external-ip",
+    "mezo-staging-blockscout-app-external-ip",
   ]
 }
