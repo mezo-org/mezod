@@ -10,5 +10,8 @@ image:
   tag: 15 # Use version supported by Blockscout
 
 primary:
+  extraEnvVars:
+    - name: POSTGRESQL_MAX_CONNECTIONS
+      value: "200"
   persistence:
     size: 100Gi # Default is only 8Gi
