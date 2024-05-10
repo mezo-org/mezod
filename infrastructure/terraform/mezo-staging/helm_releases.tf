@@ -9,3 +9,15 @@ resource "helm_release" "postgresql" {
     file("../../helm/mezo-staging/postgresql-values.yaml")
   ]
 }
+
+resource "helm_release" "blockscout_stack" {
+  depends_on = [module.gke, helm_release.postgresql]
+  name       = "blockscout-stack"
+  repository = "https://blockscout.github.io/helm-charts"
+  chart      = "blockscout-stack"
+  version    = "1.5.0"
+
+  values = [
+    file("../../helm/mezo-staging/blockscout-stack-values.yaml")
+  ]
+}
