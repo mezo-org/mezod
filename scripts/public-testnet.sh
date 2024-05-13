@@ -122,6 +122,7 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_HOMEDIR="$HOMEDIR/$NODE_NAME"
   NODE_CONFIGDIR="$NODE_HOMEDIR/config"
   NODE_APP_TOML="$NODE_CONFIGDIR/app.toml"
+  NODE_CLIENT_TOML="$NODE_CONFIGDIR/client.toml"
   NODE_CONFIG_TOML="$NODE_CONFIGDIR/config.toml"
 
   # All initial validators should maintain connections to each other.
@@ -143,6 +144,15 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
 
   # Enable the necessary JSON-RPC namespaces to empower block explorers.
   sed -i.bak 's/api = "eth,net,web3"/api = "eth,net,web3,debug,miner,txpool,personal"/g' "$NODE_APP_TOML"
+
+  # Set servers to listen on all interfaces, not just localhost.
+  sed -i.bak 's/address = "127.0.0.1:8545"/address = "0.0.0.0:8545"/g' "$NODE_APP_TOML"
+  sed -i.bak 's/ws-address = "127.0.0.1:8546"/ws-address = "0.0.0.0:8546"/g' "$NODE_APP_TOML"
+  sed -i.bak 's/metrics-address = "127.0.0.1:6065"/metrics-address = "0.0.0.0:6065"/g' "$NODE_APP_TOML"
+  sed -i.bak 's/node = "tcp:\/\/localhost:26657"/node = "tcp:\/\/0.0.0.0:26657"/g' "$NODE_CLIENT_TOML"
+  sed -i.bak 's/proxy_app = "tcp:\/\/127.0.0.1:26658"/proxy_app = "tcp:\/\/0.0.0.0:26658"/g' "$NODE_CONFIG_TOML"
+  sed -i.bak 's/laddr = "tcp:\/\/127.0.0.1:26657"/laddr = "tcp:\/\/0.0.0.0:26657"/g' "$NODE_CONFIG_TOML"
+  sed -i.bak 's/pprof_laddr = "localhost:6060"/pprof_laddr = "0.0.0.0:6060"/g' "$NODE_CONFIG_TOML"
 
   # Remove all backup files created by sed.
   rm $NODE_CONFIGDIR/*.bak
