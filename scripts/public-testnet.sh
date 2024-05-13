@@ -125,6 +125,9 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_CLIENT_TOML="$NODE_CONFIGDIR/client.toml"
   NODE_CONFIG_TOML="$NODE_CONFIGDIR/config.toml"
 
+  # Cleanup the moniker from config. It will be set at startup using a flag.
+  sed -i.bak 's/moniker = '\"$NODE_NAME\"'/moniker = ""/g' "$NODE_CONFIG_TOML"
+
   # All initial validators should maintain connections to each other.
   # This is why the seeds.txt is used to populate the persistent_peers field
   # and the seeds field is emptied due to being redundant.
