@@ -9,7 +9,7 @@ config:
     # TODO: Not sure about currency values. Revisit later.
     currency:
       name: aBTC
-      symbol: aBTC`
+      symbol: aBTC
       decimals: 18
   account:
     enabled: false # This is false by default but disable it explicitly. As long as this feature is disable, Redis is not needed.
