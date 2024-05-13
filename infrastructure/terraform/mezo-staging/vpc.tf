@@ -32,3 +32,8 @@ resource "google_compute_address" "external_ip_addresses" {
   for_each = toset(var.external_ip_addresses)
   name = each.key
 }
+
+resource "google_compute_global_address" "global_external_ip_addresses" {
+  for_each = toset(var.global_external_ip_addresses)
+  name = each.key
+}
