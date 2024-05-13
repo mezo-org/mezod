@@ -155,6 +155,9 @@ build-docker:
 	mkdir -p ./build/
 	$(DOCKER) cp evmos:/usr/bin/evmosd ./build/
 
+build-docker-linux:
+	$(DOCKER) buildx build --platform linux/amd64 --tag ${DOCKER_IMAGE}:${DOCKER_TAG} .
+
 push-docker: build-docker
 	$(DOCKER) push ${DOCKER_IMAGE}:${DOCKER_TAG}
 	$(DOCKER) push ${DOCKER_IMAGE}:latest

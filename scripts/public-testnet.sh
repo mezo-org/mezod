@@ -97,13 +97,24 @@ done
 ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR collect-gentxs &> /dev/null
 rm -rf $GLOBAL_GENESIS_HOMEDIR/config/gentx
 
+GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/genesis.json
+TMP_GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/tmp_genesis.json
+
+# Modify necessary parameters in the global genesis file
+#
+# [Modification 1]: Set abtc as the token denomination for relevant Cosmos SDK modules.
+jq '.app_state["staking"]["params"]["bond_denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+jq '.app_state["gov"]["deposit_params"]["min_deposit"][0]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+
 # Validate the global genesis file and move it to the root directory.
 ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
-mv $GLOBAL_GENESIS_HOMEDIR/config/genesis.json $HOMEDIR/genesis.json
+mv $GENESIS $HOMEDIR/genesis.json
+GENESIS=$HOMEDIR/genesis.json # Reassign the GENESIS variable to the new location.
 
 echo "global genesis file built and validated"
 
-SEEDS=$(jq -r '.app_state.genutil.gen_txs | .[] | .body.memo' $HOMEDIR/genesis.json)
+SEEDS=$(jq -r '.app_state.genutil.gen_txs | .[] | .body.memo' $GENESIS)
 printf "%s\n" "${SEEDS[@]}" > $HOMEDIR/seeds.txt
 
 
@@ -112,6 +123,9 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_CONFIGDIR="$NODE_HOMEDIR/config"
   NODE_APP_TOML="$NODE_CONFIGDIR/app.toml"
   NODE_CONFIG_TOML="$NODE_CONFIGDIR/config.toml"
+
+  # Cleanup the moniker from config. It will be set at startup using a flag.
+  sed -i.bak 's/moniker = '\"$NODE_NAME\"'/moniker = ""/g' "$NODE_CONFIG_TOML"
 
   # All initial validators should maintain connections to each other.
   # This is why the seeds.txt is used to populate the persistent_peers field
