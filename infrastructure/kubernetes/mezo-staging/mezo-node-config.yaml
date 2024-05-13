@@ -104,7 +104,7 @@ data:
 
   config.toml: |
     proxy_app = "tcp://127.0.0.1:26658"
-    moniker = "mezo-node-0"
+    moniker = ""
     fast_sync = true
     db_backend = "goleveldb"
     db_dir = "data"

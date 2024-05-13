@@ -114,6 +114,8 @@ spec:
           args:
             - --home
             - /mnt/.mezod
+            - --moniker
+            - mezo-node-4
   volumeClaimTemplates:
     - metadata:
         name: mezo-node-data
