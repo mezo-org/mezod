@@ -23,6 +23,8 @@ blockscout:
     hostname: api.explorer.test.mezo.org
     annotations:
       kubernetes.io/ingress.global-static-ip-name: mezo-staging-blockscout-api-external-ip
+      kubernetes.io/ingress.allow-http: "false"
+      networking.gke.io/managed-certificates: mezo-staging-explorer-ssl-cert
   readinessProbe:
     params:
       # The default config sets timeoutSeconds > periodSeconds which is faulty.
@@ -35,7 +37,7 @@ blockscout:
     ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: http://mezo-node-1.default.svc.cluster.local:8545
     NETWORK: Mezo
     SUBNETWORK: Testnet
-    BLOCKSCOUT_PROTOCOL: http
+    BLOCKSCOUT_PROTOCOL: https
     SECRET_KEY_BASE: K4rV3pnwzqGMRZNbyWKryw6Co4qcvm9LvZhUpuf4qftDTsZMjzz4pzgVPZcUXMtf # Just an arbitrary 64-char string
     POOL_SIZE: 80 # Increased from the default value of 50 based on the original Blockscout Docker Compose config
     ECTO_USE_SSL: false # Switched off based on the original Blockscout Docker Compose config
@@ -56,15 +58,17 @@ frontend:
     hostname: explorer.test.mezo.org
     annotations:
       kubernetes.io/ingress.global-static-ip-name: mezo-staging-blockscout-app-external-ip
+      kubernetes.io/ingress.allow-http: "false"
+      networking.gke.io/managed-certificates: mezo-staging-explorer-ssl-cert
   readinessProbe:
     params:
       # The default config sets timeoutSeconds > periodSeconds which is faulty.
       periodSeconds: 30
       timeoutSeconds: 10
   env:
-    NEXT_PUBLIC_API_PROTOCOL: http
-    NEXT_PUBLIC_APP_PROTOCOL: http
-    NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL: ws
+    NEXT_PUBLIC_API_PROTOCOL: https
+    NEXT_PUBLIC_APP_PROTOCOL: https
+    NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL: wss
     NEXT_PUBLIC_API_SPEC_URL: https://raw.githubusercontent.com/blockscout/blockscout-api-v2-swagger/main/swagger.yaml
 
 stats:
