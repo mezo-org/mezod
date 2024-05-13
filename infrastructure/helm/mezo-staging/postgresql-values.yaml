@@ -10,6 +10,7 @@ image:
   tag: 15 # Use version supported by Blockscout
 
 primary:
+  resourcesPreset: "xlarge"
   extraEnvVars:
     - name: POSTGRESQL_MAX_CONNECTIONS
       value: "200"
