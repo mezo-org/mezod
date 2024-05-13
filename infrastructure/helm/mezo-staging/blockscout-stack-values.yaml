@@ -23,6 +23,11 @@ blockscout:
     hostname: api.explorer.test.mezo.org
     annotations:
       kubernetes.io/ingress.global-static-ip-name: mezo-staging-blockscout-api-external-ip
+  readinessProbe:
+    params:
+      # The default config sets timeoutSeconds > periodSeconds which is faulty.
+      periodSeconds: 30
+      timeoutSeconds: 10
   env:
     ETHEREUM_JSONRPC_VARIANT: geth
     ETHEREUM_JSONRPC_HTTP_URL: http://mezo-node-0.default.svc.cluster.local:8545
@@ -51,6 +56,11 @@ frontend:
     hostname: explorer.test.mezo.org
     annotations:
       kubernetes.io/ingress.global-static-ip-name: mezo-staging-blockscout-app-external-ip
+  readinessProbe:
+    params:
+      # The default config sets timeoutSeconds > periodSeconds which is faulty.
+      periodSeconds: 30
+      timeoutSeconds: 10
   env:
     NEXT_PUBLIC_API_PROTOCOL: http
     NEXT_PUBLIC_APP_PROTOCOL: http
