@@ -102,15 +102,3 @@ variable "global_external_ip_addresses" {
     "mezo-staging-blockscout-app-external-ip",
   ]
 }
-
-variable "managed_ssl_certs" {
-  type = map(list(string))
-  description = "Managed SSL certificates for the project"
-
-  default = {
-    "mezo-staging-explorer-ssl-cert" = [
-      "explorer.test.mezo.org",
-      "api.explorer.test.mezo.org",
-    ]
-  }
-}

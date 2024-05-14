@@ -37,12 +37,3 @@ resource "google_compute_global_address" "global_external_ip_addresses" {
   for_each = toset(var.global_external_ip_addresses)
   name = each.key
 }
-
-resource "google_compute_managed_ssl_certificate" "managed_ssl_certs" {
-  for_each = var.managed_ssl_certs
-  name = each.key
-
-  managed {
-    domains = each.value
-  }
-}
