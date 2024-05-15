@@ -9,6 +9,11 @@ terraform {
       source  = "hashicorp/google"
       version = "5.25.0"
     }
+
+    helm = {
+      source = "hashicorp/helm"
+      version = "2.13.2"
+    }
   }
 }
 

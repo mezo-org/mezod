@@ -74,9 +74,9 @@ data:
       max-tx-gas-wanted = 0
     [json-rpc]
       enable = true
-      address = "127.0.0.1:8545"
-      ws-address = "127.0.0.1:8546"
-      api = "eth,net,web3"
+      address = "0.0.0.0:8545"
+      ws-address = "0.0.0.0:8546"
+      api = "eth,net,web3,debug,miner,txpool,personal"
       gas-cap = 25000000
       evm-timeout = "5s"
       txfee-cap = 1
@@ -89,7 +89,7 @@ data:
       allow-unprotected-txs = false
       max-open-connections = 0
       enable-indexer = false
-      metrics-address = "127.0.0.1:6065"
+      metrics-address = "0.0.0.0:6065"
       fix-revert-gas-refund-height = 0
     [tls]
       certificate-path = ""
@@ -99,11 +99,11 @@ data:
     chain-id = "mezo_31611-1"
     keyring-backend = "file"
     output = "text"
-    node = "tcp://localhost:26657"
+    node = "tcp://0.0.0.0:26657"
     broadcast-mode = "sync"
 
   config.toml: |
-    proxy_app = "tcp://127.0.0.1:26658"
+    proxy_app = "tcp://0.0.0.0:26658"
     moniker = ""
     fast_sync = true
     db_backend = "goleveldb"
@@ -118,7 +118,7 @@ data:
     abci = "socket"
     filter_peers = false
     [rpc]
-      laddr = "tcp://127.0.0.1:26657"
+      laddr = "tcp://0.0.0.0:26657"
       cors_allowed_origins = []
       cors_allowed_methods = ["HEAD", "GET", "POST", ]
       cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time", ]
@@ -136,7 +136,7 @@ data:
       max_header_bytes = 1048576
       tls_cert_file = ""
       tls_key_file = ""
-      pprof_laddr = "localhost:6060"
+      pprof_laddr = "0.0.0.0:6060"
     [p2p]
       laddr = "tcp://0.0.0.0:26656"
       external_address = ""
