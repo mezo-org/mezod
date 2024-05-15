@@ -11,7 +11,11 @@ resource "helm_release" "postgresql" {
 }
 
 resource "helm_release" "blockscout_stack" {
-  depends_on = [module.gke, helm_release.postgresql]
+  depends_on = [
+    module.gke,
+    helm_release.postgresql,
+    google_compute_ssl_certificate.mezo_staging_explorer
+  ]
   name       = "blockscout-stack"
   repository = "https://blockscout.github.io/helm-charts"
   chart      = "blockscout-stack"

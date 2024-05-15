@@ -23,6 +23,7 @@ blockscout:
     hostname: api.explorer.test.mezo.org
     annotations:
       kubernetes.io/ingress.global-static-ip-name: mezo-staging-blockscout-api-external-ip
+      ingress.gcp.kubernetes.io/pre-shared-cert: mezo-staging-explorer-ssl-certificate
   readinessProbe:
     params:
       # The default config sets timeoutSeconds > periodSeconds which is faulty.
@@ -56,6 +57,7 @@ frontend:
     hostname: explorer.test.mezo.org
     annotations:
       kubernetes.io/ingress.global-static-ip-name: mezo-staging-blockscout-app-external-ip
+      ingress.gcp.kubernetes.io/pre-shared-cert: mezo-staging-explorer-ssl-certificate
   readinessProbe:
     params:
       # The default config sets timeoutSeconds > periodSeconds which is faulty.
