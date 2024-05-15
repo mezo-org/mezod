@@ -60,3 +60,44 @@ follow the steps below.
     ```shell
     terraform apply
     ```
+
+### Supplementary non-managed resources
+
+The `mezo-staging` GCP project requires some supplementary resources that are 
+not managed by Terraform at the moment (they should be ported to Terraform in the future).
+
+#### Cloudflare
+
+Cloudflare is used as DNS provider for all domains used in the project.
+Domains are managed manually in the Cloudflare dashboard.
+
+Moreover, some `mezo-staging` services require Cloudflare proxy to be configured. 
+In such a case, the following setup is used:
+```asciidoc
+[User] --- HTTPS ---> [Cloudflare] --- HTTPS ---> [GCP mezo-staging service]
+```
+To make it work:
+- The Cloudflare proxy should be enabled for the given service domain
+- A Cloudflare [edge certificate](https://developers.cloudflare.com/ssl/edge-certificates/) 
+  should be created for the service domain. Note that Cloudflare automatically
+  issues universal edge certificates for 
+  [one-level subdomains](https://developers.cloudflare.com/ssl/troubleshooting/version-cipher-mismatch/#multi-level-subdomains) 
+  but multi-level subdomains require an 
+  [advanced edge certificate to be issued manually](https://developers.cloudflare.com/ssl/edge-certificates/advanced-certificate-manager/manage-certificates/)
+- The service must be configured to accept HTTPS connections (e.g. through 
+  a global HTTPS load balancer). Recommended setup is limiting connection
+  sources to IPs corresponding to Cloudflare proxy servers
+- A Cloudflare [origin certificate](https://developers.cloudflare.com/ssl/origin-configuration/origin-ca) 
+  should be created and attached to the service 
+  (e.g. as a pre-shared GCP SSL certificate tied to a global HTTPS load balancer).
+  The `mezo-staging` Terraform module can automatically load origin certificates
+  from 1password and attach them to appropriate 
+  services (see `./load-ssl-certificates.sh` script)
+  
+A good example of a Cloudflare-proxied service exposed by the `mezo-staging` GCP project
+is the Mezo Blockscout explorer available at `https://explorer.test.mezo.org`.
+
+
+
+
+
