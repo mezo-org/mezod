@@ -75,7 +75,30 @@ variable "gke_cluster" {
   default = {
     name                   = "mezo-staging-gke-cluster"
     node_pool_name         = "mezo-staging-gke-node-pool"
-    node_pool_machine_type = "n2-standard-2"
+    node_pool_machine_type = "n2-standard-8"
     node_pool_size         = 1
   }
+}
+
+variable "external_ip_addresses" {
+  type = list(string)
+  description = "External IP addresses reserved for the project"
+
+  default = [
+    "mezo-staging-node-0-external-ip",
+    "mezo-staging-node-1-external-ip",
+    "mezo-staging-node-2-external-ip",
+    "mezo-staging-node-3-external-ip",
+    "mezo-staging-node-4-external-ip",
+  ]
+}
+
+variable "global_external_ip_addresses" {
+  type = list(string)
+  description = "Global external IP addresses reserved for the project"
+
+  default = [
+    "mezo-staging-blockscout-api-external-ip",
+    "mezo-staging-blockscout-app-external-ip",
+  ]
 }
