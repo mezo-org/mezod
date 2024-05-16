@@ -119,6 +119,8 @@ TMP_GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/tmp_genesis.json
 jq '.app_state["staking"]["params"]["bond_denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 jq '.app_state["gov"]["deposit_params"]["min_deposit"][0]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+# [Modification 2]: Set non-zero gas limit in genesis
+jq '.consensus_params["block"]["max_gas"]="10000000"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 # Validate the global genesis file and move it to the root directory.
 ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
