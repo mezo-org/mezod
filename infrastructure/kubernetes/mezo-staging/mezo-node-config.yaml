@@ -141,7 +141,7 @@ data:
       laddr = "tcp://0.0.0.0:26656"
       external_address = ""
       seeds = ""
-      persistent_peers = "01a4a40099411953b78a4806063a177cbc67a267@mezo-node-2.test.mezo.org:26656,1bbefaa3b94f1c0ed97bc694f17198fe3cd566d6@mezo-node-1.test.mezo.org:26656,57a3e4c28f18f0a3ea7b513d71547f87d4d1bc62@mezo-node-3.test.mezo.org:26656,60bc33432c9724f7100738769d177427832f826c@mezo-node-0.test.mezo.org:26656,7c979569d6d8d52b59039ada226add5095628549@mezo-node-4.test.mezo.org:26656"
+      persistent_peers = "41e961a000e42cc5a4ca3d625a7bb43547b92652@mezo-node-4.test.mezo.org:26656,7a91a2a6a94726543f97ae97c09464d1f9ef754c@mezo-node-3.test.mezo.org:26656,826d077e0357028a2e290020280b87cd0988b815@mezo-node-2.test.mezo.org:26656,8f7a31a4185ed87450e9866d7d748e949a688663@mezo-node-0.test.mezo.org:26656,9676a8ce4c0891044b8a19791f5d8143593c9b6f@mezo-node-1.test.mezo.org:26656"
       upnp = false
       addr_book_file = "config/addrbook.json"
       addr_book_strict = true

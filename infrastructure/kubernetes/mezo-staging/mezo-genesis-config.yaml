@@ -7,7 +7,7 @@ data:
   # The file below was generated using the `scripts/public-testnet.sh` script.
   genesis.json: |
     {
-      "genesis_time": "2024-05-07T11:03:57.886556Z",
+      "genesis_time": "2024-05-16T11:33:33.276298Z",
       "chain_id": "mezo_31611-1",
       "initial_height": "1",
       "consensus_params": {
@@ -42,7 +42,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "evmos1sd9wvx4jejkuxt9lt59tgccr5cvadv0yjz3l70",
+                "address": "evmos1l63eucq6ldz4ak99735lyl05lne8nrmslnqsx6",
                 "pub_key": null,
                 "account_number": "0",
                 "sequence": "0"
@@ -52,7 +52,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "evmos13lu8tn9h8w72xccnttfxjvhmln0yt97gj8frsg",
+                "address": "evmos1xp6k2nuq3rg5kvwlqmhqjrk2yruknzmz9nm8v5",
                 "pub_key": null,
                 "account_number": "0",
                 "sequence": "0"
@@ -62,7 +62,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "evmos1zk6ehddlh853qug9wsml95yjugk28vua7tmm76",
+                "address": "evmos13s07ax5t6pchl0n3uwhcg6r4z964fuwfk3glkh",
                 "pub_key": null,
                 "account_number": "0",
                 "sequence": "0"
@@ -72,7 +72,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "evmos1k55dl3prvwwcskhc4w2kkjuc7c7yzrjwprkm0g",
+                "address": "evmos1cn5ntmc60uyafpyfw7xqxc3ryjjdr2x9jqth0e",
                 "pub_key": null,
                 "account_number": "0",
                 "sequence": "0"
@@ -82,7 +82,17 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "evmos1yunvn5xjgkzve58u27lgfuxg622xvh65scgttm",
+                "address": "evmos15h79jw20z62vmpkfqxm6thw47tl4r8ntcjsfdj",
+                "pub_key": null,
+                "account_number": "0",
+                "sequence": "0"
+              },
+              "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+            },
+            {
+              "@type": "/ethermint.types.v1.EthAccount",
+              "base_account": {
+                "address": "evmos1kawkj9eu7x00r6srdcc9ts5p50jkhmxujwu3xn",
                 "pub_key": null,
                 "account_number": "0",
                 "sequence": "0"
@@ -101,47 +111,56 @@ data:
           },
           "balances": [
             {
-              "address": "evmos1zk6ehddlh853qug9wsml95yjugk28vua7tmm76",
+              "address": "evmos1xp6k2nuq3rg5kvwlqmhqjrk2yruknzmz9nm8v5",
               "coins": [
                 {
                   "denom": "abtc",
-                  "amount": "100000000000000000000"
+                  "amount": "1000000000000000000000"
                 }
               ]
             },
             {
-              "address": "evmos1yunvn5xjgkzve58u27lgfuxg622xvh65scgttm",
+              "address": "evmos13s07ax5t6pchl0n3uwhcg6r4z964fuwfk3glkh",
               "coins": [
                 {
                   "denom": "abtc",
-                  "amount": "100000000000000000000"
+                  "amount": "1000000000000000000000"
                 }
               ]
             },
             {
-              "address": "evmos1sd9wvx4jejkuxt9lt59tgccr5cvadv0yjz3l70",
+              "address": "evmos15h79jw20z62vmpkfqxm6thw47tl4r8ntcjsfdj",
               "coins": [
                 {
                   "denom": "abtc",
-                  "amount": "100000000000000000000"
+                  "amount": "1000000000000000000000"
                 }
               ]
             },
             {
-              "address": "evmos13lu8tn9h8w72xccnttfxjvhmln0yt97gj8frsg",
+              "address": "evmos1kawkj9eu7x00r6srdcc9ts5p50jkhmxujwu3xn",
               "coins": [
                 {
                   "denom": "abtc",
-                  "amount": "100000000000000000000"
+                  "amount": "1000000000000000000000"
                 }
               ]
             },
             {
-              "address": "evmos1k55dl3prvwwcskhc4w2kkjuc7c7yzrjwprkm0g",
+              "address": "evmos1cn5ntmc60uyafpyfw7xqxc3ryjjdr2x9jqth0e",
               "coins": [
                 {
                   "denom": "abtc",
-                  "amount": "100000000000000000000"
+                  "amount": "1000000000000000000000"
+                }
+              ]
+            },
+            {
+              "address": "evmos1l63eucq6ldz4ak99735lyl05lne8nrmslnqsx6",
+              "coins": [
+                {
+                  "denom": "abtc",
+                  "amount": "1000000000000000000000"
                 }
               ]
             }
@@ -149,7 +168,7 @@ data:
           "supply": [
             {
               "denom": "abtc",
-              "amount": "500000000000000000000"
+              "amount": "6000000000000000000000"
             }
           ],
           "denom_metadata": []
@@ -286,7 +305,7 @@ data:
                   {
                     "@type": "/cosmos.staking.v1beta1.MsgCreateValidator",
                     "description": {
-                      "moniker": "mezo-node-2",
+                      "moniker": "mezo-node-4",
                       "identity": "",
                       "website": "",
                       "security_contact": "",
@@ -298,11 +317,11 @@ data:
                       "max_change_rate": "0.010000000000000000"
                     },
                     "min_self_delegation": "1",
-                    "delegator_address": "evmos1zk6ehddlh853qug9wsml95yjugk28vua7tmm76",
-                    "validator_address": "evmosvaloper1zk6ehddlh853qug9wsml95yjugk28vuan95tl8",
+                    "delegator_address": "evmos15h79jw20z62vmpkfqxm6thw47tl4r8ntcjsfdj",
+                    "validator_address": "evmosvaloper15h79jw20z62vmpkfqxm6thw47tl4r8nt4ulev0",
                     "pubkey": {
                       "@type": "/cosmos.crypto.ed25519.PubKey",
-                      "key": "KuwGjbca9xDf7QHUzTf+2IAh+37Kb+fhBrKw7XJtoqk="
+                      "key": "RVdH1DgL/Vb78Zp2sWes9rb4JsrSMgx/UunfxZ+EWuY="
                     },
                     "value": {
                       "denom": "abtc",
@@ -310,7 +329,7 @@ data:
                     }
                   }
                 ],
-                "memo": "01a4a40099411953b78a4806063a177cbc67a267@mezo-node-2.test.mezo.org:26656",
+                "memo": "41e961a000e42cc5a4ca3d625a7bb43547b92652@mezo-node-4.test.mezo.org:26656",
                 "timeout_height": "0",
                 "extension_options": [],
                 "non_critical_extension_options": []
@@ -320,7 +339,7 @@ data:
                   {
                     "public_key": {
                       "@type": "/ethermint.crypto.v1.ethsecp256k1.PubKey",
-                      "key": "AxqL+i0E8vfdGODTZxuYo57fYV+vPf7wXbloYN1iBgCR"
+                      "key": "A8AbB3Sek3uFphNrgNDqORwrBjodi32Dh1qShrZZsfS2"
                     },
                     "mode_info": {
                       "single": {
@@ -339,69 +358,7 @@ data:
                 "tip": null
               },
               "signatures": [
-                "ixy982FO0gZ/Y+gpzmm8LnlmkRQYgKDObkn3+6k02c91/yawf3CBJkWmi4fa1M9Dn2d2KgCqCunIX2YLIn5miAA="
-              ]
-            },
-            {
-              "body": {
-                "messages": [
-                  {
-                    "@type": "/cosmos.staking.v1beta1.MsgCreateValidator",
-                    "description": {
-                      "moniker": "mezo-node-1",
-                      "identity": "",
-                      "website": "",
-                      "security_contact": "",
-                      "details": ""
-                    },
-                    "commission": {
-                      "rate": "0.100000000000000000",
-                      "max_rate": "0.200000000000000000",
-                      "max_change_rate": "0.010000000000000000"
-                    },
-                    "min_self_delegation": "1",
-                    "delegator_address": "evmos13lu8tn9h8w72xccnttfxjvhmln0yt97gj8frsg",
-                    "validator_address": "evmosvaloper13lu8tn9h8w72xccnttfxjvhmln0yt97glfxn34",
-                    "pubkey": {
-                      "@type": "/cosmos.crypto.ed25519.PubKey",
-                      "key": "NSyF29pEXg2LJye6qIhN3CWnSmujlwQ76ij+IhH2fyM="
-                    },
-                    "value": {
-                      "denom": "abtc",
-                      "amount": "100000000000000000000"
-                    }
-                  }
-                ],
-                "memo": "1bbefaa3b94f1c0ed97bc694f17198fe3cd566d6@mezo-node-1.test.mezo.org:26656",
-                "timeout_height": "0",
-                "extension_options": [],
-                "non_critical_extension_options": []
-              },
-              "auth_info": {
-                "signer_infos": [
-                  {
-                    "public_key": {
-                      "@type": "/ethermint.crypto.v1.ethsecp256k1.PubKey",
-                      "key": "Aqm4jtUYbOJQekAja8yDtEu9DXvFPNikEWjhSASIyrh/"
-                    },
-                    "mode_info": {
-                      "single": {
-                        "mode": "SIGN_MODE_DIRECT"
-                      }
-                    },
-                    "sequence": "0"
-                  }
-                ],
-                "fee": {
-                  "amount": [],
-                  "gas_limit": "200000",
-                  "payer": "",
-                  "granter": ""
-                },
-                "tip": null
-              },
-              "signatures": [
-                "HPIKgCfuViW5OdQo7dp32fxZ79rtr9K4NqnslzJKpy9z6jxX2p3OUQLRnyWyFuEnIwHw6PbLeXXnwlb24M18eAE="
+                "bLDGDvqgmY2NG6oDMouucCaJgWjd2kBHq3hqpYIZek9BvKP8a1SGKI0S8e59wIC70OHEAM/v8AnbyfkntV6K0QE="
               ]
             },
             {
@@ -422,11 +379,11 @@ data:
                       "max_change_rate": "0.010000000000000000"
                     },
                     "min_self_delegation": "1",
-                    "delegator_address": "evmos1k55dl3prvwwcskhc4w2kkjuc7c7yzrjwprkm0g",
-                    "validator_address": "evmosvaloper1k55dl3prvwwcskhc4w2kkjuc7c7yzrjwvdetw4",
+                    "delegator_address": "evmos1cn5ntmc60uyafpyfw7xqxc3ryjjdr2x9jqth0e",
+                    "validator_address": "evmosvaloper1cn5ntmc60uyafpyfw7xqxc3ryjjdr2x9lwy8wy",
                     "pubkey": {
                       "@type": "/cosmos.crypto.ed25519.PubKey",
-                      "key": "XgLi5erbQHlXn/z6EjJnDvvcJjz4/TeOHYCy4NCRbXM="
+                      "key": "9XIYqmprVBsgSTM3hdqKf4pB9DY9F1cvOh57jq5Gknc="
                     },
                     "value": {
                       "denom": "abtc",
@@ -434,7 +391,7 @@ data:
                     }
                   }
                 ],
-                "memo": "57a3e4c28f18f0a3ea7b513d71547f87d4d1bc62@mezo-node-3.test.mezo.org:26656",
+                "memo": "7a91a2a6a94726543f97ae97c09464d1f9ef754c@mezo-node-3.test.mezo.org:26656",
                 "timeout_height": "0",
                 "extension_options": [],
                 "non_critical_extension_options": []
@@ -444,7 +401,7 @@ data:
                   {
                     "public_key": {
                       "@type": "/ethermint.crypto.v1.ethsecp256k1.PubKey",
-                      "key": "A/KaiusvqMEJvvgBlC6iMeQoR8iH3CIGyAXA9X8VmiWR"
+                      "key": "AnoK+xUMAdAcb0mc8v9zNrlhilL/oDqVBYsWsbnpT3kT"
                     },
                     "mode_info": {
                       "single": {
@@ -463,7 +420,69 @@ data:
                 "tip": null
               },
               "signatures": [
-                "Gn9x6p2LbiR1oub4V9PTBoxHu3kwjWd11BopcUqjJidRuN7jqWc/zBb+DlFdmc2p2CNcH8DJrWuqVxakz3OGPAE="
+                "SNiDAPkDZ/YGO8LA6q7EAwFqyVtwUmLaGEGFgcCu7BF1G3vo1xNEyazsbPh6uSW/Fvv400MZx2+ZtdMVaJvPSwA="
+              ]
+            },
+            {
+              "body": {
+                "messages": [
+                  {
+                    "@type": "/cosmos.staking.v1beta1.MsgCreateValidator",
+                    "description": {
+                      "moniker": "mezo-node-2",
+                      "identity": "",
+                      "website": "",
+                      "security_contact": "",
+                      "details": ""
+                    },
+                    "commission": {
+                      "rate": "0.100000000000000000",
+                      "max_rate": "0.200000000000000000",
+                      "max_change_rate": "0.010000000000000000"
+                    },
+                    "min_self_delegation": "1",
+                    "delegator_address": "evmos13s07ax5t6pchl0n3uwhcg6r4z964fuwfk3glkh",
+                    "validator_address": "evmosvaloper13s07ax5t6pchl0n3uwhcg6r4z964fuwfml80h2",
+                    "pubkey": {
+                      "@type": "/cosmos.crypto.ed25519.PubKey",
+                      "key": "qrVruwliG0QNo2E1pukw0o3aE8D3Z2kVXQS7TOEOP10="
+                    },
+                    "value": {
+                      "denom": "abtc",
+                      "amount": "100000000000000000000"
+                    }
+                  }
+                ],
+                "memo": "826d077e0357028a2e290020280b87cd0988b815@mezo-node-2.test.mezo.org:26656",
+                "timeout_height": "0",
+                "extension_options": [],
+                "non_critical_extension_options": []
+              },
+              "auth_info": {
+                "signer_infos": [
+                  {
+                    "public_key": {
+                      "@type": "/ethermint.crypto.v1.ethsecp256k1.PubKey",
+                      "key": "A3TrVstAiuv+hFj6LzZMq8S5LaCEt63ZJMAISTgacltv"
+                    },
+                    "mode_info": {
+                      "single": {
+                        "mode": "SIGN_MODE_DIRECT"
+                      }
+                    },
+                    "sequence": "0"
+                  }
+                ],
+                "fee": {
+                  "amount": [],
+                  "gas_limit": "200000",
+                  "payer": "",
+                  "granter": ""
+                },
+                "tip": null
+              },
+              "signatures": [
+                "jpsrHhpB4yBQb+zRZOYurqOpc+mBK6S4E+SwCE/M7s59swx84+6/g7Qt92RiKdE7pmZAwBc+dUGN/UTqyC6HvAA="
               ]
             },
             {
@@ -484,11 +503,11 @@ data:
                       "max_change_rate": "0.010000000000000000"
                     },
                     "min_self_delegation": "1",
-                    "delegator_address": "evmos1sd9wvx4jejkuxt9lt59tgccr5cvadv0yjz3l70",
-                    "validator_address": "evmosvaloper1sd9wvx4jejkuxt9lt59tgccr5cvadv0ylv70lj",
+                    "delegator_address": "evmos1l63eucq6ldz4ak99735lyl05lne8nrmslnqsx6",
+                    "validator_address": "evmosvaloper1l63eucq6ldz4ak99735lyl05lne8nrmsja0q88",
                     "pubkey": {
                       "@type": "/cosmos.crypto.ed25519.PubKey",
-                      "key": "IYsIbb4Y5VVOPigZwXj9u0OrqA8I6l6f6NWpSBc3Xl4="
+                      "key": "SJx5KuMcW4M0CfI7fhVQeryvGnVsfOgg+YYub1JQE8I="
                     },
                     "value": {
                       "denom": "abtc",
@@ -496,7 +515,7 @@ data:
                     }
                   }
                 ],
-                "memo": "60bc33432c9724f7100738769d177427832f826c@mezo-node-0.test.mezo.org:26656",
+                "memo": "8f7a31a4185ed87450e9866d7d748e949a688663@mezo-node-0.test.mezo.org:26656",
                 "timeout_height": "0",
                 "extension_options": [],
                 "non_critical_extension_options": []
@@ -506,7 +525,7 @@ data:
                   {
                     "public_key": {
                       "@type": "/ethermint.crypto.v1.ethsecp256k1.PubKey",
-                      "key": "A6zkrhagPZoqK9uhJ7FvxjC3v0DegKfbabV4x4u/GDNr"
+                      "key": "AkLeNNwL8CurJrSDVWo7Q/qEAPfKnvWWctDOlrMFijfN"
                     },
                     "mode_info": {
                       "single": {
@@ -525,7 +544,7 @@ data:
                 "tip": null
               },
               "signatures": [
-                "7HVGFeYHO6JUP7KfhhEMk62Hb6OsCF5wksxMFmRfKVkC28Nz/8iXjVPjoLC8SVEIjX544RLOOeoPzqA2lJ6upAE="
+                "4dL0CirJ1TsRTDhHZfGmiD4CGSQtNYdFlHLHN8FCJ8Fb4U+Gj5/X0/hWcFb8M3jPb+i7/MpUIRieYfYb5b06jQE="
               ]
             },
             {
@@ -534,7 +553,7 @@ data:
                   {
                     "@type": "/cosmos.staking.v1beta1.MsgCreateValidator",
                     "description": {
-                      "moniker": "mezo-node-4",
+                      "moniker": "mezo-node-1",
                       "identity": "",
                       "website": "",
                       "security_contact": "",
@@ -546,11 +565,11 @@ data:
                       "max_change_rate": "0.010000000000000000"
                     },
                     "min_self_delegation": "1",
-                    "delegator_address": "evmos1yunvn5xjgkzve58u27lgfuxg622xvh65scgttm",
-                    "validator_address": "evmosvaloper1yunvn5xjgkzve58u27lgfuxg622xvh65ak8m2x",
+                    "delegator_address": "evmos1xp6k2nuq3rg5kvwlqmhqjrk2yruknzmz9nm8v5",
+                    "validator_address": "evmosvaloper1xp6k2nuq3rg5kvwlqmhqjrk2yruknzmzga5hdf",
                     "pubkey": {
                       "@type": "/cosmos.crypto.ed25519.PubKey",
-                      "key": "ccHeg9sOpFoiTGBe1D8IzMQQx2RI6i8qLyEG7/imHas="
+                      "key": "eQN7iDvY1rK3gbPv8KvrQMau85btcdQb2N7jHmc0FhM="
                     },
                     "value": {
                       "denom": "abtc",
@@ -558,7 +577,7 @@ data:
                     }
                   }
                 ],
-                "memo": "7c979569d6d8d52b59039ada226add5095628549@mezo-node-4.test.mezo.org:26656",
+                "memo": "9676a8ce4c0891044b8a19791f5d8143593c9b6f@mezo-node-1.test.mezo.org:26656",
                 "timeout_height": "0",
                 "extension_options": [],
                 "non_critical_extension_options": []
@@ -568,7 +587,7 @@ data:
                   {
                     "public_key": {
                       "@type": "/ethermint.crypto.v1.ethsecp256k1.PubKey",
-                      "key": "Aqv8rtpWqKxC1CpRoSHUl4gDGf+1fux6UvVUvOQTiIHq"
+                      "key": "A6K58JbJvbwgjACG10LZk9GmSYhlvNo/HKqPJpoR9s4F"
                     },
                     "mode_info": {
                       "single": {
@@ -587,7 +606,7 @@ data:
                 "tip": null
               },
               "signatures": [
-                "kDxKOct36+H18piQ0g0ZQrBr5a9wPNxXcsvZg6TDRTUrcK1TwMbKQaNM2hSwz1BcxIbdBQ4rUuWqTDO5oyi8oQE="
+                "FHBWe0UCVtcGPloPkIxxx/BNDZCwpcCNC0BQM7lH+cRhkRc6uyz/tZU/9aLOz1coy29LEaN3uQajQkEZH60KWwE="
               ]
             }
           ]
