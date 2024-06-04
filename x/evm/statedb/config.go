@@ -60,3 +60,11 @@ type EVMConfig struct {
 	CoinBase    common.Address
 	BaseFee     *big.Int
 }
+
+// Rules returns the EVM rules for the given block height.
+func (ec *EVMConfig) Rules(blockHeight int64) params.Rules {
+	return ec.ChainConfig.Rules(
+		big.NewInt(blockHeight),
+		ec.ChainConfig.MergeNetsplitBlock != nil,
+	)
+}

@@ -71,6 +71,9 @@ type Keeper struct {
 	hooks types.EvmHooks
 	// Legacy subspace
 	ss paramstypes.Subspace
+
+	// Custom precompiles registered with the keeper.
+	customPrecompiles map[common.Address]vm.PrecompiledContract
 }
 
 // NewKeeper generates new evm module keeper
@@ -97,16 +100,17 @@ func NewKeeper(
 
 	// NOTE: we pass in the parameter space to the CommitStateDB in order to use custom denominations for the EVM operations
 	return &Keeper{
-		cdc:             cdc,
-		authority:       authority,
-		accountKeeper:   ak,
-		bankKeeper:      bankKeeper,
-		stakingKeeper:   sk,
-		feeMarketKeeper: fmk,
-		storeKey:        storeKey,
-		transientKey:    transientKey,
-		tracer:          tracer,
-		ss:              ss,
+		cdc:               cdc,
+		authority:         authority,
+		accountKeeper:     ak,
+		bankKeeper:        bankKeeper,
+		stakingKeeper:     sk,
+		feeMarketKeeper:   fmk,
+		storeKey:          storeKey,
+		transientKey:      transientKey,
+		tracer:            tracer,
+		ss:                ss,
+		customPrecompiles: make(map[common.Address]vm.PrecompiledContract),
 	}
 }
 
@@ -392,4 +396,11 @@ func (k Keeper) AddTransientGasUsed(ctx sdk.Context, gasUsed uint64) (uint64, er
 	}
 	k.SetTransientGasUsed(ctx, result)
 	return result, nil
+}
+
+// RegisterCustomPrecompile registers a custom precompile contract with the keeper.
+// This function does not check for duplicates. If a precompile with the same
+// address is already registered, it will be overwritten.
+func (k *Keeper) RegisterCustomPrecompile(precompile vm.PrecompiledContract) {
+	k.customPrecompiles[precompile.Address()] = precompile
 }
