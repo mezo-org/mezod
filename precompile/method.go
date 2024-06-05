@@ -11,19 +11,23 @@ const (
 	Write
 )
 
+type MethodInputs []interface{}
+
+type MethodOutputs []interface{}
+
 type Method interface {
 	MethodName() string
 	MethodType() MethodType
-	RequiredGas(methodArgs []byte) (uint64, bool)
-	Run() // TODO: Specify this method.
+	RequiredGas(methodInputArgs []byte) (uint64, bool)
+	Run(inputs MethodInputs) (MethodOutputs, error)
 }
 
 func DefaultRequiredGas(
 	gasConfig store.GasConfig,
 	methodType MethodType,
-	methodArgs []byte,
+	methodInputArgs []byte,
 ) uint64 {
-	methodArgsByteLength := uint64(len(methodArgs))
+	methodInputArgsByteLength := uint64(len(methodInputArgs))
 
 	costFlat := store.Gas(0)
 	costPerByte := store.Gas(0)
@@ -35,5 +39,5 @@ func DefaultRequiredGas(
 		costFlat, costPerByte = gasConfig.WriteCostFlat, gasConfig.WriteCostPerByte
 	}
 
-	return costFlat + (costPerByte * methodArgsByteLength)
+	return costFlat + (costPerByte * methodInputArgsByteLength)
 }
