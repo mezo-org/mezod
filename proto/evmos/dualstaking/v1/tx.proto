@@ -1,0 +1,7 @@
+syntax = "proto3";
+package evmos.dualstaking.v1;
+
+option go_package = "github.com/evmos/evmos/v12/x/dualstaking/types";
+
+// Msg defines the Msg service.
+service Msg {}
