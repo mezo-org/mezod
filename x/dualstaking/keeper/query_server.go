@@ -9,6 +9,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var _ types.QueryServer = queryServer{}
+
+type queryServer struct {
+	Keeper
+}
+
+// NewQueryServerImpl returns an implementation of the QueryServer interface
+// for the provided Keeper.
+func NewQueryServerImpl(keeper Keeper) types.QueryServer {
+	return &queryServer{Keeper: keeper}
+}
+
 func (k Keeper) Params(goCtx context.Context, req *types.QueryParamsRequest) (*types.QueryParamsResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
