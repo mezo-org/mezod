@@ -19,7 +19,10 @@ type Method interface {
 	MethodName() string
 	MethodType() MethodType
 	RequiredGas(methodInputArgs []byte) (uint64, bool)
-	Run(inputs MethodInputs) (MethodOutputs, error)
+	Run(
+		context *RunContext,
+		inputs MethodInputs,
+	) (MethodOutputs, error)
 }
 
 func DefaultRequiredGas(

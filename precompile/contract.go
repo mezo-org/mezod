@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
+	"math/big"
 )
 
 var _ vm.PrecompiledContract = &Contract{}
@@ -71,9 +72,9 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("cannot get state DB from EVM")
 	}
 
-	ctx := stateDB.GetContext()
+	sdkCtx := stateDB.GetContext()
 
-	gasStart := ctx.GasMeter().GasConsumed()
+	gasStart := sdkCtx.GasMeter().GasConsumed()
 
 	// The gas meter panics in case of an out-of-gas error. Recover from the panic
 	// and handle the error gracefully by returning an EVM-specific out-of-gas error.
@@ -82,14 +83,14 @@ func (c *Contract) Run(
 			switch r.(type) {
 			case sdk.ErrorOutOfGas:
 				// Calculate and use gas used by the EVM before the panic.
-				gasUsed := ctx.GasMeter().GasConsumed() - gasStart
+				gasUsed := sdkCtx.GasMeter().GasConsumed() - gasStart
 				_ = contract.UseGas(gasUsed)
 				// Return an EVM-specific out-of-gas error.
 				runErr = vm.ErrOutOfGas
 				// Reset the gas config in the shared SDK context to the
 				// zero value. This is an opposite action to the one that is
 				// done upon gas meter recreation, just before method execution.
-				ctx = ctx.
+				sdkCtx = sdkCtx.
 					WithKVGasConfig(store.GasConfig{}).
 					WithTransientKVGasConfig(store.GasConfig{})
 			default:
@@ -116,13 +117,13 @@ func (c *Contract) Run(
 	// Set gas config for persistent and transient KV store explicitly.
 	// This is necessary as the context is shared between modules that may
 	// apply different gas configs on their own.
-	ctx = ctx.
+	sdkCtx = sdkCtx.
 		WithGasMeter(store.NewGasMeter(contract.Gas)).
 		WithKVGasConfig(c.kvGasConfig()).
 		WithTransientKVGasConfig(c.transientGasConfig())
 	// As the gas meter was recreated, consume the gas that was already
 	// used by the EVM.
-	ctx.GasMeter().ConsumeGas(gasStart, "consume gas already used by EVM")
+	sdkCtx.GasMeter().ConsumeGas(gasStart, "consume gas already used by EVM")
 
 	if err := stateDB.Commit(); err != nil {
 		return nil, err
@@ -133,7 +134,12 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("failed to unpack method input args: [%w]", err)
 	}
 
-	methodOutputs, err := method.Run(methodInputs)
+	runCtx := &RunContext{
+		evm: evm,
+		contract: contract,
+	}
+
+	methodOutputs, err := method.Run(runCtx, methodInputs)
 	if err != nil {
 		return nil, fmt.Errorf("method errored out: [%w]", err)
 	}
@@ -143,7 +149,7 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("failed to pack method output args: [%w]", err)
 	}
 
-	gasUsed := ctx.GasMeter().GasConsumed() - gasStart
+	gasUsed := sdkCtx.GasMeter().GasConsumed() - gasStart
 
 	if !contract.UseGas(gasUsed) {
 		return nil, vm.ErrOutOfGas
@@ -194,4 +200,25 @@ func (c *Contract) kvGasConfig() store.GasConfig {
 
 func (c *Contract) transientGasConfig() store.GasConfig {
 	return store.TransientGasConfig()
+}
+
+type RunContext struct {
+	evm *vm.EVM
+	contract *vm.Contract
+}
+
+func (rc *RunContext) MsgSender() common.Address {
+	return rc.contract.Caller()
+}
+
+func (rc *RunContext) TxOrigin() common.Address {
+	return rc.evm.Origin
+}
+
+func (rc *RunContext) MsgValue() *big.Int {
+	if value := rc.contract.Value(); value != nil {
+		return value
+	}
+
+	return big.NewInt(0)
 }
