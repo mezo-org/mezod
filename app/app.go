@@ -128,6 +128,7 @@ import (
 	"github.com/evmos/evmos/v12/ethereum/eip712"
 	srvflags "github.com/evmos/evmos/v12/server/flags"
 	evmostypes "github.com/evmos/evmos/v12/types"
+	"github.com/evmos/evmos/v12/x/dualstaking"
 	"github.com/evmos/evmos/v12/x/evm"
 	evmkeeper "github.com/evmos/evmos/v12/x/evm/keeper"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
@@ -150,6 +151,8 @@ import (
 	"github.com/evmos/evmos/v12/x/claims"
 	claimskeeper "github.com/evmos/evmos/v12/x/claims/keeper"
 	claimstypes "github.com/evmos/evmos/v12/x/claims/types"
+	dualstakingkeeper "github.com/evmos/evmos/v12/x/dualstaking/keeper"
+	dualstakingtypes "github.com/evmos/evmos/v12/x/dualstaking/types"
 	"github.com/evmos/evmos/v12/x/epochs"
 	epochskeeper "github.com/evmos/evmos/v12/x/epochs/keeper"
 	epochstypes "github.com/evmos/evmos/v12/x/epochs/types"
@@ -246,6 +249,7 @@ var (
 		claims.AppModuleBasic{},
 		recovery.AppModuleBasic{},
 		revenue.AppModuleBasic{},
+		dualstaking.AppModuleBasic{},
 	)
 
 	// module account permissions
@@ -320,14 +324,15 @@ type Evmos struct {
 	FeeMarketKeeper feemarketkeeper.Keeper
 
 	// Evmos keepers
-	InflationKeeper  inflationkeeper.Keeper
-	ClaimsKeeper     *claimskeeper.Keeper
-	Erc20Keeper      erc20keeper.Keeper
-	IncentivesKeeper incentiveskeeper.Keeper
-	EpochsKeeper     epochskeeper.Keeper
-	VestingKeeper    vestingkeeper.Keeper
-	RecoveryKeeper   *recoverykeeper.Keeper
-	RevenueKeeper    revenuekeeper.Keeper
+	InflationKeeper   inflationkeeper.Keeper
+	ClaimsKeeper      *claimskeeper.Keeper
+	Erc20Keeper       erc20keeper.Keeper
+	IncentivesKeeper  incentiveskeeper.Keeper
+	EpochsKeeper      epochskeeper.Keeper
+	VestingKeeper     vestingkeeper.Keeper
+	RecoveryKeeper    *recoverykeeper.Keeper
+	RevenueKeeper     revenuekeeper.Keeper
+	DualstakingKeeper *dualstakingkeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -502,6 +507,8 @@ func NewEvmos(
 		appCodec, keys[claimstypes.StoreKey], authtypes.NewModuleAddress(govtypes.ModuleName),
 		app.AccountKeeper, app.BankKeeper, &stakingKeeper, app.DistrKeeper, app.IBCKeeper.ChannelKeeper,
 	)
+
+	app.DualstakingKeeper = dualstakingkeeper.NewKeeper(appCodec, keys[dualstakingtypes.StoreKey])
 
 	// register the staking hooks
 	// NOTE: stakingKeeper above is passed by reference, so that it will contain these hooks
@@ -691,6 +698,7 @@ func NewEvmos(
 			app.GetSubspace(recoverytypes.ModuleName)),
 		revenue.NewAppModule(app.RevenueKeeper, app.AccountKeeper,
 			app.GetSubspace(revenuetypes.ModuleName)),
+		dualstaking.NewAppModule(appCodec, *app.DualstakingKeeper),
 	)
 
 	// During begin block slashing happens after distr.BeginBlocker so that
@@ -729,6 +737,7 @@ func NewEvmos(
 		incentivestypes.ModuleName,
 		recoverytypes.ModuleName,
 		revenuetypes.ModuleName,
+		dualstakingtypes.ModuleName,
 	)
 
 	// NOTE: fee market module must go last in order to retrieve the block gas used.
@@ -763,6 +772,7 @@ func NewEvmos(
 		incentivestypes.ModuleName,
 		recoverytypes.ModuleName,
 		revenuetypes.ModuleName,
+		dualstakingtypes.ModuleName,
 	)
 
 	// NOTE: The genutils module must occur after staking so that pools are
@@ -806,6 +816,7 @@ func NewEvmos(
 		revenuetypes.ModuleName,
 		// NOTE: crisis module must go at the end to check for invariants on each module
 		crisistypes.ModuleName,
+		dualstakingtypes.ModuleName,
 	)
 
 	app.mm.RegisterInvariants(&app.CrisisKeeper)
