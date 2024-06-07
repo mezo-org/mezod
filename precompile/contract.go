@@ -70,14 +70,14 @@ func (c *Contract) Run(
 	contract *vm.Contract,
 	readOnlyMode bool,
 ) (methodOutputArgs []byte, runErr error) {
-	runCtx := NewRunContext(evm, contract)
-
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
 		return nil, fmt.Errorf("cannot get state DB from EVM")
 	}
 
 	sdkCtx := stateDB.GetContext()
+	eventEmitter := NewEventEmitter(sdkCtx, c.abi, c.address, stateDB)
+	runCtx := NewRunContext(evm, contract, eventEmitter)
 
 	// Capture the initial values of gas config to restore them after execution.
 	kvGasConfig, transientKVGasConfig := sdkCtx.KVGasConfig(), sdkCtx.TransientKVGasConfig()
@@ -188,12 +188,18 @@ func (c *Contract) methodByID(methodID []byte) (Method, *abi.Method, error) {
 type RunContext struct {
 	evm *vm.EVM
 	contract *vm.Contract
+	eventEmitter *EventEmitter
 }
 
-func NewRunContext(evm *vm.EVM, contract *vm.Contract) *RunContext {
+func NewRunContext(
+	evm *vm.EVM,
+	contract *vm.Contract,
+	eventEmitter *EventEmitter,
+) *RunContext {
 	return &RunContext{
-		evm: evm,
-		contract: contract,
+		evm:          evm,
+		contract:     contract,
+		eventEmitter: eventEmitter,
 	}
 }
 
@@ -215,4 +221,8 @@ func (rc *RunContext) MsgValue() *big.Int {
 
 func (rc *RunContext) IsMsgValue() bool {
 	return rc.MsgValue().Sign() > 0
+}
+
+func (rc *RunContext) EventEmitter() *EventEmitter {
+	return rc.eventEmitter
 }
