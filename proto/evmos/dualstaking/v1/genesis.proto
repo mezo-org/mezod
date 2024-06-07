@@ -1,0 +1,17 @@
+syntax = "proto3";
+package evmos.dualstaking.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/evmos/evmos/v12/x/dualstaking/types";
+
+// GenesisState defines the dualstaking module's genesis state.
+message GenesisState {
+  // params defines all the parameters of the module.
+  Params params = 1 [(gogoproto.nullable) = false];
+}
+
+// Params defines the parameters for the module.
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+}
