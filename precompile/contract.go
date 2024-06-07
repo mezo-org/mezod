@@ -3,7 +3,6 @@ package precompile
 import (
 	"fmt"
 	store "github.com/cosmos/cosmos-sdk/store/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -56,7 +55,11 @@ func (c *Contract) RequiredGas(input []byte) uint64 {
 	if !ok {
 		// Fall back to default required gas if method does not determine
 		// the required gas by itself.
-		requiredGas = DefaultRequiredGas(c.kvGasConfig(), method.MethodType(), methodInputArgs)
+		requiredGas = DefaultRequiredGas(
+			store.KVGasConfig(),
+			method.MethodType(),
+			methodInputArgs,
+		)
 	}
 
 	return requiredGas
@@ -74,29 +77,20 @@ func (c *Contract) Run(
 
 	sdkCtx := stateDB.GetContext()
 
-	gasStart := sdkCtx.GasMeter().GasConsumed()
-
-	// The gas meter panics in case of an out-of-gas error. Recover from the panic
-	// and handle the error gracefully by returning an EVM-specific out-of-gas error.
+	// Capture the initial values of gas config to restore them after execution.
+	kvGasConfig, transientKVGasConfig := sdkCtx.KVGasConfig(), sdkCtx.TransientKVGasConfig()
+	// Use a zero gas config for Cosmos SDK operations to avoid extra costs
+	// apart the RequiredGas already consumed on the EVM level.
+	zeroGasConfig := store.GasConfig{}
+	sdkCtx = sdkCtx.
+		WithKVGasConfig(zeroGasConfig).
+		WithTransientKVGasConfig(zeroGasConfig)
+	// Set a deferred function to restore the initial gas config values
+	// after the method execution.
 	defer func() {
-		if r := recover(); r != nil {
-			switch r.(type) {
-			case sdk.ErrorOutOfGas:
-				// Calculate and use gas used by the EVM before the panic.
-				gasUsed := sdkCtx.GasMeter().GasConsumed() - gasStart
-				_ = contract.UseGas(gasUsed)
-				// Return an EVM-specific out-of-gas error.
-				runErr = vm.ErrOutOfGas
-				// Reset the gas config in the shared SDK context to the
-				// zero value. This is an opposite action to the one that is
-				// done upon gas meter recreation, just before method execution.
-				sdkCtx = sdkCtx.
-					WithKVGasConfig(store.GasConfig{}).
-					WithTransientKVGasConfig(store.GasConfig{})
-			default:
-				panic(r)
-			}
-		}
+		sdkCtx = sdkCtx.
+			WithKVGasConfig(kvGasConfig).
+			WithTransientKVGasConfig(transientKVGasConfig)
 	}()
 
 	methodID, methodInputArgs, err := c.parseCallInput(contract.Input)
@@ -113,18 +107,7 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("cannot call write method in read-only mode")
 	}
 
-	// Recreate the gas meter with contract gas limit applied.
-	// Set gas config for persistent and transient KV store explicitly.
-	// This is necessary as the context is shared between modules that may
-	// apply different gas configs on their own.
-	sdkCtx = sdkCtx.
-		WithGasMeter(store.NewGasMeter(contract.Gas)).
-		WithKVGasConfig(c.kvGasConfig()).
-		WithTransientKVGasConfig(c.transientGasConfig())
-	// As the gas meter was recreated, consume the gas that was already
-	// used by the EVM.
-	sdkCtx.GasMeter().ConsumeGas(gasStart, "consume gas already used by EVM")
-
+	// Commit any draft changes to the EVM state DB before running the method.
 	if err := stateDB.Commit(); err != nil {
 		return nil, err
 	}
@@ -147,12 +130,6 @@ func (c *Contract) Run(
 	methodOutputArgs, err = methodABI.Outputs.Pack(methodOutputs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack method output args: [%w]", err)
-	}
-
-	gasUsed := sdkCtx.GasMeter().GasConsumed() - gasStart
-
-	if !contract.UseGas(gasUsed) {
-		return nil, vm.ErrOutOfGas
 	}
 
 	return methodOutputArgs, nil
@@ -192,14 +169,6 @@ func (c *Contract) methodByID(methodID []byte) (Method, *abi.Method, error) {
 	}
 
 	return method, methodABI, nil
-}
-
-func (c *Contract) kvGasConfig() store.GasConfig {
-	return store.KVGasConfig()
-}
-
-func (c *Contract) transientGasConfig() store.GasConfig {
-	return store.TransientGasConfig()
 }
 
 type RunContext struct {
