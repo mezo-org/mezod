@@ -68,8 +68,10 @@ func (c *Contract) RequiredGas(input []byte) uint64 {
 func (c *Contract) Run(
 	evm *vm.EVM,
 	contract *vm.Contract,
-	readonly bool,
+	readOnlyMode bool,
 ) (methodOutputArgs []byte, runErr error) {
+	runCtx := NewRunContext(evm, contract)
+
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
 		return nil, fmt.Errorf("cannot get state DB from EVM")
@@ -103,8 +105,25 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("failed to get method by ID: [%w]", err)
 	}
 
-	if readonly && method.MethodType() == Write {
-		return nil, fmt.Errorf("cannot call write method in read-only mode")
+	// Execute some validation based on method type.
+	switch method.MethodType() {
+	case Read:
+		// Read methods can be executed regardless of the mode but can
+		// never accept value.
+		if runCtx.IsMsgValue() {
+			return nil, fmt.Errorf("read method cannot accept value")
+		}
+	case Write:
+		// Write methods cannot be executed in read-only mode and can accept
+		// value if the specific method supports it.
+		if readOnlyMode {
+			return nil, fmt.Errorf("write method cannot be executed in read-only mode")
+		}
+		if runCtx.IsMsgValue() && !method.Payable() {
+			return nil, fmt.Errorf("non-payable write method cannot accept value")
+		}
+	default:
+		panic("unexpected method type")
 	}
 
 	// Commit any draft changes to the EVM state DB before running the method.
@@ -115,11 +134,6 @@ func (c *Contract) Run(
 	methodInputs, err := methodABI.Inputs.Unpack(methodInputArgs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unpack method input args: [%w]", err)
-	}
-
-	runCtx := &RunContext{
-		evm: evm,
-		contract: contract,
 	}
 
 	methodOutputs, err := method.Run(runCtx, methodInputs)
@@ -176,6 +190,13 @@ type RunContext struct {
 	contract *vm.Contract
 }
 
+func NewRunContext(evm *vm.EVM, contract *vm.Contract) *RunContext {
+	return &RunContext{
+		evm: evm,
+		contract: contract,
+	}
+}
+
 func (rc *RunContext) MsgSender() common.Address {
 	return rc.contract.Caller()
 }
@@ -190,4 +211,8 @@ func (rc *RunContext) MsgValue() *big.Int {
 	}
 
 	return big.NewInt(0)
+}
+
+func (rc *RunContext) IsMsgValue() bool {
+	return rc.MsgValue().Sign() > 0
 }

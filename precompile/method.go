@@ -19,6 +19,7 @@ type Method interface {
 	MethodName() string
 	MethodType() MethodType
 	RequiredGas(methodInputArgs []byte) (uint64, bool)
+	Payable() bool
 	Run(
 		context *RunContext,
 		inputs MethodInputs,
