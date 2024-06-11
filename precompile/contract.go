@@ -94,8 +94,6 @@ func (c *Contract) Run(
 	}
 
 	sdkCtx := stateDB.GetContext()
-	eventEmitter := NewEventEmitter(sdkCtx, c.abi, c.address, stateDB)
-	runCtx := NewRunContext(evm, contract, eventEmitter)
 
 	// Capture the initial values of gas config to restore them after execution.
 	kvGasConfig, transientKVGasConfig := sdkCtx.KVGasConfig(), sdkCtx.TransientKVGasConfig()
@@ -106,12 +104,19 @@ func (c *Contract) Run(
 		WithKVGasConfig(zeroGasConfig).
 		WithTransientKVGasConfig(zeroGasConfig)
 	// Set a deferred function to restore the initial gas config values
-	// after the method execution.
+	// after the method execution. This action is not strictly necessary
+	// as gas config changes are applied to a copy of the original SDK
+	// context and are not propagated back. However, making this cleanup
+	// just in case may allow to avoid potential issues in the future,
+	// in case the copied context is used in some other way.
 	defer func() {
 		sdkCtx = sdkCtx.
 			WithKVGasConfig(kvGasConfig).
 			WithTransientKVGasConfig(transientKVGasConfig)
 	}()
+
+	eventEmitter := NewEventEmitter(sdkCtx, c.abi, c.address, stateDB)
+	runCtx := NewRunContext(evm, contract, eventEmitter)
 
 	methodID, methodInputArgs, err := c.parseCallInput(contract.Input)
 	if err != nil {
