@@ -27,26 +27,22 @@ func TestContract_Address(t *testing.T) {
 }
 
 func TestContract_RequiredGas(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		method   Method
 		expected uint64
 	}{
-		{
-			name:     "method implements its own gas calculation",
+		"method implements its own gas calculation": {
 			method:   &mockMethod{methodName: "testMethod", requiredGas: 10},
 			// Gas cost taken directly from the mock method.
 			expected: 10,
 		},
-		{
-			name:     "write method does not implement its own gas calculation",
+		"write method does not implement its own gas calculation": {
 			method:   &mockMethod{methodName: "testMethod", methodType: Write},
 			// writeCostFlat + (writeCostPerByte * methodInputArgsByteLength) = 2000 + 30 * 2 = 2060
 			// Flat and per-byte costs are taken from the default gas config: store.KVGasConfig()
 			expected: 2060,
 		},
-		{
-			name:     "read method does not implement its own gas calculation",
+		"read method does not implement its own gas calculation": {
 			method:   &mockMethod{methodName: "testMethod", methodType: Read},
 			// readCostFlat + (readCostPerByte * methodInputArgsByteLength) = 1000 + 3 * 2 = 1006
 			// Flat and per-byte costs are taken from the default gas config: store.KVGasConfig()
@@ -54,8 +50,8 @@ func TestContract_RequiredGas(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
 			// Construct a mock ABI to make function lookup possible.
 			contractAbi := abi.ABI{
 				Methods: map[string]abi.Method{
@@ -111,8 +107,7 @@ func TestContract_RegisterMethods(t *testing.T) {
 }
 
 func TestContract_Run(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		method         Method
 		methodInputs   MethodInputs
 		value          *big.Int
@@ -120,8 +115,7 @@ func TestContract_Run(t *testing.T) {
 		expectedOutput []byte
 		expectedError  error
 	}{
-		{
-			name: "happy path",
+		"happy path": {
 			method: &mockMethod{
 				methodName: "testMethod",
 				methodType: Write,
@@ -157,8 +151,7 @@ func TestContract_Run(t *testing.T) {
 			// Sum of inputs (10 + 123 = 133) as hex, left-padded to 32 bytes.
 			expectedOutput: append(make([]byte, 31), 0x85),
 		},
-		{
-			name: "read method with value",
+		"read method with value": {
 			method: &mockMethod{
 				methodName: "testMethod",
 				methodType: Read,
@@ -170,8 +163,7 @@ func TestContract_Run(t *testing.T) {
 			value: big.NewInt(1000),
 			expectedError: fmt.Errorf("read method cannot accept value"),
 		},
-		{
-			name: "write method with read-only mode",
+		"write method with read-only mode": {
 			method: &mockMethod{
 				methodName: "testMethod",
 				methodType: Write,
@@ -183,8 +175,7 @@ func TestContract_Run(t *testing.T) {
 			readOnlyMode: true,
 			expectedError: fmt.Errorf("write method cannot be executed in read-only mode"),
 		},
-		{
-			name: "non-payable write method with value",
+		"non-payable write method with value": {
 			method: &mockMethod{
 				methodName: "testMethod",
 				methodType: Write,
@@ -199,8 +190,8 @@ func TestContract_Run(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
 			uint256Type, err := abi.NewType("uint256", "uint256", nil)
 			bytesType, err := abi.NewType("bytes", "bytes", nil)
 
