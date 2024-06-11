@@ -9,16 +9,26 @@ import (
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 )
 
+// EventArgument represents an argument of an event.
 type EventArgument struct {
+	// Indexed indicates whether the argument is indexed. Indexed arguments are
+	// used to filter events in the logs.
 	Indexed bool
+	// Value is the value of the argument.
 	Value   interface{}
 }
 
+// Event represents an EVM event that can be emitted by a precompiled contract.
 type Event interface {
+	// EventName returns the name of the event.
 	EventName() string
+	// Arguments returns the arguments of the event. The order of the arguments
+	// must match the order of the event's arguments in the ABI.
 	Arguments() []*EventArgument
 }
 
+// EventEmitter is a component that can be used to emit EVM events from
+// a precompiled contract.
 type EventEmitter struct {
 	sdkCtx  sdk.Context
 	abi     abi.ABI
@@ -26,6 +36,7 @@ type EventEmitter struct {
 	stateDB *statedb.StateDB
 }
 
+// NewEventEmitter creates a new event emitter instance.
 func NewEventEmitter(
 	sdkCtx sdk.Context,
 	abi abi.ABI,
@@ -40,6 +51,7 @@ func NewEventEmitter(
 	}
 }
 
+// Emit emits the given EVM event. The event is appended to the state DB as a log.
 func (ee *EventEmitter) Emit(event Event) error {
 	abiEvent := ee.abi.Events[event.EventName()]
 
