@@ -76,7 +76,7 @@ func (ee *EventEmitter) Emit(event Event) error {
 
 	// Pack non-indexed arguments using the event ABI. Note that we need
 	// to shift the arguments slice to exclude indexed arguments.
-	data, err := abiEvent.Inputs[len(indexedArguments):].Pack(arguments)
+	data, err := abiEvent.Inputs[len(indexedArguments):].Pack(arguments...)
 	if err != nil {
 		return err
 	}
