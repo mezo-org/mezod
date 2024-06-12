@@ -66,16 +66,28 @@ func (ee *EventEmitter) Emit(event Event) error {
 		}
 	}
 
-	indexedArgumentsTopics, err := abi.MakeTopics(indexedArguments)
+	topicGroups, err := abi.MakeTopics(indexedArguments)
 	if err != nil {
 		return fmt.Errorf("failed to make topics: [%w]", err)
 	}
 
-	// The first topic is always the ID of the event.
-	topics := append([]common.Hash{abiEvent.ID}, indexedArgumentsTopics[0]...)
+	// We always expect a single topic group corresponding to the
+	// `indexedArguments` slice.
+	if len(topicGroups) != 1 {
+		return fmt.Errorf("wrong number of topic groups for indexed arguments")
+	}
+
+	// The first topic is always the ID of the event. The rest is the single
+	// unpacked topic group for indexed arguments.
+	topics := append([]common.Hash{abiEvent.ID}, topicGroups[0]...)
 
 	// Pack non-indexed arguments using the event ABI. Note that we need
 	// to shift the arguments slice to exclude indexed arguments.
+	// Note that unpacking of the `arguments` slice is mandatory here
+	// as the `Pack` method must receive the same number of arguments
+	// as the event ABI specifies. If we don't unpack the `arguments`
+	// slice, the `Pack` method will receive a single argument of type
+	// `[]interface{}` instead of multiple arguments of type `interface{}`.
 	data, err := abiEvent.Inputs[len(indexedArguments):].Pack(arguments...)
 	if err != nil {
 		return err
