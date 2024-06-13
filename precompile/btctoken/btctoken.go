@@ -36,5 +36,6 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error){
 func newPrecompileMethods(bankKeeper bankkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
 		newMintMethod(bankKeeper),
+		newBalanceOfMethod(bankKeeper),
 	}
 }

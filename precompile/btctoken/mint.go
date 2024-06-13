@@ -51,23 +51,28 @@ func (mm *mintMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
-	if len(inputs) != 2 {
-		return nil, fmt.Errorf("expected 2 inputs, got [%d]", len(inputs))
+	if err := precompile.ValidateMethodInputsLength(inputs, 2); err != nil {
+		return nil, err
 	}
 
 	recipient := inputs[0].(common.Address)
 	amount := inputs[1].(*big.Int)
+
+	sdkAmount, err := precompile.BigIntConverter{}.ToSDK(amount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
+	}
 
 	coins := sdk.NewCoins(
 		sdk.NewCoin(
 			// TODO: This is normally taken from EVM module's parameters.
 			//       Let's make a shortcut for now.
 			evm.DefaultEVMDenom,
-			sdk.NewIntFromBigInt(amount),
+			sdkAmount,
 		),
 	)
 
-	err := mm.bankKeeper.MintCoins(
+	err = mm.bankKeeper.MintCoins(
 		context.SdkCtx(),
 		evm.ModuleName,
 		coins,
@@ -76,12 +81,10 @@ func (mm *mintMethod) Run(
 		return nil, fmt.Errorf("failed to mint coins: [%w]", err)
 	}
 
-	sdkRecipient := sdk.AccAddress(recipient.Bytes())
-
 	err = mm.bankKeeper.SendCoinsFromModuleToAccount(
 		context.SdkCtx(),
 		evm.ModuleName,
-		sdkRecipient,
+		precompile.AddressConverter{}.ToSDK(recipient),
 		coins,
 	)
 	if err != nil {
