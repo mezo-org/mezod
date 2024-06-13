@@ -1,6 +1,8 @@
 package precompile
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
 	store "github.com/cosmos/cosmos-sdk/store/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -267,4 +269,21 @@ func (rc *RunContext) IsMsgValue() bool {
 // The event emitter can be used to emit EVM events from the precompiled contract.
 func (rc *RunContext) EventEmitter() *EventEmitter {
 	return rc.eventEmitter
+}
+
+// LoadAbiFile loads the ABI file from the given file system and path. The ABI file
+// is expected to be in JSON format. If the file cannot be loaded or parsed, an
+// error is returned.
+func LoadAbiFile(fs embed.FS, path string) (abi.ABI, error) {
+	abiBytes, err := fs.ReadFile(path)
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("cannot load ABI file [%w]", err)
+	}
+
+	abiJson, err := abi.JSON(bytes.NewReader(abiBytes))
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("cannot parse ABI file [%w]", err)
+	}
+
+	return abiJson, nil
 }
