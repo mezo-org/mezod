@@ -10,9 +10,7 @@ import (
 	"math/big"
 )
 
-const (
-	MintMethodName = "mint"
-)
+const MintMethodName = "mint"
 
 // TODO: This implementation is a playground for now. It should be replaced with
 //       the actual implementation of the mint method. The actual implementation
@@ -89,6 +87,17 @@ func (mm *mintMethod) Run(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send minted coins to recipient: [%w]", err)
+	}
+
+	err = context.EventEmitter().Emit(
+		newTransferEvent(
+			common.BigToAddress(big.NewInt(0)),
+			recipient,
+			amount,
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
 	}
 
 	return nil, nil

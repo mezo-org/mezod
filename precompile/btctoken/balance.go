@@ -7,9 +7,7 @@ import (
 	evm "github.com/evmos/evmos/v12/x/evm/types"
 )
 
-const (
-	BalanceOfMethodName = "balanceOf"
-)
+const BalanceOfMethodName = "balanceOf"
 
 type balanceOfMethod struct {
 	bankKeeper bankkeeper.Keeper
