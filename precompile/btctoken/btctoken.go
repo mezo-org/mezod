@@ -3,6 +3,7 @@ package btctoken
 import (
 	"embed"
 	"fmt"
+	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 )
@@ -15,7 +16,7 @@ var filesystem embed.FS
 // We use the 0x...1XXX range for custom Mezo precompiles to avoid collisions.
 const EvmAddress = "0x0000000000000000000000000000000000001000"
 
-func NewPrecompile() (*precompile.Contract, error){
+func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error){
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
@@ -26,14 +27,14 @@ func NewPrecompile() (*precompile.Contract, error){
 		common.HexToAddress(EvmAddress),
 	)
 
-	methods := newPrecompileMethods()
+	methods := newPrecompileMethods(bankKeeper)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
 }
 
-func newPrecompileMethods() []precompile.Method {
+func newPrecompileMethods(bankKeeper bankkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
-		newMintMethod(),
+		newMintMethod(bankKeeper),
 	}
 }

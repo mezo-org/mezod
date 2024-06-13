@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	store "github.com/cosmos/cosmos-sdk/store/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -118,7 +119,7 @@ func (c *Contract) Run(
 	}()
 
 	eventEmitter := NewEventEmitter(sdkCtx, c.abi, c.address, stateDB)
-	runCtx := NewRunContext(evm, contract, eventEmitter)
+	runCtx := NewRunContext(sdkCtx, evm, contract, eventEmitter)
 
 	methodID, methodInputArgs, err := c.parseCallInput(contract.Input)
 	if err != nil {
@@ -219,23 +220,31 @@ func (c *Contract) methodByID(methodID []byte) (Method, *abi.Method, error) {
 // RunContext represents the context in which a precompiled contract method is
 // executed. It provides access to the EVM, the contract, and the event emitter.
 type RunContext struct {
-	evm *vm.EVM
-	contract *vm.Contract
+	sdkCtx       sdk.Context
+	evm          *vm.EVM
+	contract     *vm.Contract
 	eventEmitter *EventEmitter
 }
 
 // NewRunContext creates a new run context with the given EVM, contract, and
 // event emitter instances.
 func NewRunContext(
+	sdkCtx sdk.Context,
 	evm *vm.EVM,
 	contract *vm.Contract,
 	eventEmitter *EventEmitter,
 ) *RunContext {
 	return &RunContext{
+		sdkCtx:       sdkCtx,
 		evm:          evm,
 		contract:     contract,
 		eventEmitter: eventEmitter,
 	}
+}
+
+// SdkCtx returns the Cosmos SDK context associated with the run context.
+func (rc *RunContext) SdkCtx() sdk.Context {
+	return rc.sdkCtx
 }
 
 // MsgSender returns the address of the message sender. This corresponds to the

@@ -1,42 +1,93 @@
 package btctoken
 
 import (
+	"fmt"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
+	evm "github.com/evmos/evmos/v12/x/evm/types"
+	"math/big"
 )
 
-type mintMethod struct {
+const (
+	MintMethodName = "mint"
+)
 
+// TODO: This implementation is a playground for now. It should be replaced with
+//       the actual implementation of the mint method. The actual implementation
+//       should be controlled by the bridge account that will have
+//       the mint authority.
+type mintMethod struct {
+	bankKeeper bankkeeper.Keeper
 }
 
-func newMintMethod() *mintMethod {
-	return &mintMethod{}
+func newMintMethod(
+	bankKeeper bankkeeper.Keeper,
+) *mintMethod {
+	return &mintMethod{
+		bankKeeper: bankKeeper,
+	}
 }
 
 func (mm *mintMethod) MethodName() string {
-	//TODO implement me
-	panic("implement me")
+	return MintMethodName
 }
 
 func (mm *mintMethod) MethodType() precompile.MethodType {
-	//TODO implement me
-	panic("implement me")
+	return precompile.Write
 }
 
 func (mm *mintMethod) RequiredGas(methodInputArgs []byte) (uint64, bool) {
-	//TODO implement me
-	panic("implement me")
+	// Fallback to the default gas calculation.
+	return 0, false
 }
 
 func (mm *mintMethod) Payable() bool {
-	//TODO implement me
-	panic("implement me")
+	return false
 }
 
 func (mm *mintMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
-	//TODO implement me
-	panic("implement me")
+	if len(inputs) != 2 {
+		return nil, fmt.Errorf("expected 2 inputs, got [%d]", len(inputs))
+	}
+
+	recipient := inputs[0].(common.Address)
+	amount := inputs[1].(*big.Int)
+
+	coins := sdk.NewCoins(
+		sdk.NewCoin(
+			// TODO: This is normally taken from EVM module's parameters.
+			//       Let's make a shortcut for now.
+			evm.DefaultEVMDenom,
+			sdk.NewIntFromBigInt(amount),
+		),
+	)
+
+	err := mm.bankKeeper.MintCoins(
+		context.SdkCtx(),
+		evm.ModuleName,
+		coins,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to mint coins: [%w]", err)
+	}
+
+	sdkRecipient := sdk.AccAddress(recipient.Bytes())
+
+	err = mm.bankKeeper.SendCoinsFromModuleToAccount(
+		context.SdkCtx(),
+		evm.ModuleName,
+		sdkRecipient,
+		coins,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send minted coins to recipient: [%w]", err)
+	}
+
+	return nil, nil
 }
 

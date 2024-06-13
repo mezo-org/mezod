@@ -259,7 +259,7 @@ func TestRunContext_MsgSender(t *testing.T) {
 	caller := common.HexToAddress("0x1")
 	contract := &vm.Contract{CallerAddress: caller}
 
-	runContext := NewRunContext(nil, contract, nil)
+	runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
 	if actualCaller := runContext.MsgSender(); caller != actualCaller {
 		t.Errorf(
@@ -274,7 +274,7 @@ func TestRunContext_TxOrigin(t *testing.T) {
 	origin := common.HexToAddress("0x1")
 	evm := &vm.EVM{TxContext: vm.TxContext{Origin: origin}}
 
-	runContext := NewRunContext(evm, nil, nil)
+	runContext := NewRunContext(sdk.Context{}, evm, nil, nil)
 
 	if actualOrigin := runContext.TxOrigin(); origin != actualOrigin {
 		t.Errorf(
@@ -289,7 +289,7 @@ func TestRunContext_MsgValue(t *testing.T) {
 	value := big.NewInt(10)
 	contract := vm.NewContract(&Contract{}, nil, value, 0)
 
-	runContext := NewRunContext(nil, contract, nil)
+	runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
 	if actualValue := runContext.MsgValue(); value.Cmp(actualValue) != 0 {
 		t.Errorf(
@@ -327,7 +327,7 @@ func TestRunContext_IsMsgValue(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			contract := vm.NewContract(&Contract{}, nil, test.value, 0)
 
-			runContext := NewRunContext(nil, contract, nil)
+			runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
 			if actual := runContext.IsMsgValue(); test.expected != actual {
 				t.Errorf(
@@ -343,7 +343,7 @@ func TestRunContext_IsMsgValue(t *testing.T) {
 func TestRunContext_EventEmitter(t *testing.T) {
 	eventEmitter := &EventEmitter{}
 
-	runContext := NewRunContext(nil, nil, eventEmitter)
+	runContext := NewRunContext(sdk.Context{}, nil, nil, eventEmitter)
 
 	if actualEventEmitter := runContext.EventEmitter(); !reflect.DeepEqual(
 		eventEmitter,
