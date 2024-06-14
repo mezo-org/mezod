@@ -668,7 +668,8 @@ func (suite *BackendTestSuite) TestTendermintBlockResultByNumber() {
 			true,
 		},
 	}
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := testCases[i]
 		suite.Run(fmt.Sprintf("Case %s", tc.name), func() {
 			suite.SetupTest() // reset test and queries
 			tc.registerMock(tc.blockNumber)
