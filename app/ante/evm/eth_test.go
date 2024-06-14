@@ -261,7 +261,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			false,
 			false,
 			0,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"sender not found",
@@ -276,7 +276,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			func(ctx sdk.Context) sdk.Context { return ctx },
 			false, false,
 			0,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"gas limit too low",
@@ -285,7 +285,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			func(ctx sdk.Context) sdk.Context { return ctx },
 			false, false,
 			0,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"gas limit above block gas limit",
@@ -294,7 +294,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			func(ctx sdk.Context) sdk.Context { return ctx },
 			false, false,
 			0,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"not enough balance for fees",
@@ -303,7 +303,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			func(ctx sdk.Context) sdk.Context { return ctx },
 			false, false,
 			0,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"not enough tx gas",
@@ -315,7 +315,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			},
 			false, true,
 			0,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"not enough block gas",
@@ -327,7 +327,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			},
 			false, true,
 			0,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"success - legacy tx",
@@ -339,7 +339,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			},
 			true, false,
 			tx2Priority,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"success - dynamic fee tx",
@@ -351,7 +351,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			},
 			true, false,
 			dynamicFeeTxPriority,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"success - gas limit on gasMeter is set on ReCheckTx mode",
@@ -363,7 +363,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			},
 			true, false,
 			0,
-			func(ctx sdk.Context) {},
+			func(_ sdk.Context) {},
 		},
 		{
 			"success - legacy tx - insufficient funds but enough staking rewards",
