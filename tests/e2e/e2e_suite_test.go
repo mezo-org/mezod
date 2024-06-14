@@ -113,8 +113,8 @@ func (s *IntegrationTestSuite) runNodeWithCurrentChanges() {
 
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	s.Require().NotEmpty(githubToken,
-		"GITHUB_TOKEN env var is required; " +
-		"token must point to an account with read access to the thesis/mezo private repository",
+		"GITHUB_TOKEN env var is required; "+
+			"token must point to an account with read access to the thesis/mezo private repository",
 	)
 
 	err := s.upgradeManager.BuildImage(
@@ -123,7 +123,7 @@ func (s *IntegrationTestSuite) runNodeWithCurrentChanges() {
 		repoDockerFile,
 		".",
 		map[string]string{
-			"BRANCH_NAME": branch,
+			"BRANCH_NAME":  branch,
 			"GITHUB_TOKEN": githubToken,
 		},
 	)

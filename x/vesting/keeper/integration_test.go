@@ -904,7 +904,7 @@ var _ = Describe("Clawback Vesting Account - Barberry bug", func() {
 	})
 
 	Context("when creating a clawback vesting account", func() {
-		var testcases = []struct {
+		testcases := []struct {
 			name         string
 			lockupCoins  sdk.Coins
 			vestingCoins sdk.Coins
