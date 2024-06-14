@@ -864,7 +864,7 @@ var _ = Describe("Clawback Vesting Accounts - claw back tokens", Ordered, func()
 	})
 })
 
-// Trying to replicate the faulty behaviour in MsgCreateClawbackVestingAccount,
+// Trying to replicate the faulty behavior in MsgCreateClawbackVestingAccount,
 // that was disclosed as a potential attack vector in relation to the Barberry
 // security patch.
 //
