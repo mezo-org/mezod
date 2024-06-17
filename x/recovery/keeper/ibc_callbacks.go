@@ -161,7 +161,6 @@ func (k Keeper) OnRecvPacket(
 		}
 
 		_, err = k.transferKeeper.Transfer(sdk.WrapSDKContext(ctx), packetTransfer)
-
 		if err != nil {
 			return true // stop iteration
 		}

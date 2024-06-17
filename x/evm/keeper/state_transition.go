@@ -16,8 +16,9 @@
 package keeper
 
 import (
-	"golang.org/x/exp/maps"
 	"math/big"
+
+	"golang.org/x/exp/maps"
 
 	tmtypes "github.com/tendermint/tendermint/types"
 

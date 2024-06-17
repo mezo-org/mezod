@@ -17,7 +17,7 @@ func FuzzSplitGasMeterKey(f *testing.F) {
 	key = append(key, contract.Bytes()...)
 	key = append(key, user.Bytes()...)
 	f.Add(key)
-	f.Fuzz(func(t *testing.T, key []byte) {
+	f.Fuzz(func(_ *testing.T, key []byte) {
 		types.SplitGasMeterKey(key)
 	})
 }

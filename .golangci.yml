@@ -5,7 +5,6 @@ run:
 
 linters:
   enable:
-    - depguard
     - dogsled
     - dupl
     - errcheck
@@ -61,3 +60,10 @@ linters-settings:
         - https://github.com/dgrijalva/jwt-go:                          # Blocked module with version constraint
             version: ">= 4.0.0-preview1"                                # Version constraint, see https://github.com/Masterminds/semver#basic-comparisons
             reason: "CVE-2020-26160"                                    # Reason why the version constraint exists. (Optional)
+issues:
+  exclude-rules:
+    - path: .*_test.go     # Exclude unit test files from the dot-imports rule.
+      linters:             # This allows the use of dot imports in unit tests for
+        - revive           # easier and more concise test code. Without this exclusion,
+      text: "dot-imports"  # the imported functionalities would have to be prepended
+                           # with package name (e.g. ginkgo.Describe instead of Describe)
