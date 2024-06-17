@@ -56,7 +56,7 @@ func (mm *mintMethod) Run(
 	recipient := inputs[0].(common.Address)
 	amount := inputs[1].(*big.Int)
 
-	sdkAmount, err := precompile.BigIntConverter{}.ToSDK(amount)
+	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
 	}
@@ -82,7 +82,7 @@ func (mm *mintMethod) Run(
 	err = mm.bankKeeper.SendCoinsFromModuleToAccount(
 		context.SdkCtx(),
 		evm.ModuleName,
-		precompile.AddressConverter{}.ToSDK(recipient),
+		precompile.TypesConverter.Address.ToSDK(recipient),
 		coins,
 	)
 	if err != nil {

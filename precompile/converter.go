@@ -8,19 +8,27 @@ import (
 	"math/big"
 )
 
-type AddressConverter struct {}
+var TypesConverter = struct {
+	Address addressConverter
+	BigInt bigIntConverter
+}{
+	Address: addressConverter{},
+	BigInt: bigIntConverter{},
+}
 
-func (ac AddressConverter) ToSDK(address common.Address) sdk.AccAddress {
+type addressConverter struct {}
+
+func (ac addressConverter) ToSDK(address common.Address) sdk.AccAddress {
 	return address.Bytes()
 }
 
-func (ac AddressConverter) FromSDK(address sdk.AccAddress) common.Address {
+func (ac addressConverter) FromSDK(address sdk.AccAddress) common.Address {
 	return common.BytesToAddress(address)
 }
 
-type BigIntConverter struct {}
+type bigIntConverter struct {}
 
-func (bic BigIntConverter) ToSDK(value *big.Int) (sdkmath.Int, error){
+func (bic bigIntConverter) ToSDK(value *big.Int) (sdkmath.Int, error){
 	// Validate the value's bit length against the maximum bit length
 	// supported by the SDK. Otherwise, the sdk.NewIntFromBigInt may panic.
 	if value.BitLen() > sdk.MaxBitLen {
@@ -33,6 +41,6 @@ func (bic BigIntConverter) ToSDK(value *big.Int) (sdkmath.Int, error){
 	return sdk.NewIntFromBigInt(value), nil
 }
 
-func (bic BigIntConverter) FromSDK(value sdkmath.Int) *big.Int {
+func (bic bigIntConverter) FromSDK(value sdkmath.Int) *big.Int {
 	return value.BigInt()
 }

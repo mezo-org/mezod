@@ -50,14 +50,14 @@ func (bom *balanceOfMethod) Run(
 
 	balance := bom.bankKeeper.GetBalance(
 		context.SdkCtx(),
-		precompile.AddressConverter{}.ToSDK(account),
+		precompile.TypesConverter.Address.ToSDK(account),
 		// TODO: This is normally taken from EVM module's parameters.
 		//       Let's make a shortcut for now.
 		evm.DefaultEVMDenom,
 	)
 
 	return precompile.MethodOutputs{
-		precompile.BigIntConverter{}.FromSDK(balance.Amount),
+		precompile.TypesConverter.BigInt.FromSDK(balance.Amount),
 	}, nil
 }
 
