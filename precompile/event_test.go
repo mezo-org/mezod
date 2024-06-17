@@ -1,13 +1,14 @@
 package precompile
 
 import (
+	"math/big"
+	"reflect"
+	"testing"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
-	"math/big"
-	"reflect"
-	"testing"
 )
 
 func TestEventEmitter_Emit(t *testing.T) {
@@ -15,8 +16,13 @@ func TestEventEmitter_Emit(t *testing.T) {
 	sdkCtx = sdkCtx.WithBlockHeight(100)
 
 	uint256Type, err := abi.NewType("uint256", "uint256", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	bytesType, err := abi.NewType("bytes", "bytes", nil)
-
+	if err != nil {
+		t.Fatal(err)
+	}
 	eventAbi := abi.Event{
 		Name: "testEvent",
 		ID: common.HexToHash(
