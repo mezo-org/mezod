@@ -3,6 +3,7 @@ package btctoken
 import (
 	"embed"
 	"fmt"
+
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
@@ -17,7 +18,7 @@ var filesystem embed.FS
 // avoid collisions.
 const EvmAddress = "0x1000000000000000000000000000000000000000"
 
-func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error){
+func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)

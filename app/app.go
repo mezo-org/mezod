@@ -20,13 +20,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/evmos/evmos/v12/precompile/btctoken"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/evmos/evmos/v12/precompile/btctoken"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"

@@ -2,20 +2,22 @@ package btctoken
 
 import (
 	"fmt"
+	"math/big"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 	evm "github.com/evmos/evmos/v12/x/evm/types"
-	"math/big"
 )
 
 const MintMethodName = "mint"
 
 // TODO: This implementation is a playground for now. It should be replaced with
-//       the actual implementation of the mint method. The actual implementation
-//       should be controlled by the bridge account that will have
-//       the mint authority.
+//
+//	the actual implementation of the mint method. The actual implementation
+//	should be controlled by the bridge account that will have
+//	the mint authority.
 type mintMethod struct {
 	bankKeeper bankkeeper.Keeper
 }
@@ -36,7 +38,7 @@ func (mm *mintMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (mm *mintMethod) RequiredGas(methodInputArgs []byte) (uint64, bool) {
+func (mm *mintMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
@@ -102,4 +104,3 @@ func (mm *mintMethod) Run(
 
 	return precompile.MethodOutputs{true}, nil
 }
-

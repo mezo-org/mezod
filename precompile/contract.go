@@ -294,10 +294,10 @@ func LoadAbiFile(fs embed.FS, path string) (abi.ABI, error) {
 		return abi.ABI{}, fmt.Errorf("cannot load ABI file [%w]", err)
 	}
 
-	abiJson, err := abi.JSON(bytes.NewReader(abiBytes))
+	abiJSON, err := abi.JSON(bytes.NewReader(abiBytes))
 	if err != nil {
 		return abi.ABI{}, fmt.Errorf("cannot parse ABI file [%w]", err)
 	}
 
-	return abiJson, nil
+	return abiJSON, nil
 }

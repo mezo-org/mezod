@@ -29,7 +29,7 @@ func (bom *balanceOfMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (bom *balanceOfMethod) RequiredGas(methodInputArgs []byte) (uint64, bool) {
+func (bom *balanceOfMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
@@ -60,7 +60,3 @@ func (bom *balanceOfMethod) Run(
 		precompile.TypesConverter.BigInt.FromSDK(balance.Amount),
 	}, nil
 }
-
-
-
-

@@ -2,6 +2,7 @@ package precompile
 
 import (
 	"fmt"
+
 	store "github.com/cosmos/cosmos-sdk/store/types"
 )
 

@@ -1,9 +1,10 @@
 package btctoken
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
-	"math/big"
 )
 
 const TransferEventName = "Transfer"
@@ -41,4 +42,3 @@ func (te *transferEvent) Arguments() []*precompile.EventArgument {
 		},
 	}
 }
-
