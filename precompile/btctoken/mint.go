@@ -11,13 +11,22 @@ import (
 	evm "github.com/evmos/evmos/v12/x/evm/types"
 )
 
+// TODO: This implementation is a playground for now.
+// It should be replaced with the actual implementation of the mint method.
+
+// MintMethodName is the name of the mint method. It matches the name
+// of the method in the contract ABI.
 const MintMethodName = "mint"
 
-// TODO: This implementation is a playground for now. It should be replaced with
+// mintMethod is the implementation of the mint method that mints BTC tokens
+// to the recipient address.
 //
-//	the actual implementation of the mint method. The actual implementation
-//	should be controlled by the bridge account that will have
-//	the mint authority.
+// The method has the following input arguments:
+// - recipient: the address to which the tokens are minted,
+// - amount: the amount of BTC tokens minted (in 1e18 precision).
+//
+// The method returns true if the minting was successful.
+// Otherwise, it returns nil and an error.
 type mintMethod struct {
 	bankKeeper bankkeeper.Keeper
 }

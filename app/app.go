@@ -1289,6 +1289,7 @@ func (app *Evmos) setupUpgradeHandlers() {
 	}
 }
 
+// customEvmPrecompiles builds custom precompiles of the EVM module.
 func customEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
 ) ([]vm.PrecompiledContract, error) {

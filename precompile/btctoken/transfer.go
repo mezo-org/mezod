@@ -7,8 +7,15 @@ import (
 	"github.com/evmos/evmos/v12/precompile"
 )
 
+// TransferEventName is the name of the Transfer event. It matches the name
+// of the event in the contract ABI.
 const TransferEventName = "Transfer"
 
+// transferEvent is the implementation of the Transfer event that contains
+// the following arguments:
+// - from (indexed): the address from which the tokens are transferred,
+// - to (indexed): the address to which the tokens are transferred,
+// - value (non-indexed): the amount of tokens transferred.
 type transferEvent struct {
 	from, to common.Address
 	value    *big.Int

@@ -18,6 +18,7 @@ var filesystem embed.FS
 // avoid collisions.
 const EvmAddress = "0x1000000000000000000000000000000000000000"
 
+// NewPrecompile creates a new BTC token precompile.
 func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
@@ -35,6 +36,8 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error) {
 	return contract, nil
 }
 
+// newPrecompileMethods builds the list of methods for the BTC token precompile.
+// All methods returned by this function are registered in the BTC token precompile.
 func newPrecompileMethods(bankKeeper bankkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
 		newMintMethod(bankKeeper),
