@@ -16,6 +16,7 @@
 package keeper
 
 import (
+	"golang.org/x/exp/maps"
 	"math/big"
 
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -69,7 +70,18 @@ func (k *Keeper) NewEVM(
 		tracer = k.Tracer(ctx, msg, cfg.ChainConfig)
 	}
 	vmConfig := k.VMConfig(ctx, msg, cfg, tracer)
-	return vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
+
+	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
+
+	// Load default EVM precompiles for the recent fork.
+	precompiles := vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight()))
+	// Add custom precompiles into the mix. Note that if a custom precompile
+	// uses the same address as a default precompile, the custom one will be used.
+	maps.Copy(precompiles, k.customPrecompiles)
+	// Add all precompiles to the EVM instance.
+	evm.WithPrecompiles(precompiles, maps.Keys(precompiles))
+
+	return evm
 }
 
 // GetHashFn implements vm.GetHashFunc for Ethermint. It handles 3 cases:
@@ -309,7 +321,8 @@ func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLo
 // # Commit parameter
 //
 // If commit is true, the `StateDB` will be committed, otherwise discarded.
-func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context,
+func (k *Keeper) ApplyMessageWithConfig(
+	ctx sdk.Context,
 	msg core.Message,
 	tracer vm.EVMLogger,
 	commit bool,
@@ -361,8 +374,8 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context,
 
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
-	if rules := cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil); rules.IsBerlin {
-		stateDB.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
+	if rules := cfg.Rules(ctx.BlockHeight()); rules.IsBerlin {
+		stateDB.PrepareAccessList(msg.From(), msg.To(), evm.ActivePrecompiles(rules), msg.AccessList())
 	}
 
 	if contractCreation {
