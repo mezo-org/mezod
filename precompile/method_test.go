@@ -1,8 +1,9 @@
 package precompile
 
 import (
-	store "github.com/cosmos/cosmos-sdk/store/types"
 	"testing"
+
+	store "github.com/cosmos/cosmos-sdk/store/types"
 )
 
 func TestDefaultRequiredGas(t *testing.T) {
@@ -22,19 +23,19 @@ func TestDefaultRequiredGas(t *testing.T) {
 			methodType:      Read,
 			methodInputArgs: []byte{0x1, 0x2},
 			// readCostFlat + (readCostPerByte * len(methodInputArgs)) = 10 + 2 * 2 = 14
-			expectedGas:     14,
+			expectedGas: 14,
 		},
 		"write method": {
 			methodType:      Write,
 			methodInputArgs: []byte{0x1, 0x2},
 			// writeCostFlat + (writeCostPerByte * len(methodInputArgs)) = 20 + 4 * 2 = 28
-			expectedGas:     28,
+			expectedGas: 28,
 		},
 		"empty input": {
 			methodType:      Write,
 			methodInputArgs: []byte{},
 			// writeCostFlat = 20
-			expectedGas:     20,
+			expectedGas: 20,
 		},
 	}
 
@@ -59,7 +60,7 @@ type mockMethod struct {
 	requiredGas uint64
 	payable     bool
 
-	run	func(
+	run func(
 		context *RunContext,
 		inputs MethodInputs,
 	) (MethodOutputs, error)
@@ -73,7 +74,7 @@ func (mm *mockMethod) MethodType() MethodType {
 	return mm.methodType
 }
 
-func (mm *mockMethod) RequiredGas(methodInputArgs []byte) (uint64, bool) {
+func (mm *mockMethod) RequiredGas(_ []byte) (uint64, bool) {
 	if mm.requiredGas == 0 {
 		return 0, false
 	}

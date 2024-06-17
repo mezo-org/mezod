@@ -137,7 +137,7 @@ func (suite *IBCTestingSuite) TestOnAcknowledgementPacketIBC() {
 		},
 		{
 			"no-op - claims record not found",
-			func(claimableAmount int64) {
+			func(_ int64) {
 			},
 			4,
 			0,

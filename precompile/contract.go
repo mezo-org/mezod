@@ -2,12 +2,13 @@ package precompile
 
 import (
 	"fmt"
+	"math/big"
+
 	store "github.com/cosmos/cosmos-sdk/store/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
-	"math/big"
 )
 
 var _ vm.PrecompiledContract = &Contract{}
@@ -217,8 +218,8 @@ func (c *Contract) methodByID(methodID []byte) (Method, *abi.Method, error) {
 // RunContext represents the context in which a precompiled contract method is
 // executed. It provides access to the EVM, the contract, and the event emitter.
 type RunContext struct {
-	evm *vm.EVM
-	contract *vm.Contract
+	evm          *vm.EVM
+	contract     *vm.Contract
 	eventEmitter *EventEmitter
 }
 
