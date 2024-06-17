@@ -1,6 +1,7 @@
 package btctoken
 
 import (
+	"fmt"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
@@ -56,7 +57,10 @@ func (bom *balanceOfMethod) Run(
 		return nil, err
 	}
 
-	account := inputs[0].(common.Address)
+	account, ok := inputs[0].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("account argument must be common.Address")
+	}
 
 	balance := bom.bankKeeper.GetBalance(
 		context.SdkCtx(),

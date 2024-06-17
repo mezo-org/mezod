@@ -64,8 +64,15 @@ func (mm *mintMethod) Run(
 		return nil, err
 	}
 
-	recipient := inputs[0].(common.Address)
-	amount := inputs[1].(*big.Int)
+	recipient, ok := inputs[0].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("recipient argument must be common.Address")
+	}
+
+	amount, ok := inputs[1].(*big.Int)
+	if !ok {
+		return nil, fmt.Errorf("amount argument must be *big.Int")
+	}
 
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
