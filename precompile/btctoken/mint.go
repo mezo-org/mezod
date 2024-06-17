@@ -100,6 +100,6 @@ func (mm *mintMethod) Run(
 		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
 	}
 
-	return nil, nil
+	return precompile.MethodOutputs{true}, nil
 }
 
