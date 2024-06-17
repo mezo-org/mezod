@@ -1,7 +1,40 @@
 syntax = "proto3";
 package evmos.dualstaking.v1;
 
+import "gogoproto/gogo.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "cosmos/base/v1beta1/coin.proto";
+
 option go_package = "github.com/evmos/evmos/v12/x/dualstaking/types";
 
-// Msg defines the Msg service.
-service Msg {}
+// Define the RPC service for dual staking
+service Msg {
+  rpc StakeTokens(MsgStakeTokens) returns (MsgStakeTokensResponse);
+  rpc DelegateTokens(MsgDelegateTokens) returns (MsgDelegateTokensResponse);
+  rpc AutoDelegateTokens(MsgAutoDelegateTokens) returns (MsgAutoDelegateTokensResponse);
+}
+
+message MsgStakeTokens {
+  string staker = 1;
+  cosmos.base.v1beta1.Coin amount = 2;
+  int64 lock_duration = 3;
+}
+
+message MsgStakeTokensResponse {}
+
+message MsgDelegateTokens {
+  string staker = 1;
+  string validator = 2;
+  cosmos.base.v1beta1.Coin amount = 3;
+}
+
+message MsgDelegateTokensResponse {}
+
+message MsgAutoDelegateTokens {
+  string staker = 1;
+  string validator = 2;
+  cosmos.base.v1beta1.Coin amount = 3;
+  int64 lock_duration = 4;
+}
+
+message MsgAutoDelegateTokensResponse {}

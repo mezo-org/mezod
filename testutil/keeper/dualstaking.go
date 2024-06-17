@@ -27,15 +27,15 @@ func DualstakingKeeper(t testing.TB) (*keeper.Keeper, sdk.Context) {
 	registry := codectypes.NewInterfaceRegistry()
 	cdc := codec.NewProtoCodec(registry)
 
+	// TODO: Replace with actual keepers
 	k := keeper.NewKeeper(
 		cdc,
 		storeKey,
+		nil,
+		nil,
 	)
 
 	ctx := sdk.NewContext(stateStore, tmproto.Header{}, false, log.NewNopLogger())
 
-	// Initialize params
-	k.SetParams(ctx, types.DefaultParams())
-
-	return k, ctx
+	return &k, ctx
 }

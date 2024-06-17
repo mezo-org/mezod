@@ -332,7 +332,7 @@ type Evmos struct {
 	VestingKeeper     vestingkeeper.Keeper
 	RecoveryKeeper    *recoverykeeper.Keeper
 	RevenueKeeper     revenuekeeper.Keeper
-	DualstakingKeeper *dualstakingkeeper.Keeper
+	DualstakingKeeper dualstakingkeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -508,7 +508,7 @@ func NewEvmos(
 		app.AccountKeeper, app.BankKeeper, &stakingKeeper, app.DistrKeeper, app.IBCKeeper.ChannelKeeper,
 	)
 
-	app.DualstakingKeeper = dualstakingkeeper.NewKeeper(appCodec, keys[dualstakingtypes.StoreKey])
+	app.DualstakingKeeper = dualstakingkeeper.NewKeeper(appCodec, keys[dualstakingtypes.StoreKey], app.AccountKeeper, app.BankKeeper)
 
 	// register the staking hooks
 	// NOTE: stakingKeeper above is passed by reference, so that it will contain these hooks
@@ -698,7 +698,7 @@ func NewEvmos(
 			app.GetSubspace(recoverytypes.ModuleName)),
 		revenue.NewAppModule(app.RevenueKeeper, app.AccountKeeper,
 			app.GetSubspace(revenuetypes.ModuleName)),
-		dualstaking.NewAppModule(appCodec, *app.DualstakingKeeper),
+		dualstaking.NewAppModule(appCodec, app.DualstakingKeeper),
 	)
 
 	// During begin block slashing happens after distr.BeginBlocker so that

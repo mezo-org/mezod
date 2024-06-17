@@ -11,7 +11,6 @@ import (
 
 func TestGenesis(t *testing.T) {
 	genesisState := types.GenesisState{
-		Params: types.DefaultParams(),
 	}
 
 	k, ctx := keepertest.DualstakingKeeper(t)

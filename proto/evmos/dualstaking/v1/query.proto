@@ -9,17 +9,59 @@ option go_package = "github.com/evmos/evmos/v12/x/dualstaking/types";
 
 // Query defines the gRPC querier service.
 service Query {
-  // Params queries the parameters of the module.
-  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
-    option (google.api.http).get = "/evmos/dualstaking/v1/params";
+  rpc StakingPosition(QueryStakingPositionRequest) returns (QueryStakingPositionResponse) {
+    option (google.api.http).get = "/dualstaking/staking/{staker}/{stake_id}";
+  }
+
+  rpc DelegationPosition(QueryDelegationPositionRequest) returns (QueryDelegationPositionResponse) {
+    option (google.api.http).get = "/dualstaking/delegation/{staker}/{delegation_id}";
+  }
+
+  // StakingPositionsByStaker queries all staking positions for a given staker
+  rpc StakingPositionsByStaker(QueryStakingPositionsByStakerRequest) returns (QueryStakingPositionsByStakerResponse) {
+    option (google.api.http).get = "/evmos/dualstaking/staking_positions_by_staker/{staker}";
+  }
+
+  // DelegationPositionsByStaker queries all delegation positions for a given staker
+  rpc DelegationPositionsByStaker(QueryDelegationPositionsByStakerRequest) returns (QueryDelegationPositionsByStakerResponse) {
+    option (google.api.http).get = "/evmos/dualstaking/delegation_positions_by_staker/{staker}";
   }
 }
 
-// QueryParamsRequest is request type for the Query/Params RPC method.
-message QueryParamsRequest {}
+message QueryStakingPositionRequest {
+  string staker = 1;
+  string stake_id = 2;
+}
 
-// QueryParamsResponse is response type for the Query/Params RPC method.
-message QueryParamsResponse {
-  // params holds all the parameters of this module.
-  Params params = 1 [(gogoproto.nullable) = false];
+message QueryStakingPositionResponse {
+  StakingPosition staking_position = 1;
+}
+
+message QueryDelegationPositionRequest {
+  string staker = 1;
+  string delegation_id = 2;
+}
+
+message QueryDelegationPositionResponse {
+  DelegationPosition delegation_position = 1;
+}
+
+// QueryStakingPositionsByStakerRequest is the request type for the Query/StakingPositionsByStaker RPC method
+message QueryStakingPositionsByStakerRequest {
+  string staker = 1;
+}
+
+// QueryStakingPositionsByStakerResponse is the response type for the Query/StakingPositionsByStaker RPC method
+message QueryStakingPositionsByStakerResponse {
+  repeated StakingPosition staking_positions = 1;
+}
+
+// QueryDelegationPositionsByStakerRequest is the request type for the Query/DelegationPositionsByStaker RPC method
+message QueryDelegationPositionsByStakerRequest {
+  string staker = 1;
+}
+
+// QueryDelegationPositionsByStakerResponse is the response type for the Query/DelegationPositionsByStaker RPC method
+message QueryDelegationPositionsByStakerResponse {
+  repeated DelegationPosition delegation_positions = 1;
 }

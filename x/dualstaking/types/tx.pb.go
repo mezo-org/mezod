@@ -6,10 +6,17 @@ package types
 import (
 	context "context"
 	fmt "fmt"
+	types "github.com/cosmos/cosmos-sdk/types"
+	_ "github.com/cosmos/cosmos-sdk/types/query"
+	_ "github.com/cosmos/gogoproto/gogoproto"
 	grpc1 "github.com/gogo/protobuf/grpc"
 	proto "github.com/gogo/protobuf/proto"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	io "io"
 	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -23,19 +30,343 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+type MsgStakeTokens struct {
+	Staker       string      `protobuf:"bytes,1,opt,name=staker,proto3" json:"staker,omitempty"`
+	Amount       *types.Coin `protobuf:"bytes,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	LockDuration int64       `protobuf:"varint,3,opt,name=lock_duration,json=lockDuration,proto3" json:"lock_duration,omitempty"`
+}
+
+func (m *MsgStakeTokens) Reset()         { *m = MsgStakeTokens{} }
+func (m *MsgStakeTokens) String() string { return proto.CompactTextString(m) }
+func (*MsgStakeTokens) ProtoMessage()    {}
+func (*MsgStakeTokens) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b30b1537a700dc4b, []int{0}
+}
+func (m *MsgStakeTokens) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgStakeTokens) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgStakeTokens.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgStakeTokens) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgStakeTokens.Merge(m, src)
+}
+func (m *MsgStakeTokens) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgStakeTokens) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgStakeTokens.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgStakeTokens proto.InternalMessageInfo
+
+func (m *MsgStakeTokens) GetStaker() string {
+	if m != nil {
+		return m.Staker
+	}
+	return ""
+}
+
+func (m *MsgStakeTokens) GetAmount() *types.Coin {
+	if m != nil {
+		return m.Amount
+	}
+	return nil
+}
+
+func (m *MsgStakeTokens) GetLockDuration() int64 {
+	if m != nil {
+		return m.LockDuration
+	}
+	return 0
+}
+
+type MsgStakeTokensResponse struct {
+}
+
+func (m *MsgStakeTokensResponse) Reset()         { *m = MsgStakeTokensResponse{} }
+func (m *MsgStakeTokensResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgStakeTokensResponse) ProtoMessage()    {}
+func (*MsgStakeTokensResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b30b1537a700dc4b, []int{1}
+}
+func (m *MsgStakeTokensResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgStakeTokensResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgStakeTokensResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgStakeTokensResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgStakeTokensResponse.Merge(m, src)
+}
+func (m *MsgStakeTokensResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgStakeTokensResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgStakeTokensResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgStakeTokensResponse proto.InternalMessageInfo
+
+type MsgDelegateTokens struct {
+	Staker    string      `protobuf:"bytes,1,opt,name=staker,proto3" json:"staker,omitempty"`
+	Validator string      `protobuf:"bytes,2,opt,name=validator,proto3" json:"validator,omitempty"`
+	Amount    *types.Coin `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
+}
+
+func (m *MsgDelegateTokens) Reset()         { *m = MsgDelegateTokens{} }
+func (m *MsgDelegateTokens) String() string { return proto.CompactTextString(m) }
+func (*MsgDelegateTokens) ProtoMessage()    {}
+func (*MsgDelegateTokens) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b30b1537a700dc4b, []int{2}
+}
+func (m *MsgDelegateTokens) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgDelegateTokens) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgDelegateTokens.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgDelegateTokens) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgDelegateTokens.Merge(m, src)
+}
+func (m *MsgDelegateTokens) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgDelegateTokens) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgDelegateTokens.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgDelegateTokens proto.InternalMessageInfo
+
+func (m *MsgDelegateTokens) GetStaker() string {
+	if m != nil {
+		return m.Staker
+	}
+	return ""
+}
+
+func (m *MsgDelegateTokens) GetValidator() string {
+	if m != nil {
+		return m.Validator
+	}
+	return ""
+}
+
+func (m *MsgDelegateTokens) GetAmount() *types.Coin {
+	if m != nil {
+		return m.Amount
+	}
+	return nil
+}
+
+type MsgDelegateTokensResponse struct {
+}
+
+func (m *MsgDelegateTokensResponse) Reset()         { *m = MsgDelegateTokensResponse{} }
+func (m *MsgDelegateTokensResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgDelegateTokensResponse) ProtoMessage()    {}
+func (*MsgDelegateTokensResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b30b1537a700dc4b, []int{3}
+}
+func (m *MsgDelegateTokensResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgDelegateTokensResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgDelegateTokensResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgDelegateTokensResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgDelegateTokensResponse.Merge(m, src)
+}
+func (m *MsgDelegateTokensResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgDelegateTokensResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgDelegateTokensResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgDelegateTokensResponse proto.InternalMessageInfo
+
+type MsgAutoDelegateTokens struct {
+	Staker       string      `protobuf:"bytes,1,opt,name=staker,proto3" json:"staker,omitempty"`
+	Validator    string      `protobuf:"bytes,2,opt,name=validator,proto3" json:"validator,omitempty"`
+	Amount       *types.Coin `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	LockDuration int64       `protobuf:"varint,4,opt,name=lock_duration,json=lockDuration,proto3" json:"lock_duration,omitempty"`
+}
+
+func (m *MsgAutoDelegateTokens) Reset()         { *m = MsgAutoDelegateTokens{} }
+func (m *MsgAutoDelegateTokens) String() string { return proto.CompactTextString(m) }
+func (*MsgAutoDelegateTokens) ProtoMessage()    {}
+func (*MsgAutoDelegateTokens) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b30b1537a700dc4b, []int{4}
+}
+func (m *MsgAutoDelegateTokens) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgAutoDelegateTokens) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgAutoDelegateTokens.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgAutoDelegateTokens) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgAutoDelegateTokens.Merge(m, src)
+}
+func (m *MsgAutoDelegateTokens) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgAutoDelegateTokens) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgAutoDelegateTokens.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgAutoDelegateTokens proto.InternalMessageInfo
+
+func (m *MsgAutoDelegateTokens) GetStaker() string {
+	if m != nil {
+		return m.Staker
+	}
+	return ""
+}
+
+func (m *MsgAutoDelegateTokens) GetValidator() string {
+	if m != nil {
+		return m.Validator
+	}
+	return ""
+}
+
+func (m *MsgAutoDelegateTokens) GetAmount() *types.Coin {
+	if m != nil {
+		return m.Amount
+	}
+	return nil
+}
+
+func (m *MsgAutoDelegateTokens) GetLockDuration() int64 {
+	if m != nil {
+		return m.LockDuration
+	}
+	return 0
+}
+
+type MsgAutoDelegateTokensResponse struct {
+}
+
+func (m *MsgAutoDelegateTokensResponse) Reset()         { *m = MsgAutoDelegateTokensResponse{} }
+func (m *MsgAutoDelegateTokensResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgAutoDelegateTokensResponse) ProtoMessage()    {}
+func (*MsgAutoDelegateTokensResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_b30b1537a700dc4b, []int{5}
+}
+func (m *MsgAutoDelegateTokensResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgAutoDelegateTokensResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgAutoDelegateTokensResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgAutoDelegateTokensResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgAutoDelegateTokensResponse.Merge(m, src)
+}
+func (m *MsgAutoDelegateTokensResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgAutoDelegateTokensResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgAutoDelegateTokensResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgAutoDelegateTokensResponse proto.InternalMessageInfo
+
+func init() {
+	proto.RegisterType((*MsgStakeTokens)(nil), "evmos.dualstaking.v1.MsgStakeTokens")
+	proto.RegisterType((*MsgStakeTokensResponse)(nil), "evmos.dualstaking.v1.MsgStakeTokensResponse")
+	proto.RegisterType((*MsgDelegateTokens)(nil), "evmos.dualstaking.v1.MsgDelegateTokens")
+	proto.RegisterType((*MsgDelegateTokensResponse)(nil), "evmos.dualstaking.v1.MsgDelegateTokensResponse")
+	proto.RegisterType((*MsgAutoDelegateTokens)(nil), "evmos.dualstaking.v1.MsgAutoDelegateTokens")
+	proto.RegisterType((*MsgAutoDelegateTokensResponse)(nil), "evmos.dualstaking.v1.MsgAutoDelegateTokensResponse")
+}
+
 func init() { proto.RegisterFile("evmos/dualstaking/v1/tx.proto", fileDescriptor_b30b1537a700dc4b) }
 
 var fileDescriptor_b30b1537a700dc4b = []byte{
-	// 134 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4d, 0x2d, 0xcb, 0xcd,
-	0x2f, 0xd6, 0x4f, 0x29, 0x4d, 0xcc, 0x29, 0x2e, 0x49, 0xcc, 0xce, 0xcc, 0x4b, 0xd7, 0x2f, 0x33,
-	0xd4, 0x2f, 0xa9, 0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x01, 0x4b, 0xeb, 0x21, 0x49,
-	0xeb, 0x95, 0x19, 0x1a, 0xb1, 0x72, 0x31, 0xfb, 0x16, 0xa7, 0x3b, 0x79, 0x9c, 0x78, 0x24, 0xc7,
-	0x78, 0xe1, 0x91, 0x1c, 0xe3, 0x83, 0x47, 0x72, 0x8c, 0x13, 0x1e, 0xcb, 0x31, 0x5c, 0x78, 0x2c,
-	0xc7, 0x70, 0xe3, 0xb1, 0x1c, 0x43, 0x94, 0x5e, 0x7a, 0x66, 0x49, 0x46, 0x69, 0x92, 0x5e, 0x72,
-	0x7e, 0xae, 0x3e, 0xc4, 0x02, 0x08, 0x59, 0x66, 0x68, 0xa4, 0x5f, 0x81, 0x62, 0x59, 0x49, 0x65,
-	0x41, 0x6a, 0x71, 0x12, 0x1b, 0xd8, 0x36, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0xbf, 0x47,
-	0xc5, 0xd0, 0x8e, 0x00, 0x00, 0x00,
+	// 435 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x94, 0x4f, 0x8f, 0x93, 0x40,
+	0x14, 0xc0, 0x3b, 0x8b, 0x69, 0xd2, 0x59, 0xdd, 0x44, 0xb2, 0x6e, 0x58, 0x74, 0xb1, 0x41, 0x13,
+	0x1b, 0x35, 0x33, 0xa1, 0xfb, 0x09, 0xd4, 0x3d, 0x78, 0xe1, 0x82, 0x9e, 0xbc, 0x98, 0x81, 0x4e,
+	0x46, 0x84, 0xf2, 0x90, 0x19, 0xc8, 0x6e, 0xe2, 0xc1, 0x8f, 0xe0, 0x97, 0xf0, 0xbb, 0x78, 0xf0,
+	0xb0, 0x47, 0x8f, 0xa6, 0xfd, 0x22, 0x86, 0x7f, 0x15, 0x2c, 0x8d, 0xf5, 0xb4, 0x17, 0x02, 0xef,
+	0xfd, 0x78, 0xef, 0xc7, 0x9b, 0x61, 0xf0, 0x19, 0x2f, 0x96, 0x20, 0xe9, 0x22, 0x67, 0xb1, 0x54,
+	0x2c, 0x0a, 0x13, 0x41, 0x0b, 0x87, 0xaa, 0x4b, 0x92, 0x66, 0xa0, 0x40, 0x3f, 0xae, 0xd2, 0xa4,
+	0x93, 0x26, 0x85, 0x63, 0x1e, 0x0b, 0x10, 0x50, 0x01, 0xb4, 0xbc, 0xab, 0x59, 0xf3, 0x69, 0x00,
+	0xb2, 0xac, 0xe5, 0x33, 0xc9, 0xe9, 0xa7, 0x9c, 0x67, 0x57, 0xb4, 0x70, 0x7c, 0xae, 0x98, 0x43,
+	0x53, 0x26, 0xc2, 0x84, 0xa9, 0x10, 0x92, 0x86, 0xb5, 0xba, 0x6c, 0x4b, 0x05, 0x10, 0x36, 0x79,
+	0xfb, 0x0b, 0xc2, 0x47, 0xae, 0x14, 0x6f, 0x14, 0x8b, 0xf8, 0x5b, 0x88, 0x78, 0x22, 0xf5, 0x13,
+	0x3c, 0x2e, 0x15, 0x78, 0x66, 0xa0, 0x29, 0x9a, 0x4d, 0xbc, 0xe6, 0x49, 0x77, 0xf0, 0x98, 0x2d,
+	0x21, 0x4f, 0x94, 0x71, 0x30, 0x45, 0xb3, 0xc3, 0xf9, 0x29, 0xa9, 0x6b, 0x93, 0xb2, 0x36, 0x69,
+	0x6a, 0x93, 0x57, 0x10, 0x26, 0x5e, 0x03, 0xea, 0x8f, 0xf0, 0x9d, 0x18, 0x82, 0xe8, 0xfd, 0x22,
+	0xcf, 0x2a, 0x29, 0x43, 0x9b, 0xa2, 0x99, 0xe6, 0xdd, 0x2e, 0x83, 0x17, 0x4d, 0xcc, 0x36, 0xf0,
+	0x49, 0xdf, 0xc0, 0xe3, 0x32, 0x85, 0x44, 0x72, 0xfb, 0x33, 0xbe, 0xeb, 0x4a, 0x71, 0xc1, 0x63,
+	0x2e, 0x98, 0xfa, 0x97, 0xde, 0x03, 0x3c, 0x29, 0x58, 0x1c, 0x2e, 0x98, 0x82, 0xac, 0x32, 0x9c,
+	0x78, 0x7f, 0x02, 0x1d, 0x79, 0x6d, 0x4f, 0x79, 0xfb, 0x3e, 0x3e, 0xdd, 0xea, 0xbe, 0x51, 0xfb,
+	0x86, 0xf0, 0x3d, 0x57, 0x8a, 0x17, 0xb9, 0x82, 0x1b, 0xf2, 0xdb, 0x1e, 0xee, 0xad, 0x81, 0xe1,
+	0x3e, 0xc4, 0x67, 0x83, 0x9a, 0xed, 0x87, 0xcc, 0x7f, 0x1c, 0x60, 0xcd, 0x95, 0x42, 0x67, 0xf8,
+	0xb0, 0xbb, 0x09, 0x1e, 0x93, 0xa1, 0x0d, 0x49, 0xfa, 0x0b, 0x65, 0x3e, 0xdf, 0x87, 0x6a, 0x5b,
+	0xe9, 0x1f, 0xf1, 0xd1, 0x5f, 0xb3, 0x7a, 0xb2, 0xf3, 0xfd, 0x3e, 0x68, 0xd2, 0x3d, 0xc1, 0x4d,
+	0xaf, 0x02, 0xeb, 0x03, 0x6b, 0xf3, 0x6c, 0x67, 0x99, 0x6d, 0xd8, 0x3c, 0xff, 0x0f, 0xb8, 0xed,
+	0xfb, 0xf2, 0xf5, 0xf7, 0x95, 0x85, 0xae, 0x57, 0x16, 0xfa, 0xb5, 0xb2, 0xd0, 0xd7, 0xb5, 0x35,
+	0xba, 0x5e, 0x5b, 0xa3, 0x9f, 0x6b, 0x6b, 0xf4, 0x8e, 0x88, 0x50, 0x7d, 0xc8, 0x7d, 0x12, 0xc0,
+	0x92, 0xd6, 0x67, 0x41, 0x7d, 0x2d, 0x9c, 0x39, 0xbd, 0xec, 0x9d, 0x0b, 0xea, 0x2a, 0xe5, 0xd2,
+	0x1f, 0x57, 0x3f, 0xe8, 0xf9, 0xef, 0x00, 0x00, 0x00, 0xff, 0xff, 0x42, 0x48, 0xf9, 0x47, 0x39,
+	0x04, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -50,6 +381,9 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MsgClient interface {
+	StakeTokens(ctx context.Context, in *MsgStakeTokens, opts ...grpc.CallOption) (*MsgStakeTokensResponse, error)
+	DelegateTokens(ctx context.Context, in *MsgDelegateTokens, opts ...grpc.CallOption) (*MsgDelegateTokensResponse, error)
+	AutoDelegateTokens(ctx context.Context, in *MsgAutoDelegateTokens, opts ...grpc.CallOption) (*MsgAutoDelegateTokensResponse, error)
 }
 
 type msgClient struct {
@@ -60,22 +394,1148 @@ func NewMsgClient(cc grpc1.ClientConn) MsgClient {
 	return &msgClient{cc}
 }
 
+func (c *msgClient) StakeTokens(ctx context.Context, in *MsgStakeTokens, opts ...grpc.CallOption) (*MsgStakeTokensResponse, error) {
+	out := new(MsgStakeTokensResponse)
+	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Msg/StakeTokens", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) DelegateTokens(ctx context.Context, in *MsgDelegateTokens, opts ...grpc.CallOption) (*MsgDelegateTokensResponse, error) {
+	out := new(MsgDelegateTokensResponse)
+	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Msg/DelegateTokens", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) AutoDelegateTokens(ctx context.Context, in *MsgAutoDelegateTokens, opts ...grpc.CallOption) (*MsgAutoDelegateTokensResponse, error) {
+	out := new(MsgAutoDelegateTokensResponse)
+	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Msg/AutoDelegateTokens", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 type MsgServer interface {
+	StakeTokens(context.Context, *MsgStakeTokens) (*MsgStakeTokensResponse, error)
+	DelegateTokens(context.Context, *MsgDelegateTokens) (*MsgDelegateTokensResponse, error)
+	AutoDelegateTokens(context.Context, *MsgAutoDelegateTokens) (*MsgAutoDelegateTokensResponse, error)
 }
 
 // UnimplementedMsgServer can be embedded to have forward compatible implementations.
 type UnimplementedMsgServer struct {
 }
 
+func (*UnimplementedMsgServer) StakeTokens(ctx context.Context, req *MsgStakeTokens) (*MsgStakeTokensResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StakeTokens not implemented")
+}
+func (*UnimplementedMsgServer) DelegateTokens(ctx context.Context, req *MsgDelegateTokens) (*MsgDelegateTokensResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DelegateTokens not implemented")
+}
+func (*UnimplementedMsgServer) AutoDelegateTokens(ctx context.Context, req *MsgAutoDelegateTokens) (*MsgAutoDelegateTokensResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AutoDelegateTokens not implemented")
+}
+
 func RegisterMsgServer(s grpc1.Server, srv MsgServer) {
 	s.RegisterService(&_Msg_serviceDesc, srv)
+}
+
+func _Msg_StakeTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgStakeTokens)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).StakeTokens(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/evmos.dualstaking.v1.Msg/StakeTokens",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).StakeTokens(ctx, req.(*MsgStakeTokens))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_DelegateTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgDelegateTokens)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).DelegateTokens(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/evmos.dualstaking.v1.Msg/DelegateTokens",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).DelegateTokens(ctx, req.(*MsgDelegateTokens))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_AutoDelegateTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgAutoDelegateTokens)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).AutoDelegateTokens(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/evmos.dualstaking.v1.Msg/AutoDelegateTokens",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).AutoDelegateTokens(ctx, req.(*MsgAutoDelegateTokens))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _Msg_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "evmos.dualstaking.v1.Msg",
 	HandlerType: (*MsgServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "evmos/dualstaking/v1/tx.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "StakeTokens",
+			Handler:    _Msg_StakeTokens_Handler,
+		},
+		{
+			MethodName: "DelegateTokens",
+			Handler:    _Msg_DelegateTokens_Handler,
+		},
+		{
+			MethodName: "AutoDelegateTokens",
+			Handler:    _Msg_AutoDelegateTokens_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "evmos/dualstaking/v1/tx.proto",
 }
+
+func (m *MsgStakeTokens) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgStakeTokens) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgStakeTokens) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.LockDuration != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.LockDuration))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.Amount != nil {
+		{
+			size, err := m.Amount.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTx(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Staker) > 0 {
+		i -= len(m.Staker)
+		copy(dAtA[i:], m.Staker)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Staker)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgStakeTokensResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgStakeTokensResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgStakeTokensResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgDelegateTokens) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgDelegateTokens) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgDelegateTokens) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Amount != nil {
+		{
+			size, err := m.Amount.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTx(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Validator) > 0 {
+		i -= len(m.Validator)
+		copy(dAtA[i:], m.Validator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Validator)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Staker) > 0 {
+		i -= len(m.Staker)
+		copy(dAtA[i:], m.Staker)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Staker)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgDelegateTokensResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgDelegateTokensResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgDelegateTokensResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgAutoDelegateTokens) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgAutoDelegateTokens) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgAutoDelegateTokens) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.LockDuration != 0 {
+		i = encodeVarintTx(dAtA, i, uint64(m.LockDuration))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.Amount != nil {
+		{
+			size, err := m.Amount.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTx(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Validator) > 0 {
+		i -= len(m.Validator)
+		copy(dAtA[i:], m.Validator)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Validator)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Staker) > 0 {
+		i -= len(m.Staker)
+		copy(dAtA[i:], m.Staker)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Staker)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgAutoDelegateTokensResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgAutoDelegateTokensResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgAutoDelegateTokensResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func encodeVarintTx(dAtA []byte, offset int, v uint64) int {
+	offset -= sovTx(v)
+	base := offset
+	for v >= 1<<7 {
+		dAtA[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	dAtA[offset] = uint8(v)
+	return base
+}
+func (m *MsgStakeTokens) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Staker)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.Amount != nil {
+		l = m.Amount.Size()
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.LockDuration != 0 {
+		n += 1 + sovTx(uint64(m.LockDuration))
+	}
+	return n
+}
+
+func (m *MsgStakeTokensResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgDelegateTokens) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Staker)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Validator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.Amount != nil {
+		l = m.Amount.Size()
+		n += 1 + l + sovTx(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgDelegateTokensResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *MsgAutoDelegateTokens) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Staker)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.Validator)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.Amount != nil {
+		l = m.Amount.Size()
+		n += 1 + l + sovTx(uint64(l))
+	}
+	if m.LockDuration != 0 {
+		n += 1 + sovTx(uint64(m.LockDuration))
+	}
+	return n
+}
+
+func (m *MsgAutoDelegateTokensResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func sovTx(x uint64) (n int) {
+	return (math_bits.Len64(x|1) + 6) / 7
+}
+func sozTx(x uint64) (n int) {
+	return sovTx(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (m *MsgStakeTokens) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgStakeTokens: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgStakeTokens: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Staker", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Staker = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Amount == nil {
+				m.Amount = &types.Coin{}
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LockDuration", wireType)
+			}
+			m.LockDuration = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LockDuration |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgStakeTokensResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgStakeTokensResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgStakeTokensResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgDelegateTokens) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgDelegateTokens: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgDelegateTokens: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Staker", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Staker = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Validator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Validator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Amount == nil {
+				m.Amount = &types.Coin{}
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgDelegateTokensResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgDelegateTokensResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgDelegateTokensResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgAutoDelegateTokens) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgAutoDelegateTokens: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgAutoDelegateTokens: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Staker", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Staker = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Validator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Validator = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Amount == nil {
+				m.Amount = &types.Coin{}
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LockDuration", wireType)
+			}
+			m.LockDuration = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LockDuration |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgAutoDelegateTokensResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgAutoDelegateTokensResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgAutoDelegateTokensResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTx(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTx
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func skipTx(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
+	iNdEx := 0
+	depth := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowTx
+			}
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if dAtA[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+		case 1:
+			iNdEx += 8
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if length < 0 {
+				return 0, ErrInvalidLengthTx
+			}
+			iNdEx += length
+		case 3:
+			depth++
+		case 4:
+			if depth == 0 {
+				return 0, ErrUnexpectedEndOfGroupTx
+			}
+			depth--
+		case 5:
+			iNdEx += 4
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+		}
+		if iNdEx < 0 {
+			return 0, ErrInvalidLengthTx
+		}
+		if depth == 0 {
+			return iNdEx, nil
+		}
+	}
+	return 0, io.ErrUnexpectedEOF
+}
+
+var (
+	ErrInvalidLengthTx        = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowTx          = fmt.Errorf("proto: integer overflow")
+	ErrUnexpectedEndOfGroupTx = fmt.Errorf("proto: unexpected end of group")
+)
