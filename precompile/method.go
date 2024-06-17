@@ -73,14 +73,14 @@ func DefaultRequiredGas(
 	return costFlat + (costPerByte * methodInputArgsByteLength)
 }
 
-// ValidateMethodInputsLength validates the length of the given method inputs
-// against the expected length. If the lengths do not match, an error is returned.
-func ValidateMethodInputsLength(inputs MethodInputs, expectedLength int) error {
-	if actualLength := len(inputs); expectedLength != actualLength {
+// ValidateMethodInputsCount validates the count of the given method inputs
+// against the expected value. If the counts don't match, an error is returned.
+func ValidateMethodInputsCount(inputs MethodInputs, expectedCount int) error {
+	if actualCount := len(inputs); expectedCount != actualCount {
 		return fmt.Errorf(
 			"wrong inputs count for method; expected [%v], actual [%v]",
-			expectedLength,
-			actualLength,
+			expectedCount,
+			actualCount,
 		)
 	}
 

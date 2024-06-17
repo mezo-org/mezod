@@ -42,7 +42,7 @@ func (bom *balanceOfMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
-	if err := precompile.ValidateMethodInputsLength(inputs, 1); err != nil {
+	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
 
