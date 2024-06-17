@@ -2,6 +2,7 @@ package precompile
 
 import (
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -15,7 +16,7 @@ type EventArgument struct {
 	// used to filter events in the logs.
 	Indexed bool
 	// Value is the value of the argument.
-	Value   interface{}
+	Value interface{}
 }
 
 // Event represents an EVM event that can be emitted by a precompiled contract.

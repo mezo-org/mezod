@@ -167,7 +167,8 @@ func TestParseTxResult(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := testCases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			parsed, err := ParseTxResult(&tc.response, nil)
 			if tc.expTxs == nil {

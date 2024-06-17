@@ -10,6 +10,7 @@ import (
 	"github.com/evmos/evmos/v12/x/dualstaking/types"
 )
 
+//nolint:unused //remove if not used in the future
 func setupMsgServer(t testing.TB) (types.MsgServer, context.Context) {
 	k, ctx := keepertest.DualstakingKeeper(t)
 	return keeper.NewMsgServer(*k), sdk.WrapSDKContext(ctx)

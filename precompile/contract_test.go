@@ -2,14 +2,15 @@ package precompile
 
 import (
 	"fmt"
+	"math/big"
+	"reflect"
+	"testing"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
-	"math/big"
-	"reflect"
-	"testing"
 )
 
 func TestContract_Address(t *testing.T) {
@@ -32,18 +33,18 @@ func TestContract_RequiredGas(t *testing.T) {
 		expected uint64
 	}{
 		"method implements its own gas calculation": {
-			method:   &mockMethod{methodName: "testMethod", requiredGas: 10},
+			method: &mockMethod{methodName: "testMethod", requiredGas: 10},
 			// Gas cost taken directly from the mock method.
 			expected: 10,
 		},
 		"write method does not implement its own gas calculation": {
-			method:   &mockMethod{methodName: "testMethod", methodType: Write},
+			method: &mockMethod{methodName: "testMethod", methodType: Write},
 			// writeCostFlat + (writeCostPerByte * methodInputArgsByteLength) = 2000 + 30 * 2 = 2060
 			// Flat and per-byte costs are taken from the default gas config: store.KVGasConfig()
 			expected: 2060,
 		},
 		"read method does not implement its own gas calculation": {
-			method:   &mockMethod{methodName: "testMethod", methodType: Read},
+			method: &mockMethod{methodName: "testMethod", methodType: Read},
 			// readCostFlat + (readCostPerByte * methodInputArgsByteLength) = 1000 + 3 * 2 = 1006
 			// Flat and per-byte costs are taken from the default gas config: store.KVGasConfig()
 			expected: 1006,
@@ -119,9 +120,9 @@ func TestContract_Run(t *testing.T) {
 			method: &mockMethod{
 				methodName: "testMethod",
 				methodType: Write,
-				payable: true,
+				payable:    true,
 				run: func(
-					context *RunContext,
+					_ *RunContext,
 					inputs MethodInputs,
 				) (MethodOutputs, error) {
 					if len(inputs) != 2 {
@@ -160,7 +161,7 @@ func TestContract_Run(t *testing.T) {
 				big.NewInt(10),
 				[]byte{0x7B}, // 123
 			},
-			value: big.NewInt(1000),
+			value:         big.NewInt(1000),
 			expectedError: fmt.Errorf("read method cannot accept value"),
 		},
 		"write method with read-only mode": {
@@ -172,20 +173,20 @@ func TestContract_Run(t *testing.T) {
 				big.NewInt(10),
 				[]byte{0x7B}, // 123
 			},
-			readOnlyMode: true,
+			readOnlyMode:  true,
 			expectedError: fmt.Errorf("write method cannot be executed in read-only mode"),
 		},
 		"non-payable write method with value": {
 			method: &mockMethod{
 				methodName: "testMethod",
 				methodType: Write,
-				payable: false,
+				payable:    false,
 			},
 			methodInputs: []interface{}{
 				big.NewInt(10),
 				[]byte{0x7B}, // 123
 			},
-			value: big.NewInt(1000),
+			value:         big.NewInt(1000),
 			expectedError: fmt.Errorf("non-payable write method cannot accept value"),
 		},
 	}
@@ -193,7 +194,13 @@ func TestContract_Run(t *testing.T) {
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			uint256Type, err := abi.NewType("uint256", "uint256", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 			bytesType, err := abi.NewType("bytes", "bytes", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			// Construct a mock ABI to make function lookup possible.
 			methodAbi := abi.Method{
@@ -307,19 +314,19 @@ func TestRunContext_IsMsgValue(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:      "value is greater than zero",
-			value:     big.NewInt(10),
-			expected:  true,
+			name:     "value is greater than zero",
+			value:    big.NewInt(10),
+			expected: true,
 		},
 		{
-			name:      "value is zero",
-			value:     big.NewInt(0),
-			expected:  false,
+			name:     "value is zero",
+			value:    big.NewInt(0),
+			expected: false,
 		},
 		{
-			name:      "value is nil",
-			value:     nil,
-			expected:  false,
+			name:     "value is nil",
+			value:    nil,
+			expected: false,
 		},
 	}
 
