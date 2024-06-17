@@ -13,8 +13,9 @@ var filesystem embed.FS
 
 // EvmAddress is the EVM address of the BTC token precompile.
 // EVM native precompiles reserve the addresses from 0x...01 to 0x...09.
-// We use the 0x...1XXX range for custom Mezo precompiles to avoid collisions.
-const EvmAddress = "0x0000000000000000000000000000000000001000"
+// We use the opposite range (0x1... to 0x9...) for custom Mezo precompiles to
+// avoid collisions.
+const EvmAddress = "0x1000000000000000000000000000000000000000"
 
 func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error){
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
