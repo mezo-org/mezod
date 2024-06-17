@@ -61,13 +61,13 @@ linters-settings:
         - https://github.com/dgrijalva/jwt-go:                          # Blocked module with version constraint
             version: ">= 4.0.0-preview1"                                # Version constraint, see https://github.com/Masterminds/semver#basic-comparisons
             reason: "CVE-2020-26160"                                    # Reason why the version constraint exists. (Optional)
-  depguard:
-    rules:
-      main:
-        deny:
-          - pkg: io/ioutil
-            desc: The io/ioutil package has been deprecated
-
+  depguard:                                        # depguard is used to allow or deny specific packages
+    rules:                                         # to be used in the project. The configuration of this linter
+      main:                                        # requires to provide a non-empty list of allowed or denied packages.
+        deny:                                      # To satisfy this requirement an example package has been provided.
+          - pkg: io/ioutil                         # The package is deprecated and therefore may be denied.
+            desc: The package has been deprecated  # Not providing this configuration results in default settings being
+                                                   # used which marks a lot of packages as denied.
 issues:
   exclude-rules:
     - path: .*_test.go     # Exclude unit test files from the dot-imports rule.
