@@ -91,6 +91,10 @@ func (c *Contract) Run(
 	contract *vm.Contract,
 	readOnlyMode bool,
 ) (methodOutputArgs []byte, runErr error) {
+	// The x/evm module provides its own state DB implementation, which
+	// reflects EVM state changes in the Cosmos SDK store upon commit.
+	// We can safely cast the EVM state DB to the *statedb.StateDB type
+	// because we know this is the type EVM instance was created with.
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
 		return nil, fmt.Errorf("cannot get state DB from EVM")
