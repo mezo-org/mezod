@@ -365,7 +365,8 @@ func NewEvmos(
 
 	eip712.SetEncodingConfig(encodingConfig)
 
-	// NOTE we use custom transaction decoder that supports the sdk.Tx interface instead of sdk.StdTx
+	// NOTE we use custom transaction decoder that supports the sdk.Tx interface
+	// instead of sdk.StdTx
 	bApp := baseapp.NewBaseApp(
 		Name,
 		logger,
