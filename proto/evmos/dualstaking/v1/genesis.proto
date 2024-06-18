@@ -13,18 +13,19 @@ message GenesisState {
 }
 
 message StakingPosition {
-  string staker = 1; // The address of the user who has staked the tokens.
-  string stake_id = 2; // A unique identifier for the staking position.
+  string stake_id = 1; // A unique identifier for the staking position.
+  string staker = 2; // The address of the user who has staked the tokens.
   string denom = 3; // The denomination of the staked tokens (e.g., BTC or MEZO)
-  int64 amount = 4; // The amount of tokens staked.
-  int64 start_time = 5; // The time at which the staking position was created.
-  int64 end_time = 6; // The time at which the staking position will end.
+  string amount = 4; // The amount of tokens staked.
+  uint64 start_time = 5; // The time at which the staking position was created.
+  uint64 end_time = 6; // The time at which the staking position will end.
 }
 
 message DelegationPosition {
-  string staker = 1; // The address of the user who has delegated the tokens.
-  string delegation_id = 2; // A unique identifier for the delegation position.
-  string validator = 3; // The address of the validator to whom the tokens are delegated.
-  string denom = 4; // The denomination of the delegated tokens (e.g., veBTC or veMEZO).
-  int64 amount = 5; // The amount of tokens delegated.
+  string delegation_id = 1; // A unique identifier for the delegation position.
+  string stake_id = 2; // The stake ID of the staking position to which the tokens are delegated.
+  string staker = 3; // The address of the user who has delegated the tokens.
+  string validator = 4; // The address of the validator to whom the tokens are delegated.
+  string denom = 5; // The denomination of the delegated tokens (e.g., veBTC or veMEZO).
+  string amount = 6; // The amount of tokens delegated.
 }
