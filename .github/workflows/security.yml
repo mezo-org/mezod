@@ -36,9 +36,14 @@ jobs:
           # we let the report trigger content trigger a failure using the GitHub Security features.
           args: "-no-fail -fmt sarif -out results.sarif ./..."
         if: "env.GIT_DIFF_FILTERED != ''"
-      - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          # Path to SARIF file relative to the root of the repository
-          sarif_file: results.sarif
-        if: "env.GIT_DIFF_FILTERED != ''"
+      # TODO: Once the repository is public enable the "GitHub Advanced Security"
+      #       option in the repository settings and uncomment the "Upload SARIF file"
+      #       step below. The step will not work with this option disabled and
+      #       the option can only be enabled once the repository becomes public.
+      #       More info: https://docs.github.com/en/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-security-and-analysis-settings-for-your-repository
+      # - name: Upload SARIF file
+      #   uses: github/codeql-action/upload-sarif@v2
+      #   with:
+      #     # Path to SARIF file relative to the root of the repository
+      #     sarif_file: results.sarif
+      #   if: "env.GIT_DIFF_FILTERED != ''"
