@@ -10,8 +10,7 @@ import (
 )
 
 func TestGenesis(t *testing.T) {
-	genesisState := types.GenesisState{
-	}
+	genesisState := types.GenesisState{}
 
 	k, ctx := keepertest.DualstakingKeeper(t)
 	dualstaking.InitGenesis(ctx, *k, genesisState)
