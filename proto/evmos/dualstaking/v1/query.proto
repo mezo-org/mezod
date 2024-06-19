@@ -9,59 +9,59 @@ option go_package = "github.com/evmos/evmos/v12/x/dualstaking/types";
 
 // Query defines the gRPC querier service.
 service Query {
-  rpc StakingPosition(QueryStakingPositionRequest) returns (QueryStakingPositionResponse) {
-    option (google.api.http).get = "/dualstaking/staking/{staker}/{stake_id}";
+  rpc Stake(QueryStakeRequest) returns (QueryStakeResponse) {
+    option (google.api.http).get = "/mezo/dualstaking/v1/stakes/{stake_id}";
   }
 
-  rpc DelegationPosition(QueryDelegationPositionRequest) returns (QueryDelegationPositionResponse) {
-    option (google.api.http).get = "/dualstaking/delegation/{staker}/{delegation_id}";
+  rpc Delegation(QueryDelegationRequest) returns (QueryDelegationResponse) {
+    option (google.api.http).get = "/mezo/dualstaking/v1/delegations/{delegation_id}";
   }
 
-  // StakingPositionsByStaker queries all staking positions for a given staker
-  rpc StakingPositionsByStaker(QueryStakingPositionsByStakerRequest) returns (QueryStakingPositionsByStakerResponse) {
-    option (google.api.http).get = "/evmos/dualstaking/staking_positions_by_staker/{staker}";
+  // StakesByStaker queries all staking positions for a given staker
+  rpc StakesByStaker(QueryStakesByStakerRequest) returns (QueryStakesByStakerResponse) {
+    option (google.api.http).get = "/mezo/dualstaking/v1/stakes_by_staker/{staker}";
   }
 
-  // DelegationPositionsByStaker queries all delegation positions for a given staker
-  rpc DelegationPositionsByStaker(QueryDelegationPositionsByStakerRequest) returns (QueryDelegationPositionsByStakerResponse) {
-    option (google.api.http).get = "/evmos/dualstaking/delegation_positions_by_staker/{staker}";
+  // DelegationsByStaker queries all delegation positions for a given staker
+  rpc DelegationsByStaker(QueryDelegationsByStakerRequest) returns (QueryDelegationsByStakerResponse) {
+    option (google.api.http).get = "/mezo/dualstaking/v1/delegations_by_staker/{staker}";
   }
 }
 
-message QueryStakingPositionRequest {
+message QueryStakeRequest {
   string staker = 1;
   string stake_id = 2;
 }
 
-message QueryStakingPositionResponse {
-  StakingPosition staking_position = 1;
+message QueryStakeResponse {
+  Stake stake = 1;
 }
 
-message QueryDelegationPositionRequest {
+message QueryDelegationRequest {
   string staker = 1;
   string delegation_id = 2;
 }
 
-message QueryDelegationPositionResponse {
-  DelegationPosition delegation_position = 1;
+message QueryDelegationResponse {
+  Delegation delegation = 1;
 }
 
-// QueryStakingPositionsByStakerRequest is the request type for the Query/StakingPositionsByStaker RPC method
-message QueryStakingPositionsByStakerRequest {
+// QueryStakesByStakerRequest is the request type for the Query/StakesByStaker RPC method
+message QueryStakesByStakerRequest {
   string staker = 1;
 }
 
-// QueryStakingPositionsByStakerResponse is the response type for the Query/StakingPositionsByStaker RPC method
-message QueryStakingPositionsByStakerResponse {
-  repeated StakingPosition staking_positions = 1;
+// QueryStakesByStakerResponse is the response type for the Query/StakesByStaker RPC method
+message QueryStakesByStakerResponse {
+  repeated Stake stakes = 1;
 }
 
-// QueryDelegationPositionsByStakerRequest is the request type for the Query/DelegationPositionsByStaker RPC method
-message QueryDelegationPositionsByStakerRequest {
+// QueryDelegationsByStakerRequest is the request type for the Query/DelegationsByStaker RPC method
+message QueryDelegationsByStakerRequest {
   string staker = 1;
 }
 
-// QueryDelegationPositionsByStakerResponse is the response type for the Query/DelegationPositionsByStaker RPC method
-message QueryDelegationPositionsByStakerResponse {
-  repeated DelegationPosition delegation_positions = 1;
+// QueryDelegationsByStakerResponse is the response type for the Query/DelegationsByStaker RPC method
+message QueryDelegationsByStakerResponse {
+  repeated Delegation delegations = 1;
 }

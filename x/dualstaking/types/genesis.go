@@ -3,8 +3,8 @@ package types
 // DefaultGenesis returns the default genesis state
 func DefaultGenesis() *GenesisState {
 	return &GenesisState{
-		StakingPositions:   []StakingPosition{},
-		DelegationPositions: []DelegationPosition{},
+		Stakes:   []Stake{},
+		Delegations: []Delegation{},
 	}
 }
 

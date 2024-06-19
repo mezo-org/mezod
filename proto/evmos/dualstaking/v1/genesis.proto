@@ -8,11 +8,11 @@ import "cosmos/base/query/v1beta1/pagination.proto";
 option go_package = "github.com/evmos/evmos/v12/x/dualstaking/types";
 
 message GenesisState {
-  repeated StakingPosition staking_positions = 1 [(gogoproto.nullable) = false];
-  repeated DelegationPosition delegation_positions = 2 [(gogoproto.nullable) = false];
+  repeated Stake stakes = 1 [(gogoproto.nullable) = false];
+  repeated Delegation delegations = 2 [(gogoproto.nullable) = false];
 }
 
-message StakingPosition {
+message Stake {
   string stake_id = 1; // A unique identifier for the staking position.
   string staker = 2; // The address of the user who has staked the tokens.
   string denom = 3; // The denomination of the staked tokens (e.g., BTC or MEZO)
@@ -21,7 +21,7 @@ message StakingPosition {
   uint64 end_time = 6; // The time at which the staking position will end.
 }
 
-message DelegationPosition {
+message Delegation {
   string delegation_id = 1; // A unique identifier for the delegation position.
   string stake_id = 2; // The stake ID of the staking position to which the tokens are delegated.
   string staker = 3; // The address of the user who has delegated the tokens.

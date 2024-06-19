@@ -21,7 +21,7 @@ func NewQueryServer(keeper Keeper) types.QueryServer {
 	return &queryServer{Keeper: keeper}
 }
 
-func (q queryServer) StakingPosition(goCtx context.Context, req *types.QueryStakingPositionRequest) (*types.QueryStakingPositionResponse, error) {
+func (q queryServer) Stake(goCtx context.Context, req *types.QueryStakeRequest) (*types.QueryStakeResponse, error) {
 	if req == nil {
 		return nil, errortypes.ErrInvalidRequest
 	}
@@ -35,13 +35,13 @@ func (q queryServer) StakingPosition(goCtx context.Context, req *types.QueryStak
 		return nil, types.ErrStakeNotFound
 	}
 
-	var stakingPosition types.StakingPosition
-	q.cdc.MustUnmarshal(bz, &stakingPosition)
+	var stake types.Stake
+	q.cdc.MustUnmarshal(bz, &stake)
 
-	return &types.QueryStakingPositionResponse{StakingPosition: &stakingPosition}, nil
+	return &types.QueryStakeResponse{Stake: &stake}, nil
 }
 
-func (q queryServer) DelegationPosition(goCtx context.Context, req *types.QueryDelegationPositionRequest) (*types.QueryDelegationPositionResponse, error) {
+func (q queryServer) Delegation(goCtx context.Context, req *types.QueryDelegationRequest) (*types.QueryDelegationResponse, error) {
 	if req == nil {
 		return nil, errortypes.ErrInvalidRequest
 	}
@@ -55,13 +55,13 @@ func (q queryServer) DelegationPosition(goCtx context.Context, req *types.QueryD
 		return nil, types.ErrDelegationNotFound
 	}
 
-	var delegationPosition types.DelegationPosition
-	q.cdc.MustUnmarshal(bz, &delegationPosition)
+	var delegation types.Delegation
+	q.cdc.MustUnmarshal(bz, &delegation)
 
-	return &types.QueryDelegationPositionResponse{DelegationPosition: &delegationPosition}, nil
+	return &types.QueryDelegationResponse{Delegation: &delegation}, nil
 }
 
-func (q queryServer) StakingPositionsByStaker(goCtx context.Context, req *types.QueryStakingPositionsByStakerRequest) (*types.QueryStakingPositionsByStakerResponse, error) {
+func (q queryServer) StakesByStaker(goCtx context.Context, req *types.QueryStakesByStakerRequest) (*types.QueryStakesByStakerResponse, error) {
 	if req == nil {
 		return nil, errortypes.ErrInvalidRequest
 	}
@@ -73,17 +73,17 @@ func (q queryServer) StakingPositionsByStaker(goCtx context.Context, req *types.
 	iterator := sdk.KVStorePrefixIterator(stakingStore, []byte(req.Staker))
 	defer iterator.Close()
 
-	var stakingPositions []*types.StakingPosition
+	var stakes []*types.Stake
 	for ; iterator.Valid(); iterator.Next() {
-		var stakingPosition types.StakingPosition
-		q.cdc.MustUnmarshal(iterator.Value(), &stakingPosition)
-		stakingPositions = append(stakingPositions, &stakingPosition)
+		var stake types.Stake
+		q.cdc.MustUnmarshal(iterator.Value(), &stake)
+		stakes = append(stakes, &stake)
 	}
 
-	return &types.QueryStakingPositionsByStakerResponse{StakingPositions: stakingPositions}, nil
+	return &types.QueryStakesByStakerResponse{Stakes: stakes}, nil
 }
 
-func (q queryServer) DelegationPositionsByStaker(goCtx context.Context, req *types.QueryDelegationPositionsByStakerRequest) (*types.QueryDelegationPositionsByStakerResponse, error) {
+func (q queryServer) DelegationsByStaker(goCtx context.Context, req *types.QueryDelegationsByStakerRequest) (*types.QueryDelegationsByStakerResponse, error) {
 	if req == nil {
 		return nil, errortypes.ErrInvalidRequest
 	}
@@ -95,12 +95,12 @@ func (q queryServer) DelegationPositionsByStaker(goCtx context.Context, req *typ
 	iterator := sdk.KVStorePrefixIterator(delegationStore, []byte(req.Staker))
 	defer iterator.Close()
 
-	var delegationPositions []*types.DelegationPosition
+	var delegations []*types.Delegation
 	for ; iterator.Valid(); iterator.Next() {
-		var delegationPosition types.DelegationPosition
-		q.cdc.MustUnmarshal(iterator.Value(), &delegationPosition)
-		delegationPositions = append(delegationPositions, &delegationPosition)
+		var delegation types.Delegation
+		q.cdc.MustUnmarshal(iterator.Value(), &delegation)
+		delegations = append(delegations, &delegation)
 	}
 
-	return &types.QueryDelegationPositionsByStakerResponse{DelegationPositions: delegationPositions}, nil
+	return &types.QueryDelegationsByStakerResponse{Delegations: delegations}, nil
 }

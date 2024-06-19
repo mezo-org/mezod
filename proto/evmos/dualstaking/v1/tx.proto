@@ -11,7 +11,7 @@ option go_package = "github.com/evmos/evmos/v12/x/dualstaking/types";
 service Msg {
   rpc StakeTokens(MsgStakeTokens) returns (MsgStakeTokensResponse);
   rpc DelegateTokens(MsgDelegateTokens) returns (MsgDelegateTokensResponse);
-  rpc AutoDelegateTokens(MsgAutoDelegateTokens) returns (MsgAutoDelegateTokensResponse);
+  rpc StakeDelegateTokens(MsgStakeDelegateTokens) returns (MsgStakeDelegateTokensResponse);
 }
 
 message MsgStakeTokens {
@@ -30,11 +30,11 @@ message MsgDelegateTokens {
 
 message MsgDelegateTokensResponse {}
 
-message MsgAutoDelegateTokens {
+message MsgStakeDelegateTokens {
   string staker = 1;
   string validator = 2;
   cosmos.base.v1beta1.Coin amount = 3;
   int64 lock_duration = 4;
 }
 
-message MsgAutoDelegateTokensResponse {}
+message MsgStakeDelegateTokensResponse {}

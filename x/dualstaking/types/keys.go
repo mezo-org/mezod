@@ -20,14 +20,14 @@ const (
 )
 
 var (
-	KeyStakingPositionPrefix = []byte{StakingPositionPrefix}
+	KeyStakingPositionPrefix    = []byte{StakingPositionPrefix}
 	KeyDelegationPositionPrefix = []byte{DelegationPositionPrefix}
 )
 
-func GetStakingPositionKey(staker string, stakeId string) []byte {
+func GetStakeKey(staker string, stakeId string) []byte {
 	return []byte(fmt.Sprintf("staking-%s-%s", staker, stakeId))
 }
 
-func GetDelegationPositionKey(staker string, delegationId string) []byte {
+func GetDelegationKey(staker string, delegationId string) []byte {
 	return []byte(fmt.Sprintf("delegation-%s-%s", staker, delegationId))
 }

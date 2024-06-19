@@ -32,42 +32,42 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }
 
-func (k Keeper) SetStakingPosition(ctx sdk.Context, position types.StakingPosition) {
+func (k Keeper) SetStake(ctx sdk.Context, position types.Stake) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyStakingPositionPrefix)
-	key := types.GetStakingPositionKey(position.Staker, position.StakeId)
+	key := types.GetStakeKey(position.Staker, position.StakeId)
 	bz := k.cdc.MustMarshal(&position)
 	store.Set(key, bz)
 }
 
-func (k Keeper) GetStakingPosition(ctx sdk.Context, staker string, stakeId string) *types.StakingPosition {
+func (k Keeper) GetStake(ctx sdk.Context, staker string, stakeId string) *types.Stake {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyStakingPositionPrefix)
-	key := types.GetStakingPositionKey(staker, stakeId)
+	key := types.GetStakeKey(staker, stakeId)
 	bz := store.Get(key)
 	if bz == nil {
 		return nil
 	}
 
-	var position types.StakingPosition
+	var position types.Stake
 	k.cdc.MustUnmarshal(bz, &position)
 	return &position
 }
 
-func (k Keeper) SetDelegationPosition(ctx sdk.Context, position types.DelegationPosition) {
+func (k Keeper) SetDelegation(ctx sdk.Context, position types.Delegation) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyDelegationPositionPrefix)
-	key := types.GetDelegationPositionKey(position.Staker, position.DelegationId)
+	key := types.GetDelegationKey(position.Staker, position.DelegationId)
 	bz := k.cdc.MustMarshal(&position)
 	store.Set(key, bz)
 }
 
-func (k Keeper) GetDelegationPosition(ctx sdk.Context, staker string, delegationId string) *types.DelegationPosition {
+func (k Keeper) GetDelegation(ctx sdk.Context, staker string, delegationId string) *types.Delegation {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyDelegationPositionPrefix)
-	key := types.GetDelegationPositionKey(staker, delegationId)
+	key := types.GetDelegationKey(staker, delegationId)
 	bz := store.Get(key)
 	if bz == nil {
 		return nil
 	}
 
-	var position types.DelegationPosition
+	var position types.Delegation
 	k.cdc.MustUnmarshal(bz, &position)
 	return &position
 }

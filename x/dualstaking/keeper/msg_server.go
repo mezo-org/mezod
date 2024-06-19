@@ -57,15 +57,15 @@ func (m msgServer) StakeTokens(goCtx context.Context, msg *types.MsgStakeTokens)
 	}
 
 	stakeId := fmt.Sprintf("%s-%d", staker.String(), time.Now().UnixNano())
-	position := types.StakingPosition{
+	position := types.Stake{
 		Staker:    staker.String(),
 		StakeId:   stakeId,
 		Denom:     veTokenDenom,
-		Amount:    msg.Amount.Amount.Int64(),
-		StartTime: ctx.BlockTime().Unix(),
-		EndTime:   ctx.BlockTime().Unix() + msg.LockDuration,
+		Amount:    msg.Amount.Amount.String(),
+		StartTime: uint64(ctx.BlockTime().Unix()),
+		EndTime:   uint64(ctx.BlockTime().Unix()) + uint64(msg.LockDuration),
 	}
-	m.Keeper.SetStakingPosition(ctx, position)
+	m.Keeper.SetStake(ctx, position)
 
 	// Mint veTokens and transfer to staker
 	veAmount := sdk.NewCoin(fmt.Sprintf("ve%s", msg.Amount.Denom), msg.Amount.Amount)
@@ -97,14 +97,14 @@ func (m msgServer) DelegateTokens(goCtx context.Context, msg *types.MsgDelegateT
 	// TODO: Validate denom
 
 	delegationId := fmt.Sprintf("%s-%d", staker.String(), time.Now().UnixNano())
-	position := types.DelegationPosition{
+	position := types.Delegation{
 		Staker:       staker.String(),
 		DelegationId: delegationId,
 		Validator:    validatorAddr.String(),
 		Denom:        msg.Amount.Denom,
-		Amount:       msg.Amount.Amount.Int64(),
+		Amount:       msg.Amount.Amount.String(),
 	}
-	m.Keeper.SetDelegationPosition(ctx, position)
+	m.Keeper.SetDelegation(ctx, position)
 
 	// Delegate veTokens logic
 	veAmount := sdk.NewCoin(fmt.Sprintf("ve%s", msg.Amount.Denom), msg.Amount.Amount)
@@ -122,7 +122,7 @@ func (m msgServer) DelegateTokens(goCtx context.Context, msg *types.MsgDelegateT
 	return &types.MsgDelegateTokensResponse{}, nil
 }
 
-func (m msgServer) AutoDelegateTokens(goCtx context.Context, msg *types.MsgAutoDelegateTokens) (*types.MsgAutoDelegateTokensResponse, error) {
+func (m msgServer) StakeDelegateTokens(goCtx context.Context, msg *types.MsgStakeDelegateTokens) (*types.MsgStakeDelegateTokensResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
 	staker, err := sdk.AccAddressFromBech32(msg.Staker)
@@ -143,25 +143,25 @@ func (m msgServer) AutoDelegateTokens(goCtx context.Context, msg *types.MsgAutoD
 	}
 
 	stakeId := fmt.Sprintf("%s-%d", staker.String(), time.Now().UnixNano())
-	stakingPosition := types.StakingPosition{
+	stake := types.Stake{
 		Staker:    staker.String(),
 		StakeId:   stakeId,
 		Denom:     msg.Amount.Denom,
-		Amount:    msg.Amount.Amount.Int64(),
-		StartTime: ctx.BlockTime().Unix(),
-		EndTime:   ctx.BlockTime().Unix() + msg.LockDuration,
+		Amount:    msg.Amount.Amount.String(),
+		StartTime: uint64(ctx.BlockTime().Unix()),
+		EndTime:   uint64(ctx.BlockTime().Unix() + msg.LockDuration),
 	}
-	m.Keeper.SetStakingPosition(ctx, stakingPosition)
+	m.Keeper.SetStake(ctx, stake)
 
 	delegationId := fmt.Sprintf("%s-%d", staker.String(), time.Now().UnixNano())
-	delegationPosition := types.DelegationPosition{
+	delegation := types.Delegation{
 		Staker:       staker.String(),
 		DelegationId: delegationId,
 		Validator:    validatorAddr.String(),
 		Denom:        msg.Amount.Denom,
-		Amount:       msg.Amount.Amount.Int64(),
+		Amount:       msg.Amount.Amount.String(),
 	}
-	m.Keeper.SetDelegationPosition(ctx, delegationPosition)
+	m.Keeper.SetDelegation(ctx, delegation)
 
 	// Mint veTokens and delegate to validator
 	veAmount := sdk.NewCoin(fmt.Sprintf("ve%s", msg.Amount.Denom), msg.Amount.Amount)
@@ -176,7 +176,7 @@ func (m msgServer) AutoDelegateTokens(goCtx context.Context, msg *types.MsgAutoD
 
 	// TODO: Calculate SSC amount and delegate to validator (implementation needed)
 
-	return &types.MsgAutoDelegateTokensResponse{}, nil
+	return &types.MsgStakeDelegateTokensResponse{}, nil
 }
 
 func (m msgServer) calculateSSCAmount(goCtx context.Context, amount sdk.Coin) math.Int {

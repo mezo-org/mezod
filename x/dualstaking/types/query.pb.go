@@ -29,23 +29,23 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type QueryStakingPositionRequest struct {
+type QueryStakeRequest struct {
 	Staker  string `protobuf:"bytes,1,opt,name=staker,proto3" json:"staker,omitempty"`
 	StakeId string `protobuf:"bytes,2,opt,name=stake_id,json=stakeId,proto3" json:"stake_id,omitempty"`
 }
 
-func (m *QueryStakingPositionRequest) Reset()         { *m = QueryStakingPositionRequest{} }
-func (m *QueryStakingPositionRequest) String() string { return proto.CompactTextString(m) }
-func (*QueryStakingPositionRequest) ProtoMessage()    {}
-func (*QueryStakingPositionRequest) Descriptor() ([]byte, []int) {
+func (m *QueryStakeRequest) Reset()         { *m = QueryStakeRequest{} }
+func (m *QueryStakeRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryStakeRequest) ProtoMessage()    {}
+func (*QueryStakeRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a63de00f5203f239, []int{0}
 }
-func (m *QueryStakingPositionRequest) XXX_Unmarshal(b []byte) error {
+func (m *QueryStakeRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryStakingPositionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryStakeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryStakingPositionRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryStakeRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -55,48 +55,48 @@ func (m *QueryStakingPositionRequest) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *QueryStakingPositionRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryStakingPositionRequest.Merge(m, src)
+func (m *QueryStakeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryStakeRequest.Merge(m, src)
 }
-func (m *QueryStakingPositionRequest) XXX_Size() int {
+func (m *QueryStakeRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryStakingPositionRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryStakingPositionRequest.DiscardUnknown(m)
+func (m *QueryStakeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryStakeRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryStakingPositionRequest proto.InternalMessageInfo
+var xxx_messageInfo_QueryStakeRequest proto.InternalMessageInfo
 
-func (m *QueryStakingPositionRequest) GetStaker() string {
+func (m *QueryStakeRequest) GetStaker() string {
 	if m != nil {
 		return m.Staker
 	}
 	return ""
 }
 
-func (m *QueryStakingPositionRequest) GetStakeId() string {
+func (m *QueryStakeRequest) GetStakeId() string {
 	if m != nil {
 		return m.StakeId
 	}
 	return ""
 }
 
-type QueryStakingPositionResponse struct {
-	StakingPosition *StakingPosition `protobuf:"bytes,1,opt,name=staking_position,json=stakingPosition,proto3" json:"staking_position,omitempty"`
+type QueryStakeResponse struct {
+	Stake *Stake `protobuf:"bytes,1,opt,name=stake,proto3" json:"stake,omitempty"`
 }
 
-func (m *QueryStakingPositionResponse) Reset()         { *m = QueryStakingPositionResponse{} }
-func (m *QueryStakingPositionResponse) String() string { return proto.CompactTextString(m) }
-func (*QueryStakingPositionResponse) ProtoMessage()    {}
-func (*QueryStakingPositionResponse) Descriptor() ([]byte, []int) {
+func (m *QueryStakeResponse) Reset()         { *m = QueryStakeResponse{} }
+func (m *QueryStakeResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryStakeResponse) ProtoMessage()    {}
+func (*QueryStakeResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a63de00f5203f239, []int{1}
 }
-func (m *QueryStakingPositionResponse) XXX_Unmarshal(b []byte) error {
+func (m *QueryStakeResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryStakingPositionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryStakeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryStakingPositionResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryStakeResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -106,42 +106,42 @@ func (m *QueryStakingPositionResponse) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *QueryStakingPositionResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryStakingPositionResponse.Merge(m, src)
+func (m *QueryStakeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryStakeResponse.Merge(m, src)
 }
-func (m *QueryStakingPositionResponse) XXX_Size() int {
+func (m *QueryStakeResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryStakingPositionResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryStakingPositionResponse.DiscardUnknown(m)
+func (m *QueryStakeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryStakeResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryStakingPositionResponse proto.InternalMessageInfo
+var xxx_messageInfo_QueryStakeResponse proto.InternalMessageInfo
 
-func (m *QueryStakingPositionResponse) GetStakingPosition() *StakingPosition {
+func (m *QueryStakeResponse) GetStake() *Stake {
 	if m != nil {
-		return m.StakingPosition
+		return m.Stake
 	}
 	return nil
 }
 
-type QueryDelegationPositionRequest struct {
+type QueryDelegationRequest struct {
 	Staker       string `protobuf:"bytes,1,opt,name=staker,proto3" json:"staker,omitempty"`
 	DelegationId string `protobuf:"bytes,2,opt,name=delegation_id,json=delegationId,proto3" json:"delegation_id,omitempty"`
 }
 
-func (m *QueryDelegationPositionRequest) Reset()         { *m = QueryDelegationPositionRequest{} }
-func (m *QueryDelegationPositionRequest) String() string { return proto.CompactTextString(m) }
-func (*QueryDelegationPositionRequest) ProtoMessage()    {}
-func (*QueryDelegationPositionRequest) Descriptor() ([]byte, []int) {
+func (m *QueryDelegationRequest) Reset()         { *m = QueryDelegationRequest{} }
+func (m *QueryDelegationRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryDelegationRequest) ProtoMessage()    {}
+func (*QueryDelegationRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a63de00f5203f239, []int{2}
 }
-func (m *QueryDelegationPositionRequest) XXX_Unmarshal(b []byte) error {
+func (m *QueryDelegationRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryDelegationPositionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryDelegationRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryDelegationPositionRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryDelegationRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -151,48 +151,48 @@ func (m *QueryDelegationPositionRequest) XXX_Marshal(b []byte, deterministic boo
 		return b[:n], nil
 	}
 }
-func (m *QueryDelegationPositionRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDelegationPositionRequest.Merge(m, src)
+func (m *QueryDelegationRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryDelegationRequest.Merge(m, src)
 }
-func (m *QueryDelegationPositionRequest) XXX_Size() int {
+func (m *QueryDelegationRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryDelegationPositionRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDelegationPositionRequest.DiscardUnknown(m)
+func (m *QueryDelegationRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryDelegationRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryDelegationPositionRequest proto.InternalMessageInfo
+var xxx_messageInfo_QueryDelegationRequest proto.InternalMessageInfo
 
-func (m *QueryDelegationPositionRequest) GetStaker() string {
+func (m *QueryDelegationRequest) GetStaker() string {
 	if m != nil {
 		return m.Staker
 	}
 	return ""
 }
 
-func (m *QueryDelegationPositionRequest) GetDelegationId() string {
+func (m *QueryDelegationRequest) GetDelegationId() string {
 	if m != nil {
 		return m.DelegationId
 	}
 	return ""
 }
 
-type QueryDelegationPositionResponse struct {
-	DelegationPosition *DelegationPosition `protobuf:"bytes,1,opt,name=delegation_position,json=delegationPosition,proto3" json:"delegation_position,omitempty"`
+type QueryDelegationResponse struct {
+	Delegation *Delegation `protobuf:"bytes,1,opt,name=delegation,proto3" json:"delegation,omitempty"`
 }
 
-func (m *QueryDelegationPositionResponse) Reset()         { *m = QueryDelegationPositionResponse{} }
-func (m *QueryDelegationPositionResponse) String() string { return proto.CompactTextString(m) }
-func (*QueryDelegationPositionResponse) ProtoMessage()    {}
-func (*QueryDelegationPositionResponse) Descriptor() ([]byte, []int) {
+func (m *QueryDelegationResponse) Reset()         { *m = QueryDelegationResponse{} }
+func (m *QueryDelegationResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryDelegationResponse) ProtoMessage()    {}
+func (*QueryDelegationResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a63de00f5203f239, []int{3}
 }
-func (m *QueryDelegationPositionResponse) XXX_Unmarshal(b []byte) error {
+func (m *QueryDelegationResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryDelegationPositionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryDelegationResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryDelegationPositionResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryDelegationResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -202,42 +202,42 @@ func (m *QueryDelegationPositionResponse) XXX_Marshal(b []byte, deterministic bo
 		return b[:n], nil
 	}
 }
-func (m *QueryDelegationPositionResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDelegationPositionResponse.Merge(m, src)
+func (m *QueryDelegationResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryDelegationResponse.Merge(m, src)
 }
-func (m *QueryDelegationPositionResponse) XXX_Size() int {
+func (m *QueryDelegationResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryDelegationPositionResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDelegationPositionResponse.DiscardUnknown(m)
+func (m *QueryDelegationResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryDelegationResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryDelegationPositionResponse proto.InternalMessageInfo
+var xxx_messageInfo_QueryDelegationResponse proto.InternalMessageInfo
 
-func (m *QueryDelegationPositionResponse) GetDelegationPosition() *DelegationPosition {
+func (m *QueryDelegationResponse) GetDelegation() *Delegation {
 	if m != nil {
-		return m.DelegationPosition
+		return m.Delegation
 	}
 	return nil
 }
 
-// QueryStakingPositionsByStakerRequest is the request type for the Query/StakingPositionsByStaker RPC method
-type QueryStakingPositionsByStakerRequest struct {
+// QueryStakesByStakerRequest is the request type for the Query/StakesByStaker RPC method
+type QueryStakesByStakerRequest struct {
 	Staker string `protobuf:"bytes,1,opt,name=staker,proto3" json:"staker,omitempty"`
 }
 
-func (m *QueryStakingPositionsByStakerRequest) Reset()         { *m = QueryStakingPositionsByStakerRequest{} }
-func (m *QueryStakingPositionsByStakerRequest) String() string { return proto.CompactTextString(m) }
-func (*QueryStakingPositionsByStakerRequest) ProtoMessage()    {}
-func (*QueryStakingPositionsByStakerRequest) Descriptor() ([]byte, []int) {
+func (m *QueryStakesByStakerRequest) Reset()         { *m = QueryStakesByStakerRequest{} }
+func (m *QueryStakesByStakerRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryStakesByStakerRequest) ProtoMessage()    {}
+func (*QueryStakesByStakerRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a63de00f5203f239, []int{4}
 }
-func (m *QueryStakingPositionsByStakerRequest) XXX_Unmarshal(b []byte) error {
+func (m *QueryStakesByStakerRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryStakingPositionsByStakerRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryStakesByStakerRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryStakingPositionsByStakerRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryStakesByStakerRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -247,42 +247,42 @@ func (m *QueryStakingPositionsByStakerRequest) XXX_Marshal(b []byte, determinist
 		return b[:n], nil
 	}
 }
-func (m *QueryStakingPositionsByStakerRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryStakingPositionsByStakerRequest.Merge(m, src)
+func (m *QueryStakesByStakerRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryStakesByStakerRequest.Merge(m, src)
 }
-func (m *QueryStakingPositionsByStakerRequest) XXX_Size() int {
+func (m *QueryStakesByStakerRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryStakingPositionsByStakerRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryStakingPositionsByStakerRequest.DiscardUnknown(m)
+func (m *QueryStakesByStakerRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryStakesByStakerRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryStakingPositionsByStakerRequest proto.InternalMessageInfo
+var xxx_messageInfo_QueryStakesByStakerRequest proto.InternalMessageInfo
 
-func (m *QueryStakingPositionsByStakerRequest) GetStaker() string {
+func (m *QueryStakesByStakerRequest) GetStaker() string {
 	if m != nil {
 		return m.Staker
 	}
 	return ""
 }
 
-// QueryStakingPositionsByStakerResponse is the response type for the Query/StakingPositionsByStaker RPC method
-type QueryStakingPositionsByStakerResponse struct {
-	StakingPositions []*StakingPosition `protobuf:"bytes,1,rep,name=staking_positions,json=stakingPositions,proto3" json:"staking_positions,omitempty"`
+// QueryStakesByStakerResponse is the response type for the Query/StakesByStaker RPC method
+type QueryStakesByStakerResponse struct {
+	Stakes []*Stake `protobuf:"bytes,1,rep,name=stakes,proto3" json:"stakes,omitempty"`
 }
 
-func (m *QueryStakingPositionsByStakerResponse) Reset()         { *m = QueryStakingPositionsByStakerResponse{} }
-func (m *QueryStakingPositionsByStakerResponse) String() string { return proto.CompactTextString(m) }
-func (*QueryStakingPositionsByStakerResponse) ProtoMessage()    {}
-func (*QueryStakingPositionsByStakerResponse) Descriptor() ([]byte, []int) {
+func (m *QueryStakesByStakerResponse) Reset()         { *m = QueryStakesByStakerResponse{} }
+func (m *QueryStakesByStakerResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryStakesByStakerResponse) ProtoMessage()    {}
+func (*QueryStakesByStakerResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a63de00f5203f239, []int{5}
 }
-func (m *QueryStakingPositionsByStakerResponse) XXX_Unmarshal(b []byte) error {
+func (m *QueryStakesByStakerResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryStakingPositionsByStakerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryStakesByStakerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryStakingPositionsByStakerResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryStakesByStakerResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -292,44 +292,42 @@ func (m *QueryStakingPositionsByStakerResponse) XXX_Marshal(b []byte, determinis
 		return b[:n], nil
 	}
 }
-func (m *QueryStakingPositionsByStakerResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryStakingPositionsByStakerResponse.Merge(m, src)
+func (m *QueryStakesByStakerResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryStakesByStakerResponse.Merge(m, src)
 }
-func (m *QueryStakingPositionsByStakerResponse) XXX_Size() int {
+func (m *QueryStakesByStakerResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryStakingPositionsByStakerResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryStakingPositionsByStakerResponse.DiscardUnknown(m)
+func (m *QueryStakesByStakerResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryStakesByStakerResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryStakingPositionsByStakerResponse proto.InternalMessageInfo
+var xxx_messageInfo_QueryStakesByStakerResponse proto.InternalMessageInfo
 
-func (m *QueryStakingPositionsByStakerResponse) GetStakingPositions() []*StakingPosition {
+func (m *QueryStakesByStakerResponse) GetStakes() []*Stake {
 	if m != nil {
-		return m.StakingPositions
+		return m.Stakes
 	}
 	return nil
 }
 
-// QueryDelegationPositionsByStakerRequest is the request type for the Query/DelegationPositionsByStaker RPC method
-type QueryDelegationPositionsByStakerRequest struct {
+// QueryDelegationsByStakerRequest is the request type for the Query/DelegationsByStaker RPC method
+type QueryDelegationsByStakerRequest struct {
 	Staker string `protobuf:"bytes,1,opt,name=staker,proto3" json:"staker,omitempty"`
 }
 
-func (m *QueryDelegationPositionsByStakerRequest) Reset() {
-	*m = QueryDelegationPositionsByStakerRequest{}
-}
-func (m *QueryDelegationPositionsByStakerRequest) String() string { return proto.CompactTextString(m) }
-func (*QueryDelegationPositionsByStakerRequest) ProtoMessage()    {}
-func (*QueryDelegationPositionsByStakerRequest) Descriptor() ([]byte, []int) {
+func (m *QueryDelegationsByStakerRequest) Reset()         { *m = QueryDelegationsByStakerRequest{} }
+func (m *QueryDelegationsByStakerRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryDelegationsByStakerRequest) ProtoMessage()    {}
+func (*QueryDelegationsByStakerRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a63de00f5203f239, []int{6}
 }
-func (m *QueryDelegationPositionsByStakerRequest) XXX_Unmarshal(b []byte) error {
+func (m *QueryDelegationsByStakerRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryDelegationPositionsByStakerRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryDelegationsByStakerRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryDelegationPositionsByStakerRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryDelegationsByStakerRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -339,44 +337,42 @@ func (m *QueryDelegationPositionsByStakerRequest) XXX_Marshal(b []byte, determin
 		return b[:n], nil
 	}
 }
-func (m *QueryDelegationPositionsByStakerRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDelegationPositionsByStakerRequest.Merge(m, src)
+func (m *QueryDelegationsByStakerRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryDelegationsByStakerRequest.Merge(m, src)
 }
-func (m *QueryDelegationPositionsByStakerRequest) XXX_Size() int {
+func (m *QueryDelegationsByStakerRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryDelegationPositionsByStakerRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDelegationPositionsByStakerRequest.DiscardUnknown(m)
+func (m *QueryDelegationsByStakerRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryDelegationsByStakerRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryDelegationPositionsByStakerRequest proto.InternalMessageInfo
+var xxx_messageInfo_QueryDelegationsByStakerRequest proto.InternalMessageInfo
 
-func (m *QueryDelegationPositionsByStakerRequest) GetStaker() string {
+func (m *QueryDelegationsByStakerRequest) GetStaker() string {
 	if m != nil {
 		return m.Staker
 	}
 	return ""
 }
 
-// QueryDelegationPositionsByStakerResponse is the response type for the Query/DelegationPositionsByStaker RPC method
-type QueryDelegationPositionsByStakerResponse struct {
-	DelegationPositions []*DelegationPosition `protobuf:"bytes,1,rep,name=delegation_positions,json=delegationPositions,proto3" json:"delegation_positions,omitempty"`
+// QueryDelegationsByStakerResponse is the response type for the Query/DelegationsByStaker RPC method
+type QueryDelegationsByStakerResponse struct {
+	Delegations []*Delegation `protobuf:"bytes,1,rep,name=delegations,proto3" json:"delegations,omitempty"`
 }
 
-func (m *QueryDelegationPositionsByStakerResponse) Reset() {
-	*m = QueryDelegationPositionsByStakerResponse{}
-}
-func (m *QueryDelegationPositionsByStakerResponse) String() string { return proto.CompactTextString(m) }
-func (*QueryDelegationPositionsByStakerResponse) ProtoMessage()    {}
-func (*QueryDelegationPositionsByStakerResponse) Descriptor() ([]byte, []int) {
+func (m *QueryDelegationsByStakerResponse) Reset()         { *m = QueryDelegationsByStakerResponse{} }
+func (m *QueryDelegationsByStakerResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryDelegationsByStakerResponse) ProtoMessage()    {}
+func (*QueryDelegationsByStakerResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a63de00f5203f239, []int{7}
 }
-func (m *QueryDelegationPositionsByStakerResponse) XXX_Unmarshal(b []byte) error {
+func (m *QueryDelegationsByStakerResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryDelegationPositionsByStakerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryDelegationsByStakerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryDelegationPositionsByStakerResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryDelegationsByStakerResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -386,76 +382,74 @@ func (m *QueryDelegationPositionsByStakerResponse) XXX_Marshal(b []byte, determi
 		return b[:n], nil
 	}
 }
-func (m *QueryDelegationPositionsByStakerResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryDelegationPositionsByStakerResponse.Merge(m, src)
+func (m *QueryDelegationsByStakerResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryDelegationsByStakerResponse.Merge(m, src)
 }
-func (m *QueryDelegationPositionsByStakerResponse) XXX_Size() int {
+func (m *QueryDelegationsByStakerResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryDelegationPositionsByStakerResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryDelegationPositionsByStakerResponse.DiscardUnknown(m)
+func (m *QueryDelegationsByStakerResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryDelegationsByStakerResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryDelegationPositionsByStakerResponse proto.InternalMessageInfo
+var xxx_messageInfo_QueryDelegationsByStakerResponse proto.InternalMessageInfo
 
-func (m *QueryDelegationPositionsByStakerResponse) GetDelegationPositions() []*DelegationPosition {
+func (m *QueryDelegationsByStakerResponse) GetDelegations() []*Delegation {
 	if m != nil {
-		return m.DelegationPositions
+		return m.Delegations
 	}
 	return nil
 }
 
 func init() {
-	proto.RegisterType((*QueryStakingPositionRequest)(nil), "evmos.dualstaking.v1.QueryStakingPositionRequest")
-	proto.RegisterType((*QueryStakingPositionResponse)(nil), "evmos.dualstaking.v1.QueryStakingPositionResponse")
-	proto.RegisterType((*QueryDelegationPositionRequest)(nil), "evmos.dualstaking.v1.QueryDelegationPositionRequest")
-	proto.RegisterType((*QueryDelegationPositionResponse)(nil), "evmos.dualstaking.v1.QueryDelegationPositionResponse")
-	proto.RegisterType((*QueryStakingPositionsByStakerRequest)(nil), "evmos.dualstaking.v1.QueryStakingPositionsByStakerRequest")
-	proto.RegisterType((*QueryStakingPositionsByStakerResponse)(nil), "evmos.dualstaking.v1.QueryStakingPositionsByStakerResponse")
-	proto.RegisterType((*QueryDelegationPositionsByStakerRequest)(nil), "evmos.dualstaking.v1.QueryDelegationPositionsByStakerRequest")
-	proto.RegisterType((*QueryDelegationPositionsByStakerResponse)(nil), "evmos.dualstaking.v1.QueryDelegationPositionsByStakerResponse")
+	proto.RegisterType((*QueryStakeRequest)(nil), "evmos.dualstaking.v1.QueryStakeRequest")
+	proto.RegisterType((*QueryStakeResponse)(nil), "evmos.dualstaking.v1.QueryStakeResponse")
+	proto.RegisterType((*QueryDelegationRequest)(nil), "evmos.dualstaking.v1.QueryDelegationRequest")
+	proto.RegisterType((*QueryDelegationResponse)(nil), "evmos.dualstaking.v1.QueryDelegationResponse")
+	proto.RegisterType((*QueryStakesByStakerRequest)(nil), "evmos.dualstaking.v1.QueryStakesByStakerRequest")
+	proto.RegisterType((*QueryStakesByStakerResponse)(nil), "evmos.dualstaking.v1.QueryStakesByStakerResponse")
+	proto.RegisterType((*QueryDelegationsByStakerRequest)(nil), "evmos.dualstaking.v1.QueryDelegationsByStakerRequest")
+	proto.RegisterType((*QueryDelegationsByStakerResponse)(nil), "evmos.dualstaking.v1.QueryDelegationsByStakerResponse")
 }
 
 func init() { proto.RegisterFile("evmos/dualstaking/v1/query.proto", fileDescriptor_a63de00f5203f239) }
 
 var fileDescriptor_a63de00f5203f239 = []byte{
-	// 566 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x95, 0xc1, 0x6e, 0xd3, 0x40,
-	0x10, 0x86, 0xb3, 0x45, 0x04, 0x18, 0x40, 0x2d, 0xdb, 0x08, 0x85, 0xb4, 0x32, 0xd1, 0x42, 0x45,
-	0xc4, 0xc1, 0x6e, 0x0c, 0x08, 0x28, 0x50, 0x44, 0xc4, 0x81, 0xde, 0x42, 0x38, 0x01, 0x42, 0x96,
-	0x83, 0x57, 0xc6, 0x22, 0xf5, 0xba, 0x59, 0x27, 0x22, 0x2a, 0xb9, 0x70, 0xe1, 0x8a, 0xc4, 0x5b,
-	0x20, 0xde, 0x80, 0x17, 0xe0, 0x58, 0x09, 0x0e, 0x1c, 0xab, 0x84, 0x07, 0xa9, 0xb2, 0xde, 0x36,
-	0xb1, 0xbd, 0x49, 0x9c, 0x5e, 0x92, 0xf5, 0xac, 0xe7, 0x9f, 0xf9, 0x66, 0x76, 0xd6, 0x50, 0xa6,
-	0xdd, 0x5d, 0xc6, 0x0d, 0xa7, 0x63, 0xb7, 0x78, 0x68, 0x7f, 0xf4, 0x7c, 0xd7, 0xe8, 0x56, 0x8d,
-	0xbd, 0x0e, 0x6d, 0xf7, 0xf4, 0xa0, 0xcd, 0x42, 0x86, 0x0b, 0xe2, 0x0d, 0x7d, 0xe2, 0x0d, 0xbd,
-	0x5b, 0x2d, 0x11, 0xa5, 0x9f, 0x4b, 0x7d, 0xca, 0x3d, 0x1e, 0x79, 0x96, 0x0a, 0x2e, 0x73, 0x99,
-	0x58, 0x1a, 0xa3, 0x95, 0xb4, 0xae, 0xbb, 0x8c, 0xb9, 0x2d, 0x6a, 0xd8, 0x81, 0x67, 0xd8, 0xbe,
-	0xcf, 0x42, 0x3b, 0xf4, 0x98, 0x2f, 0x7d, 0x48, 0x1d, 0xd6, 0x5e, 0x8e, 0x82, 0xbf, 0x8a, 0x44,
-	0xeb, 0x8c, 0x7b, 0xa3, 0xed, 0x06, 0xdd, 0xeb, 0x50, 0x1e, 0xe2, 0xab, 0x90, 0x1f, 0x85, 0xa3,
-	0xed, 0x22, 0x2a, 0xa3, 0xca, 0x85, 0x86, 0x7c, 0xc2, 0xd7, 0xe0, 0xbc, 0x58, 0x59, 0x9e, 0x53,
-	0x5c, 0x12, 0x3b, 0xe7, 0xc4, 0xf3, 0x8e, 0x43, 0x02, 0x58, 0x57, 0x2b, 0xf2, 0x80, 0xf9, 0x9c,
-	0xe2, 0x3a, 0xac, 0x48, 0x02, 0x2b, 0x90, 0x7b, 0x42, 0xfc, 0xa2, 0xb9, 0xa1, 0xab, 0xd0, 0xf5,
-	0xa4, 0xd0, 0x32, 0x8f, 0x1b, 0xc8, 0x3b, 0xd0, 0x44, 0xc4, 0xe7, 0xb4, 0x45, 0x5d, 0x41, 0x97,
-	0x15, 0xe3, 0x06, 0x5c, 0x76, 0x4e, 0x9c, 0xc6, 0x2c, 0x97, 0xc6, 0xc6, 0x1d, 0x87, 0x7c, 0x86,
-	0xeb, 0x53, 0xe5, 0x25, 0xd3, 0x6b, 0x58, 0x9d, 0xd0, 0x49, 0x60, 0x55, 0xd4, 0x58, 0x0a, 0x39,
-	0xec, 0xa4, 0x6c, 0x64, 0x1b, 0x6e, 0xaa, 0xca, 0xc9, 0x6b, 0xc2, 0x42, 0xdb, 0x73, 0x10, 0xc9,
-	0x3e, 0x6c, 0xcc, 0xf1, 0x97, 0x0c, 0x0d, 0xb8, 0x92, 0xec, 0x0b, 0x2f, 0xa2, 0xf2, 0x99, 0xec,
-	0x8d, 0x59, 0x49, 0x34, 0x86, 0x93, 0x67, 0x70, 0x6b, 0x4a, 0xe9, 0x32, 0xe7, 0xff, 0x15, 0x41,
-	0x65, 0xbe, 0x86, 0x64, 0x78, 0x0b, 0x05, 0x45, 0x1f, 0x8e, 0x31, 0xb2, 0x37, 0x62, 0x35, 0xdd,
-	0x08, 0x6e, 0xfe, 0xcc, 0xc3, 0x59, 0x91, 0x09, 0xfe, 0x81, 0x60, 0x39, 0x01, 0x8f, 0xab, 0x6a,
-	0xf1, 0x19, 0xc3, 0x55, 0x32, 0x17, 0x71, 0x89, 0x08, 0xc9, 0xe6, 0x97, 0x3f, 0xff, 0xbf, 0x2f,
-	0xdd, 0xc6, 0x95, 0xd8, 0x55, 0x70, 0xfc, 0xbf, 0x1f, 0x15, 0xad, 0x2f, 0x17, 0x96, 0xe7, 0xf4,
-	0xf1, 0x2f, 0x04, 0x38, 0x8d, 0x88, 0xef, 0xce, 0x08, 0x3e, 0x75, 0x90, 0x4a, 0xf7, 0x16, 0xf4,
-	0x92, 0x59, 0x3f, 0x10, 0x59, 0x9b, 0x78, 0x33, 0x96, 0xf5, 0xb8, 0xc8, 0x13, 0x89, 0xc7, 0xe6,
-	0xb1, 0x8f, 0xff, 0x22, 0x28, 0x4e, 0x3b, 0xba, 0x78, 0x2b, 0x7b, 0x01, 0x93, 0xe7, 0xad, 0xf4,
-	0xe8, 0x54, 0xbe, 0x92, 0xe7, 0xa9, 0xe0, 0x79, 0x88, 0xef, 0x1b, 0xe9, 0x6b, 0x39, 0x35, 0x44,
-	0x56, 0xb3, 0x67, 0x45, 0x78, 0x27, 0x98, 0xf8, 0x10, 0xc1, 0xda, 0x8c, 0x03, 0x8d, 0x9f, 0x2c,
-	0x54, 0xe7, 0x14, 0xdc, 0xf6, 0x69, 0xdd, 0x25, 0x5f, 0x4d, 0xf0, 0x3d, 0xc6, 0x5b, 0x0a, 0x3e,
-	0xd5, 0x80, 0x29, 0x10, 0x6b, 0x2f, 0x7e, 0x0f, 0x34, 0x74, 0x30, 0xd0, 0xd0, 0xe1, 0x40, 0x43,
-	0xdf, 0x86, 0x5a, 0xee, 0x60, 0xa8, 0xe5, 0xfe, 0x0d, 0xb5, 0xdc, 0x1b, 0xdd, 0xf5, 0xc2, 0x0f,
-	0x9d, 0xa6, 0xfe, 0x9e, 0xed, 0x4a, 0xfd, 0xe8, 0xb7, 0x5b, 0x35, 0x8d, 0x4f, 0xb1, 0x58, 0x61,
-	0x2f, 0xa0, 0xbc, 0x99, 0x17, 0x9f, 0xaa, 0x3b, 0x47, 0x01, 0x00, 0x00, 0xff, 0xff, 0x7e, 0x06,
-	0x4d, 0x0f, 0x3c, 0x07, 0x00, 0x00,
+	// 535 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x94, 0x31, 0x6f, 0xd3, 0x40,
+	0x14, 0xc7, 0x73, 0x45, 0x29, 0xf0, 0x0a, 0x48, 0x3c, 0xaa, 0x12, 0x5c, 0x64, 0xac, 0x43, 0xa8,
+	0x1d, 0xa8, 0xaf, 0x4e, 0x68, 0x11, 0x62, 0x41, 0x11, 0x02, 0x3a, 0x12, 0xc4, 0x02, 0x43, 0xe4,
+	0xe0, 0xc3, 0x58, 0x4d, 0x7c, 0xa9, 0xcf, 0x89, 0x08, 0x55, 0x16, 0x36, 0x36, 0x24, 0xbe, 0x01,
+	0x33, 0x7c, 0x08, 0x36, 0xc6, 0x4a, 0x2c, 0x8c, 0x28, 0xe1, 0x83, 0xa0, 0x9c, 0xaf, 0xd8, 0x49,
+	0xdc, 0x3a, 0x5d, 0x92, 0xb3, 0xf3, 0xff, 0xbf, 0xf7, 0x7b, 0xff, 0x3c, 0x1b, 0x2c, 0xde, 0xef,
+	0x08, 0xc9, 0xbc, 0x9e, 0xdb, 0x96, 0xb1, 0xbb, 0x1f, 0x84, 0x3e, 0xeb, 0x3b, 0xec, 0xa0, 0xc7,
+	0xa3, 0x81, 0xdd, 0x8d, 0x44, 0x2c, 0x70, 0x55, 0x29, 0xec, 0x8c, 0xc2, 0xee, 0x3b, 0x06, 0xcd,
+	0xf5, 0xf9, 0x3c, 0xe4, 0x32, 0x90, 0x89, 0xd3, 0x58, 0xf5, 0x85, 0x2f, 0xd4, 0x91, 0x4d, 0x4e,
+	0xfa, 0xee, 0x4d, 0x5f, 0x08, 0xbf, 0xcd, 0x99, 0xdb, 0x0d, 0x98, 0x1b, 0x86, 0x22, 0x76, 0xe3,
+	0x40, 0x84, 0xda, 0x43, 0x9f, 0xc0, 0xd5, 0xe7, 0x93, 0xe6, 0x2f, 0x62, 0x77, 0x9f, 0x37, 0xf8,
+	0x41, 0x8f, 0xcb, 0x18, 0xd7, 0x60, 0x79, 0xd2, 0x84, 0x47, 0x15, 0x62, 0x91, 0xcd, 0x8b, 0x0d,
+	0x7d, 0x85, 0x37, 0xe0, 0x82, 0x3a, 0x35, 0x03, 0xaf, 0xb2, 0xa4, 0x7e, 0x39, 0xaf, 0xae, 0xf7,
+	0x3c, 0xfa, 0x14, 0x30, 0x5b, 0x47, 0x76, 0x45, 0x28, 0x39, 0x3a, 0x50, 0x56, 0x02, 0x55, 0x67,
+	0xa5, 0xba, 0x6e, 0xe7, 0xcd, 0x66, 0x27, 0x9e, 0x44, 0x49, 0x5f, 0xc2, 0x9a, 0x2a, 0xf4, 0x98,
+	0xb7, 0xb9, 0xaf, 0x50, 0x8b, 0xa8, 0x6e, 0xc3, 0x65, 0xef, 0xbf, 0x38, 0x45, 0xbb, 0x94, 0xde,
+	0xdc, 0xf3, 0xe8, 0x6b, 0xb8, 0x3e, 0x57, 0x56, 0x43, 0x3e, 0x02, 0x48, 0xa5, 0x9a, 0xd4, 0xca,
+	0x27, 0xcd, 0xb8, 0x33, 0x1e, 0x7a, 0x0f, 0x8c, 0x74, 0x78, 0x59, 0x4f, 0xbe, 0xa3, 0x02, 0x6e,
+	0xda, 0x80, 0xf5, 0x5c, 0x97, 0xc6, 0xaa, 0x69, 0x9b, 0xac, 0x10, 0xeb, 0x5c, 0x51, 0x78, 0x5a,
+	0x4a, 0x1f, 0xc0, 0xad, 0x99, 0x31, 0x17, 0xc6, 0x79, 0x0b, 0xd6, 0xc9, 0x56, 0xcd, 0x54, 0x87,
+	0x95, 0x74, 0xec, 0x63, 0xb0, 0xe2, 0xac, 0xb2, 0xa6, 0xea, 0xb7, 0x32, 0x94, 0x55, 0x23, 0xfc,
+	0x44, 0xa0, 0xac, 0x1a, 0xe0, 0x46, 0x7e, 0x89, 0xb9, 0xcd, 0x34, 0x36, 0x8b, 0x85, 0x09, 0x2a,
+	0xdd, 0xfa, 0xf8, 0xeb, 0xef, 0x97, 0xa5, 0x0d, 0xbc, 0xc3, 0x3a, 0xfc, 0x83, 0x98, 0x7d, 0x70,
+	0xd4, 0xcc, 0xec, 0xf0, 0x78, 0x9b, 0x87, 0xf8, 0x95, 0x00, 0xa4, 0xc4, 0x78, 0xf7, 0x94, 0x3e,
+	0x73, 0x9b, 0x69, 0x6c, 0x2d, 0xa8, 0xd6, 0x68, 0xf7, 0x15, 0x9a, 0x83, 0x2c, 0x17, 0x2d, 0xcd,
+	0x8a, 0x1d, 0x4e, 0xed, 0xf5, 0x10, 0xbf, 0x13, 0xb8, 0x32, 0xbd, 0x2d, 0xb8, 0x5d, 0x14, 0xc8,
+	0xec, 0xff, 0x6f, 0x38, 0x67, 0x70, 0x68, 0xe0, 0x5d, 0x05, 0xbc, 0x8d, 0xf6, 0xc9, 0x59, 0xca,
+	0x66, 0x6b, 0xd0, 0x4c, 0x36, 0x49, 0xc7, 0x1a, 0x0d, 0xf1, 0x07, 0x81, 0x6b, 0x39, 0xeb, 0x84,
+	0x3b, 0x0b, 0xe5, 0x35, 0x47, 0xbe, 0x7b, 0x56, 0x9b, 0xc6, 0x7f, 0xa8, 0xf0, 0x77, 0xb0, 0x56,
+	0x90, 0x77, 0xde, 0x0c, 0xf5, 0x67, 0x3f, 0x47, 0x26, 0x39, 0x1a, 0x99, 0xe4, 0xcf, 0xc8, 0x24,
+	0x9f, 0xc7, 0x66, 0xe9, 0x68, 0x6c, 0x96, 0x7e, 0x8f, 0xcd, 0xd2, 0x2b, 0xdb, 0x0f, 0xe2, 0x77,
+	0xbd, 0x96, 0xfd, 0x46, 0x74, 0x58, 0xf2, 0x76, 0x4e, 0x3e, 0xfb, 0x4e, 0x95, 0xbd, 0x9f, 0xea,
+	0x12, 0x0f, 0xba, 0x5c, 0xb6, 0x96, 0xd5, 0x1b, 0xb7, 0xf6, 0x2f, 0x00, 0x00, 0xff, 0xff, 0x72,
+	0x6c, 0x15, 0x58, 0x03, 0x06, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -470,12 +464,12 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type QueryClient interface {
-	StakingPosition(ctx context.Context, in *QueryStakingPositionRequest, opts ...grpc.CallOption) (*QueryStakingPositionResponse, error)
-	DelegationPosition(ctx context.Context, in *QueryDelegationPositionRequest, opts ...grpc.CallOption) (*QueryDelegationPositionResponse, error)
-	// StakingPositionsByStaker queries all staking positions for a given staker
-	StakingPositionsByStaker(ctx context.Context, in *QueryStakingPositionsByStakerRequest, opts ...grpc.CallOption) (*QueryStakingPositionsByStakerResponse, error)
-	// DelegationPositionsByStaker queries all delegation positions for a given staker
-	DelegationPositionsByStaker(ctx context.Context, in *QueryDelegationPositionsByStakerRequest, opts ...grpc.CallOption) (*QueryDelegationPositionsByStakerResponse, error)
+	Stake(ctx context.Context, in *QueryStakeRequest, opts ...grpc.CallOption) (*QueryStakeResponse, error)
+	Delegation(ctx context.Context, in *QueryDelegationRequest, opts ...grpc.CallOption) (*QueryDelegationResponse, error)
+	// StakesByStaker queries all staking positions for a given staker
+	StakesByStaker(ctx context.Context, in *QueryStakesByStakerRequest, opts ...grpc.CallOption) (*QueryStakesByStakerResponse, error)
+	// DelegationsByStaker queries all delegation positions for a given staker
+	DelegationsByStaker(ctx context.Context, in *QueryDelegationsByStakerRequest, opts ...grpc.CallOption) (*QueryDelegationsByStakerResponse, error)
 }
 
 type queryClient struct {
@@ -486,36 +480,36 @@ func NewQueryClient(cc grpc1.ClientConn) QueryClient {
 	return &queryClient{cc}
 }
 
-func (c *queryClient) StakingPosition(ctx context.Context, in *QueryStakingPositionRequest, opts ...grpc.CallOption) (*QueryStakingPositionResponse, error) {
-	out := new(QueryStakingPositionResponse)
-	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Query/StakingPosition", in, out, opts...)
+func (c *queryClient) Stake(ctx context.Context, in *QueryStakeRequest, opts ...grpc.CallOption) (*QueryStakeResponse, error) {
+	out := new(QueryStakeResponse)
+	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Query/Stake", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) DelegationPosition(ctx context.Context, in *QueryDelegationPositionRequest, opts ...grpc.CallOption) (*QueryDelegationPositionResponse, error) {
-	out := new(QueryDelegationPositionResponse)
-	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Query/DelegationPosition", in, out, opts...)
+func (c *queryClient) Delegation(ctx context.Context, in *QueryDelegationRequest, opts ...grpc.CallOption) (*QueryDelegationResponse, error) {
+	out := new(QueryDelegationResponse)
+	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Query/Delegation", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) StakingPositionsByStaker(ctx context.Context, in *QueryStakingPositionsByStakerRequest, opts ...grpc.CallOption) (*QueryStakingPositionsByStakerResponse, error) {
-	out := new(QueryStakingPositionsByStakerResponse)
-	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Query/StakingPositionsByStaker", in, out, opts...)
+func (c *queryClient) StakesByStaker(ctx context.Context, in *QueryStakesByStakerRequest, opts ...grpc.CallOption) (*QueryStakesByStakerResponse, error) {
+	out := new(QueryStakesByStakerResponse)
+	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Query/StakesByStaker", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) DelegationPositionsByStaker(ctx context.Context, in *QueryDelegationPositionsByStakerRequest, opts ...grpc.CallOption) (*QueryDelegationPositionsByStakerResponse, error) {
-	out := new(QueryDelegationPositionsByStakerResponse)
-	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Query/DelegationPositionsByStaker", in, out, opts...)
+func (c *queryClient) DelegationsByStaker(ctx context.Context, in *QueryDelegationsByStakerRequest, opts ...grpc.CallOption) (*QueryDelegationsByStakerResponse, error) {
+	out := new(QueryDelegationsByStakerResponse)
+	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Query/DelegationsByStaker", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -524,103 +518,103 @@ func (c *queryClient) DelegationPositionsByStaker(ctx context.Context, in *Query
 
 // QueryServer is the server API for Query service.
 type QueryServer interface {
-	StakingPosition(context.Context, *QueryStakingPositionRequest) (*QueryStakingPositionResponse, error)
-	DelegationPosition(context.Context, *QueryDelegationPositionRequest) (*QueryDelegationPositionResponse, error)
-	// StakingPositionsByStaker queries all staking positions for a given staker
-	StakingPositionsByStaker(context.Context, *QueryStakingPositionsByStakerRequest) (*QueryStakingPositionsByStakerResponse, error)
-	// DelegationPositionsByStaker queries all delegation positions for a given staker
-	DelegationPositionsByStaker(context.Context, *QueryDelegationPositionsByStakerRequest) (*QueryDelegationPositionsByStakerResponse, error)
+	Stake(context.Context, *QueryStakeRequest) (*QueryStakeResponse, error)
+	Delegation(context.Context, *QueryDelegationRequest) (*QueryDelegationResponse, error)
+	// StakesByStaker queries all staking positions for a given staker
+	StakesByStaker(context.Context, *QueryStakesByStakerRequest) (*QueryStakesByStakerResponse, error)
+	// DelegationsByStaker queries all delegation positions for a given staker
+	DelegationsByStaker(context.Context, *QueryDelegationsByStakerRequest) (*QueryDelegationsByStakerResponse, error)
 }
 
 // UnimplementedQueryServer can be embedded to have forward compatible implementations.
 type UnimplementedQueryServer struct {
 }
 
-func (*UnimplementedQueryServer) StakingPosition(ctx context.Context, req *QueryStakingPositionRequest) (*QueryStakingPositionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StakingPosition not implemented")
+func (*UnimplementedQueryServer) Stake(ctx context.Context, req *QueryStakeRequest) (*QueryStakeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stake not implemented")
 }
-func (*UnimplementedQueryServer) DelegationPosition(ctx context.Context, req *QueryDelegationPositionRequest) (*QueryDelegationPositionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DelegationPosition not implemented")
+func (*UnimplementedQueryServer) Delegation(ctx context.Context, req *QueryDelegationRequest) (*QueryDelegationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Delegation not implemented")
 }
-func (*UnimplementedQueryServer) StakingPositionsByStaker(ctx context.Context, req *QueryStakingPositionsByStakerRequest) (*QueryStakingPositionsByStakerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StakingPositionsByStaker not implemented")
+func (*UnimplementedQueryServer) StakesByStaker(ctx context.Context, req *QueryStakesByStakerRequest) (*QueryStakesByStakerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StakesByStaker not implemented")
 }
-func (*UnimplementedQueryServer) DelegationPositionsByStaker(ctx context.Context, req *QueryDelegationPositionsByStakerRequest) (*QueryDelegationPositionsByStakerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DelegationPositionsByStaker not implemented")
+func (*UnimplementedQueryServer) DelegationsByStaker(ctx context.Context, req *QueryDelegationsByStakerRequest) (*QueryDelegationsByStakerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DelegationsByStaker not implemented")
 }
 
 func RegisterQueryServer(s grpc1.Server, srv QueryServer) {
 	s.RegisterService(&_Query_serviceDesc, srv)
 }
 
-func _Query_StakingPosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryStakingPositionRequest)
+func _Query_Stake_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryStakeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).StakingPosition(ctx, in)
+		return srv.(QueryServer).Stake(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/evmos.dualstaking.v1.Query/StakingPosition",
+		FullMethod: "/evmos.dualstaking.v1.Query/Stake",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).StakingPosition(ctx, req.(*QueryStakingPositionRequest))
+		return srv.(QueryServer).Stake(ctx, req.(*QueryStakeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_DelegationPosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryDelegationPositionRequest)
+func _Query_Delegation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryDelegationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).DelegationPosition(ctx, in)
+		return srv.(QueryServer).Delegation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/evmos.dualstaking.v1.Query/DelegationPosition",
+		FullMethod: "/evmos.dualstaking.v1.Query/Delegation",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).DelegationPosition(ctx, req.(*QueryDelegationPositionRequest))
+		return srv.(QueryServer).Delegation(ctx, req.(*QueryDelegationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_StakingPositionsByStaker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryStakingPositionsByStakerRequest)
+func _Query_StakesByStaker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryStakesByStakerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).StakingPositionsByStaker(ctx, in)
+		return srv.(QueryServer).StakesByStaker(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/evmos.dualstaking.v1.Query/StakingPositionsByStaker",
+		FullMethod: "/evmos.dualstaking.v1.Query/StakesByStaker",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).StakingPositionsByStaker(ctx, req.(*QueryStakingPositionsByStakerRequest))
+		return srv.(QueryServer).StakesByStaker(ctx, req.(*QueryStakesByStakerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_DelegationPositionsByStaker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryDelegationPositionsByStakerRequest)
+func _Query_DelegationsByStaker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryDelegationsByStakerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).DelegationPositionsByStaker(ctx, in)
+		return srv.(QueryServer).DelegationsByStaker(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/evmos.dualstaking.v1.Query/DelegationPositionsByStaker",
+		FullMethod: "/evmos.dualstaking.v1.Query/DelegationsByStaker",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).DelegationPositionsByStaker(ctx, req.(*QueryDelegationPositionsByStakerRequest))
+		return srv.(QueryServer).DelegationsByStaker(ctx, req.(*QueryDelegationsByStakerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -630,27 +624,27 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*QueryServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "StakingPosition",
-			Handler:    _Query_StakingPosition_Handler,
+			MethodName: "Stake",
+			Handler:    _Query_Stake_Handler,
 		},
 		{
-			MethodName: "DelegationPosition",
-			Handler:    _Query_DelegationPosition_Handler,
+			MethodName: "Delegation",
+			Handler:    _Query_Delegation_Handler,
 		},
 		{
-			MethodName: "StakingPositionsByStaker",
-			Handler:    _Query_StakingPositionsByStaker_Handler,
+			MethodName: "StakesByStaker",
+			Handler:    _Query_StakesByStaker_Handler,
 		},
 		{
-			MethodName: "DelegationPositionsByStaker",
-			Handler:    _Query_DelegationPositionsByStaker_Handler,
+			MethodName: "DelegationsByStaker",
+			Handler:    _Query_DelegationsByStaker_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "evmos/dualstaking/v1/query.proto",
 }
 
-func (m *QueryStakingPositionRequest) Marshal() (dAtA []byte, err error) {
+func (m *QueryStakeRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -660,12 +654,12 @@ func (m *QueryStakingPositionRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QueryStakingPositionRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryStakeRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryStakingPositionRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryStakeRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -687,7 +681,7 @@ func (m *QueryStakingPositionRequest) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryStakingPositionResponse) Marshal() (dAtA []byte, err error) {
+func (m *QueryStakeResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -697,19 +691,19 @@ func (m *QueryStakingPositionResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QueryStakingPositionResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryStakeResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryStakingPositionResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryStakeResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.StakingPosition != nil {
+	if m.Stake != nil {
 		{
-			size, err := m.StakingPosition.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Stake.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -722,7 +716,7 @@ func (m *QueryStakingPositionResponse) MarshalToSizedBuffer(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryDelegationPositionRequest) Marshal() (dAtA []byte, err error) {
+func (m *QueryDelegationRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -732,12 +726,12 @@ func (m *QueryDelegationPositionRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QueryDelegationPositionRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryDelegationRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryDelegationPositionRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryDelegationRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -759,7 +753,7 @@ func (m *QueryDelegationPositionRequest) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryDelegationPositionResponse) Marshal() (dAtA []byte, err error) {
+func (m *QueryDelegationResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -769,19 +763,19 @@ func (m *QueryDelegationPositionResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QueryDelegationPositionResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryDelegationResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryDelegationPositionResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryDelegationResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.DelegationPosition != nil {
+	if m.Delegation != nil {
 		{
-			size, err := m.DelegationPosition.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Delegation.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -794,7 +788,7 @@ func (m *QueryDelegationPositionResponse) MarshalToSizedBuffer(dAtA []byte) (int
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryStakingPositionsByStakerRequest) Marshal() (dAtA []byte, err error) {
+func (m *QueryStakesByStakerRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -804,12 +798,12 @@ func (m *QueryStakingPositionsByStakerRequest) Marshal() (dAtA []byte, err error
 	return dAtA[:n], nil
 }
 
-func (m *QueryStakingPositionsByStakerRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryStakesByStakerRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryStakingPositionsByStakerRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryStakesByStakerRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -824,7 +818,7 @@ func (m *QueryStakingPositionsByStakerRequest) MarshalToSizedBuffer(dAtA []byte)
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryStakingPositionsByStakerResponse) Marshal() (dAtA []byte, err error) {
+func (m *QueryStakesByStakerResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -834,20 +828,20 @@ func (m *QueryStakingPositionsByStakerResponse) Marshal() (dAtA []byte, err erro
 	return dAtA[:n], nil
 }
 
-func (m *QueryStakingPositionsByStakerResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryStakesByStakerResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryStakingPositionsByStakerResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryStakesByStakerResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.StakingPositions) > 0 {
-		for iNdEx := len(m.StakingPositions) - 1; iNdEx >= 0; iNdEx-- {
+	if len(m.Stakes) > 0 {
+		for iNdEx := len(m.Stakes) - 1; iNdEx >= 0; iNdEx-- {
 			{
-				size, err := m.StakingPositions[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				size, err := m.Stakes[iNdEx].MarshalToSizedBuffer(dAtA[:i])
 				if err != nil {
 					return 0, err
 				}
@@ -861,7 +855,7 @@ func (m *QueryStakingPositionsByStakerResponse) MarshalToSizedBuffer(dAtA []byte
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryDelegationPositionsByStakerRequest) Marshal() (dAtA []byte, err error) {
+func (m *QueryDelegationsByStakerRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -871,12 +865,12 @@ func (m *QueryDelegationPositionsByStakerRequest) Marshal() (dAtA []byte, err er
 	return dAtA[:n], nil
 }
 
-func (m *QueryDelegationPositionsByStakerRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryDelegationsByStakerRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryDelegationPositionsByStakerRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryDelegationsByStakerRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -891,7 +885,7 @@ func (m *QueryDelegationPositionsByStakerRequest) MarshalToSizedBuffer(dAtA []by
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryDelegationPositionsByStakerResponse) Marshal() (dAtA []byte, err error) {
+func (m *QueryDelegationsByStakerResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -901,20 +895,20 @@ func (m *QueryDelegationPositionsByStakerResponse) Marshal() (dAtA []byte, err e
 	return dAtA[:n], nil
 }
 
-func (m *QueryDelegationPositionsByStakerResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryDelegationsByStakerResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryDelegationPositionsByStakerResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryDelegationsByStakerResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.DelegationPositions) > 0 {
-		for iNdEx := len(m.DelegationPositions) - 1; iNdEx >= 0; iNdEx-- {
+	if len(m.Delegations) > 0 {
+		for iNdEx := len(m.Delegations) - 1; iNdEx >= 0; iNdEx-- {
 			{
-				size, err := m.DelegationPositions[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				size, err := m.Delegations[iNdEx].MarshalToSizedBuffer(dAtA[:i])
 				if err != nil {
 					return 0, err
 				}
@@ -939,7 +933,7 @@ func encodeVarintQuery(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *QueryStakingPositionRequest) Size() (n int) {
+func (m *QueryStakeRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -956,20 +950,20 @@ func (m *QueryStakingPositionRequest) Size() (n int) {
 	return n
 }
 
-func (m *QueryStakingPositionResponse) Size() (n int) {
+func (m *QueryStakeResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.StakingPosition != nil {
-		l = m.StakingPosition.Size()
+	if m.Stake != nil {
+		l = m.Stake.Size()
 		n += 1 + l + sovQuery(uint64(l))
 	}
 	return n
 }
 
-func (m *QueryDelegationPositionRequest) Size() (n int) {
+func (m *QueryDelegationRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -986,20 +980,20 @@ func (m *QueryDelegationPositionRequest) Size() (n int) {
 	return n
 }
 
-func (m *QueryDelegationPositionResponse) Size() (n int) {
+func (m *QueryDelegationResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.DelegationPosition != nil {
-		l = m.DelegationPosition.Size()
+	if m.Delegation != nil {
+		l = m.Delegation.Size()
 		n += 1 + l + sovQuery(uint64(l))
 	}
 	return n
 }
 
-func (m *QueryStakingPositionsByStakerRequest) Size() (n int) {
+func (m *QueryStakesByStakerRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1012,14 +1006,14 @@ func (m *QueryStakingPositionsByStakerRequest) Size() (n int) {
 	return n
 }
 
-func (m *QueryStakingPositionsByStakerResponse) Size() (n int) {
+func (m *QueryStakesByStakerResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if len(m.StakingPositions) > 0 {
-		for _, e := range m.StakingPositions {
+	if len(m.Stakes) > 0 {
+		for _, e := range m.Stakes {
 			l = e.Size()
 			n += 1 + l + sovQuery(uint64(l))
 		}
@@ -1027,7 +1021,7 @@ func (m *QueryStakingPositionsByStakerResponse) Size() (n int) {
 	return n
 }
 
-func (m *QueryDelegationPositionsByStakerRequest) Size() (n int) {
+func (m *QueryDelegationsByStakerRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1040,14 +1034,14 @@ func (m *QueryDelegationPositionsByStakerRequest) Size() (n int) {
 	return n
 }
 
-func (m *QueryDelegationPositionsByStakerResponse) Size() (n int) {
+func (m *QueryDelegationsByStakerResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if len(m.DelegationPositions) > 0 {
-		for _, e := range m.DelegationPositions {
+	if len(m.Delegations) > 0 {
+		for _, e := range m.Delegations {
 			l = e.Size()
 			n += 1 + l + sovQuery(uint64(l))
 		}
@@ -1061,7 +1055,7 @@ func sovQuery(x uint64) (n int) {
 func sozQuery(x uint64) (n int) {
 	return sovQuery(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *QueryStakingPositionRequest) Unmarshal(dAtA []byte) error {
+func (m *QueryStakeRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1084,10 +1078,10 @@ func (m *QueryStakingPositionRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryStakingPositionRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryStakeRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryStakingPositionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryStakeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1175,7 +1169,7 @@ func (m *QueryStakingPositionRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryStakingPositionResponse) Unmarshal(dAtA []byte) error {
+func (m *QueryStakeResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1198,15 +1192,15 @@ func (m *QueryStakingPositionResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryStakingPositionResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryStakeResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryStakingPositionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryStakeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StakingPosition", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Stake", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1233,10 +1227,10 @@ func (m *QueryStakingPositionResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.StakingPosition == nil {
-				m.StakingPosition = &StakingPosition{}
+			if m.Stake == nil {
+				m.Stake = &Stake{}
 			}
-			if err := m.StakingPosition.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.Stake.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1261,7 +1255,7 @@ func (m *QueryStakingPositionResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryDelegationPositionRequest) Unmarshal(dAtA []byte) error {
+func (m *QueryDelegationRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1284,10 +1278,10 @@ func (m *QueryDelegationPositionRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryDelegationPositionRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryDelegationRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryDelegationPositionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryDelegationRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1375,7 +1369,7 @@ func (m *QueryDelegationPositionRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryDelegationPositionResponse) Unmarshal(dAtA []byte) error {
+func (m *QueryDelegationResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1398,15 +1392,15 @@ func (m *QueryDelegationPositionResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryDelegationPositionResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryDelegationResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryDelegationPositionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryDelegationResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DelegationPosition", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Delegation", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1433,10 +1427,10 @@ func (m *QueryDelegationPositionResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.DelegationPosition == nil {
-				m.DelegationPosition = &DelegationPosition{}
+			if m.Delegation == nil {
+				m.Delegation = &Delegation{}
 			}
-			if err := m.DelegationPosition.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.Delegation.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1461,7 +1455,7 @@ func (m *QueryDelegationPositionResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryStakingPositionsByStakerRequest) Unmarshal(dAtA []byte) error {
+func (m *QueryStakesByStakerRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1484,10 +1478,10 @@ func (m *QueryStakingPositionsByStakerRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryStakingPositionsByStakerRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryStakesByStakerRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryStakingPositionsByStakerRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryStakesByStakerRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1543,7 +1537,7 @@ func (m *QueryStakingPositionsByStakerRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryStakingPositionsByStakerResponse) Unmarshal(dAtA []byte) error {
+func (m *QueryStakesByStakerResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1566,15 +1560,15 @@ func (m *QueryStakingPositionsByStakerResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryStakingPositionsByStakerResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryStakesByStakerResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryStakingPositionsByStakerResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryStakesByStakerResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StakingPositions", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Stakes", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1601,8 +1595,8 @@ func (m *QueryStakingPositionsByStakerResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.StakingPositions = append(m.StakingPositions, &StakingPosition{})
-			if err := m.StakingPositions[len(m.StakingPositions)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.Stakes = append(m.Stakes, &Stake{})
+			if err := m.Stakes[len(m.Stakes)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1627,7 +1621,7 @@ func (m *QueryStakingPositionsByStakerResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryDelegationPositionsByStakerRequest) Unmarshal(dAtA []byte) error {
+func (m *QueryDelegationsByStakerRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1650,10 +1644,10 @@ func (m *QueryDelegationPositionsByStakerRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryDelegationPositionsByStakerRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryDelegationsByStakerRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryDelegationPositionsByStakerRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryDelegationsByStakerRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1709,7 +1703,7 @@ func (m *QueryDelegationPositionsByStakerRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryDelegationPositionsByStakerResponse) Unmarshal(dAtA []byte) error {
+func (m *QueryDelegationsByStakerResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1732,15 +1726,15 @@ func (m *QueryDelegationPositionsByStakerResponse) Unmarshal(dAtA []byte) error 
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryDelegationPositionsByStakerResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryDelegationsByStakerResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryDelegationPositionsByStakerResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryDelegationsByStakerResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DelegationPositions", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Delegations", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1767,8 +1761,8 @@ func (m *QueryDelegationPositionsByStakerResponse) Unmarshal(dAtA []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DelegationPositions = append(m.DelegationPositions, &DelegationPosition{})
-			if err := m.DelegationPositions[len(m.DelegationPositions)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.Delegations = append(m.Delegations, &Delegation{})
+			if err := m.Delegations[len(m.Delegations)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

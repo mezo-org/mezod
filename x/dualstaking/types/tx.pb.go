@@ -222,25 +222,25 @@ func (m *MsgDelegateTokensResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_MsgDelegateTokensResponse proto.InternalMessageInfo
 
-type MsgAutoDelegateTokens struct {
+type MsgStakeDelegateTokens struct {
 	Staker       string      `protobuf:"bytes,1,opt,name=staker,proto3" json:"staker,omitempty"`
 	Validator    string      `protobuf:"bytes,2,opt,name=validator,proto3" json:"validator,omitempty"`
 	Amount       *types.Coin `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
 	LockDuration int64       `protobuf:"varint,4,opt,name=lock_duration,json=lockDuration,proto3" json:"lock_duration,omitempty"`
 }
 
-func (m *MsgAutoDelegateTokens) Reset()         { *m = MsgAutoDelegateTokens{} }
-func (m *MsgAutoDelegateTokens) String() string { return proto.CompactTextString(m) }
-func (*MsgAutoDelegateTokens) ProtoMessage()    {}
-func (*MsgAutoDelegateTokens) Descriptor() ([]byte, []int) {
+func (m *MsgStakeDelegateTokens) Reset()         { *m = MsgStakeDelegateTokens{} }
+func (m *MsgStakeDelegateTokens) String() string { return proto.CompactTextString(m) }
+func (*MsgStakeDelegateTokens) ProtoMessage()    {}
+func (*MsgStakeDelegateTokens) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b30b1537a700dc4b, []int{4}
 }
-func (m *MsgAutoDelegateTokens) XXX_Unmarshal(b []byte) error {
+func (m *MsgStakeDelegateTokens) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgAutoDelegateTokens) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgStakeDelegateTokens) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgAutoDelegateTokens.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgStakeDelegateTokens.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -250,61 +250,61 @@ func (m *MsgAutoDelegateTokens) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return b[:n], nil
 	}
 }
-func (m *MsgAutoDelegateTokens) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgAutoDelegateTokens.Merge(m, src)
+func (m *MsgStakeDelegateTokens) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgStakeDelegateTokens.Merge(m, src)
 }
-func (m *MsgAutoDelegateTokens) XXX_Size() int {
+func (m *MsgStakeDelegateTokens) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgAutoDelegateTokens) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgAutoDelegateTokens.DiscardUnknown(m)
+func (m *MsgStakeDelegateTokens) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgStakeDelegateTokens.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgAutoDelegateTokens proto.InternalMessageInfo
+var xxx_messageInfo_MsgStakeDelegateTokens proto.InternalMessageInfo
 
-func (m *MsgAutoDelegateTokens) GetStaker() string {
+func (m *MsgStakeDelegateTokens) GetStaker() string {
 	if m != nil {
 		return m.Staker
 	}
 	return ""
 }
 
-func (m *MsgAutoDelegateTokens) GetValidator() string {
+func (m *MsgStakeDelegateTokens) GetValidator() string {
 	if m != nil {
 		return m.Validator
 	}
 	return ""
 }
 
-func (m *MsgAutoDelegateTokens) GetAmount() *types.Coin {
+func (m *MsgStakeDelegateTokens) GetAmount() *types.Coin {
 	if m != nil {
 		return m.Amount
 	}
 	return nil
 }
 
-func (m *MsgAutoDelegateTokens) GetLockDuration() int64 {
+func (m *MsgStakeDelegateTokens) GetLockDuration() int64 {
 	if m != nil {
 		return m.LockDuration
 	}
 	return 0
 }
 
-type MsgAutoDelegateTokensResponse struct {
+type MsgStakeDelegateTokensResponse struct {
 }
 
-func (m *MsgAutoDelegateTokensResponse) Reset()         { *m = MsgAutoDelegateTokensResponse{} }
-func (m *MsgAutoDelegateTokensResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgAutoDelegateTokensResponse) ProtoMessage()    {}
-func (*MsgAutoDelegateTokensResponse) Descriptor() ([]byte, []int) {
+func (m *MsgStakeDelegateTokensResponse) Reset()         { *m = MsgStakeDelegateTokensResponse{} }
+func (m *MsgStakeDelegateTokensResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgStakeDelegateTokensResponse) ProtoMessage()    {}
+func (*MsgStakeDelegateTokensResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_b30b1537a700dc4b, []int{5}
 }
-func (m *MsgAutoDelegateTokensResponse) XXX_Unmarshal(b []byte) error {
+func (m *MsgStakeDelegateTokensResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgAutoDelegateTokensResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgStakeDelegateTokensResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgAutoDelegateTokensResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgStakeDelegateTokensResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -314,59 +314,58 @@ func (m *MsgAutoDelegateTokensResponse) XXX_Marshal(b []byte, deterministic bool
 		return b[:n], nil
 	}
 }
-func (m *MsgAutoDelegateTokensResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgAutoDelegateTokensResponse.Merge(m, src)
+func (m *MsgStakeDelegateTokensResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgStakeDelegateTokensResponse.Merge(m, src)
 }
-func (m *MsgAutoDelegateTokensResponse) XXX_Size() int {
+func (m *MsgStakeDelegateTokensResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgAutoDelegateTokensResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgAutoDelegateTokensResponse.DiscardUnknown(m)
+func (m *MsgStakeDelegateTokensResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgStakeDelegateTokensResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgAutoDelegateTokensResponse proto.InternalMessageInfo
+var xxx_messageInfo_MsgStakeDelegateTokensResponse proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*MsgStakeTokens)(nil), "evmos.dualstaking.v1.MsgStakeTokens")
 	proto.RegisterType((*MsgStakeTokensResponse)(nil), "evmos.dualstaking.v1.MsgStakeTokensResponse")
 	proto.RegisterType((*MsgDelegateTokens)(nil), "evmos.dualstaking.v1.MsgDelegateTokens")
 	proto.RegisterType((*MsgDelegateTokensResponse)(nil), "evmos.dualstaking.v1.MsgDelegateTokensResponse")
-	proto.RegisterType((*MsgAutoDelegateTokens)(nil), "evmos.dualstaking.v1.MsgAutoDelegateTokens")
-	proto.RegisterType((*MsgAutoDelegateTokensResponse)(nil), "evmos.dualstaking.v1.MsgAutoDelegateTokensResponse")
+	proto.RegisterType((*MsgStakeDelegateTokens)(nil), "evmos.dualstaking.v1.MsgStakeDelegateTokens")
+	proto.RegisterType((*MsgStakeDelegateTokensResponse)(nil), "evmos.dualstaking.v1.MsgStakeDelegateTokensResponse")
 }
 
 func init() { proto.RegisterFile("evmos/dualstaking/v1/tx.proto", fileDescriptor_b30b1537a700dc4b) }
 
 var fileDescriptor_b30b1537a700dc4b = []byte{
-	// 435 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x94, 0x4f, 0x8f, 0x93, 0x40,
-	0x14, 0xc0, 0x3b, 0x8b, 0x69, 0xd2, 0x59, 0xdd, 0x44, 0xb2, 0x6e, 0x58, 0x74, 0xb1, 0x41, 0x13,
-	0x1b, 0x35, 0x33, 0xa1, 0xfb, 0x09, 0xd4, 0x3d, 0x78, 0xe1, 0x82, 0x9e, 0xbc, 0x98, 0x81, 0x4e,
-	0x46, 0x84, 0xf2, 0x90, 0x19, 0xc8, 0x6e, 0xe2, 0xc1, 0x8f, 0xe0, 0x97, 0xf0, 0xbb, 0x78, 0xf0,
-	0xb0, 0x47, 0x8f, 0xa6, 0xfd, 0x22, 0x86, 0x7f, 0x15, 0x2c, 0x8d, 0xf5, 0xb4, 0x17, 0x02, 0xef,
-	0xfd, 0x78, 0xef, 0xc7, 0x9b, 0x61, 0xf0, 0x19, 0x2f, 0x96, 0x20, 0xe9, 0x22, 0x67, 0xb1, 0x54,
-	0x2c, 0x0a, 0x13, 0x41, 0x0b, 0x87, 0xaa, 0x4b, 0x92, 0x66, 0xa0, 0x40, 0x3f, 0xae, 0xd2, 0xa4,
-	0x93, 0x26, 0x85, 0x63, 0x1e, 0x0b, 0x10, 0x50, 0x01, 0xb4, 0xbc, 0xab, 0x59, 0xf3, 0x69, 0x00,
-	0xb2, 0xac, 0xe5, 0x33, 0xc9, 0xe9, 0xa7, 0x9c, 0x67, 0x57, 0xb4, 0x70, 0x7c, 0xae, 0x98, 0x43,
-	0x53, 0x26, 0xc2, 0x84, 0xa9, 0x10, 0x92, 0x86, 0xb5, 0xba, 0x6c, 0x4b, 0x05, 0x10, 0x36, 0x79,
-	0xfb, 0x0b, 0xc2, 0x47, 0xae, 0x14, 0x6f, 0x14, 0x8b, 0xf8, 0x5b, 0x88, 0x78, 0x22, 0xf5, 0x13,
-	0x3c, 0x2e, 0x15, 0x78, 0x66, 0xa0, 0x29, 0x9a, 0x4d, 0xbc, 0xe6, 0x49, 0x77, 0xf0, 0x98, 0x2d,
-	0x21, 0x4f, 0x94, 0x71, 0x30, 0x45, 0xb3, 0xc3, 0xf9, 0x29, 0xa9, 0x6b, 0x93, 0xb2, 0x36, 0x69,
-	0x6a, 0x93, 0x57, 0x10, 0x26, 0x5e, 0x03, 0xea, 0x8f, 0xf0, 0x9d, 0x18, 0x82, 0xe8, 0xfd, 0x22,
-	0xcf, 0x2a, 0x29, 0x43, 0x9b, 0xa2, 0x99, 0xe6, 0xdd, 0x2e, 0x83, 0x17, 0x4d, 0xcc, 0x36, 0xf0,
-	0x49, 0xdf, 0xc0, 0xe3, 0x32, 0x85, 0x44, 0x72, 0xfb, 0x33, 0xbe, 0xeb, 0x4a, 0x71, 0xc1, 0x63,
-	0x2e, 0x98, 0xfa, 0x97, 0xde, 0x03, 0x3c, 0x29, 0x58, 0x1c, 0x2e, 0x98, 0x82, 0xac, 0x32, 0x9c,
-	0x78, 0x7f, 0x02, 0x1d, 0x79, 0x6d, 0x4f, 0x79, 0xfb, 0x3e, 0x3e, 0xdd, 0xea, 0xbe, 0x51, 0xfb,
-	0x86, 0xf0, 0x3d, 0x57, 0x8a, 0x17, 0xb9, 0x82, 0x1b, 0xf2, 0xdb, 0x1e, 0xee, 0xad, 0x81, 0xe1,
-	0x3e, 0xc4, 0x67, 0x83, 0x9a, 0xed, 0x87, 0xcc, 0x7f, 0x1c, 0x60, 0xcd, 0x95, 0x42, 0x67, 0xf8,
-	0xb0, 0xbb, 0x09, 0x1e, 0x93, 0xa1, 0x0d, 0x49, 0xfa, 0x0b, 0x65, 0x3e, 0xdf, 0x87, 0x6a, 0x5b,
-	0xe9, 0x1f, 0xf1, 0xd1, 0x5f, 0xb3, 0x7a, 0xb2, 0xf3, 0xfd, 0x3e, 0x68, 0xd2, 0x3d, 0xc1, 0x4d,
-	0xaf, 0x02, 0xeb, 0x03, 0x6b, 0xf3, 0x6c, 0x67, 0x99, 0x6d, 0xd8, 0x3c, 0xff, 0x0f, 0xb8, 0xed,
-	0xfb, 0xf2, 0xf5, 0xf7, 0x95, 0x85, 0xae, 0x57, 0x16, 0xfa, 0xb5, 0xb2, 0xd0, 0xd7, 0xb5, 0x35,
-	0xba, 0x5e, 0x5b, 0xa3, 0x9f, 0x6b, 0x6b, 0xf4, 0x8e, 0x88, 0x50, 0x7d, 0xc8, 0x7d, 0x12, 0xc0,
-	0x92, 0xd6, 0x67, 0x41, 0x7d, 0x2d, 0x9c, 0x39, 0xbd, 0xec, 0x9d, 0x0b, 0xea, 0x2a, 0xe5, 0xd2,
-	0x1f, 0x57, 0x3f, 0xe8, 0xf9, 0xef, 0x00, 0x00, 0x00, 0xff, 0xff, 0x42, 0x48, 0xf9, 0x47, 0x39,
-	0x04, 0x00, 0x00,
+	// 427 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x94, 0xcf, 0x8e, 0x93, 0x40,
+	0x18, 0xc0, 0x3b, 0x8b, 0x69, 0xd2, 0x59, 0xdd, 0x44, 0xdc, 0x6c, 0x58, 0xd4, 0x09, 0x41, 0x13,
+	0x1b, 0x63, 0x66, 0x42, 0xf5, 0x09, 0x74, 0x0f, 0x5e, 0x7a, 0x41, 0x4f, 0x5e, 0xcc, 0x40, 0x27,
+	0x23, 0x42, 0x19, 0x64, 0x06, 0xd2, 0x26, 0x1e, 0x7c, 0x04, 0x9f, 0xc2, 0x67, 0xf1, 0x66, 0x8f,
+	0x1e, 0x4d, 0xfb, 0x22, 0x86, 0x7f, 0x2d, 0xb4, 0x98, 0xd6, 0xd3, 0x5e, 0x08, 0x7c, 0xdf, 0x8f,
+	0xef, 0xfb, 0xf1, 0xcd, 0x30, 0xf0, 0x31, 0xcb, 0xe7, 0x42, 0x92, 0x59, 0x46, 0x23, 0xa9, 0x68,
+	0x18, 0xc4, 0x9c, 0xe4, 0x0e, 0x51, 0x0b, 0x9c, 0xa4, 0x42, 0x09, 0xfd, 0xb2, 0x4c, 0xe3, 0x56,
+	0x1a, 0xe7, 0x8e, 0x79, 0xc9, 0x05, 0x17, 0x25, 0x40, 0x8a, 0xbb, 0x8a, 0x35, 0x9f, 0xfb, 0x42,
+	0x16, 0xb5, 0x3c, 0x2a, 0x19, 0xf9, 0x92, 0xb1, 0x74, 0x49, 0x72, 0xc7, 0x63, 0x8a, 0x3a, 0x24,
+	0xa1, 0x3c, 0x88, 0xa9, 0x0a, 0x44, 0x5c, 0xb3, 0xa8, 0xcd, 0x36, 0x94, 0x2f, 0x82, 0x3a, 0x6f,
+	0x7f, 0x03, 0xf0, 0x62, 0x2a, 0xf9, 0x3b, 0x45, 0x43, 0xf6, 0x5e, 0x84, 0x2c, 0x96, 0xfa, 0x15,
+	0x1c, 0x16, 0x0a, 0x2c, 0x35, 0x80, 0x05, 0xc6, 0x23, 0xb7, 0x7e, 0xd2, 0x1d, 0x38, 0xa4, 0x73,
+	0x91, 0xc5, 0xca, 0x38, 0xb3, 0xc0, 0xf8, 0x7c, 0x72, 0x8d, 0xab, 0xda, 0xb8, 0xa8, 0x8d, 0xeb,
+	0xda, 0xf8, 0x8d, 0x08, 0x62, 0xb7, 0x06, 0xf5, 0x27, 0xf0, 0x5e, 0x24, 0xfc, 0xf0, 0xe3, 0x2c,
+	0x4b, 0x4b, 0x29, 0x43, 0xb3, 0xc0, 0x58, 0x73, 0xef, 0x16, 0xc1, 0x9b, 0x3a, 0x66, 0x1b, 0xf0,
+	0xaa, 0x6b, 0xe0, 0x32, 0x99, 0x88, 0x58, 0x32, 0xfb, 0x2b, 0xbc, 0x3f, 0x95, 0xfc, 0x86, 0x45,
+	0x8c, 0x53, 0x75, 0x4c, 0xef, 0x11, 0x1c, 0xe5, 0x34, 0x0a, 0x66, 0x54, 0x89, 0xb4, 0x34, 0x1c,
+	0xb9, 0xbb, 0x40, 0x4b, 0x5e, 0x3b, 0x51, 0xde, 0x7e, 0x08, 0xaf, 0x0f, 0xba, 0x6f, 0xd5, 0x7e,
+	0x80, 0x9d, 0xf5, 0x2d, 0x09, 0x1e, 0x4e, 0xf7, 0x4e, 0xcf, 0x74, 0x2d, 0x88, 0xfa, 0x3d, 0x9b,
+	0x4f, 0x99, 0xfc, 0x3a, 0x83, 0xda, 0x54, 0x72, 0x9d, 0xc2, 0xf3, 0xf6, 0x36, 0x78, 0x8a, 0xfb,
+	0xb6, 0x24, 0xee, 0x2e, 0x95, 0xf9, 0xe2, 0x14, 0xaa, 0x69, 0xa5, 0x7f, 0x86, 0x17, 0x7b, 0xc3,
+	0x7a, 0xf6, 0xcf, 0xf7, 0xbb, 0xa0, 0x49, 0x4e, 0x04, 0xb7, 0xbd, 0x96, 0xf0, 0x41, 0xdf, 0xea,
+	0x1c, 0x11, 0xde, 0xeb, 0xfa, 0xea, 0x7f, 0xe8, 0xa6, 0xf5, 0xeb, 0xb7, 0x3f, 0xd7, 0x08, 0xac,
+	0xd6, 0x08, 0xfc, 0x59, 0x23, 0xf0, 0x7d, 0x83, 0x06, 0xab, 0x0d, 0x1a, 0xfc, 0xde, 0xa0, 0xc1,
+	0x07, 0xcc, 0x03, 0xf5, 0x29, 0xf3, 0xb0, 0x2f, 0xe6, 0xa4, 0x3a, 0x10, 0xaa, 0x6b, 0xee, 0x4c,
+	0xc8, 0xa2, 0x73, 0x38, 0xa8, 0x65, 0xc2, 0xa4, 0x37, 0x2c, 0xff, 0xd2, 0x97, 0x7f, 0x03, 0x00,
+	0x00, 0xff, 0xff, 0xc1, 0x41, 0xd4, 0x49, 0x3e, 0x04, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -383,7 +382,7 @@ const _ = grpc.SupportPackageIsVersion4
 type MsgClient interface {
 	StakeTokens(ctx context.Context, in *MsgStakeTokens, opts ...grpc.CallOption) (*MsgStakeTokensResponse, error)
 	DelegateTokens(ctx context.Context, in *MsgDelegateTokens, opts ...grpc.CallOption) (*MsgDelegateTokensResponse, error)
-	AutoDelegateTokens(ctx context.Context, in *MsgAutoDelegateTokens, opts ...grpc.CallOption) (*MsgAutoDelegateTokensResponse, error)
+	StakeDelegateTokens(ctx context.Context, in *MsgStakeDelegateTokens, opts ...grpc.CallOption) (*MsgStakeDelegateTokensResponse, error)
 }
 
 type msgClient struct {
@@ -412,9 +411,9 @@ func (c *msgClient) DelegateTokens(ctx context.Context, in *MsgDelegateTokens, o
 	return out, nil
 }
 
-func (c *msgClient) AutoDelegateTokens(ctx context.Context, in *MsgAutoDelegateTokens, opts ...grpc.CallOption) (*MsgAutoDelegateTokensResponse, error) {
-	out := new(MsgAutoDelegateTokensResponse)
-	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Msg/AutoDelegateTokens", in, out, opts...)
+func (c *msgClient) StakeDelegateTokens(ctx context.Context, in *MsgStakeDelegateTokens, opts ...grpc.CallOption) (*MsgStakeDelegateTokensResponse, error) {
+	out := new(MsgStakeDelegateTokensResponse)
+	err := c.cc.Invoke(ctx, "/evmos.dualstaking.v1.Msg/StakeDelegateTokens", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +424,7 @@ func (c *msgClient) AutoDelegateTokens(ctx context.Context, in *MsgAutoDelegateT
 type MsgServer interface {
 	StakeTokens(context.Context, *MsgStakeTokens) (*MsgStakeTokensResponse, error)
 	DelegateTokens(context.Context, *MsgDelegateTokens) (*MsgDelegateTokensResponse, error)
-	AutoDelegateTokens(context.Context, *MsgAutoDelegateTokens) (*MsgAutoDelegateTokensResponse, error)
+	StakeDelegateTokens(context.Context, *MsgStakeDelegateTokens) (*MsgStakeDelegateTokensResponse, error)
 }
 
 // UnimplementedMsgServer can be embedded to have forward compatible implementations.
@@ -438,8 +437,8 @@ func (*UnimplementedMsgServer) StakeTokens(ctx context.Context, req *MsgStakeTok
 func (*UnimplementedMsgServer) DelegateTokens(ctx context.Context, req *MsgDelegateTokens) (*MsgDelegateTokensResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DelegateTokens not implemented")
 }
-func (*UnimplementedMsgServer) AutoDelegateTokens(ctx context.Context, req *MsgAutoDelegateTokens) (*MsgAutoDelegateTokensResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AutoDelegateTokens not implemented")
+func (*UnimplementedMsgServer) StakeDelegateTokens(ctx context.Context, req *MsgStakeDelegateTokens) (*MsgStakeDelegateTokensResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StakeDelegateTokens not implemented")
 }
 
 func RegisterMsgServer(s grpc1.Server, srv MsgServer) {
@@ -482,20 +481,20 @@ func _Msg_DelegateTokens_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_AutoDelegateTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgAutoDelegateTokens)
+func _Msg_StakeDelegateTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgStakeDelegateTokens)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).AutoDelegateTokens(ctx, in)
+		return srv.(MsgServer).StakeDelegateTokens(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/evmos.dualstaking.v1.Msg/AutoDelegateTokens",
+		FullMethod: "/evmos.dualstaking.v1.Msg/StakeDelegateTokens",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).AutoDelegateTokens(ctx, req.(*MsgAutoDelegateTokens))
+		return srv.(MsgServer).StakeDelegateTokens(ctx, req.(*MsgStakeDelegateTokens))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -513,8 +512,8 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_DelegateTokens_Handler,
 		},
 		{
-			MethodName: "AutoDelegateTokens",
-			Handler:    _Msg_AutoDelegateTokens_Handler,
+			MethodName: "StakeDelegateTokens",
+			Handler:    _Msg_StakeDelegateTokens_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -663,7 +662,7 @@ func (m *MsgDelegateTokensResponse) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgAutoDelegateTokens) Marshal() (dAtA []byte, err error) {
+func (m *MsgStakeDelegateTokens) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -673,12 +672,12 @@ func (m *MsgAutoDelegateTokens) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgAutoDelegateTokens) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgStakeDelegateTokens) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgAutoDelegateTokens) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgStakeDelegateTokens) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -717,7 +716,7 @@ func (m *MsgAutoDelegateTokens) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgAutoDelegateTokensResponse) Marshal() (dAtA []byte, err error) {
+func (m *MsgStakeDelegateTokensResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -727,12 +726,12 @@ func (m *MsgAutoDelegateTokensResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgAutoDelegateTokensResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgStakeDelegateTokensResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgAutoDelegateTokensResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgStakeDelegateTokensResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -810,7 +809,7 @@ func (m *MsgDelegateTokensResponse) Size() (n int) {
 	return n
 }
 
-func (m *MsgAutoDelegateTokens) Size() (n int) {
+func (m *MsgStakeDelegateTokens) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -834,7 +833,7 @@ func (m *MsgAutoDelegateTokens) Size() (n int) {
 	return n
 }
 
-func (m *MsgAutoDelegateTokensResponse) Size() (n int) {
+func (m *MsgStakeDelegateTokensResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1236,7 +1235,7 @@ func (m *MsgDelegateTokensResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgAutoDelegateTokens) Unmarshal(dAtA []byte) error {
+func (m *MsgStakeDelegateTokens) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1259,10 +1258,10 @@ func (m *MsgAutoDelegateTokens) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgAutoDelegateTokens: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgStakeDelegateTokens: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgAutoDelegateTokens: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgStakeDelegateTokens: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1405,7 +1404,7 @@ func (m *MsgAutoDelegateTokens) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgAutoDelegateTokensResponse) Unmarshal(dAtA []byte) error {
+func (m *MsgStakeDelegateTokensResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1428,10 +1427,10 @@ func (m *MsgAutoDelegateTokensResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgAutoDelegateTokensResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgStakeDelegateTokensResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgAutoDelegateTokensResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgStakeDelegateTokensResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
