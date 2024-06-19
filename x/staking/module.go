@@ -1,6 +1,7 @@
 package staking
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -19,6 +20,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	"github.com/cosmos/cosmos-sdk/x/staking/simulation"
 	"github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/evmos/evmos/v12/x/staking/wrapper"
 )
 
 const (
@@ -45,14 +47,12 @@ func (AppModuleBasic) Name() string {
 
 // RegisterLegacyAminoCodec registers the staking module's types on the given LegacyAmino codec.
 func (AppModuleBasic) RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
-	// TODO(iquidus): Do we want this registered?
-	// types.RegisterLegacyAminoCodec(cdc)
+	types.RegisterLegacyAminoCodec(cdc)
 }
 
 // RegisterInterfaces registers the module's interface types
 func (b AppModuleBasic) RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
-	// TODO(iquidus): Do we want this registered?
-	// types.RegisterInterfaces(registry)
+	types.RegisterInterfaces(registry)
 }
 
 // DefaultGenesis returns default genesis state as raw bytes for the staking
@@ -73,10 +73,9 @@ func (AppModuleBasic) ValidateGenesis(cdc codec.JSONCodec, config client.TxEncod
 
 // RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the staking module.
 func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
-	// TODO(iquidus): Do we want this registered?
-	// if err := types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx)); err != nil {
-	// 	panic(err)
-	// }
+	if err := types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx)); err != nil {
+		panic(err)
+	}
 }
 
 // GetTxCmd returns the root tx command for the staking module.
@@ -115,8 +114,7 @@ func (AppModule) Name() string {
 
 // RegisterInvariants registers the staking module invariants.
 func (am AppModule) RegisterInvariants(ir sdk.InvariantRegistry) {
-	// TODO(iquidus): Do we want this registered?
-	// keeper.RegisterInvariants(ir, am.keeper)
+	keeper.RegisterInvariants(ir, am.keeper)
 }
 
 // Deprecated: Route returns the message routing key for the staking module.
@@ -136,10 +134,11 @@ func (am AppModule) LegacyQuerierHandler(legacyQuerierCdc *codec.LegacyAmino) sd
 
 // RegisterServices registers module services.
 func (am AppModule) RegisterServices(cfg module.Configurator) {
-	// TODO(iquidus): Either override or remove
-	// types.RegisterMsgServer(cfg.MsgServer(), keeper.NewMsgServerImpl(am.keeper))
-	// querier := keeper.Querier{Keeper: am.keeper}
-	// types.RegisterQueryServer(cfg.QueryServer(), querier)
+	// Use our msgServer wrapper
+	ms := wrapper.NewWrappedMsgServer(keeper.NewMsgServerImpl(am.keeper))
+	types.RegisterMsgServer(cfg.MsgServer(), ms)
+	querier := keeper.Querier{Keeper: am.keeper}
+	types.RegisterQueryServer(cfg.QueryServer(), querier)
 
 	m := keeper.NewMigrator(am.keeper)
 	cfg.RegisterMigration(types.ModuleName, 1, m.Migrate1to2)
