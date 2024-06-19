@@ -21,6 +21,10 @@ message Stake {
   uint64 end_time = 6; // The time at which the staking position will end.
 }
 
+// TODO: Consider adding a foreign key constraint by adding a 'stake_id' field to
+//       the Delegation message. This would allow for eliminating storing
+//       'denom' and 'amount'. Performance implications should be considered when
+//       querying two storages instead of one.
 message Delegation {
   string delegation_id = 1; // A unique identifier for the delegation position.
   string stake_id = 2; // The stake ID of the staking position to which the tokens are delegated.
