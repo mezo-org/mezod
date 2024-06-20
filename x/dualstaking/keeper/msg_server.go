@@ -16,6 +16,8 @@ import (
 
 var _ types.MsgServer = &Keeper{}
 
+// StakeTokens locks the specified amount of tokens for a given duration 
+// (1 week to 4 years) and mints equivalent veTokens.
 func (k Keeper) StakeTokens(goCtx context.Context, msg *types.MsgStakeTokens) (*types.MsgStakeTokensResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
@@ -50,7 +52,7 @@ func (k Keeper) StakeTokens(goCtx context.Context, msg *types.MsgStakeTokens) (*
 	}
 	k.SetStake(ctx, position)
 
-	// Mint veTokens and transfer to staker
+	// Mint veTokens and transfer to a staker
 	veAmount := sdk.NewCoin(fmt.Sprintf("ve%s", msg.Amount.Denom), msg.Amount.Amount)
 	err = k.bankKeeper.MintCoins(ctx, types.ModuleName, sdk.NewCoins(veAmount))
 	if err != nil {
@@ -64,6 +66,7 @@ func (k Keeper) StakeTokens(goCtx context.Context, msg *types.MsgStakeTokens) (*
 	return &types.MsgStakeTokensResponse{}, nil
 }
 
+// DelegateTokens delegates the specified amount of veTokens to a validator.
 func (k Keeper) DelegateTokens(goCtx context.Context, msg *types.MsgDelegateTokens) (*types.MsgDelegateTokensResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
@@ -94,6 +97,7 @@ func (k Keeper) DelegateTokens(goCtx context.Context, msg *types.MsgDelegateToke
 
 	// Delegate veTokens logic
 	veAmount := sdk.NewCoin(fmt.Sprintf("ve%s", msg.Amount.Denom), msg.Amount.Amount)
+	// TODO: Remove, no need to mint veTokens. Delegate only delegates the veTokens!
 	err = k.bankKeeper.MintCoins(ctx, types.ModuleName, sdk.NewCoins(veAmount))
 	if err != nil {
 		return nil, err
@@ -108,6 +112,8 @@ func (k Keeper) DelegateTokens(goCtx context.Context, msg *types.MsgDelegateToke
 	return &types.MsgDelegateTokensResponse{}, nil
 }
 
+// StakeDelegateTokens locks the specified amount of tokens for a given duration
+// (1 week to 4 years), mints equivalent veTokens, and delegates them to a validator.
 func (k Keeper) StakeDelegateTokens(goCtx context.Context, msg *types.MsgStakeDelegateTokens) (*types.MsgStakeDelegateTokensResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
