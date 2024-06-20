@@ -398,9 +398,11 @@ func (k Keeper) AddTransientGasUsed(ctx sdk.Context, gasUsed uint64) (uint64, er
 	return result, nil
 }
 
-// RegisterCustomPrecompile registers a custom precompile contract with the keeper.
+// RegisterCustomPrecompiles registers custom precompiled contracts with the keeper.
 // This function does not check for duplicates. If a precompile with the same
 // address is already registered, it will be overwritten.
-func (k *Keeper) RegisterCustomPrecompile(precompile vm.PrecompiledContract) {
-	k.customPrecompiles[precompile.Address()] = precompile
+func (k *Keeper) RegisterCustomPrecompiles(precompiles ...vm.PrecompiledContract) {
+	for _, precompile := range precompiles {
+		k.customPrecompiles[precompile.Address()] = precompile
+	}
 }

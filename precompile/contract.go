@@ -1,10 +1,13 @@
 package precompile
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
 	"math/big"
 
 	store "github.com/cosmos/cosmos-sdk/store/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -89,6 +92,10 @@ func (c *Contract) Run(
 	contract *vm.Contract,
 	readOnlyMode bool,
 ) (methodOutputArgs []byte, runErr error) {
+	// The x/evm module provides its own state DB implementation, which
+	// reflects EVM state changes in the Cosmos SDK store upon commit.
+	// We can safely cast the EVM state DB to the *statedb.StateDB type
+	// because we know this is the type EVM instance was created with.
 	stateDB, ok := evm.StateDB.(*statedb.StateDB)
 	if !ok {
 		return nil, fmt.Errorf("cannot get state DB from EVM")
@@ -117,7 +124,7 @@ func (c *Contract) Run(
 	}()
 
 	eventEmitter := NewEventEmitter(sdkCtx, c.abi, c.address, stateDB)
-	runCtx := NewRunContext(evm, contract, eventEmitter)
+	runCtx := NewRunContext(sdkCtx, evm, contract, eventEmitter)
 
 	methodID, methodInputArgs, err := c.parseCallInput(contract.Input)
 	if err != nil {
@@ -218,6 +225,7 @@ func (c *Contract) methodByID(methodID []byte) (Method, *abi.Method, error) {
 // RunContext represents the context in which a precompiled contract method is
 // executed. It provides access to the EVM, the contract, and the event emitter.
 type RunContext struct {
+	sdkCtx       sdk.Context
 	evm          *vm.EVM
 	contract     *vm.Contract
 	eventEmitter *EventEmitter
@@ -226,15 +234,22 @@ type RunContext struct {
 // NewRunContext creates a new run context with the given EVM, contract, and
 // event emitter instances.
 func NewRunContext(
+	sdkCtx sdk.Context,
 	evm *vm.EVM,
 	contract *vm.Contract,
 	eventEmitter *EventEmitter,
 ) *RunContext {
 	return &RunContext{
+		sdkCtx:       sdkCtx,
 		evm:          evm,
 		contract:     contract,
 		eventEmitter: eventEmitter,
 	}
+}
+
+// SdkCtx returns the Cosmos SDK context associated with the run context.
+func (rc *RunContext) SdkCtx() sdk.Context {
+	return rc.sdkCtx
 }
 
 // MsgSender returns the address of the message sender. This corresponds to the
@@ -268,4 +283,21 @@ func (rc *RunContext) IsMsgValue() bool {
 // The event emitter can be used to emit EVM events from the precompiled contract.
 func (rc *RunContext) EventEmitter() *EventEmitter {
 	return rc.eventEmitter
+}
+
+// LoadAbiFile loads the ABI file from the given file system and path. The ABI file
+// is expected to be in JSON format. If the file cannot be loaded or parsed, an
+// error is returned.
+func LoadAbiFile(fs embed.FS, path string) (abi.ABI, error) {
+	abiBytes, err := fs.ReadFile(path)
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("cannot load ABI file [%w]", err)
+	}
+
+	abiJSON, err := abi.JSON(bytes.NewReader(abiBytes))
+	if err != nil {
+		return abi.ABI{}, fmt.Errorf("cannot parse ABI file [%w]", err)
+	}
+
+	return abiJSON, nil
 }

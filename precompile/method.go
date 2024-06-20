@@ -1,6 +1,10 @@
 package precompile
 
-import store "github.com/cosmos/cosmos-sdk/store/types"
+import (
+	"fmt"
+
+	store "github.com/cosmos/cosmos-sdk/store/types"
+)
 
 // methodIDByteLength is the length of the method ID in bytes.
 const methodIDByteLength = 4
@@ -68,4 +72,18 @@ func DefaultRequiredGas(
 	}
 
 	return costFlat + (costPerByte * methodInputArgsByteLength)
+}
+
+// ValidateMethodInputsCount validates the count of the given method inputs
+// against the expected value. If the counts don't match, an error is returned.
+func ValidateMethodInputsCount(inputs MethodInputs, expectedCount int) error {
+	if actualCount := len(inputs); expectedCount != actualCount {
+		return fmt.Errorf(
+			"wrong inputs count for method; expected [%v], actual [%v]",
+			expectedCount,
+			actualCount,
+		)
+	}
+
+	return nil
 }

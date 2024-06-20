@@ -26,6 +26,9 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/evmos/evmos/v12/precompile/btctoken"
+
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/spf13/cast"
@@ -565,6 +568,12 @@ func NewEvmos(
 			app.ClaimsKeeper.Hooks(),
 		),
 	)
+
+	precompiles, err := customEvmPrecompiles(app.BankKeeper)
+	if err != nil {
+		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
+	}
+	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
 
 	app.TransferKeeper = transferkeeper.NewKeeper(
 		appCodec, keys[ibctransfertypes.StoreKey], app.GetSubspace(ibctransfertypes.ModuleName),
@@ -1278,4 +1287,18 @@ func (app *Evmos) setupUpgradeHandlers() {
 		// configure store loader that checks if version == upgradeHeight and applies store upgrades
 		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, storeUpgrades))
 	}
+}
+
+// customEvmPrecompiles builds custom precompiles of the EVM module.
+func customEvmPrecompiles(
+	bankKeeper bankkeeper.Keeper,
+) ([]vm.PrecompiledContract, error) {
+	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
+	}
+
+	return []vm.PrecompiledContract{
+		btcTokenPrecompile,
+	}, nil
 }

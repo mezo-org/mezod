@@ -78,6 +78,11 @@ jobs:
       #   make bootstrap
       #   make release
 
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
-        if: env.GIT_DIFF
+      # TODO: Once the repository is public, enable the "GitHub Advanced Security"
+      #       option in the repository settings and uncomment the "Perform CodeQL Analysis"
+      #       step below. The step will not work with this option disabled and
+      #       the option can only be enabled once the repository becomes public.
+      #       More info: https://docs.github.com/en/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-security-and-analysis-settings-for-your-repository
+      # - name: Perform CodeQL Analysis
+      #   uses: github/codeql-action/analyze@v2
+      #   if: env.GIT_DIFF
