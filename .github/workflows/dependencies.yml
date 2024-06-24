@@ -28,6 +28,12 @@ jobs:
       # - name: "Dependency Review"
       #   uses: actions/dependency-review-action@v3
       #   if: env.GIT_DIFF
-      - name: "Go vulnerability check"
-        run: make vulncheck
-        if: env.GIT_DIFF
+      # TODO: Uncomment once either a vulnerability in the `github.com/cosmos/ibc-go/v6`
+      #       package is fixed, the package is upgraded to a higher version or
+      #       the package is removed.
+      #       The `govulncheck` tool does not allow to ignore any vulnerabilities
+      #       and will only be enabled once the vulnerability in question is
+      #       resolved.
+      # - name: "Go vulnerability check"
+      #   run: make vulncheck
+      #   if: env.GIT_DIFF
