@@ -914,10 +914,10 @@ func (app *Evmos) setPostHandler() {
 // BeginBlocker runs the Tendermint ABCI BeginBlock logic. It executes state changes at the beginning
 // of the new block for every registered module. If there is a registered fork at the current height,
 // BeginBlocker will schedule the upgrade plan and perform the state migration (if any).
-func (app *Evmos) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *Evmos) BeginBlocker(context sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	// Perform any scheduled forks before executing the modules logic
-	app.ScheduleForkUpgrade(ctx)
-	return app.mm.BeginBlock(ctx, req)
+	app.ScheduleForkUpgrade(context)
+	return app.mm.BeginBlock(context, req)
 }
 
 // EndBlocker updates every end block
