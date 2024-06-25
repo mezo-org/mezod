@@ -23,3 +23,7 @@ lint:
 breaking:
   use:
     - FILE
+  ignore:
+    - evmos/dualstaking/v1/genesis.proto
+    - evmos/dualstaking/v1/query.proto
+    - evmos/dualstaking/v1/tx.proto
