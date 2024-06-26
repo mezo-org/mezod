@@ -2,7 +2,10 @@ package poa
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
+	"fmt"
+	"github.com/cosmos/cosmos-sdk/client"
+	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -12,7 +15,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/evmos/evmos/v12/x/poa/client/cli"
-	"github.com/evmos/evmos/v12/x/poa/client/rest"
 	"github.com/evmos/evmos/v12/x/poa/keeper"
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
@@ -24,47 +26,66 @@ var (
 )
 
 // AppModuleBasic defines the basic application module used by the poa module.
-type AppModuleBasic struct{}
+type AppModuleBasic struct{
+	cdc codec.Codec
+}
+
+func NewAppModuleBasic(cdc codec.Codec) AppModuleBasic {
+	return AppModuleBasic{cdc: cdc}
+}
 
 // Name returns the poa module's name.
 func (AppModuleBasic) Name() string {
 	return types.ModuleName
 }
 
-// RegisterCodec registers the poa module's types for the given codec.
-func (AppModuleBasic) RegisterCodec(cdc *codec.Codec) {
-	types.RegisterCodec(cdc)
+// RegisterLegacyAminoCodec registers the amino codec for the module, which is
+// used to marshal and unmarshal structs to/from []byte in order to persist
+// them in the module's KVStore
+func (AppModuleBasic) RegisterLegacyAminoCodec(_ *codec.LegacyAmino) {}
+
+// RegisterInterfaces registers a module's interface types and their concrete
+// implementations as proto.Message
+func (a AppModuleBasic) RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
+	types.RegisterInterfaces(registry)
 }
 
 // DefaultGenesis returns default genesis state as raw bytes for the poa
 // module.
-func (AppModuleBasic) DefaultGenesis() json.RawMessage {
-	return types.ModuleCdc.MustMarshalJSON(types.DefaultGenesisState())
+func (AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
+	return cdc.MustMarshalJSON(types.DefaultGenesisState())
 }
 
 // ValidateGenesis performs genesis state validation for the poa module.
-func (AppModuleBasic) ValidateGenesis(bz json.RawMessage) error {
+func (AppModuleBasic) ValidateGenesis(
+	cdc codec.JSONCodec,
+	_ client.TxEncodingConfig,
+	bz json.RawMessage,
+) error {
 	var data types.GenesisState
-	err := types.ModuleCdc.UnmarshalJSON(bz, &data)
+	err := cdc.UnmarshalJSON(bz, &data)
 	if err != nil {
 		return err
 	}
 	return types.ValidateGenesis(data)
 }
 
-// RegisterRESTRoutes registers the REST routes for the poa module.
-func (AppModuleBasic) RegisterRESTRoutes(ctx context.CLIContext, rtr *mux.Router) {
-	rest.RegisterRoutes(ctx, rtr)
+// RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the module
+func (a AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
+	err := types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx))
+	if err != nil {
+		fmt.Printf("%s - err: %s", a.Name(), err.Error())
+	}
 }
 
 // GetTxCmd returns the root tx command for the poa module.
-func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
-	return cli.GetTxCmd(cdc)
+func (AppModuleBasic) GetTxCmd() *cobra.Command {
+	return cli.GetTxCmd()
 }
 
 // GetQueryCmd returns no root query command for the poa module.
-func (AppModuleBasic) GetQueryCmd(cdc *codec.Codec) *cobra.Command {
-	return cli.GetQueryCmd(types.StoreKey, cdc)
+func (AppModuleBasic) GetQueryCmd() *cobra.Command {
+	return cli.GetQueryCmd(types.StoreKey)
 }
 
 //____________________________________________________________________________
@@ -77,61 +98,79 @@ type AppModule struct {
 }
 
 // NewAppModule creates a new AppModule object
-func NewAppModule(k keeper.Keeper) AppModule {
+func NewAppModule(
+	cdc codec.Codec,
+	keeper keeper.Keeper,
+) AppModule {
 	return AppModule{
-		AppModuleBasic: AppModuleBasic{},
-		keeper:         k,
+		AppModuleBasic: NewAppModuleBasic(cdc),
+		keeper:         keeper,
 	}
-}
-
-// Name returns the poa module's name.
-func (AppModule) Name() string {
-	return types.ModuleName
 }
 
 // RegisterInvariants registers the poa module invariants.
 func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 
-// Route returns the message routing key for the poa module.
-func (AppModule) Route() string {
-	return types.RouterKey
+// Deprecated: use RegisterServices
+func (AppModule) Route() sdk.Route {
+	// Return a zero value as this function is deprecated and RegisterServices
+	// is used by the SDK instead.
+	return sdk.Route{}
 }
 
-// NewHandler returns an sdk.Handler for the poa module.
-func (am AppModule) NewHandler() sdk.Handler {
-	return NewHandler(am.keeper)
-}
-
-// QuerierRoute returns the poa module's querier route name.
+// Deprecated: use RegisterServices
 func (AppModule) QuerierRoute() string {
-	return types.QuerierRoute
+	// Return a zero value as this function is deprecated and RegisterServices
+	// is used by the SDK instead.
+	return ""
 }
 
-// NewQuerierHandler returns the poa module sdk.Querier.
-func (am AppModule) NewQuerierHandler() sdk.Querier {
-	return keeper.NewQuerier(am.keeper)
+// Deprecated: use RegisterServices
+func (am AppModule) LegacyQuerierHandler(_ *codec.LegacyAmino) sdk.Querier {
+	// Return a zero value as this function is deprecated and RegisterServices
+	// is used by the SDK instead.
+	return nil
 }
+
+// RegisterServices registers a gRPC query service to respond to the module-specific gRPC queries
+func (am AppModule) RegisterServices(cfg module.Configurator) {
+	types.RegisterMsgServer(cfg.MsgServer(), keeper.NewMsgServer(am.keeper))
+	types.RegisterQueryServer(cfg.QueryServer(), keeper.NewQueryServer(am.keeper))
+}
+
+// ConsensusVersion is a sequence number for state-breaking change of the module.
+// It should be incremented on each consensus-breaking change introduced by
+// the module. To avoid wrong/empty versions, the initial version should be set to 1.
+func (AppModule) ConsensusVersion() uint64 { return 1 }
 
 // InitGenesis performs genesis initialization for the poa module.
-func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
+func (am AppModule) InitGenesis(
+	ctx sdk.Context,
+	cdc codec.JSONCodec,
+	data json.RawMessage,
+) []abci.ValidatorUpdate {
 	var genesisState types.GenesisState
-	types.ModuleCdc.MustUnmarshalJSON(data, &genesisState)
+	cdc.MustUnmarshalJSON(data, &genesisState)
 	return InitGenesis(ctx, am.keeper, genesisState)
 }
 
 // ExportGenesis returns the exported genesis state as raw bytes for the poa
 // module.
-func (am AppModule) ExportGenesis(ctx sdk.Context) json.RawMessage {
-	gs := ExportGenesis(ctx, am.keeper)
-	return types.ModuleCdc.MustMarshalJSON(gs)
+func (am AppModule) ExportGenesis(
+	ctx sdk.Context,
+	cdc codec.JSONCodec,
+) json.RawMessage {
+	genesisState := ExportGenesis(ctx, am.keeper)
+	return cdc.MustMarshalJSON(genesisState)
 }
 
 // BeginBlock returns the begin blocker for the poa module.
-func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
-	BeginBlocker(ctx, req, am.keeper)
-}
+func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {}
 
 // EndBlock returns the end blocker for the poa module.
-func (am AppModule) EndBlock(ctx sdk.Context, _ abci.RequestEndBlock) []abci.ValidatorUpdate {
+func (am AppModule) EndBlock(
+	ctx sdk.Context,
+	_ abci.RequestEndBlock,
+) []abci.ValidatorUpdate {
 	return EndBlocker(ctx, am.keeper)
 }
