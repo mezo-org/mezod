@@ -1,0 +1,48 @@
+syntax = "proto3";
+package evmos.poa.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/evmos/evmos/v12/x/poa/types";
+
+// Params defines the parameters for the module.
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+
+  // max_validators defines the maximum number of validators in the network.
+  uint32 max_validators = 1;
+  // quorum defines the minimum number of validators that need to accept
+  // a new validator's application.
+  uint32 quorum = 2;
+}
+
+message Validator {
+  // operator_address is the Cosmos SDK address identifying the validator.
+  bytes operator_address = 1;
+  // consensus_pubkey is the consensus public key of the validator used to
+  // vote on blocks.
+  string consensus_pubkey = 2;
+  // description holds some human-readable information about the validator.
+  Description description = 3 [(gogoproto.nullable) = false];
+}
+
+// Description defines a validator description
+message Description {
+  string moniker = 1;
+  string identity = 2;
+  string website = 3;
+  string security_contact = 4;
+  string details = 5;
+}
+
+// Vote represents a vote summary on a validator application or kick proposal.
+message Vote {
+  // subject is the validator that is being voted on.
+  Validator subject = 1 [(gogoproto.nullable) = false];
+  // approvals is the number of votes in favor of the subject.
+  uint64 approvals = 2;
+  // total is the total number of votes cast.
+  uint64 total = 3;
+  // voters is the list of voters that have voted on the subject.
+  repeated bytes voters = 4;
+}
