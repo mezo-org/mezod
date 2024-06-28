@@ -7,45 +7,20 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// Structure to track the vote for:
-// - An application to become validator
-// - A proposal to kick a validator
-type Vote struct {
-	Subject   Validator        `json:"subject"`
-	Approvals uint64           `json:"approvals"`
-	Total     uint64           `json:"totals"`
-	Voters    []sdk.ValAddress `json:"voter"`
-}
-
 func NewVote(subject Validator) Vote {
 	return Vote{
 		Subject:   subject,
 		Approvals: 0,
 		Total:     0,
-		Voters:    []sdk.ValAddress{},
+		Voters:    [][]byte{},
 	}
-}
-
-// The subject of the vote
-func (v Vote) GetSubject() Validator {
-	return v.Subject
-}
-
-// The total number of approvals so far
-func (v Vote) GetApprovals() uint64 {
-	return v.Approvals
-}
-
-// The total number of votes
-func (v Vote) GetTotal() uint64 {
-	return v.Total
 }
 
 // Add a vote
 func (v *Vote) AddVote(voter sdk.ValAddress, approve bool) (alreadyVoted bool) {
 	// Verify if the voter already voted
 	for _, currentVoter := range v.Voters {
-		if voter.Equals(currentVoter) {
+		if voter.Equals(sdk.ValAddress(currentVoter)) {
 			// The voter already voted
 			return true
 		}
@@ -99,10 +74,10 @@ func (v Vote) CheckQuorum(voterPoolSize uint64, quorum uint64) (reached bool, ap
 }
 
 // Vote encoding functions
-func MustMarshalVote(cdc *codec.Codec, v Vote) []byte {
-	return cdc.MustMarshalBinaryBare(&v)
+func MustMarshalVote(cdc codec.Codec, v Vote) []byte {
+	return cdc.MustMarshal(&v)
 }
-func MustUnmarshalVote(cdc *codec.Codec, value []byte) Vote {
+func MustUnmarshalVote(cdc codec.Codec, value []byte) Vote {
 	vote, err := UnmarshalVote(cdc, value)
 	if err != nil {
 		panic(err)
@@ -110,7 +85,7 @@ func MustUnmarshalVote(cdc *codec.Codec, value []byte) Vote {
 
 	return vote
 }
-func UnmarshalVote(cdc *codec.Codec, value []byte) (v Vote, err error) {
-	err = cdc.UnmarshalBinaryBare(value, &v)
+func UnmarshalVote(cdc codec.Codec, value []byte) (v Vote, err error) {
+	err = cdc.Unmarshal(value, &v)
 	return v, err
 }

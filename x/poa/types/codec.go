@@ -1,23 +1,24 @@
 package types
 
 import (
-	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/msgservice"
 )
 
-// RegisterCodec registers concrete types on codec
-func RegisterCodec(cdc *codec.Codec) {
-	cdc.RegisterConcrete(MsgSubmitApplication{}, "poa/MsgSubmitApplication", nil)
-	cdc.RegisterConcrete(MsgVote{}, "poa/MsgVote", nil)
-	cdc.RegisterConcrete(MsgProposeKick{}, "poa/MsgProposeKick", nil)
-	cdc.RegisterConcrete(MsgLeaveValidatorSet{}, "poa/MsgLeaveValidatorSet", nil)
-}
+// TODO: Figure out if we need to register the legacy Amino codec here.
+//       Other modules do so to ensure EIP-712 compatibility.
 
-// ModuleCdc defines the module codec
-var ModuleCdc *codec.Codec
+// RegisterInterfaces register implementations
+func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
+	registry.RegisterImplementations(
+		(*sdk.Msg)(nil),
+		&MsgSubmitApplication{},
+		&MsgVote{},
+		&MsgProposeKick{},
+		&MsgLeaveValidatorSet{},
+		&MsgUpdateParams{},
+	)
 
-func init() {
-	ModuleCdc = codec.New()
-	RegisterCodec(ModuleCdc)
-	codec.RegisterCrypto(ModuleCdc)
-	ModuleCdc.Seal()
+	msgservice.RegisterMsgServiceDesc(registry, &_Msg_serviceDesc)
 }
