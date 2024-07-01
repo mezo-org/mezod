@@ -19,7 +19,7 @@ func (k Keeper) ProposeKick(
 	}
 
 	// The proposer must be a validator
-	_, found := k.GetValidator(ctx,proposerAddr)
+	_, found := k.GetValidator(ctx, proposerAddr)
 	if !found {
 		return types.ErrProposerNotValidator
 	}

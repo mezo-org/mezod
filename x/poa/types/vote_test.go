@@ -1,11 +1,12 @@
 package types
 
 import (
+	"testing"
+
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"testing"
 )
 
 func TestAddVote(t *testing.T) {

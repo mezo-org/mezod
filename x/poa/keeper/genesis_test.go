@@ -1,9 +1,10 @@
 package keeper
 
 import (
+	"testing"
+
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
-	"testing"
 
 	"github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/google/go-cmp/cmp"

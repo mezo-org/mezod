@@ -43,7 +43,6 @@ func TestEndBlocker(t *testing.T) {
 	val4Update := validator4.ABCIValidatorUpdateRemove()
 	val5Update := validator5.ABCIValidatorUpdateRemove()
 	for _, update := range updates {
-
 		// Check if the update has the correct power
 		switch {
 		case cmp.Equal(update.GetPubKey(), val1Update.GetPubKey()):

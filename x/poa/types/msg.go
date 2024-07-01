@@ -7,11 +7,13 @@ import (
 )
 
 // verify interface at compile time
-var _ sdk.Msg = &MsgUpdateParams{}
-var _ sdk.Msg = &MsgSubmitApplication{}
-var _ sdk.Msg = &MsgVote{}
-var _ sdk.Msg = &MsgProposeKick{}
-var _ sdk.Msg = &MsgLeaveValidatorSet{}
+var (
+	_ sdk.Msg = &MsgUpdateParams{}
+	_ sdk.Msg = &MsgSubmitApplication{}
+	_ sdk.Msg = &MsgVote{}
+	_ sdk.Msg = &MsgProposeKick{}
+	_ sdk.Msg = &MsgLeaveValidatorSet{}
+)
 
 func NewMsgUpdateParams(authority string, params Params) MsgUpdateParams {
 	return MsgUpdateParams{

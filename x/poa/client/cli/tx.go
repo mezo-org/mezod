@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 
@@ -164,10 +165,10 @@ func NewCmdVoteApplication() *cobra.Command {
 			}
 
 			msg := &types.MsgVote{
-				VoteType: types.VoteTypeApplication,
-				VoterAddr: voterAddr,
+				VoteType:      types.VoteTypeApplication,
+				VoterAddr:     voterAddr,
 				CandidateAddr: candidateAddr,
-				Approve: approved,
+				Approve:       approved,
 			}
 			err = msg.ValidateBasic()
 			if err != nil {
@@ -215,10 +216,10 @@ func NewCmdVoteKickProposal() *cobra.Command {
 			}
 
 			msg := &types.MsgVote{
-				VoteType: types.VoteTypeKickProposal,
-				VoterAddr: voterAddr,
+				VoteType:      types.VoteTypeKickProposal,
+				VoterAddr:     voterAddr,
 				CandidateAddr: candidateAddr,
-				Approve: approved,
+				Approve:       approved,
 			}
 
 			err = msg.ValidateBasic()

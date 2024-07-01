@@ -92,6 +92,7 @@ func (v Validator) ABCIValidatorUpdateRemove() abci.ValidatorUpdate {
 func MustMarshalValidator(cdc codec.BinaryCodec, validator Validator) []byte {
 	return cdc.MustMarshal(&validator)
 }
+
 func MustUnmarshalValidator(cdc codec.BinaryCodec, value []byte) Validator {
 	validator, err := UnmarshalValidator(cdc, value)
 	if err != nil {
@@ -99,6 +100,7 @@ func MustUnmarshalValidator(cdc codec.BinaryCodec, value []byte) Validator {
 	}
 	return validator
 }
+
 func UnmarshalValidator(cdc codec.BinaryCodec, value []byte) (v Validator, err error) {
 	err = cdc.Unmarshal(value, &v)
 	return v, err

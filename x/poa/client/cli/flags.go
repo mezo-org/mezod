@@ -6,11 +6,11 @@ import (
 
 const (
 	FlagAddressValidator = "validator"
-	FlagMoniker         = "moniker"
-	FlagIdentity        = "identity"
-	FlagWebsite         = "website"
-	FlagSecurityContact = "security-contact"
-	FlagDetails         = "details"
+	FlagMoniker          = "moniker"
+	FlagIdentity         = "identity"
+	FlagWebsite          = "website"
+	FlagSecurityContact  = "security-contact"
+	FlagDetails          = "details"
 )
 
 func NewFlagSetSubmitApplication() *flag.FlagSet {

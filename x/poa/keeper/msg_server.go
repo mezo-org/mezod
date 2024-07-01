@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/evmos/evmos/v12/x/poa/types"
@@ -110,5 +111,4 @@ func (ms msgServer) LeaveValidatorSet(
 
 	return &types.MsgLeaveValidatorSetResponse{}, nil
 }
-
 

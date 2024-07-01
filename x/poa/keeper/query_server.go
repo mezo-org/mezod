@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/evmos/evmos/v12/x/poa/types"
 	"google.golang.org/grpc/codes"
@@ -100,5 +101,4 @@ func (qs queryServer) KickProposals(
 		KickProposals: kickProposals,
 	}, nil
 }
-
 
