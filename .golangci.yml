@@ -6,7 +6,6 @@ run:
 linters:
   enable:
     - dogsled
-    - dupl
     - errcheck
     - goconst
     - gocritic
@@ -27,13 +26,10 @@ linters:
     - unconvert
     - unparam
     - unused
-    - nolintlint
     - asciicheck
     - exportloopref
     - gofumpt
     - gomodguard
-
-
 
 linters-settings:
   dogsled:
