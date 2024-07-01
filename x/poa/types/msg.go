@@ -33,12 +33,6 @@ func (m MsgUpdateParams) ValidateBasic() error {
 	return m.Params.Validate()
 }
 
-func NewMsgSubmitApplication(candidate Validator) MsgSubmitApplication {
-	return MsgSubmitApplication{
-		Candidate: candidate,
-	}
-}
-
 func (msg MsgSubmitApplication) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{sdk.AccAddress(msg.Candidate.GetOperator())}
 }
@@ -46,13 +40,6 @@ func (msg MsgSubmitApplication) GetSigners() []sdk.AccAddress {
 // ValidateBasic validity check for the AnteHandler
 func (msg MsgSubmitApplication) ValidateBasic() error {
 	return msg.Candidate.CheckValid()
-}
-
-func NewMsgProposeKick(candidate sdk.ValAddress, proposer sdk.ValAddress) MsgProposeKick {
-	return MsgProposeKick{
-		CandidateAddr: candidate,
-		ProposerAddr:  proposer,
-	}
 }
 
 func (msg MsgProposeKick) GetSigners() []sdk.AccAddress {
@@ -65,15 +52,6 @@ func (msg MsgProposeKick) ValidateBasic() error {
 		return sdkerrors.Wrap(ErrInvalidKickProposal, "missing address")
 	}
 	return nil
-}
-
-func NewMsgVote(voteType uint32, voter sdk.ValAddress, candidate sdk.ValAddress, approve bool) MsgVote {
-	return MsgVote{
-		VoteType:      voteType,
-		VoterAddr:     voter,
-		CandidateAddr: candidate,
-		Approve:       approve,
-	}
 }
 
 const (
@@ -95,12 +73,6 @@ func (msg MsgVote) ValidateBasic() error {
 	}
 
 	return nil
-}
-
-func NewMsgLeaveValidatorSet(validatorAddr sdk.ValAddress) MsgLeaveValidatorSet {
-	return MsgLeaveValidatorSet{
-		ValidatorAddr: validatorAddr,
-	}
 }
 
 func (msg MsgLeaveValidatorSet) GetSigners() []sdk.AccAddress {

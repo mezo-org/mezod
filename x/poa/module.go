@@ -1,8 +1,8 @@
 package poa
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/cosmos/cosmos-sdk/client"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -10,7 +10,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
@@ -71,21 +70,27 @@ func (AppModuleBasic) ValidateGenesis(
 }
 
 // RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the module
-func (a AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
-	err := types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx))
-	if err != nil {
-		fmt.Printf("%s - err: %s", a.Name(), err.Error())
+func (a AppModuleBasic) RegisterGRPCGatewayRoutes(
+	clientCtx client.Context,
+	serveMux *runtime.ServeMux,
+) {
+	if err := types.RegisterQueryHandlerClient(
+		context.Background(),
+		serveMux,
+		types.NewQueryClient(clientCtx),
+	); err != nil {
+		panic(err)
 	}
 }
 
 // GetTxCmd returns the root tx command for the poa module.
 func (AppModuleBasic) GetTxCmd() *cobra.Command {
-	return cli.GetTxCmd()
+	return cli.NewTxCmd()
 }
 
 // GetQueryCmd returns no root query command for the poa module.
 func (AppModuleBasic) GetQueryCmd() *cobra.Command {
-	return cli.GetQueryCmd(types.StoreKey)
+	return cli.NewQueryCmd()
 }
 
 //____________________________________________________________________________

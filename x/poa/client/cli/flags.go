@@ -6,7 +6,6 @@ import (
 
 const (
 	FlagAddressValidator = "validator"
-
 	FlagMoniker         = "moniker"
 	FlagIdentity        = "identity"
 	FlagWebsite         = "website"
@@ -14,16 +13,7 @@ const (
 	FlagDetails         = "details"
 )
 
-// common flagsets to add to various functions
-var (
-	fsValidator = flag.NewFlagSet("", flag.ContinueOnError)
-)
-
-func init() {
-	fsValidator.String(FlagAddressValidator, "", "The Bech32 address of the validator")
-}
-
-func FlagSetDescriptionCreate() *flag.FlagSet {
+func NewFlagSetSubmitApplication() *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
 	fs.String(FlagMoniker, "", "The validator's name")
