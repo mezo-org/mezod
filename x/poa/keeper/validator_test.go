@@ -3,15 +3,14 @@ package keeper
 import (
 	"testing"
 
-	"github.com/evmos/evmos/v12/x/poa"
 	"github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestLeaveValidatorSet(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 	poaKeeper.setParams(ctx, types.DefaultParams())
 
 	poaKeeper.appendValidator(ctx, validator1)
@@ -50,9 +49,9 @@ func TestLeaveValidatorSet(t *testing.T) {
 }
 
 func TestGetValidator(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 
 	poaKeeper.setValidator(ctx, validator1)
 
@@ -74,9 +73,9 @@ func TestGetValidator(t *testing.T) {
 }
 
 func TestGetValidatorByConsAddr(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 
 	poaKeeper.setValidator(ctx, validator1)
 	poaKeeper.setValidatorByConsAddr(ctx, validator1)
@@ -106,9 +105,9 @@ func TestGetValidatorByConsAddr(t *testing.T) {
 }
 
 func TestGetValidatorState(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 
 	poaKeeper.setValidatorState(ctx, validator1, types.ValidatorStateJoined)
 
@@ -130,8 +129,8 @@ func TestGetValidatorState(t *testing.T) {
 }
 
 func TestGetValidatorStatePanic(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -144,8 +143,8 @@ func TestGetValidatorStatePanic(t *testing.T) {
 }
 
 func TestAppendValidator(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator, _ := mockValidator()
 
 	poaKeeper.appendValidator(ctx, validator)
 
@@ -159,9 +158,9 @@ func TestAppendValidator(t *testing.T) {
 }
 
 func TestRemoveValidator(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 
 	// Set validators
 	poaKeeper.appendValidator(ctx, validator1)
@@ -189,9 +188,9 @@ func TestRemoveValidator(t *testing.T) {
 }
 
 func TestGetAllValidators(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 
 	poaKeeper.setValidator(ctx, validator1)
 	poaKeeper.setValidator(ctx, validator2)

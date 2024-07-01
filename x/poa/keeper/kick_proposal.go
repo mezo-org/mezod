@@ -41,7 +41,7 @@ func (k Keeper) ProposeKick(
 	// If quorum is 0 the candidate is immediately kicked from the validator set
 	if params.Quorum == 0 {
 		// We set the validator state to leaving, the End Blocker will update the keeper
-		k.SetValidatorState(ctx, candidate, types.ValidatorStateLeaving)
+		k.setValidatorState(ctx, candidate, types.ValidatorStateLeaving)
 
 		ctx.EventManager().EmitEvent(
 			sdk.NewEvent(
@@ -144,7 +144,7 @@ func (k Keeper) VoteKickProposal(
 			// The validator leave the validator set
 			// The state is set to leave, End Blocker will remove definitely the validator
 			k.removeKickProposal(ctx, candidateAddr)
-			k.SetValidatorState(ctx, kickProposal.GetSubject(), types.ValidatorStateLeaving)
+			k.setValidatorState(ctx, kickProposal.GetSubject(), types.ValidatorStateLeaving)
 
 			// Emit approved event
 			ctx.EventManager().EmitEvent(

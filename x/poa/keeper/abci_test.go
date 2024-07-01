@@ -5,17 +5,16 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/evmos/evmos/v12/x/poa"
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
 
 func TestEndBlocker(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
-	validator3, _ := poa.MockValidator()
-	validator4, _ := poa.MockValidator()
-	validator5, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
+	validator3, _ := mockValidator()
+	validator4, _ := mockValidator()
+	validator5, _ := mockValidator()
 
 	// Set the validator in the keepr
 	poaKeeper.appendValidator(ctx, validator1)

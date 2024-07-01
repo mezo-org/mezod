@@ -3,17 +3,16 @@ package keeper
 import (
 	"testing"
 
-	"github.com/evmos/evmos/v12/x/poa"
 	"github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestProposeKick(t *testing.T) {
 	// Test with maxValidator=15, quorum=66
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
-	nothing, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
+	nothing, _ := mockValidator()
 	poaKeeper.setParams(ctx, types.DefaultParams())
 
 	// Add validators to validator set
@@ -55,9 +54,9 @@ func TestProposeKick(t *testing.T) {
 	}
 
 	// Test with quorum=0
-	ctx, poaKeeper = poa.MockContext()
-	validator1, _ = poa.MockValidator()
-	validator2, _ = poa.MockValidator()
+	ctx, poaKeeper = mockContext()
+	validator1, _ = mockValidator()
+	validator2, _ = mockValidator()
 	poaKeeper.setParams(ctx, types.NewParams(15, 0))
 
 	// Add validators to validator set
@@ -80,10 +79,10 @@ func TestProposeKick(t *testing.T) {
 }
 
 func TestVoteKickProposal(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	voter1, _ := poa.MockValidator()
-	voter2, _ := poa.MockValidator()
-	validator1, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	voter1, _ := mockValidator()
+	voter2, _ := mockValidator()
+	validator1, _ := mockValidator()
 	poaKeeper.setParams(ctx, types.NewParams(15, 100)) // Set quorum to 100%
 
 	// Add voter to validator set
@@ -190,9 +189,9 @@ func TestVoteKickProposal(t *testing.T) {
 }
 
 func TestGetKickProposal(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 	kickProposal := types.NewVote(validator1)
 
 	poaKeeper.setKickProposal(ctx, kickProposal)
@@ -221,8 +220,8 @@ func TestGetKickProposal(t *testing.T) {
 }
 
 func TestAppendKickProposal(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator, _ := mockValidator()
 
 	poaKeeper.appendKickProposal(ctx, validator)
 
@@ -234,8 +233,8 @@ func TestAppendKickProposal(t *testing.T) {
 }
 
 func TestRemoveKickProposal(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator, _ := mockValidator()
 
 	// Append and remove kick proposal
 	poaKeeper.appendKickProposal(ctx, validator)
@@ -250,9 +249,9 @@ func TestRemoveKickProposal(t *testing.T) {
 }
 
 func TestGetAllKickProposals(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 	kickProposal1 := types.NewVote(validator1)
 	kickProposal2 := types.NewVote(validator2)
 

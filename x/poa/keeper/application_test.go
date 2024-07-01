@@ -3,15 +3,14 @@ package keeper
 import (
 	"testing"
 
-	"github.com/evmos/evmos/v12/x/poa"
 	"github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestSubmitApplication(t *testing.T) {
 	// Test with maxValidator=15, quorum=66
-	ctx, poaKeeper := poa.MockContext()
-	validator, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator, _ := mockValidator()
 	poaKeeper.setParams(ctx, types.DefaultParams())
 
 	// The application is submitted correctly
@@ -35,8 +34,8 @@ func TestSubmitApplication(t *testing.T) {
 	}
 
 	// Test with quorum=0
-	ctx, poaKeeper = poa.MockContext()
-	validator, _ = poa.MockValidator()
+	ctx, poaKeeper = mockContext()
+	validator, _ = mockValidator()
 	poaKeeper.setParams(ctx, types.NewParams(15, 0))
 
 	// The validator should be directly appended if the quorum is 0
@@ -75,12 +74,12 @@ func TestSubmitApplication(t *testing.T) {
 }
 
 func TestVoteApplication(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	voter1, _ := poa.MockValidator()
-	voter2, _ := poa.MockValidator()
-	candidate1, _ := poa.MockValidator()
-	candidate2, _ := poa.MockValidator()
-	nothing, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	voter1, _ := mockValidator()
+	voter2, _ := mockValidator()
+	candidate1, _ := mockValidator()
+	candidate2, _ := mockValidator()
+	nothing, _ := mockValidator()
 	poaKeeper.setParams(ctx, types.NewParams(15, 100)) // Set quorum to 100%
 
 	// Add voter to validator set
@@ -185,9 +184,9 @@ func TestVoteApplication(t *testing.T) {
 }
 
 func TestGetApplication(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 	application := types.NewVote(validator1)
 
 	poaKeeper.setApplication(ctx, application)
@@ -216,9 +215,9 @@ func TestGetApplication(t *testing.T) {
 }
 
 func TestGetApplicationByConsAddr(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 	application := types.NewVote(validator1)
 	application2 := types.NewVote(validator2)
 
@@ -256,8 +255,8 @@ func TestGetApplicationByConsAddr(t *testing.T) {
 }
 
 func TestAppendApplication(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator, _ := mockValidator()
 
 	poaKeeper.appendApplication(ctx, validator)
 
@@ -270,8 +269,8 @@ func TestAppendApplication(t *testing.T) {
 }
 
 func TestRemoveApplication(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator, _ := mockValidator()
 
 	// Append  and remove application
 	poaKeeper.appendApplication(ctx, validator)
@@ -287,9 +286,9 @@ func TestRemoveApplication(t *testing.T) {
 }
 
 func TestGetAllApplications(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator1, _ := poa.MockValidator()
-	validator2, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 	application1 := types.NewVote(validator1)
 	application2 := types.NewVote(validator2)
 

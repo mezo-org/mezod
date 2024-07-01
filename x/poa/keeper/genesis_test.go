@@ -5,13 +5,12 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 	"testing"
 
-	"github.com/evmos/evmos/v12/x/poa"
 	"github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestValidateGenesis(t *testing.T) {
-	validator, _ := poa.MockValidator()
+	validator, _ := mockValidator()
 
 	// Valid genesis
 	validGenesis := types.NewGenesisState(types.DefaultParams(), []types.Validator{validator})
@@ -26,14 +25,15 @@ func TestValidateGenesis(t *testing.T) {
 	}
 
 	// Default genesis state
-	if types.ValidateGenesis(types.DefaultGenesisState()) != nil {
+	genesisState := types.DefaultGenesisState()
+	if types.ValidateGenesis(*genesisState) != nil {
 		t.Errorf("The default genesis state should be valid")
 	}
 }
 
 func TestInitGenesis(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator, consPubKey := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator, consPubKey := mockValidator()
 
 	// Test genesis data
 	testGenesis := types.NewGenesisState(types.DefaultParams(), []types.Validator{validator})
@@ -64,8 +64,8 @@ func TestInitGenesis(t *testing.T) {
 }
 
 func TestExportGenesis(t *testing.T) {
-	ctx, poaKeeper := poa.MockContext()
-	validator, _ := poa.MockValidator()
+	ctx, poaKeeper := mockContext()
+	validator, _ := mockValidator()
 
 	// Manually set values in keeper
 	poaKeeper.setValidator(ctx, validator)
