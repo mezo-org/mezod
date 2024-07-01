@@ -5,6 +5,42 @@ import (
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
 
+// LeaveValidatorSet removes a validator from the validator set.
+func (k Keeper) LeaveValidatorSet(ctx sdk.Context, validatorAddr sdk.ValAddress) error {
+	// Sender must be a validator
+	validator, found := k.GetValidator(ctx, validatorAddr)
+	if !found {
+		return types.ErrNotValidator
+	}
+
+	// Get validator count
+	allValidators := k.GetAllValidators(ctx)
+	validatorCount := len(allValidators)
+	if validatorCount == 1 {
+		return types.ErrOnlyOneValidator
+	}
+
+	// If a kick proposal exist for this validator, remove it
+	_, found = k.GetKickProposal(ctx, validatorAddr)
+	if found {
+		k.removeKickProposal(ctx, validatorAddr)
+	}
+
+	// Set the state of the validator to leaving, End Blocker will remove the validator from the keeper
+	k.SetValidatorState(ctx, validator, types.ValidatorStateLeaving)
+
+	// Emit approved event
+	ctx.EventManager().EmitEvent(
+		sdk.NewEvent(
+			types.EventTypeLeaveValidatorSet,
+			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
+			sdk.NewAttribute(types.AttributeKeyValidator, validatorAddr.String()),
+		),
+	)
+
+	return nil
+}
+
 // Get a validator
 func (k Keeper) GetValidator(ctx sdk.Context, addr sdk.ValAddress) (validator types.Validator, found bool) {
 	store := ctx.KVStore(k.storeKey)
@@ -48,14 +84,14 @@ func (k Keeper) GetValidatorState(ctx sdk.Context, addr sdk.ValAddress) (state u
 }
 
 // Set validator details
-func (k Keeper) SetValidator(ctx sdk.Context, validator types.Validator) {
+func (k Keeper) setValidator(ctx sdk.Context, validator types.Validator) {
 	store := ctx.KVStore(k.storeKey)
 	bz := types.MustMarshalValidator(k.cdc, validator)
 	store.Set(types.GetValidatorKey(validator.OperatorAddress), bz)
 }
 
 // Set validator consensus address
-func (k Keeper) SetValidatorByConsAddr(ctx sdk.Context, validator types.Validator) {
+func (k Keeper) setValidatorByConsAddr(ctx sdk.Context, validator types.Validator) {
 	store := ctx.KVStore(k.storeKey)
 	store.Set(types.GetValidatorByConsAddrKey(validator.GetConsAddr()), validator.OperatorAddress)
 }
@@ -72,9 +108,9 @@ func (k Keeper) SetValidatorState(ctx sdk.Context, validator types.Validator, st
 }
 
 // Append a validator and set its state to joining
-func (k Keeper) AppendValidator(ctx sdk.Context, validator types.Validator) {
-	k.SetValidator(ctx, validator)
-	k.SetValidatorByConsAddr(ctx, validator)
+func (k Keeper) appendValidator(ctx sdk.Context, validator types.Validator) {
+	k.setValidator(ctx, validator)
+	k.setValidatorByConsAddr(ctx, validator)
 	k.SetValidatorState(ctx, validator, types.ValidatorStateJoining)
 }
 

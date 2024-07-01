@@ -28,9 +28,11 @@ func NewValidator(operator sdk.ValAddress, pubKey cryptotypes.PubKey, descriptio
 func (v Validator) GetOperator() sdk.ValAddress {
 	return v.OperatorAddress
 }
+
 func (v Validator) GetConsPubKeyString() string {
 	return v.ConsensusPubkey
 }
+
 func (v Validator) GetConsPubKey() cryptotypes.PubKey {
 	pubKey, err := legacybech32.UnmarshalPubKey(
 		legacybech32.ConsPK,
@@ -42,6 +44,7 @@ func (v Validator) GetConsPubKey() cryptotypes.PubKey {
 
 	return pubKey
 }
+
 func (v Validator) GetConsAddr() sdk.ConsAddress {
 	return sdk.ConsAddress(v.GetConsPubKey().Address())
 }
@@ -86,17 +89,17 @@ func (v Validator) ABCIValidatorUpdateRemove() abci.ValidatorUpdate {
 }
 
 // Validator encoding functions
-func MustMarshalValidator(cdc codec.Codec, validator Validator) []byte {
+func MustMarshalValidator(cdc codec.BinaryCodec, validator Validator) []byte {
 	return cdc.MustMarshal(&validator)
 }
-func MustUnmarshalValidator(cdc codec.Codec, value []byte) Validator {
+func MustUnmarshalValidator(cdc codec.BinaryCodec, value []byte) Validator {
 	validator, err := UnmarshalValidator(cdc, value)
 	if err != nil {
 		panic(err)
 	}
 	return validator
 }
-func UnmarshalValidator(cdc codec.Codec, value []byte) (v Validator, err error) {
+func UnmarshalValidator(cdc codec.BinaryCodec, value []byte) (v Validator, err error) {
 	err = cdc.Unmarshal(value, &v)
 	return v, err
 }

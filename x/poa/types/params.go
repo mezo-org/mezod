@@ -12,11 +12,8 @@ const (
 	DefaultQuorum uint32 = 66
 )
 
-// Parameter store keys
-var (
-	KeyMaxValidators = []byte("MaxValidators")
-	KeyQuorum        = []byte("Quorum")
-)
+// ParamsKey store key for params
+var ParamsKey = []byte("Params")
 
 // NewParams creates a new Params object
 func NewParams(maxValidators uint32, quorum uint32) Params {

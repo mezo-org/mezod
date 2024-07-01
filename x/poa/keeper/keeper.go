@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"fmt"
+	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -12,17 +13,21 @@ import (
 
 // Keeper of the poa store
 type Keeper struct {
-	storeKey   sdk.StoreKey
-	cdc        *codec.Codec
-	paramspace types.ParamSubspace
+	storeKey  storetypes.StoreKey
+	cdc       codec.BinaryCodec
+	authority sdk.AccAddress
 }
 
 // NewKeeper creates a poa keeper
-func NewKeeper(cdc *codec.Codec, key sdk.StoreKey, paramspace types.ParamSubspace) Keeper {
+func NewKeeper(
+	storeKey storetypes.StoreKey,
+	cdc codec.BinaryCodec,
+	authority sdk.AccAddress,
+) Keeper {
 	keeper := Keeper{
-		storeKey:   key,
-		cdc:        cdc,
-		paramspace: paramspace.WithKeyTable(types.ParamKeyTable()),
+		storeKey:  storeKey,
+		cdc:       cdc,
+		authority: authority,
 	}
 	return keeper
 }

@@ -45,7 +45,7 @@ message QueryValidatorsRequest {}
 
 // QueryValidatorsResponse is response type for the Query/Validators RPC method.
 message QueryValidatorsResponse {
-  repeated Validator validators = 1;
+  repeated Validator validators = 1 [(gogoproto.nullable) = false];
 }
 
 // QueryValidatorRequest is request type for the Query/Validator RPC method.
@@ -56,7 +56,7 @@ message QueryValidatorRequest {
 
 // QueryValidatorResponse is response type for the Query/Validator RPC method.
 message QueryValidatorResponse {
-  Validator validator = 1;
+  Validator validator = 1 [(gogoproto.nullable) = false];
 }
 
 // QueryApplicationsRequest is request type for the Query/Applications RPC method.
@@ -64,7 +64,7 @@ message QueryApplicationsRequest {}
 
 // QueryApplicationsResponse is response type for the Query/Applications RPC method.
 message QueryApplicationsResponse {
-  repeated Vote applications = 1;
+  repeated Vote applications = 1 [(gogoproto.nullable) = false];
 }
 
 // QueryKickProposalsRequest is request type for the Query/KickProposals RPC method.
@@ -72,5 +72,5 @@ message QueryKickProposalsRequest {}
 
 // QueryKickProposalsResponse is response type for the Query/KickProposals RPC method.
 message QueryKickProposalsResponse {
-  repeated Vote kick_proposals = 1;
+  repeated Vote kick_proposals = 1 [(gogoproto.nullable) = false];
 }

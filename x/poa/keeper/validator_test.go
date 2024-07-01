@@ -1,19 +1,60 @@
-package keeper_test
+package keeper
 
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/evmos/evmos/v12/x/poa"
 	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/google/go-cmp/cmp"
 )
+
+func TestLeaveValidatorSet(t *testing.T) {
+	ctx, poaKeeper := poa.MockContext()
+	validator1, _ := poa.MockValidator()
+	validator2, _ := poa.MockValidator()
+	poaKeeper.SetParams(ctx, poaKeeper.authority, types.DefaultParams())
+
+	poaKeeper.appendValidator(ctx, validator1)
+
+	// Can't leave the validator set if only one validator
+	err := poaKeeper.LeaveValidatorSet(ctx, validator1.GetOperator())
+	if err.Error() != types.ErrOnlyOneValidator.Error() {
+		t.Errorf("LeaveValidatorSet with one validator, error should be %v, got %v", types.ErrOnlyOneValidator.Error(), err.Error())
+	}
+
+	// Can't leave the validator set if not validator
+	err = poaKeeper.LeaveValidatorSet(ctx, validator2.GetOperator())
+	if err.Error() != types.ErrNotValidator.Error() {
+		t.Errorf("LeaveValidatorSet when not validator, error should be %v, got %v", types.ErrNotValidator.Error(), err.Error())
+	}
+
+	poaKeeper.appendValidator(ctx, validator2)
+	poaKeeper.appendKickProposal(ctx, validator1)
+
+	// Can leave the validator set
+	err = poaKeeper.LeaveValidatorSet(ctx, validator1.GetOperator())
+	if err != nil {
+		t.Errorf("LeaveValidatorSet should leave the validator set, got error %v", err)
+	}
+	_, found := poaKeeper.GetKickProposal(ctx, validator1.GetOperator())
+	if found {
+		t.Errorf("LeaveValidatorSet should remove existing kick proposal")
+	}
+	validatorState, found := poaKeeper.GetValidatorState(ctx, validator1.GetOperator())
+	if !found {
+		t.Errorf("LeaveValidatorSet should not directly remove the validator")
+	}
+	if validatorState != types.ValidatorStateLeaving {
+		t.Errorf("LeaveValidatorSet should set the state of the validator to leaving")
+	}
+}
 
 func TestGetValidator(t *testing.T) {
 	ctx, poaKeeper := poa.MockContext()
 	validator1, _ := poa.MockValidator()
 	validator2, _ := poa.MockValidator()
 
-	poaKeeper.SetValidator(ctx, validator1)
+	poaKeeper.setValidator(ctx, validator1)
 
 	// Should find the correct validator
 	retrievedValidator, found := poaKeeper.GetValidator(ctx, validator1.GetOperator())
@@ -37,8 +78,8 @@ func TestGetValidatorByConsAddr(t *testing.T) {
 	validator1, _ := poa.MockValidator()
 	validator2, _ := poa.MockValidator()
 
-	poaKeeper.SetValidator(ctx, validator1)
-	poaKeeper.SetValidatorByConsAddr(ctx, validator1)
+	poaKeeper.setValidator(ctx, validator1)
+	poaKeeper.setValidatorByConsAddr(ctx, validator1)
 
 	// Should find the correct validator
 	retrievedValidator, found := poaKeeper.GetValidatorByConsAddr(ctx, validator1.GetConsAddr())
@@ -57,7 +98,7 @@ func TestGetValidatorByConsAddr(t *testing.T) {
 	}
 
 	// Should not find the validator if we call SetValidatorByConsAddr without SetValidator
-	poaKeeper.SetValidatorByConsAddr(ctx, validator2)
+	poaKeeper.setValidatorByConsAddr(ctx, validator2)
 	_, found = poaKeeper.GetValidator(ctx, validator2.GetOperator())
 	if found {
 		t.Errorf("GetValidatorByConsAddr should not find validator if it has not been set with SetValidator")
@@ -106,7 +147,7 @@ func TestAppendValidator(t *testing.T) {
 	ctx, poaKeeper := poa.MockContext()
 	validator, _ := poa.MockValidator()
 
-	poaKeeper.AppendValidator(ctx, validator)
+	poaKeeper.appendValidator(ctx, validator)
 
 	_, foundVal := poaKeeper.GetValidator(ctx, validator.GetOperator())
 	_, foundConsAddr := poaKeeper.GetValidatorByConsAddr(ctx, validator.GetConsAddr())
@@ -123,8 +164,8 @@ func TestRemoveValidator(t *testing.T) {
 	validator2, _ := poa.MockValidator()
 
 	// Set validators
-	poaKeeper.AppendValidator(ctx, validator1)
-	poaKeeper.AppendValidator(ctx, validator2)
+	poaKeeper.appendValidator(ctx, validator1)
+	poaKeeper.appendValidator(ctx, validator2)
 
 	poaKeeper.RemoveValidator(ctx, validator1.GetOperator())
 
@@ -152,8 +193,8 @@ func TestGetAllValidators(t *testing.T) {
 	validator1, _ := poa.MockValidator()
 	validator2, _ := poa.MockValidator()
 
-	poaKeeper.SetValidator(ctx, validator1)
-	poaKeeper.SetValidator(ctx, validator2)
+	poaKeeper.setValidator(ctx, validator1)
+	poaKeeper.setValidator(ctx, validator2)
 
 	retrievedValidators := poaKeeper.GetAllValidators(ctx)
 	if len(retrievedValidators) != 2 {

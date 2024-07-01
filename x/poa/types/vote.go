@@ -74,10 +74,10 @@ func (v Vote) CheckQuorum(voterPoolSize uint64, quorum uint64) (reached bool, ap
 }
 
 // Vote encoding functions
-func MustMarshalVote(cdc codec.Codec, v Vote) []byte {
+func MustMarshalVote(cdc codec.BinaryCodec, v Vote) []byte {
 	return cdc.MustMarshal(&v)
 }
-func MustUnmarshalVote(cdc codec.Codec, value []byte) Vote {
+func MustUnmarshalVote(cdc codec.BinaryCodec, value []byte) Vote {
 	vote, err := UnmarshalVote(cdc, value)
 	if err != nil {
 		panic(err)
@@ -85,7 +85,7 @@ func MustUnmarshalVote(cdc codec.Codec, value []byte) Vote {
 
 	return vote
 }
-func UnmarshalVote(cdc codec.Codec, value []byte) (v Vote, err error) {
+func UnmarshalVote(cdc codec.BinaryCodec, value []byte) (v Vote, err error) {
 	err = cdc.Unmarshal(value, &v)
 	return v, err
 }
