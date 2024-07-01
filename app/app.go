@@ -150,6 +150,9 @@ import (
 	v82 "github.com/evmos/evmos/v12/app/upgrades/v8_2"
 	v9 "github.com/evmos/evmos/v12/app/upgrades/v9"
 	v91 "github.com/evmos/evmos/v12/app/upgrades/v9_1"
+	"github.com/evmos/evmos/v12/x/bridge"
+	bridgekeeper "github.com/evmos/evmos/v12/x/bridge/keeper"
+	bridgetypes "github.com/evmos/evmos/v12/x/bridge/types"
 	"github.com/evmos/evmos/v12/x/claims"
 	claimskeeper "github.com/evmos/evmos/v12/x/claims/keeper"
 	claimstypes "github.com/evmos/evmos/v12/x/claims/types"
@@ -249,6 +252,7 @@ var (
 		claims.AppModuleBasic{},
 		recovery.AppModuleBasic{},
 		revenue.AppModuleBasic{},
+		bridge.AppModuleBasic{},
 	)
 
 	// module account permissions
@@ -331,6 +335,7 @@ type Evmos struct {
 	VestingKeeper    vestingkeeper.Keeper
 	RecoveryKeeper   *recoverykeeper.Keeper
 	RevenueKeeper    revenuekeeper.Keeper
+	BridgeKeeper     bridgekeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -473,6 +478,8 @@ func NewEvmos(
 	app.IBCKeeper = ibckeeper.NewKeeper(
 		appCodec, keys[ibchost.StoreKey], app.GetSubspace(ibchost.ModuleName), &stakingKeeper, app.UpgradeKeeper, scopedIBCKeeper,
 	)
+
+	app.BridgeKeeper = *bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
 
 	// register the proposal types
 	govRouter := govv1beta1.NewRouter()
@@ -700,6 +707,7 @@ func NewEvmos(
 			app.GetSubspace(recoverytypes.ModuleName)),
 		revenue.NewAppModule(app.RevenueKeeper, app.AccountKeeper,
 			app.GetSubspace(revenuetypes.ModuleName)),
+		bridge.NewAppModule(appCodec, app.BridgeKeeper),
 	)
 
 	// During begin block slashing happens after distr.BeginBlocker so that
@@ -738,6 +746,7 @@ func NewEvmos(
 		incentivestypes.ModuleName,
 		recoverytypes.ModuleName,
 		revenuetypes.ModuleName,
+		bridgetypes.ModuleName,
 	)
 
 	// NOTE: fee market module must go last in order to retrieve the block gas used.
@@ -772,6 +781,7 @@ func NewEvmos(
 		incentivestypes.ModuleName,
 		recoverytypes.ModuleName,
 		revenuetypes.ModuleName,
+		bridgetypes.ModuleName,
 	)
 
 	// NOTE: The genutils module must occur after staking so that pools are
@@ -813,6 +823,7 @@ func NewEvmos(
 		epochstypes.ModuleName,
 		recoverytypes.ModuleName,
 		revenuetypes.ModuleName,
+		bridgetypes.ModuleName,
 		// NOTE: crisis module must go at the end to check for invariants on each module
 		crisistypes.ModuleName,
 	)
