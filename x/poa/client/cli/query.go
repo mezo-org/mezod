@@ -66,7 +66,7 @@ func NewCmdQueryValidators() *cobra.Command {
 		Use:   "validators",
 		Short: "Query all validators",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
 				return err
@@ -92,7 +92,7 @@ func NewCmdQueryParams() *cobra.Command {
 		Use:   "params",
 		Short: "Query the params",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
 				return err
@@ -118,7 +118,7 @@ func NewCmdQueryApplications() *cobra.Command {
 		Use:   "applications",
 		Short: "Query the applications to become validator",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
 				return err
@@ -144,7 +144,7 @@ func NewCmdQueryKickProposals() *cobra.Command {
 		Use:   "kick-proposals",
 		Short: "Query the kick proposals to remove validator",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
 				return err

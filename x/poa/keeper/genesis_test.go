@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
+	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 
 	"github.com/evmos/evmos/v12/x/poa/types"
@@ -58,6 +59,7 @@ func TestInitGenesis(t *testing.T) {
 	if err != nil {
 		t.Errorf("Incorrect public key: %v", err)
 	}
+	//nolint:staticcheck
 	pubKeyString := legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pubKey)
 	if pubKeyString != consPubKey {
 		t.Errorf("validator PubKey should be %v, got %v", consPubKey, pubKeyString)
@@ -70,7 +72,10 @@ func TestExportGenesis(t *testing.T) {
 
 	// Manually set values in keeper
 	poaKeeper.setValidator(ctx, validator)
-	poaKeeper.setParams(ctx, types.DefaultParams())
+	err := poaKeeper.setParams(ctx, types.DefaultParams())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	exportedGenesis := poaKeeper.ExportGenesis(ctx)
 

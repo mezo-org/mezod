@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/client/tx"
+	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 
 	"github.com/spf13/cobra"
@@ -54,6 +55,7 @@ func NewCmdSubmitApplication() *cobra.Command {
 			operatorAddr := sdk.ValAddress(accAddr)
 
 			// Consensus public key for the validator
+			//nolint:staticcheck
 			publicKey, err := legacybech32.UnmarshalPubKey(
 				legacybech32.ConsPK,
 				args[0],
@@ -156,11 +158,12 @@ func NewCmdVoteApplication() *cobra.Command {
 
 			// Check if approved or rejected
 			var approved bool
-			if args[1] == "approve" {
+			switch args[1] {
+			case "approve":
 				approved = true
-			} else if args[1] == "reject" {
+			case "reject":
 				approved = false
-			} else {
+			default:
 				return fmt.Errorf("vote neither approved nor rejected")
 			}
 
@@ -207,11 +210,12 @@ func NewCmdVoteKickProposal() *cobra.Command {
 
 			// Check if approved or rejected
 			var approved bool
-			if args[1] == "approve" {
+			switch args[1] {
+			case "approve":
 				approved = true
-			} else if args[1] == "reject" {
+			case "reject":
 				approved = false
-			} else {
+			default:
 				return fmt.Errorf("vote neither approved nor rejected")
 			}
 
@@ -237,7 +241,7 @@ func NewCmdLeaveValidatorSet() *cobra.Command {
 	return &cobra.Command{
 		Use:   "leave-validator-set",
 		Short: "Instantly leave the validator set",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err

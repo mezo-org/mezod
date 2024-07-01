@@ -5,12 +5,13 @@ import (
 
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
 func TestAddVote(t *testing.T) {
-	validator, _ := mockValidator()
+	validator := mockValidator()
 	account1 := mockValAddress()
 	account2 := mockValAddress()
 	vote := NewVote(validator)
@@ -59,7 +60,7 @@ func TestAddVote(t *testing.T) {
 }
 
 func TestCheckQuorum(t *testing.T) {
-	validator, _ := mockValidator()
+	validator := mockValidator()
 	account1 := mockValAddress()
 	account2 := mockValAddress()
 	account3 := mockValAddress()
@@ -131,7 +132,7 @@ func TestCheckQuorum(t *testing.T) {
 	}
 }
 
-func mockValidator() (Validator, string) {
+func mockValidator() Validator {
 	// Junk description
 	validatorDescription := Description{
 		Moniker:         "Moniker",
@@ -152,6 +153,7 @@ func mockValidator() (Validator, string) {
 	if err != nil {
 		panic(err)
 	}
+	//nolint:staticcheck
 	consPubKey := legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk)
 
 	validator := Validator{
@@ -160,7 +162,7 @@ func mockValidator() (Validator, string) {
 		Description:     validatorDescription,
 	}
 
-	return validator, consPubKey
+	return validator
 }
 
 func mockValAddress() sdk.ValAddress {

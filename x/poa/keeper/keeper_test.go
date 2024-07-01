@@ -2,6 +2,7 @@ package keeper
 
 import (
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
+	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -65,6 +66,7 @@ func mockValidator() (types.Validator, string) {
 	if err != nil {
 		panic(err)
 	}
+	//nolint:staticcheck
 	consPubKey := legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk)
 
 	validator := types.Validator{

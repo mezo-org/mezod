@@ -30,9 +30,9 @@ func (v *Vote) AddVote(voter sdk.ValAddress, approve bool) (alreadyVoted bool) {
 	v.Voters = append(v.Voters, voter)
 
 	// Update vote status
-	v.Total += 1
+	v.Total++
 	if approve {
-		v.Approvals += 1
+		v.Approvals++
 	}
 
 	return false
@@ -67,10 +67,10 @@ func (v Vote) CheckQuorum(voterPoolSize uint64, quorum uint64) (reached bool, ap
 	if (v.Approvals + remainingVoters) >= necessaryApproval {
 		// The vote can still be approved, therefore the quorum has not been reached
 		return false, false, nil
-	} else {
-		// The vote can't be approved anymore, therefore the quorum has been reached to reject the proposition
-		return true, false, nil
 	}
+
+	// The vote can't be approved anymore, therefore the quorum has been reached to reject the proposition
+	return true, false, nil
 }
 
 // Vote encoding functions

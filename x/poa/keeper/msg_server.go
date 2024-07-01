@@ -111,4 +111,3 @@ func (ms msgServer) LeaveValidatorSet(
 
 	return &types.MsgLeaveValidatorSetResponse{}, nil
 }
-

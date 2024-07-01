@@ -11,12 +11,15 @@ func TestLeaveValidatorSet(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator1, _ := mockValidator()
 	validator2, _ := mockValidator()
-	poaKeeper.setParams(ctx, types.DefaultParams())
+	err := poaKeeper.setParams(ctx, types.DefaultParams())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	poaKeeper.appendValidator(ctx, validator1)
 
 	// Can't leave the validator set if only one validator
-	err := poaKeeper.LeaveValidatorSet(ctx, validator1.GetOperator())
+	err = poaKeeper.LeaveValidatorSet(ctx, validator1.GetOperator())
 	if err.Error() != types.ErrOnlyOneValidator.Error() {
 		t.Errorf("LeaveValidatorSet with one validator, error should be %v, got %v", types.ErrOnlyOneValidator.Error(), err.Error())
 	}

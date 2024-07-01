@@ -8,12 +8,14 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	abci "github.com/tendermint/tendermint/abci/types"
 
+	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 )
 
 func NewValidator(operator sdk.ValAddress, pubKey cryptotypes.PubKey, description Description) Validator {
 	var pkStr string
 	if pubKey != nil {
+		//nolint:staticcheck
 		pkStr = legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pubKey)
 	}
 
@@ -34,6 +36,7 @@ func (v Validator) GetConsPubKeyString() string {
 }
 
 func (v Validator) GetConsPubKey() cryptotypes.PubKey {
+	//nolint:staticcheck
 	pubKey, err := legacybech32.UnmarshalPubKey(
 		legacybech32.ConsPK,
 		v.ConsensusPubkey,
@@ -51,12 +54,15 @@ func (v Validator) GetConsAddr() sdk.ConsAddress {
 
 func (v Validator) CheckValid() error {
 	if v.GetOperator().Empty() {
+		//nolint:staticcheck
 		return sdkerrors.Wrap(ErrInvalidValidator, "missing validator address")
 	}
 	if v.GetConsPubKeyString() == "" {
+		//nolint:staticcheck
 		return sdkerrors.Wrap(ErrInvalidValidator, "missing consensus pubkey")
 	}
 	if v.GetDescription() == (Description{}) {
+		//nolint:staticcheck
 		return sdkerrors.Wrap(ErrInvalidValidator, "empty description")
 	}
 	return nil

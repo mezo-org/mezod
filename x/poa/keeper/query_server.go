@@ -101,4 +101,3 @@ func (qs queryServer) KickProposals(
 		KickProposals: kickProposals,
 	}, nil
 }
-

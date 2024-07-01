@@ -13,14 +13,17 @@ func TestProposeKick(t *testing.T) {
 	validator1, _ := mockValidator()
 	validator2, _ := mockValidator()
 	nothing, _ := mockValidator()
-	poaKeeper.setParams(ctx, types.DefaultParams())
+	err := poaKeeper.setParams(ctx, types.DefaultParams())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add validators to validator set
 	poaKeeper.appendValidator(ctx, validator1)
 	poaKeeper.appendValidator(ctx, validator2)
 
 	// Cannot propose to kick oneself
-	err := poaKeeper.ProposeKick(ctx, validator1.GetOperator(), validator1.GetOperator())
+	err = poaKeeper.ProposeKick(ctx, validator1.GetOperator(), validator1.GetOperator())
 	if err.Error() != types.ErrProposerIsCandidate.Error() {
 		t.Errorf("ProposeKick with same address, error should be %v, got %v", types.ErrProposerIsCandidate.Error(), err.Error())
 	}
@@ -57,7 +60,10 @@ func TestProposeKick(t *testing.T) {
 	ctx, poaKeeper = mockContext()
 	validator1, _ = mockValidator()
 	validator2, _ = mockValidator()
-	poaKeeper.setParams(ctx, types.NewParams(15, 0))
+	err = poaKeeper.setParams(ctx, types.NewParams(15, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add validators to validator set
 	poaKeeper.appendValidator(ctx, validator1)
@@ -83,7 +89,10 @@ func TestVoteKickProposal(t *testing.T) {
 	voter1, _ := mockValidator()
 	voter2, _ := mockValidator()
 	validator1, _ := mockValidator()
-	poaKeeper.setParams(ctx, types.NewParams(15, 100)) // Set quorum to 100%
+	err := poaKeeper.setParams(ctx, types.NewParams(15, 100))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add voter to validator set
 	poaKeeper.appendValidator(ctx, voter1)
@@ -91,7 +100,7 @@ func TestVoteKickProposal(t *testing.T) {
 	poaKeeper.appendValidator(ctx, validator1)
 
 	// Cannot vote if no kick proposal
-	err := poaKeeper.VoteKickProposal(ctx, voter1.GetOperator(), validator1.GetOperator(), true)
+	err = poaKeeper.VoteKickProposal(ctx, voter1.GetOperator(), validator1.GetOperator(), true)
 	if err.Error() != types.ErrNoKickProposalFound.Error() {
 		t.Errorf("VoteKickProposal with no kick proposal, error should be %v, got %v", types.ErrNoKickProposalFound.Error(), err.Error())
 	}
@@ -162,7 +171,10 @@ func TestVoteKickProposal(t *testing.T) {
 
 	// Reapply and set quorum to 1%
 	poaKeeper.appendKickProposal(ctx, voter2)
-	poaKeeper.setParams(ctx, types.NewParams(15, 1))
+	err = poaKeeper.setParams(ctx, types.NewParams(15, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// One reject should update the vote but not reject totally the kick proposal
 	err = poaKeeper.VoteKickProposal(ctx, voter1.GetOperator(), voter2.GetOperator(), false)

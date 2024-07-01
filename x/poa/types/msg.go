@@ -51,6 +51,7 @@ func (msg MsgProposeKick) GetSigners() []sdk.AccAddress {
 // ValidateBasic validity check for the AnteHandler
 func (msg MsgProposeKick) ValidateBasic() error {
 	if sdk.ValAddress(msg.ProposerAddr).Empty() || sdk.ValAddress(msg.CandidateAddr).Empty() {
+		//nolint:staticcheck
 		return sdkerrors.Wrap(ErrInvalidKickProposal, "missing address")
 	}
 	return nil
@@ -68,9 +69,11 @@ func (msg MsgVote) GetSigners() []sdk.AccAddress {
 // ValidateBasic validity check for the AnteHandler
 func (msg MsgVote) ValidateBasic() error {
 	if sdk.ValAddress(msg.VoterAddr).Empty() || sdk.ValAddress(msg.CandidateAddr).Empty() {
+		//nolint:staticcheck
 		return sdkerrors.Wrap(ErrInvalidVoteMsg, "missing address")
 	}
 	if msg.VoteType != VoteTypeApplication && msg.VoteType != VoteTypeKickProposal {
+		//nolint:staticcheck
 		return sdkerrors.Wrap(ErrInvalidVoteMsg, "vote type incorrect")
 	}
 
@@ -84,6 +87,7 @@ func (msg MsgLeaveValidatorSet) GetSigners() []sdk.AccAddress {
 // ValidateBasic validity check for the AnteHandler
 func (msg MsgLeaveValidatorSet) ValidateBasic() error {
 	if sdk.ValAddress(msg.ValidatorAddr).Empty() {
+		//nolint:staticcheck
 		return sdkerrors.Wrap(ErrInvalidValidator, "missing address")
 	}
 

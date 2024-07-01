@@ -11,10 +11,13 @@ func TestSubmitApplication(t *testing.T) {
 	// Test with maxValidator=15, quorum=66
 	ctx, poaKeeper := mockContext()
 	validator, _ := mockValidator()
-	poaKeeper.setParams(ctx, types.DefaultParams())
+	err := poaKeeper.setParams(ctx, types.DefaultParams())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// The application is submitted correctly
-	err := poaKeeper.SubmitApplication(ctx, validator)
+	err = poaKeeper.SubmitApplication(ctx, validator)
 	if err != nil {
 		t.Errorf("SubmitApplication should submit an application, got error %v", err)
 	}
@@ -36,7 +39,10 @@ func TestSubmitApplication(t *testing.T) {
 	// Test with quorum=0
 	ctx, poaKeeper = mockContext()
 	validator, _ = mockValidator()
-	poaKeeper.setParams(ctx, types.NewParams(15, 0))
+	err = poaKeeper.setParams(ctx, types.NewParams(15, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// The validator should be directly appended if the quorum is 0
 	err = poaKeeper.SubmitApplication(ctx, validator)
@@ -66,7 +72,10 @@ func TestSubmitApplication(t *testing.T) {
 	}
 
 	// Test max validators condition
-	poaKeeper.setParams(ctx, types.NewParams(1, 0))
+	err = poaKeeper.setParams(ctx, types.NewParams(1, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = poaKeeper.SubmitApplication(ctx, validator)
 	if err.Error() != types.ErrMaxValidatorsReached.Error() {
 		t.Errorf("SubmitApplication with max validators reached, error should be %v, got %v", types.ErrMaxValidatorsReached.Error(), err.Error())
@@ -80,7 +89,10 @@ func TestVoteApplication(t *testing.T) {
 	candidate1, _ := mockValidator()
 	candidate2, _ := mockValidator()
 	nothing, _ := mockValidator()
-	poaKeeper.setParams(ctx, types.NewParams(15, 100)) // Set quorum to 100%
+	err := poaKeeper.setParams(ctx, types.NewParams(15, 100))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add voter to validator set
 	poaKeeper.appendValidator(ctx, voter1)
@@ -91,7 +103,7 @@ func TestVoteApplication(t *testing.T) {
 	poaKeeper.appendApplication(ctx, candidate2)
 
 	// Cannot vote if candidate is not in application pool
-	err := poaKeeper.VoteApplication(ctx, voter1.GetOperator(), nothing.GetOperator(), true)
+	err = poaKeeper.VoteApplication(ctx, voter1.GetOperator(), nothing.GetOperator(), true)
 	if err.Error() != types.ErrNoApplicationFound.Error() {
 		t.Errorf("VoteApplication should fail with %v, got %v", types.ErrNoApplicationFound, err)
 	}
@@ -152,7 +164,10 @@ func TestVoteApplication(t *testing.T) {
 
 	// Reapply and set quorum to 1%
 	poaKeeper.appendApplication(ctx, candidate2)
-	poaKeeper.setParams(ctx, types.NewParams(15, 1))
+	err = poaKeeper.setParams(ctx, types.NewParams(15, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// One reject should update the vote but not reject totally the application
 	err = poaKeeper.VoteApplication(ctx, voter1.GetOperator(), candidate2.GetOperator(), false)
@@ -175,7 +190,10 @@ func TestVoteApplication(t *testing.T) {
 	}
 
 	// Cannot vote if validator set is full
-	poaKeeper.setParams(ctx, types.NewParams(3, 1))
+	err = poaKeeper.setParams(ctx, types.NewParams(3, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = poaKeeper.VoteApplication(ctx, voter2.GetOperator(), candidate2.GetOperator(), false)
 	if err.Error() != types.ErrMaxValidatorsReached.Error() {
