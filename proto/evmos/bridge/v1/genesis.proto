@@ -1,0 +1,17 @@
+syntax = "proto3";
+package evmos.bridge.v1;
+
+option go_package = "github.com/evmos/evmos/v12/x/bridge/types";
+
+import "gogoproto/gogo.proto";
+
+// GenesisState defines the bridge module's genesis state.
+message GenesisState {
+  // params defines all the parameters of related to bridge.
+  Params params = 1 [(gogoproto.nullable) = false];
+}
+
+// Params defines the parameters for the module.
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+}
