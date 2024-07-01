@@ -12,7 +12,7 @@ func TestLeaveValidatorSet(t *testing.T) {
 	ctx, poaKeeper := poa.MockContext()
 	validator1, _ := poa.MockValidator()
 	validator2, _ := poa.MockValidator()
-	poaKeeper.SetParams(ctx, poaKeeper.authority, types.DefaultParams())
+	poaKeeper.setParams(ctx, types.DefaultParams())
 
 	poaKeeper.appendValidator(ctx, validator1)
 
@@ -110,7 +110,7 @@ func TestGetValidatorState(t *testing.T) {
 	validator1, _ := poa.MockValidator()
 	validator2, _ := poa.MockValidator()
 
-	poaKeeper.SetValidatorState(ctx, validator1, types.ValidatorStateJoined)
+	poaKeeper.setValidatorState(ctx, validator1, types.ValidatorStateJoined)
 
 	// Should find the correct validator
 	retrievedState, found := poaKeeper.GetValidatorState(ctx, validator1.GetOperator())
@@ -140,7 +140,7 @@ func TestGetValidatorStatePanic(t *testing.T) {
 	}()
 
 	// Should panic if the state doesn't exist
-	poaKeeper.SetValidatorState(ctx, validator1, 1000)
+	poaKeeper.setValidatorState(ctx, validator1, 1000)
 }
 
 func TestAppendValidator(t *testing.T) {
@@ -167,7 +167,7 @@ func TestRemoveValidator(t *testing.T) {
 	poaKeeper.appendValidator(ctx, validator1)
 	poaKeeper.appendValidator(ctx, validator2)
 
-	poaKeeper.RemoveValidator(ctx, validator1.GetOperator())
+	poaKeeper.removeValidator(ctx, validator1.GetOperator())
 
 	// Should not find a removed validator
 	_, foundVal := poaKeeper.GetValidator(ctx, validator1.GetOperator())

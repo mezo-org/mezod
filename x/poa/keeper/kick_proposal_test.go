@@ -14,7 +14,7 @@ func TestProposeKick(t *testing.T) {
 	validator1, _ := poa.MockValidator()
 	validator2, _ := poa.MockValidator()
 	nothing, _ := poa.MockValidator()
-	poaKeeper.SetParams(ctx, poaKeeper.authority, types.DefaultParams())
+	poaKeeper.setParams(ctx, types.DefaultParams())
 
 	// Add validators to validator set
 	poaKeeper.appendValidator(ctx, validator1)
@@ -58,7 +58,7 @@ func TestProposeKick(t *testing.T) {
 	ctx, poaKeeper = poa.MockContext()
 	validator1, _ = poa.MockValidator()
 	validator2, _ = poa.MockValidator()
-	poaKeeper.SetParams(ctx, poaKeeper.authority, types.NewParams(15, 0))
+	poaKeeper.setParams(ctx, types.NewParams(15, 0))
 
 	// Add validators to validator set
 	poaKeeper.appendValidator(ctx, validator1)
@@ -84,7 +84,7 @@ func TestVoteKickProposal(t *testing.T) {
 	voter1, _ := poa.MockValidator()
 	voter2, _ := poa.MockValidator()
 	validator1, _ := poa.MockValidator()
-	poaKeeper.SetParams(ctx, poaKeeper.authority, types.NewParams(15, 100)) // Set quorum to 100%
+	poaKeeper.setParams(ctx, types.NewParams(15, 100)) // Set quorum to 100%
 
 	// Add voter to validator set
 	poaKeeper.appendValidator(ctx, voter1)
@@ -163,7 +163,7 @@ func TestVoteKickProposal(t *testing.T) {
 
 	// Reapply and set quorum to 1%
 	poaKeeper.appendKickProposal(ctx, voter2)
-	poaKeeper.SetParams(ctx, poaKeeper.authority, types.NewParams(15, 1))
+	poaKeeper.setParams(ctx, types.NewParams(15, 1))
 
 	// One reject should update the vote but not reject totally the kick proposal
 	err = poaKeeper.VoteKickProposal(ctx, voter1.GetOperator(), voter2.GetOperator(), false)

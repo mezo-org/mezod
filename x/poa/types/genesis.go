@@ -11,8 +11,8 @@ func NewGenesisState(params Params, validators []Validator) GenesisState {
 }
 
 // DefaultGenesisState - default GenesisState used by Cosmos Hub
-func DefaultGenesisState() GenesisState {
-	return GenesisState{
+func DefaultGenesisState() *GenesisState {
+	return &GenesisState{
 		Params: DefaultParams(),
 	}
 }

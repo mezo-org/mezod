@@ -25,12 +25,10 @@ var (
 )
 
 // AppModuleBasic defines the basic application module used by the poa module.
-type AppModuleBasic struct{
-	cdc codec.Codec
-}
+type AppModuleBasic struct{}
 
-func NewAppModuleBasic(cdc codec.Codec) AppModuleBasic {
-	return AppModuleBasic{cdc: cdc}
+func NewAppModuleBasic() AppModuleBasic {
+	return AppModuleBasic{}
 }
 
 // Name returns the poa module's name.
@@ -104,11 +102,10 @@ type AppModule struct {
 
 // NewAppModule creates a new AppModule object
 func NewAppModule(
-	cdc codec.Codec,
 	keeper keeper.Keeper,
 ) AppModule {
 	return AppModule{
-		AppModuleBasic: NewAppModuleBasic(cdc),
+		AppModuleBasic: NewAppModuleBasic(),
 		keeper:         keeper,
 	}
 }
@@ -156,7 +153,7 @@ func (am AppModule) InitGenesis(
 ) []abci.ValidatorUpdate {
 	var genesisState types.GenesisState
 	cdc.MustUnmarshalJSON(data, &genesisState)
-	return InitGenesis(ctx, am.keeper, genesisState)
+	return am.keeper.InitGenesis(ctx, genesisState)
 }
 
 // ExportGenesis returns the exported genesis state as raw bytes for the poa
@@ -165,11 +162,11 @@ func (am AppModule) ExportGenesis(
 	ctx sdk.Context,
 	cdc codec.JSONCodec,
 ) json.RawMessage {
-	genesisState := ExportGenesis(ctx, am.keeper)
+	genesisState := am.keeper.ExportGenesis(ctx)
 	return cdc.MustMarshalJSON(genesisState)
 }
 
-// BeginBlock returns the begin blocker for the poa module.
+// BeginBlock returns the begin-blocker for the poa module.
 func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {}
 
 // EndBlock returns the end blocker for the poa module.

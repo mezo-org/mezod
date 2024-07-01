@@ -1,14 +1,13 @@
-package poa_test
+package keeper
 
 import (
+	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	tmtypes "github.com/tendermint/tendermint/types"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/evmos/evmos/v12/x/poa"
 	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestValidateGenesis(t *testing.T) {
@@ -40,7 +39,7 @@ func TestInitGenesis(t *testing.T) {
 	testGenesis := types.NewGenesisState(types.DefaultParams(), []types.Validator{validator})
 
 	// InitGenesis
-	validatorUpdates := poa.InitGenesis(ctx, poaKeeper, testGenesis)
+	validatorUpdates := poaKeeper.InitGenesis(ctx, testGenesis)
 
 	// Only one update
 	if len(validatorUpdates) != 1 {
@@ -54,11 +53,11 @@ func TestInitGenesis(t *testing.T) {
 	}
 
 	// Correct public key
-	pubKey, err := tmtypes.PB2TM.PubKey(validatorUpdates[0].PubKey)
+	pubKey, err := cryptocdc.FromTmProtoPublicKey(validatorUpdates[0].PubKey)
 	if err != nil {
 		t.Errorf("Incorrect public key: %v", err)
 	}
-	pubKeyString := sdk.MustBech32ifyPubKey(sdk.Bech32PubKeyTypeConsPub, pubKey)
+	pubKeyString := legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pubKey)
 	if pubKeyString != consPubKey {
 		t.Errorf("validator PubKey should be %v, got %v", consPubKey, pubKeyString)
 	}
@@ -69,10 +68,10 @@ func TestExportGenesis(t *testing.T) {
 	validator, _ := poa.MockValidator()
 
 	// Manually set values in keeper
-	poaKeeper.SetValidator(ctx, validator)
-	poaKeeper.SetParams(ctx, types.DefaultParams())
+	poaKeeper.setValidator(ctx, validator)
+	poaKeeper.setParams(ctx, types.DefaultParams())
 
-	exportedGenesis := poa.ExportGenesis(ctx, poaKeeper)
+	exportedGenesis := poaKeeper.ExportGenesis(ctx)
 
 	if !cmp.Equal(exportedGenesis.Params, types.DefaultParams()) {
 		t.Errorf("Exported genesis param shoud be: %v, not %v", types.DefaultParams(), exportedGenesis.Params)

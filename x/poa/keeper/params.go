@@ -19,8 +19,8 @@ func (k Keeper) GetParams(ctx sdk.Context) (params types.Params) {
 	return params
 }
 
-// SetParams sets the poa parameters to the param space.
-func (k Keeper) SetParams(
+// UpdateParams updates the poa module's parameters.
+func (k Keeper) UpdateParams(
 	ctx sdk.Context,
 	sender sdk.AccAddress,
 	params types.Params,
@@ -38,6 +38,14 @@ func (k Keeper) SetParams(
 		return errorsmod.Wrapf(err, "invalid params")
 	}
 
+	return k.setParams(ctx, params)
+}
+
+// UpdateParams updates the poa module's parameters.
+func (k Keeper) setParams(
+	ctx sdk.Context,
+	params types.Params,
+) error {
 	store := ctx.KVStore(k.storeKey)
 	bz, err := k.cdc.Marshal(&params)
 	if err != nil {
