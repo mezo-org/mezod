@@ -1,4 +1,4 @@
-package poa_test
+package keeper
 
 import (
 	"testing"
@@ -18,20 +18,20 @@ func TestEndBlocker(t *testing.T) {
 	validator5, _ := poa.MockValidator()
 
 	// Set the validator in the keepr
-	poaKeeper.AppendValidator(ctx, validator1)
-	poaKeeper.AppendValidator(ctx, validator2)
-	poaKeeper.AppendValidator(ctx, validator3)
-	poaKeeper.AppendValidator(ctx, validator4)
-	poaKeeper.AppendValidator(ctx, validator5)
+	poaKeeper.appendValidator(ctx, validator1)
+	poaKeeper.appendValidator(ctx, validator2)
+	poaKeeper.appendValidator(ctx, validator3)
+	poaKeeper.appendValidator(ctx, validator4)
+	poaKeeper.appendValidator(ctx, validator5)
 
 	// Simulate validator 2 as if it is already in the validator set
-	poaKeeper.SetValidatorState(ctx, validator2, types.ValidatorStateJoined)
+	poaKeeper.setValidatorState(ctx, validator2, types.ValidatorStateJoined)
 
 	// Simulate validator 4 and 5 as if those are leaving the validator set
-	poaKeeper.SetValidatorState(ctx, validator4, types.ValidatorStateLeaving)
-	poaKeeper.SetValidatorState(ctx, validator5, types.ValidatorStateLeaving)
+	poaKeeper.setValidatorState(ctx, validator4, types.ValidatorStateLeaving)
+	poaKeeper.setValidatorState(ctx, validator5, types.ValidatorStateLeaving)
 
-	updates := poa.EndBlocker(ctx, poaKeeper)
+	updates := poaKeeper.EndBlocker(ctx)
 
 	// There should be 4 updates
 	if len(updates) != 4 {

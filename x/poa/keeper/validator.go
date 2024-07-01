@@ -27,7 +27,7 @@ func (k Keeper) LeaveValidatorSet(ctx sdk.Context, validatorAddr sdk.ValAddress)
 	}
 
 	// Set the state of the validator to leaving, End Blocker will remove the validator from the keeper
-	k.SetValidatorState(ctx, validator, types.ValidatorStateLeaving)
+	k.setValidatorState(ctx, validator, types.ValidatorStateLeaving)
 
 	// Emit approved event
 	ctx.EventManager().EmitEvent(
@@ -97,7 +97,7 @@ func (k Keeper) setValidatorByConsAddr(ctx sdk.Context, validator types.Validato
 }
 
 // Set validator state
-func (k Keeper) SetValidatorState(ctx sdk.Context, validator types.Validator, state uint16) {
+func (k Keeper) setValidatorState(ctx sdk.Context, validator types.Validator, state uint16) {
 	if state != types.ValidatorStateJoining && state != types.ValidatorStateJoined && state != types.ValidatorStateLeaving {
 		panic("Incorrect validator state")
 	}
@@ -111,13 +111,13 @@ func (k Keeper) SetValidatorState(ctx sdk.Context, validator types.Validator, st
 func (k Keeper) appendValidator(ctx sdk.Context, validator types.Validator) {
 	k.setValidator(ctx, validator)
 	k.setValidatorByConsAddr(ctx, validator)
-	k.SetValidatorState(ctx, validator, types.ValidatorStateJoining)
+	k.setValidatorState(ctx, validator, types.ValidatorStateJoining)
 }
 
 // Remove the validator
 // !!! This function should only be called by the end blocker to ensure the validator is removed from the Tendermint validator state
 // !!! This function is called by the end blocker when the validator state is leaving
-func (k Keeper) RemoveValidator(ctx sdk.Context, address sdk.ValAddress) {
+func (k Keeper) removeValidator(ctx sdk.Context, address sdk.ValAddress) {
 	validator, found := k.GetValidator(ctx, address)
 	if !found {
 		return

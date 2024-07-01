@@ -172,5 +172,5 @@ func (am AppModule) EndBlock(
 	ctx sdk.Context,
 	_ abci.RequestEndBlock,
 ) []abci.ValidatorUpdate {
-	return EndBlocker(ctx, am.keeper)
+	return am.keeper.EndBlocker(ctx)
 }
