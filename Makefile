@@ -630,29 +630,30 @@ endif
 
 export environment
 
-modules := mezo_portal
-
-# Required by get_npm_package function.
-npm_mezo_portal_package := @mezo-org/contracts
+# List of NPM packages for which to generate bindings - expand if needed.
+packages := @mezo-org/contracts
 
 # Working directory where contracts artifacts should be stored.
 contracts_dir := tmp/contracts
 
 # It requires npm of at least 7.x version to support `pack-destination` flag.
 define get_npm_package
-$(eval npm_package_name := $(npm_$(1)_package))
-$(eval destination_dir := ${contracts_dir}/${npm_package_name})
+$(info Fetching package $(1))
+$(eval destination_dir := ${contracts_dir}/$(1))
 @rm -rf ${destination_dir}
 @mkdir -p ${destination_dir}
-@npm pack --silent --pack-destination=${destination_dir} ${npm_package_name}
+@npm pack --silent --pack-destination=${destination_dir} $(1)
 @tarball=$$(ls ${destination_dir}/*.tgz); \
 tar -zxf $$tarball -C ${destination_dir} --strip-components 1 package/deployments/
-$(info Downloaded NPM package ${npm_package_name} to ${contracts_dir})
+$(info Downloaded NPM package $(1) to ${contracts_dir})
 endef
 
 get_artifacts:
-	$(foreach module,$(modules),$(call get_npm_package,$(module)))
+	$(foreach pkg,$(packages),$(call get_npm_package,$(pkg)))
 
 generate:
 	$(info Running Go code generator for environment ${environment})
 	go generate ./...
+
+bindings: get_artifacts generate
+	$(info Bindings generated)
