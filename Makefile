@@ -640,11 +640,9 @@ contracts_dir := tmp/contracts
 define get_npm_package
 $(info Fetching package $(1))
 $(eval destination_dir := ${contracts_dir}/$(1))
-@rm -rf ${destination_dir}
-@mkdir -p ${destination_dir}
-@npm pack --silent --pack-destination=${destination_dir} $(1)
-@tarball=$$(ls ${destination_dir}/*.tgz); \
-tar -zxf $$tarball -C ${destination_dir} --strip-components 1 package/deployments/
+@rm -rf ${destination_dir} && mkdir -p ${destination_dir}
+@tarball=$$(npm pack --silent --pack-destination=${destination_dir} $(1)); \
+tar -zxf ${destination_dir}/$${tarball} -C ${destination_dir} --strip-components 1 package/deployments/
 $(info Downloaded NPM package $(1) to ${contracts_dir})
 endef
 
