@@ -24,7 +24,6 @@ The poa module emits the following events:
 | append_validator | candidate     | {validatorAddress} |
 | append_validator | module     | poa |
 
-
 ### MsgProposeKick
 
 **If Quorum > 0%:**
@@ -35,7 +34,6 @@ The poa module emits the following events:
 | propose_kick | proposer     | {validatorAddress} |
 | propose_kick | module     | poa |
 
-
 **If Quorum = 0%:**
 
 | Type     | Attribute Key | Attribute Value    |
@@ -43,14 +41,12 @@ The poa module emits the following events:
 | kick_validator | validator     | {validatorAddress} |
 | kick_validator | module     | poa |
 
-
 ### MsgLeaveValidatorSet
 
 | Type     | Attribute Key | Attribute Value    |
 |----------|---------------|--------------------|
 | leave_validator_set | validator     | {validatorAddress} |
 | leave_validator_set | module     | poa |
-
 
 ### MsgVote
 
@@ -62,14 +58,12 @@ The poa module emits the following events:
 | approve_application | candidate     | {validatorAddress} |
 | approve_application | module     | poa |
 
-
 **If Quorum reached:**
 
 | Type     | Attribute Key | Attribute Value    |
 |----------|---------------|--------------------|
 | append_validator | candidate     | {validatorAddress} |
 | append_validator | module     | poa |
-
 
 #### Reject application
 
@@ -79,14 +73,12 @@ The poa module emits the following events:
 | reject_application | candidate     | {validatorAddress} |
 | reject_application | module     | poa |
 
-
 **If Quorum reached for rejection:**
 
 | Type     | Attribute Key | Attribute Value    |
 |----------|---------------|--------------------|
 | reject_validator | candidate     | {validatorAddress} |
 | reject_validator | module     | poa |
-
 
 #### Approve kick proposal
 
@@ -96,14 +88,12 @@ The poa module emits the following events:
 | approve_kick_proposal | validator     | {validatorAddress} |
 | approve_kick_proposal | module     | poa |
 
-
 **If Quorum reached:**
 
 | Type     | Attribute Key | Attribute Value    |
 |----------|---------------|--------------------|
 | kick_validator | validator     | {validatorAddress} |
 | kick_validator | module     | poa |
-
 
 #### Reject kick proposal
 
@@ -113,11 +103,9 @@ The poa module emits the following events:
 | reject_kick_proposal | validator     | {validatorAddress} |
 | reject_kick_proposal | module     | poa |
 
-
 **If Quorum reached:**
 
 | Type     | Attribute Key | Attribute Value    |
 |----------|---------------|--------------------|
 | keep_validator | validator     | {validatorAddress} |
 | keep_validator | module     | poa |
-
