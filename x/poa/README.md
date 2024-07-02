@@ -2,11 +2,18 @@
 
 Proof-of-Authority module for Cosmos SDK
 
-This module implements a simple Proof of Authority system to determine the Tendermint validator set of the Cosmos SDK application through internal voting.
+This module implements a simple Proof of Authority system to determine the
+Tendermint validator set of the Cosmos SDK application through internal voting.
 
 This simple module can be used in a Cosmos SDK application without the dependency of other modules.
 
-An initial validator set is defined in the genesis file. Then, validators can be appended or kicked from the validator set through voting from the current validators. A quorum percentage is defined in the parameters of the module. This quorum defines the number of approvals required to vote decision. For example: if the quorum is 50% and the current validator set contains 10 validators. 5 validator approvals are required to accept a new candidate in the validator set. All validators in the system have equal voting power.
+An initial validator set is defined in the genesis file. Then, validators can
+be appended or kicked from the validator set through voting from the current
+validators. A quorum percentage is defined in the parameters of the module.
+This quorum defines the number of approvals required to vote decision.
+For example: if the quorum is 50% and the current validator set contains 10
+validators. 5 validator approvals are required to accept a new candidate
+in the validator set. All validators in the system have equal voting power.
 
 ## Queries
 
