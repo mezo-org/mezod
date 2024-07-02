@@ -16,6 +16,7 @@ message Params {
   uint32 quorum = 2;
 }
 
+// Validator represents a validator in the network.
 message Validator {
   // operator_address is the Cosmos SDK address identifying the validator.
   bytes operator_address = 1;
@@ -28,10 +29,15 @@ message Validator {
 
 // Description defines a validator description
 message Description {
+  // moniker is the validator's name.
   string moniker = 1;
+  // identity is the optional identity signature (ex. UPort or Keybase).
   string identity = 2;
+  // website is the optional website link.
   string website = 3;
+  // security_contact is the optional security contact information.
   string security_contact = 4;
+  // details is the optional details about the validator.
   string details = 5;
 }
 

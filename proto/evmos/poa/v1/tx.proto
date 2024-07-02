@@ -1,10 +1,10 @@
 syntax = "proto3";
 package evmos.poa.v1;
 
-import "gogoproto/gogo.proto";
-import "cosmos_proto/cosmos.proto";
 import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
 import "evmos/poa/v1/poa.proto";
+import "gogoproto/gogo.proto";
 
 option go_package = "github.com/evmos/evmos/v12/x/poa/types";
 

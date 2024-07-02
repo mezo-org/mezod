@@ -1,9 +1,9 @@
 syntax = "proto3";
 package evmos.poa.v1;
 
+import "evmos/poa/v1/poa.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
-import "evmos/poa/v1/poa.proto";
 
 option go_package = "github.com/evmos/evmos/v12/x/poa/types";
 
@@ -45,6 +45,7 @@ message QueryValidatorsRequest {}
 
 // QueryValidatorsResponse is response type for the Query/Validators RPC method.
 message QueryValidatorsResponse {
+  // validators holds all the validators of the module.
   repeated Validator validators = 1 [(gogoproto.nullable) = false];
 }
 
@@ -56,6 +57,7 @@ message QueryValidatorRequest {
 
 // QueryValidatorResponse is response type for the Query/Validator RPC method.
 message QueryValidatorResponse {
+  // validator holds the queried validator.
   Validator validator = 1 [(gogoproto.nullable) = false];
 }
 
@@ -64,6 +66,7 @@ message QueryApplicationsRequest {}
 
 // QueryApplicationsResponse is response type for the Query/Applications RPC method.
 message QueryApplicationsResponse {
+  // applications holds all the validators' applications of the module.
   repeated Vote applications = 1 [(gogoproto.nullable) = false];
 }
 
@@ -72,5 +75,6 @@ message QueryKickProposalsRequest {}
 
 // QueryKickProposalsResponse is response type for the Query/KickProposals RPC method.
 message QueryKickProposalsResponse {
+  // kick_proposals holds all the kick proposals of the module.
   repeated Vote kick_proposals = 1 [(gogoproto.nullable) = false];
 }
