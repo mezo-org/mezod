@@ -2,20 +2,15 @@
 
 pragma solidity ^0.8.20;
 
-import "./IERC20.sol";
-import "./IERC20Metadata.sol";
-
-import "./IApproveAndCall.sol";
-
 /// @title  IERC20WithPermit
-/// @notice Burnable ERC20 token with EIP2612 permit functionality. User can
+/// @notice ERC20 token with EIP2612 permit functionality. User can
 ///         authorize a transfer of their token with a signature conforming
 ///         EIP712 standard instead of an on-chain transaction from their
 ///         address. Anyone can submit this signature on the user's behalf by
 ///         calling the permit function, as specified in EIP2612 standard,
 ///         paying gas fees, and possibly performing other actions in the same
 ///         transaction.
-interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
+interface IERC20WithPermit {
     /// @notice EIP2612 approval made with secp256k1 signature.
     ///         Users can authorize a transfer of their tokens with a signature
     ///         conforming EIP712 standard, rather than an on-chain transaction
