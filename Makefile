@@ -622,16 +622,16 @@ create-contracts-json:
 ###                       Contract bindings generation                      ###
 ###############################################################################
 
-# environment determines the network type that should be used for contract
+# bindings_environment determines the network type that should be used for contract
 # binding generation. The default value is mainnet.
-ifndef environment
-override environment = mainnet
+ifndef bindings_environment
+override bindings_environment = mainnet
 endif
 
-export environment
+export bindings_environment
 
 # List of NPM packages for which to generate bindings - expand if needed.
-packages := @mezo-org/contracts
+npm_packages := @mezo-org/contracts
 
 # Working directory where contracts artifacts should be stored.
 contracts_dir := tmp/contracts
@@ -646,12 +646,11 @@ tar -zxf ${destination_dir}/$${tarball} -C ${destination_dir} --strip-components
 $(info Downloaded NPM package $(1) to ${contracts_dir})
 endef
 
-get_artifacts:
-	$(foreach pkg,$(packages),$(call get_npm_package,$(pkg)))
+get_npm_packages:
+	$(foreach pkg,$(npm_packages),$(call get_npm_package,$(pkg)))
 
 generate:
-	$(info Running Go code generator for environment ${environment})
 	go generate ./...
 
-bindings: get_artifacts generate
+bindings: get_npm_packages generate
 	$(info Bindings generated)

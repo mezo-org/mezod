@@ -1,5 +1,5 @@
 root_dir := $(realpath ../../../..)
-artifacts_dir := ${root_dir}/tmp/contracts/${npm_package_name}/deployments/${environment}
+artifacts_dir := ${root_dir}/tmp/contracts/${npm_package_name}/deployments/${bindings_environment}
 
 $(info Package              ${npm_package_name})
 $(info Artifacts directory  ${artifacts_dir})
