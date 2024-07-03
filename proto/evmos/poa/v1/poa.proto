@@ -27,7 +27,7 @@ message Validator {
   Description description = 3 [(gogoproto.nullable) = false];
 }
 
-// Description defines a validator description
+// Description defines a validator description.
 message Description {
   // moniker is the validator's name.
   string moniker = 1;
