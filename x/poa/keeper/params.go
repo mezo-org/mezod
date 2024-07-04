@@ -41,7 +41,7 @@ func (k Keeper) UpdateParams(
 	return k.setParams(ctx, params)
 }
 
-// UpdateParams updates the poa module's parameters.
+// setParams sets the poa module's parameters.
 func (k Keeper) setParams(
 	ctx sdk.Context,
 	params types.Params,

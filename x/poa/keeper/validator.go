@@ -20,7 +20,7 @@ func (k Keeper) LeaveValidatorSet(ctx sdk.Context, validatorAddr sdk.ValAddress)
 		return types.ErrOnlyOneValidator
 	}
 
-	// If a kick proposal exist for this validator, remove it
+	// If a kick proposal exists for this validator, remove it
 	_, found = k.GetKickProposal(ctx, validatorAddr)
 	if found {
 		k.removeKickProposal(ctx, validatorAddr)

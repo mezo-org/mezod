@@ -4,7 +4,7 @@ order: 3
 
 # End-Block
 
-Each abci end block call, the operations to update the validator set
+On each ABCI end block call, the operations to update the validator set
 changes are specified to execute.
 
 ## Validator Set Changes

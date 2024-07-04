@@ -32,32 +32,32 @@ var (
 	KickProposalPoolKey = []byte{0x26}
 )
 
-// Get the key for the validator with address
+// Get the key for the validator by operator address
 func GetValidatorKey(operatorAddr sdk.ValAddress) []byte {
 	return append(ValidatorsKey, operatorAddr.Bytes()...)
 }
 
-// Get the key for the validator with pubkey
+// Get the key for the validator by consensus address
 func GetValidatorByConsAddrKey(addr sdk.ConsAddress) []byte {
 	return append(ValidatorsByConsAddrKey, addr.Bytes()...)
 }
 
-// Get the key for the validator state with address
+// Get the key for the validator state by operator address
 func GetValidatorStateKey(operatorAddr sdk.ValAddress) []byte {
 	return append(ValidatorStatesKey, operatorAddr.Bytes()...)
 }
 
-// Get the key for a validator canditate application with address
+// Get the key for a validator candidate application by operator address
 func GetApplicationKey(operatorAddr sdk.ValAddress) []byte {
 	return append(ApplicationPoolKey, operatorAddr.Bytes()...)
 }
 
-// Get the key for a validator canditate application with pubkey
+// Get the key for a validator candidate application by consensus address
 func GetApplicationByConsAddrKey(addr sdk.ConsAddress) []byte {
 	return append(ApplicationByConsAddrKey, addr.Bytes()...)
 }
 
-// Get the key for a validator canditate application with pubkey
+// Get the key for a kick proposal by operator address
 func GetKickProposalKey(operatorAddr sdk.ValAddress) []byte {
 	return append(KickProposalPoolKey, operatorAddr.Bytes()...)
 }

@@ -16,7 +16,7 @@ func TestEndBlocker(t *testing.T) {
 	validator4, _ := mockValidator()
 	validator5, _ := mockValidator()
 
-	// Set the validator in the keepr
+	// Set the validator in the keeper
 	poaKeeper.appendValidator(ctx, validator1)
 	poaKeeper.appendValidator(ctx, validator2)
 	poaKeeper.appendValidator(ctx, validator3)
@@ -62,7 +62,7 @@ func TestEndBlocker(t *testing.T) {
 				t.Errorf("Validator 5 should leave")
 			}
 		default:
-			t.Errorf("EndBlocker returns a unknown update: %v", update)
+			t.Errorf("EndBlocker returns an unknown update: %v", update)
 		}
 	}
 
