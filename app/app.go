@@ -107,10 +107,6 @@ import (
 	"github.com/evmos/evmos/v12/x/bridge"
 	bridgekeeper "github.com/evmos/evmos/v12/x/bridge/keeper"
 	bridgetypes "github.com/evmos/evmos/v12/x/bridge/types"
-	"github.com/evmos/evmos/v12/x/epochs"
-	epochskeeper "github.com/evmos/evmos/v12/x/epochs/keeper"
-	epochstypes "github.com/evmos/evmos/v12/x/epochs/types"
-
 	"github.com/evmos/evmos/v12/x/poa"
 	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
@@ -161,7 +157,6 @@ var (
 		evidence.AppModuleBasic{},
 		evm.AppModuleBasic{},
 		feemarket.AppModuleBasic{},
-		epochs.AppModuleBasic{},
 		bridge.AppModuleBasic{},
 	)
 
@@ -213,7 +208,6 @@ type Evmos struct {
 	FeeMarketKeeper feemarketkeeper.Keeper
 
 	// Evmos keepers
-	EpochsKeeper     epochskeeper.Keeper
 	BridgeKeeper     bridgekeeper.Keeper
 
 	// the module manager
@@ -268,8 +262,6 @@ func NewEvmos(
 		// ethermint keys
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
-		// evmos keys
-		epochstypes.StoreKey,
 	)
 
 	// Add the EVM transient store key
@@ -347,10 +339,6 @@ func NewEvmos(
 		&app.PoaKeeper, govRouter, app.MsgServiceRouter(), govConfig,
 	)
 
-	// Evmos Keeper
-	epochsKeeper := epochskeeper.NewKeeper(appCodec, keys[epochstypes.StoreKey])
-	app.EpochsKeeper = *epochsKeeper
-
 	app.GovKeeper = govKeeper
 
 	precompiles, err := customEvmPrecompiles(app.BankKeeper)
@@ -392,7 +380,6 @@ func NewEvmos(
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
 		// Evmos app modules
-		epochs.NewAppModule(appCodec, app.EpochsKeeper),
 		bridge.NewAppModule(appCodec, app.BridgeKeeper),
 	)
 
@@ -400,8 +387,6 @@ func NewEvmos(
 	// NOTE: staking module is required if HistoricalEntries param > 0.
 	app.mm.SetOrderBeginBlockers(
 		upgradetypes.ModuleName,
-		// Note: epochs' begin should be "real" start of epochs, we keep epochs beginblock at the beginning
-		epochstypes.ModuleName,
 		feemarkettypes.ModuleName,
 		evmtypes.ModuleName,
 		evidencetypes.ModuleName,
@@ -423,8 +408,6 @@ func NewEvmos(
 		poatypes.ModuleName,
 		evmtypes.ModuleName,
 		feemarkettypes.ModuleName,
-		// Note: epochs' endblock should be "real" end of epochs, we keep epochs endblock at the end
-		epochstypes.ModuleName,
 		// no-op modules
 		authtypes.ModuleName,
 		banktypes.ModuleName,
@@ -455,7 +438,6 @@ func NewEvmos(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		// Evmos modules
-		epochstypes.ModuleName,
 		bridgetypes.ModuleName,
 		// NOTE: crisis module must go at the end to check for invariants on each module
 		crisistypes.ModuleName,
