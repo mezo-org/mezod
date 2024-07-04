@@ -20,7 +20,6 @@ import (
 	"github.com/evmos/evmos/v12/app"
 	v9 "github.com/evmos/evmos/v12/app/upgrades/v9"
 	"github.com/evmos/evmos/v12/utils"
-	"github.com/evmos/evmos/v12/x/erc20/types"
 )
 
 type UpgradeTestSuite struct {

@@ -22,7 +22,6 @@ import (
 	"github.com/evmos/evmos/v12/app"
 	cosmosante "github.com/evmos/evmos/v12/app/ante/cosmos"
 	evmante "github.com/evmos/evmos/v12/app/ante/evm"
-	"github.com/evmos/evmos/v12/contracts"
 	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
 	"github.com/evmos/evmos/v12/encoding"
 	"github.com/evmos/evmos/v12/testutil"
