@@ -57,7 +57,7 @@ func GetApplicationByConsAddrKey(addr sdk.ConsAddress) []byte {
 	return append(ApplicationByConsAddrKey, addr.Bytes()...)
 }
 
-// Get the key for a validator canditate application by operator address
+// Get the key for a kick proposal by operator address
 func GetKickProposalKey(operatorAddr sdk.ValAddress) []byte {
 	return append(KickProposalPoolKey, operatorAddr.Bytes()...)
 }
