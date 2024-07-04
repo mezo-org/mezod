@@ -125,9 +125,6 @@ import (
 	revenue "github.com/evmos/evmos/v12/x/revenue/v1"
 	revenuekeeper "github.com/evmos/evmos/v12/x/revenue/v1/keeper"
 	revenuetypes "github.com/evmos/evmos/v12/x/revenue/v1/types"
-	"github.com/evmos/evmos/v12/x/vesting"
-	vestingkeeper "github.com/evmos/evmos/v12/x/vesting/keeper"
-	vestingtypes "github.com/evmos/evmos/v12/x/vesting/types"
 
 	"github.com/evmos/evmos/v12/x/poa"
 	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
@@ -178,7 +175,6 @@ var (
 		crisis.AppModuleBasic{},
 		upgrade.AppModuleBasic{},
 		evidence.AppModuleBasic{},
-		vesting.AppModuleBasic{},
 		evm.AppModuleBasic{},
 		feemarket.AppModuleBasic{},
 		incentives.AppModuleBasic{},
@@ -240,7 +236,6 @@ type Evmos struct {
 	// Evmos keepers
 	IncentivesKeeper incentiveskeeper.Keeper
 	EpochsKeeper     epochskeeper.Keeper
-	VestingKeeper    vestingkeeper.Keeper
 	RevenueKeeper    revenuekeeper.Keeper
 	BridgeKeeper     bridgekeeper.Keeper
 
@@ -299,7 +294,6 @@ func NewEvmos(
 		// evmos keys
 		incentivestypes.StoreKey,
 		epochstypes.StoreKey,
-		vestingtypes.StoreKey,
 		revenuetypes.StoreKey,
 	)
 
@@ -380,11 +374,6 @@ func NewEvmos(
 	)
 
 	// Evmos Keeper
-	app.VestingKeeper = vestingkeeper.NewKeeper(
-		keys[vestingtypes.StoreKey], appCodec,
-		app.AccountKeeper, app.BankKeeper, app.PoaKeeper,
-	)
-
 	app.IncentivesKeeper = incentiveskeeper.NewKeeper(
 		keys[incentivestypes.StoreKey], appCodec, authtypes.NewModuleAddress(govtypes.ModuleName),
 		app.AccountKeeper, app.BankKeeper, app.InflationKeeper, app.PoaKeeper, app.EvmKeeper,
@@ -455,7 +444,6 @@ func NewEvmos(
 		incentives.NewAppModule(app.IncentivesKeeper, app.AccountKeeper,
 			app.GetSubspace(incentivestypes.ModuleName)),
 		epochs.NewAppModule(appCodec, app.EpochsKeeper),
-		vesting.NewAppModule(app.VestingKeeper, app.AccountKeeper, app.BankKeeper, app.PoaKeeper),
 		revenue.NewAppModule(app.RevenueKeeper, app.AccountKeeper,
 			app.GetSubspace(revenuetypes.ModuleName)),
 		bridge.NewAppModule(appCodec, app.BridgeKeeper),
@@ -478,7 +466,6 @@ func NewEvmos(
 		crisistypes.ModuleName,
 		genutiltypes.ModuleName,
 		paramstypes.ModuleName,
-		vestingtypes.ModuleName,
 		incentivestypes.ModuleName,
 		revenuetypes.ModuleName,
 		bridgetypes.ModuleName,
@@ -501,7 +488,6 @@ func NewEvmos(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		// Evmos modules
-		vestingtypes.ModuleName,
 		incentivestypes.ModuleName,
 		revenuetypes.ModuleName,
 		bridgetypes.ModuleName,
@@ -526,7 +512,6 @@ func NewEvmos(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		// Evmos modules
-		vestingtypes.ModuleName,
 		incentivestypes.ModuleName,
 		epochstypes.ModuleName,
 		revenuetypes.ModuleName,

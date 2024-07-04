@@ -15,7 +15,6 @@ import (
 	evmostypes "github.com/evmos/evmos/v12/types"
 	evm "github.com/evmos/evmos/v12/x/evm/types"
 	"github.com/evmos/evmos/v12/x/incentives/types"
-	vestingtypes "github.com/evmos/evmos/v12/x/vesting/types"
 )
 
 func (suite *KeeperTestSuite) TestEvmHooksStoreTxGasUsed() {

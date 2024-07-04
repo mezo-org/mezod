@@ -40,9 +40,6 @@ import (
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 
 	evmoskr "github.com/evmos/evmos/v12/crypto/keyring"
-
-	vestingcli "github.com/evmos/evmos/v12/x/vesting/client/cli"
-	vestingtypes "github.com/evmos/evmos/v12/x/vesting/types"
 )
 
 const (
