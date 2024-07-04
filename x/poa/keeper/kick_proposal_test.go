@@ -69,7 +69,7 @@ func TestProposeKick(t *testing.T) {
 	poaKeeper.appendValidator(ctx, validator1)
 	poaKeeper.appendValidator(ctx, validator2)
 
-	// The validator should be directly appended if the quorum is 0
+	// The validator should be directly kicked if the quorum is 0
 	err = poaKeeper.ProposeKick(ctx, validator1.GetOperator(), validator2.GetOperator())
 	if err != nil {
 		t.Errorf("ProposeKick with quorum 0 should kick validator, got error %v", err)
@@ -134,7 +134,7 @@ func TestVoteKickProposal(t *testing.T) {
 		t.Errorf("VoteKickProposal with approve should add one approve to the kick proposal")
 	}
 
-	// Second approve should set the set of the validator to leaving
+	// Second approve should set the state of the validator to leaving
 	err = poaKeeper.VoteKickProposal(ctx, voter2.GetOperator(), validator1.GetOperator(), true)
 	if err != nil {
 		t.Errorf("VoteKickProposal 2 should vote on a kick proposal, got error %v", err)
@@ -187,10 +187,10 @@ func TestVoteKickProposal(t *testing.T) {
 	}
 	_, found = poaKeeper.GetValidatorState(ctx, voter2.GetOperator())
 	if !found {
-		t.Errorf("VoteKickProposal with 1/2 rejec should not remove the validator")
+		t.Errorf("VoteKickProposal with 1/2 reject should not remove the validator")
 	}
 	if validatorState == types.ValidatorStateLeaving {
-		t.Errorf("VoteKickProposal with 1/2 rejec should not set the state of the validator to leaving")
+		t.Errorf("VoteKickProposal with 1/2 reject should not set the state of the validator to leaving")
 	}
 	if kickProposal.GetTotal() != 1 {
 		t.Errorf("VoteKickProposal with 1/2 reject should add one vote to the kick proposal")

@@ -34,7 +34,7 @@ A new kick proposal to kick a validator is made using the `MsgProposeKick` messa
 ```go
 type MsgProposeKick struct {
     ValidatorAddr   sdk.ValAddress
-    ProposerAddr    sdfk.ValAddres
+    ProposerAddr    sdk.ValAddres
 }
 ```
 
@@ -78,7 +78,7 @@ This message is expected to fail if:
 
 In case of an application, this message updates the vote status of the
 application. If the approval quorum is reached, the candidate is appended
-into the validator set. In case of an kick proposal, this message updates the
+into the validator set. In case of a kick proposal, this message updates the
 vote status of the kick proposal. If the approval quorum is reached, the
 candidate is removed from the validator set.
 

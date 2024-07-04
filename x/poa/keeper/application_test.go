@@ -225,7 +225,7 @@ func TestGetApplication(t *testing.T) {
 		t.Errorf("GetApplication should find %v approvals, found %v", application.GetApprovals(), retrievedApplication.GetApprovals())
 	}
 
-	// Should not find a unset application
+	// Should not find an unset application
 	_, found = poaKeeper.GetApplication(ctx, validator2.GetOperator())
 	if found {
 		t.Errorf("GetApplication should not find application if it has not been set")
@@ -258,7 +258,7 @@ func TestGetApplicationByConsAddr(t *testing.T) {
 		t.Errorf("GetApplicationByConsAddr should find %v approvals, found %v", application.GetApprovals(), retrievedApplication.GetApprovals())
 	}
 
-	// Should not find a unset application
+	// Should not find an unset application
 	_, found = poaKeeper.GetApplication(ctx, validator2.GetOperator())
 	if found {
 		t.Errorf("GetApplicationByConsAddr should not find application if it has not been set")

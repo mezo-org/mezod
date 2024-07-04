@@ -68,7 +68,7 @@ func TestGetValidator(t *testing.T) {
 		t.Errorf("GetValidator should find %v, found %v", validator1, retrievedValidator)
 	}
 
-	// Should not find a unset validator
+	// Should not find an unset validator
 	_, found = poaKeeper.GetValidator(ctx, validator2.GetOperator())
 	if found {
 		t.Errorf("GetValidator should not find validator if it has not been set")
@@ -93,7 +93,7 @@ func TestGetValidatorByConsAddr(t *testing.T) {
 		t.Errorf("GetValidatorByConsAddr should find %v, found %v", validator1, retrievedValidator)
 	}
 
-	// Should not find a unset validator
+	// Should not find an unset validator
 	_, found = poaKeeper.GetValidator(ctx, validator2.GetOperator())
 	if found {
 		t.Errorf("GetValidatorByConsAddr should not find validator if it has not been set")
@@ -120,14 +120,14 @@ func TestGetValidatorState(t *testing.T) {
 		t.Errorf("GetValidatorState should find validator state if it has been set")
 	}
 
-	if !cmp.Equal(types.ValidatorStateJoined, retrievedState) {
+	if retrievedState != types.ValidatorStateJoined {
 		t.Errorf("GetValidatorState should find %v, found %v", validator1, types.ValidatorStateJoined)
 	}
 
-	// Should not find a unset validator
+	// Should not find an unset validator
 	_, found = poaKeeper.GetValidatorState(ctx, validator2.GetOperator())
 	if found {
-		t.Errorf("GetValidator should not find validator if it has not been set")
+		t.Errorf("GetValidatorState should not find validator if it has not been set")
 	}
 }
 

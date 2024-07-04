@@ -11,7 +11,7 @@ func (k Keeper) EndBlocker(ctx sdk.Context) (updates []abci.ValidatorUpdate) {
 	// Retrieve all validators
 	validators := k.GetAllValidators(ctx)
 
-	// Check the state of all validator
+	// Check the state of all validators
 	for _, validator := range validators {
 		validatorState, found := k.GetValidatorState(ctx, validator.GetOperator())
 
@@ -36,7 +36,7 @@ func (k Keeper) EndBlocker(ctx sdk.Context) (updates []abci.ValidatorUpdate) {
 			k.removeValidator(ctx, validator.GetOperator())
 
 		default:
-			panic("A validator has a unknown state")
+			panic("A validator has an unknown state")
 		}
 	}
 

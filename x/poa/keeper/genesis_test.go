@@ -20,7 +20,7 @@ func TestValidateGenesis(t *testing.T) {
 		t.Errorf("The genesis state %v should be valid", validGenesis)
 	}
 
-	// A genesis with two validators with the same consensus pukey is invalid
+	// A genesis with two validators with the same consensus pubkey is invalid
 	invalidGenesis := types.NewGenesisState(types.DefaultParams(), []types.Validator{validator, validator})
 	if types.ValidateGenesis(invalidGenesis) == nil {
 		t.Errorf("The genesis state %v should not be valid", invalidGenesis)
@@ -80,10 +80,10 @@ func TestExportGenesis(t *testing.T) {
 	exportedGenesis := poaKeeper.ExportGenesis(ctx)
 
 	if !cmp.Equal(exportedGenesis.Params, types.DefaultParams()) {
-		t.Errorf("Exported genesis param shoud be: %v, not %v", types.DefaultParams(), exportedGenesis.Params)
+		t.Errorf("Exported genesis params shoud be: %v, not %v", types.DefaultParams(), exportedGenesis.Params)
 	}
 
 	if !cmp.Equal(exportedGenesis.Validators, []types.Validator{validator}) {
-		t.Errorf("Exported genesis validators shoud be: %v, not %v", []types.Validator{validator}, exportedGenesis.Validators)
+		t.Errorf("Exported genesis validators should be: %v, not %v", []types.Validator{validator}, exportedGenesis.Validators)
 	}
 }

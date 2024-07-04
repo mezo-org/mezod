@@ -96,7 +96,7 @@ func NewCmdSubmitApplication() *cobra.Command {
 func NewCmdProposeKick() *cobra.Command {
 	return &cobra.Command{
 		Use:   "propose-kick [validator-addr]",
-		Short: "Propose to kick a validator from the validator",
+		Short: "Propose to kick a validator from the validators pool",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {

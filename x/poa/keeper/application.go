@@ -76,7 +76,7 @@ func (k Keeper) VoteApplication(
 ) error {
 	params := k.GetParams(ctx)
 
-	// Check max validator is not reached. If max validator is reached, not application can be voted
+	// Check max validator is not reached. If max validator is reached, no application can be voted
 	allValidators := k.GetAllValidators(ctx)
 	validatorCount := len(allValidators)
 	if uint32(validatorCount) == params.MaxValidators {
@@ -89,7 +89,7 @@ func (k Keeper) VoteApplication(
 		return types.ErrVoterNotValidator
 	}
 
-	// Check the application exist
+	// Check the application exists
 	application, found := k.GetApplication(ctx, candidateAddr)
 	if !found {
 		return types.ErrNoApplicationFound
@@ -225,7 +225,7 @@ func (k Keeper) removeApplication(ctx sdk.Context, address sdk.ValAddress) {
 	store.Delete(types.GetApplicationByConsAddrKey(consAddr))
 }
 
-// Get the set of all application
+// Get the set of all applications
 func (k Keeper) GetAllApplications(ctx sdk.Context) (applications []types.Vote) {
 	store := ctx.KVStore(k.storeKey)
 
