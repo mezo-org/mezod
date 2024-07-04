@@ -110,9 +110,6 @@ import (
 	"github.com/evmos/evmos/v12/x/epochs"
 	epochskeeper "github.com/evmos/evmos/v12/x/epochs/keeper"
 	epochstypes "github.com/evmos/evmos/v12/x/epochs/types"
-	revenue "github.com/evmos/evmos/v12/x/revenue/v1"
-	revenuekeeper "github.com/evmos/evmos/v12/x/revenue/v1/keeper"
-	revenuetypes "github.com/evmos/evmos/v12/x/revenue/v1/types"
 
 	"github.com/evmos/evmos/v12/x/poa"
 	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
@@ -165,7 +162,6 @@ var (
 		evm.AppModuleBasic{},
 		feemarket.AppModuleBasic{},
 		epochs.AppModuleBasic{},
-		revenue.AppModuleBasic{},
 		bridge.AppModuleBasic{},
 	)
 
@@ -218,7 +214,6 @@ type Evmos struct {
 
 	// Evmos keepers
 	EpochsKeeper     epochskeeper.Keeper
-	RevenueKeeper    revenuekeeper.Keeper
 	BridgeKeeper     bridgekeeper.Keeper
 
 	// the module manager
@@ -275,7 +270,6 @@ func NewEvmos(
 		feemarkettypes.StoreKey,
 		// evmos keys
 		epochstypes.StoreKey,
-		revenuetypes.StoreKey,
 	)
 
 	// Add the EVM transient store key
@@ -354,22 +348,10 @@ func NewEvmos(
 	)
 
 	// Evmos Keeper
-	app.RevenueKeeper = revenuekeeper.NewKeeper(
-		keys[revenuetypes.StoreKey], appCodec, authtypes.NewModuleAddress(govtypes.ModuleName),
-		app.BankKeeper, app.EvmKeeper,
-		authtypes.FeeCollectorName,
-	)
-
 	epochsKeeper := epochskeeper.NewKeeper(appCodec, keys[epochstypes.StoreKey])
 	app.EpochsKeeper = *epochsKeeper
 
 	app.GovKeeper = govKeeper
-
-	app.EvmKeeper = app.EvmKeeper.SetHooks(
-		evmkeeper.NewMultiEvmHooks(
-			app.RevenueKeeper.Hooks(),
-		),
-	)
 
 	precompiles, err := customEvmPrecompiles(app.BankKeeper)
 	if err != nil {
@@ -411,8 +393,6 @@ func NewEvmos(
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
 		// Evmos app modules
 		epochs.NewAppModule(appCodec, app.EpochsKeeper),
-		revenue.NewAppModule(app.RevenueKeeper, app.AccountKeeper,
-			app.GetSubspace(revenuetypes.ModuleName)),
 		bridge.NewAppModule(appCodec, app.BridgeKeeper),
 	)
 
@@ -433,7 +413,6 @@ func NewEvmos(
 		crisistypes.ModuleName,
 		genutiltypes.ModuleName,
 		paramstypes.ModuleName,
-		revenuetypes.ModuleName,
 		bridgetypes.ModuleName,
 	)
 
@@ -454,7 +433,6 @@ func NewEvmos(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		// Evmos modules
-		revenuetypes.ModuleName,
 		bridgetypes.ModuleName,
 	)
 
@@ -478,7 +456,6 @@ func NewEvmos(
 		upgradetypes.ModuleName,
 		// Evmos modules
 		epochstypes.ModuleName,
-		revenuetypes.ModuleName,
 		bridgetypes.ModuleName,
 		// NOTE: crisis module must go at the end to check for invariants on each module
 		crisistypes.ModuleName,
@@ -771,8 +748,6 @@ func initParamsKeeper(
 	// ethermint subspaces
 	paramsKeeper.Subspace(evmtypes.ModuleName).WithKeyTable(evmtypes.ParamKeyTable()) //nolint: staticcheck
 	paramsKeeper.Subspace(feemarkettypes.ModuleName).WithKeyTable(feemarkettypes.ParamKeyTable())
-	// evmos subspaces
-	paramsKeeper.Subspace(revenuetypes.ModuleName)
 	return paramsKeeper
 }
 
