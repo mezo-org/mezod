@@ -76,9 +76,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/evidence"
 	evidencekeeper "github.com/cosmos/cosmos-sdk/x/evidence/keeper"
 	evidencetypes "github.com/cosmos/cosmos-sdk/x/evidence/types"
-	"github.com/cosmos/cosmos-sdk/x/feegrant"
-	feegrantkeeper "github.com/cosmos/cosmos-sdk/x/feegrant/keeper"
-	feegrantmodule "github.com/cosmos/cosmos-sdk/x/feegrant/module"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 	"github.com/cosmos/cosmos-sdk/x/gov"
@@ -228,7 +225,6 @@ var (
 		ibc.AppModuleBasic{},
 		ica.AppModuleBasic{},
 		authzmodule.AppModuleBasic{},
-		feegrantmodule.AppModuleBasic{},
 		upgrade.AppModuleBasic{},
 		evidence.AppModuleBasic{},
 		transfer.AppModuleBasic{AppModuleBasic: &ibctransfer.AppModuleBasic{}},
@@ -297,7 +293,6 @@ type Evmos struct {
 	CrisisKeeper     crisiskeeper.Keeper
 	UpgradeKeeper    upgradekeeper.Keeper
 	ParamsKeeper     paramskeeper.Keeper
-	FeeGrantKeeper   feegrantkeeper.Keeper
 	AuthzKeeper      authzkeeper.Keeper
 	IBCKeeper        *ibckeeper.Keeper // IBC Keeper must be a pointer in the app, so we can SetRouter on it correctly
 	ICAHostKeeper    icahostkeeper.Keeper
@@ -373,7 +368,6 @@ func NewEvmos(
 		upgradetypes.StoreKey,
 		evidencetypes.StoreKey,
 		capabilitytypes.StoreKey,
-		feegrant.StoreKey,
 		authzkeeper.StoreKey,
 		// ibc keys
 		ibchost.StoreKey,
@@ -446,7 +440,6 @@ func NewEvmos(
 	app.CrisisKeeper = crisiskeeper.NewKeeper(
 		app.GetSubspace(crisistypes.ModuleName), invCheckPeriod, app.BankKeeper, authtypes.FeeCollectorName,
 	)
-	app.FeeGrantKeeper = feegrantkeeper.NewKeeper(appCodec, keys[feegrant.StoreKey], app.AccountKeeper)
 	app.UpgradeKeeper = upgradekeeper.NewKeeper(skipUpgradeHeights, keys[upgradetypes.StoreKey], appCodec, homePath, app.BaseApp, authtypes.NewModuleAddress(govtypes.ModuleName).String())
 
 	app.AuthzKeeper = authzkeeper.NewKeeper(keys[authzkeeper.StoreKey], appCodec, app.MsgServiceRouter(), app.AccountKeeper)
@@ -661,7 +654,6 @@ func NewEvmos(
 		upgrade.NewAppModule(app.UpgradeKeeper),
 		evidence.NewAppModule(app.EvidenceKeeper),
 		params.NewAppModule(app.ParamsKeeper),
-		feegrantmodule.NewAppModule(appCodec, app.AccountKeeper, app.BankKeeper, app.FeeGrantKeeper, app.interfaceRegistry),
 		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 
 		// ibc modules
@@ -711,7 +703,6 @@ func NewEvmos(
 		crisistypes.ModuleName,
 		genutiltypes.ModuleName,
 		authz.ModuleName,
-		feegrant.ModuleName,
 		paramstypes.ModuleName,
 		vestingtypes.ModuleName,
 		inflationtypes.ModuleName,
@@ -743,7 +734,6 @@ func NewEvmos(
 		genutiltypes.ModuleName,
 		evidencetypes.ModuleName,
 		authz.ModuleName,
-		feegrant.ModuleName,
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		// Evmos modules
@@ -782,7 +772,6 @@ func NewEvmos(
 		ibctransfertypes.ModuleName,
 		icatypes.ModuleName,
 		authz.ModuleName,
-		feegrant.ModuleName,
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		// Evmos modules
@@ -853,7 +842,6 @@ func (app *Evmos) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) 
 		ExtensionOptionChecker: evmostypes.HasDynamicFeeExtensionOption,
 		EvmKeeper:              app.EvmKeeper,
 		StakingKeeper:          app.PoaKeeper,
-		FeegrantKeeper:         app.FeeGrantKeeper,
 		IBCKeeper:              app.IBCKeeper,
 		FeeMarketKeeper:        app.FeeMarketKeeper,
 		SignModeHandler:        txConfig.SignModeHandler(),
