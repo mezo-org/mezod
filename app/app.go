@@ -122,9 +122,6 @@ import (
 	incentivesclient "github.com/evmos/evmos/v12/x/incentives/client"
 	incentiveskeeper "github.com/evmos/evmos/v12/x/incentives/keeper"
 	incentivestypes "github.com/evmos/evmos/v12/x/incentives/types"
-	"github.com/evmos/evmos/v12/x/inflation"
-	inflationkeeper "github.com/evmos/evmos/v12/x/inflation/keeper"
-	inflationtypes "github.com/evmos/evmos/v12/x/inflation/types"
 	revenue "github.com/evmos/evmos/v12/x/revenue/v1"
 	revenuekeeper "github.com/evmos/evmos/v12/x/revenue/v1/keeper"
 	revenuetypes "github.com/evmos/evmos/v12/x/revenue/v1/types"
@@ -184,7 +181,6 @@ var (
 		vesting.AppModuleBasic{},
 		evm.AppModuleBasic{},
 		feemarket.AppModuleBasic{},
-		inflation.AppModuleBasic{},
 		incentives.AppModuleBasic{},
 		epochs.AppModuleBasic{},
 		revenue.AppModuleBasic{},
@@ -197,7 +193,6 @@ var (
 		poatypes.ModuleName:            nil,
 		govtypes.ModuleName:            {authtypes.Burner},
 		evmtypes.ModuleName:            {authtypes.Minter, authtypes.Burner}, // used for secure addition and subtraction of balance using module account
-		inflationtypes.ModuleName:      {authtypes.Minter},
 		incentivestypes.ModuleName:     {authtypes.Minter, authtypes.Burner},
 	}
 
@@ -243,7 +238,6 @@ type Evmos struct {
 	FeeMarketKeeper feemarketkeeper.Keeper
 
 	// Evmos keepers
-	InflationKeeper  inflationkeeper.Keeper
 	IncentivesKeeper incentiveskeeper.Keeper
 	EpochsKeeper     epochskeeper.Keeper
 	VestingKeeper    vestingkeeper.Keeper
@@ -303,7 +297,6 @@ func NewEvmos(
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
 		// evmos keys
-		inflationtypes.StoreKey,
 		incentivestypes.StoreKey,
 		epochstypes.StoreKey,
 		vestingtypes.StoreKey,
@@ -387,12 +380,6 @@ func NewEvmos(
 	)
 
 	// Evmos Keeper
-	app.InflationKeeper = inflationkeeper.NewKeeper(
-		keys[inflationtypes.StoreKey], appCodec, authtypes.NewModuleAddress(govtypes.ModuleName),
-		app.AccountKeeper, app.BankKeeper, app.DistrKeeper, &app.PoaKeeper,
-		authtypes.FeeCollectorName,
-	)
-
 	app.VestingKeeper = vestingkeeper.NewKeeper(
 		keys[vestingtypes.StoreKey], appCodec,
 		app.AccountKeeper, app.BankKeeper, app.PoaKeeper,
@@ -414,7 +401,6 @@ func NewEvmos(
 		epochskeeper.NewMultiEpochHooks(
 			// insert epoch hooks receivers here
 			app.IncentivesKeeper.Hooks(),
-			app.InflationKeeper.Hooks(),
 		),
 	)
 
@@ -466,8 +452,6 @@ func NewEvmos(
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
 		// Evmos app modules
-		inflation.NewAppModule(app.InflationKeeper, app.AccountKeeper, app.PoaKeeper,
-			app.GetSubspace(inflationtypes.ModuleName)),
 		incentives.NewAppModule(app.IncentivesKeeper, app.AccountKeeper,
 			app.GetSubspace(incentivestypes.ModuleName)),
 		epochs.NewAppModule(appCodec, app.EpochsKeeper),
@@ -495,7 +479,6 @@ func NewEvmos(
 		genutiltypes.ModuleName,
 		paramstypes.ModuleName,
 		vestingtypes.ModuleName,
-		inflationtypes.ModuleName,
 		incentivestypes.ModuleName,
 		revenuetypes.ModuleName,
 		bridgetypes.ModuleName,
@@ -519,7 +502,6 @@ func NewEvmos(
 		upgradetypes.ModuleName,
 		// Evmos modules
 		vestingtypes.ModuleName,
-		inflationtypes.ModuleName,
 		incentivestypes.ModuleName,
 		revenuetypes.ModuleName,
 		bridgetypes.ModuleName,
@@ -545,7 +527,6 @@ func NewEvmos(
 		upgradetypes.ModuleName,
 		// Evmos modules
 		vestingtypes.ModuleName,
-		inflationtypes.ModuleName,
 		incentivestypes.ModuleName,
 		epochstypes.ModuleName,
 		revenuetypes.ModuleName,
@@ -842,7 +823,6 @@ func initParamsKeeper(
 	paramsKeeper.Subspace(evmtypes.ModuleName).WithKeyTable(evmtypes.ParamKeyTable()) //nolint: staticcheck
 	paramsKeeper.Subspace(feemarkettypes.ModuleName).WithKeyTable(feemarkettypes.ParamKeyTable())
 	// evmos subspaces
-	paramsKeeper.Subspace(inflationtypes.ModuleName)
 	paramsKeeper.Subspace(incentivestypes.ModuleName)
 	paramsKeeper.Subspace(revenuetypes.ModuleName)
 	return paramsKeeper

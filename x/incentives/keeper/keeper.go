@@ -36,7 +36,7 @@ type Keeper struct {
 
 	accountKeeper   types.AccountKeeper
 	bankKeeper      types.BankKeeper
-	inflationKeeper types.InflationKeeper
+	inflationKeeper any
 
 	// Currently not used, but added to prevent breaking change s in case we want
 	// to allocate incentives to staking instead of transferring the deferred
@@ -52,7 +52,7 @@ func NewKeeper(
 	authority sdk.AccAddress,
 	ak types.AccountKeeper,
 	bk types.BankKeeper,
-	ik types.InflationKeeper,
+	ik any,
 	sk types.StakeKeeper,
 	evmKeeper types.EVMKeeper,
 ) Keeper {

@@ -31,8 +31,6 @@ import (
 
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-
-	inflationtypes "github.com/evmos/evmos/v12/x/inflation/types"
 )
 
 // AccountKeeper defines the expected interface needed to retrieve account info.
@@ -63,11 +61,6 @@ type GovKeeper interface {
 	InsertActiveProposalQueue(ctx sdk.Context, proposalID uint64, timestamp time.Time)
 	RemoveFromActiveProposalQueue(ctx sdk.Context, proposalID uint64, timestamp time.Time)
 	SetProposal(ctx sdk.Context, proposal govv1beta1.Proposal)
-}
-
-// InflationKeeper defines the expected mint keeper interface used on incentives
-type InflationKeeper interface {
-	GetParams(ctx sdk.Context) (params inflationtypes.Params)
 }
 
 // EVMKeeper defines the expected EVM keeper interface used on erc20
