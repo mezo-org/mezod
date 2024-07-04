@@ -92,9 +92,6 @@ import (
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 	paramproposal "github.com/cosmos/cosmos-sdk/x/params/types/proposal"
-	"github.com/cosmos/cosmos-sdk/x/slashing"
-	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
-	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/cosmos/cosmos-sdk/x/upgrade"
 	upgradeclient "github.com/cosmos/cosmos-sdk/x/upgrade/client"
 	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
@@ -228,7 +225,6 @@ var (
 		),
 		params.AppModuleBasic{},
 		crisis.AppModuleBasic{},
-		slashing.AppModuleBasic{},
 		ibc.AppModuleBasic{},
 		ica.AppModuleBasic{},
 		authzmodule.AppModuleBasic{},
@@ -297,7 +293,6 @@ type Evmos struct {
 	BankKeeper       bankkeeper.Keeper
 	CapabilityKeeper *capabilitykeeper.Keeper
 	PoaKeeper        poakeeper.Keeper
-	SlashingKeeper   slashingkeeper.Keeper
 	GovKeeper        govkeeper.Keeper
 	CrisisKeeper     crisiskeeper.Keeper
 	UpgradeKeeper    upgradekeeper.Keeper
@@ -373,7 +368,6 @@ func NewEvmos(
 		authtypes.StoreKey,
 		banktypes.StoreKey,
 		poatypes.StoreKey,
-		slashingtypes.StoreKey,
 		govtypes.StoreKey,
 		paramstypes.StoreKey,
 		upgradetypes.StoreKey,
@@ -448,9 +442,6 @@ func NewEvmos(
 		keys[poatypes.StoreKey],
 		appCodec,
 		authtypes.NewModuleAddress(govtypes.ModuleName),
-	)
-	app.SlashingKeeper = slashingkeeper.NewKeeper(
-		appCodec, keys[slashingtypes.StoreKey], &app.PoaKeeper, app.GetSubspace(slashingtypes.ModuleName),
 	)
 	app.CrisisKeeper = crisiskeeper.NewKeeper(
 		app.GetSubspace(crisistypes.ModuleName), invCheckPeriod, app.BankKeeper, authtypes.FeeCollectorName,
@@ -666,7 +657,6 @@ func NewEvmos(
 		capability.NewAppModule(appCodec, *app.CapabilityKeeper),
 		crisis.NewAppModule(&app.CrisisKeeper, skipGenesisInvariants),
 		gov.NewAppModule(appCodec, app.GovKeeper, app.AccountKeeper, app.BankKeeper),
-		slashing.NewAppModule(appCodec, app.SlashingKeeper, app.AccountKeeper, app.BankKeeper, app.PoaKeeper),
 		poa.NewAppModule(app.PoaKeeper),
 		upgrade.NewAppModule(app.UpgradeKeeper),
 		evidence.NewAppModule(app.EvidenceKeeper),
@@ -699,9 +689,6 @@ func NewEvmos(
 		bridge.NewAppModule(appCodec, app.BridgeKeeper),
 	)
 
-	// During begin block slashing happens after distr.BeginBlocker so that
-	// there is nothing left over in the validator fee pool, to keep the
-	// CanWithdrawInvariant invariant.
 	// NOTE: upgrade module must go first to handle software upgrades.
 	// NOTE: staking module is required if HistoricalEntries param > 0.
 	// NOTE: capability module's beginblocker must come before any modules using capabilities (e.g. IBC)
@@ -712,7 +699,6 @@ func NewEvmos(
 		epochstypes.ModuleName,
 		feemarkettypes.ModuleName,
 		evmtypes.ModuleName,
-		slashingtypes.ModuleName,
 		evidencetypes.ModuleName,
 		poatypes.ModuleName,
 		ibchost.ModuleName,
@@ -754,7 +740,6 @@ func NewEvmos(
 		capabilitytypes.ModuleName,
 		authtypes.ModuleName,
 		banktypes.ModuleName,
-		slashingtypes.ModuleName,
 		genutiltypes.ModuleName,
 		evidencetypes.ModuleName,
 		authz.ModuleName,
@@ -784,7 +769,6 @@ func NewEvmos(
 		// NOTE: staking requires the claiming hook
 		claimstypes.ModuleName,
 		poatypes.ModuleName,
-		slashingtypes.ModuleName,
 		govtypes.ModuleName,
 		ibchost.ModuleName,
 		// Ethermint modules
@@ -1125,7 +1109,6 @@ func initParamsKeeper(
 	// SDK subspaces
 	paramsKeeper.Subspace(authtypes.ModuleName)
 	paramsKeeper.Subspace(banktypes.ModuleName)
-	paramsKeeper.Subspace(slashingtypes.ModuleName)
 	paramsKeeper.Subspace(govtypes.ModuleName).WithKeyTable(govv1.ParamKeyTable())
 	paramsKeeper.Subspace(crisistypes.ModuleName)
 	paramsKeeper.Subspace(ibctransfertypes.ModuleName)
