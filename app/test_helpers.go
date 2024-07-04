@@ -18,13 +18,12 @@ package app
 
 import (
 	"encoding/json"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	ibctesting "github.com/cosmos/ibc-go/v6/testing"
-	"github.com/cosmos/ibc-go/v6/testing/mock"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -49,9 +48,6 @@ func init() {
 	config.SetBech32Prefixes(cfg)
 	config.SetBip44CoinType(cfg)
 }
-
-// DefaultTestingAppInit defines the IBC application used for testing
-var DefaultTestingAppInit func() (ibctesting.TestingApp, map[string]json.RawMessage) = SetupTestingApp
 
 // DefaultConsensusParams defines the default Tendermint consensus params used in
 // Evmos testing.
@@ -84,8 +80,8 @@ func Setup(
 	isCheckTx bool,
 	feemarketGenesis *feemarkettypes.GenesisState,
 ) *Evmos {
-	privVal := mock.NewPV()
-	pubKey, _ := privVal.GetPubKey()
+	privVal := ed25519.GenPrivKey()
+	pubKey := privVal.PubKey()
 
 	// create validator set with single validator
 	validator := tmtypes.NewValidator(pubKey, 1)
@@ -198,10 +194,3 @@ func GenesisStateWithValSet(app *Evmos, genesisState simapp.GenesisState,
 	return genesisState
 }
 
-// SetupTestingApp initializes the IBC-go testing application
-func SetupTestingApp() (ibctesting.TestingApp, map[string]json.RawMessage) {
-	db := dbm.NewMemDB()
-	cfg := encoding.MakeConfig(ModuleBasics)
-	app := NewEvmos(log.NewNopLogger(), db, nil, true, map[int64]bool{}, DefaultNodeHome, 5, cfg, simapp.EmptyAppOptions{})
-	return app, NewDefaultGenesisState()
-}

@@ -30,8 +30,6 @@ import (
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authz "github.com/cosmos/cosmos-sdk/x/authz"
-	ibctypes "github.com/cosmos/ibc-go/v6/modules/apps/transfer/types"
-	ibcclienttypes "github.com/cosmos/ibc-go/v6/modules/core/02-client/types"
 	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
@@ -371,22 +369,6 @@ func (suite *AnteTestSuite) CreateTestEIP712ZeroValueNumber(from sdk.AccAddress,
 	msgVote := govtypesv1.NewMsgVote(from, 0, govtypesv1.VoteOption_VOTE_OPTION_NO, "")
 
 	return suite.CreateTestEIP712CosmosTxBuilder(priv, chainID, gas, gasAmount, []sdk.Msg{msgVote})
-}
-
-func (suite *AnteTestSuite) CreateTestEIP712MsgTransfer(from sdk.AccAddress, priv cryptotypes.PrivKey, chainID string, gas uint64, gasAmount sdk.Coins) (client.TxBuilder, error) {
-	msgTransfer := suite.createMsgTransfer(from, "With Memo")
-	return suite.CreateTestEIP712SingleMessageTxBuilder(priv, chainID, gas, gasAmount, msgTransfer)
-}
-
-func (suite *AnteTestSuite) CreateTestEIP712MsgTransferWithoutMemo(from sdk.AccAddress, priv cryptotypes.PrivKey, chainID string, gas uint64, gasAmount sdk.Coins) (client.TxBuilder, error) {
-	msgTransfer := suite.createMsgTransfer(from, "")
-	return suite.CreateTestEIP712SingleMessageTxBuilder(priv, chainID, gas, gasAmount, msgTransfer)
-}
-
-func (suite *AnteTestSuite) createMsgTransfer(from sdk.AccAddress, memo string) *ibctypes.MsgTransfer {
-	recipient := sdk.AccAddress(common.Address{}.Bytes())
-	msgTransfer := ibctypes.NewMsgTransfer("transfer", "channel-25", sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(100000)), from.String(), recipient.String(), ibcclienttypes.NewHeight(1000, 1000), 1000, memo)
-	return msgTransfer
 }
 
 func (suite *AnteTestSuite) CreateTestEIP712MultipleSignerMsgs(from sdk.AccAddress, priv cryptotypes.PrivKey, chainID string, gas uint64, gasAmount sdk.Coins) (client.TxBuilder, error) {

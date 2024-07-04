@@ -25,8 +25,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	ibcante "github.com/cosmos/ibc-go/v6/modules/core/ante"
-	ibckeeper "github.com/cosmos/ibc-go/v6/modules/core/keeper"
 	anteutils "github.com/evmos/evmos/v12/app/ante/utils"
 
 	cosmosante "github.com/evmos/evmos/v12/app/ante/cosmos"
@@ -43,7 +41,6 @@ type HandlerOptions struct {
 	Cdc                    codec.BinaryCodec
 	AccountKeeper          evmtypes.AccountKeeper
 	BankKeeper             evmtypes.BankKeeper
-	IBCKeeper              *ibckeeper.Keeper
 	StakingKeeper          vestingtypes.StakingKeeper
 	FeeMarketKeeper        evmante.FeeMarketKeeper
 	EvmKeeper              evmante.EVMKeeper
@@ -65,9 +62,6 @@ func (options HandlerOptions) Validate() error {
 	}
 	if options.BankKeeper == nil {
 		return errorsmod.Wrap(errortypes.ErrLogic, "bank keeper is required for AnteHandler")
-	}
-	if options.IBCKeeper == nil {
-		return errorsmod.Wrap(errortypes.ErrLogic, "ibc keeper is required for AnteHandler")
 	}
 	if options.StakingKeeper == nil {
 		return errorsmod.Wrap(errortypes.ErrLogic, "staking keeper is required for AnteHandler")
@@ -135,7 +129,6 @@ func newCosmosAnteHandler(options HandlerOptions) sdk.AnteHandler {
 		ante.NewSigGasConsumeDecorator(options.AccountKeeper, options.SigGasConsumer),
 		ante.NewSigVerificationDecorator(options.AccountKeeper, options.SignModeHandler),
 		ante.NewIncrementSequenceDecorator(options.AccountKeeper),
-		ibcante.NewRedundantRelayDecorator(options.IBCKeeper),
 		evmante.NewGasWantedDecorator(options.EvmKeeper, options.FeeMarketKeeper),
 	)
 }
@@ -164,7 +157,6 @@ func newLegacyCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
 		//nolint: staticcheck
 		cosmosante.NewLegacyEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler),
 		ante.NewIncrementSequenceDecorator(options.AccountKeeper),
-		ibcante.NewRedundantRelayDecorator(options.IBCKeeper),
 		evmante.NewGasWantedDecorator(options.EvmKeeper, options.FeeMarketKeeper),
 	)
 }
