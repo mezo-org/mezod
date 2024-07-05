@@ -83,3 +83,6 @@ dependency-graph.png
 
 # OpenZeppelin contracts
 contracts/@openzeppelin/*
+
+# Directory for storing temporary data (e.g. fetched npm packages)
+tmp/

@@ -617,3 +617,40 @@ create-contracts-json:
 		mv $(TMP_JSON) $(COMPILED_DIR)/$${c}.json ;\
 	done
 	@rm -rf tmp
+
+###############################################################################
+###                       Contract bindings generation                      ###
+###############################################################################
+
+# bindings_environment determines the network type that should be used for contract
+# binding generation. The default value is mainnet.
+ifndef bindings_environment
+override bindings_environment = mainnet
+endif
+
+export bindings_environment
+
+# List of NPM packages for which to generate bindings - expand if needed.
+npm_packages := @mezo-org/contracts
+
+# Working directory where contracts artifacts should be stored.
+contracts_dir := tmp/contracts
+
+# It requires npm of at least 7.x version to support `pack-destination` flag.
+define get_npm_package
+$(info Fetching package $(1))
+$(eval destination_dir := ${contracts_dir}/$(1))
+@rm -rf ${destination_dir} && mkdir -p ${destination_dir}
+@tarball=$$(npm pack --silent --pack-destination=${destination_dir} $(1)); \
+tar -zxf ${destination_dir}/$${tarball} -C ${destination_dir} --strip-components 1 package/deployments/
+$(info Downloaded NPM package $(1) to ${contracts_dir})
+endef
+
+get_npm_packages:
+	$(foreach pkg,$(npm_packages),$(call get_npm_package,$(pkg)))
+
+generate:
+	go generate ./...
+
+bindings: get_npm_packages generate
+	$(info Bindings generated)

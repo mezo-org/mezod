@@ -4,11 +4,10 @@ pragma solidity ^0.8.20;
 
 import "./IERC20.sol";
 import "./IERC20Metadata.sol";
-
 import "./IApproveAndCall.sol";
 
 /// @title  IERC20WithPermit
-/// @notice Burnable ERC20 token with EIP2612 permit functionality. User can
+/// @notice ERC20 token with EIP2612 permit functionality. User can
 ///         authorize a transfer of their token with a signature conforming
 ///         EIP712 standard instead of an on-chain transaction from their
 ///         address. Anyone can submit this signature on the user's behalf by
@@ -34,12 +33,8 @@ interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
         bytes32 s
     ) external;
 
-    /// @notice Destroys `amount` tokens from the caller.
-    function burn(uint256 amount) external;
-
-    /// @notice Destroys `amount` of tokens from `account`, deducting the amount
-    ///         from caller's allowance.
-    function burnFrom(address account, uint256 amount) external;
+    // TODO: Revisit the burn() and burnFrom() functions.
+    //       It is not clear yet if they are needed.
 
     /// @notice Returns hash of EIP712 Domain struct with the token name as
     ///         a signing domain and token contract as a verifying contract.
