@@ -52,8 +52,9 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 			s.btcTokenPrecompile = btcTokenPrecompile
 
 			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
-			// These first 4 bytes correspond to the method ID (hashed function signature)
-			// It this case a function signature is 'function totalSupply()'
+			// These first 4 bytes correspond to the method ID (first 4 bytes of the
+			// Keccak-256 hash of the function signature).
+			// In this case a function signature is 'function totalSupply()'
 			vmContract.Input = []byte{0x18, 0x16, 0x0d, 0xdd}
 			output, err := s.btcTokenPrecompile.Run(evm, vmContract, true)
 			s.Require().NoError(err)
