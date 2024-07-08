@@ -18,7 +18,7 @@ var _ vm.PrecompiledContract = &Contract{}
 
 // Contract represents a precompiled contract that can be executed by the EVM.
 type Contract struct {
-	abi     abi.ABI
+	Abi     abi.ABI
 	address common.Address
 	methods map[string]Method
 }
@@ -26,7 +26,7 @@ type Contract struct {
 // NewContract creates a new precompiled contract with the given ABI and address.
 func NewContract(abi abi.ABI, address common.Address) *Contract {
 	return &Contract{
-		abi:     abi,
+		Abi:     abi,
 		address: address,
 		methods: make(map[string]Method),
 	}
@@ -123,7 +123,7 @@ func (c *Contract) Run(
 			WithTransientKVGasConfig(transientKVGasConfig)
 	}()
 
-	eventEmitter := NewEventEmitter(sdkCtx, c.abi, c.address, stateDB)
+	eventEmitter := NewEventEmitter(sdkCtx, c.Abi, c.address, stateDB)
 	runCtx := NewRunContext(sdkCtx, evm, contract, eventEmitter)
 
 	methodID, methodInputArgs, err := c.parseCallInput(contract.Input)
@@ -200,7 +200,7 @@ func (c *Contract) parseCallInput(input []byte) ([]byte, []byte, error) {
 // based on the given method ID. If the method is not found in the ABI or is
 // not registered in the precompiled contract, an error is returned.
 func (c *Contract) methodByID(methodID []byte) (Method, *abi.Method, error) {
-	methodABI, err := c.abi.MethodById(methodID)
+	methodABI, err := c.Abi.MethodById(methodID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("method not found in ABI: [%w]", err)
 	}
