@@ -57,10 +57,6 @@ func (tsm *totalSupplyMethod) Run(
 		return nil, fmt.Errorf("failed to get the supply amount of the BTC token")
 	}
 
-	if supply.Amount == sdkmath.NewInt(0) {
-		return nil, fmt.Errorf("failed to get the total supply of the BTC token")
-	}
-
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(supply.Amount),
 	}, nil
