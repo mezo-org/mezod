@@ -20,7 +20,10 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 		run      func(sdk.Context, *app.Evmos)
 		expTotal *big.Int
 	}{
-		// This is minted by the existing test_helpers for two accounts in the Setup
+		// This is minted by the existing Evmos test_helpers.go file for the two
+		// generated accounts in the Setup() function. 10^14 is minted to the genesis
+		// account and 10^18 is minted to the bonded pool module, resulting in
+		// 1000100000000000000 of the existing total coins.
 		"existing total supply - no coins minted": {
 			expTotal: big.NewInt(1000100000000000000),
 		},
@@ -52,8 +55,9 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 			s.btcTokenPrecompile = btcTokenPrecompile
 
 			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
-			// These first 4 bytes correspond to the method ID (hashed function signature)
-			// It this case a function signature is 'function totalSupply()'
+			// These first 4 bytes correspond to the method ID (first 4 bytes of the
+			// Keccak-256 hash of the function signature).
+			// In this case a function signature is 'function totalSupply()'
 			vmContract.Input = []byte{0x18, 0x16, 0x0d, 0xdd}
 			output, err := s.btcTokenPrecompile.Run(evm, vmContract, true)
 			s.Require().NoError(err)

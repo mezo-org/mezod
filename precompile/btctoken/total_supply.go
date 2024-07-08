@@ -1,6 +1,8 @@
 package btctoken
 
 import (
+	"fmt"
+
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/evmos/evmos/v12/precompile"
 	evm "github.com/evmos/evmos/v12/x/evm/types"
@@ -50,6 +52,9 @@ func (tsm *totalSupplyMethod) Run(
 	}
 
 	supply := tsm.bankKeeper.GetSupply(context.SdkCtx(), evm.DefaultEVMDenom)
+	if supply.Amount.IsNil() {
+		return nil, fmt.Errorf("failed to get the supply amount of the BTC token")
+	}
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(supply.Amount),
