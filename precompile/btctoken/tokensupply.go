@@ -53,6 +53,9 @@ func (tsm *totalSupplyMethod) Run(
 	}
 
 	supply := tsm.bankKeeper.GetSupply(context.SdkCtx(), evm.DefaultEVMDenom)
+	if supply.Amount.IsNil() {
+		return nil, fmt.Errorf("failed to get the supply amount of the BTC token")
+	}
 
 	if supply.Amount == sdkmath.NewInt(0) {
 		return nil, fmt.Errorf("failed to get the total supply of the BTC token")
