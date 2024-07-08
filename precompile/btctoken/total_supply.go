@@ -3,7 +3,6 @@ package btctoken
 import (
 	"fmt"
 
-	sdkmath "cosmossdk.io/math"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/evmos/evmos/v12/precompile"
 	evm "github.com/evmos/evmos/v12/x/evm/types"
