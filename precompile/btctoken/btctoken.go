@@ -44,5 +44,7 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper) []precompile.Method {
 		newBalanceOfMethod(bankKeeper),
 		newTotalSupplyMethod(bankKeeper),
 		newNameMethod(bankKeeper),
+		newSymbolMethod(bankKeeper),
+		newDecimalsMethod(bankKeeper),
 	}
 }
