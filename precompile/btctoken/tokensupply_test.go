@@ -20,7 +20,10 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 		run      func(sdk.Context, *app.Evmos)
 		expTotal *big.Int
 	}{
-		// This is minted by the existing test_helpers for two accounts in the Setup
+		// This is minted by the existing Evmos test_helpers.go file for the two
+		// generated accounts in the Setup() function. 10^14 is minted to the genesis
+		// account and 10^18 is minted to the bonded pool module, resulting in
+		// 1000100000000000000 of the existing total coins.
 		"existing total supply - no coins minted": {
 			expTotal: big.NewInt(1000100000000000000),
 		},
