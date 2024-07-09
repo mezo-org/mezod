@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	"io"
 	"net/http"
 	"os"
@@ -261,6 +260,9 @@ func NewEvmos(
 		tkeys:             tkeys,
 	}
 
+	// TODO: Determine the authority account.
+	authority := authtypes.NewModuleAddress("to be determined")
+
 	// init params keeper and subspaces
 	app.ParamsKeeper = initParamsKeeper(appCodec, cdc, keys[paramstypes.StoreKey], tkeys[paramstypes.TStoreKey])
 	// set the BaseApp's parameter store
@@ -276,25 +278,26 @@ func NewEvmos(
 	app.PoaKeeper = poakeeper.NewKeeper(
 		keys[poatypes.StoreKey],
 		appCodec,
-		authtypes.NewModuleAddress(govtypes.ModuleName),
+		authority,
 	)
 	app.CrisisKeeper = crisiskeeper.NewKeeper(
 		app.GetSubspace(crisistypes.ModuleName), invCheckPeriod, app.BankKeeper, authtypes.FeeCollectorName,
 	)
-	app.UpgradeKeeper = upgradekeeper.NewKeeper(skipUpgradeHeights, keys[upgradetypes.StoreKey], appCodec, homePath, app.BaseApp, authtypes.NewModuleAddress(govtypes.ModuleName).String())
+	app.UpgradeKeeper = upgradekeeper.NewKeeper(skipUpgradeHeights, keys[upgradetypes.StoreKey], appCodec, homePath, app.BaseApp, authority.String())
 
 	tracer := cast.ToString(appOpts.Get(srvflags.EVMTracer))
 
 	// Create Ethermint keepers
 	app.FeeMarketKeeper = feemarketkeeper.NewKeeper(
-		appCodec, authtypes.NewModuleAddress(govtypes.ModuleName),
+		appCodec, authority,
 		keys[feemarkettypes.StoreKey],
 		tkeys[feemarkettypes.TransientKey],
 		app.GetSubspace(feemarkettypes.ModuleName),
 	)
 
 	app.EvmKeeper = evmkeeper.NewKeeper(
-		appCodec, keys[evmtypes.StoreKey], tkeys[evmtypes.TransientKey], authtypes.NewModuleAddress(govtypes.ModuleName),
+		appCodec, keys[evmtypes.StoreKey], tkeys[evmtypes.TransientKey],
+		authority,
 		app.AccountKeeper, app.BankKeeper, &app.PoaKeeper, app.FeeMarketKeeper,
 		tracer, app.GetSubspace(evmtypes.ModuleName),
 	)
@@ -669,7 +672,6 @@ func initParamsKeeper(
 	// SDK subspaces
 	paramsKeeper.Subspace(authtypes.ModuleName)
 	paramsKeeper.Subspace(banktypes.ModuleName)
-	paramsKeeper.Subspace(govtypes.ModuleName).WithKeyTable(govv1.ParamKeyTable())
 	paramsKeeper.Subspace(crisistypes.ModuleName)
 	// ethermint subspaces
 	paramsKeeper.Subspace(evmtypes.ModuleName).WithKeyTable(evmtypes.ParamKeyTable()) //nolint: staticcheck
