@@ -53,6 +53,10 @@ func (nm *nameMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
 	metadata, found := nm.bankKeeper.GetDenomMetaData(context.SdkCtx(), evm.DefaultEVMDenom)
 	if !found {
 		return nil, fmt.Errorf("metadata name not found")
@@ -91,6 +95,10 @@ func (sm *symbolMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
 	metadata, found := sm.bankKeeper.GetDenomMetaData(context.SdkCtx(), evm.DefaultEVMDenom)
 	if !found {
 		return nil, fmt.Errorf("metadata symbol not found")
@@ -129,6 +137,10 @@ func (dm *decimalsMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
 	metadata, found := dm.bankKeeper.GetDenomMetaData(context.SdkCtx(), evm.DefaultEVMDenom)
 	if !found {
 		return nil, fmt.Errorf("metadata decimals not found")
