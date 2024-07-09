@@ -250,8 +250,21 @@ func NewEvmos(
 		tkeys:             tkeys,
 	}
 
-	// TODO: Determine the authority account.
-	authority := authtypes.NewModuleAddress("to be determined")
+	// Most of the modules require setting a Cosmos-level authority account
+	// which has privileges to perform governance actions (e.g. parameters change).
+	// Upon a governance action, the modules' keepers perform a check that
+	// the operation is actually executed by the authority account. This is
+	// necessary to ensure proper authorization of governance actions done
+	// through native Cosmos transactions. For Mezo, the actual authority will
+	// be in hands of a multi-sig account deployed on EVM. Moreover, the governance
+	// actions will be exposed through dedicated precompiled EVM contracts.
+	// Those precompiles will validate the authority of the caller on EVM-level
+	// and will execute state updates on specific modules keepers. However,
+	// given the Cosmos-level authority check in keepers, the precompiles
+	// will have to impersonate the Cosmos-level authority account.
+	// As the precompiles live in the context of the `x/evm` module, using
+	// the account of this module as authority seems to be a natural choice.
+	authority := authtypes.NewModuleAddress(evmtypes.ModuleName)
 
 	// init params keeper and subspaces
 	app.ParamsKeeper = initParamsKeeper(appCodec, cdc, keys[paramstypes.StoreKey], tkeys[paramstypes.TStoreKey])
