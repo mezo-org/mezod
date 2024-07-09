@@ -39,7 +39,6 @@ type DeductFeeDecorator struct {
 	accountKeeper      authante.AccountKeeper
 	bankKeeper         BankKeeper
 	feegrantKeeper     authante.FeegrantKeeper
-	stakingKeeper      anteutils.StakingKeeper
 	txFeeChecker       anteutils.TxFeeChecker
 }
 
@@ -48,7 +47,6 @@ func NewDeductFeeDecorator(
 	ak authante.AccountKeeper,
 	bk BankKeeper,
 	fk authante.FeegrantKeeper,
-	sk anteutils.StakingKeeper,
 	tfc anteutils.TxFeeChecker,
 ) DeductFeeDecorator {
 	if tfc == nil {
@@ -59,7 +57,6 @@ func NewDeductFeeDecorator(
 		accountKeeper:      ak,
 		bankKeeper:         bk,
 		feegrantKeeper:     fk,
-		stakingKeeper:      sk,
 		txFeeChecker:       tfc,
 	}
 }

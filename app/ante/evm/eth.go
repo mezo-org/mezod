@@ -108,7 +108,6 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 type EthGasConsumeDecorator struct {
 	bankKeeper         anteutils.BankKeeper
 	evmKeeper          EVMKeeper
-	stakingKeeper      anteutils.StakingKeeper
 	maxGasWanted       uint64
 }
 
@@ -116,13 +115,11 @@ type EthGasConsumeDecorator struct {
 func NewEthGasConsumeDecorator(
 	bankKeeper anteutils.BankKeeper,
 	evmKeeper EVMKeeper,
-	stakingKeeper anteutils.StakingKeeper,
 	maxGasWanted uint64,
 ) EthGasConsumeDecorator {
 	return EthGasConsumeDecorator{
 		bankKeeper,
 		evmKeeper,
-		stakingKeeper,
 		maxGasWanted,
 	}
 }
