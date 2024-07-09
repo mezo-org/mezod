@@ -12,7 +12,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
-	inflationtypes "github.com/evmos/evmos/v12/x/inflation/types"
+	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
 func (s *PrecompileTestSuite) TestTotalSupply() {
@@ -32,7 +32,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 			run: func(ctx sdk.Context, app *app.Evmos) {
 				// Mint more coins to the inflation module
 				err := app.BankKeeper.MintCoins(
-					ctx, inflationtypes.ModuleName,
+					ctx, evmtypes.ModuleName,
 					sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})
 				s.Require().NoError(err)
 			},
