@@ -8,9 +8,11 @@ import (
 	evm "github.com/evmos/evmos/v12/x/evm/types"
 )
 
-const NameMethodName = "name"
-const SymbolMethodName = "symbol"
-const DecimalsMethodName = "decimals"
+const (
+	NameMethodName     = "name"
+	SymbolMethodName   = "symbol"
+	DecimalsMethodName = "decimals"
+)
 
 type nameMethod struct {
 	bankKeeper bankkeeper.Keeper
@@ -51,7 +53,6 @@ func (nm *nameMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
-
 	metadata, found := nm.bankKeeper.GetDenomMetaData(context.SdkCtx(), evm.DefaultEVMDenom)
 	if !found {
 		return nil, fmt.Errorf("metadata name not found")
