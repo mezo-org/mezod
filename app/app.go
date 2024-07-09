@@ -412,7 +412,6 @@ func NewEvmos(
 	app.setAnteHandler(encodingConfig.TxConfig, maxGasWanted)
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
-	app.setupUpgradeHandlers()
 
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
@@ -471,8 +470,6 @@ func (app *Evmos) setPostHandler() {
 // of the new block for every registered module. If there is a registered fork at the current height,
 // BeginBlocker will schedule the upgrade plan and perform the state migration (if any).
 func (app *Evmos) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	// Perform any scheduled forks before executing the modules logic
-	app.ScheduleForkUpgrade(ctx)
 	return app.mm.BeginBlock(ctx, req)
 }
 
@@ -678,130 +675,6 @@ func initParamsKeeper(
 	paramsKeeper.Subspace(feemarkettypes.ModuleName).WithKeyTable(feemarkettypes.ParamKeyTable())
 	return paramsKeeper
 }
-
-// FIXME: Adjust later.
-//func (app *Evmos) setupUpgradeHandlers() {
-//	// v8 upgrade handler
-//	app.UpgradeKeeper.SetUpgradeHandler(
-//		v8.UpgradeName,
-//		v8.CreateUpgradeHandler(
-//			app.mm, app.configurator,
-//		),
-//	)
-//
-//	// v8.1 upgrade handler
-//	app.UpgradeKeeper.SetUpgradeHandler(
-//		v81.UpgradeName,
-//		v81.CreateUpgradeHandler(
-//			app.mm, app.configurator,
-//		),
-//	)
-//
-//	// v8.2 upgrade handler
-//	app.UpgradeKeeper.SetUpgradeHandler(
-//		v82.UpgradeName,
-//		v82.CreateUpgradeHandler(
-//			app.mm, app.configurator,
-//		),
-//	)
-//
-//	// v9 upgrade handler
-//	app.UpgradeKeeper.SetUpgradeHandler(
-//		v9.UpgradeName,
-//		v9.CreateUpgradeHandler(
-//			app.mm, app.configurator,
-//			app.DistrKeeper,
-//		),
-//	)
-//
-//	// v9.1 upgrade handler
-//	app.UpgradeKeeper.SetUpgradeHandler(
-//		v91.UpgradeName,
-//		v91.CreateUpgradeHandler(
-//			app.mm, app.configurator,
-//			app.DistrKeeper,
-//		),
-//	)
-//
-//	// v10 upgrade handler
-//	app.UpgradeKeeper.SetUpgradeHandler(
-//		v10.UpgradeName,
-//		v10.CreateUpgradeHandler(
-//			app.mm, app.configurator,
-//			app.PoaKeeper,
-//		),
-//	)
-//
-//	// v11 upgrade handler
-//	app.UpgradeKeeper.SetUpgradeHandler(
-//		v11.UpgradeName,
-//		v11.CreateUpgradeHandler(
-//			app.mm, app.configurator,
-//			app.AccountKeeper,
-//			app.BankKeeper,
-//			app.PoaKeeper,
-//			app.DistrKeeper,
-//		),
-//	)
-//
-//	// v12 upgrade handler
-//	app.UpgradeKeeper.SetUpgradeHandler(
-//		v12.UpgradeName,
-//		v12.CreateUpgradeHandler(
-//			app.mm, app.configurator,
-//			app.DistrKeeper,
-//		),
-//	)
-//
-//	// When a planned update height is reached, the old binary will panic
-//	// writing on disk the height and name of the update that triggered it
-//	// This will read that value, and execute the preparations for the upgrade.
-//	upgradeInfo, err := app.UpgradeKeeper.ReadUpgradeInfoFromDisk()
-//	if err != nil {
-//		panic(fmt.Errorf("failed to read upgrade info from disk: %w", err))
-//	}
-//
-//	if app.UpgradeKeeper.IsSkipHeight(upgradeInfo.Height) {
-//		return
-//	}
-//
-//	var storeUpgrades *storetypes.StoreUpgrades
-//
-//	switch upgradeInfo.Name {
-//	case v8.UpgradeName:
-//		// add revenue module for testnet (v7 -> v8)
-//		storeUpgrades = &storetypes.StoreUpgrades{
-//			Added: []string{"feesplit"},
-//		}
-//	case v81.UpgradeName:
-//		// NOTE: store upgrade for mainnet was not registered and was replaced by
-//		// the v8.2 upgrade.
-//	case v82.UpgradeName:
-//		// add  missing revenue module for mainnet (v8.1 -> v8.2)
-//		// IMPORTANT: this upgrade CANNOT be executed for testnet!
-//		storeUpgrades = &storetypes.StoreUpgrades{
-//			Added:   []string{revenuetypes.ModuleName},
-//			Deleted: []string{"feesplit"},
-//		}
-//	case v9.UpgradeName, v91.UpgradeName:
-//		// no store upgrade in v9 or v9.1
-//	case v10.UpgradeName:
-//		// no store upgrades in v10
-//	case v11.UpgradeName:
-//		// add ica host submodule in v11
-//		// initialize recovery store
-//		storeUpgrades = &storetypes.StoreUpgrades{
-//			Added: []string{"icahost", "recoveryv1"},
-//		}
-//	case v12.UpgradeName:
-//		// no store upgrades
-//	}
-//
-//	if storeUpgrades != nil {
-//		// configure store loader that checks if version == upgradeHeight and applies store upgrades
-//		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, storeUpgrades))
-//	}
-//}
 
 // customEvmPrecompiles builds custom precompiles of the EVM module.
 func customEvmPrecompiles(
