@@ -178,12 +178,8 @@ type Evmos struct {
 	CrisisKeeper     crisiskeeper.Keeper
 	UpgradeKeeper    upgradekeeper.Keeper
 	ParamsKeeper     paramskeeper.Keeper
-
-	// Ethermint keepers
 	EvmKeeper       *evmkeeper.Keeper
 	FeeMarketKeeper feemarketkeeper.Keeper
-
-	// Evmos keepers
 	BridgeKeeper     bridgekeeper.Keeper
 
 	// the module manager
@@ -227,18 +223,15 @@ func NewEvmos(
 	bApp.SetInterfaceRegistry(interfaceRegistry)
 
 	keys := sdk.NewKVStoreKeys(
-		// SDK keys
 		authtypes.StoreKey,
 		banktypes.StoreKey,
 		poatypes.StoreKey,
 		paramstypes.StoreKey,
 		upgradetypes.StoreKey,
-		// ethermint keys
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
 	)
 
-	// Add the EVM transient store key
 	tkeys := sdk.NewTransientStoreKeys(paramstypes.TStoreKey, evmtypes.TransientKey, feemarkettypes.TransientKey)
 
 	// load state streaming if enabled
@@ -284,7 +277,6 @@ func NewEvmos(
 
 	tracer := cast.ToString(appOpts.Get(srvflags.EVMTracer))
 
-	// Create Ethermint keepers
 	app.FeeMarketKeeper = feemarketkeeper.NewKeeper(
 		appCodec, authority,
 		keys[feemarkettypes.StoreKey],
@@ -298,16 +290,13 @@ func NewEvmos(
 		app.AccountKeeper, app.BankKeeper, &app.PoaKeeper, app.FeeMarketKeeper,
 		tracer, app.GetSubspace(evmtypes.ModuleName),
 	)
-
-	app.BridgeKeeper = *bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
-
 	precompiles, err := customEvmPrecompiles(app.BankKeeper)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
 	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
 
-	/****  Module Options ****/
+	app.BridgeKeeper = *bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
 
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.
@@ -316,22 +305,18 @@ func NewEvmos(
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
-		// SDK app modules
 		auth.NewAppModule(appCodec, app.AccountKeeper, authsims.RandomGenesisAccounts),
 		bank.NewAppModule(appCodec, app.BankKeeper, app.AccountKeeper),
 		crisis.NewAppModule(&app.CrisisKeeper, skipGenesisInvariants),
 		poa.NewAppModule(app.PoaKeeper),
 		upgrade.NewAppModule(app.UpgradeKeeper),
 		params.NewAppModule(app.ParamsKeeper),
-		// Ethermint app modules
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
-		// Evmos app modules
 		bridge.NewAppModule(appCodec, app.BridgeKeeper),
 	)
 
 	// NOTE: upgrade module must go first to handle software upgrades.
-	// NOTE: staking module is required if HistoricalEntries param > 0.
 	app.mm.SetOrderBeginBlockers(
 		upgradetypes.ModuleName,
 		feemarkettypes.ModuleName,
@@ -351,33 +336,23 @@ func NewEvmos(
 		poatypes.ModuleName,
 		evmtypes.ModuleName,
 		feemarkettypes.ModuleName,
-		// no-op modules
 		authtypes.ModuleName,
 		banktypes.ModuleName,
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
-		// Evmos modules
 		bridgetypes.ModuleName,
 	)
 
-	// NOTE: The genutils module must occur after staking so that pools are
-	// properly initialized with tokens from genesis accounts.
+	// NOTE: crisis module must go at the end to check for invariants on each module
 	app.mm.SetOrderInitGenesis(
-		// SDK modules
 		authtypes.ModuleName,
 		banktypes.ModuleName,
 		poatypes.ModuleName,
-		// Ethermint modules
-		// evm module denomination is used by the revenue module, in AnteHandle
 		evmtypes.ModuleName,
-		// NOTE: feemarket module needs to be initialized before genutil module:
-		// gentx transactions use MinGasPriceDecorator.AnteHandle
 		feemarkettypes.ModuleName,
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
-		// Evmos modules
 		bridgetypes.ModuleName,
-		// NOTE: crisis module must go at the end to check for invariants on each module
 		crisistypes.ModuleName,
 	)
 
@@ -385,9 +360,6 @@ func NewEvmos(
 	app.mm.RegisterRoutes(app.Router(), app.QueryRouter(), encodingConfig.Amino)
 	app.configurator = module.NewConfigurator(app.appCodec, app.MsgServiceRouter(), app.GRPCQueryRouter())
 	app.mm.RegisterServices(app.configurator)
-
-	// add test gRPC service for testing gRPC queries in isolation
-	// testdata.RegisterTestServiceServer(app.GRPCQueryRouter(), testdata.TestServiceImpl{})
 
 	// initialize stores
 	app.MountKVStores(keys)
@@ -412,7 +384,7 @@ func NewEvmos(
 	// Finally start the tpsCounter.
 	app.tpsCounter = newTPSCounter(logger)
 	go func() {
-		// Unfortunately golangci-lint is so pedantic
+		// Unfortunately golangci-lint is so pedantic,
 		// so we have to ignore this error explicitly.
 		_ = app.tpsCounter.start(context.Background())
 	}()
@@ -640,29 +612,18 @@ func RegisterSwaggerAPI(_ client.Context, rtr *mux.Router) {
 	rtr.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/", staticServer))
 }
 
-// GetMaccPerms returns a copy of the module account permissions
-func GetMaccPerms() map[string][]string {
-	dupMaccPerms := make(map[string][]string)
-	for k, v := range maccPerms {
-		dupMaccPerms[k] = v
-	}
-
-	return dupMaccPerms
-}
-
 // initParamsKeeper init params keeper and its subspaces
 func initParamsKeeper(
 	appCodec codec.BinaryCodec, legacyAmino *codec.LegacyAmino, key, tkey storetypes.StoreKey,
 ) paramskeeper.Keeper {
 	paramsKeeper := paramskeeper.NewKeeper(appCodec, legacyAmino, key, tkey)
 
-	// SDK subspaces
 	paramsKeeper.Subspace(authtypes.ModuleName)
 	paramsKeeper.Subspace(banktypes.ModuleName)
 	paramsKeeper.Subspace(crisistypes.ModuleName)
-	// ethermint subspaces
 	paramsKeeper.Subspace(evmtypes.ModuleName).WithKeyTable(evmtypes.ParamKeyTable()) //nolint: staticcheck
 	paramsKeeper.Subspace(feemarkettypes.ModuleName).WithKeyTable(feemarkettypes.ParamKeyTable())
+
 	return paramsKeeper
 }
 
