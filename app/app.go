@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	"io"
 	"net/http"
 	"os"
@@ -398,7 +399,6 @@ func NewEvmos(
 	// initialize stores
 	app.MountKVStores(keys)
 	app.MountTransientStores(tkeys)
-	app.MountMemoryStores(memKeys)
 
 	// initialize BaseApp
 	app.SetInitChainer(app.InitChainer)
