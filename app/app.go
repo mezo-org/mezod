@@ -287,7 +287,7 @@ func NewEvmos(
 	app.EvmKeeper = evmkeeper.NewKeeper(
 		appCodec, keys[evmtypes.StoreKey], tkeys[evmtypes.TransientKey],
 		authority,
-		app.AccountKeeper, app.BankKeeper, &app.PoaKeeper, app.FeeMarketKeeper,
+		app.AccountKeeper, app.BankKeeper, app.PoaKeeper, app.FeeMarketKeeper,
 		tracer, app.GetSubspace(evmtypes.ModuleName),
 	)
 	precompiles, err := customEvmPrecompiles(app.BankKeeper)
