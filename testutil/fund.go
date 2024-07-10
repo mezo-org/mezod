@@ -17,7 +17,10 @@
 package testutil
 
 import (
+	sdkmath "cosmossdk.io/math"
+	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/evmos/evmos/v12/utils"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
@@ -50,4 +53,27 @@ func FundModuleAccount(ctx sdk.Context, bankKeeper bankkeeper.Keeper, recipientM
 	}
 
 	return bankKeeper.SendCoinsFromModuleToModule(ctx, evmtypes.ModuleName, recipientMod, amounts)
+}
+
+// PrepareAccount creates an account with the given balance of the base denomination.
+// If the balance is zero, it just creates an account without any funds.
+func PrepareAccount(
+	ctx sdk.Context,
+	accountKeeper authkeeper.AccountKeeper,
+	bankKeeper bankkeeper.Keeper,
+	addr sdk.AccAddress,
+	balance sdkmath.Int,
+) error {
+	if balance.IsZero() {
+		// Just create an account with zero balance.
+		accountKeeper.SetAccount(ctx, accountKeeper.NewAccountWithAddress(ctx, addr))
+		return nil
+	}
+
+	err := FundAccountWithBaseDenom(ctx, bankKeeper, addr, balance.Int64())
+	if err != nil {
+		return fmt.Errorf("failed to fund account: %s", err.Error())
+	}
+
+	return nil
 }
