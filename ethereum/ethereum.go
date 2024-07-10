@@ -45,6 +45,9 @@ type baseChain struct {
 }
 
 // Connect creates Portal Ethereum chain handle.
+// TODO: Test the connectivity with the `Portal` smart contract. Due to the
+//
+//	outdated go-ethereum package it could not be tested so far.
 func ConnectPortal(
 	ctx context.Context,
 	config ethereum.Config,
@@ -106,6 +109,8 @@ func newBaseChain(
 		)
 	}
 
+	// TODO: Validators interact with Ethereum in read-only mode. Therefore,
+	//       they should not be required to have an Ethereum key.
 	key, err := decryptKey(config)
 	if err != nil {
 		return nil, fmt.Errorf(
