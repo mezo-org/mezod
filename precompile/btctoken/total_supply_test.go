@@ -20,15 +20,14 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 		run      func(sdk.Context, *app.Evmos)
 		expTotal *big.Int
 	}{
-		// This is minted by the existing Evmos test_helpers.go file for the two
-		// generated accounts in the Setup() function. 10^14 is minted to the genesis
-		// account and 10^18 is minted to the bonded pool module, resulting in
-		// 1000100000000000000 of the existing total coins.
+		// This is minted by the existing test_helpers.go file for the generated
+		// account in the Setup() function. 10^14 is minted to the genesis account
+		// resulting in 100000000000000 of the existing total coins.
 		"existing total supply - no coins minted": {
-			expTotal: big.NewInt(1000100000000000000),
+			expTotal: big.NewInt(100000000000000),
 		},
 		"add to total supply - mint more coins": {
-			expTotal: big.NewInt(1000100000000000042),
+			expTotal: big.NewInt(100000000000042),
 			run: func(ctx sdk.Context, app *app.Evmos) {
 				// Mint more coins to the inflation module
 				err := app.BankKeeper.MintCoins(
