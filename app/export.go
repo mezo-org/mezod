@@ -23,8 +23,6 @@ import (
 
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	"github.com/cosmos/cosmos-sdk/simapp"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
-
 	"github.com/evmos/evmos/v12/encoding"
 )
 
@@ -55,7 +53,7 @@ func (app *Evmos) ExportAppStateAndValidators(
 		return servertypes.ExportedApp{}, err
 	}
 
-	validators, err := poatypes.ExportGenesisValidators(ctx, app.PoaKeeper)
+	validators, err := app.PoaKeeper.ExportGenesisValidators(ctx)
 	if err != nil {
 		return servertypes.ExportedApp{}, err
 	}
