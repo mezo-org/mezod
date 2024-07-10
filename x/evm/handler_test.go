@@ -2,6 +2,7 @@ package evm_test
 
 import (
 	"errors"
+
 	"math/big"
 	"testing"
 	"time"
@@ -21,7 +22,6 @@ import (
 
 	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
 
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -45,7 +45,10 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/tendermint/tendermint/version"
+
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
 
 type EvmTestSuite struct {
@@ -69,14 +72,13 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 	checkTx := false
 
 	// account key
-	priv, err := ethsecp256k1.GenerateKey()
+	accPriv, err := ethsecp256k1.GenerateKey()
 	require.NoError(t, err)
-	address := common.BytesToAddress(priv.PubKey().Address().Bytes())
-	suite.signer = utiltx.NewSigner(priv)
+	address := common.BytesToAddress(accPriv.PubKey().Address().Bytes())
+	suite.signer = utiltx.NewSigner(accPriv)
 	suite.from = address
-	// consensus key
-	priv, err = ethsecp256k1.GenerateKey()
-	require.NoError(t, err)
+	// consensus key (must use pure secp256k1 curve due to Tendermint requirements)
+	priv := secp256k1.GenPrivKey()
 	consAddress := sdk.ConsAddress(priv.PubKey().Address())
 
 	suite.app = app.EthSetup(checkTx, func(app *app.Evmos, genesis simapp.GenesisState) simapp.GenesisState {
@@ -108,6 +110,17 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 	bankGenesis.Balances = append(bankGenesis.Balances, balances...)
 	bankGenesis.Supply = bankGenesis.Supply.Add(coins...).Add(coins...)
 	genesisState[banktypes.ModuleName] = suite.app.AppCodec().MustMarshalJSON(&bankGenesis)
+
+	poaGenesis := poatypes.DefaultGenesisState()
+	poaGenesis.Validators = append(
+		poaGenesis.Validators,
+		poatypes.NewValidator(
+			address.Bytes(),
+			priv.PubKey(),
+			poatypes.Description{},
+		),
+	)
+	genesisState[poatypes.ModuleName] = suite.app.AppCodec().MustMarshalJSON(poaGenesis)
 
 	stateBytes, err := tmjson.MarshalIndent(genesisState, "", " ")
 	require.NoError(t, err)
@@ -154,16 +167,6 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 	}
 
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
-
-	valAddr := sdk.ValAddress(address.Bytes())
-	validator, err := stakingtypes.NewValidator(valAddr, priv.PubKey(), stakingtypes.Description{})
-	require.NoError(t, err)
-
-	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
-	require.NoError(t, err)
-	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
-	require.NoError(t, err)
-	suite.app.StakingKeeper.SetValidator(suite.ctx, validator)
 
 	suite.ethSigner = ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
 	suite.handler = evm.NewHandler(suite.app.EvmKeeper)
