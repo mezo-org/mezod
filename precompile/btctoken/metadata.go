@@ -50,7 +50,7 @@ func (nm *nameMethod) Payable() bool {
 }
 
 func (nm *nameMethod) Run(
-	context *precompile.RunContext,
+	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
@@ -90,7 +90,7 @@ func (sm *symbolMethod) Payable() bool {
 }
 
 func (sm *symbolMethod) Run(
-	context *precompile.RunContext,
+	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
@@ -130,7 +130,7 @@ func (dm *decimalsMethod) Payable() bool {
 }
 
 func (dm *decimalsMethod) Run(
-	context *precompile.RunContext,
+	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
