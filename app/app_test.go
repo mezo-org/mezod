@@ -2,9 +2,10 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"os"
 	"testing"
+
+	"github.com/tendermint/tendermint/crypto/ed25519"
 
 	"github.com/stretchr/testify/require"
 

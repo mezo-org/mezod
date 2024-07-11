@@ -2,7 +2,6 @@ package evm_test
 
 import (
 	"errors"
-
 	"math/big"
 	"testing"
 	"time"

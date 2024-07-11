@@ -1,11 +1,12 @@
 package keeper_test
 
 import (
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

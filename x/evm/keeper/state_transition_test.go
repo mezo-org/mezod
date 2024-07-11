@@ -2,10 +2,11 @@ package keeper_test
 
 import (
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 	"math"
 	"math/big"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"

@@ -18,10 +18,12 @@ package app
 
 import (
 	"encoding/json"
+	"time"
+
+	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"time"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/simapp"
@@ -144,6 +146,7 @@ func GenesisStateWithValSet(app *Evmos, genesisState simapp.GenesisState,
 		pk, _ := cryptocodec.FromTmPubKeyInterface(val.PubKey)
 		validator := poatypes.Validator{
 			OperatorAddress: sdk.ValAddress(val.Address),
+			//nolint:staticcheck
 			ConsensusPubkey: legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk),
 			Description:     poatypes.Description{},
 		}
@@ -166,4 +169,3 @@ func GenesisStateWithValSet(app *Evmos, genesisState simapp.GenesisState,
 
 	return genesisState
 }
-

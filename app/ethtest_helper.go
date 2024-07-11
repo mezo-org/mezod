@@ -17,9 +17,11 @@ package app
 
 import (
 	"encoding/json"
+	"time"
+
+	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
-	"time"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -139,6 +141,7 @@ func genesisStateWithValSet(codec codec.Codec, genesisState simapp.GenesisState,
 		}
 		validator := poatypes.Validator{
 			OperatorAddress: sdk.ValAddress(val.Address),
+			//nolint:staticcheck
 			ConsensusPubkey: legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk),
 			Description:     poatypes.Description{},
 		}

@@ -1,15 +1,17 @@
 package evm_test
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"errors"
+	"math/big"
+	"strings"
+
+	sdkmath "cosmossdk.io/math"
+
 	kmultisig "github.com/cosmos/cosmos-sdk/crypto/keys/multisig"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"math/big"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	ethparams "github.com/ethereum/go-ethereum/params"

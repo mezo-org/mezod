@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 

@@ -141,18 +141,16 @@ var (
 
 	// module account permissions
 	maccPerms = map[string][]string{
-		authtypes.FeeCollectorName:     nil,
-		poatypes.ModuleName:            nil,
-		evmtypes.ModuleName:            {authtypes.Minter, authtypes.Burner}, // used for secure addition and subtraction of balance using module account
+		authtypes.FeeCollectorName: nil,
+		poatypes.ModuleName:        nil,
+		evmtypes.ModuleName:        {authtypes.Minter, authtypes.Burner}, // used for secure addition and subtraction of balance using module account
 	}
 
 	// module accounts that are allowed to receive tokens
 	allowedReceivingModAcc = map[string]bool{}
 )
 
-var (
-	_ servertypes.Application = (*Evmos)(nil)
-)
+var _ servertypes.Application = (*Evmos)(nil)
 
 // Evmos implements an extended ABCI application. It is an application
 // that may process transactions through Ethereum's EVM running atop of
@@ -168,19 +166,19 @@ type Evmos struct {
 	invCheckPeriod uint
 
 	// keys to access the substores
-	keys    map[string]*storetypes.KVStoreKey
-	tkeys   map[string]*storetypes.TransientStoreKey
+	keys  map[string]*storetypes.KVStoreKey
+	tkeys map[string]*storetypes.TransientStoreKey
 
 	// keepers
-	AccountKeeper    authkeeper.AccountKeeper
-	BankKeeper       bankkeeper.Keeper
-	PoaKeeper        poakeeper.Keeper
-	CrisisKeeper     crisiskeeper.Keeper
-	UpgradeKeeper    upgradekeeper.Keeper
-	ParamsKeeper     paramskeeper.Keeper
+	AccountKeeper   authkeeper.AccountKeeper
+	BankKeeper      bankkeeper.Keeper
+	PoaKeeper       poakeeper.Keeper
+	CrisisKeeper    crisiskeeper.Keeper
+	UpgradeKeeper   upgradekeeper.Keeper
+	ParamsKeeper    paramskeeper.Keeper
 	EvmKeeper       *evmkeeper.Keeper
 	FeeMarketKeeper feemarketkeeper.Keeper
-	BridgeKeeper     bridgekeeper.Keeper
+	BridgeKeeper    bridgekeeper.Keeper
 
 	// the module manager
 	mm *module.Manager

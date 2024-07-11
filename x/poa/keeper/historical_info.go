@@ -6,17 +6,17 @@ import (
 )
 
 func (k Keeper) GetHistoricalInfo(
-	ctx sdk.Context,
-	height int64,
+	_ sdk.Context,
+	_ int64,
 ) (types.HistoricalInfo, bool) {
 	// TODO: Implement GetHistoricalInfo function.
 	return types.HistoricalInfo{}, false
 }
 
 func (k Keeper) SetHistoricalInfo(
-	ctx sdk.Context,
-	height int64,
-	historicalInfo *types.HistoricalInfo,
+	_ sdk.Context,
+	_ int64,
+	_ *types.HistoricalInfo,
 ) {
 	// TODO: Implement SetHistoricalInfo function.
 	// TODO: Uncomment tests in x/evm/keeper/state_transition_test.go

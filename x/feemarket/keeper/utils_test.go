@@ -2,10 +2,11 @@ package keeper_test
 
 import (
 	"encoding/json"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 	"math/big"
 	"time"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/baseapp"

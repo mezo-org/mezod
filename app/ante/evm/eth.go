@@ -106,9 +106,9 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 // EthGasConsumeDecorator validates enough intrinsic gas for the transaction and
 // gas consumption.
 type EthGasConsumeDecorator struct {
-	bankKeeper         anteutils.BankKeeper
-	evmKeeper          EVMKeeper
-	maxGasWanted       uint64
+	bankKeeper   anteutils.BankKeeper
+	evmKeeper    EVMKeeper
+	maxGasWanted uint64
 }
 
 // NewEthGasConsumeDecorator creates a new EthGasConsumeDecorator

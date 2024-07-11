@@ -36,10 +36,10 @@ import (
 //
 // CONTRACT: Tx must implement FeeTx interface to use DeductFeeDecorator
 type DeductFeeDecorator struct {
-	accountKeeper      authante.AccountKeeper
-	bankKeeper         BankKeeper
-	feegrantKeeper     authante.FeegrantKeeper
-	txFeeChecker       anteutils.TxFeeChecker
+	accountKeeper  authante.AccountKeeper
+	bankKeeper     BankKeeper
+	feegrantKeeper authante.FeegrantKeeper
+	txFeeChecker   anteutils.TxFeeChecker
 }
 
 // NewDeductFeeDecorator returns a new DeductFeeDecorator.
@@ -54,10 +54,10 @@ func NewDeductFeeDecorator(
 	}
 
 	return DeductFeeDecorator{
-		accountKeeper:      ak,
-		bankKeeper:         bk,
-		feegrantKeeper:     fk,
-		txFeeChecker:       tfc,
+		accountKeeper:  ak,
+		bankKeeper:     bk,
+		feegrantKeeper: fk,
+		txFeeChecker:   tfc,
 	}
 }
 

@@ -1,8 +1,9 @@
 package evm_test
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"math/big"
+
+	sdkmath "cosmossdk.io/math"
 
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/evmos/evmos/v12/ethereum/eip712"

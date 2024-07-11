@@ -24,9 +24,7 @@ var _ = Describe("when sending a Cosmos transaction", func() {
 	)
 
 	Context("and the sender account has enough balance to pay for the transaction cost", Ordered, func() {
-		var (
-			balance = sdk.NewInt(1e18)
-		)
+		balance := sdk.NewInt(1e18)
 
 		BeforeEach(func() {
 			addr, priv = testutiltx.NewAccAddressAndKey()
@@ -52,9 +50,7 @@ var _ = Describe("when sending a Cosmos transaction", func() {
 	})
 
 	Context("and the sender account has not enough balance to pay for the transaction cost", func() {
-		var (
-			balance = sdk.NewInt(0)
-		)
+		balance := sdk.NewInt(0)
 
 		BeforeEach(func() {
 			addr, priv = testutiltx.NewAccAddressAndKey()

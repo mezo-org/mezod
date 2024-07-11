@@ -14,7 +14,7 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 	var (
 		dfd cosmosante.DeductFeeDecorator
 		// General setup
-		addr, priv = testutiltx.NewAccAddressAndKey()
+		addr, priv  = testutiltx.NewAccAddressAndKey()
 		initBalance = sdk.NewInt(1e18)
 		lowGasPrice = math.NewInt(1)
 		zero        = sdk.ZeroInt()
