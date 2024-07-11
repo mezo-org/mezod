@@ -1,17 +1,17 @@
 package btctoken
 
 import (
-	"fmt"
-
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/evmos/evmos/v12/precompile"
-	evm "github.com/evmos/evmos/v12/x/evm/types"
 )
 
 const (
 	NameMethodName     = "name"
 	SymbolMethodName   = "symbol"
 	DecimalsMethodName = "decimals"
+	Decimals           = uint8(18)
+	Symbol             = "BTC"
+	Name               = "BTC"
 )
 
 type nameMethod struct {
@@ -57,13 +57,11 @@ func (nm *nameMethod) Run(
 		return nil, err
 	}
 
-	metadata, found := nm.bankKeeper.GetDenomMetaData(context.SdkCtx(), evm.DefaultEVMDenom)
-	if !found {
-		return nil, fmt.Errorf("metadata name not found")
-	}
-
+	// TODO: Currently, we simplify the process of returning the name by not using
+	// the bank keeper. We may need to revisit this approach in the future to determine
+	// if returning the name via the bank keeper is necessary.
 	return precompile.MethodOutputs{
-		metadata.Name,
+		Name,
 	}, nil
 }
 
@@ -99,13 +97,11 @@ func (sm *symbolMethod) Run(
 		return nil, err
 	}
 
-	metadata, found := sm.bankKeeper.GetDenomMetaData(context.SdkCtx(), evm.DefaultEVMDenom)
-	if !found {
-		return nil, fmt.Errorf("metadata symbol not found")
-	}
-
+	// TODO: Currently, we simplify the process of returning the symbol by not using
+	// the bank keeper. We may need to revisit this approach in the future to determine
+	// if returning the symbol via the bank keeper is necessary.
 	return precompile.MethodOutputs{
-		metadata.Symbol,
+		Symbol,
 	}, nil
 }
 
@@ -141,12 +137,10 @@ func (dm *decimalsMethod) Run(
 		return nil, err
 	}
 
-	metadata, found := dm.bankKeeper.GetDenomMetaData(context.SdkCtx(), evm.DefaultEVMDenom)
-	if !found {
-		return nil, fmt.Errorf("metadata decimals not found")
-	}
-
+	// TODO: Currently, we simplify the process of returning the decimals by not using
+	// the bank keeper. We may need to revisit this approach in the future to determine
+	// if returning the decimals via the bank keeper is necessary.
 	return precompile.MethodOutputs{
-		metadata.DenomUnits[0].Exponent,
+		Decimals,
 	}, nil
 }
