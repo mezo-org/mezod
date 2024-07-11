@@ -49,7 +49,7 @@ services:
     command:
       - >
         /evmosd start --home /evmos
-        --json-rpc.address="0.0.0.0:8549"--json-rpc.ws-address="0.0.0.0:8550"
+        --json-rpc.address="0.0.0.0:8549" --json-rpc.ws-address="0.0.0.0:8550"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
       localnet:
