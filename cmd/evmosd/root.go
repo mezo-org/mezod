@@ -62,6 +62,8 @@ import (
 	"github.com/evmos/evmos/v12/app"
 	cmdcfg "github.com/evmos/evmos/v12/cmd/config"
 	evmoskr "github.com/evmos/evmos/v12/crypto/keyring"
+
+	poacli "github.com/evmos/evmos/v12/x/poa/client/cli"
 )
 
 const (
@@ -125,9 +127,9 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		evmosclient.ValidateChainID(
 			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
 		),
-		genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
 		MigrateGenesisCmd(),
-		genutilcli.GenTxCmd(app.ModuleBasics, encodingConfig.TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
+		poacli.NewGenValCmd(app.DefaultNodeHome),
+		poacli.NewCollectGenValsCmd(app.DefaultNodeHome),
 		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
 		AddGenesisAccountCmd(app.DefaultNodeHome),
 		tmcli.NewCompletionCmd(rootCmd, true),
