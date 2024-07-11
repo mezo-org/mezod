@@ -1,7 +1,6 @@
 package btctoken
 
 import (
-	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/evmos/evmos/v12/precompile"
 )
 
@@ -15,21 +14,16 @@ const (
 )
 
 type nameMethod struct {
-	bankKeeper bankkeeper.Keeper
 }
 type symbolMethod struct {
-	bankKeeper bankkeeper.Keeper
 }
 
 type decimalsMethod struct {
-	bankKeeper bankkeeper.Keeper
 }
 
 // Name method returns the name of the BTC token.
-func newNameMethod(bankKeeper bankkeeper.Keeper) *nameMethod {
-	return &nameMethod{
-		bankKeeper: bankKeeper,
-	}
+func newNameMethod() *nameMethod {
+	return &nameMethod{}
 }
 
 func (nm *nameMethod) MethodName() string {
@@ -66,10 +60,8 @@ func (nm *nameMethod) Run(
 }
 
 // Symbol method returns the symbol of the BTC token.
-func newSymbolMethod(bankKeeper bankkeeper.Keeper) *symbolMethod {
-	return &symbolMethod{
-		bankKeeper: bankKeeper,
-	}
+func newSymbolMethod() *symbolMethod {
+	return &symbolMethod{}
 }
 
 func (sm *symbolMethod) MethodName() string {
@@ -106,10 +98,8 @@ func (sm *symbolMethod) Run(
 }
 
 // Decimals method returns the number of decimals used to represent the BTC token.
-func newDecimalsMethod(bankKeeper bankkeeper.Keeper) *decimalsMethod {
-	return &decimalsMethod{
-		bankKeeper: bankKeeper,
-	}
+func newDecimalsMethod() *decimalsMethod {
+	return &decimalsMethod{}
 }
 
 func (dm *decimalsMethod) MethodName() string {

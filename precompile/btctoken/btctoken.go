@@ -43,8 +43,8 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper) []precompile.Method {
 		newMintMethod(bankKeeper),
 		newBalanceOfMethod(bankKeeper),
 		newTotalSupplyMethod(bankKeeper),
-		newNameMethod(bankKeeper),
-		newSymbolMethod(bankKeeper),
-		newDecimalsMethod(bankKeeper),
+		newNameMethod(),
+		newSymbolMethod(),
+		newDecimalsMethod(),
 	}
 }
