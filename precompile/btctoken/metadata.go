@@ -13,13 +13,11 @@ const (
 	Name               = "BTC"
 )
 
-type nameMethod struct {
-}
-type symbolMethod struct {
-}
-
-type decimalsMethod struct {
-}
+type (
+	nameMethod     struct{}
+	symbolMethod   struct{}
+	decimalsMethod struct{}
+)
 
 // Name method returns the name of the BTC token.
 func newNameMethod() *nameMethod {
