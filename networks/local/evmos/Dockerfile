@@ -23,7 +23,6 @@ RUN apt-get update
 
 # Copy over binaries from the build-env
 COPY --from=build-env /go/src/github.com/evmos/evmos/build/evmosd /
-COPY --from=build-env /go/src/github.com/evmos/evmos/scripts/start-docker.sh /
 
 EXPOSE 26656 26657 1317 9090 8545 8546
 
