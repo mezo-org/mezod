@@ -38,14 +38,13 @@ func NewPrecompile(poaKeeper poakeeper.Keeper) (*precompile.Contract, error) {
 
 // newPrecompileMethods builds the list of methods for the validator pool precompile.
 // All methods returned by this function are registered in the validator pool precompile.
-func newPrecompileMethods(_ poakeeper.Keeper) []precompile.Method {
+func newPrecompileMethods(poaKeeper poakeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
-		// newSubmitApplicationMethod(poaKeeper),
-		// newApproveApplicationMethod(poaKeeper),
-		// newKickMethod(poaKeeper),
-		// newLeaveMethod(poaKeeper),
-		// newTransferOwnershipMethod(poaKeeper),
-		// newAcceptOwnershipMethod(poaKeeper),
-		// newSlotsMethod(poaKeeper),
+		newSubmitApplicationMethod(poaKeeper),
+		newApproveApplicationMethod(poaKeeper),
+		newKickMethod(poaKeeper),
+		newLeaveMethod(poaKeeper),
+		newTransferOwnershipMethod(poaKeeper),
+		newAcceptOwnershipMethod(poaKeeper),
 	}
 }
