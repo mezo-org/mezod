@@ -16,24 +16,25 @@ cluster so on macOS, Docker Desktop must be running locally.
 
 ```bash
 # Build and install the `meso/node` image locally.
-$ make localnet-build
+$ make localnet-docker-build
 # Start four client instances.
-$ make localnet-start
-# Stop client instances started with localnet-start.
-$ make localnet-stop
+$ make localnet-docker-start
+# Stop client instances started with localnet-docker-start.
+$ make localnet-docker-stop
 # Show logs of all four client instances together.
-$ make localnet-show-logstream
+$ make localnet-docker-show-logstream
 ```
 
 The client build can take some time even if there have been no changes, so it is
-not executed as part of the `localnet-start` target to save time. To rebuild the
-client after code changes, please explicitly re-run the `localnet-build` target.
+not executed as part of the `localnet-docker-start` target to save time. To
+rebuild the client after code changes, please explicitly re-run the
+`localnet-docker-build` target.
 
 The configuration for the four nodes is available in the `build` directory.
 
-When `make localnet-start` is used for the first time, a configuration for the
-four nodes is generated. To clear the chain state and reset the configuration,
-use `make localnet-clean` followed by `make localnet-start`.
+When `make localnet-docker-start` is used for the first time, a configuration
+for the four nodes is generated. To clear the chain state and reset the
+configuration, use `make localnet-docker-clean` followed by `make localnet-docker-start`.
 
 All client instances expose JSON-RPC HTTP and JSON-RPC WebSocket services
 available from the host machine.
