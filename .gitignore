@@ -47,6 +47,9 @@ github.com/
 localnet-setup
 .testnets
 
+# Binary-based localnet
+.localnet
+
 # Testing
 coverage.txt
 *.out
