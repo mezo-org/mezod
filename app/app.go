@@ -61,6 +61,9 @@ import (
 	authsims "github.com/cosmos/cosmos-sdk/x/auth/simulation"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/cosmos/cosmos-sdk/x/authz"
+	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
+	authzmodule "github.com/cosmos/cosmos-sdk/x/authz/module"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -133,6 +136,7 @@ var (
 		poa.AppModuleBasic{},
 		params.AppModuleBasic{},
 		crisis.AppModuleBasic{},
+		authzmodule.AppModuleBasic{},
 		upgrade.AppModuleBasic{},
 		evm.AppModuleBasic{},
 		feemarket.AppModuleBasic{},
@@ -176,6 +180,7 @@ type Evmos struct {
 	CrisisKeeper    crisiskeeper.Keeper
 	UpgradeKeeper   upgradekeeper.Keeper
 	ParamsKeeper    paramskeeper.Keeper
+	AuthzKeeper     authzkeeper.Keeper
 	EvmKeeper       *evmkeeper.Keeper
 	FeeMarketKeeper feemarketkeeper.Keeper
 	BridgeKeeper    bridgekeeper.Keeper
@@ -225,6 +230,7 @@ func NewEvmos(
 		banktypes.StoreKey,
 		poatypes.StoreKey,
 		paramstypes.StoreKey,
+		authzkeeper.StoreKey,
 		upgradetypes.StoreKey,
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
@@ -286,6 +292,8 @@ func NewEvmos(
 	)
 	app.UpgradeKeeper = upgradekeeper.NewKeeper(skipUpgradeHeights, keys[upgradetypes.StoreKey], appCodec, homePath, app.BaseApp, authority.String())
 
+	app.AuthzKeeper = authzkeeper.NewKeeper(keys[authzkeeper.StoreKey], appCodec, app.MsgServiceRouter(), app.AccountKeeper)
+
 	tracer := cast.ToString(appOpts.Get(srvflags.EVMTracer))
 
 	app.FeeMarketKeeper = feemarketkeeper.NewKeeper(
@@ -322,6 +330,7 @@ func NewEvmos(
 		poa.NewAppModule(app.PoaKeeper),
 		upgrade.NewAppModule(app.UpgradeKeeper),
 		params.NewAppModule(app.ParamsKeeper),
+		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
 		bridge.NewAppModule(appCodec, app.BridgeKeeper),
@@ -337,6 +346,7 @@ func NewEvmos(
 		authtypes.ModuleName,
 		banktypes.ModuleName,
 		crisistypes.ModuleName,
+		authz.ModuleName,
 		paramstypes.ModuleName,
 		bridgetypes.ModuleName,
 	)
@@ -349,6 +359,7 @@ func NewEvmos(
 		feemarkettypes.ModuleName,
 		authtypes.ModuleName,
 		banktypes.ModuleName,
+		authz.ModuleName,
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
@@ -361,6 +372,7 @@ func NewEvmos(
 		poatypes.ModuleName,
 		evmtypes.ModuleName,
 		feemarkettypes.ModuleName,
+		authz.ModuleName,
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
