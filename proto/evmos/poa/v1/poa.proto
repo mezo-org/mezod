@@ -2,6 +2,7 @@ syntax = "proto3";
 package evmos.poa.v1;
 
 import "gogoproto/gogo.proto";
+import "tendermint/types/types.proto";
 
 option go_package = "github.com/evmos/evmos/v12/x/poa/types";
 
@@ -51,4 +52,13 @@ message Vote {
   uint64 total = 3;
   // voters is the list of voters that have voted on the subject.
   repeated bytes voters = 4;
+}
+
+// HistoricalInfo contains header and validator information for a given block.
+// It is stored as part of poa module's state, which persists the `n` most
+// recent HistoricalInfo. The `n` is determined by the poa's module
+// HistoricalEntries constant.
+message HistoricalInfo {
+  tendermint.types.Header header = 1 [(gogoproto.nullable) = false];
+  repeated Validator      valset = 2 [(gogoproto.nullable) = false];
 }
