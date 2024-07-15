@@ -526,6 +526,18 @@ localnet-docker-show-logstream:
 .PHONY: localnet-docker-build localnet-docker-start localnet-docker-stop
 
 ###############################################################################
+###                         Localnet binary-based                           ###
+###############################################################################
+
+localnet-bin-init:
+	./scripts/localnet.sh
+
+localnet-bin-start:
+	./scripts/localnet-start.sh
+
+.PHONY: localnet-bin-init localnet-bin-start
+
+###############################################################################
 ###                                Releasing                                ###
 ###############################################################################
 
