@@ -21,12 +21,14 @@ func (k Keeper) GetHistoricalInfo(
 	return types.MustUnmarshalHistoricalInfo(k.cdc, value), true
 }
 
+// SetHistoricalInfo sets the historical info at a given height
 func (k Keeper) SetHistoricalInfo(
-	_ sdk.Context,
-	_ int64,
-	_ *types.HistoricalInfo,
+	ctx sdk.Context,
+	height int64,
+	hi *types.HistoricalInfo,
 ) {
-	// TODO: Implement SetHistoricalInfo function.
-	// TODO: Uncomment tests in x/evm/keeper/state_transition_test.go
-	panic("not implemented")
+	store := ctx.KVStore(k.storeKey)
+	key := types.GetHistoricalInfoKey(height)
+	value := k.cdc.MustMarshal(hi)
+	store.Set(key, value)
 }

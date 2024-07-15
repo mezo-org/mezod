@@ -67,28 +67,27 @@ func (suite *KeeperTestSuite) TestGetHashFn() {
 			},
 			common.Hash{},
 		},
-		// TODO: Uncomment once historical info is implemented.
-		//	{
-		//		"case 2.2: height lower than current one, invalid hist info header",
-		//		1,
-		//		func() {
-		//			suite.app.PoaKeeper.SetHistoricalInfo(suite.ctx, 1, &poatypes.HistoricalInfo{})
-		//			suite.ctx = suite.ctx.WithBlockHeight(10)
-		//		},
-		//		common.Hash{},
-		//	},
-		//	{
-		//		"case 2.3: height lower than current one, calculated from hist info header",
-		//		1,
-		//		func() {
-		//			histInfo := &poatypes.HistoricalInfo{
-		//				Header: header,
-		//			}
-		//			suite.app.PoaKeeper.SetHistoricalInfo(suite.ctx, 1, histInfo)
-		//			suite.ctx = suite.ctx.WithBlockHeight(10)
-		//		},
-		//		common.BytesToHash(hash),
-		//	},
+		{
+			"case 2.2: height lower than current one, invalid hist info header",
+			1,
+			func() {
+				suite.app.PoaKeeper.SetHistoricalInfo(suite.ctx, 1, &poatypes.HistoricalInfo{})
+				suite.ctx = suite.ctx.WithBlockHeight(10)
+			},
+			common.Hash{},
+		},
+		{
+			"case 2.3: height lower than current one, calculated from hist info header",
+			1,
+			func() {
+				histInfo := &poatypes.HistoricalInfo{
+					Header: header,
+				}
+				suite.app.PoaKeeper.SetHistoricalInfo(suite.ctx, 1, histInfo)
+				suite.ctx = suite.ctx.WithBlockHeight(10)
+			},
+			common.BytesToHash(hash),
+		},
 		{
 			"case 3: height greater than current one",
 			200,
