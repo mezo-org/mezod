@@ -5,12 +5,20 @@ import (
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
 
+// GetHistoricalInfo gets the historical info at a given height
 func (k Keeper) GetHistoricalInfo(
-	_ sdk.Context,
-	_ int64,
+	ctx sdk.Context,
+	height int64,
 ) (types.HistoricalInfo, bool) {
-	// TODO: Implement GetHistoricalInfo function.
-	return types.HistoricalInfo{}, false
+	store := ctx.KVStore(k.storeKey)
+	key := types.GetHistoricalInfoKey(height)
+
+	value := store.Get(key)
+	if value == nil {
+		return types.HistoricalInfo{}, false
+	}
+
+	return types.MustUnmarshalHistoricalInfo(k.cdc, value), true
 }
 
 func (k Keeper) SetHistoricalInfo(
