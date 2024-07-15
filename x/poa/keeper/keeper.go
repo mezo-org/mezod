@@ -14,9 +14,10 @@ import (
 
 // Keeper of the poa store
 type Keeper struct {
-	storeKey  storetypes.StoreKey
-	cdc       codec.BinaryCodec
-	authority sdk.AccAddress
+	storeKey          storetypes.StoreKey
+	cdc               codec.BinaryCodec
+	authority         sdk.AccAddress
+	historicalEntries uint32
 }
 
 // NewKeeper creates a poa keeper
@@ -26,9 +27,10 @@ func NewKeeper(
 	authority sdk.AccAddress,
 ) Keeper {
 	keeper := Keeper{
-		storeKey:  storeKey,
-		cdc:       cdc,
-		authority: authority,
+		storeKey:          storeKey,
+		cdc:               cdc,
+		authority:         authority,
+		historicalEntries: types.DefaultHistoricalEntries,
 	}
 	return keeper
 }

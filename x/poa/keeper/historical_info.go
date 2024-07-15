@@ -7,7 +7,7 @@ import (
 
 // HistoricalEntries returns the number of historical info entries to persist.
 func (k Keeper) HistoricalEntries() uint32 {
-	return types.DefaultHistoricalEntries
+	return k.historicalEntries
 }
 
 // GetHistoricalInfo gets the historical info at a given height

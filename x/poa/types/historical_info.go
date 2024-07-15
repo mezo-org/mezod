@@ -2,9 +2,10 @@ package types
 
 import (
 	"bytes"
+	"sort"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"sort"
 )
 
 // NewHistoricalInfo will create a historical information struct from header and
