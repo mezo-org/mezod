@@ -1,6 +1,6 @@
 #!/bin/bash
 
-HOMEDIR=./.public-testnet
+HOMEDIR=./.localnet
 
 if [ -d "$HOMEDIR" ]; then
   echo "directory $HOMEDIR already exists; remove it to run this script"
@@ -10,8 +10,12 @@ fi
 CHAIN_ID=mezo_31611-1
 LIQUID_AMOUNT=1000000000000000000000abtc
 STAKE_AMOUNT=100000000000000000000abtc
-NODE_DOMAIN=test.mezo.org
-NODE_NAMES=("mezo-node-0" "mezo-node-1" "mezo-node-2" "mezo-node-3" "mezo-node-4" "mezo-faucet")
+NODE_DOMAIN=localhost
+NODE_NAMES=("mezo-node-0" "mezo-node-1" "mezo-node-2" "mezo-node-3" "mezo-node-4")
+
+
+# TODO: Do we need a faucet node?
+
 
 echo "using chain-id: $CHAIN_ID"
 echo "using liquid amount: $LIQUID_AMOUNT"
@@ -58,16 +62,12 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # as this will be done for the global genesis file. However, it's needed to execute
   # the gentx command that checks the account balance in the local genesis file.
   yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR add-genesis-account $NODE_KEY_NAME $LIQUID_AMOUNT &> /dev/null
+
   # Generate the gentx for the node. The gentx is a transaction that creates a
   # validator and stakes an amount to participate in the PoS consensus.
-  # This step is skipped for mezo-faucet as their balance must remain liquid
-  # in order to distribute tokens.
-  if [ "$NODE_NAME" != "mezo-faucet" ]; then
-    yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR gentx $NODE_KEY_NAME $STAKE_AMOUNT --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
-    echo "[$NODE_NAME] gentx done"
-  else
-    echo "[$NODE_NAME] gentx skipped"
-  fi
+  yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR gentx $NODE_KEY_NAME $STAKE_AMOUNT --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
+
+  echo "[$NODE_NAME] gentx done"
 
   echo $KEYRING_PASSWORD > $NODE_HOMEDIR/keyring_password.txt
   echo $MNEMONIC > $NODE_HOMEDIR/mnemonic.txt
@@ -85,7 +85,7 @@ GLOBAL_GENESIS_HOMEDIR=${NODE_HOMEDIRS[0]}
 for i in "${!NODE_NAMES[@]}"; do
   # Execute for all nodes but the first.
   if [[ "$i" == '0' ]]; then
-      continue
+    continue
   fi
 
   NODE_HOMEDIR=${NODE_HOMEDIRS[$i]}
@@ -131,7 +131,6 @@ echo "global genesis file built and validated"
 
 SEEDS=$(jq -r '.app_state.genutil.gen_txs | .[] | .body.memo' $GENESIS)
 printf "%s\n" "${SEEDS[@]}" > $HOMEDIR/seeds.txt
-
 
 for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_HOMEDIR="$HOMEDIR/$NODE_NAME"
