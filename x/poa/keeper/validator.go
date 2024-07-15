@@ -132,7 +132,11 @@ func (k Keeper) removeValidator(ctx sdk.Context, address sdk.ValAddress) {
 	store.Delete(types.GetValidatorStateKey(address))
 }
 
-// Get the set of all validators
+// GetAllValidators gets the set of all validators registered in the module store.
+// The result contains validators of all states:
+// - types.ValidatorStateJoining: not yet present in the Tendermint validator set
+// - types.ValidatorStateJoined: already present in the Tendermint validator set
+// - types.ValidatorStateLeaving: will leave the Tendermint validator set at the end of the block
 func (k Keeper) GetAllValidators(ctx sdk.Context) (validators []types.Validator) {
 	store := ctx.KVStore(k.storeKey)
 
@@ -142,6 +146,28 @@ func (k Keeper) GetAllValidators(ctx sdk.Context) (validators []types.Validator)
 	for ; iterator.Valid(); iterator.Next() {
 		validator := types.MustUnmarshalValidator(k.cdc, iterator.Value())
 		validators = append(validators, validator)
+	}
+
+	return validators
+}
+
+// GetActiveValidators gets the set of all active validators that are part
+// of the Tendermint consensus set. The result contains only validators with
+// the state types.ValidatorStateJoined.
+func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validator) {
+	for _, validator := range k.GetAllValidators(ctx) {
+		state, found := k.GetValidatorState(ctx, validator.OperatorAddress)
+		// Panic on no state.
+		if !found {
+			panic("Found a validator with no state, a validator should always have a state")
+		}
+
+		// Consider only validators with Joined state. Ignore Joining and Leaving
+		// validators. The former will join the Tendermint consensus set and the
+		// latter will leave the Tendermint consensus set at the end of the block.
+		if state == types.ValidatorStateJoined {
+			validators = append(validators, validator)
+		}
 	}
 
 	return validators
