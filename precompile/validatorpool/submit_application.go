@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
-	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
 
@@ -20,12 +19,12 @@ const SubmitApplicationMethodName = "submitApplication"
 // - consPubKey: the consensus public key of the validator used to vote on blocks
 // - operator: the EVM address identifying the validator.
 type submitApplicationMethod struct {
-	poaKeeper poakeeper.Keeper
+	keeper ValidatorPool
 }
 
-func newSubmitApplicationMethod(poaKeeper poakeeper.Keeper) *submitApplicationMethod {
+func newSubmitApplicationMethod(vp ValidatorPool) *submitApplicationMethod {
 	return &submitApplicationMethod{
-		poaKeeper: poaKeeper,
+		keeper: vp,
 	}
 }
 
@@ -66,10 +65,10 @@ func (sam *submitApplicationMethod) Run(context *precompile.RunContext, inputs p
 		ConsensusPubkey: consPubKey.String(),
 	}
 
-	err := sam.poaKeeper.SubmitApplication(context.SdkCtx(), validator)
+	err := sam.keeper.SubmitApplication(context.SdkCtx(), validator)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return precompile.MethodOutputs{true}, nil
 }

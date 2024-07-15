@@ -2,7 +2,6 @@ package validatorpool
 
 import (
 	"github.com/evmos/evmos/v12/precompile"
-	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
 )
 
 // LeaveMethodName is the name of the leave method. It matches the name
@@ -12,12 +11,12 @@ const LeaveMethodName = "leave"
 // leaveMethod is the implementation of the leave method that removes
 // msg.sender from the validator pool
 type leaveMethod struct {
-	poaKeeper poakeeper.Keeper
+	keeper ValidatorPool
 }
 
-func newLeaveMethod(poaKeeper poakeeper.Keeper) *leaveMethod {
+func newLeaveMethod(vp ValidatorPool) *leaveMethod {
 	return &leaveMethod{
-		poaKeeper: poaKeeper,
+		keeper: vp,
 	}
 }
 
@@ -38,15 +37,15 @@ func (lm *leaveMethod) Payable() bool {
 	return false
 }
 
-func (lm *leaveMethod) Run(_ *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (lm *leaveMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
 
-	// err := lm.poaKeeper.Leave(context.SdkCtx(), context.MsgSender())
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err := lm.keeper.Leave(context.SdkCtx(), context.MsgSender())
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	return precompile.MethodOutputs{true}, nil
 }

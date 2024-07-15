@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
-	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
 )
 
 // ApproveApplicationMethodName is the name of the approveApplication method. It matches the name
@@ -18,12 +17,12 @@ const ApproveApplicationMethodName = "approveApplication"
 // The method has the following input arguments:
 // - operator: the EVM address identifying the validator.
 type approveApplicationMethod struct {
-	poaKeeper poakeeper.Keeper
+	keeper ValidatorPool
 }
 
-func newApproveApplicationMethod(poaKeeper poakeeper.Keeper) *approveApplicationMethod {
+func newApproveApplicationMethod(vp ValidatorPool) *approveApplicationMethod {
 	return &approveApplicationMethod{
-		poaKeeper: poaKeeper,
+		keeper: vp,
 	}
 }
 
@@ -44,20 +43,20 @@ func (aam *approveApplicationMethod) Payable() bool {
 	return false
 }
 
-func (aam *approveApplicationMethod) Run(_ *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (aam *approveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
 
-	_, ok := inputs[0].(common.Address)
+	operator, ok := inputs[0].(common.Address)
 	if !ok {
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	// err := aam.poaKeeper.ApproveApplication(context.SdkCtx(), operator)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err := aam.keeper.ApproveApplication(context.SdkCtx(), operator)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	return precompile.MethodOutputs{true}, nil
 }

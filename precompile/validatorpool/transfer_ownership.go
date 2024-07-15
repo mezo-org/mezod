@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
-	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
 )
 
 // TransferOwnershipMethodName is the name of the transferOwnership method. It matches the name
@@ -18,12 +17,12 @@ const TransferOwnershipMethodName = "transferOwnership"
 // The method has the following input arguments:
 // - newOwner: the EVM address identifying the new owner.
 type transferOwnershipMethod struct {
-	poaKeeper poakeeper.Keeper
+	keeper ValidatorPool
 }
 
-func newTransferOwnershipMethod(poaKeeper poakeeper.Keeper) *transferOwnershipMethod {
+func newTransferOwnershipMethod(vp ValidatorPool) *transferOwnershipMethod {
 	return &transferOwnershipMethod{
-		poaKeeper: poaKeeper,
+		keeper: vp,
 	}
 }
 
@@ -44,20 +43,20 @@ func (tom *transferOwnershipMethod) Payable() bool {
 	return false
 }
 
-func (tom *transferOwnershipMethod) Run(_ *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (tom *transferOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
 
-	_, ok := inputs[1].(common.Address)
+	newOwner, ok := inputs[1].(common.Address)
 	if !ok {
 		return nil, fmt.Errorf("newOwner argument must be common.Address")
 	}
 
-	// err := tom.poaKeeper.TransferOwnership(context.SdkCtx(), newOwner)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err := tom.keeper.TransferOwnership(context.SdkCtx(), newOwner)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	return precompile.MethodOutputs{true}, nil
 }

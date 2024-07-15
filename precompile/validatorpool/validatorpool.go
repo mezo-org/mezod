@@ -4,9 +4,10 @@ import (
 	"embed"
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
-	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
 
 //go:embed abi.json
@@ -18,8 +19,25 @@ var filesystem embed.FS
 // avoid collisions.
 const EvmAddress = "0x2000000000000000000000000000000000000000"
 
+type ValidatorPool interface {
+	// SubmitApplication submits a new application to the validator pool
+	SubmitApplication(types.Context, poatypes.Validator) error
+	// ApproveApplication (onlyOwner) approves a pending application and
+	// promotes the applications candidate to validator
+	ApproveApplication(types.Context, common.Address) error
+	// Leave removes the sender from the validator pool
+	Leave(types.Context, common.Address) error
+	// Kick (onlyOwner) removes a validator from the pool
+	Kick(types.Context, common.Address) error
+	// TransferOwnership (onlyOwner) starts ownership transfer flow with a pending
+	// ownership transfer
+	TransferOwnership(types.Context, common.Address) error
+	// AcceptOwnership accepts a pending ownership transfer
+	AcceptOwnership(types.Context) error
+}
+
 // NewPrecompile creates a new validator pool precompile.
-func NewPrecompile(poaKeeper poakeeper.Keeper) (*precompile.Contract, error) {
+func NewPrecompile(vp ValidatorPool) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
@@ -30,7 +48,7 @@ func NewPrecompile(poaKeeper poakeeper.Keeper) (*precompile.Contract, error) {
 		common.HexToAddress(EvmAddress),
 	)
 
-	methods := newPrecompileMethods(poaKeeper)
+	methods := newPrecompileMethods(vp)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -38,13 +56,13 @@ func NewPrecompile(poaKeeper poakeeper.Keeper) (*precompile.Contract, error) {
 
 // newPrecompileMethods builds the list of methods for the validator pool precompile.
 // All methods returned by this function are registered in the validator pool precompile.
-func newPrecompileMethods(poaKeeper poakeeper.Keeper) []precompile.Method {
+func newPrecompileMethods(vp ValidatorPool) []precompile.Method {
 	return []precompile.Method{
-		newSubmitApplicationMethod(poaKeeper),
-		newApproveApplicationMethod(poaKeeper),
-		newKickMethod(poaKeeper),
-		newLeaveMethod(poaKeeper),
-		newTransferOwnershipMethod(poaKeeper),
-		newAcceptOwnershipMethod(poaKeeper),
+		newSubmitApplicationMethod(vp),
+		newApproveApplicationMethod(vp),
+		newKickMethod(vp),
+		newLeaveMethod(vp),
+		newTransferOwnershipMethod(vp),
+		newAcceptOwnershipMethod(vp),
 	}
 }
