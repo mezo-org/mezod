@@ -3,7 +3,7 @@
 HOMEDIR=./.public-testnet
 
 if [ -d "$HOMEDIR" ]; then
-  echo "directory $HOMEDIR already exist; remove it to run this script"
+  echo "directory $HOMEDIR already exists; remove it to run this script"
   exit 1
 fi
 
