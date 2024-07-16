@@ -576,7 +576,6 @@ type MsgClient interface {
 	// EthereumTx defines a method submitting Ethereum transactions.
 	EthereumTx(ctx context.Context, in *MsgEthereumTx, opts ...grpc.CallOption) (*MsgEthereumTxResponse, error)
 	// UpdateParams defined a governance operation for updating the x/evm module parameters.
-	// The authority is hard-coded to the Cosmos SDK x/gov module account
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
 }
 
@@ -611,7 +610,6 @@ type MsgServer interface {
 	// EthereumTx defines a method submitting Ethereum transactions.
 	EthereumTx(context.Context, *MsgEthereumTx) (*MsgEthereumTxResponse, error)
 	// UpdateParams defined a governance operation for updating the x/evm module parameters.
-	// The authority is hard-coded to the Cosmos SDK x/gov module account
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
 }
 

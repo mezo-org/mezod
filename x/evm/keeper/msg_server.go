@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"strconv"
 
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -149,7 +147,7 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 // account.
 func (k *Keeper) UpdateParams(goCtx context.Context, req *types.MsgUpdateParams) (*types.MsgUpdateParamsResponse, error) {
 	if k.authority.String() != req.Authority {
-		return nil, errorsmod.Wrapf(govtypes.ErrInvalidSigner, "invalid authority, expected %s, got %s", k.authority.String(), req.Authority)
+		return nil, errorsmod.Wrapf(types.ErrInvalidSigner, "invalid authority, expected %s, got %s", k.authority.String(), req.Authority)
 	}
 
 	ctx := sdk.UnwrapSDKContext(goCtx)

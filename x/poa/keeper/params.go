@@ -3,7 +3,6 @@ package keeper
 import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
 
@@ -27,7 +26,7 @@ func (k Keeper) UpdateParams(
 ) error {
 	if k.authority.String() != sender.String() {
 		return errorsmod.Wrapf(
-			govtypes.ErrInvalidSigner,
+			types.ErrInvalidSigner,
 			"invalid authority; expected %s, got %s",
 			k.authority.String(),
 			sender.String(),

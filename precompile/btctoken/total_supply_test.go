@@ -29,7 +29,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 		"add to total supply - mint more coins": {
 			expTotal: big.NewInt(100000000000042),
 			run: func(ctx sdk.Context, app *app.Evmos) {
-				// Mint more coins to the inflation module
+				// Mint more coins to the evm module
 				err := app.BankKeeper.MintCoins(
 					ctx, evmtypes.ModuleName,
 					sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})

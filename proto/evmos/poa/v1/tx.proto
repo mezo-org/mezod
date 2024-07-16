@@ -11,7 +11,6 @@ option go_package = "github.com/evmos/evmos/v12/x/poa/types";
 // Msg defines the Msg service.
 service Msg {
   // UpdateParams defines a governance operation for updating the module parameters.
-  // The authority is hard-coded to the Cosmos SDK x/gov module account
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
   // SubmitApplication submits an application to join the validator pool.
   rpc SubmitApplication(MsgSubmitApplication) returns (MsgSubmitApplicationResponse);
