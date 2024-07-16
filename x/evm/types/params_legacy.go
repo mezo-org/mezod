@@ -28,7 +28,7 @@ var (
 )
 
 // Deprecated: ParamKeyTable returns the parameter key table.
-// Usage of x/params to manage parameters is deprecated in favor of x/gov
+// Usage of x/params to manage parameters is deprecated in favor of
 // controlled execution of MsgUpdateParams messages. These types remain solely
 // for migration purposes and will be removed in a future release.
 func ParamKeyTable() paramtypes.KeyTable {
@@ -36,7 +36,7 @@ func ParamKeyTable() paramtypes.KeyTable {
 }
 
 // Deprecated: ParamSetPairs returns the parameter set pairs.
-// Usage of x/params to manage parameters is deprecated in favor of x/gov
+// Usage of x/params to manage parameters is deprecated in favor of
 // controlled execution of MsgUpdateParams messages. These types remain solely
 // for migration purposes and will be removed in a future release.
 func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {

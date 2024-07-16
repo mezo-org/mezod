@@ -1,6 +1,8 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // NewGenesisState creates a new GenesisState object
 func NewGenesisState(params Params, validators []Validator) GenesisState {

@@ -11,7 +11,6 @@ import (
 	"github.com/evmos/evmos/v12/testutil"
 	testutiltx "github.com/evmos/evmos/v12/testutil/tx"
 	"github.com/evmos/evmos/v12/types"
-	"github.com/evmos/evmos/v12/utils"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 
@@ -180,7 +179,7 @@ func (suite *AnteTestSuite) TestEthNonceVerificationDecorator() {
 
 func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 	chainID := suite.app.EvmKeeper.ChainID()
-	dec := ethante.NewEthGasConsumeDecorator(suite.app.BankKeeper, suite.app.DistrKeeper, suite.app.EvmKeeper, suite.app.StakingKeeper, config.DefaultMaxTxGasWanted)
+	dec := ethante.NewEthGasConsumeDecorator(suite.app.BankKeeper, suite.app.EvmKeeper, config.DefaultMaxTxGasWanted)
 
 	addr := testutiltx.GenerateAddress()
 
@@ -364,67 +363,6 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			true, false,
 			0,
 			func(_ sdk.Context) {},
-		},
-		{
-			"success - legacy tx - insufficient funds but enough staking rewards",
-			tx2,
-			tx2GasLimit, // it's capped
-			func(ctx sdk.Context) sdk.Context {
-				ctx, err := testutil.PrepareAccountsForDelegationRewards(
-					suite.T(), ctx, suite.app, sdk.AccAddress(addr.Bytes()), sdk.ZeroInt(), sdk.NewInt(1e16),
-				)
-				suite.Require().NoError(err, "error while preparing accounts for delegation rewards")
-				return ctx.
-					WithBlockGasMeter(sdk.NewGasMeter(1e19)).
-					WithBlockHeight(ctx.BlockHeight() + 1)
-			},
-			true, false,
-			tx2Priority,
-			func(ctx sdk.Context) {
-				balance := suite.app.BankKeeper.GetBalance(ctx, sdk.AccAddress(addr.Bytes()), utils.BaseDenom)
-				suite.Require().False(
-					balance.Amount.IsZero(),
-					"the fees are paid after withdrawing (a surplus amount of) staking rewards, so it should be higher than the initial balance",
-				)
-
-				rewards, err := testutil.GetTotalDelegationRewards(ctx, suite.app.DistrKeeper, sdk.AccAddress(addr.Bytes()))
-				suite.Require().NoError(err, "error while querying delegation total rewards")
-				suite.Require().Nil(rewards, "the total rewards should be nil after withdrawing all of them")
-			},
-		},
-		{
-			"success - legacy tx - enough funds so no staking rewards should be used",
-			tx2,
-			tx2GasLimit, // it's capped
-			func(ctx sdk.Context) sdk.Context {
-				ctx, err := testutil.PrepareAccountsForDelegationRewards(
-					suite.T(), ctx, suite.app, sdk.AccAddress(addr.Bytes()), sdk.NewInt(1e16), sdk.NewInt(1e16),
-				)
-				suite.Require().NoError(err, "error while preparing accounts for delegation rewards")
-				return ctx.
-					WithBlockGasMeter(sdk.NewGasMeter(1e19)).
-					WithBlockHeight(ctx.BlockHeight() + 1)
-			},
-			true, false,
-			tx2Priority,
-			func(ctx sdk.Context) {
-				balance := suite.app.BankKeeper.GetBalance(ctx, sdk.AccAddress(addr.Bytes()), utils.BaseDenom)
-				suite.Require().True(
-					balance.Amount.LT(sdk.NewInt(1e16)),
-					"the fees are paid using the available balance, so it should be lower than the initial balance",
-				)
-
-				rewards, err := testutil.GetTotalDelegationRewards(ctx, suite.app.DistrKeeper, sdk.AccAddress(addr.Bytes()))
-				suite.Require().NoError(err, "error while querying delegation total rewards")
-
-				// NOTE: the total rewards should be the same as after the setup, since
-				// the fees are paid using the account balance
-				suite.Require().Equal(
-					sdk.NewDecCoins(sdk.NewDecCoin(utils.BaseDenom, sdk.NewInt(1e16))),
-					rewards,
-					"the total rewards should be the same as after the setup, since the fees are paid using the account balance",
-				)
-			},
 		},
 	}
 

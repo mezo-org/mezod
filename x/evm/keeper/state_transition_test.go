@@ -5,9 +5,10 @@ import (
 	"math"
 	"math/big"
 
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -66,27 +67,28 @@ func (suite *KeeperTestSuite) TestGetHashFn() {
 			},
 			common.Hash{},
 		},
-		{
-			"case 2.2: height lower than current one, invalid hist info header",
-			1,
-			func() {
-				suite.app.StakingKeeper.SetHistoricalInfo(suite.ctx, 1, &stakingtypes.HistoricalInfo{})
-				suite.ctx = suite.ctx.WithBlockHeight(10)
-			},
-			common.Hash{},
-		},
-		{
-			"case 2.3: height lower than current one, calculated from hist info header",
-			1,
-			func() {
-				histInfo := &stakingtypes.HistoricalInfo{
-					Header: header,
-				}
-				suite.app.StakingKeeper.SetHistoricalInfo(suite.ctx, 1, histInfo)
-				suite.ctx = suite.ctx.WithBlockHeight(10)
-			},
-			common.BytesToHash(hash),
-		},
+		// TODO: Uncomment once historical info is implemented.
+		//	{
+		//		"case 2.2: height lower than current one, invalid hist info header",
+		//		1,
+		//		func() {
+		//			suite.app.PoaKeeper.SetHistoricalInfo(suite.ctx, 1, &poatypes.HistoricalInfo{})
+		//			suite.ctx = suite.ctx.WithBlockHeight(10)
+		//		},
+		//		common.Hash{},
+		//	},
+		//	{
+		//		"case 2.3: height lower than current one, calculated from hist info header",
+		//		1,
+		//		func() {
+		//			histInfo := &poatypes.HistoricalInfo{
+		//				Header: header,
+		//			}
+		//			suite.app.PoaKeeper.SetHistoricalInfo(suite.ctx, 1, histInfo)
+		//			suite.ctx = suite.ctx.WithBlockHeight(10)
+		//		},
+		//		common.BytesToHash(hash),
+		//	},
 		{
 			"case 3: height greater than current one",
 			200,
@@ -127,25 +129,40 @@ func (suite *KeeperTestSuite) TestGetCoinbaseAddress() {
 		{
 			"success",
 			func() {
-				valConsAddr, privkey := utiltx.NewAddrKey()
+				// consensus key (must use pure secp256k1 curve due to Tendermint requirements)
+				privKey := secp256k1.GenPrivKey()
 
-				pkAny, err := codectypes.NewAnyWithValue(privkey.PubKey())
+				validator := poatypes.NewValidator(
+					valOpAddr.Bytes(),
+					privKey.PubKey(),
+					poatypes.Description{},
+				)
+
+				valConsAddr := validator.GetConsAddr()
+
+				// Set zero quorum in the poa module to immediately
+				// add validators upon their application.
+				err := suite.app.PoaKeeper.UpdateParams(
+					suite.ctx,
+					suite.app.PoaKeeper.Authority(),
+					poatypes.Params{
+						MaxValidators: poatypes.DefaultMaxValidators,
+						Quorum:        0,
+					},
+				)
 				suite.Require().NoError(err)
 
-				validator := stakingtypes.Validator{
-					OperatorAddress: sdk.ValAddress(valOpAddr.Bytes()).String(),
-					ConsensusPubkey: pkAny,
-				}
-
-				suite.app.StakingKeeper.SetValidator(suite.ctx, validator)
-				err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
+				err = suite.app.PoaKeeper.SubmitApplication(
+					suite.ctx,
+					validator,
+				)
 				suite.Require().NoError(err)
 
 				header := suite.ctx.BlockHeader()
 				header.ProposerAddress = valConsAddr.Bytes()
 				suite.ctx = suite.ctx.WithBlockHeader(header)
 
-				_, found := suite.app.StakingKeeper.GetValidatorByConsAddr(suite.ctx, valConsAddr.Bytes())
+				_, found := suite.app.PoaKeeper.GetValidatorByConsAddr(suite.ctx, valConsAddr.Bytes())
 				suite.Require().True(found)
 
 				suite.Require().NotEmpty(suite.ctx.BlockHeader().ProposerAddress)

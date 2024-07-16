@@ -28,10 +28,6 @@ import (
 	"github.com/evmos/evmos/v12/encoding"
 	"github.com/evmos/evmos/v12/utils"
 
-	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	govtypesv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -149,116 +145,6 @@ func (suite *EIP712TestSuite) TestEIP712() {
 			expectSuccess: true,
 		},
 		{
-			title: "Succeeds - Standard MsgVote",
-			msgs: []sdk.Msg{
-				govtypes.NewMsgVote(
-					suite.createTestAddress(),
-					5,
-					govtypes.OptionNo,
-				),
-			},
-			expectSuccess: true,
-		},
-		{
-			title: "Succeeds - Standard MsgDelegate",
-			msgs: []sdk.Msg{
-				stakingtypes.NewMsgDelegate(
-					suite.createTestAddress(),
-					sdk.ValAddress(suite.createTestAddress()),
-					suite.makeCoins(suite.denom, math.NewInt(1))[0],
-				),
-			},
-			expectSuccess: true,
-		},
-		{
-			title: "Succeeds - Standard MsgWithdrawDelegationReward",
-			msgs: []sdk.Msg{
-				distributiontypes.NewMsgWithdrawDelegatorReward(
-					suite.createTestAddress(),
-					sdk.ValAddress(suite.createTestAddress()),
-				),
-			},
-			expectSuccess: true,
-		},
-		{
-			title: "Succeeds - Two Single-Signer MsgDelegate",
-			msgs: []sdk.Msg{
-				stakingtypes.NewMsgDelegate(
-					params.address,
-					sdk.ValAddress(suite.createTestAddress()),
-					suite.makeCoins(suite.denom, math.NewInt(1))[0],
-				),
-				stakingtypes.NewMsgDelegate(
-					params.address,
-					sdk.ValAddress(suite.createTestAddress()),
-					suite.makeCoins(suite.denom, math.NewInt(5))[0],
-				),
-			},
-			expectSuccess: true,
-		},
-		{
-			title: "Succeeds - Single-Signer MsgVote V1 with Omitted Value",
-			msgs: []sdk.Msg{
-				govtypesv1.NewMsgVote(
-					params.address,
-					5,
-					govtypesv1.VoteOption_VOTE_OPTION_NO,
-					"",
-				),
-			},
-			expectSuccess: true,
-		},
-		{
-			title: "Succeeds - Single-Signer MsgSend + MsgVote",
-			msgs: []sdk.Msg{
-				govtypes.NewMsgVote(
-					params.address,
-					5,
-					govtypes.OptionNo,
-				),
-				banktypes.NewMsgSend(
-					params.address,
-					suite.createTestAddress(),
-					suite.makeCoins(suite.denom, math.NewInt(50)),
-				),
-			},
-			expectSuccess: !suite.useLegacyEIP712TypedData,
-		},
-		{
-			title: "Succeeds - Single-Signer 2x MsgVoteV1 with Different Schemas",
-			msgs: []sdk.Msg{
-				govtypesv1.NewMsgVote(
-					params.address,
-					5,
-					govtypesv1.VoteOption_VOTE_OPTION_NO,
-					"",
-				),
-				govtypesv1.NewMsgVote(
-					params.address,
-					10,
-					govtypesv1.VoteOption_VOTE_OPTION_YES,
-					"Has Metadata",
-				),
-			},
-			expectSuccess: !suite.useLegacyEIP712TypedData,
-		},
-		{
-			title: "Fails - Two MsgVotes with Different Signers",
-			msgs: []sdk.Msg{
-				govtypes.NewMsgVote(
-					suite.createTestAddress(),
-					5,
-					govtypes.OptionNo,
-				),
-				govtypes.NewMsgVote(
-					suite.createTestAddress(),
-					25,
-					govtypes.OptionAbstain,
-				),
-			},
-			expectSuccess: false,
-		},
-		{
 			title:         "Fails - Empty Transaction",
 			msgs:          []sdk.Msg{},
 			expectSuccess: false,
@@ -267,10 +153,10 @@ func (suite *EIP712TestSuite) TestEIP712() {
 			title:   "Fails - Invalid ChainID",
 			chainID: "invalidchainid",
 			msgs: []sdk.Msg{
-				govtypes.NewMsgVote(
+				banktypes.NewMsgSend(
 					suite.createTestAddress(),
-					5,
-					govtypes.OptionNo,
+					suite.createTestAddress(),
+					sdk.NewCoins(sdk.NewCoin(utils.BaseDenom, math.NewInt(1))),
 				),
 			},
 			expectSuccess: false,
@@ -278,10 +164,10 @@ func (suite *EIP712TestSuite) TestEIP712() {
 		{
 			title: "Fails - Includes TimeoutHeight",
 			msgs: []sdk.Msg{
-				govtypes.NewMsgVote(
+				banktypes.NewMsgSend(
 					suite.createTestAddress(),
-					5,
-					govtypes.OptionNo,
+					suite.createTestAddress(),
+					sdk.NewCoins(sdk.NewCoin(utils.BaseDenom, math.NewInt(1))),
 				),
 			},
 			timeoutHeight: 1000,

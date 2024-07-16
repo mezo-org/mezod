@@ -4,8 +4,6 @@ import (
 	"math/big"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
@@ -90,7 +88,7 @@ func (suite *KeeperTestSuite) TestUpdateParams() {
 		{
 			name: "pass - valid Update msg",
 			request: &types.MsgUpdateParams{
-				Authority: authtypes.NewModuleAddress(govtypes.ModuleName).String(),
+				Authority: authtypes.NewModuleAddress(types.ModuleName).String(),
 				Params:    types.DefaultParams(),
 			},
 			expectErr: false,

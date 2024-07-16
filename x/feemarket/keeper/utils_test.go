@@ -5,7 +5,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -14,9 +15,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -40,14 +38,13 @@ import (
 func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	t := suite.T()
 	// account key
-	priv, err := ethsecp256k1.GenerateKey()
+	accPriv, err := ethsecp256k1.GenerateKey()
 	require.NoError(t, err)
-	suite.address = common.BytesToAddress(priv.PubKey().Address().Bytes())
-	suite.signer = utiltx.NewSigner(priv)
+	suite.address = common.BytesToAddress(accPriv.PubKey().Address().Bytes())
+	suite.signer = utiltx.NewSigner(accPriv)
 
-	// consensus key
-	priv, err = ethsecp256k1.GenerateKey()
-	require.NoError(t, err)
+	// consensus key (must use pure secp256k1 curve due to Tendermint requirements)
+	priv := secp256k1.GenPrivKey()
 	suite.consAddress = sdk.ConsAddress(priv.PubKey().Address())
 
 	header := testutil.NewHeader(
@@ -68,19 +65,25 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
 	valAddr := sdk.ValAddress(suite.address.Bytes())
-	validator, err := stakingtypes.NewValidator(valAddr, priv.PubKey(), stakingtypes.Description{})
-	require.NoError(t, err)
-	validator = stakingkeeper.TestingUpdateValidator(suite.app.StakingKeeper, suite.ctx, validator, true)
-	err = suite.app.StakingKeeper.AfterValidatorCreated(suite.ctx, validator.GetOperator())
+	validator := poatypes.NewValidator(valAddr, priv.PubKey(), poatypes.Description{})
+
+	// Set zero quorum in the poa module to immediately
+	// add validators upon their application.
+	err = suite.app.PoaKeeper.UpdateParams(
+		suite.ctx,
+		suite.app.PoaKeeper.Authority(),
+		poatypes.Params{
+			MaxValidators: poatypes.DefaultMaxValidators,
+			Quorum:        0,
+		},
+	)
 	require.NoError(t, err)
 
-	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
+	err = suite.app.PoaKeeper.SubmitApplication(
+		suite.ctx,
+		validator,
+	)
 	require.NoError(t, err)
-	suite.app.StakingKeeper.SetValidator(suite.ctx, validator)
-
-	stakingParams := stakingtypes.DefaultParams()
-	stakingParams.BondDenom = utils.BaseDenom
-	suite.app.StakingKeeper.SetParams(suite.ctx, stakingParams)
 
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
 	suite.clientCtx = client.Context{}.WithTxConfig(encodingConfig.TxConfig)

@@ -37,3 +37,8 @@ func NewKeeper(
 func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }
+
+// Authority returns the authority address.
+func (k Keeper) Authority() sdk.AccAddress {
+	return k.authority
+}
