@@ -53,7 +53,11 @@ func (tom *transferOwnershipMethod) Run(context *precompile.RunContext, inputs p
 		return nil, fmt.Errorf("newOwner argument must be common.Address")
 	}
 
-	err := tom.keeper.TransferOwnership(context.SdkCtx(), newOwner)
+	err := tom.keeper.TransferOwnership(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+		precompile.TypesConverter.Address.ToSDK(newOwner),
+	)
 	if err != nil {
 		return nil, err
 	}

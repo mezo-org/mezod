@@ -21,19 +21,19 @@ const EvmAddress = "0x2000000000000000000000000000000000000000"
 
 type ValidatorPool interface {
 	// SubmitApplication submits a new application to the validator pool
-	SubmitApplication(types.Context, poatypes.Validator) error
+	SubmitApplication(types.Context, types.AccAddress, poatypes.Validator) error
 	// ApproveApplication (onlyOwner) approves a pending application and
 	// promotes the applications candidate to validator
-	ApproveApplication(types.Context, common.Address) error
+	ApproveApplication(types.Context, types.AccAddress, types.ValAddress) error
 	// Leave removes the sender from the validator pool
-	Leave(types.Context, common.Address) error
+	Leave(types.Context, types.AccAddress) error
 	// Kick (onlyOwner) removes a validator from the pool
-	Kick(types.Context, common.Address) error
+	Kick(types.Context, types.AccAddress, types.ValAddress) error
 	// TransferOwnership (onlyOwner) starts ownership transfer flow with a pending
 	// ownership transfer
-	TransferOwnership(types.Context, common.Address) error
+	TransferOwnership(types.Context, types.AccAddress, types.AccAddress) error
 	// AcceptOwnership accepts a pending ownership transfer
-	AcceptOwnership(types.Context) error
+	AcceptOwnership(types.Context, types.AccAddress) error
 }
 
 // NewPrecompile creates a new validator pool precompile.

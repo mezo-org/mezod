@@ -42,7 +42,10 @@ func (lm *leaveMethod) Run(context *precompile.RunContext, inputs precompile.Met
 		return nil, err
 	}
 
-	err := lm.keeper.Leave(context.SdkCtx(), context.MsgSender())
+	err := lm.keeper.Leave(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+	)
 	if err != nil {
 		return nil, err
 	}

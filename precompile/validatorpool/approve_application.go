@@ -3,7 +3,7 @@ package validatorpool
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/evmos/evmos/v12/precompile"
 )
 
@@ -48,12 +48,17 @@ func (aam *approveApplicationMethod) Run(context *precompile.RunContext, inputs 
 		return nil, err
 	}
 
-	operator, ok := inputs[0].(common.Address)
+	// TODO(iquidus): is this valid?
+	operator, ok := inputs[0].(types.ValAddress)
 	if !ok {
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	err := aam.keeper.ApproveApplication(context.SdkCtx(), operator)
+	err := aam.keeper.ApproveApplication(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+		operator,
+	)
 	if err != nil {
 		return nil, err
 	}

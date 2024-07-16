@@ -3,7 +3,7 @@ package validatorpool
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/evmos/evmos/v12/precompile"
 )
 
@@ -48,12 +48,17 @@ func (km *kickMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 		return nil, err
 	}
 
-	operator, ok := inputs[1].(common.Address)
+	// TODO(iquidus): is this valid?
+	operator, ok := inputs[1].(types.ValAddress)
 	if !ok {
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	err := km.keeper.Kick(context.SdkCtx(), operator)
+	err := km.keeper.Kick(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+		operator,
+	)
 	if err != nil {
 		return nil, err
 	}

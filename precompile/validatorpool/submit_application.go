@@ -3,9 +3,10 @@ package validatorpool
 import (
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
-	"github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
 
 // SubmitApplicationMethodName is the name of the submitApplication method. It matches the name
@@ -55,17 +56,22 @@ func (sam *submitApplicationMethod) Run(context *precompile.RunContext, inputs p
 		return nil, fmt.Errorf("consPubKey argument must be common.Address")
 	}
 
-	operator, ok := inputs[1].(common.Address)
+	operator, ok := inputs[1].(types.ValAddress)
 	if !ok {
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	validator := types.Validator{
-		OperatorAddress: operator[:],
+	// TODO(iquidus): make sure these are correct
+	validator := poatypes.Validator{
+		OperatorAddress: operator,
 		ConsensusPubkey: consPubKey.String(),
 	}
 
-	err := sam.keeper.SubmitApplication(context.SdkCtx(), validator)
+	err := sam.keeper.SubmitApplication(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+		validator,
+	)
 	if err != nil {
 		return nil, err
 	}

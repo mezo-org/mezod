@@ -42,7 +42,10 @@ func (aom *acceptOwnershipMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, err
 	}
 
-	err := aom.keeper.AcceptOwnership(context.SdkCtx())
+	err := aom.keeper.AcceptOwnership(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+	)
 	if err != nil {
 		return nil, err
 	}
