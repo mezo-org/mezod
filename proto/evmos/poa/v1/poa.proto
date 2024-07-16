@@ -59,6 +59,8 @@ message Vote {
 // recent HistoricalInfo. The `n` is determined by the poa's module
 // HistoricalEntries constant.
 message HistoricalInfo {
+  // header contains the block's header.
   tendermint.types.Header header = 1 [(gogoproto.nullable) = false];
-  repeated Validator      valset = 2 [(gogoproto.nullable) = false];
+  // valset contains the active validator set at the block.
+  repeated Validator valset = 2 [(gogoproto.nullable) = false];
 }
