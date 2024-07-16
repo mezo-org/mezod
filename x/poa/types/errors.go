@@ -25,5 +25,4 @@ var (
 	ErrVoterIsCandidate      = errorsmod.Register(ModuleName, 18, "the voter cannot be the candidate")
 	ErrProposerIsCandidate   = errorsmod.Register(ModuleName, 19, "the proposer cannot be the candidate")
 	ErrOnlyOneValidator      = errorsmod.Register(ModuleName, 20, "there is only one validator in the validator set")
-	ErrInvalidSigner         = errorsmod.Register(ModuleName, 21, "invalid signer")
 )

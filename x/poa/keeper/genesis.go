@@ -17,7 +17,8 @@ func (k Keeper) InitGenesis(ctx sdk.Context, data types.GenesisState) (res []abc
 		panic(errorsmod.Wrapf(err, "error setting params"))
 	}
 
-	// Set validators in the storage
+	k.setOwner(ctx, sdk.MustAccAddressFromBech32(data.Owner))
+
 	for _, validator := range data.Validators {
 		k.setValidator(ctx, validator)
 		k.setValidatorByConsAddr(ctx, validator)
@@ -34,6 +35,7 @@ func (k Keeper) InitGenesis(ctx sdk.Context, data types.GenesisState) (res []abc
 func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 	return &types.GenesisState{
 		Params:     k.GetParams(ctx),
+		Owner:      k.GetOwner(ctx).String(),
 		Validators: k.GetAllValidators(ctx),
 	}
 }

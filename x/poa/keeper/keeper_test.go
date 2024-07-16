@@ -26,7 +26,7 @@ func mockContext() (sdk.Context, Keeper) {
 	cdc := codec.NewProtoCodec(registry)
 
 	// Create a poa keeper
-	poaKeeper := NewKeeper(keys[types.StoreKey], cdc, sdk.AccAddress{})
+	poaKeeper := NewKeeper(keys[types.StoreKey], cdc)
 
 	// Create multiStore in memory
 	db := dbm.NewMemDB()

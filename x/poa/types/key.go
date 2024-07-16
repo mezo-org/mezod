@@ -14,7 +14,11 @@ const (
 	StoreKey = ModuleName
 )
 
+// Key prefixes for the poa module.
 var (
+	// OwnerKey is the standalone key for the owner of the validator pool.
+	OwnerKey = []byte{0x10}
+
 	// Prefix for each key to a validator
 	ValidatorsKey = []byte{0x21}
 

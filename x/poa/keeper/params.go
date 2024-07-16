@@ -19,18 +19,15 @@ func (k Keeper) GetParams(ctx sdk.Context) (params types.Params) {
 }
 
 // UpdateParams updates the poa module's parameters.
+// Upstream is responsible for setting the `sender` parameter to the actual
+// actor performing the operation.
 func (k Keeper) UpdateParams(
 	ctx sdk.Context,
 	sender sdk.AccAddress,
 	params types.Params,
 ) error {
-	if k.authority.String() != sender.String() {
-		return errorsmod.Wrapf(
-			types.ErrInvalidSigner,
-			"invalid authority; expected %s, got %s",
-			k.authority.String(),
-			sender.String(),
-		)
+	if err := k.CheckOwnership(ctx, sender); err != nil {
+		return err
 	}
 
 	if err := params.Validate(); err != nil {

@@ -304,8 +304,10 @@ func (m *Vote) GetVoters() [][]byte {
 // recent HistoricalInfo. The `n` is determined by the poa's module
 // HistoricalEntries constant.
 type HistoricalInfo struct {
+	// header contains the block's header.
 	Header types.Header `protobuf:"bytes,1,opt,name=header,proto3" json:"header"`
-	Valset []Validator  `protobuf:"bytes,2,rep,name=valset,proto3" json:"valset"`
+	// valset contains the active validator set at the block.
+	Valset []Validator `protobuf:"bytes,2,rep,name=valset,proto3" json:"valset"`
 }
 
 func (m *HistoricalInfo) Reset()         { *m = HistoricalInfo{} }

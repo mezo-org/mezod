@@ -285,7 +285,6 @@ func NewEvmos(
 	app.PoaKeeper = poakeeper.NewKeeper(
 		keys[poatypes.StoreKey],
 		appCodec,
-		authority,
 	)
 	app.CrisisKeeper = crisiskeeper.NewKeeper(
 		app.GetSubspace(crisistypes.ModuleName), invCheckPeriod, app.BankKeeper, authtypes.FeeCollectorName,

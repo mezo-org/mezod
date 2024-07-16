@@ -143,7 +143,7 @@ func (suite *KeeperTestSuite) TestGetCoinbaseAddress() {
 				// add validators upon their application.
 				err := suite.app.PoaKeeper.UpdateParams(
 					suite.ctx,
-					suite.app.PoaKeeper.Authority(),
+					suite.app.PoaKeeper.GetOwner(suite.ctx),
 					poatypes.Params{
 						MaxValidators: poatypes.DefaultMaxValidators,
 						Quorum:        0,
