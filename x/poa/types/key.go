@@ -14,63 +14,53 @@ const (
 	StoreKey = ModuleName
 )
 
-// Key prefixes for the poa module.
+// Standalone keys and key prefixes for the poa module.
 var (
-	// OwnerKey is the standalone key for the owner of the validator pool.
-	OwnerKey = []byte{0x10}
+	OwnerKey = []byte{0x10} // standalone key for the owner of the validator pool
 
-	// Prefix for each key to a validator
-	ValidatorsKey = []byte{0x21}
+	ApplicationKeyPrefix           = []byte{0x20} // prefix for each key to a validator application
+	ApplicationByConsAddrKeyPrefix = []byte{0x21} // prefix for each key to a validator application, by consensus address
 
-	// Prefix for each key to a validator index, by pubkey
-	ValidatorsByConsAddrKey = []byte{0x22}
+	ValidatorKeyPrefix           = []byte{0x30} // prefix for each key to a validator
+	ValidatorByConsAddrKeyPrefix = []byte{0x31} // prefix for each key to a validator index, by consensus address
+	ValidatorStateKeyPrefix      = []byte{0x32} // prefix for each key to a validator state
 
-	// Prefix for each key to a validator state index
-	ValidatorStatesKey = []byte{0x23}
+	KickProposalKeyPrefix = []byte{0x40} // prefix for each key to a kick proposal
 
-	// Prefix for the validator application pool
-	ApplicationPoolKey = []byte{0x24}
-
-	// Prefix for each key to a application index, by pubkey
-	ApplicationByConsAddrKey = []byte{0x25}
-
-	// Prefix for the validator kick proposal pool
-	KickProposalPoolKey = []byte{0x26}
-	// Prefix for the historical info
-	HistoricalInfoKey = []byte{0x27}
+	HistoricalInfoKeyPrefix = []byte{0x50} // prefix for each key to a historical info
 )
 
-// Get the key for the validator by operator address
-func GetValidatorKey(operatorAddr sdk.ValAddress) []byte {
-	return append(ValidatorsKey, operatorAddr.Bytes()...)
-}
-
-// Get the key for the validator by consensus address
-func GetValidatorByConsAddrKey(addr sdk.ConsAddress) []byte {
-	return append(ValidatorsByConsAddrKey, addr.Bytes()...)
-}
-
-// Get the key for the validator state by operator address
-func GetValidatorStateKey(operatorAddr sdk.ValAddress) []byte {
-	return append(ValidatorStatesKey, operatorAddr.Bytes()...)
-}
-
-// Get the key for a validator candidate application by operator address
+// GetApplicationKey gets the key for a validator application by operator address.
 func GetApplicationKey(operatorAddr sdk.ValAddress) []byte {
-	return append(ApplicationPoolKey, operatorAddr.Bytes()...)
+	return append(ApplicationKeyPrefix, operatorAddr.Bytes()...)
 }
 
-// Get the key for a validator candidate application by consensus address
+// GetApplicationByConsAddrKey gets the key for a validator application by consensus address.
 func GetApplicationByConsAddrKey(addr sdk.ConsAddress) []byte {
-	return append(ApplicationByConsAddrKey, addr.Bytes()...)
+	return append(ApplicationByConsAddrKeyPrefix, addr.Bytes()...)
 }
 
-// Get the key for a kick proposal by operator address
+// GetValidatorKey gets the key for the validator by operator address.
+func GetValidatorKey(operatorAddr sdk.ValAddress) []byte {
+	return append(ValidatorKeyPrefix, operatorAddr.Bytes()...)
+}
+
+// GetValidatorByConsAddrKey gets the key for the validator by consensus address.
+func GetValidatorByConsAddrKey(consAddr sdk.ConsAddress) []byte {
+	return append(ValidatorByConsAddrKeyPrefix, consAddr.Bytes()...)
+}
+
+// GetValidatorStateKey gets the key for the validator state by operator address.
+func GetValidatorStateKey(operatorAddr sdk.ValAddress) []byte {
+	return append(ValidatorStateKeyPrefix, operatorAddr.Bytes()...)
+}
+
+// GetKickProposalKey gets the key for a kick proposal by operator address.
 func GetKickProposalKey(operatorAddr sdk.ValAddress) []byte {
-	return append(KickProposalPoolKey, operatorAddr.Bytes()...)
+	return append(KickProposalKeyPrefix, operatorAddr.Bytes()...)
 }
 
-// GetHistoricalInfoKey returns a key prefix for indexing HistoricalInfo objects.
+// GetHistoricalInfoKey gets the key for a historical info by height.
 func GetHistoricalInfoKey(height int64) []byte {
-	return append(HistoricalInfoKey, []byte(strconv.FormatInt(height, 10))...)
+	return append(HistoricalInfoKeyPrefix, []byte(strconv.FormatInt(height, 10))...)
 }

@@ -229,7 +229,7 @@ func (k Keeper) removeApplication(ctx sdk.Context, address sdk.ValAddress) {
 func (k Keeper) GetAllApplications(ctx sdk.Context) (applications []types.Vote) {
 	store := ctx.KVStore(k.storeKey)
 
-	iterator := sdk.KVStorePrefixIterator(store, types.ApplicationPoolKey)
+	iterator := sdk.KVStorePrefixIterator(store, types.ApplicationKeyPrefix)
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {

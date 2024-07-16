@@ -219,7 +219,7 @@ func (k Keeper) removeKickProposal(ctx sdk.Context, address sdk.ValAddress) {
 func (k Keeper) GetAllKickProposals(ctx sdk.Context) (kickProposals []types.Vote) {
 	store := ctx.KVStore(k.storeKey)
 
-	iterator := sdk.KVStorePrefixIterator(store, types.KickProposalPoolKey)
+	iterator := sdk.KVStorePrefixIterator(store, types.KickProposalKeyPrefix)
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {

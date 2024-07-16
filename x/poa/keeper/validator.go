@@ -140,7 +140,7 @@ func (k Keeper) removeValidator(ctx sdk.Context, address sdk.ValAddress) {
 func (k Keeper) GetAllValidators(ctx sdk.Context) (validators []types.Validator) {
 	store := ctx.KVStore(k.storeKey)
 
-	iterator := sdk.KVStorePrefixIterator(store, types.ValidatorsKey)
+	iterator := sdk.KVStorePrefixIterator(store, types.ValidatorKeyPrefix)
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {
