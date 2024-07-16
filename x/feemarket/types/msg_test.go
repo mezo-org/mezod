@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,7 +32,7 @@ func (suite *MsgsTestSuite) TestMsgUpdateValidateBasic() {
 		{
 			"pass - valid msg",
 			&MsgUpdateParams{
-				Authority: authtypes.NewModuleAddress(govtypes.ModuleName).String(),
+				Authority: authtypes.NewModuleAddress("test").String(),
 				Params:    DefaultParams(),
 			},
 			true,

@@ -568,7 +568,6 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MsgClient interface {
 	// UpdateParams defines a governance operation for updating the module parameters.
-	// The authority is hard-coded to the Cosmos SDK x/gov module account
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
 	// SubmitApplication submits an application to join the validator pool.
 	SubmitApplication(ctx context.Context, in *MsgSubmitApplication, opts ...grpc.CallOption) (*MsgSubmitApplicationResponse, error)
@@ -636,7 +635,6 @@ func (c *msgClient) LeaveValidatorSet(ctx context.Context, in *MsgLeaveValidator
 // MsgServer is the server API for Msg service.
 type MsgServer interface {
 	// UpdateParams defines a governance operation for updating the module parameters.
-	// The authority is hard-coded to the Cosmos SDK x/gov module account
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
 	// SubmitApplication submits an application to join the validator pool.
 	SubmitApplication(context.Context, *MsgSubmitApplication) (*MsgSubmitApplicationResponse, error)
