@@ -3,7 +3,7 @@
 HOMEDIR=./.public-testnet
 
 if [ -d "$HOMEDIR" ]; then
-  echo "directory $HOMEDIR already exists; remove it to run this script"
+  echo "directory $HOMEDIR already exist; remove it to run this script"
   exit 1
 fi
 
@@ -152,7 +152,7 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # Set the default minimum gas prices to 1 satoshi.
   sed -i.bak 's/minimum-gas-prices = "0abtc"/minimum-gas-prices = "10000000000abtc"/g' "$NODE_APP_TOML"
 
-  # Set the pruning mode to nothing to make this an archiving node.
+  # Set the pruning mode to nothing to make this an archiving node
   sed -i.bak 's/pruning = "default"/pruning = "nothing"/g' "$NODE_APP_TOML"
 
   # Enable Prometheus metrics.

@@ -21,7 +21,7 @@ echo "using chain-id: $CHAIN_ID"
 echo "using liquid amount: $LIQUID_AMOUNT"
 echo "using stake amount: $STAKE_AMOUNT"
 echo "using node domain: $NODE_DOMAIN"
-echo "using node names: ${NODE_NAMES[@]}"
+echo "using node names: ${NODE_NAMES[*]}"
 
 NODE_HOMEDIRS=()
 NODE_ADDRESSES=()
@@ -33,16 +33,16 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   KEYRING_PASSWORD=$(openssl rand -hex 32)
 
   # Set some configuration options for the node to not repeat them in the commands.
-  ./build/evmosd --home=$NODE_HOMEDIR config chain-id $CHAIN_ID
-  ./build/evmosd --home=$NODE_HOMEDIR config keyring-backend file
+  ./build/evmosd --home="$NODE_HOMEDIR" config chain-id "$CHAIN_ID"
+  ./build/evmosd --home="$NODE_HOMEDIR" config keyring-backend file
 
   # Generate a new account key that will be used to authenticate blockchain transactions.
   # Capture the mnemonic used to generate that key.
-  KEYS_ADD_OUT=$(yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR keys add $NODE_KEY_NAME --output=json)
-  MNEMONIC=$(echo $KEYS_ADD_OUT | jq -r '.mnemonic')
+  KEYS_ADD_OUT=$(yes "$KEYRING_PASSWORD" | ./build/evmosd --home="$NODE_HOMEDIR" keys add "$NODE_KEY_NAME" --output=json)
+  MNEMONIC=$(echo "$KEYS_ADD_OUT" | jq -r '.mnemonic')
 
-  KEYS_SHOW_OUT=$(yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR keys show $NODE_KEY_NAME --output=json)
-  NODE_ADDRESS=$(echo $KEYS_SHOW_OUT | jq -r '.address')
+  KEYS_SHOW_OUT=$(yes "$KEYRING_PASSWORD" | ./build/evmosd --home="$NODE_HOMEDIR" keys show "$NODE_KEY_NAME" --output=json)
+  NODE_ADDRESS=$(echo "$KEYS_SHOW_OUT" | jq -r '.address')
 
   echo "[$NODE_NAME] account key generated"
 
@@ -54,23 +54,23 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # Worth noting that recover mode does not refer to the network key which is always
   # generated anew. However, the network key is not critical and can be replaced
   # without any consequences.
-  yes "$MNEMONIC" | ./build/evmosd --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover &> /dev/null
+  yes "$MNEMONIC" | ./build/evmosd --home="$NODE_HOMEDIR" init "$NODE_NAME" --chain-id="$CHAIN_ID" --recover &> /dev/null
 
   echo "[$NODE_NAME] init action done"
 
   # Adding the account to the local node's genesis file is not strictly necessary
   # as this will be done for the global genesis file. However, it's needed to execute
   # the gentx command that checks the account balance in the local genesis file.
-  yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR add-genesis-account $NODE_KEY_NAME $LIQUID_AMOUNT &> /dev/null
+  yes "$KEYRING_PASSWORD" | ./build/evmosd --home="$NODE_HOMEDIR" add-genesis-account "$NODE_KEY_NAME" "$LIQUID_AMOUNT" &> /dev/null
 
   # Generate the gentx for the node. The gentx is a transaction that creates a
   # validator and stakes an amount to participate in the PoS consensus.
-  yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR gentx $NODE_KEY_NAME $STAKE_AMOUNT --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
+  yes "$KEYRING_PASSWORD" | ./build/evmosd --home="$NODE_HOMEDIR" gentx "$NODE_KEY_NAME" "$STAKE_AMOUNT" --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
 
   echo "[$NODE_NAME] gentx done"
 
-  echo $KEYRING_PASSWORD > $NODE_HOMEDIR/keyring_password.txt
-  echo $MNEMONIC > $NODE_HOMEDIR/mnemonic.txt
+  echo "$KEYRING_PASSWORD" > "$NODE_HOMEDIR"/keyring_password.txt
+  echo "$MNEMONIC" > "$NODE_HOMEDIR"/mnemonic.txt
 
   echo "[$NODE_NAME] keyring password and mnemonic saved to files"
 
@@ -93,25 +93,25 @@ for i in "${!NODE_NAMES[@]}"; do
   # Move node's gentx to the directory used to build the global genesis file.
   # We check if the node's gentx directory exists as it might not if the node
   # is not a validator.
-  NODE_GENTXDIR=$NODE_HOMEDIR/config/gentx
+  NODE_GENTXDIR="$NODE_HOMEDIR"/config/gentx
   if [ -d "$NODE_GENTXDIR" ]; then
-    mv $NODE_GENTXDIR/* $GLOBAL_GENESIS_HOMEDIR/config/gentx
-    rm -rf $NODE_GENTXDIR
+    mv "$NODE_GENTXDIR"/* "$GLOBAL_GENESIS_HOMEDIR"/config/gentx
+    rm -rf "$NODE_GENTXDIR"
   fi
 
   # Remove the local genesis file of the node as it won't be needed anymore.
-  rm $NODE_HOMEDIR/config/genesis.json
+  rm "$NODE_HOMEDIR"/config/genesis.json
 
   # Node's account balance must be added to the global genesis file explicitly.
-  ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
+  ./build/evmosd --home="$GLOBAL_GENESIS_HOMEDIR" add-genesis-account "${NODE_ADDRESSES[$i]}" "$LIQUID_AMOUNT" &> /dev/null
 done
 
 # Aggregate all gentx files into the global genesis file.
-./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR collect-gentxs &> /dev/null
-rm -rf $GLOBAL_GENESIS_HOMEDIR/config/gentx
+./build/evmosd --home="$GLOBAL_GENESIS_HOMEDIR" collect-gentxs &> /dev/null
+rm -rf "$GLOBAL_GENESIS_HOMEDIR"/config/gentx
 
-GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/genesis.json
-TMP_GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/tmp_genesis.json
+GENESIS="$GLOBAL_GENESIS_HOMEDIR"/config/genesis.json
+TMP_GENESIS="$GLOBAL_GENESIS_HOMEDIR"/config/tmp_genesis.json
 
 # Modify necessary parameters in the global genesis file
 #
@@ -123,14 +123,14 @@ jq '.app_state["gov"]["deposit_params"]["min_deposit"][0]["denom"]="abtc"' "$GEN
 jq '.consensus_params["block"]["max_gas"]="10000000"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 # Validate the global genesis file and move it to the root directory.
-./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
-mv $GENESIS $HOMEDIR/genesis.json
-GENESIS=$HOMEDIR/genesis.json # Reassign the GENESIS variable to the new location.
+./build/evmosd --home="$GLOBAL_GENESIS_HOMEDIR" validate-genesis &> /dev/null
+mv "$GENESIS" "$HOMEDIR"/genesis.json
+GENESIS="$HOMEDIR"/genesis.json # Reassign the GENESIS variable to the new location.
 
 echo "global genesis file built and validated"
 
-SEEDS=$(jq -r '.app_state.genutil.gen_txs | .[] | .body.memo' $GENESIS)
-printf "%s\n" "${SEEDS[@]}" > $HOMEDIR/seeds.txt
+SEEDS=$(jq -r '.app_state.genutil.gen_txs | .[] | .body.memo' "$GENESIS")
+printf "%s\n" "${SEEDS[@]}" > "$HOMEDIR"/seeds.txt
 
 for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_HOMEDIR="$HOMEDIR/$NODE_NAME"
@@ -140,13 +140,13 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_CONFIG_TOML="$NODE_CONFIGDIR/config.toml"
 
   # Cleanup the moniker from config. It will be set at startup using a flag.
-  sed -i.bak 's/moniker = '\"$NODE_NAME\"'/moniker = ""/g' "$NODE_CONFIG_TOML"
+  sed -i.bak 's/moniker = '\""$NODE_NAME"\"'/moniker = ""/g' "$NODE_CONFIG_TOML"
 
   # All initial validators should maintain connections to each other.
   # This is why the seeds.txt is used to populate the persistent_peers field
   # and the seeds field is emptied due to being redundant.
-  sed -i.bak -e "s/^seeds =.*/seeds = \"\"/" $NODE_CONFIG_TOML
-  sed -i.bak -e "s/^persistent_peers =.*/persistent_peers = \"$(paste -s -d, $HOMEDIR/seeds.txt)\"/" $NODE_CONFIG_TOML
+  sed -i.bak -e "s/^seeds =.*/seeds = \"\"/" "$NODE_CONFIG_TOML"
+  sed -i.bak -e "s/^persistent_peers =.*/persistent_peers = \"$(paste -s -d, "$HOMEDIR"/seeds.txt)\"/" "$NODE_CONFIG_TOML"
 
   # Set the default minimum gas prices to 1 satoshi.
   sed -i.bak 's/minimum-gas-prices = "0abtc"/minimum-gas-prices = "10000000000abtc"/g' "$NODE_APP_TOML"
@@ -172,7 +172,7 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   sed -i.bak 's/pprof_laddr = "localhost:6060"/pprof_laddr = "0.0.0.0:6060"/g' "$NODE_CONFIG_TOML"
 
   # Remove all backup files created by sed.
-  rm $NODE_CONFIGDIR/*.bak
+  rm "$NODE_CONFIGDIR"/*.bak
 
   echo "[$NODE_NAME] configuration files prepared"
 done
