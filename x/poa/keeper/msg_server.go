@@ -38,47 +38,6 @@ func (ms msgServer) UpdateParams(
 	return &types.MsgUpdateParamsResponse{}, nil
 }
 
-func (ms msgServer) SubmitApplication(
-	ctx context.Context,
-	msg *types.MsgSubmitApplication,
-) (*types.MsgSubmitApplicationResponse, error) {
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-
-	err := ms.keeper.SubmitApplication(sdkCtx, msg.Candidate)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.MsgSubmitApplicationResponse{}, nil
-}
-
-func (ms msgServer) Vote(
-	ctx context.Context,
-	msg *types.MsgVote,
-) (*types.MsgVoteResponse, error) {
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-
-	voterAddr := sdk.ValAddress(msg.VoterAddr)
-	candidateAddr := sdk.ValAddress(msg.CandidateAddr)
-
-	switch msg.VoteType {
-	case types.VoteTypeApplication:
-		err := ms.keeper.VoteApplication(sdkCtx, voterAddr, candidateAddr, msg.Approve)
-		if err != nil {
-			return nil, err
-		}
-	case types.VoteTypeKickProposal:
-		err := ms.keeper.VoteKickProposal(sdkCtx, voterAddr, candidateAddr, msg.Approve)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, types.ErrInvalidVoteMsg
-	}
-
-	return &types.MsgVoteResponse{}, nil
-}
-
 func (ms msgServer) ProposeKick(
 	ctx context.Context,
 	msg *types.MsgProposeKick,

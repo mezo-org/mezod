@@ -6,10 +6,8 @@ import (
 
 // Default parameter namespace
 const (
-	// Default max number of validators
-	DefaultMaxValidators uint32 = 15
-	// Default quorum percentage
-	DefaultQuorum uint32 = 66
+	// DefaultMaxValidators is the default maximum number of validators.
+	DefaultMaxValidators uint32 = 150
 	// DefaultHistoricalEntries is the default number of historical entries
 	// to persist in store.
 	DefaultHistoricalEntries uint32 = 10000
@@ -19,21 +17,20 @@ const (
 var ParamsKey = []byte("Params")
 
 // NewParams creates a new Params object
-func NewParams(maxValidators uint32, quorum uint32) Params {
+func NewParams(maxValidators uint32) Params {
 	return Params{
 		MaxValidators: maxValidators,
-		Quorum:        quorum,
 	}
 }
 
 // String implements the stringer interface for Params
 func (p Params) String() string {
-	return fmt.Sprintf("Max validators: %d, quorum: %d percents", p.MaxValidators, p.Quorum)
+	return fmt.Sprintf("max validators: %d", p.MaxValidators)
 }
 
 // DefaultParams defines the parameters for this module
 func DefaultParams() Params {
-	return NewParams(DefaultMaxValidators, DefaultQuorum)
+	return NewParams(DefaultMaxValidators)
 }
 
 // Validate a set of params
@@ -41,9 +38,7 @@ func (p Params) Validate() error {
 	if err := validateMaxValidators(p.MaxValidators); err != nil {
 		return err
 	}
-	if err := validateQuorum(p.Quorum); err != nil {
-		return err
-	}
+
 	return nil
 }
 
@@ -56,20 +51,6 @@ func validateMaxValidators(i interface{}) error {
 
 	if v == 0 {
 		return fmt.Errorf("max validators must be positive: %d", v)
-	}
-
-	return nil
-}
-
-// Quorum must be a percentage
-func validateQuorum(i interface{}) error {
-	v, ok := i.(uint32)
-	if !ok {
-		return fmt.Errorf("invalid parameter type: %T", i)
-	}
-
-	if v > 100 {
-		return fmt.Errorf("quorum must be a percentage: %d", v)
 	}
 
 	return nil

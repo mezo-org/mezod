@@ -12,9 +12,6 @@ message Params {
 
   // max_validators defines the maximum number of validators in the network.
   uint32 max_validators = 1;
-  // quorum defines the minimum number of validators that need to accept
-  // a new validator's application.
-  uint32 quorum = 2;
 }
 
 // Validator represents a validator in the network.
