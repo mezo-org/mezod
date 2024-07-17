@@ -171,6 +171,9 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   sed -i.bak 's/laddr = "tcp:\/\/127.0.0.1:26657"/laddr = "tcp:\/\/0.0.0.0:26657"/g' "$NODE_CONFIG_TOML"
   sed -i.bak 's/pprof_laddr = "localhost:6060"/pprof_laddr = "0.0.0.0:6060"/g' "$NODE_CONFIG_TOML"
 
+  # Copy the global genesis file.
+  cp "$GENESIS" "$NODE_CONFIGDIR/genesis.json"
+
   # Remove all backup files created by sed.
   rm "$NODE_CONFIGDIR"/*.bak
 
