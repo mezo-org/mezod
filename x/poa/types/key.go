@@ -1,6 +1,8 @@
 package types
 
 import (
+	"strconv"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -30,6 +32,8 @@ var (
 
 	// Prefix for the validator kick proposal pool
 	KickProposalPoolKey = []byte{0x26}
+	// Prefix for the historical info
+	HistoricalInfoKey = []byte{0x27}
 )
 
 // Get the key for the validator by operator address
@@ -60,4 +64,9 @@ func GetApplicationByConsAddrKey(addr sdk.ConsAddress) []byte {
 // Get the key for a kick proposal by operator address
 func GetKickProposalKey(operatorAddr sdk.ValAddress) []byte {
 	return append(KickProposalPoolKey, operatorAddr.Bytes()...)
+}
+
+// GetHistoricalInfoKey returns a key prefix for indexing HistoricalInfo objects.
+func GetHistoricalInfoKey(height int64) []byte {
+	return append(HistoricalInfoKey, []byte(strconv.FormatInt(height, 10))...)
 }

@@ -168,7 +168,9 @@ func (am AppModule) ExportGenesis(
 }
 
 // BeginBlock returns the begin-blocker for the poa module.
-func (am AppModule) BeginBlock(_ sdk.Context, _ abci.RequestBeginBlock) {}
+func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
+	am.keeper.BeginBlocker(ctx)
+}
 
 // EndBlock returns the end blocker for the poa module.
 func (am AppModule) EndBlock(
