@@ -12,6 +12,23 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 )
 
+// ValidatorState is the state of a validator.
+type ValidatorState uint8
+
+const (
+	// ValidatorStateUnknown is the default state of a validator.
+	ValidatorStateUnknown ValidatorState = iota
+	// ValidatorStateJoining means that the validator is not yet present in the
+	// Tendermint consensus validator set and will join it at the end of the block.
+	ValidatorStateJoining
+	// ValidatorStateJoined means that the validator is present in the
+	// Tendermint consensus validator set.
+	ValidatorStateJoined
+	// ValidatorStateLeaving means that the validator will leave the Tendermint
+	// consensus validator set at the end of the block.
+	ValidatorStateLeaving
+)
+
 func NewValidator(operator sdk.ValAddress, pubKey cryptotypes.PubKey, description Description) Validator {
 	var pkStr string
 	if pubKey != nil {
@@ -122,10 +139,3 @@ func NewDescription(moniker, identity, website, securityContact, details string)
 		Details:         details,
 	}
 }
-
-// Validator states
-const (
-	ValidatorStateJoining uint16 = iota // The validator is joining the validator set, it is not yet present in Tendermint validator set
-	ValidatorStateJoined  uint16 = iota // The validator is already present in Tendermind validator set
-	ValidatorStateLeaving uint16 = iota // The validator is leaving the validator set, it will leave Tendermint validator set at the end of the block
-)

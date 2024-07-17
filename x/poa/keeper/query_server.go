@@ -88,16 +88,3 @@ func (qs queryServer) Applications(
 		Applications: applications,
 	}, nil
 }
-
-func (qs queryServer) KickProposals(
-	ctx context.Context,
-	_ *types.QueryKickProposalsRequest,
-) (*types.QueryKickProposalsResponse, error) {
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-
-	kickProposals := qs.keeper.GetAllKickProposals(sdkCtx)
-
-	return &types.QueryKickProposalsResponse{
-		KickProposals: kickProposals,
-	}, nil
-}

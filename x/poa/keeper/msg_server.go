@@ -37,36 +37,3 @@ func (ms msgServer) UpdateParams(
 
 	return &types.MsgUpdateParamsResponse{}, nil
 }
-
-func (ms msgServer) ProposeKick(
-	ctx context.Context,
-	msg *types.MsgProposeKick,
-) (*types.MsgProposeKickResponse, error) {
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-
-	candidateAddr := sdk.ValAddress(msg.CandidateAddr)
-	proposerAddr := sdk.ValAddress(msg.ProposerAddr)
-
-	err := ms.keeper.ProposeKick(sdkCtx, candidateAddr, proposerAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.MsgProposeKickResponse{}, nil
-}
-
-func (ms msgServer) LeaveValidatorSet(
-	ctx context.Context,
-	msg *types.MsgLeaveValidatorSet,
-) (*types.MsgLeaveValidatorSetResponse, error) {
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-
-	validatorAddr := sdk.ValAddress(msg.ValidatorAddr)
-
-	err := ms.keeper.LeaveValidatorSet(sdkCtx, validatorAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.MsgLeaveValidatorSetResponse{}, nil
-}

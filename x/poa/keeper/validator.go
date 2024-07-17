@@ -5,131 +5,186 @@ import (
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
 
-// LeaveValidatorSet removes a validator from the validator set.
-func (k Keeper) LeaveValidatorSet(ctx sdk.Context, validatorAddr sdk.ValAddress) error {
-	// Sender must be a validator
-	validator, found := k.GetValidator(ctx, validatorAddr)
+// Kick forcibly removes a validator from the validator pool.
+// The validator will be removed from active validators at the end of the block.
+//
+// The function returns an error if:
+// - the sender is not the owner,
+// - the validator does not exist,
+// - the validator is already leaving.
+// Returns nil if the validator is successfully kicked.
+//
+// Upstream is responsible for setting the `sender` parameter to the actual
+// actor performing the operation. If the sender address is empty, the function
+// will return an error.
+func (k Keeper) Kick(
+	ctx sdk.Context,
+	sender sdk.AccAddress,
+	operator sdk.ValAddress,
+) error {
+	if err := k.checkOwner(ctx, sender); err != nil {
+		return err
+	}
+
+	return k.setValidatorStateLeaving(ctx, operator)
+}
+
+// Leave voluntarily removes a validator from the validator pool.
+// The validator will be removed from active validators at the end of the block.
+//
+// The function returns an error if:
+// - the sender is not an existing validator,
+// - the validator is already leaving.
+// Returns nil if the validator successfully leaves.
+//
+// Upstream is responsible for setting the `sender` parameter to the actual
+// actor performing the operation. If the sender address is empty, the function
+// will return an error.
+func (k Keeper) Leave(ctx sdk.Context, sender sdk.AccAddress) error {
+	operator := sdk.ValAddress(sender)
+	return k.setValidatorStateLeaving(ctx, operator)
+}
+
+// setValidatorStateLeaving sets the validator state to types.ValidatorStateLeaving.
+// The validator will be removed from active validators at the end of the block.
+//
+// The function returns an error if:
+// - the validator does not exist,
+// - the validator is already leaving.
+// Returns nil if the validator state is successfully set to types.ValidatorStateLeaving.
+func (k Keeper) setValidatorStateLeaving(
+	ctx sdk.Context,
+	operator sdk.ValAddress,
+) error {
+	// Validator must be known.
+	validator, found := k.GetValidator(ctx, operator)
 	if !found {
 		return types.ErrNotValidator
 	}
 
-	// Get validator count
-	allValidators := k.GetAllValidators(ctx)
-	validatorCount := len(allValidators)
-	if validatorCount == 1 {
-		return types.ErrOnlyOneValidator
+	// Check if the validator is not already leaving.
+	validatorState, found := k.GetValidatorState(ctx, operator)
+	if !found {
+		// This should never happen. All validators should have a state.
+		panic("A validator has no state")
+	}
+	if validatorState == types.ValidatorStateLeaving {
+		return types.ErrValidatorLeaving
 	}
 
-	// If a kick proposal exists for this validator, remove it
-	_, found = k.GetKickProposal(ctx, validatorAddr)
-	if found {
-		k.removeKickProposal(ctx, validatorAddr)
-	}
-
-	// Set the state of the validator to leaving, End Blocker will remove the validator from the keeper
+	// Set the validator state to Leaving. Validator removal will be
+	// finalized at the end of the block (see EndBlocker method).
 	k.setValidatorState(ctx, validator, types.ValidatorStateLeaving)
-
-	// Emit approved event
-	ctx.EventManager().EmitEvent(
-		sdk.NewEvent(
-			types.EventTypeLeaveValidatorSet,
-			sdk.NewAttribute(sdk.AttributeKeyModule, types.AttributeValueCategory),
-			sdk.NewAttribute(types.AttributeKeyValidator, validatorAddr.String()),
-		),
-	)
 
 	return nil
 }
 
-// Get a validator
-func (k Keeper) GetValidator(ctx sdk.Context, addr sdk.ValAddress) (validator types.Validator, found bool) {
+// GetValidator gets a validator by the operator address.
+func (k Keeper) GetValidator(
+	ctx sdk.Context,
+	operator sdk.ValAddress,
+) (types.Validator, bool) {
 	store := ctx.KVStore(k.storeKey)
 
-	// Search the value
-	value := store.Get(types.GetValidatorKey(addr))
-	if value == nil {
-		return validator, false
+	value := store.Get(types.GetValidatorKey(operator))
+	if len(value) == 0 {
+		return types.Validator{}, false
 	}
 
-	// Return the value
-	validator = types.MustUnmarshalValidator(k.cdc, value)
-	return validator, true
+	return types.MustUnmarshalValidator(k.cdc, value), true
 }
 
-// Get a validator by consensus address
-func (k Keeper) GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress) (validator types.Validator, found bool) {
+// GetValidatorByConsAddr gets a validator by the consensus address.
+func (k Keeper) GetValidatorByConsAddr(
+	ctx sdk.Context,
+	cons sdk.ConsAddress,
+) (types.Validator, bool) {
 	store := ctx.KVStore(k.storeKey)
 
-	opAddr := store.Get(types.GetValidatorByConsAddrKey(consAddr))
-	if opAddr == nil {
-		return validator, false
+	operator := store.Get(types.GetValidatorByConsAddrKey(cons))
+	if len(operator) == 0 {
+		return types.Validator{}, false
 	}
 
-	return k.GetValidator(ctx, opAddr)
+	return k.GetValidator(ctx, operator)
 }
 
-// Get a validator state
-func (k Keeper) GetValidatorState(ctx sdk.Context, addr sdk.ValAddress) (state uint16, found bool) {
+// GetValidatorState gets the state of a validator.
+func (k Keeper) GetValidatorState(
+	ctx sdk.Context,
+	operator sdk.ValAddress,
+) (types.ValidatorState, bool) {
 	store := ctx.KVStore(k.storeKey)
 
-	// Search the value
-	value := store.Get(types.GetValidatorStateKey(addr))
-	if value == nil {
-		return state, false
+	value := store.Get(types.GetValidatorStateKey(operator))
+	if len(value) == 0 {
+		return types.ValidatorStateUnknown, false
 	}
 
-	// Return the value
-	state = uint16(value[0]) // A single byte represents the state
-	return state, true
+	// A single byte represents the state.
+	return types.ValidatorState(value[0]), true
 }
 
-// Set validator details
+// setValidator stores the given validator.
 func (k Keeper) setValidator(ctx sdk.Context, validator types.Validator) {
 	store := ctx.KVStore(k.storeKey)
-	bz := types.MustMarshalValidator(k.cdc, validator)
-	store.Set(types.GetValidatorKey(validator.OperatorAddress), bz)
+	validatorBytes := types.MustMarshalValidator(k.cdc, validator)
+	store.Set(types.GetValidatorKey(validator.OperatorAddress), validatorBytes)
 }
 
-// Set validator consensus address
+// setValidatorByConsAddr indexes the given validator by the consensus address.
 func (k Keeper) setValidatorByConsAddr(ctx sdk.Context, validator types.Validator) {
 	store := ctx.KVStore(k.storeKey)
-	store.Set(types.GetValidatorByConsAddrKey(validator.GetConsAddr()), validator.OperatorAddress)
+	store.Set(
+		types.GetValidatorByConsAddrKey(validator.GetConsAddr()),
+		validator.OperatorAddress,
+	)
 }
 
-// Set validator state
-func (k Keeper) setValidatorState(ctx sdk.Context, validator types.Validator, state uint16) {
-	if state != types.ValidatorStateJoining && state != types.ValidatorStateJoined && state != types.ValidatorStateLeaving {
+// setValidatorState sets the state of a validator.
+func (k Keeper) setValidatorState(
+	ctx sdk.Context,
+	validator types.Validator,
+	state types.ValidatorState,
+) {
+	if state != types.ValidatorStateJoining &&
+		state != types.ValidatorStateJoined &&
+		state != types.ValidatorStateLeaving {
 		panic("Incorrect validator state")
 	}
 
 	store := ctx.KVStore(k.storeKey)
-	bz := []byte{byte(state)} // The state can be encoded in a single byte
-	store.Set(types.GetValidatorStateKey(validator.OperatorAddress), bz)
+
+	// The state can be encoded in a single byte.
+	stateBytes := []byte{uint8(state)}
+	store.Set(types.GetValidatorStateKey(validator.OperatorAddress), stateBytes)
 }
 
-// Append a validator and set its state to joining
+// appendValidator appends a new validator to the validator pool with the state
+// types.ValidatorStateJoining.
 func (k Keeper) appendValidator(ctx sdk.Context, validator types.Validator) {
 	k.setValidator(ctx, validator)
 	k.setValidatorByConsAddr(ctx, validator)
 	k.setValidatorState(ctx, validator, types.ValidatorStateJoining)
 }
 
-// Remove the validator
-// !!! This function should only be called by the end blocker to ensure the validator is removed from the Tendermint validator state
-// !!! This function is called by the end blocker when the validator state is leaving
-func (k Keeper) removeValidator(ctx sdk.Context, address sdk.ValAddress) {
-	validator, found := k.GetValidator(ctx, address)
+// removeValidator removes a validator from the validator pool.
+//
+// WARNING: This function should only be called by the end blocker to ensure
+// the validator is removed from the Tendermint validator state. This function
+// is called by the end blocker when the validator state is leaving
+func (k Keeper) removeValidator(ctx sdk.Context, operator sdk.ValAddress) {
+	validator, found := k.GetValidator(ctx, operator)
 	if !found {
 		return
 	}
 
-	consAddr := validator.GetConsAddr()
+	cons := validator.GetConsAddr()
 
-	// delete the validator record
 	store := ctx.KVStore(k.storeKey)
-	store.Delete(types.GetValidatorKey(address))
-	store.Delete(types.GetValidatorByConsAddrKey(consAddr))
-	store.Delete(types.GetValidatorStateKey(address))
+	store.Delete(types.GetValidatorKey(operator))
+	store.Delete(types.GetValidatorByConsAddrKey(cons))
+	store.Delete(types.GetValidatorStateKey(operator))
 }
 
 // GetAllValidators gets the set of all validators registered in the module store.
@@ -141,7 +196,9 @@ func (k Keeper) GetAllValidators(ctx sdk.Context) (validators []types.Validator)
 	store := ctx.KVStore(k.storeKey)
 
 	iterator := sdk.KVStorePrefixIterator(store, types.ValidatorKeyPrefix)
-	defer iterator.Close()
+	defer func() {
+		_ = iterator.Close()
+	}()
 
 	for ; iterator.Valid(); iterator.Next() {
 		validator := types.MustUnmarshalValidator(k.cdc, iterator.Value())
