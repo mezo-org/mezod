@@ -1,9 +1,7 @@
 package keeper
 
 import (
-	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
 
@@ -12,42 +10,75 @@ func (k Keeper) GetOwner(ctx sdk.Context) sdk.AccAddress {
 	return ctx.KVStore(k.storeKey).Get(types.OwnerKey)
 }
 
-// TransferOwnership transfers the validator pool ownership to a new address.
+// GetCandidateOwner returns the candidate validator pool owner address.
+func (k Keeper) GetCandidateOwner(ctx sdk.Context) sdk.AccAddress {
+	return ctx.KVStore(k.storeKey).Get(types.CandidateOwnerKey)
+}
+
+// TransferOwnership initializes the 2-step validator pool ownership transfer
+// process. The new owner is set as a candidate owner and must accept the
+// ownership to be promoted to the actual owner.
+//
+// The function returns an error if the sender is not the current owner.
+// Returns nil if the ownership transfer is initialized successfully.
+//
 // Upstream is responsible for setting the `sender` parameter to the actual
-// actor performing the operation.
+// actor performing the operation. If the sender address is empty, the function
+// will return an error.
 func (k Keeper) TransferOwnership(
 	ctx sdk.Context,
 	sender sdk.AccAddress,
 	newOwner sdk.AccAddress,
 ) error {
-	if err := k.CheckOwnership(ctx, sender); err != nil {
+	if err := k.checkOwner(ctx, sender); err != nil {
 		return err
 	}
 
-	k.setOwner(ctx, newOwner)
+	k.setCandidateOwner(ctx, newOwner)
 
 	return nil
+}
+
+// AcceptOwnership finalizes the 2-step validator pool ownership transfer process.
+// The candidate owner is promoted to the actual owner.
+//
+// The function returns an error if the sender is not the current candidate owner
+// or the ownership transfer process is not initialized. Returns nil if the
+// ownership transfer is finalized successfully.
+//
+// Upstream is responsible for setting the `sender` parameter to the actual
+// actor performing the operation. If the sender address is empty, the function
+// will return an error.
+func (k Keeper) AcceptOwnership(
+	ctx sdk.Context,
+	sender sdk.AccAddress,
+) error {
+	if err := k.checkCandidateOwner(ctx, sender); err != nil {
+		return err
+	}
+
+	k.setOwner(ctx, k.GetCandidateOwner(ctx))
+	k.deleteCandidateOwner(ctx)
+
+	return nil
+}
+
+// setCandidateOwner sets the candidate validator pool owner address.
+func (k Keeper) setCandidateOwner(
+	ctx sdk.Context,
+	candidateOwner sdk.AccAddress,
+) {
+	ctx.KVStore(k.storeKey).Set(types.CandidateOwnerKey, candidateOwner)
+}
+
+// deleteCandidateOwner deletes the candidate validator pool owner address.
+func (k Keeper) deleteCandidateOwner(
+	ctx sdk.Context,
+) {
+	ctx.KVStore(k.storeKey).Delete(types.CandidateOwnerKey)
 }
 
 // setOwner sets the validator pool owner address.
 func (k Keeper) setOwner(ctx sdk.Context, owner sdk.AccAddress) {
 	ctx.KVStore(k.storeKey).Set(types.OwnerKey, owner)
-}
-
-// CheckOwnership checks if the sender is the validator pool owner.
-// Returns an error if the sender is not the owner. Returns nil otherwise.
-func (k Keeper) CheckOwnership(ctx sdk.Context, sender sdk.AccAddress) error {
-	ownerStr := k.GetOwner(ctx).String()
-	senderStr := sender.String()
-
-	if ownerStr != senderStr {
-		return errorsmod.Wrapf(
-			sdkerrors.ErrorInvalidSigner,
-			"not the validator pool owner; expected %s, got %s",
-			ownerStr,
-			senderStr,
-		)
-	}
-
-	return nil
 }

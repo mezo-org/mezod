@@ -26,7 +26,7 @@ func (k Keeper) UpdateParams(
 	sender sdk.AccAddress,
 	params types.Params,
 ) error {
-	if err := k.CheckOwnership(ctx, sender); err != nil {
+	if err := k.checkOwner(ctx, sender); err != nil {
 		return err
 	}
 

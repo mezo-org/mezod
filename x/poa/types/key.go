@@ -16,7 +16,8 @@ const (
 
 // Standalone keys and key prefixes for the poa module.
 var (
-	OwnerKey = []byte{0x10} // standalone key for the owner of the validator pool
+	OwnerKey          = []byte{0x10} // standalone key for the owner of the validator pool
+	CandidateOwnerKey = []byte{0x11} // standalone key for the candidate owner of the validator pool
 
 	ApplicationKeyPrefix           = []byte{0x20} // prefix for each key to a validator application
 	ApplicationByConsAddrKeyPrefix = []byte{0x21} // prefix for each key to a validator application, by consensus address
