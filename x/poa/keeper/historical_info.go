@@ -67,7 +67,7 @@ func (k Keeper) TrackHistoricalInfo(ctx sdk.Context) {
 		}
 	}
 
-	// if there is no need to persist historicalInfo, return
+	// If there is no need to persist historicalInfo, return
 	if entryNum == 0 {
 		return
 	}
