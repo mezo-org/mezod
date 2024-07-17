@@ -1,11 +1,11 @@
 package types
 
 import (
+	errorsmod "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	//nolint:staticcheck
@@ -29,63 +29,78 @@ const (
 	ValidatorStateLeaving
 )
 
-func NewValidator(operator sdk.ValAddress, pubKey cryptotypes.PubKey, description Description) Validator {
-	var pkStr string
-	if pubKey != nil {
-		//nolint:staticcheck
-		pkStr = legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pubKey)
+// NewValidator creates a new validator. Validates inputs and returns an error
+// if any of them is invalid.
+func NewValidator(
+	operator sdk.ValAddress,
+	consPubKey cryptotypes.PubKey,
+	description Description,
+) (Validator, error) {
+	if operator.Empty() {
+		return Validator{}, errorsmod.Wrap(
+			ErrInvalidValidator,
+			"missing operator address",
+		)
+	}
+
+	if consPubKey == nil {
+		return Validator{}, errorsmod.Wrap(
+			ErrInvalidValidator,
+			"missing consensus public key",
+		)
+	}
+
+	consPubKeyBech32, err := legacybech32.MarshalPubKey(
+		legacybech32.ConsPK,
+		consPubKey,
+	)
+	if err != nil {
+		return Validator{}, errorsmod.Wrapf(
+			ErrInvalidValidator,
+			"cannot marshal consensus public key: %v",
+			err,
+		)
 	}
 
 	return Validator{
-		OperatorAddress: operator,
-		ConsensusPubkey: pkStr,
-		Description:     description,
-	}
+		// This converts the ValAddress to a bech32 string.
+		OperatorBech32:   operator.String(),
+		ConsPubKeyBech32: consPubKeyBech32,
+		Description:      description,
+	}, nil
 }
 
-// Accessors
+// GetOperator gets the operator address of the validator.
 func (v Validator) GetOperator() sdk.ValAddress {
-	return v.OperatorAddress
+	operator, err := sdk.ValAddressFromBech32(v.OperatorBech32)
+	if err != nil {
+		// Should never happen. The address is validated when the validator is created.
+		panic(err)
+	}
+	return operator
 }
 
-func (v Validator) GetConsPubKeyString() string {
-	return v.ConsensusPubkey
-}
-
+// GetConsPubKey gets the consensus public key of the validator.
 func (v Validator) GetConsPubKey() cryptotypes.PubKey {
 	//nolint:staticcheck
 	pubKey, err := legacybech32.UnmarshalPubKey(
 		legacybech32.ConsPK,
-		v.ConsensusPubkey,
+		v.ConsPubKeyBech32,
 	)
 	if err != nil {
+		// Should never happen. The public key is validated when the validator is created.
 		panic(err)
 	}
 
 	return pubKey
 }
 
-func (v Validator) GetConsAddr() sdk.ConsAddress {
+// GetConsAddress gets the consensus address of the validator.
+func (v Validator) GetConsAddress() sdk.ConsAddress {
 	return sdk.ConsAddress(v.GetConsPubKey().Address())
 }
 
-func (v Validator) CheckValid() error {
-	if v.GetOperator().Empty() {
-		//nolint:staticcheck
-		return sdkerrors.Wrap(ErrInvalidValidator, "missing validator address")
-	}
-	if v.GetConsPubKeyString() == "" {
-		//nolint:staticcheck
-		return sdkerrors.Wrap(ErrInvalidValidator, "missing consensus pubkey")
-	}
-	if v.GetDescription() == (Description{}) {
-		//nolint:staticcheck
-		return sdkerrors.Wrap(ErrInvalidValidator, "empty description")
-	}
-	return nil
-}
-
-// Get a ABCI validator update object from the validator
+// ABCIValidatorUpdateAppend gets an ABCI validator update object from the validator.
 func (v Validator) ABCIValidatorUpdateAppend() abci.ValidatorUpdate {
 	pubKey, err := cryptocdc.ToTmProtoPublicKey(v.GetConsPubKey())
 	if err != nil {
@@ -98,7 +113,8 @@ func (v Validator) ABCIValidatorUpdateAppend() abci.ValidatorUpdate {
 	}
 }
 
-// Get a ABCI validator update with no voting power from the validator
+// ABCIValidatorUpdateRemove gets a ABCI validator update with no voting power
+// from the validator.
 func (v Validator) ABCIValidatorUpdateRemove() abci.ValidatorUpdate {
 	pubKey, err := cryptocdc.ToTmProtoPublicKey(v.GetConsPubKey())
 	if err != nil {
@@ -111,11 +127,12 @@ func (v Validator) ABCIValidatorUpdateRemove() abci.ValidatorUpdate {
 	}
 }
 
-// Validator encoding functions
+// MustMarshalValidator marshals a validator to bytes. It panics on error.
 func MustMarshalValidator(cdc codec.BinaryCodec, validator Validator) []byte {
 	return cdc.MustMarshal(&validator)
 }
 
+// MustUnmarshalValidator unmarshals a validator from bytes. It panics on error.
 func MustUnmarshalValidator(cdc codec.BinaryCodec, value []byte) Validator {
 	validator, err := UnmarshalValidator(cdc, value)
 	if err != nil {
@@ -124,12 +141,13 @@ func MustUnmarshalValidator(cdc codec.BinaryCodec, value []byte) Validator {
 	return validator
 }
 
+// UnmarshalValidator unmarshals a validator from bytes.
 func UnmarshalValidator(cdc codec.BinaryCodec, value []byte) (v Validator, err error) {
 	err = cdc.Unmarshal(value, &v)
 	return v, err
 }
 
-// Create a new Description
+// NewDescription creates a new description.
 func NewDescription(moniker, identity, website, securityContact, details string) Description {
 	return Description{
 		Moniker:         moniker,

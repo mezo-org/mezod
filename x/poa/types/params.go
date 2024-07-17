@@ -13,27 +13,27 @@ const (
 	DefaultHistoricalEntries uint32 = 10000
 )
 
-// ParamsKey store key for params
+// ParamsKey store key for params.
 var ParamsKey = []byte("Params")
 
-// NewParams creates a new Params object
+// NewParams creates a new Params object.
 func NewParams(maxValidators uint32) Params {
 	return Params{
 		MaxValidators: maxValidators,
 	}
 }
 
-// String implements the stringer interface for Params
+// String implements the stringer interface for Params.
 func (p Params) String() string {
 	return fmt.Sprintf("max validators: %d", p.MaxValidators)
 }
 
-// DefaultParams defines the parameters for this module
+// DefaultParams defines the parameters for this module.
 func DefaultParams() Params {
 	return NewParams(DefaultMaxValidators)
 }
 
-// Validate a set of params
+// Validate validates a set of params.
 func (p Params) Validate() error {
 	if err := validateMaxValidators(p.MaxValidators); err != nil {
 		return err
@@ -42,7 +42,7 @@ func (p Params) Validate() error {
 	return nil
 }
 
-// Validate maxValidators param
+// validateMaxValidators validates the max validators parameter.
 func validateMaxValidators(i interface{}) error {
 	v, ok := i.(uint32)
 	if !ok {

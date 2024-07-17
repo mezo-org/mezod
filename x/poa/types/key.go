@@ -26,39 +26,32 @@ var (
 	ValidatorByConsAddrKeyPrefix = []byte{0x31} // prefix for each key to a validator index, by consensus address
 	ValidatorStateKeyPrefix      = []byte{0x32} // prefix for each key to a validator state
 
-	KickProposalKeyPrefix = []byte{0x40} // prefix for each key to a kick proposal
-
-	HistoricalInfoKeyPrefix = []byte{0x50} // prefix for each key to a historical info
+	HistoricalInfoKeyPrefix = []byte{0x40} // prefix for each key to a historical info
 )
 
 // GetApplicationKey gets the key for a validator application by operator address.
-func GetApplicationKey(operatorAddr sdk.ValAddress) []byte {
-	return append(ApplicationKeyPrefix, operatorAddr.Bytes()...)
+func GetApplicationKey(operator sdk.ValAddress) []byte {
+	return append(ApplicationKeyPrefix, operator.Bytes()...)
 }
 
 // GetApplicationByConsAddrKey gets the key for a validator application by consensus address.
-func GetApplicationByConsAddrKey(consAddr sdk.ConsAddress) []byte {
-	return append(ApplicationByConsAddrKeyPrefix, consAddr.Bytes()...)
+func GetApplicationByConsAddrKey(cons sdk.ConsAddress) []byte {
+	return append(ApplicationByConsAddrKeyPrefix, cons.Bytes()...)
 }
 
 // GetValidatorKey gets the key for the validator by operator address.
-func GetValidatorKey(operatorAddr sdk.ValAddress) []byte {
-	return append(ValidatorKeyPrefix, operatorAddr.Bytes()...)
+func GetValidatorKey(operator sdk.ValAddress) []byte {
+	return append(ValidatorKeyPrefix, operator.Bytes()...)
 }
 
 // GetValidatorByConsAddrKey gets the key for the validator by consensus address.
-func GetValidatorByConsAddrKey(consAddr sdk.ConsAddress) []byte {
-	return append(ValidatorByConsAddrKeyPrefix, consAddr.Bytes()...)
+func GetValidatorByConsAddrKey(cons sdk.ConsAddress) []byte {
+	return append(ValidatorByConsAddrKeyPrefix, cons.Bytes()...)
 }
 
 // GetValidatorStateKey gets the key for the validator state by operator address.
-func GetValidatorStateKey(operatorAddr sdk.ValAddress) []byte {
-	return append(ValidatorStateKeyPrefix, operatorAddr.Bytes()...)
-}
-
-// GetKickProposalKey gets the key for a kick proposal by operator address.
-func GetKickProposalKey(operatorAddr sdk.ValAddress) []byte {
-	return append(KickProposalKeyPrefix, operatorAddr.Bytes()...)
+func GetValidatorStateKey(operator sdk.ValAddress) []byte {
+	return append(ValidatorStateKeyPrefix, operator.Bytes()...)
 }
 
 // GetHistoricalInfoKey gets the key for a historical info by height.

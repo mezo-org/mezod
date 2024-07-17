@@ -42,6 +42,7 @@ func (k Keeper) Kick(
 // will return an error.
 func (k Keeper) Leave(ctx sdk.Context, sender sdk.AccAddress) error {
 	operator := sdk.ValAddress(sender)
+	// TODO: What happens if this is the last validator?
 	return k.setValidatorStateLeaving(ctx, operator)
 }
 
@@ -129,15 +130,15 @@ func (k Keeper) GetValidatorState(
 func (k Keeper) setValidator(ctx sdk.Context, validator types.Validator) {
 	store := ctx.KVStore(k.storeKey)
 	validatorBytes := types.MustMarshalValidator(k.cdc, validator)
-	store.Set(types.GetValidatorKey(validator.OperatorAddress), validatorBytes)
+	store.Set(types.GetValidatorKey(validator.GetOperator()), validatorBytes)
 }
 
 // setValidatorByConsAddr indexes the given validator by the consensus address.
 func (k Keeper) setValidatorByConsAddr(ctx sdk.Context, validator types.Validator) {
 	store := ctx.KVStore(k.storeKey)
 	store.Set(
-		types.GetValidatorByConsAddrKey(validator.GetConsAddr()),
-		validator.OperatorAddress,
+		types.GetValidatorByConsAddrKey(validator.GetConsAddress()),
+		validator.GetOperator(),
 	)
 }
 
@@ -157,7 +158,7 @@ func (k Keeper) setValidatorState(
 
 	// The state can be encoded in a single byte.
 	stateBytes := []byte{uint8(state)}
-	store.Set(types.GetValidatorStateKey(validator.OperatorAddress), stateBytes)
+	store.Set(types.GetValidatorStateKey(validator.GetOperator()), stateBytes)
 }
 
 // appendValidator appends a new validator to the validator pool with the state
@@ -179,7 +180,7 @@ func (k Keeper) removeValidator(ctx sdk.Context, operator sdk.ValAddress) {
 		return
 	}
 
-	cons := validator.GetConsAddr()
+	cons := validator.GetConsAddress()
 
 	store := ctx.KVStore(k.storeKey)
 	store.Delete(types.GetValidatorKey(operator))
@@ -213,7 +214,7 @@ func (k Keeper) GetAllValidators(ctx sdk.Context) (validators []types.Validator)
 // the state types.ValidatorStateJoined.
 func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validator) {
 	for _, validator := range k.GetAllValidators(ctx) {
-		state, found := k.GetValidatorState(ctx, validator.OperatorAddress)
+		state, found := k.GetValidatorState(ctx, validator.GetOperator())
 		// Panic on no state.
 		if !found {
 			panic("Found a validator with no state, a validator should always have a state")

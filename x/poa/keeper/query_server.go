@@ -55,18 +55,18 @@ func (qs queryServer) Validator(
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
 
-	if len(request.ValidatorAddr) == 0 {
+	if len(request.Operator) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "validator address cannot be empty")
 	}
 
-	validatorAddr, err := sdk.ValAddressFromBech32(request.ValidatorAddr)
+	operator, err := sdk.ValAddressFromBech32(request.Operator)
 	if err != nil {
 		return nil, err
 	}
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 
-	validator, found := qs.keeper.GetValidator(sdkCtx, validatorAddr)
+	validator, found := qs.keeper.GetValidator(sdkCtx, operator)
 	if !found {
 		return nil, types.ErrNoValidatorFound
 	}

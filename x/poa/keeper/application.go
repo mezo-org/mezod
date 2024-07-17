@@ -39,7 +39,7 @@ func (k Keeper) SubmitApplication(
 	if found {
 		return types.ErrAlreadyValidator
 	}
-	_, found = k.GetValidatorByConsAddr(ctx, validator.GetConsAddr())
+	_, found = k.GetValidatorByConsAddr(ctx, validator.GetConsAddress())
 	if found {
 		return types.ErrAlreadyValidator
 	}
@@ -49,7 +49,7 @@ func (k Keeper) SubmitApplication(
 	if found {
 		return types.ErrAlreadyApplying
 	}
-	_, found = k.GetApplicationByConsAddr(ctx, validator.GetConsAddr())
+	_, found = k.GetApplicationByConsAddr(ctx, validator.GetConsAddress())
 	if found {
 		return types.ErrAlreadyApplying
 	}
@@ -98,7 +98,7 @@ func (k Keeper) ApproveApplication(
 	}
 
 	k.removeApplication(ctx, operator)
-	k.appendValidator(ctx, application.GetSubject())
+	k.appendValidator(ctx, application.GetValidator())
 
 	return nil
 }
@@ -107,38 +107,38 @@ func (k Keeper) ApproveApplication(
 func (k Keeper) GetApplication(
 	ctx sdk.Context,
 	operator sdk.ValAddress,
-) (types.Vote, bool) {
+) (types.Application, bool) {
 	store := ctx.KVStore(k.storeKey)
 
 	value := store.Get(types.GetApplicationKey(operator))
 	if len(value) == 0 {
-		return types.Vote{}, false
+		return types.Application{}, false
 	}
 
-	return types.MustUnmarshalVote(k.cdc, value), true
+	return types.MustUnmarshalApplication(k.cdc, value), true
 }
 
 // GetApplicationByConsAddr gets an application by the given candidate consensus address.
 func (k Keeper) GetApplicationByConsAddr(
 	ctx sdk.Context,
 	cons sdk.ConsAddress,
-) (types.Vote, bool) {
+) (types.Application, bool) {
 	store := ctx.KVStore(k.storeKey)
 
 	operator := store.Get(types.GetApplicationByConsAddrKey(cons))
 	if len(operator) == 0 {
-		return types.Vote{}, false
+		return types.Application{}, false
 	}
 
 	return k.GetApplication(ctx, operator)
 }
 
 // setApplication stores the given application.
-func (k Keeper) setApplication(ctx sdk.Context, application types.Vote) {
+func (k Keeper) setApplication(ctx sdk.Context, application types.Application) {
 	store := ctx.KVStore(k.storeKey)
-	applicationBytes := types.MustMarshalVote(k.cdc, application)
+	applicationBytes := types.MustMarshalApplication(k.cdc, application)
 	store.Set(
-		types.GetApplicationKey(application.GetSubject().GetOperator()),
+		types.GetApplicationKey(application.GetValidator().GetOperator()),
 		applicationBytes,
 	)
 }
@@ -146,18 +146,18 @@ func (k Keeper) setApplication(ctx sdk.Context, application types.Vote) {
 // setApplicationByConsAddr indexes the given application by the candidate consensus address.
 func (k Keeper) setApplicationByConsAddr(
 	ctx sdk.Context,
-	application types.Vote,
+	application types.Application,
 ) {
 	store := ctx.KVStore(k.storeKey)
 	store.Set(
-		types.GetApplicationByConsAddrKey(application.GetSubject().GetConsAddr()),
-		application.GetSubject().GetOperator(),
+		types.GetApplicationByConsAddrKey(application.GetValidator().GetConsAddress()),
+		application.GetValidator().GetOperator(),
 	)
 }
 
 // appendApplication appends a new application for the given candidate validator.
 func (k Keeper) appendApplication(ctx sdk.Context, validator types.Validator) {
-	application := types.NewVote(validator)
+	application := types.NewApplication(validator)
 	k.setApplication(ctx, application)
 	k.setApplicationByConsAddr(ctx, application)
 }
@@ -172,16 +172,16 @@ func (k Keeper) removeApplication(
 		return
 	}
 
-	candidateCons := application.GetSubject().GetConsAddr()
+	validatorCons := application.GetValidator().GetConsAddress()
 
 	// delete the validator record
 	store := ctx.KVStore(k.storeKey)
 	store.Delete(types.GetApplicationKey(operator))
-	store.Delete(types.GetApplicationByConsAddrKey(candidateCons))
+	store.Delete(types.GetApplicationByConsAddrKey(validatorCons))
 }
 
 // GetAllApplications gets all applications.
-func (k Keeper) GetAllApplications(ctx sdk.Context) (applications []types.Vote) {
+func (k Keeper) GetAllApplications(ctx sdk.Context) (applications []types.Application) {
 	store := ctx.KVStore(k.storeKey)
 
 	iterator := sdk.KVStorePrefixIterator(store, types.ApplicationKeyPrefix)
@@ -190,7 +190,7 @@ func (k Keeper) GetAllApplications(ctx sdk.Context) (applications []types.Vote) 
 	}()
 
 	for ; iterator.Valid(); iterator.Next() {
-		application := types.MustUnmarshalVote(k.cdc, iterator.Value())
+		application := types.MustUnmarshalApplication(k.cdc, iterator.Value())
 		applications = append(applications, application)
 	}
 
