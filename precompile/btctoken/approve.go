@@ -52,7 +52,7 @@ func (am *approveMethod) MethodName() string {
 }
 
 func (am *approveMethod) MethodType() precompile.MethodType {
-	return precompile.Read
+	return precompile.Write
 }
 
 func (am *approveMethod) RequiredGas(_ []byte) (uint64, bool) {
