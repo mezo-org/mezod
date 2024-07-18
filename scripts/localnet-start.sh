@@ -5,7 +5,7 @@ LOGLEVEL="info"
 TRACE=""
 
 if [ ! -d "$HOMEDIR" ]; then
-  echo "localnet directory $HOMEDIR does not exist; run scripts/localnet.sh first."
+  echo "localnet directory $HOMEDIR does not exist; run localnet-bin-init first."
   exit 1
 fi
 
