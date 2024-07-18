@@ -62,5 +62,13 @@ func (tom *transferOwnershipMethod) Run(context *precompile.RunContext, inputs p
 		return nil, err
 	}
 
+	// emit ownershipTransferStarted event
+	err = context.EventEmitter().Emit(
+		newOwnershipTransferStartedEvent(context.MsgSender(), newOwner),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit ownershipTransferStarted event: [%w]", err)
+	}
+
 	return precompile.MethodOutputs{true}, nil
 }
