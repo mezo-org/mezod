@@ -15,9 +15,18 @@ var filesystem embed.FS
 
 // EvmAddress is the EVM address of the validator pool precompile.
 // EVM native precompiles reserve the addresses from 0x...01 to 0x...09.
-// We use the opposite range (0x1... to 0x9...) for custom Mezo precompiles to
-// avoid collisions.
-const EvmAddress = "0x2000000000000000000000000000000000000000"
+// We use the prefix 0x7b7c for custom Mezo precompiles to avoid collisions
+// Mezo precompile address space:
+//
+// 0x7b7c000000000000000000000000000000000000 - Bitcoin
+// reserved space (token precompiles)
+//
+// 0x7b7c000000000000000000000000000000000010 - PoHODL Staking
+// 0x7b7c000000000000000000000000000000000011 - Validator Pool
+// reserved space (consensus precompiles)
+//
+// 0x7b7c000000000000000000000000000000000020 - Token Bridge
+const EvmAddress = "0x7b7c000000000000000000000000000000000011"
 
 type PoaKeeper interface {
 	// SubmitApplication submits a new application to the validator pool
