@@ -429,6 +429,8 @@ func initGenesisFiles(
 
 	var poaGenState poatypes.GenesisState
 	clientCtx.Codec.MustUnmarshalJSON(appGenState[poatypes.ModuleName], &poaGenState)
+	// Set the first validator as the initial owner.
+	poaGenState.Owner = sdk.AccAddress(validators[0].GetOperator()).String()
 	poaGenState.Validators = validators
 	appGenState[poatypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&poaGenState)
 

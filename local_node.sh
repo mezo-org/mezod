@@ -12,7 +12,7 @@ KEYRING="test"
 KEYALGO="eth_secp256k1"
 LOGLEVEL="info"
 # Set dedicated home directory for the evmosd instance
-HOMEDIR="$HOME/.tmp-evmosd"
+HOMEDIR="./.hehe"
 # to trace evm
 #TRACE="--trace"
 TRACE=""
@@ -61,6 +61,10 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# Set moniker and chain-id for Evmos (Moniker can be anything, chain-id must be an integer)
 	evmosd init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR"
+
+	# Set the PoA owner.
+	OWNER=$(evmosd keys show "${KEYS[0]}" --address --bech acc --keyring-backend $KEYRING --home "$HOMEDIR")
+	jq '.app_state["poa"]["owner"]="'$OWNER'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Change parameter token denominations to abtc
 	jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
