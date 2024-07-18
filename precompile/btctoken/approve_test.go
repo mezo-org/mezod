@@ -59,34 +59,6 @@ func (s *PrecompileTestSuite) TestApprove() {
 			},
 			errContains: "cannot use string as type ptr as argument",
 		},
-
-		// TODO: Needs more investigation. When using the ABI.Pack method,
-		// a negative number is converted to a max uint256 and is being passed
-		// as a max number to the precompiled approve function.
-		// {
-		// 	name: "fail - negative amount",
-		// 	run: func() []interface{} {
-		// 		return []interface{}{
-		// 			s.account1.Addr, big.NewInt(-1),
-		// 		}
-		// 	},
-		// 	basicPass: true,
-		// 	errContains: "cannot approve negative values",
-		// },
-
-		// TODO: Needs more investigation. When using the ABI.Pack method,
-		// an overflow number hits the max limit and resets.
-		// {
-		// 	name: "fail - approve uint256 overflow",
-		// 	run: func() []interface{} {
-		// 		return []interface{}{
-		// 			s.account1.Addr, new(big.Int).Add(abi.MaxUint256, common.Big1),
-		// 		}
-		// 	},
-		// 	basicPass: true,
-		// 	errContains: "causes integer overflow",
-		// },
-
 		{
 			name: "approve without existing authorization",
 			run: func() []interface{} {
