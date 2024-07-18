@@ -2,8 +2,9 @@ package keeper
 
 import (
 	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"testing"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	//nolint:staticcheck

@@ -1,11 +1,12 @@
 package keeper
 
 import (
+	"testing"
+
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/evmos/evmos/v12/x/poa/types"
-	"testing"
 )
 
 func TestTransferOwnership(t *testing.T) {
@@ -42,7 +43,7 @@ func TestTransferOwnership(t *testing.T) {
 	}
 	currentOwner := poaKeeper.GetOwner(ctx)
 	if !currentOwner.Equals(owner) {
-		t.Errorf("TransferOwnership should not change the owner imediately")
+		t.Errorf("TransferOwnership should not change the owner immediately")
 	}
 	currentCandidateOwner := poaKeeper.GetCandidateOwner(ctx)
 	if !currentCandidateOwner.Equals(candidateOwner) {
@@ -66,7 +67,7 @@ func TestAcceptOwnership(t *testing.T) {
 	err := poaKeeper.AcceptOwnership(ctx, candidateOwner)
 	if err.Error() != types.ErrOwnershipTransferNotInitialized.Error() {
 		t.Errorf(
-			"AcceptOwnership when not initalized, error should be %v, got %v",
+			"AcceptOwnership when not initialized, error should be %v, got %v",
 			types.ErrOwnershipTransferNotInitialized.Error(),
 			err.Error(),
 		)

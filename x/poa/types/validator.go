@@ -50,6 +50,7 @@ func NewValidator(
 		)
 	}
 
+	//nolint:staticcheck
 	consPubKeyBech32, err := legacybech32.MarshalPubKey(
 		legacybech32.ConsPK,
 		consPubKey,
