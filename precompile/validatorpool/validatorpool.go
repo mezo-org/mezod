@@ -29,6 +29,8 @@ type ValidatorPool interface {
 	Leave(types.Context, types.AccAddress) error
 	// Kick (onlyOwner) removes a validator from the pool
 	Kick(types.Context, types.AccAddress, types.ValAddress) error
+	// GetOwner returns the validator pool owner address
+	GetOwner(types.Context) types.AccAddress
 	// TransferOwnership (onlyOwner) starts ownership transfer flow with a pending
 	// ownership transfer
 	TransferOwnership(types.Context, types.AccAddress, types.AccAddress) error

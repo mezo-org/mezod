@@ -1,6 +1,8 @@
 package validatorpool
 
 import (
+	"fmt"
+
 	"github.com/evmos/evmos/v12/precompile"
 )
 
@@ -42,12 +44,26 @@ func (aom *acceptOwnershipMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, err
 	}
 
+	// get owner before calling AcceptOwnership in the keeper
+	previousOwner := aom.keeper.GetOwner(context.SdkCtx())
+
 	err := aom.keeper.AcceptOwnership(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// emit ownershipTransferred event
+	err = context.EventEmitter().Emit(
+		newOwnershipTransferredEvent(
+			precompile.TypesConverter.Address.FromSDK(previousOwner),
+			context.MsgSender(),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit ownershipTransferred event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{true}, nil
