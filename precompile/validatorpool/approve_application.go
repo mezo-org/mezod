@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 )
 
@@ -48,19 +49,28 @@ func (aam *approveApplicationMethod) Run(context *precompile.RunContext, inputs 
 		return nil, err
 	}
 
-	// TODO(iquidus): is this valid?
-	operator, ok := inputs[0].(types.ValAddress)
+	operator, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("operator argument must be common.Address")
+		return nil, fmt.Errorf("operator argument must be of type common.Address")
 	}
 
 	err := aam.keeper.ApproveApplication(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
-		operator,
+		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// emit event
+	err = context.EventEmitter().Emit(
+		newApplicationApprovedEvent(
+			operator,
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit ApplicationApproved event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{true}, nil
