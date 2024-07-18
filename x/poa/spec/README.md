@@ -9,24 +9,25 @@ parent:
 
 ## Abstract
 
-The module enables a Cosmos-SDK based blockchain to use a Proof of Authority system to determine the validator set.
+The module enables a Cosmos-SDK based blockchain to use a Proof of Authority 
+system to determine the validator set.
+
+An initial validator set is defined in the genesis file. Subsequent
+validators submit candidate applications to join the validator set. The
+module's owner has an authority to approve these applications.
+
+A validator can voluntarily leave the validator set or be kicked out by the
+module's owner.
 
 All validators in the system have equal voting power.
 
-An initial validator set is defined in the genesis file.
-Validators can be appended or kicked from the validator set through voting from the current validators.
-
-A quorum percentage is defined in the parameters of the module.
-This quorum defines the number of approvals required to vote decision.
-
-For example: if the quorum is 50% and the current validator set contains
-10 validators. 5 validator approvals are required to accept a new candidate
-in the validator set.
+The module's owner can transfer the ownership to another account in a 2-step
+process. The new owner must accept the ownership transfer before the transfer
+is completed. The initial owner must be defined in the genesis file.
 
 ## Contents
 
 1. **[State](01_state.md)**
-2. **[Messages](02_messages.md)**
+2. **[Start-Block](02_start_block.md)**
 3. **[End-Block](03_end_block.md)**
-4. **[Events](04_events.md)**
-5. **[Parameters](05_params.md)**
+4. **[Parameters](04_params.md)**

@@ -7,93 +7,166 @@ order: 1
 ## Params
 
 Params is a module-wide configuration structure that stores system parameters
-and defines the overall functioning of the staking module.
+and defines the overall functioning of the PoA module.
 
-- Params: `Paramsspace("poa") -> amino(params)`
+### Keys
+
+- `Params`: `0x10 | types.Params`
+
+`Params` is the primary entry storing the module's parameters.
+
+### Types
 
 ```go
 type Params struct {
-    MaxValidators   uint16         // Maximum number of validators
-    Quorum          uint16	   // The percentage of validator approvals to reach to vote a decision (new validator or kick)
+    MaxValidators uint32 // Maximum number of validators
+}
+```
+
+## Owner
+
+The owner is the entity that has the right to change the validator set
+and the module's parameters. The owner can transfer the ownership to another
+account, in a 2-step process. The new owner must accept the ownership transfer
+before the transfer is completed.
+
+### Keys
+
+- `Owner`: `0x20 | sdk.AccAddress`
+- `CandidateOwner`: `0x21 | sdk.AccAddress`
+
+`Owner` is the primary entry storing the current module's owner.
+
+`CandidateOwner` is the primary entry storing the candidate owner during
+module's ownership transfer.
+
+### Types
+
+The owner's state does not use any custom types. It works with the 
+Cosmos SDK `sdk.AccAddress` type.
+
+## Application
+
+The application pool tracks all the current applications. An operator can only
+be one validator, therefore the application can be accessed by the operator
+address.
+
+### Keys
+
+- `Application`: `0x30 | sdk.ValAddress -> type.Application`
+- `ApplicationByConsAddr`: `0x31 | sdk.ConsAddress -> sdk.ValAddress`
+
+`Application` is the primary index - it ensures that each operator can have
+only one application
+
+`ApplicationByConsAddr` is an additional index to ensure there is no two
+applications with the same consensus public key.
+
+### Types
+
+An application is stored in an `Application` structure. The `Validator` field
+represents the potential new validator.
+
+```go
+type Application struct {
+    // Validator is the candidate that is subject of the application.
+    Validator Validator
 }
 ```
 
 ## Validator
 
 Validators objects should be primarily stored and accessed by the
-`OperatorAddr`, an SDK validator address for the operator of the validator.
+`Operator` key, an `sdk.ValAddress` for the operator of the validator.
 `ValidatorByConsAddr` is maintained per validator object in order to fulfill
-the required lookups for slashing and validator-set updates.
+the required lookups for validator-set updates.
 
-- Validators: `0x21 | OperatorAddr -> amino(validator)`
-- ValidatorsByConsAddr: `0x22 | ConsAddr -> OperatorAddr`
-- ValidatorStates: `0x23 | OperatorAddr -> ValidatorState`
+### Keys
 
-`Validators` is the primary index - it ensures that each operator can have only one
+- `Validator`: `0x40 | sdk.ValAddress -> types.Validator`
+- `ValidatorByConsAddr`: `0x41 | sdk.ConsAddress -> sdk.ValAddress`
+- `ValidatorState`: `0x42 | sdk.ValAddress -> types.ValidatorState`
+
+`Validator` is the primary index - it ensures that each operator can have only one
 associated validator, where the public key of that validator can change in the
 future.
+
 `ValidatorByConsAddr` is an additional index that enables lookups for future
-uses (like automatic kick for misbehaving). `ValidatorStates` holds the state
-of a validator. The validator can have 3 states: joining, joined or leaving.
-This state allows the End Blocker to know how to update the Tendermint Core
-validator state.
+uses (like automatic kick for misbehaving). 
+
+`ValidatorState` holds the state of a validator. The validator can have 3 
+states: joining, active or leaving. This state allows the End Blocker to know 
+how to update the Tendermint consensus validator state.
+
+### Types
 
 Each validator's state is stored in a `Validator` struct:
 
 ```go
 type Validator struct {
-    OperatorAddress         sdk.ValAddress  // address of the validator's operator; bech encoded in JSON
-    ConsPubKey              crypto.PubKey   // the consensus public key of the validator; bech encoded in JSON
-    Description             Description     // description terms for the validator
+    // Bech32 encoded address of the validator's operator. 
+    // Unmarshals to `sdk.ValAddress`. 
+    OperatorBech32 string 
+    // Bech32 encoded consensus public key of the validator.
+    // Unmarshals to `crypto.PubKey`. 
+    ConsPubKeyBech32 string 
+    // Human-readable information about the validator.
+    Description Description
 }
 
 type Description struct {
-    Moniker          string // name
-    Identity         string // optional identity signature (ex. UPort or Keybase)
-    Website          string // optional website link
-    SecurityContact  string // optional email for security contact
-    Details          string // optional details
+    // Name of the validator.
+    Moniker string
+	// Optional identity signature (ex. UPort or Keybase).	
+    Identity string
+	// Optional website link.
+    Website string
+	// Optional email for security contact
+    SecurityContact string
+    // Optional details.	
+    Details string 
 }
 
 const (
-	ValidatorStateJoining uint16 = iota // The validator is joining the validator set, it is not yet present in Tendermint validator set
-	ValidatorStateJoined  uint16 = iota // The validator is already present in Tendermind validator set
-	ValidatorStateLeaving uint16 = iota // The validator is leaving the validator set, it will leave Tendermint validator set at the end of the block
+    // ValidatorStateUnknown is the default state of a validator.
+    ValidatorStateUnknown ValidatorState = iota
+    // ValidatorStateJoining means that the validator is not yet present in the
+    // Tendermint consensus validator set and will join it at the end of the block.
+    ValidatorStateJoining
+    // ValidatorStateActive means that the validator is present in the
+    // Tendermint consensus validator set.
+    ValidatorStateActive
+    // ValidatorStateLeaving means that the validator will leave the Tendermint
+    // consensus validator set at the end of the block.
+    ValidatorStateLeaving
 )
 ```
 
-## Application
+## Historical info
 
-The application pool tracks all the current applications.
-An operator can only be one validator, therefore the application can be
-accessed by the operator address.
+`HistoricalInfo` objects are stored and pruned at each block such that the PoA 
+keeper persists the `n` most recent historical info defined by the
+`HistoricalEntries()` parameter returned by the `Keeper`.
 
-- ApplicationPool: `0x24 | OperatorAddr -> amino(vote)`
-- CandidateByConsAddr: `0x25 | ConsAddr -> OperatorAddr`
+At the beginning of each block, the PoA `Keeper` will persist the current 
+`Header` and the active validators of the current block in a `HistoricalInfo` 
+object. The validators are sorted on their operator address to ensure that they 
+are in a deterministic order. The oldest entries will be pruned to ensure that 
+there only exist the parameter-defined number of historical entries.
 
-An application is stored in a `Vote` structure to track the current state of
-the vote like the current number of approvals. The subject field represents
-the potential new validator.
+### Keys
 
-`CandidateByConsAddr` is an additional index to ensure there is no two applications with the same consensus public key
+- `HistoricalInfo`: `0x40 | int64 -> types.HistoricalInfo`
+
+`HistoricalInfo` is the primary index storing the historical info by block height.
+
+### Types
 
 ```go
-type Vote struct {
-	Subject   Validator        // The information of the potential new validator
-	Approvals uint64           // The current number of approvals of the application
-	Total     uint64           // The current number of total vote (approval+rejection)
-	Voters    []sdk.AccAddress // The identity of validators who voted so far
+type HistoricalInfo struct {
+    // The block's header.
+    Header types.Header
+    // The active validator set at the block.
+    Valset []Validator
 }
 ```
-
-## KickProposal
-
-The kick proposal pool tracks all the current propositions to kick a validator.
-An operator can only be one validator, therefore the application can be
-accessed by the operator address.
-
-- KickProposalPool: `0x26 | OperatorAddr -> amino(vote)`
-
-An application is stored in a `Vote` structure to track the current state of
-the vote like the current number of approvals. The subject field represents
-the validator to be eventually kicked.
