@@ -2,7 +2,7 @@ package keeper_test
 
 import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 	"github.com/evmos/evmos/v12/x/feemarket/types"
 )
 
@@ -20,7 +20,7 @@ func (suite *KeeperTestSuite) TestUpdateParams() {
 		{
 			name: "pass - valid Update msg",
 			request: &types.MsgUpdateParams{
-				Authority: authtypes.NewModuleAddress(govtypes.ModuleName).String(),
+				Authority: authtypes.NewModuleAddress(evmtypes.ModuleName).String(),
 				Params:    types.DefaultParams(),
 			},
 			expectErr: false,

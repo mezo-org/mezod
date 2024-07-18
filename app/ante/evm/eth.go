@@ -106,26 +106,20 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 // EthGasConsumeDecorator validates enough intrinsic gas for the transaction and
 // gas consumption.
 type EthGasConsumeDecorator struct {
-	bankKeeper         anteutils.BankKeeper
-	distributionKeeper anteutils.DistributionKeeper
-	evmKeeper          EVMKeeper
-	stakingKeeper      anteutils.StakingKeeper
-	maxGasWanted       uint64
+	bankKeeper   anteutils.BankKeeper
+	evmKeeper    EVMKeeper
+	maxGasWanted uint64
 }
 
 // NewEthGasConsumeDecorator creates a new EthGasConsumeDecorator
 func NewEthGasConsumeDecorator(
 	bankKeeper anteutils.BankKeeper,
-	distributionKeeper anteutils.DistributionKeeper,
 	evmKeeper EVMKeeper,
-	stakingKeeper anteutils.StakingKeeper,
 	maxGasWanted uint64,
 ) EthGasConsumeDecorator {
 	return EthGasConsumeDecorator{
 		bankKeeper,
-		distributionKeeper,
 		evmKeeper,
-		stakingKeeper,
 		maxGasWanted,
 	}
 }
@@ -181,7 +175,6 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 		if !ok {
 			return ctx, errorsmod.Wrapf(errortypes.ErrUnknownRequest, "invalid message type %T, expected %T", msg, (*evmtypes.MsgEthereumTx)(nil))
 		}
-		from := msgEthTx.GetFrom()
 
 		txData, err := evmtypes.UnpackTxData(msgEthTx.Data)
 		if err != nil {
@@ -202,12 +195,6 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 		fees, err := keeper.VerifyFee(txData, evmDenom, baseFee, homestead, istanbul, ctx.IsCheckTx())
 		if err != nil {
 			return ctx, errorsmod.Wrapf(err, "failed to verify the fees")
-		}
-
-		// If the account balance is not sufficient, try to withdraw enough staking rewards
-		err = anteutils.ClaimStakingRewardsIfNecessary(ctx, egcd.bankKeeper, egcd.distributionKeeper, egcd.stakingKeeper, from, fees)
-		if err != nil {
-			return ctx, err
 		}
 
 		err = egcd.evmKeeper.DeductTxCostsFromUserBalance(ctx, fees, common.HexToAddress(msgEthTx.From))

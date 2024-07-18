@@ -10,6 +10,9 @@ const (
 	DefaultMaxValidators uint32 = 15
 	// Default quorum percentage
 	DefaultQuorum uint32 = 66
+	// DefaultHistoricalEntries is the default number of historical entries
+	// to persist in store.
+	DefaultHistoricalEntries uint32 = 10000
 )
 
 // ParamsKey store key for params
