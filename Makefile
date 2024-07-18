@@ -516,10 +516,17 @@ localnet-docker-show-logstream:
 ###############################################################################
 
 localnet-bin-init:
-	@if ! [ -f build/node0/config/genesis.json ]; then \
-	./build/evmosd testnet init-files --v 4 -o ./build \
-	--keyring-backend=test --starting-ip-address 127.0.0.1 \
-	--chain-id mezo_31611-10; \
+	@if ! [ -f .localnet/node0/evmosd/config/genesis.json ]; then \
+		echo "Initializing localnet configuration."; \
+		./build/evmosd testnet init-files \
+		--v 4 \
+		--output-dir ./.localnet \
+		--home ./.localnet \
+		--keyring-backend=test \
+		--starting-ip-address 127.0.0.1 \
+		--chain-id mezo_31611-10; \
+	else \
+		echo "Skipping initializing localnet configuration."; \
 	fi
 
 localnet-bin-start:
