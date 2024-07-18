@@ -21,9 +21,9 @@ const (
 	// ValidatorStateJoining means that the validator is not yet present in the
 	// Tendermint consensus validator set and will join it at the end of the block.
 	ValidatorStateJoining
-	// ValidatorStateJoined means that the validator is present in the
+	// ValidatorStateActive means that the validator is present in the
 	// Tendermint consensus validator set.
-	ValidatorStateJoined
+	ValidatorStateActive
 	// ValidatorStateLeaving means that the validator will leave the Tendermint
 	// consensus validator set at the end of the block.
 	ValidatorStateLeaving

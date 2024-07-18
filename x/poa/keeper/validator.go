@@ -77,7 +77,7 @@ func (k Keeper) setValidatorStateLeaving(
 		panic("A validator has no state")
 	}
 	// Only an active validator can leave.
-	if validatorState != types.ValidatorStateJoined {
+	if validatorState != types.ValidatorStateActive {
 		return errorsmod.Wrap(
 			types.ErrWrongValidatorState,
 			"not an active validator",
@@ -160,7 +160,7 @@ func (k Keeper) setValidatorState(
 	state types.ValidatorState,
 ) {
 	if state != types.ValidatorStateJoining &&
-		state != types.ValidatorStateJoined &&
+		state != types.ValidatorStateActive &&
 		state != types.ValidatorStateLeaving {
 		panic("Incorrect validator state")
 	}
@@ -202,7 +202,7 @@ func (k Keeper) removeValidator(ctx sdk.Context, operator sdk.ValAddress) {
 // GetAllValidators gets the set of all validators registered in the module store.
 // The result contains validators of all states:
 // - types.ValidatorStateJoining: not yet present in the Tendermint validator set
-// - types.ValidatorStateJoined: already present in the Tendermint validator set
+// - types.ValidatorStateActive: already present in the Tendermint validator set
 // - types.ValidatorStateLeaving: will leave the Tendermint validator set at the end of the block
 func (k Keeper) GetAllValidators(ctx sdk.Context) (validators []types.Validator) {
 	store := ctx.KVStore(k.storeKey)
@@ -222,7 +222,7 @@ func (k Keeper) GetAllValidators(ctx sdk.Context) (validators []types.Validator)
 
 // GetActiveValidators gets the set of all active validators that are part
 // of the Tendermint consensus set. The result contains only validators with
-// the state types.ValidatorStateJoined.
+// the state types.ValidatorStateActive.
 func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validator) {
 	for _, validator := range k.GetAllValidators(ctx) {
 		state, found := k.GetValidatorState(ctx, validator.GetOperator())
@@ -234,7 +234,7 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validat
 		// Consider only validators with Joined state. Ignore Joining and Leaving
 		// validators. The former will join the Tendermint consensus set and the
 		// latter will leave the Tendermint consensus set at the end of the block.
-		if state == types.ValidatorStateJoined {
+		if state == types.ValidatorStateActive {
 			validators = append(validators, validator)
 		}
 	}
