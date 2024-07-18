@@ -24,7 +24,7 @@ func TestEndBlocker(t *testing.T) {
 	poaKeeper.appendValidator(ctx, validator5)
 
 	// Simulate validator 2 as if it is already in the validator set
-	poaKeeper.setValidatorState(ctx, validator2, types.ValidatorStateJoined)
+	poaKeeper.setValidatorState(ctx, validator2, types.ValidatorStateActive)
 
 	// Simulate validator 4 and 5 as if those are leaving the validator set
 	poaKeeper.setValidatorState(ctx, validator4, types.ValidatorStateLeaving)

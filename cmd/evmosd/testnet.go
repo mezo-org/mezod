@@ -331,13 +331,18 @@ func initTestnetFiles(
 			},
 		)
 
-		validators[i] = poatypes.NewValidator(
+		validator, err := poatypes.NewValidator(
 			sdk.ValAddress(address),
 			valPubKeys[i],
 			poatypes.Description{
 				Moniker: nodeDirName,
 			},
 		)
+		if err != nil {
+			return err
+		}
+
+		validators[i] = validator
 	}
 
 	// Build persistent peers list based on validators' memos.

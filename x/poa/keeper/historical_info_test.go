@@ -19,18 +19,9 @@ func TestTrackHistoricalInfo(t *testing.T) {
 	// Set historical entries in params to 5.
 	poaKeeper.historicalEntries = 5
 
-	// Set quorum to zero to add validators immediately upon
-	// application submission.
-	params := types.DefaultParams()
-	params.Quorum = 0
-	err := poaKeeper.setParams(ctx, params)
-	require.NoError(t, err)
-
 	// Add initial validators.
-	err = poaKeeper.SubmitApplication(ctx, validator1)
-	require.NoError(t, err)
-	err = poaKeeper.SubmitApplication(ctx, validator2)
-	require.NoError(t, err)
+	poaKeeper.appendValidator(ctx, validator1)
+	poaKeeper.appendValidator(ctx, validator2)
 
 	// Refresh the validator set.
 	poaKeeper.EndBlocker(ctx)
@@ -63,8 +54,7 @@ func TestTrackHistoricalInfo(t *testing.T) {
 
 	// Add a new validator.
 	validator3, _ := mockValidator()
-	err = poaKeeper.SubmitApplication(ctx, validator3)
-	require.NoError(t, err)
+	poaKeeper.appendValidator(ctx, validator3)
 
 	// Refresh the validator set.
 	poaKeeper.EndBlocker(ctx)
@@ -75,8 +65,8 @@ func TestTrackHistoricalInfo(t *testing.T) {
 	// Sort the validator set in the same way that historical info does.
 	sort.SliceStable(activeValSet, func(i, j int) bool {
 		return bytes.Compare(
-			activeValSet[i].OperatorAddress,
-			activeValSet[j].OperatorAddress,
+			activeValSet[i].GetOperator(),
+			activeValSet[j].GetOperator(),
 		) == -1
 	})
 

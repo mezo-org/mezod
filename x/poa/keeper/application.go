@@ -26,12 +26,8 @@ func (k Keeper) SubmitApplication(
 		return err
 	}
 
-	params := k.GetParams(ctx)
-
-	// Check max validator is not reached.
-	allValidators := k.GetAllValidators(ctx)
-	if uint32(len(allValidators)) == params.MaxValidators {
-		return types.ErrMaxValidatorsReached
+	if err := k.checkMaxValidators(ctx); err != nil {
+		return err
 	}
 
 	// Candidate should not be a validator.
@@ -82,13 +78,8 @@ func (k Keeper) ApproveApplication(
 		return err
 	}
 
-	validatorsCount := uint32(len(k.GetAllValidators(ctx)))
-	maxValidators := k.GetParams(ctx).MaxValidators
-
-	// Check max validator is not reached. If max validator is reached,
-	// no more validators can be added.
-	if validatorsCount >= maxValidators {
-		return types.ErrMaxValidatorsReached
+	if err := k.checkMaxValidators(ctx); err != nil {
+		return err
 	}
 
 	// Check the application exists
@@ -99,6 +90,18 @@ func (k Keeper) ApproveApplication(
 
 	k.removeApplication(ctx, operator)
 	k.appendValidator(ctx, application.GetValidator())
+
+	return nil
+}
+
+// checkMaxValidators checks if the maximum number of validators is reached.
+func (k Keeper) checkMaxValidators(ctx sdk.Context) error {
+	validatorsCount := uint32(len(k.GetAllValidators(ctx)))
+	maxValidators := k.GetParams(ctx).MaxValidators
+
+	if validatorsCount >= maxValidators {
+		return types.ErrMaxValidatorsReached
+	}
 
 	return nil
 }

@@ -2,22 +2,32 @@ package types
 
 import (
 	"fmt"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 // NewGenesisState creates a new GenesisState object.
-func NewGenesisState(params Params, validators []Validator) GenesisState {
+func NewGenesisState(
+	params Params,
+	owner sdk.AccAddress,
+	validators []Validator,
+) GenesisState {
 	return GenesisState{
 		Params:     params,
+		Owner:      owner.String(),
 		Validators: validators,
 	}
 }
 
 // DefaultGenesisState defines the default GenesisState.
+//
+// WARNING: The default genesis state has an empty owner address hence
+// it is invalid (ValidateGenesis will fail). A proper owner must be set at
+// later stages, before running the network. This is done on purpose to avoid
+// using a random owner that cannot be controlled.
 func DefaultGenesisState() *GenesisState {
 	return &GenesisState{
 		Params: DefaultParams(),
+		Owner:  "",
 	}
 }
 

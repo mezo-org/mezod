@@ -22,7 +22,6 @@ func mockContext() (sdk.Context, Keeper) {
 	keys := sdk.NewKVStoreKeys(types.StoreKey)
 
 	registry := codectypes.NewInterfaceRegistry()
-	types.RegisterInterfaces(registry)
 	cdc := codec.NewProtoCodec(registry)
 
 	// Create a poa keeper
@@ -70,9 +69,9 @@ func mockValidator() (types.Validator, string) {
 	consPubKey := legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk)
 
 	validator := types.Validator{
-		OperatorAddress: operatorAddress,
-		ConsensusPubkey: consPubKey,
-		Description:     validatorDescription,
+		OperatorBech32:   operatorAddress.String(),
+		ConsPubKeyBech32: consPubKey,
+		Description:      validatorDescription,
 	}
 
 	return validator, consPubKey
