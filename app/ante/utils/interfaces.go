@@ -27,12 +27,6 @@ type BankKeeper interface {
 	GetBalance(ctx sdk.Context, addr sdk.AccAddress, denom string) sdk.Coin
 }
 
-// DistributionKeeper defines the exposed interface for using functionality of the distribution
-// keeper in the context of the AnteHandler utils package.
-type DistributionKeeper interface {
-	WithdrawDelegationRewards(ctx sdk.Context, delAddr sdk.AccAddress, valAddr sdk.ValAddress) (sdk.Coins, error)
-}
-
 // StakingKeeper defines the exposed interface for using functionality of the staking keeper
 // in the context of the AnteHandler utils package.
 type StakingKeeper interface {

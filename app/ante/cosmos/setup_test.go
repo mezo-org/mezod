@@ -95,10 +95,6 @@ func (suite *AnteTestSuite) SetupTest() {
 	suite.ctx = suite.ctx.WithBlockGasMeter(sdk.NewGasMeter(1000000000000000000))
 	suite.app.EvmKeeper.WithChainID(suite.ctx)
 
-	stakingParams := suite.app.StakingKeeper.GetParams(suite.ctx)
-	stakingParams.BondDenom = utils.BaseDenom
-	suite.app.StakingKeeper.SetParams(suite.ctx, stakingParams)
-
 	infCtx := suite.ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
 	suite.app.AccountKeeper.SetParams(infCtx, authtypes.DefaultParams())
 
@@ -113,9 +109,7 @@ func (suite *AnteTestSuite) SetupTest() {
 		AccountKeeper:          suite.app.AccountKeeper,
 		BankKeeper:             suite.app.BankKeeper,
 		EvmKeeper:              suite.app.EvmKeeper,
-		FeegrantKeeper:         suite.app.FeeGrantKeeper,
-		StakingKeeper:          suite.app.StakingKeeper,
-		IBCKeeper:              suite.app.IBCKeeper,
+		FeegrantKeeper:         nil,
 		FeeMarketKeeper:        suite.app.FeeMarketKeeper,
 		SignModeHandler:        encodingConfig.TxConfig.SignModeHandler(),
 		SigGasConsumer:         ante.SigVerificationGasConsumer,

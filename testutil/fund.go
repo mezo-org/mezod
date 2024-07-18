@@ -17,20 +17,25 @@
 package testutil
 
 import (
+	"fmt"
+
+	sdkmath "cosmossdk.io/math"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/evmos/evmos/v12/utils"
-	inflationtypes "github.com/evmos/evmos/v12/x/inflation/types"
+	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
 // FundAccount is a utility function that funds an account by minting and
 // sending the coins to the address.
 func FundAccount(ctx sdk.Context, bankKeeper bankkeeper.Keeper, addr sdk.AccAddress, amounts sdk.Coins) error {
-	if err := bankKeeper.MintCoins(ctx, inflationtypes.ModuleName, amounts); err != nil {
+	if err := bankKeeper.MintCoins(ctx, evmtypes.ModuleName, amounts); err != nil {
 		return err
 	}
 
-	return bankKeeper.SendCoinsFromModuleToAccount(ctx, inflationtypes.ModuleName, addr, amounts)
+	return bankKeeper.SendCoinsFromModuleToAccount(ctx, evmtypes.ModuleName, addr, amounts)
 }
 
 // FundAccountWithBaseDenom is a utility function that uses the FundAccount function
@@ -45,9 +50,32 @@ func FundAccountWithBaseDenom(ctx sdk.Context, bankKeeper bankkeeper.Keeper, add
 // FundModuleAccount is a utility function that funds a module account by
 // minting and sending the coins to the address.
 func FundModuleAccount(ctx sdk.Context, bankKeeper bankkeeper.Keeper, recipientMod string, amounts sdk.Coins) error {
-	if err := bankKeeper.MintCoins(ctx, inflationtypes.ModuleName, amounts); err != nil {
+	if err := bankKeeper.MintCoins(ctx, evmtypes.ModuleName, amounts); err != nil {
 		return err
 	}
 
-	return bankKeeper.SendCoinsFromModuleToModule(ctx, inflationtypes.ModuleName, recipientMod, amounts)
+	return bankKeeper.SendCoinsFromModuleToModule(ctx, evmtypes.ModuleName, recipientMod, amounts)
+}
+
+// PrepareAccount creates an account with the given balance of the base denomination.
+// If the balance is zero, it just creates an account without any funds.
+func PrepareAccount(
+	ctx sdk.Context,
+	accountKeeper authkeeper.AccountKeeper,
+	bankKeeper bankkeeper.Keeper,
+	addr sdk.AccAddress,
+	balance sdkmath.Int,
+) error {
+	if balance.IsZero() {
+		// Just create an account with zero balance.
+		accountKeeper.SetAccount(ctx, accountKeeper.NewAccountWithAddress(ctx, addr))
+		return nil
+	}
+
+	err := FundAccountWithBaseDenom(ctx, bankKeeper, addr, balance.Int64())
+	if err != nil {
+		return fmt.Errorf("failed to fund account: %s", err.Error())
+	}
+
+	return nil
 }

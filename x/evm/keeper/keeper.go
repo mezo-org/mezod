@@ -50,7 +50,7 @@ type Keeper struct {
 	// key to access the transient store, which is reset on every block during Commit
 	transientKey storetypes.StoreKey
 
-	// the address capable of executing a MsgUpdateParams message. Typically, this should be the x/gov module account.
+	// the address capable of executing a MsgUpdateParams message
 	authority sdk.AccAddress
 	// access to account state
 	accountKeeper types.AccountKeeper

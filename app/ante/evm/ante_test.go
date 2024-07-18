@@ -4,16 +4,14 @@ import (
 	"errors"
 	"math/big"
 	"strings"
-	"time"
 
 	sdkmath "cosmossdk.io/math"
+
 	kmultisig "github.com/cosmos/cosmos-sdk/crypto/keys/multisig"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	"github.com/cosmos/cosmos-sdk/x/authz"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	ethparams "github.com/ethereum/go-ethereum/params"
@@ -302,150 +300,6 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 			}, false, false, true,
 		},
 		{
-			"success - DeliverTx EIP712 signed Cosmos Tx with DelegateMsg",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				gas := uint64(200000)
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(100*int64(gas)))
-				amount := sdk.NewCoins(coinAmount)
-				txBuilder, err := suite.CreateTestEIP712TxBuilderMsgDelegate(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 create validator",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712MsgCreateValidator(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 create validator (with blank fields)",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712MsgCreateValidator2(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 MsgSubmitProposal",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				gasAmount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				// reusing the gasAmount for deposit
-				deposit := sdk.NewCoins(coinAmount)
-				txBuilder, err := suite.CreateTestEIP712SubmitProposal(from, privKey, suite.ctx.ChainID(), gas, gasAmount, deposit)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 MsgGrant",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				grantee := sdk.AccAddress("_______grantee______")
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				gasAmount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				blockTime := time.Date(1, 1, 1, 1, 1, 1, 1, time.UTC)
-				expiresAt := blockTime.Add(time.Hour)
-				msg, err := authz.NewMsgGrant(
-					from, grantee, &banktypes.SendAuthorization{SpendLimit: gasAmount}, &expiresAt,
-				)
-				suite.Require().NoError(err)
-				builder, err := suite.CreateTestEIP712SingleMessageTxBuilder(privKey, suite.ctx.ChainID(), gas, gasAmount, msg)
-				suite.Require().NoError(err)
-
-				return builder.GetTx()
-			}, false, false, true,
-		},
-
-		{
-			"success- DeliverTx EIP712 MsgGrantAllowance",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				gasAmount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712GrantAllowance(from, privKey, suite.ctx.ChainID(), gas, gasAmount)
-				suite.Require().NoError(err)
-
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 edit validator",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712MsgEditValidator(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 submit evidence",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712MsgSubmitEvidence(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 submit proposal v1",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712SubmitProposalV1(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 MsgExec",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712MsgExec(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 MsgVoteV1",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712MsgVoteV1(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
 			"success- DeliverTx EIP712 Multiple MsgSend",
 			func() sdk.Tx {
 				from := acc.GetAddress()
@@ -504,30 +358,6 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 				suite.RequireErrorForLegacyTypedData(err)
 				return suite.TxForLegacyTypedData(txBuilder)
 			}, false, false, !suite.useLegacyEIP712TypedData,
-		},
-		{
-			"success- DeliverTx EIP712 MsgTransfer",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712MsgTransfer(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"success- DeliverTx EIP712 MsgTransfer Without Memo",
-			func() sdk.Tx {
-				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
-				amount := sdk.NewCoins(coinAmount)
-				gas := uint64(200000)
-				txBuilder, err := suite.CreateTestEIP712MsgTransferWithoutMemo(from, privKey, suite.ctx.ChainID(), gas, amount)
-				suite.Require().NoError(err)
-				return txBuilder.GetTx()
-			}, false, false, true,
 		},
 		{
 			"fails - DeliverTx EIP712 Multiple Signers",
@@ -704,31 +534,6 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 							sdk.NewInt(1),
 						),
 					),
-				)
-
-				txBuilder := suite.CreateTestSignedMultisigTx(
-					privKeys,
-					signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON,
-					msg,
-					suite.ctx.ChainID(),
-					2000000,
-					"mixed", // Combine EIP-712 and standard signatures
-				)
-
-				return txBuilder.GetTx()
-			}, false, false, true,
-		},
-		{
-			"passes - Mixed multi-key with MsgVote",
-			func() sdk.Tx {
-				numKeys := 5
-				privKeys, pubKeys := suite.GenerateMultipleKeys(numKeys)
-				pk := kmultisig.NewLegacyAminoPubKey(numKeys, pubKeys)
-
-				msg := govtypes.NewMsgVote(
-					sdk.AccAddress(pk.Address()),
-					1,
-					govtypes.OptionYes,
 				)
 
 				txBuilder := suite.CreateTestSignedMultisigTx(

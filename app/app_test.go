@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -12,7 +14,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/cosmos/ibc-go/v6/testing/mock"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -25,9 +26,8 @@ import (
 
 func TestEvmosExport(t *testing.T) {
 	// create public key
-	privVal := mock.NewPV()
-	pubKey, err := privVal.GetPubKey()
-	require.NoError(t, err, "public key should be created without error")
+	privVal := ed25519.GenPrivKey()
+	pubKey := privVal.PubKey()
 
 	// create validator set with single validator
 	validator := tmtypes.NewValidator(pubKey, 1)

@@ -22,11 +22,11 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
 
 // AccountKeeper defines the expected account keeper interface
@@ -53,8 +53,8 @@ type BankKeeper interface {
 
 // StakingKeeper returns the historical headers kept in store.
 type StakingKeeper interface {
-	GetHistoricalInfo(ctx sdk.Context, height int64) (stakingtypes.HistoricalInfo, bool)
-	GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress) (validator stakingtypes.Validator, found bool)
+	GetHistoricalInfo(ctx sdk.Context, height int64) (poatypes.HistoricalInfo, bool)
+	GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress) (validator poatypes.Validator, found bool)
 }
 
 // FeeMarketKeeper

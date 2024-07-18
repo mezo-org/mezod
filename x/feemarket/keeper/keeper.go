@@ -37,7 +37,7 @@ type Keeper struct {
 	// Store key required for the Fee Market Prefix KVStore.
 	storeKey     storetypes.StoreKey
 	transientKey storetypes.StoreKey
-	// the address capable of executing a MsgUpdateParams message. Typically, this should be the x/gov module account.
+	// the address capable of executing a MsgUpdateParams message
 	authority sdk.AccAddress
 	// Legacy subspace
 	ss paramstypes.Subspace

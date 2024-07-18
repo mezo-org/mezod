@@ -78,11 +78,6 @@ func (suite *AnteTestSuite) SetupTest() {
 	suite.ctx = suite.ctx.WithBlockGasMeter(sdk.NewGasMeter(1000000000000000000))
 	suite.app.EvmKeeper.WithChainID(suite.ctx)
 
-	// set staking denomination to Evmos denom
-	params := suite.app.StakingKeeper.GetParams(suite.ctx)
-	params.BondDenom = utils.BaseDenom
-	suite.app.StakingKeeper.SetParams(suite.ctx, params)
-
 	infCtx := suite.ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
 	suite.app.AccountKeeper.SetParams(infCtx, authtypes.DefaultParams())
 
@@ -96,17 +91,14 @@ func (suite *AnteTestSuite) SetupTest() {
 	suite.Require().NotNil(suite.app.AppCodec())
 
 	anteHandler := ante.NewAnteHandler(ante.HandlerOptions{
-		Cdc:                suite.app.AppCodec(),
-		AccountKeeper:      suite.app.AccountKeeper,
-		BankKeeper:         suite.app.BankKeeper,
-		DistributionKeeper: suite.app.DistrKeeper,
-		EvmKeeper:          suite.app.EvmKeeper,
-		FeegrantKeeper:     suite.app.FeeGrantKeeper,
-		IBCKeeper:          suite.app.IBCKeeper,
-		StakingKeeper:      suite.app.StakingKeeper,
-		FeeMarketKeeper:    suite.app.FeeMarketKeeper,
-		SignModeHandler:    encodingConfig.TxConfig.SignModeHandler(),
-		SigGasConsumer:     ante.SigVerificationGasConsumer,
+		Cdc:             suite.app.AppCodec(),
+		AccountKeeper:   suite.app.AccountKeeper,
+		BankKeeper:      suite.app.BankKeeper,
+		EvmKeeper:       suite.app.EvmKeeper,
+		FeegrantKeeper:  nil,
+		FeeMarketKeeper: suite.app.FeeMarketKeeper,
+		SignModeHandler: encodingConfig.TxConfig.SignModeHandler(),
+		SigGasConsumer:  ante.SigVerificationGasConsumer,
 	})
 
 	suite.anteHandler = anteHandler
