@@ -1,11 +1,9 @@
 package btctoken
 
 import (
-	"fmt"
-
-	"math/big"
-
 	"errors"
+	"fmt"
+	"math/big"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
@@ -119,11 +117,11 @@ func (am *approveMethod) Run(
 
 		err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, sendAuthz, expiration)
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// scenario 5: no authorizaiton, amount 0 -> no-op but emit Approval event
 	// TODO: emit Approval event
 
@@ -136,7 +134,7 @@ func (am approveMethod) createAuthorization(ctx sdk.Context, grantee, granter co
 	}
 
 	coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkmath.NewIntFromBigInt(amount)}}
-	
+
 	expiration := ctx.BlockTime().Add(ApprovalExpiration)
 
 	authorization := banktypes.NewSendAuthorization(coins)

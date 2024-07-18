@@ -71,7 +71,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 				s.requireSendAuthz(
 					s.account1.AccAddr,
 					s.account2.AccAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", int64(amount))),
+					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
 				)
 			},
 		},
@@ -125,7 +125,6 @@ func (s *PrecompileTestSuite) TestApprove() {
 
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
-
 			evm := &vm.EVM{
 				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
 			}
