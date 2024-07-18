@@ -1,7 +1,6 @@
 #!/bin/bash
 
 HOMEDIR=./.localnet
-CHAIN_ID=mezo_31611-1
 LOGLEVEL="info"
 TRACE=""
 
@@ -10,7 +9,8 @@ if [ ! -d "$HOMEDIR" ]; then
   exit 1
 fi
 
-NODE_NAMES=($(ls -d $HOMEDIR/mezo-node-* | xargs -n 1 basename))
+mapfile -t NODE_NAMES < <(find "$HOMEDIR" -maxdepth 1 -type d -name 'mezo-node-*' -print0 | \
+    xargs -0 -n 1 basename)
 
 echo "available nodes:"
 for i in "${!NODE_NAMES[@]}"; do
@@ -30,6 +30,6 @@ NODE_HOMEDIR="$HOMEDIR/$NODE_NAME"
 
 echo "starting node $NODE_NAME with home directory $NODE_HOMEDIR"
 
-./build/evmosd start --home "$NODE_HOMEDIR" --log_level "$LOGLEVEL" $TRACE
+./build/evmosd start --home "$NODE_HOMEDIR" --log_level "$LOGLEVEL" "$TRACE"
 
 echo "node $NODE_NAME started."
