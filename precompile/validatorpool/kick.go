@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 )
 
@@ -15,7 +16,7 @@ const KickMethodName = "kick"
 // a validator candidates application as pending
 
 // The method has the following input arguments:
-// - operator: the EVM address identifying the validator.
+// - operator: the address identifying the validator.
 type kickMethod struct {
 	keeper ValidatorPool
 }
@@ -48,8 +49,7 @@ func (km *kickMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 		return nil, err
 	}
 
-	// TODO(iquidus): is this valid?
-	operator, ok := inputs[1].(types.ValAddress)
+	operator, ok := inputs[1].(common.Address)
 	if !ok {
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
@@ -57,10 +57,18 @@ func (km *kickMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 	err := km.keeper.Kick(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
-		operator,
+		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// emit event
+	err = context.EventEmitter().Emit(
+		newValidatorKickedEvent(operator),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emitv ValidatorKicked event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{true}, nil
