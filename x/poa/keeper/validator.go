@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
@@ -11,7 +12,7 @@ import (
 // The function returns an error if:
 // - the sender is not the owner,
 // - the validator does not exist,
-// - the validator is already leaving.
+// - the validator is not an active validator.
 // Returns nil if the validator is successfully kicked.
 //
 // Upstream is responsible for setting the `sender` parameter to the actual
@@ -33,16 +34,22 @@ func (k Keeper) Kick(
 // The validator will be removed from active validators at the end of the block.
 //
 // The function returns an error if:
+// - there is only one validator,
 // - the sender is not an existing validator,
-// - the validator is already leaving.
+// - the validator is not an active validator.
 // Returns nil if the validator successfully leaves.
 //
 // Upstream is responsible for setting the `sender` parameter to the actual
 // actor performing the operation. If the sender address is empty, the function
 // will return an error.
 func (k Keeper) Leave(ctx sdk.Context, sender sdk.AccAddress) error {
+	// Block voluntary leaving if there is only one active validator.
+	if len(k.GetActiveValidators(ctx)) == 1 {
+		return types.ErrOnlyOneValidator
+	}
+
 	operator := sdk.ValAddress(sender)
-	// TODO: What happens if this is the last validator?
+
 	return k.setValidatorStateLeaving(ctx, operator)
 }
 
@@ -69,8 +76,12 @@ func (k Keeper) setValidatorStateLeaving(
 		// This should never happen. All validators should have a state.
 		panic("A validator has no state")
 	}
-	if validatorState == types.ValidatorStateLeaving {
-		return types.ErrValidatorLeaving
+	// Only an active validator can leave.
+	if validatorState != types.ValidatorStateJoined {
+		return errorsmod.Wrap(
+			types.ErrWrongValidatorState,
+			"not an active validator",
+		)
 	}
 
 	// Set the validator state to Leaving. Validator removal will be

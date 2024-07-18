@@ -12,7 +12,7 @@ var (
 	ErrMaxValidatorsReached            = errorsmod.Register(ModuleName, 5, "the maximum number of validators has been reached")
 	ErrNoApplicationFound              = errorsmod.Register(ModuleName, 6, "no application found")
 	ErrNotValidator                    = errorsmod.Register(ModuleName, 7, "not a validator")
-	ErrValidatorLeaving                = errorsmod.Register(ModuleName, 8, "the validator is leaving the validator set")
+	ErrWrongValidatorState             = errorsmod.Register(ModuleName, 8, "wrong validator state")
 	ErrOnlyOneValidator                = errorsmod.Register(ModuleName, 9, "there is only one validator in the validator set")
 	ErrOwnershipTransferNotInitialized = errorsmod.Register(ModuleName, 10, "pool ownership transfer not initialized")
 )
