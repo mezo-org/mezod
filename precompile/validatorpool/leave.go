@@ -1,6 +1,8 @@
 package validatorpool
 
 import (
+	"fmt"
+
 	"github.com/evmos/evmos/v12/precompile"
 )
 
@@ -48,6 +50,14 @@ func (lm *leaveMethod) Run(context *precompile.RunContext, inputs precompile.Met
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// emit event
+	err = context.EventEmitter().Emit(
+		newValidatorLeftEvent(context.MsgSender()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit validatorLeft event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{true}, nil
