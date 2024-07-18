@@ -126,14 +126,18 @@ func (suite *KeeperTestSuite) SetupAppWithT(checkTx bool, t require.TestingT) {
 			genesis[evmtypes.ModuleName] = app.AppCodec().MustMarshalJSON(evmGenesis)
 		}
 
+		validator, err := poatypes.NewValidator(
+			suite.address.Bytes(),
+			priv.PubKey(),
+			poatypes.Description{},
+		)
+		suite.Require().NoError(err)
+
 		poaGenesis := poatypes.DefaultGenesisState()
+		poaGenesis.Owner = sdk.AccAddress(suite.address.Bytes()).String()
 		poaGenesis.Validators = append(
 			poaGenesis.Validators,
-			poatypes.NewValidator(
-				suite.address.Bytes(),
-				priv.PubKey(),
-				poatypes.Description{},
-			),
+			validator,
 		)
 		genesis[poatypes.ModuleName] = app.AppCodec().MustMarshalJSON(poaGenesis)
 

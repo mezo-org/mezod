@@ -110,14 +110,18 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 	bankGenesis.Supply = bankGenesis.Supply.Add(coins...).Add(coins...)
 	genesisState[banktypes.ModuleName] = suite.app.AppCodec().MustMarshalJSON(&bankGenesis)
 
+	validator, err := poatypes.NewValidator(
+		address.Bytes(),
+		priv.PubKey(),
+		poatypes.Description{},
+	)
+	suite.Require().NoError(err)
+
 	poaGenesis := poatypes.DefaultGenesisState()
+	poaGenesis.Owner = sdk.AccAddress(address.Bytes()).String()
 	poaGenesis.Validators = append(
 		poaGenesis.Validators,
-		poatypes.NewValidator(
-			address.Bytes(),
-			priv.PubKey(),
-			poatypes.Description{},
-		),
+		validator,
 	)
 	genesisState[poatypes.ModuleName] = suite.app.AppCodec().MustMarshalJSON(poaGenesis)
 
