@@ -63,7 +63,7 @@ func (aam *approveApplicationMethod) Run(context *precompile.RunContext, inputs 
 		return nil, err
 	}
 
-	// emit event
+	// emit events
 	err = context.EventEmitter().Emit(
 		newApplicationApprovedEvent(
 			operator,
@@ -71,6 +71,14 @@ func (aam *approveApplicationMethod) Run(context *precompile.RunContext, inputs 
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit ApplicationApproved event: [%w]", err)
+	}
+	err = context.EventEmitter().Emit(
+		newValidatorJoinedEvent(
+			operator,
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit ValidatorJoined event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{true}, nil
