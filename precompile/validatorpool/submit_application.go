@@ -56,14 +56,13 @@ func (sam *submitApplicationMethod) Run(context *precompile.RunContext, inputs p
 		return nil, fmt.Errorf("consPubKey argument must be common.Address")
 	}
 
-	operator, ok := inputs[1].(types.ValAddress)
+	operator, ok := inputs[1].(common.Address)
 	if !ok {
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	// TODO(iquidus): make sure these are correct
 	validator := poatypes.Validator{
-		OperatorAddress: operator,
+		OperatorAddress: types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 		ConsensusPubkey: consPubKey.String(),
 	}
 
@@ -74,6 +73,17 @@ func (sam *submitApplicationMethod) Run(context *precompile.RunContext, inputs p
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// emit event
+	err = context.EventEmitter().Emit(
+		newApplicationSubmittedEvent(
+			operator,
+			consPubKey,
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit ApplicationSubmitted event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{true}, nil
