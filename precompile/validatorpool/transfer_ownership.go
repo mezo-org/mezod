@@ -26,24 +26,24 @@ func newTransferOwnershipMethod(pk PoaKeeper) *transferOwnershipMethod {
 	}
 }
 
-func (tom *transferOwnershipMethod) MethodName() string {
+func (m *transferOwnershipMethod) MethodName() string {
 	return TransferOwnershipMethodName
 }
 
-func (tom *transferOwnershipMethod) MethodType() precompile.MethodType {
+func (m *transferOwnershipMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (tom *transferOwnershipMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *transferOwnershipMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (tom *transferOwnershipMethod) Payable() bool {
+func (m *transferOwnershipMethod) Payable() bool {
 	return false
 }
 
-func (tom *transferOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *transferOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (tom *transferOwnershipMethod) Run(context *precompile.RunContext, inputs p
 		return nil, fmt.Errorf("newOwner argument must be common.Address")
 	}
 
-	err := tom.keeper.TransferOwnership(
+	err := m.keeper.TransferOwnership(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 		precompile.TypesConverter.Address.ToSDK(newOwner),
@@ -71,4 +71,40 @@ func (tom *transferOwnershipMethod) Run(context *precompile.RunContext, inputs p
 	}
 
 	return precompile.MethodOutputs{true}, nil
+}
+
+// OwnershipTransferStartedName is the name of the OwnershipTransferStarted event. It matches the name
+// of the event in the contract ABI.
+const OwnershipTransferStartedEventName = "OwnershipTransferStarted"
+
+// oOwnershipTransferStartedEvent is the implementation of the OwnershipTransferStarted event that contains
+// the following arguments:
+// - previousOwner (indexed): is the EVM address of the current (soon to be previous) owner,
+// - newOwner (indexed): is the EVM address of the new owner
+type ownershipTransferStartedEvent struct {
+	previousOwner, newOwner common.Address
+}
+
+func newOwnershipTransferStartedEvent(previousOwner, newOwner common.Address) *ownershipTransferStartedEvent {
+	return &ownershipTransferStartedEvent{
+		previousOwner: previousOwner,
+		newOwner:      newOwner,
+	}
+}
+
+func (e *ownershipTransferStartedEvent) EventName() string {
+	return OwnershipTransferStartedEventName
+}
+
+func (e *ownershipTransferStartedEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: true,
+			Value:   e.previousOwner,
+		},
+		{
+			Indexed: true,
+			Value:   e.newOwner,
+		},
+	}
 }

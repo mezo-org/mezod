@@ -3,6 +3,7 @@ package validatorpool
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 )
 
@@ -22,29 +23,29 @@ func newLeaveMethod(pk PoaKeeper) *leaveMethod {
 	}
 }
 
-func (lm *leaveMethod) MethodName() string {
+func (m *leaveMethod) MethodName() string {
 	return LeaveMethodName
 }
 
-func (lm *leaveMethod) MethodType() precompile.MethodType {
+func (m *leaveMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (lm *leaveMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *leaveMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (lm *leaveMethod) Payable() bool {
+func (m *leaveMethod) Payable() bool {
 	return false
 }
 
-func (lm *leaveMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *leaveMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
 
-	err := lm.keeper.Leave(
+	err := m.keeper.Leave(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
@@ -61,4 +62,34 @@ func (lm *leaveMethod) Run(context *precompile.RunContext, inputs precompile.Met
 	}
 
 	return precompile.MethodOutputs{true}, nil
+}
+
+// ValidatorLeftName is the name of the ValidatorLeft event. It matches the name
+// of the event in the contract ABI.
+const ValidatorLeftEventName = "ValidatorLeft"
+
+// validatorLeftEvent is the implementation of the ValidatorLeft event that contains
+// the following arguments:
+// - operator (indexed): is the address identifying the validators operator
+type validatorLeftEvent struct {
+	operator common.Address
+}
+
+func newValidatorLeftEvent(operator common.Address) *validatorLeftEvent {
+	return &validatorLeftEvent{
+		operator: operator,
+	}
+}
+
+func (te *validatorLeftEvent) EventName() string {
+	return ValidatorLeftEventName
+}
+
+func (te *validatorLeftEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: true,
+			Value:   te.operator,
+		},
+	}
 }

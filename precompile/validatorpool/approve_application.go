@@ -27,24 +27,24 @@ func newApproveApplicationMethod(pk PoaKeeper) *approveApplicationMethod {
 	}
 }
 
-func (aam *approveApplicationMethod) MethodName() string {
+func (m *approveApplicationMethod) MethodName() string {
 	return ApproveApplicationMethodName
 }
 
-func (aam *approveApplicationMethod) MethodType() precompile.MethodType {
+func (m *approveApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (aam *approveApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *approveApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (aam *approveApplicationMethod) Payable() bool {
+func (m *approveApplicationMethod) Payable() bool {
 	return false
 }
 
-func (aam *approveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *approveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (aam *approveApplicationMethod) Run(context *precompile.RunContext, inputs 
 		return nil, fmt.Errorf("operator argument must be of type common.Address")
 	}
 
-	err := aam.keeper.ApproveApplication(
+	err := m.keeper.ApproveApplication(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
@@ -82,4 +82,64 @@ func (aam *approveApplicationMethod) Run(context *precompile.RunContext, inputs 
 	}
 
 	return precompile.MethodOutputs{true}, nil
+}
+
+// ApplicationApprovedName is the name of the ApplicationApproved event. It matches the name
+// of the event in the contract ABI.
+const ApplicationApprovedEventName = "ApplicationApproved"
+
+// applicationApprovedEvent is the implementation of the ApplicationApproved event that contains
+// the following arguments:
+// - operator (indexed): is the address identifying the validators operator
+type applicationApprovedEvent struct {
+	operator common.Address
+}
+
+func newApplicationApprovedEvent(operator common.Address) *applicationApprovedEvent {
+	return &applicationApprovedEvent{
+		operator: operator,
+	}
+}
+
+func (e *applicationApprovedEvent) EventName() string {
+	return ApplicationApprovedEventName
+}
+
+func (e *applicationApprovedEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: true,
+			Value:   e.operator,
+		},
+	}
+}
+
+// ValidatorJoinedName is the name of the ValidatorJoined event. It matches the name
+// of the event in the contract ABI.
+const ValidatorJoinedEventName = "ValidatorJoined"
+
+// validatorJoinedEvent is the implementation of the ValidatorJoined event that contains
+// the following arguments:
+// - operator (indexed): is the EVM address identifying the validators operator,
+type validatorJoinedEvent struct {
+	operator common.Address
+}
+
+func newValidatorJoinedEvent(operator common.Address) *validatorJoinedEvent {
+	return &validatorJoinedEvent{
+		operator: operator,
+	}
+}
+
+func (e *validatorJoinedEvent) EventName() string {
+	return ValidatorJoinedEventName
+}
+
+func (e *validatorJoinedEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: true,
+			Value:   e.operator,
+		},
+	}
 }

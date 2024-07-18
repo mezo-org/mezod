@@ -29,24 +29,24 @@ func newSubmitApplicationMethod(pk PoaKeeper) *submitApplicationMethod {
 	}
 }
 
-func (sam *submitApplicationMethod) MethodName() string {
+func (m *submitApplicationMethod) MethodName() string {
 	return SubmitApplicationMethodName
 }
 
-func (sam *submitApplicationMethod) MethodType() precompile.MethodType {
+func (m *submitApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (sam *submitApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *submitApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (sam *submitApplicationMethod) Payable() bool {
+func (m *submitApplicationMethod) Payable() bool {
 	return false
 }
 
-func (sam *submitApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (sam *submitApplicationMethod) Run(context *precompile.RunContext, inputs p
 		ConsensusPubkey: consPubKey.String(),
 	}
 
-	err := sam.keeper.SubmitApplication(
+	err := m.keeper.SubmitApplication(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 		validator,
@@ -87,4 +87,40 @@ func (sam *submitApplicationMethod) Run(context *precompile.RunContext, inputs p
 	}
 
 	return precompile.MethodOutputs{true}, nil
+}
+
+// ApplicationSubmittedEventName is the name of the ApplicationSubmitted event.
+// It matches the name of the event in the contract ABI.
+const ApplicationSubmittedEventName = "ApplicationSubmitted"
+
+// applicationSubmitted is the implementation of the ApplicationSubmitted
+// event that contains the following arguments:
+// - operator (indexed): is the address identifying the validator,
+// - consPubKey (indexed): is the consensus public key of the validator used tovote on blocks.
+type applicationSubmittedEvent struct {
+	operator, consPubKey common.Address
+}
+
+func newApplicationSubmittedEvent(operator, consPubKey common.Address) *applicationSubmittedEvent {
+	return &applicationSubmittedEvent{
+		operator:   operator,
+		consPubKey: consPubKey,
+	}
+}
+
+func (e *applicationSubmittedEvent) EventName() string {
+	return ApplicationSubmittedEventName
+}
+
+func (e *applicationSubmittedEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: true,
+			Value:   e.operator,
+		},
+		{
+			Indexed: true,
+			Value:   e.consPubKey,
+		},
+	}
 }

@@ -27,24 +27,24 @@ func newKickMethod(pk PoaKeeper) *kickMethod {
 	}
 }
 
-func (km *kickMethod) MethodName() string {
+func (m *kickMethod) MethodName() string {
 	return KickMethodName
 }
 
-func (km *kickMethod) MethodType() precompile.MethodType {
+func (m *kickMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (km *kickMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *kickMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (km *kickMethod) Payable() bool {
+func (m *kickMethod) Payable() bool {
 	return false
 }
 
-func (km *kickMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *kickMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (km *kickMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	err := km.keeper.Kick(
+	err := m.keeper.Kick(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
@@ -72,4 +72,34 @@ func (km *kickMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 	}
 
 	return precompile.MethodOutputs{true}, nil
+}
+
+// ValidatorKickedName is the name of the ValidatorKicked event. It matches the name
+// of the event in the contract ABI.
+const ValidatorKickedEventName = "ValidatorKicked"
+
+// validatorKickedEvent is the implementation of the ValidatorKicked event that contains
+// the following arguments:
+// - operator (indexed): is the address identifying the validators operator
+type validatorKickedEvent struct {
+	operator common.Address
+}
+
+func newValidatorKickedEvent(operator common.Address) *validatorKickedEvent {
+	return &validatorKickedEvent{
+		operator: operator,
+	}
+}
+
+func (e *validatorKickedEvent) EventName() string {
+	return ValidatorKickedEventName
+}
+
+func (e *validatorKickedEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: true,
+			Value:   e.operator,
+		},
+	}
 }
