@@ -2,9 +2,11 @@ package btctoken_test
 
 import (
 	"math/big"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/authz"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -86,7 +88,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 		// },
 
 		{
-			name: "pass - approve without existing authorization",
+			name: "approve without existing authorization",
 			run: func() []interface{} {
 				return []interface{}{
 					s.account1.Addr, big.NewInt(amount),
@@ -101,8 +103,52 @@ func (s *PrecompileTestSuite) TestApprove() {
 				)
 			},
 		},
+		{
+			name: "approve with existing authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.AccAddr,
+					s.account2.AccAddr,
+					sdk.NewCoins(sdk.NewInt64Coin("abtc", int64(1))),
+				)
 
-		// TODO: add more tests
+				return []interface{}{
+					s.account1.Addr, big.NewInt(amount),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.AccAddr,
+					s.account2.AccAddr,
+					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+				)
+			},
+		},
+		{
+			name: "delete existing authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.AccAddr,
+					s.account2.AccAddr,
+					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+				)
+
+				return []interface{}{
+					s.account1.Addr, common.Big0,
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				grants, err := s.app.AuthzKeeper.GranteeGrants(s.ctx, &authz.QueryGranteeGrantsRequest{
+					Grantee: s.account1.AccAddr.String(),
+				})
+				s.Require().NoError(err, "expected no error querying the grants")
+				authzs, err := unpackGrantAuthzs(grants.Grants)
+				s.Require().NoError(err, "expected no error unpacking the authorization")
+				s.Require().Len(authzs, 0, "expected grant to be deleted")
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -176,7 +222,31 @@ func (s *PrecompileTestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, 
 
 	sendAuthz, ok := authzs[0].(*banktypes.SendAuthorization)
 	s.Require().True(ok, "expected send authorization")
+	s.Require().Equal(amount, sendAuthz.SpendLimit, "expected different spend limit amount")
+}
 
+// Sets up a send authorization for a given grantee and granter.
+func (s *PrecompileTestSuite) setupSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
+	authzKeeper := s.app.AuthzKeeper
+	expiration := s.ctx.BlockTime().Add(time.Hour * 24 * 365)
+	sendAuthz := banktypes.NewSendAuthorization(amount)
+	err := sendAuthz.ValidateBasic()
+	s.Require().NoError(err, "expected no error validating the grant")
+
+	err = authzKeeper.SaveGrant(s.ctx, grantee.Bytes(), granter.Bytes(), sendAuthz, &expiration)
+	s.Require().NoError(err, "expected no error saving the grant")
+
+	grants, err := authzKeeper.GranteeGrants(s.ctx, &authz.QueryGranteeGrantsRequest{
+		Grantee: grantee.String(),
+	})
+	s.Require().NoError(err, "expected no error querying the grants")
+
+	authzs, err := unpackGrantAuthzs(grants.Grants)
+	s.Require().NoError(err, "expected no error unpacking the authorization")
+	s.Require().Len(authzs, 1, "expected one authorization")
+
+	sendAuthz, ok := authzs[0].(*banktypes.SendAuthorization)
+	s.Require().True(ok, "expected send authorization")
 	s.Require().Equal(amount, sendAuthz.SpendLimit, "expected different spend limit amount")
 }
 
