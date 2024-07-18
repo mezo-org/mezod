@@ -16,17 +16,19 @@ const (
 
 // Standalone keys and key prefixes for the poa module.
 var (
-	OwnerKey          = []byte{0x10} // standalone key for the owner of the validator pool
-	CandidateOwnerKey = []byte{0x11} // standalone key for the candidate owner of the validator pool
+	ParamsKey = []byte{0x10} // standalone key for module params
 
-	ApplicationKeyPrefix           = []byte{0x20} // prefix for each key to a validator application
-	ApplicationByConsAddrKeyPrefix = []byte{0x21} // prefix for each key to a validator application index, by consensus address
+	OwnerKey          = []byte{0x20} // standalone key for the owner of the validator pool
+	CandidateOwnerKey = []byte{0x21} // standalone key for the candidate owner of the validator pool
 
-	ValidatorKeyPrefix           = []byte{0x30} // prefix for each key to a validator
-	ValidatorByConsAddrKeyPrefix = []byte{0x31} // prefix for each key to a validator index, by consensus address
-	ValidatorStateKeyPrefix      = []byte{0x32} // prefix for each key to a validator state
+	ApplicationKeyPrefix           = []byte{0x30} // prefix for each key to a validator application
+	ApplicationByConsAddrKeyPrefix = []byte{0x31} // prefix for each key to a validator application index, by consensus address
 
-	HistoricalInfoKeyPrefix = []byte{0x40} // prefix for each key to a historical info
+	ValidatorKeyPrefix           = []byte{0x40} // prefix for each key to a validator
+	ValidatorByConsAddrKeyPrefix = []byte{0x41} // prefix for each key to a validator index, by consensus address
+	ValidatorStateKeyPrefix      = []byte{0x42} // prefix for each key to a validator state
+
+	HistoricalInfoKeyPrefix = []byte{0x50} // prefix for each key to a historical info
 )
 
 // GetApplicationKey gets the key for a validator application by operator address.

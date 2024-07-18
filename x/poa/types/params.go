@@ -13,9 +13,6 @@ const (
 	DefaultHistoricalEntries uint32 = 10000
 )
 
-// ParamsKey store key for params.
-var ParamsKey = []byte("Params")
-
 // NewParams creates a new Params object.
 func NewParams(maxValidators uint32) Params {
 	return Params{
