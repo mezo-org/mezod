@@ -18,12 +18,12 @@ const ApproveApplicationMethodName = "approveApplication"
 // The method has the following input arguments:
 // - operator: the EVM address identifying the validator.
 type approveApplicationMethod struct {
-	keeper ValidatorPool
+	keeper PoaKeeper
 }
 
-func newApproveApplicationMethod(vp ValidatorPool) *approveApplicationMethod {
+func newApproveApplicationMethod(pk PoaKeeper) *approveApplicationMethod {
 	return &approveApplicationMethod{
-		keeper: vp,
+		keeper: pk,
 	}
 }
 

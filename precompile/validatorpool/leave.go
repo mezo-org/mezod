@@ -13,12 +13,12 @@ const LeaveMethodName = "leave"
 // leaveMethod is the implementation of the leave method that removes
 // msg.sender from the validator pool
 type leaveMethod struct {
-	keeper ValidatorPool
+	keeper PoaKeeper
 }
 
-func newLeaveMethod(vp ValidatorPool) *leaveMethod {
+func newLeaveMethod(pk PoaKeeper) *leaveMethod {
 	return &leaveMethod{
-		keeper: vp,
+		keeper: pk,
 	}
 }
 

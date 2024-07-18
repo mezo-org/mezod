@@ -18,12 +18,12 @@ const KickMethodName = "kick"
 // The method has the following input arguments:
 // - operator: the address identifying the validator.
 type kickMethod struct {
-	keeper ValidatorPool
+	keeper PoaKeeper
 }
 
-func newKickMethod(vp ValidatorPool) *kickMethod {
+func newKickMethod(pk PoaKeeper) *kickMethod {
 	return &kickMethod{
-		keeper: vp,
+		keeper: pk,
 	}
 }
 

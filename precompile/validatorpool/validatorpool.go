@@ -19,7 +19,7 @@ var filesystem embed.FS
 // avoid collisions.
 const EvmAddress = "0x2000000000000000000000000000000000000000"
 
-type ValidatorPool interface {
+type PoaKeeper interface {
 	// SubmitApplication submits a new application to the validator pool
 	SubmitApplication(types.Context, types.AccAddress, poatypes.Validator) error
 	// ApproveApplication (onlyOwner) approves a pending application and
@@ -39,7 +39,7 @@ type ValidatorPool interface {
 }
 
 // NewPrecompile creates a new validator pool precompile.
-func NewPrecompile(vp ValidatorPool) (*precompile.Contract, error) {
+func NewPrecompile(pk PoaKeeper) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
@@ -50,7 +50,7 @@ func NewPrecompile(vp ValidatorPool) (*precompile.Contract, error) {
 		common.HexToAddress(EvmAddress),
 	)
 
-	methods := newPrecompileMethods(vp)
+	methods := newPrecompileMethods(pk)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -58,13 +58,13 @@ func NewPrecompile(vp ValidatorPool) (*precompile.Contract, error) {
 
 // newPrecompileMethods builds the list of methods for the validator pool precompile.
 // All methods returned by this function are registered in the validator pool precompile.
-func newPrecompileMethods(vp ValidatorPool) []precompile.Method {
+func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 	return []precompile.Method{
-		newSubmitApplicationMethod(vp),
-		newApproveApplicationMethod(vp),
-		newKickMethod(vp),
-		newLeaveMethod(vp),
-		newTransferOwnershipMethod(vp),
-		newAcceptOwnershipMethod(vp),
+		newSubmitApplicationMethod(pk),
+		newApproveApplicationMethod(pk),
+		newKickMethod(pk),
+		newLeaveMethod(pk),
+		newTransferOwnershipMethod(pk),
+		newAcceptOwnershipMethod(pk),
 	}
 }

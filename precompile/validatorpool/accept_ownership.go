@@ -13,12 +13,12 @@ const AcceptOwnershipMethodName = "acceptOwnership"
 // acceptOwnershipMethod is the implementation of the acceptOwnership method that accepts
 // a pending ownership transfer
 type acceptOwnershipMethod struct {
-	keeper ValidatorPool
+	keeper PoaKeeper
 }
 
-func newAcceptOwnershipMethod(vp ValidatorPool) *acceptOwnershipMethod {
+func newAcceptOwnershipMethod(pk PoaKeeper) *acceptOwnershipMethod {
 	return &acceptOwnershipMethod{
-		keeper: vp,
+		keeper: pk,
 	}
 }
 

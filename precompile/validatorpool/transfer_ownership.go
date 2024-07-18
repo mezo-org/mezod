@@ -17,12 +17,12 @@ const TransferOwnershipMethodName = "transferOwnership"
 // The method has the following input arguments:
 // - newOwner: the EVM address identifying the new owner.
 type transferOwnershipMethod struct {
-	keeper ValidatorPool
+	keeper PoaKeeper
 }
 
-func newTransferOwnershipMethod(vp ValidatorPool) *transferOwnershipMethod {
+func newTransferOwnershipMethod(pk PoaKeeper) *transferOwnershipMethod {
 	return &transferOwnershipMethod{
-		keeper: vp,
+		keeper: pk,
 	}
 }
 

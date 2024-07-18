@@ -20,12 +20,12 @@ const SubmitApplicationMethodName = "submitApplication"
 // - consPubKey: the consensus public key of the validator used to vote on blocks
 // - operator: the EVM address identifying the validator.
 type submitApplicationMethod struct {
-	keeper ValidatorPool
+	keeper PoaKeeper
 }
 
-func newSubmitApplicationMethod(vp ValidatorPool) *submitApplicationMethod {
+func newSubmitApplicationMethod(pk PoaKeeper) *submitApplicationMethod {
 	return &submitApplicationMethod{
-		keeper: vp,
+		keeper: pk,
 	}
 }
 
