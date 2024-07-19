@@ -84,6 +84,10 @@ func (am *approveMethod) Run(
 		return nil, fmt.Errorf("invalid spender address: %v", inputs[0])
 	}
 
+	if isZeroAddress(spender) {
+		return nil, fmt.Errorf("spender address cannot be empty")
+	}
+
 	amount, ok := inputs[1].(*big.Int)
 	if !ok {
 		return nil, fmt.Errorf("invalid amount: %v", inputs[1])
@@ -187,4 +191,8 @@ func (am approveMethod) updateAuthorization(ctx sdk.Context, grantee, granter co
 	}
 
 	return am.authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), authorization, expiration)
+}
+
+func isZeroAddress(address common.Address) bool {
+	return address == common.Address{}
 }
