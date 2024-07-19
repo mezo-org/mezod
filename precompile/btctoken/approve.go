@@ -1,7 +1,6 @@
 package btctoken
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -92,6 +91,9 @@ func (am *approveMethod) Run(
 	if !ok {
 		return nil, fmt.Errorf("invalid amount: %v", inputs[1])
 	}
+	if amount == nil || amount.Sign() < 0 {
+		amount = big.NewInt(0)
+	}
 
 	granter := context.MsgSender()
 
@@ -102,18 +104,17 @@ func (am *approveMethod) Run(
 
 	var err error
 
-	switch {
-	case authorization == nil && amount != nil && amount.Sign() < 0:
-		// scenario 1: no authorization, amount negative -> error
-		err = errors.New("cannot approve negative values")
-	case authorization == nil && amount != nil && amount.Sign() > 0:
-		// scenario 2: no authorization, amount positive -> create a new authorization
+	if authorization == nil && amount.Sign() == 0 {
+		// no authorization, amount 0 -> error
+		err = fmt.Errorf("no existing approvals, cannot approve 0")
+	} else if authorization == nil && amount.Sign() > 0 {
+		// no authorization, amount positive -> create a new authorization
 		err = am.createAuthorization(context.SdkCtx(), spender, granter, amount)
-	case authorization != nil && amount != nil && amount.Sign() <= 0:
-		// scenario 3: authorization exists, amount 0 or negative -> remove from spend limit and delete authorization if no spend limit left
+	} else if authorization != nil && amount.Sign() == 0 {
+		// authorization exists, amount 0 -> remove from spend limit and delete authorization if no spend limit left
 		err = am.removeSpendLimitOrDeleteAuthorization(context.SdkCtx(), spender, granter, authorization, expiration)
-	case authorization != nil && amount != nil && amount.Sign() > 0:
-		// scenario 4: authorization exists, amount positive -> update authorization
+	} else if authorization != nil && amount.Sign() > 0 {
+		// authorization exists, amount positive -> update authorization
 		sendAuthz, ok := authorization.(*banktypes.SendAuthorization)
 		if !ok {
 			return nil, fmt.Errorf("unknown authorization type")
@@ -126,7 +127,6 @@ func (am *approveMethod) Run(
 		return nil, err
 	}
 
-	// scenario 5: no authorizaiton, amount 0 -> no-op but emit Approval event
 	err = context.EventEmitter().Emit(
 		NewApprovalEvent(
 			granter,
