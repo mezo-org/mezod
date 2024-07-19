@@ -20,7 +20,7 @@ import (
 // ApproveMethodName is the name of the approve method that should match the name
 // in the contract ABI.
 const (
-	ApproveMethodName = "approve"
+	ApproveMethodName  = "approve"
 	ApprovalExpiration = time.Hour * 24 * 365 * time.Duration(100) // 100 years
 )
 
@@ -74,6 +74,7 @@ func (am *approveMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
+	logger := context.SdkCtx().Logger()
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func (am *approveMethod) Run(
 
 	authorization, expiration := am.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
 	if authorization == nil {
-		fmt.Printf("authorization to %s for address %s does not exist or is expired", SendMsgURL, spender)
+		logger.Debug("authorization to %s for address %s does not exist or is expired", SendMsgURL, spender)
 	}
 
 	var err error
