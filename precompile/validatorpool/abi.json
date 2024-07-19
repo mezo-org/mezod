@@ -1,108 +1,11 @@
 [
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "initialOwner",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "maxValidators",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "operator",
-                "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "message",
-                "type": "string"
-            }
-        ],
-        "name": "ApplicationExists",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "operator",
-                "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "message",
-                "type": "string"
-            }
-        ],
-        "name": "InvalidOperator",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "operator",
-                "type": "address"
-            },
-            {
-                "internalType": "string",
-                "name": "message",
-                "type": "string"
-            }
-        ],
-        "name": "InvalidState",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "string",
-                "name": "message",
-                "type": "string"
-            }
-        ],
-        "name": "NoValidatorSlots",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "owner",
-                "type": "address"
-            }
-        ],
-        "name": "OwnableInvalidOwner",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "account",
-                "type": "address"
-            }
-        ],
-        "name": "OwnableUnauthorizedAccount",
-        "type": "error"
-    },
-    {
         "anonymous": false,
         "inputs": [
             {
                 "indexed": false,
                 "internalType": "address",
-                "name": "candidate",
+                "name": "operator",
                 "type": "address"
             }
         ],
@@ -172,7 +75,7 @@
             {
                 "indexed": false,
                 "internalType": "address",
-                "name": "validator",
+                "name": "operator",
                 "type": "address"
             }
         ],
@@ -185,7 +88,7 @@
             {
                 "indexed": false,
                 "internalType": "address",
-                "name": "validator",
+                "name": "operator",
                 "type": "address"
             }
         ],
@@ -198,7 +101,7 @@
             {
                 "indexed": false,
                 "internalType": "address",
-                "name": "validator",
+                "name": "operator",
                 "type": "address"
             }
         ],
@@ -208,7 +111,13 @@
     {
         "inputs": [],
         "name": "acceptOwnership",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
@@ -221,7 +130,13 @@
             }
         ],
         "name": "approveApplication",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
@@ -234,14 +149,26 @@
             }
         ],
         "name": "kick",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
     {
         "inputs": [],
         "name": "leave",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
@@ -272,26 +199,6 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "renounceOwnership",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "slots",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
                 "internalType": "address",
@@ -305,7 +212,13 @@
             }
         ],
         "name": "submitApplication",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
@@ -318,7 +231,13 @@
             }
         ],
         "name": "transferOwnership",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "success",
+                "type": "bool"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
