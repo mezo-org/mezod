@@ -123,7 +123,16 @@ func (am *approveMethod) Run(
 	}
 
 	// scenario 5: no authorizaiton, amount 0 -> no-op but emit Approval event
-	// TODO: emit Approval event
+	err = context.EventEmitter().Emit(
+		NewApprovalEvent(
+			granter,
+			spender,
+			amount,
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit approval event: [%w]", err)
+	}
 
 	return precompile.MethodOutputs{true}, nil
 }
