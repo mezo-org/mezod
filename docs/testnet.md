@@ -41,7 +41,7 @@ accessible to the public. Here is an overview of the setup from the ground up.
 
 ### Artifacts
 
-The main artifacts necessary to boostrap any Mezo chain are:
+The main artifacts necessary to bootstrap any Mezo chain are:
 
 - A global genesis file defining the initial state of the chain
   (most importantly, the initial validator set)
