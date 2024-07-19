@@ -42,7 +42,7 @@ module's ownership transfer.
 
 ### Types
 
-The owner's state does not use any custom types. It works with the 
+The owner's state does not use any custom types. It works with the
 Cosmos SDK `sdk.AccAddress` type.
 
 ## Application
@@ -92,10 +92,10 @@ associated validator, where the public key of that validator can change in the
 future.
 
 `ValidatorByConsAddr` is an additional index that enables lookups for future
-uses (like automatic kick for misbehaving). 
+uses (like automatic kick for misbehaving).
 
-`ValidatorState` holds the state of a validator. The validator can have 3 
-states: joining, active or leaving. This state allows the End Blocker to know 
+`ValidatorState` holds the state of a validator. The validator can have 3
+states: joining, active or leaving. This state allows the End Blocker to know
 how to update the Tendermint consensus validator state.
 
 ### Types
@@ -144,14 +144,14 @@ const (
 
 ## Historical info
 
-`HistoricalInfo` objects are stored and pruned at each block such that the PoA 
+`HistoricalInfo` objects are stored and pruned at each block such that the PoA
 keeper persists the `n` most recent historical info defined by the
 `HistoricalEntries()` parameter returned by the `Keeper`.
 
-At the beginning of each block, the PoA `Keeper` will persist the current 
-`Header` and the active validators of the current block in a `HistoricalInfo` 
-object. The validators are sorted on their operator address to ensure that they 
-are in a deterministic order. The oldest entries will be pruned to ensure that 
+At the beginning of each block, the PoA `Keeper` will persist the current
+`Header` and the active validators of the current block in a `HistoricalInfo`
+object. The validators are sorted on their operator address to ensure that they
+are in a deterministic order. The oldest entries will be pruned to ensure that
 there only exist the parameter-defined number of historical entries.
 
 ### Keys

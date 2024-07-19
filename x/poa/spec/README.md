@@ -9,7 +9,7 @@ parent:
 
 ## Abstract
 
-The module enables a Cosmos-SDK based blockchain to use a Proof of Authority 
+The module enables a Cosmos-SDK based blockchain to use a Proof of Authority
 system to determine the validator set.
 
 An initial validator set is defined in the genesis file. Subsequent
