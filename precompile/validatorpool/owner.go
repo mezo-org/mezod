@@ -7,6 +7,96 @@ import (
 	"github.com/evmos/evmos/v12/precompile"
 )
 
+// OwnerMethodName is the name of the owner method. It matches the name
+// of the method in the contract ABI.
+const OwnerMethodName = "owner"
+
+// ownerMethod is the implementation of the owner method that returns
+// the current owner
+type ownerMethod struct {
+	keeper PoaKeeper
+}
+
+func newOwnerMethod(pk PoaKeeper) *ownerMethod {
+	return &ownerMethod{
+		keeper: pk,
+	}
+}
+
+func (m *ownerMethod) MethodName() string {
+	return OwnerMethodName
+}
+
+func (m *ownerMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *ownerMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (m *ownerMethod) Payable() bool {
+	return false
+}
+
+func (m *ownerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
+	owner := m.keeper.GetOwner(
+		context.SdkCtx(),
+	)
+
+	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(owner)}, nil
+}
+
+// PendingOwnerMethodName is the name of the pendingOwner method. It matches the name
+// of the method in the contract ABI.
+const PendingOwnerMethodName = "pendingOwner"
+
+// pendingOwnerMethod is the implementation of the pendingOwner method that returns
+// the pending ownership candidate
+type pendingOwnerMethod struct {
+	keeper PoaKeeper
+}
+
+func newPendingOwnerMethod(pk PoaKeeper) *pendingOwnerMethod {
+	return &pendingOwnerMethod{
+		keeper: pk,
+	}
+}
+
+func (m *pendingOwnerMethod) MethodName() string {
+	return PendingOwnerMethodName
+}
+
+func (m *pendingOwnerMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *pendingOwnerMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (m *pendingOwnerMethod) Payable() bool {
+	return false
+}
+
+func (m *pendingOwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
+	pendingOwner := m.keeper.GetCandidateOwner(
+		context.SdkCtx(),
+	)
+
+	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(pendingOwner)}, nil
+}
+
 // TransferOwnershipMethodName is the name of the transferOwnership method. It matches the name
 // of the method in the contract ABI.
 const TransferOwnershipMethodName = "transferOwnership"

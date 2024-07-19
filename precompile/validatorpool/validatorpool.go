@@ -40,6 +40,8 @@ type PoaKeeper interface {
 	Kick(types.Context, types.AccAddress, types.ValAddress) error
 	// GetOwner returns the validator pool owner address
 	GetOwner(types.Context) types.AccAddress
+	// GetCandidateOwner returns the candidate validator pool owner address
+	GetCandidateOwner(types.Context) types.AccAddress
 	// TransferOwnership (onlyOwner) starts ownership transfer flow with a pending
 	// ownership transfer
 	TransferOwnership(types.Context, types.AccAddress, types.AccAddress) error
@@ -73,6 +75,8 @@ func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 		newApproveApplicationMethod(pk),
 		newKickMethod(pk),
 		newLeaveMethod(pk),
+		newOwnerMethod(pk),
+		newPendingOwnerMethod(pk),
 		newTransferOwnershipMethod(pk),
 		newAcceptOwnershipMethod(pk),
 	}
