@@ -57,7 +57,7 @@ There is an automated way to generate these artifacts using the
 This script generates the genesis file, 5 configuration packages for
 initial validators, one configuration package for the faucet, and a seed file.
 The resulting artifacts are stored in the
-[`.public-testnet`](../.public-testnet) directory.
+`.public-testnet` directory.
 
 ---
 
