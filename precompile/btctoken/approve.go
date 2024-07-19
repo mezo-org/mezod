@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"time"
 
-	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/authz"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
@@ -115,12 +114,7 @@ func (am *approveMethod) Run(
 		err = am.removeSpendLimitOrDeleteAuthorization(context.SdkCtx(), spender, granter, authorization, expiration)
 	} else if authorization != nil && amount.Sign() > 0 {
 		// authorization exists, amount positive -> update authorization
-		sendAuthz, ok := authorization.(*banktypes.SendAuthorization)
-		if !ok {
-			return nil, fmt.Errorf("unknown authorization type")
-		}
-
-		err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, sendAuthz, expiration)
+		err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration)
 	}
 
 	if err != nil {
@@ -142,11 +136,12 @@ func (am *approveMethod) Run(
 }
 
 func (am approveMethod) createAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int) error {
-	if amount.BitLen() > sdkmath.MaxBitLen {
-		return fmt.Errorf("amount %s causes integer overflow", amount)
+	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
+	if err != nil {
+		return fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 
-	coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkmath.NewIntFromBigInt(amount)}}
+	coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}}
 
 	expiration := ctx.BlockTime().Add(ApprovalExpiration)
 
@@ -184,13 +179,23 @@ func (am approveMethod) removeSpendLimitOrDeleteAuthorization(ctx sdk.Context, g
 	return am.authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), sendAuthz, expiration)
 }
 
-func (am approveMethod) updateAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int, authorization *banktypes.SendAuthorization, expiration *time.Time) error {
-	authorization.SpendLimit[0] = sdk.Coin{Denom: evm.DefaultEVMDenom, Amount: sdkmath.NewIntFromBigInt(amount)}
-	if err := authorization.ValidateBasic(); err != nil {
+func (am approveMethod) updateAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int, authorization authz.Authorization, expiration *time.Time) error {
+	sendAuthz, ok := authorization.(*banktypes.SendAuthorization)
+	if !ok {
+		return fmt.Errorf("unknown authorization type")
+	}
+
+	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
+	if err != nil {
+		return fmt.Errorf("failed to convert amount: [%w]", err)
+	}
+
+	sendAuthz.SpendLimit[0] = sdk.Coin{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}
+	if err := sendAuthz.ValidateBasic(); err != nil {
 		return err
 	}
 
-	return am.authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), authorization, expiration)
+	return am.authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), sendAuthz, expiration)
 }
 
 func isZeroAddress(address common.Address) bool {
