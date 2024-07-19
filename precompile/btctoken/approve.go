@@ -103,18 +103,22 @@ func (am *approveMethod) Run(
 
 	var err error
 
-	if authorization == nil && amount.Sign() == 0 {
-		// no authorization, amount 0 -> error
-		err = fmt.Errorf("no existing approvals, cannot approve 0")
-	} else if authorization == nil && amount.Sign() > 0 {
-		// no authorization, amount positive -> create a new authorization
-		err = am.createAuthorization(context.SdkCtx(), spender, granter, amount)
-	} else if authorization != nil && amount.Sign() == 0 {
-		// authorization exists, amount 0 -> remove from spend limit and delete authorization if no spend limit left
-		err = am.removeSpendLimitOrDeleteAuthorization(context.SdkCtx(), spender, granter, authorization, expiration)
-	} else if authorization != nil && amount.Sign() > 0 {
-		// authorization exists, amount positive -> update authorization
-		err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration)
+	if authorization == nil {
+		if amount.Sign() == 0 {
+			// no authorization, amount 0 -> error
+			err = fmt.Errorf("no existing approvals, cannot approve 0")
+		} else {
+			// no authorization, amount positive -> create a new authorization
+			err = am.createAuthorization(context.SdkCtx(), spender, granter, amount)
+		}
+	} else {
+		if amount.Sign() == 0 {
+			// authorization exists, amount 0 -> remove from spend limit and delete authorization if no spend limit left
+			err = am.removeSpendLimitOrDeleteAuthorization(context.SdkCtx(), spender, granter, authorization, expiration)
+		} else {
+			// authorization exists, amount positive -> update authorization
+			err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration)
+		}
 	}
 
 	if err != nil {
