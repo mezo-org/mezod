@@ -21,8 +21,7 @@ import (
 // in the contract ABI.
 const (
 	ApproveMethodName = "approve"
-	// TODO: revisit and decide what the default expiration should be
-	ApprovalExpiration = time.Hour * 24 * 365 // 1 year
+	ApprovalExpiration = time.Hour * 24 * 365 * time.Duration(100) // 100 years
 )
 
 // SendMsgURL defines the authorization type for MsgSend
