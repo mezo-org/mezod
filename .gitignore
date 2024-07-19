@@ -47,6 +47,12 @@ github.com/
 localnet-setup
 .testnets
 
+# Single-node localnet
+.localnode
+
+# Public testnet
+.public-testnet
+
 # Testing
 coverage.txt
 *.out
