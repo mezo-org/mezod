@@ -256,7 +256,7 @@ func initTestnetFiles(
 			return err
 		}
 
-		ip, err := getIP(i, args.startingIPAddress)
+		ip, port, err := getIPAndPort(i, args.startingIPAddress)
 		if err != nil {
 			_ = os.RemoveAll(args.outputDir)
 			return err
@@ -268,7 +268,7 @@ func initTestnetFiles(
 			return err
 		}
 
-		memos[i] = fmt.Sprintf("%s@%s:26656", nodeIDs[i], ip)
+		memos[i] = fmt.Sprintf("%s@%s:%d", nodeIDs[i], ip, port)
 
 		genFiles[i] = nodeConfig.GenesisFile()
 
@@ -446,6 +446,27 @@ func initGenesisFiles(
 		}
 	}
 	return nil
+}
+
+func getIPAndPort(i int, startingIPAddr string) (string, int, error) {
+	if startingIPAddr == "127.0.0.1" {
+		// If the starting IP address is set to 127.0.0.1, it means we are
+		// running binary-based localnet and the nodes will run on the
+		// localhost, but different ports: 127.0.0.1:26656, 127.0.0.1:26657,
+		// 127.0.0.1:26658, etc.
+		return "127.0.0.1", 26656 + i, nil
+	}
+
+	// If the starting IP address is set to a value different than
+	// 127.0.0.1, it means we are running docker-based localnet and
+	// the nodes will run on the subsequent ip addresses and the same
+	// port, e.g.: 192.167.10.1:26656, 192.167.10.2:26656,
+	// 192.167.10.3:26656, etc
+	ip, err := getIP(i, startingIPAddr)
+	if err != nil {
+		return "", 0, err
+	}
+	return ip, 26656, nil
 }
 
 func getIP(i int, startingIPAddr string) (ip string, err error) {
