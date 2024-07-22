@@ -350,19 +350,27 @@ func initTestnetFiles(
 
 		nodeConfig.SetRoot(nodeDir)
 		nodeConfig.Moniker = nodeDirNames[i]
-		nodeConfig.RPC.ListenAddress = "tcp://0.0.0.0:26657"
+		nodeConfig.RPC.ListenAddress = getRPCAddress(i, args.startingIPAddress)
+		nodeConfig.P2P.ListenAddress = getP2PAddress(i, args.startingIPAddress)
+		nodeConfig.RPC.PprofListenAddress = getPprofAddress(i, args.startingIPAddress)
 		nodeConfig.P2P.PersistentPeers = persistentPeers
+		nodeConfig.P2P.AddrBookStrict = getAddrBookStrict(args.startingIPAddress)
+		nodeConfig.P2P.AllowDuplicateIP = getAllowDuplicateIP(args.startingIPAddress)
 		tmconfig.WriteConfigFile(filepath.Join(nodeDir, "config/config.toml"), nodeConfig)
 
 		appConfig := config.DefaultConfig()
 		appConfig.MinGasPrices = args.minGasPrices
 		appConfig.API.Enable = true
+		appConfig.API.Address = getAPIAddress(i, args.startingIPAddress)
+		appConfig.GRPC.Address = getGRPCAddress(i, args.startingIPAddress)
+		appConfig.GRPCWeb.Address = getGRPCWebAddress(i, args.startingIPAddress)
 		appConfig.Telemetry.Enabled = true
 		appConfig.Telemetry.PrometheusRetentionTime = 60
 		appConfig.Telemetry.EnableHostnameLabel = false
 		appConfig.Telemetry.GlobalLabels = [][]string{{"chain_id", args.chainID}}
-		appConfig.JSONRPC.Address = "0.0.0.0:8545"
-		appConfig.JSONRPC.WsAddress = "0.0.0.0:8546"
+		jsonRpcAddr, jsonRpcWsAddr := getJSONRPCAddresses(i, args.startingIPAddress)
+		appConfig.JSONRPC.Address = jsonRpcAddr
+		appConfig.JSONRPC.WsAddress = jsonRpcWsAddr
 		srvconfig.WriteConfigFile(filepath.Join(nodeDir, "config/app.toml"), appConfig)
 	}
 
@@ -448,25 +456,84 @@ func initGenesisFiles(
 	return nil
 }
 
+// getIPAndPort returns the value of IP and port for the node's P2P address.
+// If the the starting IP address is 127.0.0.1, it means we are running
+// binary-based localnet and the returned IP will be 127.0.0.1 and the returned
+// port will be an even number depending on the passed index and starting from
+// 26656.
+// If the starting IP address is not 127.0.0.1 it means we are running
+// docker-based localnet and returned IP address will depend on the passed index
+// and will be an increment of the starting IP address.
 func getIPAndPort(i int, startingIPAddr string) (string, int, error) {
 	if startingIPAddr == "127.0.0.1" {
-		// If the starting IP address is set to 127.0.0.1, it means we are
-		// running binary-based localnet and the nodes will run on the
-		// localhost, but different ports: 127.0.0.1:26656, 127.0.0.1:26657,
-		// 127.0.0.1:26658, etc.
-		return "127.0.0.1", 26656 + i, nil
+		return "127.0.0.1", 26656 + 2*i, nil
 	}
-
-	// If the starting IP address is set to a value different than
-	// 127.0.0.1, it means we are running docker-based localnet and
-	// the nodes will run on the subsequent ip addresses and the same
-	// port, e.g.: 192.167.10.1:26656, 192.167.10.2:26656,
-	// 192.167.10.3:26656, etc
 	ip, err := getIP(i, startingIPAddr)
 	if err != nil {
 		return "", 0, err
 	}
 	return ip, 26656, nil
+}
+
+func getRPCAddress(i int, startingIPAddr string) string {
+	if startingIPAddr == "127.0.0.1" {
+		return fmt.Sprintf("tcp://0.0.0.0:%d", 26657+2*i)
+	}
+	return "tcp://0.0.0.0:26657"
+}
+
+func getP2PAddress(i int, startingIPAddr string) string {
+	if startingIPAddr == "127.0.0.1" {
+		return fmt.Sprintf("tcp://0.0.0.0:%d", 26656+2*i)
+	}
+	return "tcp://0.0.0.0:26656"
+}
+
+func getPprofAddress(i int, startingIPAddr string) string {
+	if startingIPAddr == "127.0.0.1" {
+		return fmt.Sprintf("localhost:%d", 6060+i)
+	}
+	return "localhost:6060"
+}
+
+func getAPIAddress(i int, startingIPAddr string) string {
+	if startingIPAddr == "127.0.0.1" {
+		return fmt.Sprintf("tcp://0.0.0.0:%d", 1317+i)
+	}
+	return "tcp://0.0.0.0:1317"
+}
+
+func getGRPCAddress(i int, startingIPAddr string) string {
+	if startingIPAddr == "127.0.0.1" {
+		return fmt.Sprintf("0.0.0.0:%d", 9090+2*i)
+	}
+	return "0.0.0.0:9090"
+}
+
+func getGRPCWebAddress(i int, startingIPAddr string) string {
+	if startingIPAddr == "127.0.0.1" {
+		return fmt.Sprintf("0.0.0.0:%d", 9091+2*i)
+	}
+	return "0.0.0.0:9091"
+}
+
+func getJSONRPCAddresses(i int, startingIPAddr string) (string, string) {
+	if startingIPAddr == "127.0.0.1" {
+		return fmt.Sprintf("0.0.0.0:%d", 8545+2*i),
+			fmt.Sprintf("0.0.0.0:%d", 8546+2*i)
+	}
+	return "0.0.0.0:8545", "0.0.0.0:8546"
+}
+
+// getAddrBookStrict returns the value for the address book strict parameter.
+// It returns true for docker-based localnet and false for the binary-based
+// localnet.
+func getAddrBookStrict(startingIPAddr string) bool {
+	return startingIPAddr != "127.0.0.1"
+}
+
+func getAllowDuplicateIP(startingIPAddr string) bool {
+	return startingIPAddr == "127.0.0.1"
 }
 
 func getIP(i int, startingIPAddr string) (ip string, err error) {

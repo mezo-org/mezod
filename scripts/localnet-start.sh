@@ -10,7 +10,7 @@ fi
 NODE_NAMES=()
 while IFS= read -r -d '' dir; do
   NODE_NAMES+=("$(basename "$dir")")
-done < <(find "$HOMEDIR" -maxdepth 1 -type d -name 'node*' -print0)
+done < <(find "$HOMEDIR" -maxdepth 1 -type d -name 'node*' -print0 | sort -z)
 
 if [ ${#NODE_NAMES[@]} -eq 0 ]; then
   echo "No nodes found."
@@ -33,18 +33,9 @@ fi
 NODE_NAME=${NODE_NAMES[$NODE_INDEX]}
 NODE_HOMEDIR="$HOMEDIR/$NODE_NAME/evmosd"
 
-# Choose the RPC and WS ports based on the node index.
-# The node at index 0 should use ports 8545 and 8546.
-# The node at index 1 should use ports 8547 and 8548. And so on.
-RPC_ADDRESS="0.0.0.0:$((8545 + NODE_INDEX * 2))"
-WS_ADDRESS="0.0.0.0:$((8546 + NODE_INDEX * 2))"
-
-echo "starting node $NODE_NAME with home directory $NODE_HOMEDIR and addresses:"
-echo "--json-rpc.address=\"$RPC_ADDRESS\" --json-rpc.ws-address=\"$WS_ADDRESS\""
+echo "starting node $NODE_NAME with home directory $NODE_HOMEDIR"
 
 ./build/evmosd start --home "$NODE_HOMEDIR" \
-  --json-rpc.address="$RPC_ADDRESS" \
-  --json-rpc.ws-address="$WS_ADDRESS" \
   --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" \
   --json-rpc.enable
 
