@@ -41,7 +41,7 @@ accessible to the public. Here is an overview of the setup from the ground up.
 
 ### Artifacts
 
-The main artifacts necessary to boostrap any Mezo chain are:
+The main artifacts necessary to bootstrap any Mezo chain are:
 
 - A global genesis file defining the initial state of the chain
   (most importantly, the initial validator set)
@@ -70,7 +70,7 @@ interface (CLI) command
 ### Infrastructure
 
 Testnet artifacts mentioned above are infrastructure-agnostic and can be used
-to bootstrap a Mezo chain on any platform. In practice, Mezo engineering team  
+to bootstrap a Mezo chain on any platform. In practice, Mezo engineering team
 uses Google Cloud Platform (GCP) as the infrastructure provider for the core
 components of the Mezo testnet. Moreover, GCP resources are managed using
 Terraform. The Terraform configuration is located in the
