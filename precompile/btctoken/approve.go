@@ -97,13 +97,11 @@ func (am *approveMethod) Run(
 	granter := context.MsgSender()
 
 	authorization, expiration := am.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
-	if authorization == nil {
-		logger.Debug("authorization to %s for address %s does not exist or is expired", SendMsgURL, spender)
-	}
 
 	var err error
 
 	if authorization == nil {
+		logger.Debug("authorization to %s for address %s does not exist or is expired", SendMsgURL, spender)
 		if amount.Sign() == 0 {
 			// no authorization, amount 0 -> error
 			err = fmt.Errorf("no existing approvals, cannot approve 0")
