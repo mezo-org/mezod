@@ -16,8 +16,8 @@ func (s *PrecompileTestSuite) TestEmitApprovalEvent() {
 	}{
 		{
 			name:    "pass",
-			owner:   s.account1.Addr,
-			spender: s.account2.Addr,
+			owner:   s.account1.EvmAddr,
+			spender: s.account2.EvmAddr,
 			amount:  big.NewInt(100),
 		},
 	}

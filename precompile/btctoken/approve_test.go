@@ -54,7 +54,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 			name: "invalid amount",
 			run: func() []interface{} {
 				return []interface{}{
-					s.account1.Addr, "invalid amount",
+					s.account1.EvmAddr, "invalid amount",
 				}
 			},
 			errContains: "cannot use string as type ptr as argument",
@@ -63,14 +63,14 @@ func (s *PrecompileTestSuite) TestApprove() {
 			name: "approve without existing authorization",
 			run: func() []interface{} {
 				return []interface{}{
-					s.account1.Addr, big.NewInt(amount),
+					s.account1.EvmAddr, big.NewInt(amount),
 				}
 			},
 			basicPass: true,
 			postCheck: func() {
 				s.requireSendAuthz(
-					s.account1.AccAddr,
-					s.account2.AccAddr,
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
 					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
 				)
 			},
@@ -79,20 +79,20 @@ func (s *PrecompileTestSuite) TestApprove() {
 			name: "approve with existing authorization",
 			run: func() []interface{} {
 				s.setupSendAuthz(
-					s.account1.AccAddr,
-					s.account2.AccAddr,
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
 					sdk.NewCoins(sdk.NewInt64Coin("abtc", int64(1))),
 				)
 
 				return []interface{}{
-					s.account1.Addr, big.NewInt(amount),
+					s.account1.EvmAddr, big.NewInt(amount),
 				}
 			},
 			basicPass: true,
 			postCheck: func() {
 				s.requireSendAuthz(
-					s.account1.AccAddr,
-					s.account2.AccAddr,
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
 					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
 				)
 			},
@@ -101,19 +101,19 @@ func (s *PrecompileTestSuite) TestApprove() {
 			name: "delete existing authorization",
 			run: func() []interface{} {
 				s.setupSendAuthz(
-					s.account1.AccAddr,
-					s.account2.AccAddr,
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
 					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
 				)
 
 				return []interface{}{
-					s.account1.Addr, common.Big0,
+					s.account1.EvmAddr, common.Big0,
 				}
 			},
 			basicPass: true,
 			postCheck: func() {
 				grants, err := s.app.AuthzKeeper.GranteeGrants(s.ctx, &authz.QueryGranteeGrantsRequest{
-					Grantee: s.account1.AccAddr.String(),
+					Grantee: s.account1.SdkAddr.String(),
 				})
 				s.Require().NoError(err, "expected no error querying the grants")
 				authzs, err := unpackGrantAuthzs(grants.Grants)
@@ -158,7 +158,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function approve(address spender, uint256 value)'
 			vmContract.Input = append([]byte{0x09, 0x5e, 0xa7, 0xb3}, methodInputArgs...)
-			vmContract.CallerAddress = s.account2.Addr
+			vmContract.CallerAddress = s.account2.EvmAddr
 
 			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
 			s.Require().NoError(err, "expected no error")

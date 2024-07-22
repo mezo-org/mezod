@@ -16,8 +16,8 @@ import (
 )
 
 type Key struct {
-	Addr    common.Address
-	AccAddr sdk.AccAddress
+	EvmAddr common.Address
+	SdkAddr sdk.AccAddress
 	Priv    cryptotypes.PrivKey
 }
 
@@ -35,8 +35,8 @@ type PrecompileTestSuite struct {
 func NewKey() Key {
 	addr, privKey := utiltx.NewAddrKey()
 	return Key{
-		Addr:    addr,
-		AccAddr: sdk.AccAddress(addr.Bytes()),
+		EvmAddr: addr,
+		SdkAddr: sdk.AccAddress(addr.Bytes()),
 		Priv:    privKey,
 	}
 }
