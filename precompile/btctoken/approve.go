@@ -110,8 +110,8 @@ func (am *approveMethod) Run(
 		}
 	} else {
 		if amount.Sign() == 0 {
-			// authorization exists, amount 0 -> remove from spend limit and delete authorization if no spend limit left
-			err = am.removeSpendLimitOrDeleteAuthorization(context.SdkCtx(), spender, granter, authorization, expiration)
+			// authorization exists, amount 0 -> delete authorization
+			err = am.authzkeeper.DeleteGrant(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
 		} else {
 			// authorization exists, amount positive -> update authorization
 			err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration)
@@ -152,32 +152,6 @@ func (am approveMethod) createAuthorization(ctx sdk.Context, grantee, granter co
 	}
 
 	return am.authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), authorization, &expiration)
-}
-
-// Removes the spend limit for BTC and update the grant or delete the
-// authorization if no spend limit in another denomination is set.
-func (am approveMethod) removeSpendLimitOrDeleteAuthorization(ctx sdk.Context, grantee, granter common.Address, authorization authz.Authorization, expiration *time.Time) error {
-	sendAuthz, ok := authorization.(*banktypes.SendAuthorization)
-	if !ok {
-		return fmt.Errorf("unknown authorization type")
-	}
-
-	found, denomCoins := sendAuthz.SpendLimit.Find(evm.DefaultEVMDenom)
-	if !found {
-		return fmt.Errorf("allowance for token %s does not exist", evm.DefaultEVMDenom)
-	}
-
-	newSpendLimit, hasNeg := sendAuthz.SpendLimit.SafeSub(denomCoins)
-	if hasNeg {
-		return fmt.Errorf("subtracted value cannot be greater than existing allowance for denom %s: %s > %s", evm.DefaultEVMDenom, denomCoins, sendAuthz.SpendLimit)
-	}
-
-	if newSpendLimit.IsZero() {
-		return am.authzkeeper.DeleteGrant(ctx, grantee.Bytes(), granter.Bytes(), SendMsgURL)
-	}
-
-	sendAuthz.SpendLimit = newSpendLimit
-	return am.authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), sendAuthz, expiration)
 }
 
 func (am approveMethod) updateAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int, authorization authz.Authorization, expiration *time.Time) error {
