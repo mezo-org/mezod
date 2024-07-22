@@ -13,11 +13,10 @@ import (
 //go:embed abi.json
 var filesystem embed.FS
 
-// EvmAddress is the EVM address of the BTC token precompile.
-// EVM native precompiles reserve the addresses from 0x...01 to 0x...09.
-// We use the opposite range (0x1... to 0x9...) for custom Mezo precompiles to
-// avoid collisions.
-const EvmAddress = "0x1000000000000000000000000000000000000000"
+// EvmAddress is the EVM address of the BTC token precompile. Token address is
+// prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
+// used to avoid potential collisions with EVM native precompiles.
+const EvmAddress = "0x7b7c000000000000000000000000000000000000"
 
 // NewPrecompile creates a new BTC token precompile.
 func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper) (*precompile.Contract, error) {
