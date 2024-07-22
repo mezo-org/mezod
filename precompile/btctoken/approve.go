@@ -63,11 +63,10 @@ func (am *approveMethod) Payable() bool {
 // BTC coin. It returns a boolean value when the operation succeeded.
 //
 // The Approve method handles the following cases:
-//  1. no authorization, amount negative -> return error
-//  2. no authorization, amount positive -> create a new authorization
-//  3. authorization exists, amount 0 or negative -> delete authorization
-//  4. authorization exists, amount positive -> update authorization
-//  5. no authorizaiton, amount 0 -> no-op but still emit Approval event
+// 1. no authorization, amount 0 -> return error
+// 2. no authorization, amount positive -> create a new authorization
+// 3. authorization exists, amount 0 -> delete authorization
+// 4. authorization exists, amount positive -> update authorization
 func (am *approveMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
