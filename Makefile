@@ -515,24 +515,34 @@ localnet-docker-show-logstream:
 ###                         Localnet binary-based                           ###
 ###############################################################################
 
+LOCALNET_DIR = .localnet
+
 localnet-bin-init:
-	@if ! [ -f .localnet/node0/evmosd/config/genesis.json ]; then \
-		echo "Initializing localnet configuration."; \
+	@if ! [ -d build ]; then \
+		echo "Build directory not found. Running build..."; \
+		make build; \
+	fi
+	@if ! [ -d $(LOCALNET_DIR) ]; then \
+		echo "Initializing localnet configuration..."; \
 		./build/evmosd testnet init-files \
 		--v 4 \
-		--output-dir ./.localnet \
-		--home ./.localnet \
+		--output-dir $(LOCALNET_DIR) \
+		--home $(LOCALNET_DIR) \
 		--keyring-backend=test \
 		--starting-ip-address localhost \
 		--chain-id mezo_31611-10; \
 	else \
-		echo "Skipping initializing localnet configuration."; \
+		echo "Skipped initializing localnet configuration."; \
 	fi
 
 localnet-bin-start:
 	./scripts/localnet-start.sh
 
-.PHONY: localnet-bin-init localnet-bin-start
+localnet-bin-clean:
+	rm -rf $(LOCALNET_DIR) build
+
+.PHONY: localnet-bin-init localnet-bin-start localnet-bin-clean
+
 
 ###############################################################################
 ###                                Releasing                                ###

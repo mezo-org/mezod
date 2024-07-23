@@ -3,7 +3,7 @@
 HOMEDIR=./.localnet
 
 if [ ! -d "$HOMEDIR" ]; then
-  echo "localnet directory $HOMEDIR does not exist; run localnet-bin-init first."
+  echo "localnet directory $HOMEDIR does not exist; run make localnet-bin-init first."
   exit 1
 fi
 
