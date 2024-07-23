@@ -369,9 +369,8 @@ func initTestnetFiles(
 		appConfig.Telemetry.PrometheusRetentionTime = 60
 		appConfig.Telemetry.EnableHostnameLabel = false
 		appConfig.Telemetry.GlobalLabels = [][]string{{"chain_id", args.chainID}}
-		jsonRpcAddr, jsonRpcWsAddr := getJSONRPCAddresses(i, args.startingIPAddress)
-		appConfig.JSONRPC.Address = jsonRpcAddr
-		appConfig.JSONRPC.WsAddress = jsonRpcWsAddr
+		appConfig.JSONRPC.Address = getJSONRPCAddress(i, args.startingIPAddress)
+		appConfig.JSONRPC.WsAddress = getJSONRPCWsAddress(i, args.startingIPAddress)
 		srvconfig.WriteConfigFile(filepath.Join(nodeDir, "config/app.toml"), appConfig)
 	}
 
@@ -471,53 +470,83 @@ func getMemo(nodeID string, i int, startingIPAddr string) (string, error) {
 }
 
 func getRPCAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "localhost" {
-		return fmt.Sprintf("tcp://0.0.0.0:%d", 26657+2*i)
+	port := 26657
+
+	if (startingIPAddr == "localhost") {
+		port = port + 2 * i
 	}
-	return "tcp://0.0.0.0:26657"
+
+	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
 }
 
 func getP2PAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "localhost" {
-		return fmt.Sprintf("tcp://0.0.0.0:%d", 26656+2*i)
+	port := 26656
+
+	if (startingIPAddr == "localhost") {
+		port = port + 2 * i
 	}
-	return "tcp://0.0.0.0:26656"
+
+	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
 }
 
 func getPprofAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "localhost" {
-		return fmt.Sprintf("localhost:%d", 6060+i)
+	port := 6060
+
+	if (startingIPAddr == "localhost") {
+		port = port + i
 	}
-	return "localhost:6060"
+
+	return fmt.Sprintf("localhost:%d", port)
 }
 
 func getAPIAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "localhost" {
-		return fmt.Sprintf("tcp://0.0.0.0:%d", 1317+i)
+	port := 1317
+
+	if (startingIPAddr == "localhost") {
+		port = port + i
 	}
-	return "tcp://0.0.0.0:1317"
+
+	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
 }
 
 func getGRPCAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "localhost" {
-		return fmt.Sprintf("0.0.0.0:%d", 9090+2*i)
+	port := 9090
+
+	if (startingIPAddr == "localhost") {
+		port = port + 2 * i
 	}
-	return "0.0.0.0:9090"
+
+	return fmt.Sprintf("0.0.0.0:%d", port)
 }
 
 func getGRPCWebAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "localhost" {
-		return fmt.Sprintf("0.0.0.0:%d", 9091+2*i)
+	port := 9091
+
+	if (startingIPAddr == "localhost") {
+		port = port + 2 * i
 	}
-	return "0.0.0.0:9091"
+
+	return fmt.Sprintf("0.0.0.0:%d", port)
 }
 
-func getJSONRPCAddresses(i int, startingIPAddr string) (string, string) {
-	if startingIPAddr == "localhost" {
-		return fmt.Sprintf("0.0.0.0:%d", 8545+2*i),
-			fmt.Sprintf("0.0.0.0:%d", 8546+2*i)
+func getJSONRPCAddress(i int, startingIPAddr string) (string) {
+	port := 8545
+
+	if (startingIPAddr == "localhost") {
+		port = port + 2 * i
 	}
-	return "0.0.0.0:8545", "0.0.0.0:8546"
+
+	return fmt.Sprintf("0.0.0.0:%d", port)
+}
+
+func getJSONRPCWsAddress(i int, startingIPAddr string) (string) {
+	port := 8546
+
+	if (startingIPAddr == "localhost") {
+		port = port + 2 * i
+	}
+
+	return fmt.Sprintf("0.0.0.0:%d", port)
 }
 
 func getAddrBookStrict(startingIPAddr string) bool {
