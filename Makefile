@@ -491,7 +491,7 @@ localnet-docker-clean:
 	rm -rf build/*
 
  # Reset testnet
-localnet-unsafe-reset:
+localnet-docker-unsafe-reset:
 	docker-compose down
 ifeq ($(OS),Windows_NT)
 	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
