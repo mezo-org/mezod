@@ -256,19 +256,20 @@ func initTestnetFiles(
 			return err
 		}
 
-		ip, port, err := getIPAndPort(i, args.startingIPAddress)
-		if err != nil {
-			_ = os.RemoveAll(args.outputDir)
-			return err
-		}
-
+		var err error
 		nodeIDs[i], valPubKeys[i], err = genutil.InitializeNodeValidatorFiles(nodeConfig)
 		if err != nil {
 			_ = os.RemoveAll(args.outputDir)
 			return err
 		}
 
-		memos[i] = fmt.Sprintf("%s@%s:%d", nodeIDs[i], ip, port)
+		memo, err := getMemo(nodeIDs[i], i, args.startingIPAddress)
+		if err != nil {
+			_ = os.RemoveAll(args.outputDir)
+			return err
+		}
+
+		memos[i] = memo
 
 		genFiles[i] = nodeConfig.GenesisFile()
 
@@ -456,15 +457,17 @@ func initGenesisFiles(
 	return nil
 }
 
-func getIPAndPort(i int, startingIPAddr string) (string, int, error) {
+func getMemo(nodeID string, i int, startingIPAddr string) (string, error) {
 	if startingIPAddr == "localhost" {
-		return "localhost", 26656 + 2*i, nil
+		return fmt.Sprintf("%s@localhost:%d", nodeID, 26656 + 2*i), nil
 	}
+
 	ip, err := getIP(i, startingIPAddr)
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
-	return ip, 26656, nil
+
+	return fmt.Sprintf("%s@%s:26656", nodeID, ip), nil
 }
 
 func getRPCAddress(i int, startingIPAddr string) string {
