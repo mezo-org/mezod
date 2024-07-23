@@ -523,7 +523,7 @@ localnet-bin-init:
 		--output-dir ./.localnet \
 		--home ./.localnet \
 		--keyring-backend=test \
-		--starting-ip-address 127.0.0.1 \
+		--starting-ip-address localhost \
 		--chain-id mezo_31611-10; \
 	else \
 		echo "Skipping initializing localnet configuration."; \

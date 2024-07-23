@@ -456,17 +456,9 @@ func initGenesisFiles(
 	return nil
 }
 
-// getIPAndPort returns the value of IP and port for the node's P2P address.
-// If the the starting IP address is 127.0.0.1, it means we are running
-// binary-based localnet and the returned IP will be 127.0.0.1 and the returned
-// port will be an even number depending on the passed index and starting from
-// 26656.
-// If the starting IP address is not 127.0.0.1 it means we are running
-// docker-based localnet and returned IP address will depend on the passed index
-// and will be an increment of the starting IP address.
 func getIPAndPort(i int, startingIPAddr string) (string, int, error) {
-	if startingIPAddr == "127.0.0.1" {
-		return "127.0.0.1", 26656 + 2*i, nil
+	if startingIPAddr == "localhost" {
+		return "localhost", 26656 + 2*i, nil
 	}
 	ip, err := getIP(i, startingIPAddr)
 	if err != nil {
@@ -476,64 +468,61 @@ func getIPAndPort(i int, startingIPAddr string) (string, int, error) {
 }
 
 func getRPCAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "127.0.0.1" {
+	if startingIPAddr == "localhost" {
 		return fmt.Sprintf("tcp://0.0.0.0:%d", 26657+2*i)
 	}
 	return "tcp://0.0.0.0:26657"
 }
 
 func getP2PAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "127.0.0.1" {
+	if startingIPAddr == "localhost" {
 		return fmt.Sprintf("tcp://0.0.0.0:%d", 26656+2*i)
 	}
 	return "tcp://0.0.0.0:26656"
 }
 
 func getPprofAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "127.0.0.1" {
+	if startingIPAddr == "localhost" {
 		return fmt.Sprintf("localhost:%d", 6060+i)
 	}
 	return "localhost:6060"
 }
 
 func getAPIAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "127.0.0.1" {
+	if startingIPAddr == "localhost" {
 		return fmt.Sprintf("tcp://0.0.0.0:%d", 1317+i)
 	}
 	return "tcp://0.0.0.0:1317"
 }
 
 func getGRPCAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "127.0.0.1" {
+	if startingIPAddr == "localhost" {
 		return fmt.Sprintf("0.0.0.0:%d", 9090+2*i)
 	}
 	return "0.0.0.0:9090"
 }
 
 func getGRPCWebAddress(i int, startingIPAddr string) string {
-	if startingIPAddr == "127.0.0.1" {
+	if startingIPAddr == "localhost" {
 		return fmt.Sprintf("0.0.0.0:%d", 9091+2*i)
 	}
 	return "0.0.0.0:9091"
 }
 
 func getJSONRPCAddresses(i int, startingIPAddr string) (string, string) {
-	if startingIPAddr == "127.0.0.1" {
+	if startingIPAddr == "localhost" {
 		return fmt.Sprintf("0.0.0.0:%d", 8545+2*i),
 			fmt.Sprintf("0.0.0.0:%d", 8546+2*i)
 	}
 	return "0.0.0.0:8545", "0.0.0.0:8546"
 }
 
-// getAddrBookStrict returns the value for the address book strict parameter.
-// It returns true for docker-based localnet and false for the binary-based
-// localnet.
 func getAddrBookStrict(startingIPAddr string) bool {
-	return startingIPAddr != "127.0.0.1"
+	return startingIPAddr != "localhost"
 }
 
 func getAllowDuplicateIP(startingIPAddr string) bool {
-	return startingIPAddr == "127.0.0.1"
+	return startingIPAddr == "localhost"
 }
 
 func getIP(i int, startingIPAddr string) (ip string, err error) {
