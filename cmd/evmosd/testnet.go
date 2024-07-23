@@ -213,7 +213,10 @@ Example:
 	return cmd
 }
 
-const nodeDirPerm = 0o755
+const (
+	nodeDirPerm = 0o755
+	localhost   = "localhost"
+)
 
 // initTestnetFiles initializes testnet files for a testnet to be run in a separate process
 func initTestnetFiles(
@@ -457,8 +460,8 @@ func initGenesisFiles(
 }
 
 func getMemo(nodeID string, i int, startingIPAddr string) (string, error) {
-	if startingIPAddr == "localhost" {
-		return fmt.Sprintf("%s@localhost:%d", nodeID, 26656 + 2*i), nil
+	if startingIPAddr == localhost {
+		return fmt.Sprintf("%s@localhost:%d", nodeID, 26656+2*i), nil
 	}
 
 	ip, err := getIP(i, startingIPAddr)
@@ -472,8 +475,8 @@ func getMemo(nodeID string, i int, startingIPAddr string) (string, error) {
 func getRPCAddress(i int, startingIPAddr string) string {
 	port := 26657
 
-	if (startingIPAddr == "localhost") {
-		port = port + 2 * i
+	if startingIPAddr == localhost {
+		port += 2 * i
 	}
 
 	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
@@ -482,8 +485,8 @@ func getRPCAddress(i int, startingIPAddr string) string {
 func getP2PAddress(i int, startingIPAddr string) string {
 	port := 26656
 
-	if (startingIPAddr == "localhost") {
-		port = port + 2 * i
+	if startingIPAddr == localhost {
+		port += 2 * i
 	}
 
 	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
@@ -492,8 +495,8 @@ func getP2PAddress(i int, startingIPAddr string) string {
 func getPprofAddress(i int, startingIPAddr string) string {
 	port := 6060
 
-	if (startingIPAddr == "localhost") {
-		port = port + i
+	if startingIPAddr == localhost {
+		port += i
 	}
 
 	return fmt.Sprintf("localhost:%d", port)
@@ -502,8 +505,8 @@ func getPprofAddress(i int, startingIPAddr string) string {
 func getAPIAddress(i int, startingIPAddr string) string {
 	port := 1317
 
-	if (startingIPAddr == "localhost") {
-		port = port + i
+	if startingIPAddr == localhost {
+		port += i
 	}
 
 	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
@@ -512,8 +515,8 @@ func getAPIAddress(i int, startingIPAddr string) string {
 func getGRPCAddress(i int, startingIPAddr string) string {
 	port := 9090
 
-	if (startingIPAddr == "localhost") {
-		port = port + 2 * i
+	if startingIPAddr == localhost {
+		port += 2 * i
 	}
 
 	return fmt.Sprintf("0.0.0.0:%d", port)
@@ -522,39 +525,39 @@ func getGRPCAddress(i int, startingIPAddr string) string {
 func getGRPCWebAddress(i int, startingIPAddr string) string {
 	port := 9091
 
-	if (startingIPAddr == "localhost") {
-		port = port + 2 * i
+	if startingIPAddr == localhost {
+		port += 2 * i
 	}
 
 	return fmt.Sprintf("0.0.0.0:%d", port)
 }
 
-func getJSONRPCAddress(i int, startingIPAddr string) (string) {
+func getJSONRPCAddress(i int, startingIPAddr string) string {
 	port := 8545
 
-	if (startingIPAddr == "localhost") {
-		port = port + 2 * i
+	if startingIPAddr == localhost {
+		port += 2 * i
 	}
 
 	return fmt.Sprintf("0.0.0.0:%d", port)
 }
 
-func getJSONRPCWsAddress(i int, startingIPAddr string) (string) {
+func getJSONRPCWsAddress(i int, startingIPAddr string) string {
 	port := 8546
 
-	if (startingIPAddr == "localhost") {
-		port = port + 2 * i
+	if startingIPAddr == localhost {
+		port += 2 * i
 	}
 
 	return fmt.Sprintf("0.0.0.0:%d", port)
 }
 
 func getAddrBookStrict(startingIPAddr string) bool {
-	return startingIPAddr != "localhost"
+	return startingIPAddr != localhost
 }
 
 func getAllowDuplicateIP(startingIPAddr string) bool {
-	return startingIPAddr == "localhost"
+	return startingIPAddr == localhost
 }
 
 func getIP(i int, startingIPAddr string) (ip string, err error) {
