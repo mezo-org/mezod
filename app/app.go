@@ -309,7 +309,8 @@ func NewEvmos(
 		app.AccountKeeper, app.BankKeeper, app.PoaKeeper, app.FeeMarketKeeper,
 		tracer, app.GetSubspace(evmtypes.ModuleName),
 	)
-	precompiles, err := customEvmPrecompiles(app.BankKeeper)
+
+	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
@@ -652,8 +653,9 @@ func initParamsKeeper(
 // customEvmPrecompiles builds custom precompiles of the EVM module.
 func customEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
+	authzkeeper authzkeeper.Keeper,
 ) ([]vm.PrecompiledContract, error) {
-	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper)
+	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzkeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
 	}
