@@ -100,6 +100,25 @@ func TestSubmitApplication(t *testing.T) {
 		)
 	}
 
+	// A new application cannot be created if the validator already exist,
+	// even if they use a different consensus public key.
+	// (validator 1 is in the validator set from the beginning).
+	_, newConsPubKeyBech32 := mockValidator()
+	validator1Copy := validator1
+	validator1Copy.ConsPubKeyBech32 = newConsPubKeyBech32
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator1.GetOperator()),
+		validator1Copy,
+	)
+	if err.Error() != types.ErrAlreadyValidator.Error() {
+		t.Errorf(
+			"SubmitApplication with duplicate, error should be %v, got %v",
+			types.ErrAlreadyValidator.Error(),
+			err.Error(),
+		)
+	}
+
 	// Test max validators condition.
 	err = poaKeeper.setParams(ctx, types.NewParams(1))
 	if err != nil {
