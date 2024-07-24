@@ -267,6 +267,14 @@ bridge's perspective there is no difference.
 
 ## Future work
 
+### Encourage own ETH2 nodes
+
+Since all validators in the network need to run Ethereum sidecars blocking the
+most popular JSON-RPC providers is not feasible. We will still require bridge
+validators to run full Ethereum nodes (via social contract) but we can warn in
+logs on the sidecar start about helping to decentralize the network if we detect
+Infura or Alchemy endpoint being used.
+
 ### Light ETH2 client
 
 The security model of the proposed solution relies on the fact bridge validators
