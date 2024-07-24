@@ -231,7 +231,7 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validat
 			panic("Found a validator with no state, a validator should always have a state")
 		}
 
-		// Consider only validators with Joined state. Ignore Joining and Leaving
+		// Consider only validators with Active state. Ignore Joining and Leaving
 		// validators. The former will join the Tendermint consensus set and the
 		// latter will leave the Tendermint consensus set at the end of the block.
 		if state == types.ValidatorStateActive {
