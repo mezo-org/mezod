@@ -98,27 +98,42 @@ sidecar should observe for events.
 
 Bridge validators need to be aware of the state of Ethereum. This will be
 achieved by implementing a sidecar observing the Ethereum Mezo Bridge contract.
-The sidecar may be embedded into the Mezo validator or implemented as a separate
-binary. Each of those two choices has its advantages. Keeping the sidecar
-embedded in the validator makes the operational work easier. Keeping the sidecar
-separate makes the experience consistent with the Skip protocol sidecar we want
-to integrate as a price oracle, and better prepares us for future generations of
-sidecars, as described in the Future Work section. This option also allows to
-incorporation of an additional bridge validator logic such as Schnorr or tECDSA
-key and signature generation that may not be straightforward to implement in the
-validator given no support for sending arbitrary network messages. The RFC does
-not enforce a choice but implementing the sidecar as a separate binary feels to
-be more future-proof.
+The sidecar may be embedded into the Mezo validator process, or run as a
+separate one. Each of those two choices has its advantages. Keeping the sidecar
+embedded in the validator process makes the operational work easier. Keeping the
+sidecar separate makes the experience consistent with the Skip protocol sidecar
+we want to integrate as a price oracle, and better prepares us for future
+generations of sidecars, as described in the Future Work section. This option
+also allows to incorporate an additional bridge validator logic such as Schnorr
+or tECDSA key and signature generation that may not be straightforward to
+implement in the validator given no support for sending arbitrary network
+messages.
 
-The sidecar must expose an API returning information about confirmed
-`AssetsLocked` events in the Ethereum Mezo Bridge contract. To understand ETH2
-finality, an understanding of checkpoints and epochs is required. Each epoch has
-32 slots and each slot takes 12 seconds. The checkpoint is the first slot of an
-epoch. If the checkpoint at epoch E gathered 2/3 supermajority, the blocks at
-epoch E-1 are considered justified and the blocks at epoch E-2 are considered
-finalized. The sidecar must only inform about `AssetsLocked` events from the
-finalized blocks. It means it will take about 13 minutes to notify about the
-state change on Ethereum.
+The RFC does not enforce a specific choice but implementing the sidecar as
+a separate process in the same binary as the validator seems to be the most
+future-proof approach:
+- We keep the code in one place so the management is easier.
+- We can reuse code so we avoid duplication of the boilerplate.
+- We keep the flexibility as the sidecar running in a different process does not
+  affect validator performance. Running auxiliary communication for Schnorr is
+  totally separated from the consensus engine.
+- This is safer. A panic in the sidecar does not kill the validator process.
+- We do not close any paths for the future. If there is a need to run the
+  sidecar as part of the validator process, this is just about hiding the
+  sidecar CLI and running its logic along with the validator CLI command. If we
+  want to extract the code to a separate binary, validators will be used to
+  run a separate process.
+
+The sidecar must expose a gRPC API returning information about confirmed
+`AssetsLocked` events in the Ethereum Mezo Bridge contract. 
+
+To understand ETH2 finality, an understanding of checkpoints and epochs is
+required. Each epoch has 32 slots and each slot takes 12 seconds. The checkpoint
+is the first slot of an epoch. If the checkpoint at epoch E gathered 2/3
+supermajority, the blocks at epoch E-1 are considered justified and the blocks
+at epoch E-2 are considered finalized. The sidecar must only inform about
+`AssetsLocked` events from the finalized blocks. It means it will take about 13
+minutes to notify about the state change on Ethereum.
 
 The sidecar should use periodical `eth_getLogs` calls to the Ethereum node and
 cache information locally. To keep the bridging process efficient and not slow
