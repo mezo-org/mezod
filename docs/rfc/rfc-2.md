@@ -112,6 +112,7 @@ messages.
 The RFC does not enforce a specific choice but implementing the sidecar as
 a separate process in the same binary as the validator seems to be the most
 future-proof approach:
+
 - We keep the code in one place so the management is easier.
 - We can reuse code so we avoid duplication of the boilerplate.
 - We keep the flexibility as the sidecar running in a different process does not
@@ -125,7 +126,7 @@ future-proof approach:
   run a separate process.
 
 The sidecar must expose a gRPC API returning information about confirmed
-`AssetsLocked` events in the Ethereum Mezo Bridge contract. 
+`AssetsLocked` events in the Ethereum Mezo Bridge contract.
 
 To understand ETH2 finality, an understanding of checkpoints and epochs is
 required. Each epoch has 32 slots and each slot takes 12 seconds. The checkpoint
@@ -144,8 +145,16 @@ a part of serving the request from the validator.
 ### x/bridge
 
 The `x/bridge` module should be our custom Cosmos module where all the bridging
-consensus logic should be located. Also, this is the module that will interact
-with `x/bank` to mint tokens for the users who bridged their Bitcoin to Mezo.
+state changes logic and the bridge Keeper should be located. Also, in the
+initial version, this is the module that should interact with `x/bank` to mint
+tokens for the users who bridged their Bitcoin to Mezo.
+
+The EVM observability of bridge events should be implemented once the initial
+version of the bridging mechanism works. It is possible to launch the chain
+without bridging observability from the EVM state level but not being able to
+see bridging events from the EVM block explorer would be a huge user experience
+gap. Adding the observability most probably requires creating zero-fee EVM
+transaction proposals by the block proposer.
 
 ### Consensus
 
