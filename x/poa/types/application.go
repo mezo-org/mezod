@@ -16,12 +16,12 @@ func MustMarshalApplication(cdc codec.BinaryCodec, v Application) []byte {
 
 // MustUnmarshalApplication unmarshals an application from bytes. It panics on error.
 func MustUnmarshalApplication(cdc codec.BinaryCodec, value []byte) Application {
-	vote, err := UnmarshalApplication(cdc, value)
+	application, err := UnmarshalApplication(cdc, value)
 	if err != nil {
 		panic(err)
 	}
 
-	return vote
+	return application
 }
 
 // UnmarshalApplication unmarshals an application from bytes.
