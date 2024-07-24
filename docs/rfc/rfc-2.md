@@ -18,16 +18,18 @@ from Ethereum to Mezo is out of the scope of this RFC.
 
 ### Bridge validators
 
-Only a subset of Mezo validators participates in bridging and they have an equal
-vote in deciding on bridging the asset. All those validators are expected to run
-full Ethereum nodes. Having all validators in the network participate in
-bridging does not make it any more secure if most of them use the same Ethereum
-JSON-RPC endpoint. Additionally, for the Mezo-to-Ethereum bridge, we will reuse
-the same subset of validators to generate a signature to unlock assets on
-Ethereum. The governance will appoint the bridge validators using an EVM bridge
-precompile. The list of addresses participating in bridging has to be known to
-all other validators in the network to achieve consensus about bridging
-decisions.
+All Mezo validators validate bridging operations but only a subset of them is
+able to initiate bridging operations. Validators that will initiate bridging
+operations will be referred in this document as *bridging validators*. All
+bridging validators are expected to run full Ethereum nodes.
+
+Having all validators in the network fully participate in bridging does not make
+it any more secure if most of them use the same Ethereum JSON-RPC endpoint.
+Additionally, for the Mezo-to-Ethereum bridge, we will reuse the same subset of
+bridging validators to generate a signature to unlock assets on Ethereum. The
+governance will appoint the bridge validators using an EVM bridge precompile.
+The list of addresses participating in bridging has to be known to all other
+validators in the network to achieve consensus about bridging decisions.
 
 ### Ethereum BitcoinBridge contract
 
@@ -96,7 +98,7 @@ sidecar should observe for events.
 
 ### Ethereum sidecar
 
-Bridge validators need to be aware of the state of Ethereum. This will be
+Validators need to be aware of the state of Ethereum. This will be
 achieved by implementing a sidecar observing the Ethereum Mezo Bridge contract.
 The sidecar may be embedded into the Mezo validator process, or run as a
 separate one. Each of those two choices has its advantages. Keeping the sidecar
@@ -104,7 +106,7 @@ embedded in the validator process makes the operational work easier. Keeping the
 sidecar separate makes the experience consistent with the Skip protocol sidecar
 we want to integrate as a price oracle, and better prepares us for future
 generations of sidecars, as described in the Future Work section. This option
-also allows to incorporate an additional bridge validator logic such as Schnorr
+also allows to incorporate an additional bridge-back logic such as Schnorr
 or tECDSA key and signature generation that may not be straightforward to
 implement in the validator given no support for sending arbitrary network
 messages.
@@ -180,40 +182,51 @@ extensions mechanism can also be taken from the
 
 #### Block N: Extend Vote
 
-In the Extend Vote phase, each bridge validator queries its sidecar to retrieve
+In the Extend Vote phase, each validator queries its sidecar to retrieve
 the list of `AssetsLocked` events. The events should be sorted and the events
 already handled should be filtered out. `AssetsLocked` events should be
 serialized and broadcast as a vote extension. This step is non-deterministic and
-it is acceptable some bridge validators may retrieve other `AssetsLocked` events
-than the rest of the bridge validators.
+it is acceptable some validators may retrieve other `AssetsLocked` events
+than the rest of the validators.
 
 #### Block N: Verify Vote Extension
 
 In the Verify Vote phase, vote extensions published earlier are validated by all
-validators in the network. This validation has to be deterministic. At a minimum,
-the unmarshaling and the fact the vote extension comes from one of the bridge
-validators should be checked. Vote extensions not coming from the bridge
-validators appointed in the bridge module should be rejected.
+validators in the network. This validation has to be deterministic.
 
+The validation must check if the vote extension can be deserialized.
 Depending on the BitcoinBridge contract implementation and the size of the
 `AssetsLocked` event, the Verify Vote phase should also impose a limit on the
 number of locking events included in the vote extension. According to the
 [CometBFT Quality Assurance documentation](https://docs.cometbft.com/v1.0/references/qa/cometbft-qa-38#vote-extensions-testbed),
-vote extensions of 2048 bytes are doubling the block latency from ~5s to ~10s.  
+vote extensions of 2048 bytes are doubling the block latency from ~5s to ~10s.
 
 #### Block N+1: Prepare Proposal
 
 The block proposer appointed by the consensus algorithm processes all vote
 extensions from the previous block to prepare one, final proposal based on them.
-In the first step, the prepare proposal handler first checks if the vote
-extensions’ signatures are correct using the `ValidateVoteExtensions` helper
-function from the `baseapp` package. In the second step, the prepare proposal
-handler checks if each vote extension comes from a bridge validator in case the
-bridge validator was removed from the set in the meantime. If all checks pass,
-the block proposer takes all `AssetsLocked` events that were voted by at least
-2/3 of bridge validators and aggregates them together into a pseudo-transaction
-on the top of the block proposed. This pseudo-transaction should be treated just
-as metadata.
+In the first step, it checks if the vote extensions’ signatures are correct
+using the `ValidateVoteExtensions` helper function from the `baseapp` package.
+
+Then, it filters only vote extensions from bridge validators (those appointed by
+the governance and running full Ethereum nodes themselves) and checks which of
+them were confirmed by at least 2/3 of the bridge validators. Next, this set is
+confirmed against at least 2/3 of the vote extensions from the rest of the
+network (non-bridge validators).
+
+This model ensures that only the validators running the full Ethereum nodes can
+initiate bridging and the entire network monitors the initiated bridging
+operations. In the worst case of a single compromised JSON-RPC endpoint being
+used by the rest of the network, the bridging halts but no artificial Bitcoins
+are minted on Mezo. In reality, the rest of the network will not use the same
+JSON-RPC endpoint and even if the three most popular JSON-RPC providers are
+used, the entire network performs the verification without blindly trusting a
+subset of validators. Also, this solution is easier to extend if we decide to
+integrate ETH2 light clients into sidecars (see Future Work section).
+
+The block proposer takes the final list of `AssetsLocked` events and aggregates
+them together into a pseudo-transaction on the top of the block proposed. This
+pseudo-transaction should be treated just as metadata.
 
 #### Block N+1: Process Proposal
 
@@ -221,8 +234,8 @@ This step is similar to the Prepare Proposal step, except that it is executed by
 all validators in the network, based on the pseudo-transaction injected by the
 block proposer. The validators need to validate the vote extensions in the
 pseudo-transaction in the same way as the block proposer: check if the vote
-extension is supported by 2/3 of bridge validators, all signatures are valid,
-and they actually come from bridge validators appointed in the bridge module.
+extension is supported by 2/3 of bridge validators and 2/3 of non-bridge
+validators, and the signature is valid.
 
 #### Block N+1: Finalize Block
 
@@ -275,6 +288,7 @@ production-ready.
 
 - [Cosmos SDK ABCI++ Vote Extensions documentation](https://docs.cosmos.network/main/build/abci/vote-extensions)
 - [Cosmos SDK v0.50 Vote Extensions tutorial](https://docs.cosmos.network/v0.50/tutorials/vote-extensions/oracle/implementing-vote-extensions)
+- [CometBFT Vote Extensions documentation](https://docs.cometbft.com/v1.0/spec/abci/abci++_methods#extendvote)
 - [CometBFT Vote Extensions Testbed documentation](https://docs.cometbft.com/v1.0/references/qa/cometbft-qa-38#vote-extensions-testbed)
 
 - [tBTC `AbstractTBTCDepositor` contract](https://github.com/keep-network/tbtc-v2/blob/main/solidity/contracts/integrator/AbstractTBTCDepositor.sol)
