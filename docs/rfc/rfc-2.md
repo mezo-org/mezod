@@ -195,6 +195,12 @@ the unmarshaling and the fact the vote extension comes from one of the bridge
 validators should be checked. Vote extensions not coming from the bridge
 validators appointed in the bridge module should be rejected.
 
+Depending on the BitcoinBridge contract implementation and the size of the
+`AssetsLocked` event, the Verify Vote phase should also impose a limit on the
+number of locking events included in the vote extension. According to the
+[CometBFT Quality Assurance documentation](https://docs.cometbft.com/v1.0/references/qa/cometbft-qa-38#vote-extensions-testbed),
+vote extensions of 2048 bytes are doubling the block latency from ~5s to ~10s.  
+
 #### Block N+1: Prepare Proposal
 
 The block proposer appointed by the consensus algorithm processes all vote
@@ -269,6 +275,7 @@ production-ready.
 
 - [Cosmos SDK ABCI++ Vote Extensions documentation](https://docs.cosmos.network/main/build/abci/vote-extensions)
 - [Cosmos SDK v0.50 Vote Extensions tutorial](https://docs.cosmos.network/v0.50/tutorials/vote-extensions/oracle/implementing-vote-extensions)
+- [CometBFT Vote Extensions Testbed documentation](https://docs.cometbft.com/v1.0/references/qa/cometbft-qa-38#vote-extensions-testbed)
 
 - [tBTC `AbstractTBTCDepositor` contract](https://github.com/keep-network/tbtc-v2/blob/main/solidity/contracts/integrator/AbstractTBTCDepositor.sol)
 - [Ethereum Light Clients documentation](https://ethereum.org/en/developers/docs/nodes-and-clients/light-clients/)
