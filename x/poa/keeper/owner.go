@@ -1,7 +1,9 @@
 package keeper
 
 import (
+	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/evmos/evmos/v12/x/poa/types"
 )
 
@@ -32,6 +34,13 @@ func (k Keeper) TransferOwnership(
 ) error {
 	if err := k.checkOwner(ctx, sender); err != nil {
 		return err
+	}
+
+	if newOwner.Empty() {
+		return errorsmod.Wrap(
+			sdkerrors.ErrInvalidAddress,
+			"new owner address is empty",
+		)
 	}
 
 	k.setCandidateOwner(ctx, newOwner)
