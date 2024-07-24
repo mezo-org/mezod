@@ -56,7 +56,7 @@ func (k Keeper) SubmitApplication(
 	return nil
 }
 
-// ApproveApplication approves an application to become a validator.
+// ApproveApplication approves an application submitted by a validator.
 // The candidate validator will become an active validator at the
 // end of the block.
 //
