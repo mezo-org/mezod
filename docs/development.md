@@ -56,7 +56,8 @@ needed. However, it requires starting each node separately.
 # Build the binaries and generate configuration for the clients.
 $ make localnet-bin-init
 # Start a single instance of the client. Needs to be called for each of the
-# the clients.
+# the clients. At least 2/3 (so 3 out of 4) of clients are needed to produce
+# blocks.
 $ make localnet-bin-start
 # Remove the `build` and `.localnet` directories.
 $ make localnet-bin-clean
