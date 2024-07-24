@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 
+	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
@@ -12,14 +13,13 @@ import (
 //go:embed abi.json
 var filesystem embed.FS
 
-// EvmAddress is the EVM address of the BTC token precompile.
-// EVM native precompiles reserve the addresses from 0x...01 to 0x...09.
-// We use the opposite range (0x1... to 0x9...) for custom Mezo precompiles to
-// avoid collisions.
-const EvmAddress = "0x1000000000000000000000000000000000000000"
+// EvmAddress is the EVM address of the BTC token precompile. Token address is
+// prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
+// used to avoid potential collisions with EVM native precompiles.
+const EvmAddress = "0x7b7c000000000000000000000000000000000000"
 
 // NewPrecompile creates a new BTC token precompile.
-func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error) {
+func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
@@ -30,7 +30,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error) {
 		common.HexToAddress(EvmAddress),
 	)
 
-	methods := newPrecompileMethods(bankKeeper)
+	methods := newPrecompileMethods(bankKeeper, authzkeeper)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -38,7 +38,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper) (*precompile.Contract, error) {
 
 // newPrecompileMethods builds the list of methods for the BTC token precompile.
 // All methods returned by this function are registered in the BTC token precompile.
-func newPrecompileMethods(bankKeeper bankkeeper.Keeper) []precompile.Method {
+func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
 		newMintMethod(bankKeeper),
 		newBalanceOfMethod(bankKeeper),
@@ -46,5 +46,6 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper) []precompile.Method {
 		newNameMethod(),
 		newSymbolMethod(),
 		newDecimalsMethod(),
+		newApproveMethod(bankKeeper, authzkeeper),
 	}
 }
