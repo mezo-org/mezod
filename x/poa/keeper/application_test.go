@@ -103,9 +103,9 @@ func TestSubmitApplication(t *testing.T) {
 	// A new application cannot be created if the validator already exist,
 	// even if they use a different consensus public key.
 	// (validator 1 is in the validator set from the beginning).
-	_, newConsPubKeyBech32 := mockValidator()
+	_, newPubKey := mockValidator()
 	validator1Copy := validator1
-	validator1Copy.ConsPubKeyBech32 = newConsPubKeyBech32
+	validator1Copy.ConsPubKeyBech32 = newPubKey
 	err = poaKeeper.SubmitApplication(
 		ctx,
 		sdk.AccAddress(validator1.GetOperator()),
