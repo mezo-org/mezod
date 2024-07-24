@@ -40,7 +40,7 @@ concerns - tBTC locked in the BitcoinBridge contract on Ethereum will be
 reflected 1:1 on the Mezo chain and locked in the contract until not bridged
 back by the user for to-Bitcoin redemption via tBTC Bridge.
 
-The `BitcoinBridge` contract should be upgradeable by the governance to allow
+The BitcoinBridge contract should be upgradeable by the governance to allow
 incorporating the logic for bridging back in the future. The contract should
 extend tBTC `AbstractTBTCDepositor` contract to allow direct from-Bitcoin
 bridging. It should expose four external functions at a minimum:
@@ -78,12 +78,21 @@ function initializeDeposit(
 function finalizeDeposit(uint256 depositKey, address recipient)
 ```
 
-The RFC suggests placing the `BitcoinBridge` contract in the `thesis/mezo-portal`
-monorepo, next to the `Portal` contract as those two will be tightly coupled
-together, and the Portal dApp will serve as a UI for the Bitcoin bridge.
+The RFC suggests placing the BitcoinBridge contract in the `thesis/mezo-portal`
+monorepo, next to the Portal contract as the Portal dApp will be reworked to
+expose bridging functionality.
 
 A good example of a contract extending tBTC `BitcoinDepositor` and implementing
 `initializeDeposit` and `finalizeDeposit` function is the Mezo Portal contract.
+In contrast to the Mezo Portal contract, the BitcoinBridge contract should
+extend the `AbstractTBTCDepositor` directly. The core functionality of the
+BitcoinBridge contract is bridging native Bitcoin to Mezo and this fact should
+be reflected in how the contract code is organized.
+
+After the chain launch, the Portal contract will no longer accept deposits and
+all new deposits will be bridged automatically to the Mezo chain through the
+BitcoinBridge contract. Hence, the BitcoinBridge contract is what the Ethereum
+sidecar should observe for events.
 
 ### Ethereum sidecar
 
@@ -197,19 +206,21 @@ Bitcoin tokens using the x/Bank module to the addresses appointed in the
 
 On the chain launch, all tokens that are locked in the Portal contract on
 Ethereum should be bridged automatically to the Mezo chain. In practice, it
-means disabling the possibility of withdrawals and moving the entire tBTC
-balance from Portal contract to BitcoinBridge contract. Also, cooperation with
-a market maker will be necessary to unwrap WBTC to Bitcoin, mint tBTC, and put
-it back into the Portal contract. This RFC focuses on bridging Bitcoin (tBTC)
-to Mezo and the remaining parts are considered out of the scope.
+means disabling new deposits in the Portal contract and moving tBTC from all
+non-stBTC-ed deposits from Portal to BitcoinBridge for bridging. This is
+a complicated operation requiring cooperation with a market maker to unwrap
+deposited WBTC to Bitcoin, mint tBTC, and put it back into the Portal contract.
+Special-casing stBTC-ed deposits require more attention as well. The exact
+description of the transition will be covered by a separate RFC.
 
-Upon disabling withdrawals in the Portal contract, a special script should
-iterate towards Portal's `DepositInfo` structures, filter deposits for tBTC
-token, and generate a module genesis JSON to set Bitcoin balances on Mezo chain
-for each depositor. `DepositInfo` structures can be retrieved by scanning
-`Deposited` events in the Portal contract. Note that the depositor address
-could be an Ethereum wallet address or OrangeKit's EVM address derived from
-a Bitcoin wallet but from the bridge's perspective there is no difference.
+On a high leve, upon disabling deposits and withdrawals in the Portal contract,
+a special script should iterate towards Portal's `DepositInfo` structures,
+filter deposits for tBTC token for which stBTC was not minted, and generate
+a module genesis JSON to set Bitcoin balances on Mezo chain for each depositor.
+`DepositInfo` structures can be retrieved by scanning `Deposited` events in the
+Portal contract. Note that the depositor address could be an Ethereum wallet
+address or OrangeKit's EVM address derived from a Bitcoin wallet but from the
+bridge's perspective there is no difference.
 
 ## Future work
 
