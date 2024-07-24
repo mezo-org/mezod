@@ -74,7 +74,7 @@ func (k Keeper) setValidatorStateLeaving(
 	validatorState, found := k.GetValidatorState(ctx, operator)
 	if !found {
 		// This should never happen. All validators should have a state.
-		panic("A validator has no state")
+		panic("Validator state is unknown")
 	}
 	// Only an active validator can leave.
 	if validatorState != types.ValidatorStateActive {
