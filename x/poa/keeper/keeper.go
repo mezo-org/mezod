@@ -28,12 +28,11 @@ func NewKeeper(
 	storeKey storetypes.StoreKey,
 	cdc codec.BinaryCodec,
 ) Keeper {
-	keeper := Keeper{
+	return Keeper{
 		storeKey:          storeKey,
 		cdc:               cdc,
 		historicalEntries: types.DefaultHistoricalEntries,
 	}
-	return keeper
 }
 
 // Logger returns a module-specific logger.
