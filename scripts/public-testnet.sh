@@ -15,7 +15,7 @@ NODE_NAMES=("mezo-node-0" "mezo-node-1" "mezo-node-2" "mezo-node-3" "mezo-node-4
 echo "using chain-id: $CHAIN_ID"
 echo "using liquid amount: $LIQUID_AMOUNT"
 echo "using node domain: $NODE_DOMAIN"
-echo "using node names: ${NODE_NAMES[@]}"
+echo "using node names:" "${NODE_NAMES[@]}"
 
 NODE_HOMEDIRS=()
 NODE_ADDRESSES=()
