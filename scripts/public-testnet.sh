@@ -9,18 +9,17 @@ fi
 
 CHAIN_ID=mezo_31611-1
 LIQUID_AMOUNT=1000000000000000000000abtc
-STAKE_AMOUNT=100000000000000000000abtc
 NODE_DOMAIN=test.mezo.org
 NODE_NAMES=("mezo-node-0" "mezo-node-1" "mezo-node-2" "mezo-node-3" "mezo-node-4" "mezo-faucet")
 
 echo "using chain-id: $CHAIN_ID"
 echo "using liquid amount: $LIQUID_AMOUNT"
-echo "using stake amount: $STAKE_AMOUNT"
 echo "using node domain: $NODE_DOMAIN"
 echo "using node names: ${NODE_NAMES[@]}"
 
 NODE_HOMEDIRS=()
 NODE_ADDRESSES=()
+NODE_MEMOS=()
 KEYRING_PASSWORDS=()
 
 for NODE_NAME in "${NODE_NAMES[@]}"; do
@@ -54,19 +53,17 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
 
   echo "[$NODE_NAME] init action done"
 
-  # Adding the account to the local node's genesis file is not strictly necessary
-  # as this will be done for the global genesis file. However, it's needed to execute
-  # the gentx command that checks the account balance in the local genesis file.
-  yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR add-genesis-account $NODE_KEY_NAME $LIQUID_AMOUNT &> /dev/null
-  # Generate the gentx for the node. The gentx is a transaction that creates a
-  # validator and stakes an amount to participate in the PoS consensus.
-  # This step is skipped for mezo-faucet as their balance must remain liquid
-  # in order to distribute tokens.
+  # Generate validator data for the node using the genval command.
+  # This step is skipped for mezo-faucet as this node is not a validator.
   if [ "$NODE_NAME" != "mezo-faucet" ]; then
-    yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR gentx $NODE_KEY_NAME $STAKE_AMOUNT --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
-    echo "[$NODE_NAME] gentx done"
+    yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR genval $NODE_KEY_NAME --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
+
+    NODE_GENVAL=$(find $NODE_HOMEDIR/config/genval -mindepth 1 -print -quit)
+    NODE_MEMOS+=($(jq -r '.memo' $NODE_GENVAL))
+
+    echo "[$NODE_NAME] genval done"
   else
-    echo "[$NODE_NAME] gentx skipped"
+    echo "[$NODE_NAME] genval skipped"
   fi
 
   echo $KEYRING_PASSWORD > $NODE_HOMEDIR/keyring_password.txt
@@ -83,32 +80,32 @@ done
 GLOBAL_GENESIS_HOMEDIR=${NODE_HOMEDIRS[0]}
 
 for i in "${!NODE_NAMES[@]}"; do
-  # Execute for all nodes but the first.
+  # Node's account balance must be added to the global genesis file explicitly.
+  ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
+
+  # Execute the rest for all nodes but the first.
   if [[ "$i" == '0' ]]; then
       continue
   fi
 
   NODE_HOMEDIR=${NODE_HOMEDIRS[$i]}
 
-  # Move node's gentx to the directory used to build the global genesis file.
-  # We check if the node's gentx directory exists as it might not if the node
+  # Move node's genval to the directory used to build the global genesis file.
+  # We check if the node's genval directory exists as it might not if the node
   # is not a validator.
-  NODE_GENTXDIR=$NODE_HOMEDIR/config/gentx
-  if [ -d "$NODE_GENTXDIR" ]; then
-    mv $NODE_GENTXDIR/* $GLOBAL_GENESIS_HOMEDIR/config/gentx
-    rm -rf $NODE_GENTXDIR
+  NODE_GENVALDIR=$NODE_HOMEDIR/config/genval
+  if [ -d "$NODE_GENVALDIR" ]; then
+    mv $NODE_GENVALDIR/* $GLOBAL_GENESIS_HOMEDIR/config/genval
+    rm -rf $NODE_GENVALDIR
   fi
 
   # Remove the local genesis file of the node as it won't be needed anymore.
   rm $NODE_HOMEDIR/config/genesis.json
-
-  # Node's account balance must be added to the global genesis file explicitly.
-  ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
 done
 
-# Aggregate all gentx files into the global genesis file.
-./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR collect-gentxs &> /dev/null
-rm -rf $GLOBAL_GENESIS_HOMEDIR/config/gentx
+# Aggregate all genval files into the global genesis file.
+./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR collect-genvals &> /dev/null
+rm -rf $GLOBAL_GENESIS_HOMEDIR/config/genval
 
 GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/genesis.json
 TMP_GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/tmp_genesis.json
@@ -116,11 +113,12 @@ TMP_GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/tmp_genesis.json
 # Modify necessary parameters in the global genesis file
 #
 # [Modification 1]: Set abtc as the token denomination for relevant Cosmos SDK modules.
-jq '.app_state["staking"]["params"]["bond_denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-jq '.app_state["gov"]["deposit_params"]["min_deposit"][0]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 # [Modification 2]: Set non-zero gas limit in genesis
 jq '.consensus_params["block"]["max_gas"]="10000000"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+# [Modification 3]: Set the first node's address as the initial PoA owner.
+POA_OWNER=${NODE_ADDRESSES[0]}
+jq '.app_state["poa"]["owner"]="'"$POA_OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 # Validate the global genesis file and move it to the root directory.
 ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
@@ -129,9 +127,7 @@ GENESIS=$HOMEDIR/genesis.json # Reassign the GENESIS variable to the new locatio
 
 echo "global genesis file built and validated"
 
-SEEDS=$(jq -r '.app_state.genutil.gen_txs | .[] | .body.memo' $GENESIS)
-printf "%s\n" "${SEEDS[@]}" > $HOMEDIR/seeds.txt
-
+printf "%s\n" "${NODE_MEMOS[@]}" > $HOMEDIR/seeds.txt
 
 for NODE_NAME in "${NODE_NAMES[@]}"; do
   NODE_HOMEDIR="$HOMEDIR/$NODE_NAME"
