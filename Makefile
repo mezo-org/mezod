@@ -469,29 +469,29 @@ proto-download-deps:
 .PHONY: proto-all proto-gen proto-format proto-lint proto-check-breaking proto-swagger-gen
 
 ###############################################################################
-###                                Localnet                                 ###
+###                          Localnet docker                                ###
 ###############################################################################
 
 # Build image for a local testnet
-localnet-build:
+localnet-docker-build:
 	@$(MAKE) -C networks/local
 
 # Start a 4-node testnet locally
-localnet-start: localnet-stop
+localnet-docker-start: localnet-docker-stop
 	@if ! [ -f build/node0/$(EVMOS_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/evmos:Z meso/node "./evmosd testnet init-files --v 4 -o /evmos --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
 	docker-compose up -d
 
 # Stop testnet
-localnet-stop:
+localnet-docker-stop:
 	docker-compose down
 
 # Clean testnet
-localnet-clean:
+localnet-docker-clean:
 	docker-compose down
 	rm -rf build/*
 
  # Reset testnet
-localnet-unsafe-reset:
+localnet-docker-unsafe-reset:
 	docker-compose down
 ifeq ($(OS),Windows_NT)
 	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
@@ -506,10 +506,43 @@ else
 endif
 
 # Clean testnet
-localnet-show-logstream:
+localnet-docker-show-logstream:
 	docker-compose logs --tail=1000 -f
 
-.PHONY: localnet-build localnet-start localnet-stop
+.PHONY: localnet-docker-build localnet-docker-start localnet-docker-stop
+
+###############################################################################
+###                         Localnet binary-based                           ###
+###############################################################################
+
+LOCALNET_DIR = .localnet
+
+localnet-bin-init:
+	@if ! [ -d build ]; then \
+		echo "Build directory not found. Running build..."; \
+		make build; \
+	fi
+	@if ! [ -d $(LOCALNET_DIR) ]; then \
+		echo "Initializing localnet configuration..."; \
+		./build/evmosd testnet init-files \
+		--v 4 \
+		--output-dir $(LOCALNET_DIR) \
+		--home $(LOCALNET_DIR) \
+		--keyring-backend=test \
+		--starting-ip-address localhost \
+		--chain-id mezo_31611-10; \
+	else \
+		echo "Skipped initializing localnet configuration."; \
+	fi
+
+localnet-bin-start:
+	./scripts/localnet-start.sh
+
+localnet-bin-clean:
+	rm -rf $(LOCALNET_DIR) build
+
+.PHONY: localnet-bin-init localnet-bin-start localnet-bin-clean
+
 
 ###############################################################################
 ###                                Releasing                                ###

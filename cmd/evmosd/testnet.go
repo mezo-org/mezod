@@ -167,7 +167,7 @@ Example:
 	addTestnetFlagsToCmd(cmd)
 	cmd.Flags().String(flagNodeDirPrefix, "node", "Prefix the directory name for each node with (node results in node0, node1, ...)")
 	cmd.Flags().String(flagNodeDaemonHome, "evmosd", "Home directory of the node's daemon configuration")
-	cmd.Flags().String(flagStartingIPAddress, "192.168.0.1", "Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:46656, ID1@192.168.0.2:46656, ...)")
+	cmd.Flags().String(flagStartingIPAddress, "192.168.0.1", "Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:46656, ID1@192.168.0.2:46656, ...). Setting this flag to localhost results in configuration generation for binary-based localnet")
 	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "Select keyring's backend (os|file|test)")
 
 	return cmd
@@ -213,7 +213,10 @@ Example:
 	return cmd
 }
 
-const nodeDirPerm = 0o755
+const (
+	nodeDirPerm = 0o755
+	localhost   = "localhost"
+)
 
 // initTestnetFiles initializes testnet files for a testnet to be run in a separate process
 func initTestnetFiles(
@@ -256,19 +259,20 @@ func initTestnetFiles(
 			return err
 		}
 
-		ip, err := getIP(i, args.startingIPAddress)
-		if err != nil {
-			_ = os.RemoveAll(args.outputDir)
-			return err
-		}
-
+		var err error
 		nodeIDs[i], valPubKeys[i], err = genutil.InitializeNodeValidatorFiles(nodeConfig)
 		if err != nil {
 			_ = os.RemoveAll(args.outputDir)
 			return err
 		}
 
-		memos[i] = fmt.Sprintf("%s@%s:26656", nodeIDs[i], ip)
+		memo, err := getMemo(nodeIDs[i], i, args.startingIPAddress)
+		if err != nil {
+			_ = os.RemoveAll(args.outputDir)
+			return err
+		}
+
+		memos[i] = memo
 
 		genFiles[i] = nodeConfig.GenesisFile()
 
@@ -350,19 +354,26 @@ func initTestnetFiles(
 
 		nodeConfig.SetRoot(nodeDir)
 		nodeConfig.Moniker = nodeDirNames[i]
-		nodeConfig.RPC.ListenAddress = "tcp://0.0.0.0:26657"
+		nodeConfig.RPC.ListenAddress = getRPCAddress(i, args.startingIPAddress)
+		nodeConfig.P2P.ListenAddress = getP2PAddress(i, args.startingIPAddress)
+		nodeConfig.RPC.PprofListenAddress = getPprofAddress(i, args.startingIPAddress)
 		nodeConfig.P2P.PersistentPeers = persistentPeers
+		nodeConfig.P2P.AddrBookStrict = getAddrBookStrict(args.startingIPAddress)
+		nodeConfig.P2P.AllowDuplicateIP = getAllowDuplicateIP(args.startingIPAddress)
 		tmconfig.WriteConfigFile(filepath.Join(nodeDir, "config/config.toml"), nodeConfig)
 
 		appConfig := config.DefaultConfig()
 		appConfig.MinGasPrices = args.minGasPrices
 		appConfig.API.Enable = true
+		appConfig.API.Address = getAPIAddress(i, args.startingIPAddress)
+		appConfig.GRPC.Address = getGRPCAddress(i, args.startingIPAddress)
+		appConfig.GRPCWeb.Address = getGRPCWebAddress(i, args.startingIPAddress)
 		appConfig.Telemetry.Enabled = true
 		appConfig.Telemetry.PrometheusRetentionTime = 60
 		appConfig.Telemetry.EnableHostnameLabel = false
 		appConfig.Telemetry.GlobalLabels = [][]string{{"chain_id", args.chainID}}
-		appConfig.JSONRPC.Address = "0.0.0.0:8545"
-		appConfig.JSONRPC.WsAddress = "0.0.0.0:8546"
+		appConfig.JSONRPC.Address = getJSONRPCAddress(i, args.startingIPAddress)
+		appConfig.JSONRPC.WsAddress = getJSONRPCWsAddress(i, args.startingIPAddress)
 		srvconfig.WriteConfigFile(filepath.Join(nodeDir, "config/app.toml"), appConfig)
 	}
 
@@ -446,6 +457,107 @@ func initGenesisFiles(
 		}
 	}
 	return nil
+}
+
+func getMemo(nodeID string, i int, startingIPAddr string) (string, error) {
+	if startingIPAddr == localhost {
+		return fmt.Sprintf("%s@localhost:%d", nodeID, 26656+2*i), nil
+	}
+
+	ip, err := getIP(i, startingIPAddr)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s@%s:26656", nodeID, ip), nil
+}
+
+func getRPCAddress(i int, startingIPAddr string) string {
+	port := 26657
+
+	if startingIPAddr == localhost {
+		port += 2 * i
+	}
+
+	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
+}
+
+func getP2PAddress(i int, startingIPAddr string) string {
+	port := 26656
+
+	if startingIPAddr == localhost {
+		port += 2 * i
+	}
+
+	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
+}
+
+func getPprofAddress(i int, startingIPAddr string) string {
+	port := 6060
+
+	if startingIPAddr == localhost {
+		port += i
+	}
+
+	return fmt.Sprintf("localhost:%d", port)
+}
+
+func getAPIAddress(i int, startingIPAddr string) string {
+	port := 1317
+
+	if startingIPAddr == localhost {
+		port += i
+	}
+
+	return fmt.Sprintf("tcp://0.0.0.0:%d", port)
+}
+
+func getGRPCAddress(i int, startingIPAddr string) string {
+	port := 9090
+
+	if startingIPAddr == localhost {
+		port += 2 * i
+	}
+
+	return fmt.Sprintf("0.0.0.0:%d", port)
+}
+
+func getGRPCWebAddress(i int, startingIPAddr string) string {
+	port := 9091
+
+	if startingIPAddr == localhost {
+		port += 2 * i
+	}
+
+	return fmt.Sprintf("0.0.0.0:%d", port)
+}
+
+func getJSONRPCAddress(i int, startingIPAddr string) string {
+	port := 8545
+
+	if startingIPAddr == localhost {
+		port += 2 * i
+	}
+
+	return fmt.Sprintf("0.0.0.0:%d", port)
+}
+
+func getJSONRPCWsAddress(i int, startingIPAddr string) string {
+	port := 8546
+
+	if startingIPAddr == localhost {
+		port += 2 * i
+	}
+
+	return fmt.Sprintf("0.0.0.0:%d", port)
+}
+
+func getAddrBookStrict(startingIPAddr string) bool {
+	return startingIPAddr != localhost
+}
+
+func getAllowDuplicateIP(startingIPAddr string) bool {
+	return startingIPAddr == localhost
 }
 
 func getIP(i int, startingIPAddr string) (ip string, err error) {
