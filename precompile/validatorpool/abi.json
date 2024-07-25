@@ -23,9 +23,9 @@
             },
             {
                 "indexed": false,
-                "internalType": "address",
-                "name": "consensusPubKey",
-                "type": "address"
+                "internalType": "bytes32",
+                "name": "consPubKey",
+                "type": "bytes32"
             }
         ],
         "name": "ApplicationSubmitted",
@@ -201,9 +201,9 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "consensusPubKey",
-                "type": "address"
+                "internalType": "bytes32",
+                "name": "consPubKey",
+                "type": "bytes32"
             },
             {
                 "internalType": "address",
@@ -252,9 +252,9 @@
         "name": "validators",
         "outputs": [
             {
-                "internalType": "address",
+                "internalType": "bytes32",
                 "name": "consPubKey",
-                "type": "address"
+                "type": "bytes32"
             },
             {
                 "internalType": "enum ValidatorPool.State",

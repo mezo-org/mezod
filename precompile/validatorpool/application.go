@@ -3,10 +3,12 @@ package validatorpool
 import (
 	"fmt"
 
+	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
 // SubmitApplicationMethodName is the name of the submitApplication method. It matches the name
@@ -51,9 +53,9 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, err
 	}
 
-	consPubKey, ok := inputs[0].(common.Address)
+	consPubKeyBytes, ok := inputs[0].([32]byte)
 	if !ok {
-		return nil, fmt.Errorf("consPubKey argument must be common.Address")
+		return nil, fmt.Errorf("consPubKey argument must be bytes32")
 	}
 
 	operator, ok := inputs[1].(common.Address)
@@ -61,12 +63,18 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	validator := poatypes.Validator{
-		OperatorAddress: types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
-		ConsensusPubkey: consPubKey.String(),
+	tmpk := ed25519.PubKey(consPubKeyBytes[:])
+	consPubKey, err := cryptocdc.FromTmPubKeyInterface(tmpk)
+	if err != nil {
+		return nil, err
 	}
 
-	err := m.keeper.SubmitApplication(
+	validator := poatypes.NewValidator(
+		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
+		consPubKey,
+		poatypes.Description{},
+	)
+	err = m.keeper.SubmitApplication(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 		validator,
@@ -79,7 +87,7 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 	err = context.EventEmitter().Emit(
 		newApplicationSubmittedEvent(
 			operator,
-			consPubKey,
+			consPubKeyBytes,
 		),
 	)
 	if err != nil {
@@ -98,10 +106,11 @@ const ApplicationSubmittedEventName = "ApplicationSubmitted"
 // - operator (indexed): is the address identifying the validator,
 // - consPubKey (indexed): is the consensus public key of the validator used tovote on blocks.
 type applicationSubmittedEvent struct {
-	operator, consPubKey common.Address
+	consPubKey [32]byte
+	operator   common.Address
 }
 
-func newApplicationSubmittedEvent(operator, consPubKey common.Address) *applicationSubmittedEvent {
+func newApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte) *applicationSubmittedEvent {
 	return &applicationSubmittedEvent{
 		operator:   operator,
 		consPubKey: consPubKey,

@@ -82,12 +82,12 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 	testcases := []struct {
 		name       string
 		operator   common.Address
-		consPubKey common.Address
+		consPubKey [32]byte
 	}{
 		{
 			name:       "pass",
 			operator:   s.account1.EvmAddr,
-			consPubKey: s.account2.EvmAddr,
+			consPubKey: [32]byte(s.account1.ConsPubKey.Bytes()),
 		},
 	}
 

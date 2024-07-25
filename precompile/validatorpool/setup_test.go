@@ -5,6 +5,7 @@ import (
 	"time"
 
 	errorsmod "cosmossdk.io/errors"
+	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -16,12 +17,14 @@ import (
 	utiltx "github.com/evmos/evmos/v12/testutil/tx"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/stretchr/testify/suite"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
 type Key struct {
-	EvmAddr common.Address
-	SdkAddr sdk.AccAddress
-	Priv    cryptotypes.PrivKey
+	EvmAddr    common.Address
+	SdkAddr    sdk.AccAddress
+	ConsPubKey cryptotypes.PubKey
+	Priv       cryptotypes.PrivKey
 }
 
 type PrecompileTestSuite struct {
@@ -38,10 +41,17 @@ type PrecompileTestSuite struct {
 
 func NewKey() Key {
 	addr, privKey := utiltx.NewAddrKey()
+	// Generate a consPubKey
+	tmpk := ed25519.GenPrivKey().PubKey()
+	consPubKey, err := cryptocdc.FromTmPubKeyInterface(tmpk)
+	if err != nil {
+		panic(err)
+	}
 	return Key{
-		EvmAddr: addr,
-		SdkAddr: sdk.AccAddress(addr.Bytes()),
-		Priv:    privKey,
+		EvmAddr:    addr,
+		SdkAddr:    sdk.AccAddress(addr.Bytes()),
+		Priv:       privKey,
+		ConsPubKey: consPubKey,
 	}
 }
 
