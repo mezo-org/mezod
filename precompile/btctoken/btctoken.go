@@ -47,5 +47,7 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.
 		newSymbolMethod(),
 		newDecimalsMethod(),
 		newApproveMethod(bankKeeper, authzkeeper),
+		newTransferMethod(bankKeeper, authzkeeper),
+		newTransferFromMethod(bankKeeper, authzkeeper),
 	}
 }
