@@ -89,7 +89,7 @@ func (k Keeper) ApproveApplication(
 	}
 
 	k.removeApplication(ctx, operator)
-	k.appendValidator(ctx, application.GetValidator())
+	k.createValidator(ctx, application.GetValidator())
 
 	return nil
 }

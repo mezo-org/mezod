@@ -31,7 +31,7 @@ func TestKick(t *testing.T) {
 	}
 
 	// Append validator 1 as ValidatorStateJoining.
-	poaKeeper.appendValidator(ctx, validator1)
+	poaKeeper.createValidator(ctx, validator1)
 
 	// The owner cannot kick validator 1 which is still joining and not active yet.
 	err = poaKeeper.Kick(ctx, owner, validator1.GetOperator())
@@ -112,7 +112,7 @@ func TestLeave(t *testing.T) {
 	}
 
 	// Append validator 1 as ValidatorStateJoining.
-	poaKeeper.appendValidator(ctx, validator1)
+	poaKeeper.createValidator(ctx, validator1)
 	// Run validator updates so the validator 1 state switch to ValidatorStateActive.
 	poaKeeper.EndBlocker(ctx)
 
@@ -127,7 +127,7 @@ func TestLeave(t *testing.T) {
 	}
 
 	// Add a validator 2 as ValidatorStateJoining.
-	poaKeeper.appendValidator(ctx, validator2)
+	poaKeeper.createValidator(ctx, validator2)
 	// Run validator updates so the validator 2 state switch to ValidatorStateActive.
 	// There are 2 active validators now.
 	poaKeeper.EndBlocker(ctx)
@@ -144,7 +144,7 @@ func TestLeave(t *testing.T) {
 
 	// Add a validator 3 as ValidatorStateJoining but don't run the EndBlocker.
 	// There are still 2 active validators.
-	poaKeeper.appendValidator(ctx, validator3)
+	poaKeeper.createValidator(ctx, validator3)
 
 	// Validator 3 cannot leave the validator set if still joining and
 	// was not become active yet.
@@ -308,11 +308,11 @@ func TestGetValidatorStatePanic(t *testing.T) {
 	poaKeeper.setValidatorState(ctx, validator1, types.ValidatorStateUnknown)
 }
 
-func TestAppendValidator(t *testing.T) {
+func TestCreateValidator(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator, _ := mockValidator()
 
-	poaKeeper.appendValidator(ctx, validator)
+	poaKeeper.createValidator(ctx, validator)
 
 	_, foundVal := poaKeeper.GetValidator(ctx, validator.GetOperator())
 	_, foundConsAddr := poaKeeper.GetValidatorByConsAddr(
@@ -323,7 +323,7 @@ func TestAppendValidator(t *testing.T) {
 
 	if !foundVal || !foundConsAddr || !foundState {
 		t.Errorf(
-			"AppendValidator should append the validator. Found val: %v, found consAddr: %v, found state: %v",
+			"CreateValidator should append the validator. Found val: %v, found consAddr: %v, found state: %v",
 			foundVal,
 			foundConsAddr,
 			foundState,
@@ -337,8 +337,8 @@ func TestRemoveValidator(t *testing.T) {
 	validator2, _ := mockValidator()
 
 	// Set validators
-	poaKeeper.appendValidator(ctx, validator1)
-	poaKeeper.appendValidator(ctx, validator2)
+	poaKeeper.createValidator(ctx, validator1)
+	poaKeeper.createValidator(ctx, validator2)
 
 	poaKeeper.removeValidator(ctx, validator1.GetOperator())
 

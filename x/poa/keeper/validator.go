@@ -172,9 +172,9 @@ func (k Keeper) setValidatorState(
 	store.Set(types.GetValidatorStateKey(validator.GetOperator()), stateBytes)
 }
 
-// appendValidator appends a new validator to the validator pool with the state
+// createValidator appends a new validator to the validator pool with the state
 // types.ValidatorStateJoining.
-func (k Keeper) appendValidator(ctx sdk.Context, validator types.Validator) {
+func (k Keeper) createValidator(ctx sdk.Context, validator types.Validator) {
 	k.setValidator(ctx, validator)
 	k.setValidatorByConsAddr(ctx, validator)
 	k.setValidatorState(ctx, validator, types.ValidatorStateJoining)

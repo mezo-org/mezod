@@ -20,8 +20,8 @@ func TestTrackHistoricalInfo(t *testing.T) {
 	poaKeeper.historicalEntries = 5
 
 	// Add initial validators.
-	poaKeeper.appendValidator(ctx, validator1)
-	poaKeeper.appendValidator(ctx, validator2)
+	poaKeeper.createValidator(ctx, validator1)
+	poaKeeper.createValidator(ctx, validator2)
 
 	// Refresh the validator set.
 	poaKeeper.EndBlocker(ctx)
@@ -54,7 +54,7 @@ func TestTrackHistoricalInfo(t *testing.T) {
 
 	// Add a new validator.
 	validator3, _ := mockValidator()
-	poaKeeper.appendValidator(ctx, validator3)
+	poaKeeper.createValidator(ctx, validator3)
 
 	// Refresh the validator set.
 	poaKeeper.EndBlocker(ctx)

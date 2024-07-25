@@ -24,7 +24,7 @@ func TestSubmitApplication(t *testing.T) {
 	}
 
 	// Validator 1 is in the validator set from the beginning.
-	poaKeeper.appendValidator(ctx, validator1)
+	poaKeeper.createValidator(ctx, validator1)
 
 	// Try to impersonate the operator of validator 2 and submit an application.
 	err = poaKeeper.SubmitApplication(
@@ -370,7 +370,7 @@ func TestCreateApplication(t *testing.T) {
 
 	if !foundApplication || !foundConsAddr {
 		t.Errorf(
-			"AppendValidator should append the application. Found val: %v, found consAddr: %v",
+			"CreateApplication should create the application. Found val: %v, found consAddr: %v",
 			foundApplication,
 			foundConsAddr,
 		)
