@@ -65,24 +65,19 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
 	valAddr := sdk.ValAddress(suite.address.Bytes())
-	validator := poatypes.NewValidator(valAddr, priv.PubKey(), poatypes.Description{})
-
-	// Set zero quorum in the poa module to immediately
-	// add validators upon their application.
-	err = suite.app.PoaKeeper.UpdateParams(
-		suite.ctx,
-		suite.app.PoaKeeper.Authority(),
-		poatypes.Params{
-			MaxValidators: poatypes.DefaultMaxValidators,
-			Quorum:        0,
-		},
-	)
-	require.NoError(t, err)
+	validator, err := poatypes.NewValidator(valAddr, priv.PubKey(), poatypes.Description{})
+	suite.Require().NoError(err)
 
 	err = suite.app.PoaKeeper.SubmitApplication(
 		suite.ctx,
+		sdk.AccAddress(validator.GetOperator()),
 		validator,
 	)
+	require.NoError(t, err)
+
+	owner := suite.app.PoaKeeper.GetOwner(suite.ctx)
+
+	err = suite.app.PoaKeeper.ApproveApplication(suite.ctx, owner, validator.GetOperator())
 	require.NoError(t, err)
 
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)

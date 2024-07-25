@@ -2,45 +2,75 @@ package types
 
 import (
 	"fmt"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// NewGenesisState creates a new GenesisState object
-func NewGenesisState(params Params, validators []Validator) GenesisState {
+// NewGenesisState creates a new GenesisState object.
+func NewGenesisState(
+	params Params,
+	owner sdk.AccAddress,
+	validators []Validator,
+) GenesisState {
 	return GenesisState{
 		Params:     params,
+		Owner:      owner.String(),
 		Validators: validators,
 	}
 }
 
-// DefaultGenesisState - default GenesisState used by Cosmos Hub
+// DefaultGenesisState defines the default GenesisState.
+//
+// WARNING: The default genesis state has an empty owner address hence
+// it is invalid (ValidateGenesis will fail). A proper owner must be set at
+// later stages, before running the network. This is done on purpose to avoid
+// using a random owner that cannot be controlled.
 func DefaultGenesisState() *GenesisState {
 	return &GenesisState{
 		Params: DefaultParams(),
+		Owner:  "",
 	}
 }
 
-// ValidateGenesis validates the poa genesis parameters
+// ValidateGenesis validates the poa genesis parameters.
 func ValidateGenesis(data GenesisState) error {
+	if _, err := sdk.AccAddressFromBech32(data.Owner); err != nil {
+		return fmt.Errorf("invalid owner address %s: %w", data.Owner, err)
+	}
+
 	if err := validateGenesisStateValidators(data.Validators); err != nil {
-		return err
+		return fmt.Errorf("failed to validate genesis validators: %w", err)
 	}
 
 	return data.Params.Validate()
 }
 
-// Validate the validator set in genesis
+// validateGenesisStateValidators validates the validator set in genesis.
 func validateGenesisStateValidators(validators []Validator) (err error) {
-	addrMap := make(map[string]bool, len(validators))
+	operators := make(map[string]bool, len(validators))
+	consPubKeys := make(map[string]bool, len(validators))
 
-	for i := 0; i < len(validators); i++ {
-		val := validators[i]
-		strKey := string(val.GetConsPubKey().Bytes())
+	for _, validator := range validators {
+		operator := validator.GetOperatorBech32()
+		consPubKey := validator.GetConsPubKeyBech32()
 
-		if _, ok := addrMap[strKey]; ok {
-			return fmt.Errorf("duplicate validator in genesis state: moniker %v, address %v", val.Description.Moniker, val.GetConsAddr())
+		if _, ok := operators[operator]; ok {
+			return fmt.Errorf(
+				"duplicate validator in genesis state: moniker %v, operator %v",
+				validator.Description.Moniker,
+				operator,
+			)
+		}
+		if _, ok := consPubKeys[consPubKey]; ok {
+			return fmt.Errorf(
+				"duplicate validator in genesis state: moniker %v, consensus pubkey %v",
+				validator.Description.Moniker,
+				consPubKey,
+			)
 		}
 
-		addrMap[strKey] = true
+		operators[operator] = true
+		consPubKeys[consPubKey] = true
 	}
 	return
 }

@@ -12,18 +12,15 @@ message Params {
 
   // max_validators defines the maximum number of validators in the network.
   uint32 max_validators = 1;
-  // quorum defines the minimum number of validators that need to accept
-  // a new validator's application.
-  uint32 quorum = 2;
 }
 
-// Validator represents a validator in the network.
+// Validator represents a validator in the pool.
 message Validator {
-  // operator_address is the Cosmos SDK address identifying the validator.
-  bytes operator_address = 1;
-  // consensus_pubkey is the consensus public key of the validator used to
-  // vote on blocks.
-  string consensus_pubkey = 2;
+  // operator_bech32 is the Cosmos SDK address (bech32) identifying the validator.
+  string operator_bech32 = 1;
+  // cons_pub_key_bech32 is the consensus public key (bech32) of the validator
+  // used to vote on blocks.
+  string cons_pub_key_bech32 = 2;
   // description holds some human-readable information about the validator.
   Description description = 3 [(gogoproto.nullable) = false];
 }
@@ -42,16 +39,10 @@ message Description {
   string details = 5;
 }
 
-// Vote represents a vote summary on a validator application or kick proposal.
-message Vote {
-  // subject is the validator that is being voted on.
-  Validator subject = 1 [(gogoproto.nullable) = false];
-  // approvals is the number of votes in favor of the subject.
-  uint64 approvals = 2;
-  // total is the total number of votes cast.
-  uint64 total = 3;
-  // voters is the list of voters that have voted on the subject.
-  repeated bytes voters = 4;
+// Application represents validator's application for joining the pool.
+message Application {
+  // validator is the candidate that is subject of the application.
+  Validator validator = 1 [(gogoproto.nullable) = false];
 }
 
 // HistoricalInfo contains header and validator information for a given block.

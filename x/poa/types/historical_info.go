@@ -16,8 +16,8 @@ func NewHistoricalInfo(header tmproto.Header, valSet []Validator) HistoricalInfo
 	// same voting power, so we sort by address only.
 	sort.SliceStable(valSet, func(i, j int) bool {
 		return bytes.Compare(
-			valSet[i].OperatorAddress,
-			valSet[j].OperatorAddress,
+			valSet[i].GetOperator(),
+			valSet[j].GetOperator(),
 		) == -1
 	})
 

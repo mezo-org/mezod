@@ -103,7 +103,14 @@ func Setup(
 		// init chain must be called to stop deliverState from being nil
 		genesisState := NewDefaultGenesisState()
 
-		genesisState = GenesisStateWithValSet(app, genesisState, valSet, []authtypes.GenesisAccount{acc}, balance)
+		genesisState = GenesisStateWithValSet(
+			app,
+			genesisState,
+			acc.GetAddress(),
+			valSet,
+			[]authtypes.GenesisAccount{acc},
+			balance,
+		)
 
 		// Verify feeMarket genesis
 		if feemarketGenesis != nil {
@@ -132,8 +139,12 @@ func Setup(
 	return app
 }
 
-func GenesisStateWithValSet(app *Evmos, genesisState simapp.GenesisState,
-	valSet *tmtypes.ValidatorSet, genAccs []authtypes.GenesisAccount,
+func GenesisStateWithValSet(
+	app *Evmos,
+	genesisState simapp.GenesisState,
+	owner sdk.AccAddress,
+	valSet *tmtypes.ValidatorSet,
+	genAccs []authtypes.GenesisAccount,
 	balances ...banktypes.Balance,
 ) simapp.GenesisState {
 	// set genesis accounts
@@ -145,16 +156,19 @@ func GenesisStateWithValSet(app *Evmos, genesisState simapp.GenesisState,
 	for _, val := range valSet.Validators {
 		pk, _ := cryptocodec.FromTmPubKeyInterface(val.PubKey)
 		validator := poatypes.Validator{
-			OperatorAddress: sdk.ValAddress(val.Address),
+			OperatorBech32: sdk.ValAddress(val.Address).String(),
 			//nolint:staticcheck
-			ConsensusPubkey: legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk),
-			Description:     poatypes.Description{},
+			ConsPubKeyBech32: legacybech32.MustMarshalPubKey(
+				legacybech32.ConsPK,
+				pk,
+			),
+			Description: poatypes.Description{},
 		}
 		validators = append(validators, validator)
 	}
 	// set validators and delegations
 	poaParams := poatypes.DefaultParams()
-	poaGenesis := poatypes.NewGenesisState(poaParams, validators)
+	poaGenesis := poatypes.NewGenesisState(poaParams, owner, validators)
 	genesisState[poatypes.ModuleName] = app.AppCodec().MustMarshalJSON(&poaGenesis)
 
 	totalSupply := sdk.NewCoins()

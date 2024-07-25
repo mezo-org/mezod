@@ -1,7 +1,10 @@
 package keeper
 
 import (
+	"fmt"
 	"testing"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	//nolint:staticcheck
@@ -12,43 +15,79 @@ import (
 )
 
 func TestValidateGenesis(t *testing.T) {
+	// Generate an owner address using the mockValidator function.
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
+	// Valid genesis.
 	validator, _ := mockValidator()
-
-	// Valid genesis
-	validGenesis := types.NewGenesisState(types.DefaultParams(), []types.Validator{validator})
+	validGenesis := types.NewGenesisState(
+		types.DefaultParams(),
+		owner,
+		[]types.Validator{validator},
+	)
 	if types.ValidateGenesis(validGenesis) != nil {
-		t.Errorf("The genesis state %v should be valid", validGenesis)
+		t.Errorf("the genesis state %v should be valid", validGenesis)
 	}
 
-	// A genesis with two validators with the same consensus pubkey is invalid
-	invalidGenesis := types.NewGenesisState(types.DefaultParams(), []types.Validator{validator, validator})
+	// A genesis with two validators with the same operator address is invalid.
+	validatorSameOp1, _ := mockValidator()
+	validatorSameOp2, _ := mockValidator()
+	validatorSameOp2.OperatorBech32 = validatorSameOp1.OperatorBech32
+	invalidGenesis := types.NewGenesisState(
+		types.DefaultParams(),
+		owner,
+		[]types.Validator{validatorSameOp1, validatorSameOp2},
+	)
 	if types.ValidateGenesis(invalidGenesis) == nil {
-		t.Errorf("The genesis state %v should not be valid", invalidGenesis)
+		t.Errorf("the genesis state %v should not be valid", invalidGenesis)
 	}
 
-	// Default genesis state
+	// A genesis with two validators with the same consensus pubkey is invalid.
+	validatorSameCons1, _ := mockValidator()
+	validatorSameCons2, _ := mockValidator()
+	validatorSameCons2.ConsPubKeyBech32 = validatorSameCons1.ConsPubKeyBech32
+	invalidGenesis = types.NewGenesisState(
+		types.DefaultParams(),
+		owner,
+		[]types.Validator{validatorSameCons1, validatorSameCons2},
+	)
+	if types.ValidateGenesis(invalidGenesis) == nil {
+		t.Errorf("the genesis state %v should not be valid", invalidGenesis)
+	}
+
+	// Default genesis state.
 	genesisState := types.DefaultGenesisState()
-	if types.ValidateGenesis(*genesisState) != nil {
-		t.Errorf("The default genesis state should be valid")
+	expectedErr := fmt.Errorf("invalid owner address : empty address string is not allowed")
+	if err := types.ValidateGenesis(*genesisState); err.Error() != expectedErr.Error() {
+		t.Errorf(
+			"the default genesis state should be invalid due to a missing owner, error should be %v, got %v",
+			expectedErr.Error(),
+			err.Error(),
+		)
 	}
 }
 
 func TestInitGenesis(t *testing.T) {
+	// Generate an owner address using the mockValidator function.
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
 	ctx, poaKeeper := mockContext()
 	validator, consPubKey := mockValidator()
 
-	// Test genesis data
-	testGenesis := types.NewGenesisState(types.DefaultParams(), []types.Validator{validator})
+	testGenesis := types.NewGenesisState(
+		types.DefaultParams(),
+		owner,
+		[]types.Validator{validator},
+	)
 
-	// InitGenesis
 	validatorUpdates := poaKeeper.InitGenesis(ctx, testGenesis)
 
-	// Only one update
 	if len(validatorUpdates) != 1 {
-		t.Errorf("Should get exactly one validator update")
+		t.Errorf("should get exactly one validator update")
 	}
 
-	// No weight
 	power := validatorUpdates[0].Power
 	if power != 1 {
 		t.Errorf("power should be 1, got %v", power)
@@ -57,8 +96,9 @@ func TestInitGenesis(t *testing.T) {
 	// Correct public key
 	pubKey, err := cryptocdc.FromTmProtoPublicKey(validatorUpdates[0].PubKey)
 	if err != nil {
-		t.Errorf("Incorrect public key: %v", err)
+		t.Errorf("incorrect public key: %v", err)
 	}
+
 	//nolint:staticcheck
 	pubKeyString := legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pubKey)
 	if pubKeyString != consPubKey {
@@ -80,10 +120,18 @@ func TestExportGenesis(t *testing.T) {
 	exportedGenesis := poaKeeper.ExportGenesis(ctx)
 
 	if !cmp.Equal(exportedGenesis.Params, types.DefaultParams()) {
-		t.Errorf("Exported genesis params shoud be: %v, not %v", types.DefaultParams(), exportedGenesis.Params)
+		t.Errorf(
+			"exported genesis params shoud be: %v, not %v",
+			types.DefaultParams(),
+			exportedGenesis.Params,
+		)
 	}
 
 	if !cmp.Equal(exportedGenesis.Validators, []types.Validator{validator}) {
-		t.Errorf("Exported genesis validators should be: %v, not %v", []types.Validator{validator}, exportedGenesis.Validators)
+		t.Errorf(
+			"exported genesis validators should be: %v, not %v",
+			[]types.Validator{validator},
+			exportedGenesis.Validators,
+		)
 	}
 }

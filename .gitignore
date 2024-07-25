@@ -50,6 +50,12 @@ localnet-setup
 # Binary-based localnet
 .localnet
 
+# Single-node localnet
+.localnode
+
+# Public testnet
+.public-testnet
+
 # Testing
 coverage.txt
 *.out

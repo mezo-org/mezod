@@ -17,14 +17,14 @@ func TestEndBlocker(t *testing.T) {
 	validator5, _ := mockValidator()
 
 	// Set the validator in the keeper
-	poaKeeper.appendValidator(ctx, validator1)
-	poaKeeper.appendValidator(ctx, validator2)
-	poaKeeper.appendValidator(ctx, validator3)
-	poaKeeper.appendValidator(ctx, validator4)
-	poaKeeper.appendValidator(ctx, validator5)
+	poaKeeper.createValidator(ctx, validator1)
+	poaKeeper.createValidator(ctx, validator2)
+	poaKeeper.createValidator(ctx, validator3)
+	poaKeeper.createValidator(ctx, validator4)
+	poaKeeper.createValidator(ctx, validator5)
 
 	// Simulate validator 2 as if it is already in the validator set
-	poaKeeper.setValidatorState(ctx, validator2, types.ValidatorStateJoined)
+	poaKeeper.setValidatorState(ctx, validator2, types.ValidatorStateActive)
 
 	// Simulate validator 4 and 5 as if those are leaving the validator set
 	poaKeeper.setValidatorState(ctx, validator4, types.ValidatorStateLeaving)

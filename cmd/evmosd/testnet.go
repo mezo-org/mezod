@@ -335,13 +335,18 @@ func initTestnetFiles(
 			},
 		)
 
-		validators[i] = poatypes.NewValidator(
+		validator, err := poatypes.NewValidator(
 			sdk.ValAddress(address),
 			valPubKeys[i],
 			poatypes.Description{
 				Moniker: nodeDirName,
 			},
 		)
+		if err != nil {
+			return err
+		}
+
+		validators[i] = validator
 	}
 
 	// Build persistent peers list based on validators' memos.
@@ -435,6 +440,8 @@ func initGenesisFiles(
 
 	var poaGenState poatypes.GenesisState
 	clientCtx.Codec.MustUnmarshalJSON(appGenState[poatypes.ModuleName], &poaGenState)
+	// Set the first validator as the initial owner.
+	poaGenState.Owner = sdk.AccAddress(validators[0].GetOperator()).String()
 	poaGenState.Validators = validators
 	appGenState[poatypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&poaGenState)
 

@@ -131,29 +131,28 @@ func (suite *KeeperTestSuite) TestGetCoinbaseAddress() {
 				// consensus key (must use pure secp256k1 curve due to Tendermint requirements)
 				privKey := secp256k1.GenPrivKey()
 
-				validator := poatypes.NewValidator(
+				validator, err := poatypes.NewValidator(
 					valOpAddr.Bytes(),
 					privKey.PubKey(),
 					poatypes.Description{},
 				)
-
-				valConsAddr := validator.GetConsAddr()
-
-				// Set zero quorum in the poa module to immediately
-				// add validators upon their application.
-				err := suite.app.PoaKeeper.UpdateParams(
-					suite.ctx,
-					suite.app.PoaKeeper.Authority(),
-					poatypes.Params{
-						MaxValidators: poatypes.DefaultMaxValidators,
-						Quorum:        0,
-					},
-				)
 				suite.Require().NoError(err)
+
+				valConsAddr := validator.GetConsAddress()
 
 				err = suite.app.PoaKeeper.SubmitApplication(
 					suite.ctx,
+					sdk.AccAddress(validator.GetOperator()),
 					validator,
+				)
+				suite.Require().NoError(err)
+
+				owner := suite.app.PoaKeeper.GetOwner(suite.ctx)
+
+				err = suite.app.PoaKeeper.ApproveApplication(
+					suite.ctx,
+					owner,
+					validator.GetOperator(),
 				)
 				suite.Require().NoError(err)
 

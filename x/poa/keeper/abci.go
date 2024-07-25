@@ -29,13 +29,13 @@ func (k Keeper) EndBlocker(ctx sdk.Context) (updates []abci.ValidatorUpdate) {
 
 		// Check the state
 		switch validatorState {
-		case types.ValidatorStateJoined:
+		case types.ValidatorStateActive:
 			// No update if the validator has already joined the validator state
 
 		case types.ValidatorStateJoining:
 			// Return the new validator in the updates and set its state to joined
 			updates = append(updates, validator.ABCIValidatorUpdateAppend())
-			k.setValidatorState(ctx, validator, types.ValidatorStateJoined)
+			k.setValidatorState(ctx, validator, types.ValidatorStateActive)
 
 		case types.ValidatorStateLeaving:
 			// Set the validator power to 0 and remove it from the keeper

@@ -121,11 +121,22 @@ func NewTestGenesisState(codec codec.Codec) simapp.GenesisState {
 	}
 
 	genesisState := NewDefaultGenesisState()
-	return genesisStateWithValSet(codec, genesisState, valSet, []authtypes.GenesisAccount{acc}, balance)
+	return genesisStateWithValSet(
+		codec,
+		genesisState,
+		acc.GetAddress(),
+		valSet,
+		[]authtypes.GenesisAccount{acc},
+		balance,
+	)
 }
 
-func genesisStateWithValSet(codec codec.Codec, genesisState simapp.GenesisState,
-	valSet *tmtypes.ValidatorSet, genAccs []authtypes.GenesisAccount,
+func genesisStateWithValSet(
+	codec codec.Codec,
+	genesisState simapp.GenesisState,
+	owner sdk.AccAddress,
+	valSet *tmtypes.ValidatorSet,
+	genAccs []authtypes.GenesisAccount,
 	balances ...banktypes.Balance,
 ) simapp.GenesisState {
 	// set genesis accounts
@@ -140,15 +151,22 @@ func genesisStateWithValSet(codec codec.Codec, genesisState simapp.GenesisState,
 			panic(err)
 		}
 		validator := poatypes.Validator{
-			OperatorAddress: sdk.ValAddress(val.Address),
+			OperatorBech32: sdk.ValAddress(val.Address).String(),
 			//nolint:staticcheck
-			ConsensusPubkey: legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk),
-			Description:     poatypes.Description{},
+			ConsPubKeyBech32: legacybech32.MustMarshalPubKey(
+				legacybech32.ConsPK,
+				pk,
+			),
+			Description: poatypes.Description{},
 		}
 		validators = append(validators, validator)
 	}
 	// set validators and delegations
-	stakingGenesis := poatypes.NewGenesisState(poatypes.DefaultParams(), validators)
+	stakingGenesis := poatypes.NewGenesisState(
+		poatypes.DefaultParams(),
+		owner,
+		validators,
+	)
 	genesisState[poatypes.ModuleName] = codec.MustMarshalJSON(&stakingGenesis)
 
 	totalSupply := sdk.NewCoins()
@@ -158,7 +176,12 @@ func genesisStateWithValSet(codec codec.Codec, genesisState simapp.GenesisState,
 	}
 
 	// update total supply
-	bankGenesis := banktypes.NewGenesisState(banktypes.DefaultGenesisState().Params, balances, totalSupply, []banktypes.Metadata{})
+	bankGenesis := banktypes.NewGenesisState(
+		banktypes.DefaultGenesisState().Params,
+		balances,
+		totalSupply,
+		[]banktypes.Metadata{},
+	)
 	genesisState[banktypes.ModuleName] = codec.MustMarshalJSON(bankGenesis)
 
 	return genesisState

@@ -26,7 +26,6 @@ func NewQueryCmd() *cobra.Command {
 		NewCmdQueryValidators(),
 		NewCmdQueryParams(),
 		NewCmdQueryApplications(),
-		NewCmdQueryKickProposals(),
 	)
 
 	return poaQueryCmd
@@ -47,7 +46,7 @@ func NewCmdQueryValidator() *cobra.Command {
 			queryClient := types.NewQueryClient(clientCtx)
 
 			request := &types.QueryValidatorRequest{
-				ValidatorAddr: args[0],
+				Operator: args[0],
 			}
 
 			response, err := queryClient.Validator(context.Background(), request)
@@ -129,32 +128,6 @@ func NewCmdQueryApplications() *cobra.Command {
 			request := &types.QueryApplicationsRequest{}
 
 			response, err := queryClient.Applications(context.Background(), request)
-			if err != nil {
-				return err
-			}
-
-			return clientCtx.PrintProto(response)
-		},
-	}
-}
-
-// NewCmdQueryKickProposals queries the kick proposals to remove a validator
-func NewCmdQueryKickProposals() *cobra.Command {
-	return &cobra.Command{
-		Use:   "kick-proposals",
-		Short: "Query the kick proposals to remove validator",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			clientCtx, err := client.GetClientQueryContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			queryClient := types.NewQueryClient(clientCtx)
-
-			request := &types.QueryKickProposalsRequest{}
-
-			response, err := queryClient.KickProposals(context.Background(), request)
 			if err != nil {
 				return err
 			}

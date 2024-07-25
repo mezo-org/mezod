@@ -17,11 +17,12 @@ func (k Keeper) InitGenesis(ctx sdk.Context, data types.GenesisState) (res []abc
 		panic(errorsmod.Wrapf(err, "error setting params"))
 	}
 
-	// Set validators in the storage
+	k.setOwner(ctx, sdk.MustAccAddressFromBech32(data.Owner))
+
 	for _, validator := range data.Validators {
 		k.setValidator(ctx, validator)
 		k.setValidatorByConsAddr(ctx, validator)
-		k.setValidatorState(ctx, validator, types.ValidatorStateJoined)
+		k.setValidatorState(ctx, validator, types.ValidatorStateActive)
 		res = append(res, validator.ABCIValidatorUpdateAppend())
 	}
 
@@ -34,6 +35,7 @@ func (k Keeper) InitGenesis(ctx sdk.Context, data types.GenesisState) (res []abc
 func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 	return &types.GenesisState{
 		Params:     k.GetParams(ctx),
+		Owner:      k.GetOwner(ctx).String(),
 		Validators: k.GetAllValidators(ctx),
 	}
 }
@@ -54,7 +56,7 @@ func (k Keeper) ExportGenesisValidators(
 		// Ignore candidate validators and validators that are leaving.
 		// The exported state should contain validators that can continue
 		// their work after the state is reloaded.
-		if state != types.ValidatorStateJoined {
+		if state != types.ValidatorStateActive {
 			continue
 		}
 

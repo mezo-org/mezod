@@ -19,15 +19,11 @@ service Query {
   }
   // Validator queries a single validator by address.
   rpc Validator(QueryValidatorRequest) returns (QueryValidatorResponse) {
-    option (google.api.http).get = "/evmos/poa/v1/validators/{validator_addr}";
+    option (google.api.http).get = "/evmos/poa/v1/validators/{operator}";
   }
   // Applications queries all validators' applications of the module.
   rpc Applications(QueryApplicationsRequest) returns (QueryApplicationsResponse) {
     option (google.api.http).get = "/evmos/poa/v1/applications";
-  }
-  // KickProposals queries all kick proposals of the module.
-  rpc KickProposals(QueryKickProposalsRequest) returns (QueryKickProposalsResponse) {
-    option (google.api.http).get = "/evmos/poa/v1/kick_proposals";
   }
 }
 
@@ -51,8 +47,8 @@ message QueryValidatorsResponse {
 
 // QueryValidatorRequest is request type for the Query/Validator RPC method.
 message QueryValidatorRequest {
-  // validator_addr is the address of the validator to query.
-  string validator_addr = 1;
+  // operator is the Cosmos SDK operator address (bech32) of the validator to query.
+  string operator = 1;
 }
 
 // QueryValidatorResponse is response type for the Query/Validator RPC method.
@@ -67,14 +63,5 @@ message QueryApplicationsRequest {}
 // QueryApplicationsResponse is response type for the Query/Applications RPC method.
 message QueryApplicationsResponse {
   // applications holds all the validators' applications of the module.
-  repeated Vote applications = 1 [(gogoproto.nullable) = false];
-}
-
-// QueryKickProposalsRequest is request type for the Query/KickProposals RPC method.
-message QueryKickProposalsRequest {}
-
-// QueryKickProposalsResponse is response type for the Query/KickProposals RPC method.
-message QueryKickProposalsResponse {
-  // kick_proposals holds all the kick proposals of the module.
-  repeated Vote kick_proposals = 1 [(gogoproto.nullable) = false];
+  repeated Application applications = 1 [(gogoproto.nullable) = false];
 }

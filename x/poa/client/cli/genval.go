@@ -69,7 +69,7 @@ func NewGenValCmd(defaultHome string) *cobra.Command {
 			ip, _ := cmd.Flags().GetString(FlagIP)
 			p2pPort, _ := cmd.Flags().GetString(FlagP2PPort)
 
-			validator := poatypes.NewValidator(
+			validator, err := poatypes.NewValidator(
 				sdk.ValAddress(address),
 				valPubKey,
 				poatypes.Description{
@@ -80,6 +80,9 @@ func NewGenValCmd(defaultHome string) *cobra.Command {
 					Details:         details,
 				},
 			)
+			if err != nil {
+				return errors.Wrap(err, "failed to create validator")
+			}
 
 			outDocContent := map[string]interface{}{
 				"validator": validator,
