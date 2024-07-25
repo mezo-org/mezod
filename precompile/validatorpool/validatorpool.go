@@ -13,19 +13,9 @@ import (
 //go:embed abi.json
 var filesystem embed.FS
 
-// EvmAddress is the EVM address of the validator pool precompile.
-// EVM native precompiles reserve the addresses from 0x...01 to 0x...09.
-// We use the prefix 0x7b7c for custom Mezo precompiles to avoid collisions
-// Mezo precompile address space:
-//
-// 0x7b7c000000000000000000000000000000000000 - Bitcoin
-// reserved space (token precompiles)
-//
-// 0x7b7c000000000000000000000000000000000010 - PoHODL Staking
-// 0x7b7c000000000000000000000000000000000011 - Validator Pool
-// reserved space (consensus precompiles)
-//
-// 0x7b7c000000000000000000000000000000000020 - Token Bridge
+// EvmAddress is the EVM address of the BTC token precompile. Token address is
+// prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
+// used to avoid potential collisions with EVM native precompiles.
 const EvmAddress = "0x7b7c000000000000000000000000000000000011"
 
 type PoaKeeper interface {
