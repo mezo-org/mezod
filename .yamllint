@@ -5,9 +5,6 @@ yaml-files:
   - '*.yml'
   - '.yamllint'
 
-ignore:
-  - '**/.terraform/**'
-
 rules:
   braces: enable
   brackets: enable
