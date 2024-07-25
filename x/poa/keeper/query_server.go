@@ -59,6 +59,9 @@ func (qs queryServer) Validator(
 		return nil, status.Error(codes.InvalidArgument, "validator address cannot be empty")
 	}
 
+	// The request is expected to carry a bech32 encoded address of an operator.
+	// We use that operator address to fetch the corresponding validator
+	// instance from the store.
 	operator, err := sdk.ValAddressFromBech32(request.Operator)
 	if err != nil {
 		return nil, err
