@@ -51,7 +51,7 @@ func (k Keeper) SubmitApplication(
 	}
 
 	// Create the new application
-	k.appendApplication(ctx, validator)
+	k.createApplication(ctx, validator)
 
 	return nil
 }
@@ -158,8 +158,8 @@ func (k Keeper) setApplicationByConsAddr(
 	)
 }
 
-// appendApplication appends a new application for the given candidate validator.
-func (k Keeper) appendApplication(ctx sdk.Context, validator types.Validator) {
+// createApplication creates a new application for the given candidate validator.
+func (k Keeper) createApplication(ctx sdk.Context, validator types.Validator) {
 	application := types.NewApplication(validator)
 	k.setApplication(ctx, application)
 	k.setApplicationByConsAddr(ctx, application)

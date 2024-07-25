@@ -353,11 +353,11 @@ func TestGetApplicationByConsAddr(t *testing.T) {
 	}
 }
 
-func TestAppendApplication(t *testing.T) {
+func TestCreateApplication(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator, _ := mockValidator()
 
-	poaKeeper.appendApplication(ctx, validator)
+	poaKeeper.createApplication(ctx, validator)
 
 	_, foundApplication := poaKeeper.GetApplication(
 		ctx,
@@ -381,8 +381,8 @@ func TestRemoveApplication(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator, _ := mockValidator()
 
-	// Append  and remove application
-	poaKeeper.appendApplication(ctx, validator)
+	// Create and remove application
+	poaKeeper.createApplication(ctx, validator)
 	poaKeeper.removeApplication(ctx, validator.GetOperator())
 
 	// Should not find a removed validator
