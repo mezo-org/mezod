@@ -28,7 +28,7 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 			name: "argument count mismatch",
 			run: func() []interface{} {
 				return []interface{}{
-					1, 2, 3,
+					1, 2,
 				}
 			},
 			errContains: "argument count mismatch",
