@@ -18,7 +18,7 @@ const (
 	TransferFromMethodName = "transferFrom"
 )
 
-// ----------- Transfer -----------
+// Transfer Method
 type transferMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
@@ -103,7 +103,7 @@ func (tm *transferMethod) Run(
 	return precompile.MethodOutputs{true}, nil
 }
 
-// ----------- TransferFrom  -----------
+// TransferFrom Method
 
 type transferFromMethod struct {
 	bankKeeper  bankkeeper.Keeper
@@ -141,10 +141,76 @@ func (tfm *transferFromMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 3); err != nil {
+		return nil, err
+	}
+
+	from, ok := inputs[0].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("invalid from address: %v", inputs[0])
+	}
+
+	to, ok := inputs[1].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("invalid to address: %v", inputs[1])
+	}
+
+	amount, ok := inputs[2].(*big.Int)
+	if !ok {
+		return nil, fmt.Errorf("invalid amount: %v", inputs[2])
+	}
+
+	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
+	}
+	coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}}
+
+	msg := banktypes.NewMsgSend(from.Bytes(), to.Bytes(), coins)
+
+	if err = msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+
+	spenderAddr := context.MsgSender()
+	spender := sdk.AccAddress(spenderAddr.Bytes())
+
+	if spender.Equals(sdk.AccAddress(from.Bytes())) {
+		// owner is spender
+		msgSrv := bankkeeper.NewMsgServerImpl(tfm.bankKeeper)
+		_, err = msgSrv.Send(sdk.WrapSDKContext(context.SdkCtx()), msg)
+	} else {
+		authorization, _ := tfm.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
+		if authorization == nil {
+			return nil, fmt.Errorf("authorization to %s for address %s does not exist or is expired", SendMsgURL, spender)
+		}
+
+		_, ok := authorization.(*banktypes.SendAuthorization)
+		if !ok {
+			return nil, fmt.Errorf(
+				"expected authorization to be a %T", banktypes.SendAuthorization{},
+			)
+		}
+
+		_, err = tfm.authzkeeper.DispatchActions(context.SdkCtx(), spender, []sdk.Msg{msg})
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Emit Transfer event.
+	err = context.EventEmitter().Emit(
+		newTransferEvent(from, to, amount),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
+	}
+
 	return precompile.MethodOutputs{true}, nil
 }
 
-// ----------- Transfer Event -----------
+// Transfer Event
 
 // TransferEventName is the name of the Transfer event. It matches the name
 // of the event in the contract ABI.
