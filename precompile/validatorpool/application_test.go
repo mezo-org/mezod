@@ -1,8 +1,6 @@
 package validatorpool
 
 import (
-	"encoding/json"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
@@ -97,10 +95,8 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			desc := poatypes.NewDescription("moniker", "identity", "website", "securityContact", "details")
-			bytes, err := json.Marshal(desc)
-			s.Require().NoError(err, "expected no error")
-			e := newApplicationSubmittedEvent(tc.operator, tc.consPubKey, bytes)
+			description := poatypes.NewDescription("moniker", "identity", "website", "securityContact", "details")
+			e := newApplicationSubmittedEvent(tc.operator, tc.consPubKey, description)
 			args := e.Arguments()
 
 			s.Require().Len(args, 3)
@@ -115,7 +111,7 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 
 			// Check the second argument
 			s.Require().False(args[2].Indexed)
-			s.Require().Equal(bytes, args[2].Value)
+			s.Require().Equal(description, args[2].Value)
 		})
 	}
 }

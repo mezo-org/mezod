@@ -1,7 +1,6 @@
 package validatorpool
 
 import (
-	"encoding/json"
 	"fmt"
 
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -66,19 +65,13 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	descBytes, ok := inputs[2].([]byte)
+	description, ok := inputs[2].(poatypes.Description)
 	if !ok {
 		return nil, fmt.Errorf("description argument must be bytes")
 	}
 
 	tmpk := ed25519.PubKey(consPubKeyBytes[:])
 	consPubKey, err := cryptocdc.FromTmPubKeyInterface(tmpk)
-	if err != nil {
-		return nil, err
-	}
-
-	var description poatypes.Description
-	err = json.Unmarshal(descBytes, &description)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +96,7 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		newApplicationSubmittedEvent(
 			operator,
 			consPubKeyBytes,
-			descBytes,
+			description,
 		),
 	)
 	if err != nil {
@@ -125,10 +118,10 @@ const ApplicationSubmittedEventName = "ApplicationSubmitted"
 type applicationSubmittedEvent struct {
 	consPubKey  [32]byte
 	operator    common.Address
-	description []byte
+	description poatypes.Description
 }
 
-func newApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte, description []byte) *applicationSubmittedEvent {
+func newApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte, description poatypes.Description) *applicationSubmittedEvent {
 	return &applicationSubmittedEvent{
 		operator:    operator,
 		consPubKey:  consPubKey,
