@@ -12,36 +12,36 @@ import (
 // of the method in the contract ABI.
 const GetValidatorsMethodName = "getValidators"
 
-// getValidatorsMethod is the implementation of the getValidators method that returns
+// GetValidatorsMethod is the implementation of the getValidators method that returns
 // the current getValidators
-type getValidatorsMethod struct {
+type GetValidatorsMethod struct {
 	keeper PoaKeeper
 }
 
-func newGetValidatorsMethod(pk PoaKeeper) *getValidatorsMethod {
-	return &getValidatorsMethod{
+func NewGetValidatorsMethod(pk PoaKeeper) *GetValidatorsMethod {
+	return &GetValidatorsMethod{
 		keeper: pk,
 	}
 }
 
-func (m *getValidatorsMethod) MethodName() string {
+func (m *GetValidatorsMethod) MethodName() string {
 	return GetValidatorsMethodName
 }
 
-func (m *getValidatorsMethod) MethodType() precompile.MethodType {
+func (m *GetValidatorsMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *getValidatorsMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *GetValidatorsMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *getValidatorsMethod) Payable() bool {
+func (m *GetValidatorsMethod) Payable() bool {
 	return false
 }
 
-func (m *getValidatorsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *GetValidatorsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
@@ -64,36 +64,36 @@ func (m *getValidatorsMethod) Run(context *precompile.RunContext, inputs precomp
 // of the method in the contract ABI.
 const GetValidatorMethodName = "getValidator"
 
-// getValidatorMethod is the implementation of the getValidator method that returns
+// GetValidatorMethod is the implementation of the getValidator method that returns
 // the current getValidator
-type getValidatorMethod struct {
+type GetValidatorMethod struct {
 	keeper PoaKeeper
 }
 
-func newGetValidatorMethod(pk PoaKeeper) *getValidatorsMethod {
-	return &getValidatorsMethod{
+func NewGetValidatorMethod(pk PoaKeeper) *GetValidatorsMethod {
+	return &GetValidatorsMethod{
 		keeper: pk,
 	}
 }
 
-func (m *getValidatorMethod) MethodName() string {
+func (m *GetValidatorMethod) MethodName() string {
 	return GetValidatorsMethodName
 }
 
-func (m *getValidatorMethod) MethodType() precompile.MethodType {
+func (m *GetValidatorMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *getValidatorMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *GetValidatorMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *getValidatorMethod) Payable() bool {
+func (m *GetValidatorMethod) Payable() bool {
 	return false
 }
 
-func (m *getValidatorMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *GetValidatorMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}

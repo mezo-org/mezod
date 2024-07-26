@@ -1,10 +1,11 @@
-package validatorpool
+package validatorpool_test
 
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/evmos/evmos/v12/precompile"
+	"github.com/evmos/evmos/v12/precompile/validatorpool"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
@@ -39,7 +40,7 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
 			}
 
-			validatorpoolPrecompile, err := NewPrecompile(s.keeper)
+			validatorpoolPrecompile, err := validatorpool.NewPrecompile(s.keeper)
 			s.Require().NoError(err)
 			s.validatorpoolPrecompile = validatorpoolPrecompile
 
@@ -96,7 +97,7 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 		tc := tc
 		s.Run(tc.name, func() {
 			description := poatypes.NewDescription("moniker", "identity", "website", "securityContact", "details")
-			e := newApplicationSubmittedEvent(tc.operator, tc.consPubKey, description)
+			e := validatorpool.NewApplicationSubmittedEvent(tc.operator, tc.consPubKey, description)
 			args := e.Arguments()
 
 			s.Require().Len(args, 3)
@@ -146,7 +147,7 @@ func (s *PrecompileTestSuite) TestApproveApplication() {
 				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
 			}
 
-			validatorpoolPrecompile, err := NewPrecompile(s.keeper)
+			validatorpoolPrecompile, err := validatorpool.NewPrecompile(s.keeper)
 			s.Require().NoError(err)
 			s.validatorpoolPrecompile = validatorpoolPrecompile
 
@@ -200,7 +201,7 @@ func (s *PrecompileTestSuite) TestEmitApplicationApprovedEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			e := newApplicationApprovedEvent(tc.operator)
+			e := validatorpool.NewApplicationApprovedEvent(tc.operator)
 			args := e.Arguments()
 
 			s.Require().Len(args, 1)
@@ -226,7 +227,7 @@ func (s *PrecompileTestSuite) TestEmitValidatorJoinedEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			e := newValidatorJoinedEvent(tc.operator)
+			e := validatorpool.NewValidatorJoinedEvent(tc.operator)
 			args := e.Arguments()
 
 			s.Require().Len(args, 1)

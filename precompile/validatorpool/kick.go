@@ -12,39 +12,39 @@ import (
 // of the method in the contract ABI.
 const KickMethodName = "kick"
 
-// kickMethod is the implementation of the kick method that registers
+// KickMethod is the implementation of the kick method that registers
 // a validator candidates application as pending
 
 // The method has the following input arguments:
 // - operator: the address identifying the validator.
-type kickMethod struct {
+type KickMethod struct {
 	keeper PoaKeeper
 }
 
-func newKickMethod(pk PoaKeeper) *kickMethod {
-	return &kickMethod{
+func NewKickMethod(pk PoaKeeper) *KickMethod {
+	return &KickMethod{
 		keeper: pk,
 	}
 }
 
-func (m *kickMethod) MethodName() string {
+func (m *KickMethod) MethodName() string {
 	return KickMethodName
 }
 
-func (m *kickMethod) MethodType() precompile.MethodType {
+func (m *KickMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *kickMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *KickMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *kickMethod) Payable() bool {
+func (m *KickMethod) Payable() bool {
 	return false
 }
 
-func (m *kickMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *KickMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (m *kickMethod) Run(context *precompile.RunContext, inputs precompile.Metho
 
 	// emit event
 	err = context.EventEmitter().Emit(
-		newValidatorKickedEvent(operator),
+		NewValidatorKickedEvent(operator),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emitv ValidatorKicked event: [%w]", err)
@@ -78,24 +78,24 @@ func (m *kickMethod) Run(context *precompile.RunContext, inputs precompile.Metho
 // of the event in the contract ABI.
 const ValidatorKickedEventName = "ValidatorKicked"
 
-// validatorKickedEvent is the implementation of the ValidatorKicked event that contains
+// ValidatorKickedEvent is the implementation of the ValidatorKicked event that contains
 // the following arguments:
 // - operator (indexed): is the address identifying the validators operator
-type validatorKickedEvent struct {
+type ValidatorKickedEvent struct {
 	operator common.Address
 }
 
-func newValidatorKickedEvent(operator common.Address) *validatorKickedEvent {
-	return &validatorKickedEvent{
+func NewValidatorKickedEvent(operator common.Address) *ValidatorKickedEvent {
+	return &ValidatorKickedEvent{
 		operator: operator,
 	}
 }
 
-func (e *validatorKickedEvent) EventName() string {
+func (e *ValidatorKickedEvent) EventName() string {
 	return ValidatorKickedEventName
 }
 
-func (e *validatorKickedEvent) Arguments() []*precompile.EventArgument {
+func (e *ValidatorKickedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,

@@ -15,41 +15,41 @@ import (
 // of the method in the contract ABI.
 const SubmitApplicationMethodName = "submitApplication"
 
-// submitApplicationMethod is the implementation of the submitApplication method that registers
+// SubmitApplicationMethod is the implementation of the submitApplication method that registers
 // a validator candidates application as pending
 
 // The method has the following input arguments:
 // - consPubKey: the consensus public key of the validator used to vote on blocks
 // - operator: the EVM address identifying the validator
 // - description: the validators description info
-type submitApplicationMethod struct {
+type SubmitApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func newSubmitApplicationMethod(pk PoaKeeper) *submitApplicationMethod {
-	return &submitApplicationMethod{
+func NewSubmitApplicationMethod(pk PoaKeeper) *SubmitApplicationMethod {
+	return &SubmitApplicationMethod{
 		keeper: pk,
 	}
 }
 
-func (m *submitApplicationMethod) MethodName() string {
+func (m *SubmitApplicationMethod) MethodName() string {
 	return SubmitApplicationMethodName
 }
 
-func (m *submitApplicationMethod) MethodType() precompile.MethodType {
+func (m *SubmitApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *submitApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *SubmitApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *submitApplicationMethod) Payable() bool {
+func (m *SubmitApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	// check method inputs
 	if err := precompile.ValidateMethodInputsCount(inputs, 3); err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 
 	// emit event
 	err = context.EventEmitter().Emit(
-		newApplicationSubmittedEvent(
+		NewApplicationSubmittedEvent(
 			operator,
 			consPubKeyBytes,
 			description,
@@ -118,25 +118,25 @@ const ApplicationSubmittedEventName = "ApplicationSubmitted"
 // - operator (indexed): is the address identifying the validator,
 // - consPubKey (indexed): is the consensus public key of the validator used to vote on blocks.
 // - description: is the validators description info
-type applicationSubmittedEvent struct {
+type ApplicationSubmittedEvent struct {
 	consPubKey  [32]byte
 	operator    common.Address
 	description poatypes.Description
 }
 
-func newApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte, description poatypes.Description) *applicationSubmittedEvent {
-	return &applicationSubmittedEvent{
+func NewApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte, description poatypes.Description) *ApplicationSubmittedEvent {
+	return &ApplicationSubmittedEvent{
 		operator:    operator,
 		consPubKey:  consPubKey,
 		description: description,
 	}
 }
 
-func (e *applicationSubmittedEvent) EventName() string {
+func (e *ApplicationSubmittedEvent) EventName() string {
 	return ApplicationSubmittedEventName
 }
 
-func (e *applicationSubmittedEvent) Arguments() []*precompile.EventArgument {
+func (e *ApplicationSubmittedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,
@@ -157,39 +157,39 @@ func (e *applicationSubmittedEvent) Arguments() []*precompile.EventArgument {
 // of the method in the contract ABI.
 const ApproveApplicationMethodName = "approveApplication"
 
-// approveApplicationMethod is the implementation of the approveApplication method that approves
+// ApproveApplicationMethod is the implementation of the approveApplication method that approves
 // a pending validator application.
 
 // The method has the following input arguments:
 // - operator: the EVM address identifying the validator.
-type approveApplicationMethod struct {
+type ApproveApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func newApproveApplicationMethod(pk PoaKeeper) *approveApplicationMethod {
-	return &approveApplicationMethod{
+func NewApproveApplicationMethod(pk PoaKeeper) *ApproveApplicationMethod {
+	return &ApproveApplicationMethod{
 		keeper: pk,
 	}
 }
 
-func (m *approveApplicationMethod) MethodName() string {
+func (m *ApproveApplicationMethod) MethodName() string {
 	return ApproveApplicationMethodName
 }
 
-func (m *approveApplicationMethod) MethodType() precompile.MethodType {
+func (m *ApproveApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *approveApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *ApproveApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *approveApplicationMethod) Payable() bool {
+func (m *ApproveApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *approveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ApproveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (m *approveApplicationMethod) Run(context *precompile.RunContext, inputs pr
 
 	// emit events
 	err = context.EventEmitter().Emit(
-		newApplicationApprovedEvent(
+		NewApplicationApprovedEvent(
 			operator,
 		),
 	)
@@ -218,7 +218,7 @@ func (m *approveApplicationMethod) Run(context *precompile.RunContext, inputs pr
 		return nil, fmt.Errorf("failed to emit ApplicationApproved event: [%w]", err)
 	}
 	err = context.EventEmitter().Emit(
-		newValidatorJoinedEvent(
+		NewValidatorJoinedEvent(
 			operator,
 		),
 	)
@@ -233,24 +233,24 @@ func (m *approveApplicationMethod) Run(context *precompile.RunContext, inputs pr
 // of the event in the contract ABI.
 const ApplicationApprovedEventName = "ApplicationApproved"
 
-// applicationApprovedEvent is the implementation of the ApplicationApproved event that contains
+// ApplicationApprovedEvent is the implementation of the ApplicationApproved event that contains
 // the following arguments:
 // - operator (indexed): is the address identifying the validators operator
-type applicationApprovedEvent struct {
+type ApplicationApprovedEvent struct {
 	operator common.Address
 }
 
-func newApplicationApprovedEvent(operator common.Address) *applicationApprovedEvent {
-	return &applicationApprovedEvent{
+func NewApplicationApprovedEvent(operator common.Address) *ApplicationApprovedEvent {
+	return &ApplicationApprovedEvent{
 		operator: operator,
 	}
 }
 
-func (e *applicationApprovedEvent) EventName() string {
+func (e *ApplicationApprovedEvent) EventName() string {
 	return ApplicationApprovedEventName
 }
 
-func (e *applicationApprovedEvent) Arguments() []*precompile.EventArgument {
+func (e *ApplicationApprovedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,
@@ -266,21 +266,21 @@ const ValidatorJoinedEventName = "ValidatorJoined"
 // validatorJoinedEvent is the implementation of the ValidatorJoined event that contains
 // the following arguments:
 // - operator (indexed): is the EVM address identifying the validators operator,
-type validatorJoinedEvent struct {
+type ValidatorJoinedEvent struct {
 	operator common.Address
 }
 
-func newValidatorJoinedEvent(operator common.Address) *validatorJoinedEvent {
-	return &validatorJoinedEvent{
+func NewValidatorJoinedEvent(operator common.Address) *ValidatorJoinedEvent {
+	return &ValidatorJoinedEvent{
 		operator: operator,
 	}
 }
 
-func (e *validatorJoinedEvent) EventName() string {
+func (e *ValidatorJoinedEvent) EventName() string {
 	return ValidatorJoinedEventName
 }
 
-func (e *validatorJoinedEvent) Arguments() []*precompile.EventArgument {
+func (e *ValidatorJoinedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,
@@ -295,34 +295,34 @@ const GetApplicationsMethodName = "getApplications"
 
 // getApplicationsMethod is the implementation of the getApplications method that returns
 // the current getApplications
-type getApplicationsMethod struct {
+type GetApplicationsMethod struct {
 	keeper PoaKeeper
 }
 
-func newGetApplicationsMethod(pk PoaKeeper) *getApplicationsMethod {
-	return &getApplicationsMethod{
+func NewGetApplicationsMethod(pk PoaKeeper) *GetApplicationsMethod {
+	return &GetApplicationsMethod{
 		keeper: pk,
 	}
 }
 
-func (m *getApplicationsMethod) MethodName() string {
+func (m *GetApplicationsMethod) MethodName() string {
 	return GetApplicationsMethodName
 }
 
-func (m *getApplicationsMethod) MethodType() precompile.MethodType {
+func (m *GetApplicationsMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *getApplicationsMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *GetApplicationsMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *getApplicationsMethod) Payable() bool {
+func (m *GetApplicationsMethod) Payable() bool {
 	return false
 }
 
-func (m *getApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *GetApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
@@ -348,34 +348,34 @@ const GetApplicationMethodName = "getApplication"
 
 // getApplicationMethod is the implementation of the getApplication method that returns
 // the current getApplication
-type getApplicationMethod struct {
+type GetApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func newGetApplicationMethod(pk PoaKeeper) *getApplicationsMethod {
-	return &getApplicationsMethod{
+func NewGetApplicationMethod(pk PoaKeeper) *GetApplicationsMethod {
+	return &GetApplicationsMethod{
 		keeper: pk,
 	}
 }
 
-func (m *getApplicationMethod) MethodName() string {
+func (m *GetApplicationMethod) MethodName() string {
 	return GetApplicationsMethodName
 }
 
-func (m *getApplicationMethod) MethodType() precompile.MethodType {
+func (m *GetApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *getApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *GetApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *getApplicationMethod) Payable() bool {
+func (m *GetApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *getApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *GetApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}

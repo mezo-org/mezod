@@ -1,4 +1,4 @@
-package validatorpool
+package validatorpool_test
 
 import (
 	"testing"

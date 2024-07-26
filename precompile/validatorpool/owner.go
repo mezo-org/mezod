@@ -11,36 +11,36 @@ import (
 // of the method in the contract ABI.
 const OwnerMethodName = "owner"
 
-// ownerMethod is the implementation of the owner method that returns
+// OwnerMethod is the implementation of the owner method that returns
 // the current owner
-type ownerMethod struct {
+type OwnerMethod struct {
 	keeper PoaKeeper
 }
 
-func newOwnerMethod(pk PoaKeeper) *ownerMethod {
-	return &ownerMethod{
+func NewOwnerMethod(pk PoaKeeper) *OwnerMethod {
+	return &OwnerMethod{
 		keeper: pk,
 	}
 }
 
-func (m *ownerMethod) MethodName() string {
+func (m *OwnerMethod) MethodName() string {
 	return OwnerMethodName
 }
 
-func (m *ownerMethod) MethodType() precompile.MethodType {
+func (m *OwnerMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *ownerMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *OwnerMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *ownerMethod) Payable() bool {
+func (m *OwnerMethod) Payable() bool {
 	return false
 }
 
-func (m *ownerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *OwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
@@ -56,36 +56,36 @@ func (m *ownerMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 // of the method in the contract ABI.
 const CandidateOwnerMethodName = "candidateOwner"
 
-// candidateOwnerMethod is the implementation of the candidateOwner method that returns
+// CandidateOwnerMethod is the implementation of the candidateOwner method that returns
 // the pending ownership candidate
-type candidateOwnerMethod struct {
+type CandidateOwnerMethod struct {
 	keeper PoaKeeper
 }
 
-func newCandidateOwnerMethod(pk PoaKeeper) *candidateOwnerMethod {
-	return &candidateOwnerMethod{
+func NewCandidateOwnerMethod(pk PoaKeeper) *CandidateOwnerMethod {
+	return &CandidateOwnerMethod{
 		keeper: pk,
 	}
 }
 
-func (m *candidateOwnerMethod) MethodName() string {
+func (m *CandidateOwnerMethod) MethodName() string {
 	return CandidateOwnerMethodName
 }
 
-func (m *candidateOwnerMethod) MethodType() precompile.MethodType {
+func (m *CandidateOwnerMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *candidateOwnerMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *CandidateOwnerMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *candidateOwnerMethod) Payable() bool {
+func (m *CandidateOwnerMethod) Payable() bool {
 	return false
 }
 
-func (m *candidateOwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *CandidateOwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
@@ -101,39 +101,39 @@ func (m *candidateOwnerMethod) Run(context *precompile.RunContext, inputs precom
 // of the method in the contract ABI.
 const TransferOwnershipMethodName = "transferOwnership"
 
-// transferOwnershipMethod is the implementation of the transferOwnership method that begins
+// TransferOwnershipMethod is the implementation of the transferOwnership method that begins
 // the ownership transfer process to another account
 
 // The method has the following input arguments:
 // - newOwner: the EVM address identifying the new owner.
-type transferOwnershipMethod struct {
+type TransferOwnershipMethod struct {
 	keeper PoaKeeper
 }
 
-func newTransferOwnershipMethod(pk PoaKeeper) *transferOwnershipMethod {
-	return &transferOwnershipMethod{
+func NewTransferOwnershipMethod(pk PoaKeeper) *TransferOwnershipMethod {
+	return &TransferOwnershipMethod{
 		keeper: pk,
 	}
 }
 
-func (m *transferOwnershipMethod) MethodName() string {
+func (m *TransferOwnershipMethod) MethodName() string {
 	return TransferOwnershipMethodName
 }
 
-func (m *transferOwnershipMethod) MethodType() precompile.MethodType {
+func (m *TransferOwnershipMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *transferOwnershipMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *TransferOwnershipMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *transferOwnershipMethod) Payable() bool {
+func (m *TransferOwnershipMethod) Payable() bool {
 	return false
 }
 
-func (m *transferOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *TransferOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (m *transferOwnershipMethod) Run(context *precompile.RunContext, inputs pre
 
 	// emit ownershipTransferStarted event
 	err = context.EventEmitter().Emit(
-		newOwnershipTransferStartedEvent(context.MsgSender(), newOwner),
+		NewOwnershipTransferStartedEvent(context.MsgSender(), newOwner),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit ownershipTransferStarted event: [%w]", err)
@@ -171,22 +171,22 @@ const OwnershipTransferStartedEventName = "OwnershipTransferStarted"
 // the following arguments:
 // - previousOwner (indexed): is the EVM address of the current (soon to be previous) owner,
 // - newOwner (indexed): is the EVM address of the new owner
-type ownershipTransferStartedEvent struct {
+type OwnershipTransferStartedEvent struct {
 	previousOwner, newOwner common.Address
 }
 
-func newOwnershipTransferStartedEvent(previousOwner, newOwner common.Address) *ownershipTransferStartedEvent {
-	return &ownershipTransferStartedEvent{
+func NewOwnershipTransferStartedEvent(previousOwner, newOwner common.Address) *OwnershipTransferStartedEvent {
+	return &OwnershipTransferStartedEvent{
 		previousOwner: previousOwner,
 		newOwner:      newOwner,
 	}
 }
 
-func (e *ownershipTransferStartedEvent) EventName() string {
+func (e *OwnershipTransferStartedEvent) EventName() string {
 	return OwnershipTransferStartedEventName
 }
 
-func (e *ownershipTransferStartedEvent) Arguments() []*precompile.EventArgument {
+func (e *OwnershipTransferStartedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,
@@ -203,36 +203,36 @@ func (e *ownershipTransferStartedEvent) Arguments() []*precompile.EventArgument 
 // of the method in the contract ABI.
 const AcceptOwnershipMethodName = "acceptOwnership"
 
-// acceptOwnershipMethod is the implementation of the acceptOwnership method that accepts
+// AcceptOwnershipMethod is the implementation of the acceptOwnership method that accepts
 // a pending ownership transfer
-type acceptOwnershipMethod struct {
+type AcceptOwnershipMethod struct {
 	keeper PoaKeeper
 }
 
-func newAcceptOwnershipMethod(pk PoaKeeper) *acceptOwnershipMethod {
-	return &acceptOwnershipMethod{
+func NewAcceptOwnershipMethod(pk PoaKeeper) *AcceptOwnershipMethod {
+	return &AcceptOwnershipMethod{
 		keeper: pk,
 	}
 }
 
-func (m *acceptOwnershipMethod) MethodName() string {
+func (m *AcceptOwnershipMethod) MethodName() string {
 	return AcceptOwnershipMethodName
 }
 
-func (m *acceptOwnershipMethod) MethodType() precompile.MethodType {
+func (m *AcceptOwnershipMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *acceptOwnershipMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *AcceptOwnershipMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *acceptOwnershipMethod) Payable() bool {
+func (m *AcceptOwnershipMethod) Payable() bool {
 	return false
 }
 
-func (m *acceptOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *AcceptOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func (m *acceptOwnershipMethod) Run(context *precompile.RunContext, inputs preco
 
 	// emit ownershipTransferred event
 	err = context.EventEmitter().Emit(
-		newOwnershipTransferredEvent(
+		NewOwnershipTransferredEvent(
 			precompile.TypesConverter.Address.FromSDK(previousOwner),
 			context.MsgSender(),
 		),
@@ -266,26 +266,26 @@ func (m *acceptOwnershipMethod) Run(context *precompile.RunContext, inputs preco
 // of the event in the contract ABI.
 const OwnershipTransferredEventName = "OwnershipTransferred"
 
-// ownershipTransferredEvent is the implementation of the OwnershipTransferred event that contains
+// OwnershipTransferredEvent is the implementation of the OwnershipTransferred event that contains
 // the following arguments:
 // - previousOwner (indexed): is the EVM address of the now previous owner
 // - newOwner (indexed): is the EVM address of the new (now current) owner
-type ownershipTransferredEvent struct {
+type OwnershipTransferredEvent struct {
 	previousOwner, newOwner common.Address
 }
 
-func newOwnershipTransferredEvent(previousOwner, newOwner common.Address) *ownershipTransferredEvent {
-	return &ownershipTransferredEvent{
+func NewOwnershipTransferredEvent(previousOwner, newOwner common.Address) *OwnershipTransferredEvent {
+	return &OwnershipTransferredEvent{
 		previousOwner: previousOwner,
 		newOwner:      newOwner,
 	}
 }
 
-func (e *ownershipTransferredEvent) EventName() string {
+func (e *OwnershipTransferredEvent) EventName() string {
 	return OwnershipTransferredEventName
 }
 
-func (e *ownershipTransferredEvent) Arguments() []*precompile.EventArgument {
+func (e *OwnershipTransferredEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,

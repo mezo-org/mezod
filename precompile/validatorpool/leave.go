@@ -11,36 +11,36 @@ import (
 // of the method in the contract ABI.
 const LeaveMethodName = "leave"
 
-// leaveMethod is the implementation of the leave method that removes
+// LeaveMethod is the implementation of the leave method that removes
 // msg.sender from the validator pool
-type leaveMethod struct {
+type LeaveMethod struct {
 	keeper PoaKeeper
 }
 
-func newLeaveMethod(pk PoaKeeper) *leaveMethod {
-	return &leaveMethod{
+func NewLeaveMethod(pk PoaKeeper) *LeaveMethod {
+	return &LeaveMethod{
 		keeper: pk,
 	}
 }
 
-func (m *leaveMethod) MethodName() string {
+func (m *LeaveMethod) MethodName() string {
 	return LeaveMethodName
 }
 
-func (m *leaveMethod) MethodType() precompile.MethodType {
+func (m *LeaveMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *leaveMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *LeaveMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *leaveMethod) Payable() bool {
+func (m *LeaveMethod) Payable() bool {
 	return false
 }
 
-func (m *leaveMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *LeaveMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (m *leaveMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 
 	// emit event
 	err = context.EventEmitter().Emit(
-		newValidatorLeftEvent(context.MsgSender()),
+		NewValidatorLeftEvent(context.MsgSender()),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit validatorLeft event: [%w]", err)
@@ -68,24 +68,24 @@ func (m *leaveMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 // of the event in the contract ABI.
 const ValidatorLeftEventName = "ValidatorLeft"
 
-// validatorLeftEvent is the implementation of the ValidatorLeft event that contains
+// ValidatorLeftEvent is the implementation of the ValidatorLeft event that contains
 // the following arguments:
 // - operator (indexed): is the address identifying the validators operator
-type validatorLeftEvent struct {
+type ValidatorLeftEvent struct {
 	operator common.Address
 }
 
-func newValidatorLeftEvent(operator common.Address) *validatorLeftEvent {
-	return &validatorLeftEvent{
+func NewValidatorLeftEvent(operator common.Address) *ValidatorLeftEvent {
+	return &ValidatorLeftEvent{
 		operator: operator,
 	}
 }
 
-func (te *validatorLeftEvent) EventName() string {
+func (te *ValidatorLeftEvent) EventName() string {
 	return ValidatorLeftEventName
 }
 
-func (te *validatorLeftEvent) Arguments() []*precompile.EventArgument {
+func (te *ValidatorLeftEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,

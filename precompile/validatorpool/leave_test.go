@@ -1,10 +1,11 @@
-package validatorpool
+package validatorpool_test
 
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/evmos/evmos/v12/precompile"
+	"github.com/evmos/evmos/v12/precompile/validatorpool"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 )
 
@@ -38,7 +39,7 @@ func (s *PrecompileTestSuite) TestLeave() {
 				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
 			}
 
-			validatorpoolPrecompile, err := NewPrecompile(s.keeper)
+			validatorpoolPrecompile, err := validatorpool.NewPrecompile(s.keeper)
 			s.Require().NoError(err)
 			s.validatorpoolPrecompile = validatorpoolPrecompile
 
@@ -92,7 +93,7 @@ func (s *PrecompileTestSuite) TestEmitValidatorLeftEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			e := newValidatorLeftEvent(tc.operator)
+			e := validatorpool.NewValidatorLeftEvent(tc.operator)
 			args := e.Arguments()
 
 			s.Require().Len(args, 1)
