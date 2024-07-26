@@ -76,11 +76,14 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, err
 	}
 
-	validator := poatypes.NewValidator(
+	validator, err := poatypes.NewValidator(
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 		consPubKey,
 		description,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	err = m.keeper.SubmitApplication(
 		context.SdkCtx(),
@@ -284,4 +287,114 @@ func (e *validatorJoinedEvent) Arguments() []*precompile.EventArgument {
 			Value:   e.operator,
 		},
 	}
+}
+
+// GetApplicationsMethodName is the name of the getApplications method. It matches the name
+// of the method in the contract ABI.
+const GetApplicationsMethodName = "getApplications"
+
+// getApplicationsMethod is the implementation of the getApplications method that returns
+// the current getApplications
+type getApplicationsMethod struct {
+	keeper PoaKeeper
+}
+
+func newGetApplicationsMethod(pk PoaKeeper) *getApplicationsMethod {
+	return &getApplicationsMethod{
+		keeper: pk,
+	}
+}
+
+func (m *getApplicationsMethod) MethodName() string {
+	return GetApplicationsMethodName
+}
+
+func (m *getApplicationsMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *getApplicationsMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (m *getApplicationsMethod) Payable() bool {
+	return false
+}
+
+func (m *getApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
+	applications := m.keeper.GetAllApplications(
+		context.SdkCtx(),
+	)
+
+	operators := make([]common.Address, len(applications))
+
+	for i, application := range applications {
+		validator := application.GetValidator()
+		valAddress := validator.GetOperator()
+		operators[i] = precompile.TypesConverter.Address.FromSDK(types.AccAddress(valAddress))
+	}
+
+	return precompile.MethodOutputs{operators}, nil
+}
+
+// GetApplicationMethodName is the name of the getApplications method. It matches the name
+// of the method in the contract ABI.
+const GetApplicationMethodName = "getApplication"
+
+// getApplicationMethod is the implementation of the getApplication method that returns
+// the current getApplication
+type getApplicationMethod struct {
+	keeper PoaKeeper
+}
+
+func newGetApplicationMethod(pk PoaKeeper) *getApplicationsMethod {
+	return &getApplicationsMethod{
+		keeper: pk,
+	}
+}
+
+func (m *getApplicationMethod) MethodName() string {
+	return GetApplicationsMethodName
+}
+
+func (m *getApplicationMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *getApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (m *getApplicationMethod) Payable() bool {
+	return false
+}
+
+func (m *getApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
+		return nil, err
+	}
+
+	operator, ok := inputs[0].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("operator argument must be of type common.Address")
+	}
+
+	application, ok := m.keeper.GetApplication(
+		context.SdkCtx(),
+		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
+	)
+	if !ok {
+		return nil, fmt.Errorf("application does not exist")
+	}
+
+	val := application.GetValidator()
+	consPubKey := [32]byte(val.GetConsPubKey().Bytes())
+
+	return precompile.MethodOutputs{operator, consPubKey, val.Description}, nil
 }

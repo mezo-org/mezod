@@ -19,11 +19,19 @@ var filesystem embed.FS
 const EvmAddress = "0x7b7c000000000000000000000000000000000011"
 
 type PoaKeeper interface {
+	// GetApplication returns the application for a operator
+	GetApplication(types.Context, types.ValAddress) (poatypes.Application, bool)
+	// GetApplications returns all applications
+	GetAllApplications(types.Context) []poatypes.Application
 	// SubmitApplication submits a new application to the validator pool
 	SubmitApplication(types.Context, types.AccAddress, poatypes.Validator) error
 	// ApproveApplication (onlyOwner) approves a pending application and
 	// promotes the applications candidate to validator
 	ApproveApplication(types.Context, types.AccAddress, types.ValAddress) error
+	// GetValidator returns the validator for a operator address
+	GetValidator(types.Context, types.ValAddress) (poatypes.Validator, bool)
+	// GetAllValidators returns all validators (in all states)
+	GetAllValidators(types.Context) []poatypes.Validator
 	// Leave removes the sender from the validator pool
 	Leave(types.Context, types.AccAddress) error
 	// Kick (onlyOwner) removes a validator from the pool

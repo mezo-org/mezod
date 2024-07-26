@@ -138,3 +138,19 @@ func (k *FakePoaKeeper) Leave(sdk.Context, sdk.AccAddress) error {
 func (k *FakePoaKeeper) Kick(sdk.Context, sdk.AccAddress, sdk.ValAddress) error {
 	return nil
 }
+
+func (k *FakePoaKeeper) GetApplication(sdk.Context, sdk.ValAddress) (poatypes.Application, bool) {
+	return poatypes.Application{}, false
+}
+
+func (k *FakePoaKeeper) GetAllApplications(sdk.Context) []poatypes.Application {
+	return []poatypes.Application{}
+}
+
+func (k *FakePoaKeeper) GetValidator(sdk.Context, sdk.ValAddress) (poatypes.Validator, bool) {
+	return poatypes.Validator{}, true
+}
+
+func (k *FakePoaKeeper) GetAllValidators(sdk.Context) []poatypes.Validator {
+	return []poatypes.Validator{}
+}
