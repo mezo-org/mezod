@@ -66,7 +66,7 @@ func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 		newKickMethod(pk),
 		newLeaveMethod(pk),
 		newOwnerMethod(pk),
-		newPendingOwnerMethod(pk),
+		newCandidateOwnerMethod(pk),
 		newTransferOwnershipMethod(pk),
 		newAcceptOwnershipMethod(pk),
 	}

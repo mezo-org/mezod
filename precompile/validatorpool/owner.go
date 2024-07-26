@@ -52,49 +52,49 @@ func (m *ownerMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(owner)}, nil
 }
 
-// PendingOwnerMethodName is the name of the pendingOwner method. It matches the name
+// CandidateOwnerMethodName is the name of the candidateOwner method. It matches the name
 // of the method in the contract ABI.
-const PendingOwnerMethodName = "pendingOwner"
+const CandidateOwnerMethodName = "candidateOwner"
 
-// pendingOwnerMethod is the implementation of the pendingOwner method that returns
+// candidateOwnerMethod is the implementation of the candidateOwner method that returns
 // the pending ownership candidate
-type pendingOwnerMethod struct {
+type candidateOwnerMethod struct {
 	keeper PoaKeeper
 }
 
-func newPendingOwnerMethod(pk PoaKeeper) *pendingOwnerMethod {
-	return &pendingOwnerMethod{
+func newCandidateOwnerMethod(pk PoaKeeper) *candidateOwnerMethod {
+	return &candidateOwnerMethod{
 		keeper: pk,
 	}
 }
 
-func (m *pendingOwnerMethod) MethodName() string {
-	return PendingOwnerMethodName
+func (m *candidateOwnerMethod) MethodName() string {
+	return CandidateOwnerMethodName
 }
 
-func (m *pendingOwnerMethod) MethodType() precompile.MethodType {
+func (m *candidateOwnerMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *pendingOwnerMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *candidateOwnerMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *pendingOwnerMethod) Payable() bool {
+func (m *candidateOwnerMethod) Payable() bool {
 	return false
 }
 
-func (m *pendingOwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *candidateOwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
 
-	pendingOwner := m.keeper.GetCandidateOwner(
+	candidateOwner := m.keeper.GetCandidateOwner(
 		context.SdkCtx(),
 	)
 
-	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(pendingOwner)}, nil
+	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(candidateOwner)}, nil
 }
 
 // TransferOwnershipMethodName is the name of the transferOwnership method. It matches the name

@@ -193,7 +193,7 @@
     },
     {
         "inputs": [],
-        "name": "pendingOwner",
+        "name": "candidateOwner",
         "outputs": [
             {
                 "internalType": "address",

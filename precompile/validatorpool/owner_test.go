@@ -282,7 +282,7 @@ func (s *PrecompileTestSuite) TestOwner() {
 	}
 }
 
-func (s *PrecompileTestSuite) TestPendingOwner() {
+func (s *PrecompileTestSuite) TestCandidateOwner() {
 	testcases := []struct {
 		name        string
 		run         func() []interface{}
@@ -321,7 +321,7 @@ func (s *PrecompileTestSuite) TestPendingOwner() {
 				methodInputs = tc.run()
 			}
 
-			method := s.validatorpoolPrecompile.Abi.Methods["pendingOwner"]
+			method := s.validatorpoolPrecompile.Abi.Methods["candidateOwner"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
