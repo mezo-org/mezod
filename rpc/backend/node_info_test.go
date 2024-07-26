@@ -12,7 +12,7 @@ import (
 	"github.com/evmos/evmos/v12/rpc/backend/mocks"
 	"github.com/evmos/evmos/v12/types"
 	"github.com/spf13/viper"
-	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
+	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 	"google.golang.org/grpc/metadata"
 )
 

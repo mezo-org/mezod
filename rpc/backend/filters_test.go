@@ -8,7 +8,7 @@ import (
 	"github.com/evmos/evmos/v12/rpc/backend/mocks"
 	ethrpc "github.com/evmos/evmos/v12/rpc/types"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmtypes "github.com/cometbft/cometbft/types"
 )
 
 func (suite *BackendTestSuite) TestGetLogs() {
