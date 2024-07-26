@@ -25,8 +25,8 @@ import (
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 
+	"cosmossdk.io/simapp"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"

@@ -20,7 +20,7 @@ import (
 	"github.com/evmos/evmos/v12/utils"
 	"github.com/evmos/evmos/v12/x/feemarket/types"
 
-	"github.com/cosmos/cosmos-sdk/simapp"
+	"cosmossdk.io/simapp"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 	abci "github.com/tendermint/tendermint/abci/types"
