@@ -1,6 +1,7 @@
 package validatorpool
 
 import (
+	"encoding/json"
 	"fmt"
 
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -20,7 +21,8 @@ const SubmitApplicationMethodName = "submitApplication"
 
 // The method has the following input arguments:
 // - consPubKey: the consensus public key of the validator used to vote on blocks
-// - operator: the EVM address identifying the validator.
+// - operator: the EVM address identifying the validator
+// - description: the validators description info
 type submitApplicationMethod struct {
 	keeper PoaKeeper
 }
@@ -49,7 +51,8 @@ func (m *submitApplicationMethod) Payable() bool {
 }
 
 func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
-	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
+	// check method inputs
+	if err := precompile.ValidateMethodInputsCount(inputs, 3); err != nil {
 		return nil, err
 	}
 
@@ -63,8 +66,19 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
+	descBytes, ok := inputs[2].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("description argument must be bytes")
+	}
+
 	tmpk := ed25519.PubKey(consPubKeyBytes[:])
 	consPubKey, err := cryptocdc.FromTmPubKeyInterface(tmpk)
+	if err != nil {
+		return nil, err
+	}
+
+	var description poatypes.Description
+	err = json.Unmarshal(descBytes, &description)
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +86,9 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 	validator := poatypes.NewValidator(
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 		consPubKey,
-		poatypes.Description{},
+		description,
 	)
+
 	err = m.keeper.SubmitApplication(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
@@ -88,6 +103,7 @@ func (m *submitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		newApplicationSubmittedEvent(
 			operator,
 			consPubKeyBytes,
+			descBytes,
 		),
 	)
 	if err != nil {
@@ -104,16 +120,19 @@ const ApplicationSubmittedEventName = "ApplicationSubmitted"
 // applicationSubmitted is the implementation of the ApplicationSubmitted
 // event that contains the following arguments:
 // - operator (indexed): is the address identifying the validator,
-// - consPubKey (indexed): is the consensus public key of the validator used tovote on blocks.
+// - consPubKey (indexed): is the consensus public key of the validator used to vote on blocks.
+// - description: is the validators description info
 type applicationSubmittedEvent struct {
-	consPubKey [32]byte
-	operator   common.Address
+	consPubKey  [32]byte
+	operator    common.Address
+	description []byte
 }
 
-func newApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte) *applicationSubmittedEvent {
+func newApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte, description []byte) *applicationSubmittedEvent {
 	return &applicationSubmittedEvent{
-		operator:   operator,
-		consPubKey: consPubKey,
+		operator:    operator,
+		consPubKey:  consPubKey,
+		description: description,
 	}
 }
 
@@ -130,6 +149,10 @@ func (e *applicationSubmittedEvent) Arguments() []*precompile.EventArgument {
 		{
 			Indexed: true,
 			Value:   e.consPubKey,
+		},
+		{
+			Indexed: false,
+			Value:   e.description,
 		},
 	}
 }

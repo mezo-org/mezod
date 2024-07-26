@@ -3,7 +3,7 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "operator",
                 "type": "address"
@@ -16,16 +16,22 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "operator",
                 "type": "address"
             },
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "bytes32",
                 "name": "consPubKey",
                 "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "description",
+                "type": "bytes"
             }
         ],
         "name": "ApplicationSubmitted",
@@ -209,6 +215,11 @@
                 "internalType": "address",
                 "name": "operator",
                 "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "description",
+                "type": "bytes"
             }
         ],
         "name": "submitApplication",

@@ -1,11 +1,14 @@
 package validatorpool
 
 import (
+	"encoding/json"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/evmos/evmos/v12/precompile"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
 
 func (s *PrecompileTestSuite) TestSubmitApplication() {
@@ -94,10 +97,13 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			e := newApplicationSubmittedEvent(tc.operator, tc.consPubKey)
+			desc := poatypes.NewDescription("moniker", "identity", "website", "securityContact", "details")
+			bytes, err := json.Marshal(desc)
+			s.Require().NoError(err, "expected no error")
+			e := newApplicationSubmittedEvent(tc.operator, tc.consPubKey, bytes)
 			args := e.Arguments()
 
-			s.Require().Len(args, 2)
+			s.Require().Len(args, 3)
 
 			// Check the first argument
 			s.Require().True(args[0].Indexed)
@@ -106,6 +112,10 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 			// Check the second argument
 			s.Require().True(args[1].Indexed)
 			s.Require().Equal(tc.consPubKey, args[1].Value)
+
+			// Check the second argument
+			s.Require().False(args[2].Indexed)
+			s.Require().Equal(bytes, args[2].Value)
 		})
 	}
 }
