@@ -1,13 +1,13 @@
 package validatorpool_test
 
 import (
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/evmos/evmos/v12/precompile"
 	"github.com/evmos/evmos/v12/precompile/validatorpool"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
 
 func (s *PrecompileTestSuite) TestSubmitApplication() {
@@ -31,6 +31,23 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 				}
 			},
 			errContains: "argument count mismatch",
+		},
+		{
+			name: "valid application",
+			run: func() []interface{} {
+				return []interface{}{
+					[32]byte(s.account1.ConsPubKey.Bytes()),
+					s.account1.EvmAddr,
+					s.account1.Description,
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				application, found := s.keeper.GetApplication(s.ctx, types.ValAddress(s.account1.SdkAddr))
+				s.Require().True(found)
+				operator := types.AccAddress(application.Validator.GetOperator())
+				s.Require().Equal(operator, s.account1.SdkAddr, "expected application operator to match")
+			},
 		},
 	}
 
@@ -96,8 +113,7 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			description := poatypes.NewDescription("moniker", "identity", "website", "securityContact", "details")
-			e := validatorpool.NewApplicationSubmittedEvent(tc.operator, tc.consPubKey, description)
+			e := validatorpool.NewApplicationSubmittedEvent(tc.operator, tc.consPubKey, s.account1.Description)
 			args := e.Arguments()
 
 			s.Require().Len(args, 3)
@@ -112,7 +128,7 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 
 			// Check the second argument
 			s.Require().False(args[2].Indexed)
-			s.Require().Equal(description, args[2].Value)
+			s.Require().Equal(s.account1.Description, args[2].Value)
 		})
 	}
 }

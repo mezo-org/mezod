@@ -13,6 +13,7 @@ import (
 	"github.com/evmos/evmos/v12/app"
 	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
 	"github.com/evmos/evmos/v12/precompile"
+	"github.com/evmos/evmos/v12/precompile/validatorpool"
 	"github.com/evmos/evmos/v12/testutil"
 	utiltx "github.com/evmos/evmos/v12/testutil/tx"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
@@ -21,10 +22,11 @@ import (
 )
 
 type Key struct {
-	EvmAddr    common.Address
-	SdkAddr    sdk.AccAddress
-	ConsPubKey cryptotypes.PubKey
-	Priv       cryptotypes.PrivKey
+	EvmAddr     common.Address
+	SdkAddr     sdk.AccAddress
+	ConsPubKey  cryptotypes.PubKey
+	Priv        cryptotypes.PrivKey
+	Description validatorpool.Description
 }
 
 type PrecompileTestSuite struct {
@@ -47,11 +49,21 @@ func NewKey() Key {
 	if err != nil {
 		panic(err)
 	}
+	// Create a validator description
+	desc := validatorpool.Description{
+		Moniker:         "moniker-" + addr.String(),
+		Identity:        "identity-" + addr.String(),
+		Website:         "website-" + addr.String(),
+		SecurityContact: "securityContact-" + addr.String(),
+		Details:         "details-" + addr.String(),
+	}
+
 	return Key{
-		EvmAddr:    addr,
-		SdkAddr:    sdk.AccAddress(addr.Bytes()),
-		Priv:       privKey,
-		ConsPubKey: consPubKey,
+		EvmAddr:     addr,
+		SdkAddr:     sdk.AccAddress(addr.Bytes()),
+		Priv:        privKey,
+		ConsPubKey:  consPubKey,
+		Description: desc,
 	}
 }
 
@@ -83,6 +95,8 @@ func (s *PrecompileTestSuite) SetupTest() {
 type FakePoaKeeper struct {
 	owner          sdk.AccAddress
 	candidateOwner sdk.AccAddress
+	applications   []poatypes.Application
+	validators     []poatypes.Validator
 }
 
 func NewFakePoaKeeper(owner sdk.AccAddress) *FakePoaKeeper {
@@ -123,7 +137,9 @@ func (k *FakePoaKeeper) AcceptOwnership(_ sdk.Context, sender sdk.AccAddress) er
 	return nil
 }
 
-func (k *FakePoaKeeper) SubmitApplication(sdk.Context, sdk.AccAddress, poatypes.Validator) error {
+func (k *FakePoaKeeper) SubmitApplication(_ sdk.Context, _ sdk.AccAddress, validator poatypes.Validator) error {
+	application := poatypes.NewApplication(validator)
+	k.applications = append(k.applications, application)
 	return nil
 }
 
@@ -139,12 +155,17 @@ func (k *FakePoaKeeper) Kick(sdk.Context, sdk.AccAddress, sdk.ValAddress) error 
 	return nil
 }
 
-func (k *FakePoaKeeper) GetApplication(sdk.Context, sdk.ValAddress) (poatypes.Application, bool) {
+func (k *FakePoaKeeper) GetApplication(_ sdk.Context, operator sdk.ValAddress) (poatypes.Application, bool) {
+	for _, application := range k.applications {
+		if operator.Equals(application.Validator.GetOperator()) {
+			return application, true
+		}
+	}
 	return poatypes.Application{}, false
 }
 
 func (k *FakePoaKeeper) GetAllApplications(sdk.Context) []poatypes.Application {
-	return []poatypes.Application{}
+	return k.applications
 }
 
 func (k *FakePoaKeeper) GetValidator(sdk.Context, sdk.ValAddress) (poatypes.Validator, bool) {
@@ -152,5 +173,5 @@ func (k *FakePoaKeeper) GetValidator(sdk.Context, sdk.ValAddress) (poatypes.Vali
 }
 
 func (k *FakePoaKeeper) GetAllValidators(sdk.Context) []poatypes.Validator {
-	return []poatypes.Validator{}
+	return k.validators
 }

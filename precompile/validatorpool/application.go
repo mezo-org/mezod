@@ -11,6 +11,14 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
+type Description = struct {
+	Moniker         string `json:"moniker"`
+	Identity        string `json:"identity"`
+	Website         string `json:"website"`
+	SecurityContact string `json:"securityContact"`
+	Details         string `json:"details"`
+}
+
 // SubmitApplicationMethodName is the name of the submitApplication method. It matches the name
 // of the method in the contract ABI.
 const SubmitApplicationMethodName = "submitApplication"
@@ -65,9 +73,9 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
-	description, ok := inputs[2].(poatypes.Description)
+	description, ok := inputs[2].(Description)
 	if !ok {
-		return nil, fmt.Errorf("description argument must be bytes")
+		return nil, fmt.Errorf("description argument must be Description")
 	}
 
 	tmpk := ed25519.PubKey(consPubKeyBytes[:])
@@ -79,7 +87,7 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 	validator, err := poatypes.NewValidator(
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 		consPubKey,
-		description,
+		poatypes.Description(description),
 	)
 	if err != nil {
 		return nil, err
@@ -121,10 +129,10 @@ const ApplicationSubmittedEventName = "ApplicationSubmitted"
 type ApplicationSubmittedEvent struct {
 	consPubKey  [32]byte
 	operator    common.Address
-	description poatypes.Description
+	description Description
 }
 
-func NewApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte, description poatypes.Description) *ApplicationSubmittedEvent {
+func NewApplicationSubmittedEvent(operator common.Address, consPubKey [32]byte, description Description) *ApplicationSubmittedEvent {
 	return &ApplicationSubmittedEvent{
 		operator:    operator,
 		consPubKey:  consPubKey,
@@ -157,39 +165,39 @@ func (e *ApplicationSubmittedEvent) Arguments() []*precompile.EventArgument {
 // of the method in the contract ABI.
 const ApproveApplicationMethodName = "approveApplication"
 
-// ApproveApplicationMethod is the implementation of the approveApplication method that approves
+// approveApplicationMethod is the implementation of the approveApplication method that approves
 // a pending validator application.
 
 // The method has the following input arguments:
 // - operator: the EVM address identifying the validator.
-type ApproveApplicationMethod struct {
+type approveApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func NewApproveApplicationMethod(pk PoaKeeper) *ApproveApplicationMethod {
-	return &ApproveApplicationMethod{
+func NewApproveApplicationMethod(pk PoaKeeper) *approveApplicationMethod {
+	return &approveApplicationMethod{
 		keeper: pk,
 	}
 }
 
-func (m *ApproveApplicationMethod) MethodName() string {
+func (m *approveApplicationMethod) MethodName() string {
 	return ApproveApplicationMethodName
 }
 
-func (m *ApproveApplicationMethod) MethodType() precompile.MethodType {
+func (m *approveApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *ApproveApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *approveApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *ApproveApplicationMethod) Payable() bool {
+func (m *approveApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *ApproveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *approveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
