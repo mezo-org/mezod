@@ -5,7 +5,7 @@ struct Description {
     string moniker;
     string identity;
     string website;
-    string securityContract;
+    string securityContact;
     string details;
 }
 
