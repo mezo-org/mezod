@@ -10,6 +10,7 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 	"github.com/evmos/evmos/v12/precompile/btctoken"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
@@ -336,4 +337,40 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 	}
 }
 
-// TODO: add tests for the `transfer` event
+func (s *PrecompileTestSuite) TestEmitTransferEvent() {
+	testcases := []struct {
+		name   string
+		from   common.Address
+		to     common.Address
+		amount *big.Int
+	}{
+		{
+			name:   "pass",
+			from:   s.account1.EvmAddr,
+			to:     s.account2.EvmAddr,
+			amount: big.NewInt(100),
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		s.Run(tc.name, func() {
+			ae := btctoken.NewTransferEvent(tc.from, tc.to, tc.amount)
+			args := ae.Arguments()
+
+			s.Require().Len(args, 3)
+
+			// Check the first argument
+			s.Require().True(args[0].Indexed)
+			s.Require().Equal(tc.from, args[0].Value)
+
+			// Check the second argument
+			s.Require().True(args[1].Indexed)
+			s.Require().Equal(tc.to, args[1].Value)
+
+			// Check the third argument
+			s.Require().False(args[2].Indexed)
+			s.Require().Equal(tc.amount, args[2].Value)
+		})
+	}
+}

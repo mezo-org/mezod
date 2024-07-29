@@ -94,7 +94,7 @@ func (tm *transferMethod) Run(
 
 	// Emit Transfer event.
 	err = context.EventEmitter().Emit(
-		newTransferEvent(from, to, amount),
+		NewTransferEvent(from, to, amount),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
@@ -201,7 +201,7 @@ func (tfm *transferFromMethod) Run(
 
 	// Emit Transfer event.
 	err = context.EventEmitter().Emit(
-		newTransferEvent(from, to, amount),
+		NewTransferEvent(from, to, amount),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
@@ -226,7 +226,7 @@ type transferEvent struct {
 	value    *big.Int
 }
 
-func newTransferEvent(from, to common.Address, value *big.Int) *transferEvent {
+func NewTransferEvent(from, to common.Address, value *big.Int) *transferEvent {
 	return &transferEvent{
 		from:  from,
 		to:    to,
