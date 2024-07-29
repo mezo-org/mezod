@@ -8,40 +8,40 @@ import (
 	"github.com/evmos/evmos/v12/precompile"
 )
 
-// GetValidatorsMethodName is the name of the getValidators method. It matches the name
+// ValidatorsMethodName is the name of the validators method. It matches the name
 // of the method in the contract ABI.
-const GetValidatorsMethodName = "getValidators"
+const ValidatorsMethodName = "validators"
 
-// GetValidatorsMethod is the implementation of the getValidators method that returns
-// the current getValidators
-type GetValidatorsMethod struct {
+// ValidatorsMethod is the implementation of the validators method that returns
+// the operator addresses of all existing validators
+type ValidatorsMethod struct {
 	keeper PoaKeeper
 }
 
-func NewGetValidatorsMethod(pk PoaKeeper) *GetValidatorsMethod {
-	return &GetValidatorsMethod{
+func NewValidatorsMethod(pk PoaKeeper) *ValidatorsMethod {
+	return &ValidatorsMethod{
 		keeper: pk,
 	}
 }
 
-func (m *GetValidatorsMethod) MethodName() string {
-	return GetValidatorsMethodName
+func (m *ValidatorsMethod) MethodName() string {
+	return ValidatorsMethodName
 }
 
-func (m *GetValidatorsMethod) MethodType() precompile.MethodType {
+func (m *ValidatorsMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *GetValidatorsMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *ValidatorsMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *GetValidatorsMethod) Payable() bool {
+func (m *ValidatorsMethod) Payable() bool {
 	return false
 }
 
-func (m *GetValidatorsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ValidatorsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
@@ -60,40 +60,40 @@ func (m *GetValidatorsMethod) Run(context *precompile.RunContext, inputs precomp
 	return precompile.MethodOutputs{operators}, nil
 }
 
-// GetValidatorMethodName is the name of the getValidators method. It matches the name
+// ValidatorMethodName is the name of the validators method. It matches the name
 // of the method in the contract ABI.
-const GetValidatorMethodName = "getValidator"
+const ValidatorMethodName = "validator"
 
-// GetValidatorMethod is the implementation of the getValidator method that returns
-// the current getValidator
-type GetValidatorMethod struct {
+// ValidatorMethod is the implementation of the validator method that returns
+// the validator information for the given operator address
+type ValidatorMethod struct {
 	keeper PoaKeeper
 }
 
-func NewGetValidatorMethod(pk PoaKeeper) *GetValidatorMethod {
-	return &GetValidatorMethod{
+func NewValidatorMethod(pk PoaKeeper) *ValidatorMethod {
+	return &ValidatorMethod{
 		keeper: pk,
 	}
 }
 
-func (m *GetValidatorMethod) MethodName() string {
-	return GetValidatorMethodName
+func (m *ValidatorMethod) MethodName() string {
+	return ValidatorMethodName
 }
 
-func (m *GetValidatorMethod) MethodType() precompile.MethodType {
+func (m *ValidatorMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *GetValidatorMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *ValidatorMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *GetValidatorMethod) Payable() bool {
+func (m *ValidatorMethod) Payable() bool {
 	return false
 }
 
-func (m *GetValidatorMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ValidatorMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}

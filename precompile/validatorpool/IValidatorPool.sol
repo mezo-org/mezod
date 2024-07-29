@@ -68,13 +68,13 @@ interface IValidatorPool {
     /** 
      * @notice Returns list of operator addresses with pending applications
      */ 
-    function getApplications() external view returns (address[] calldata);
+    function applications() external view returns (address[] calldata);
     
     /** 
      * @notice Returns validator information for a specificed application
      * @param operator The operator address of the target application
      */
-    function getApplication(address operator) external view returns (address, bytes32, Description calldata);
+    function application(address operator) external view returns (address, bytes32, Description calldata);
     
     /** 
      * @notice Returns `true` if validator application is successfully submitted
@@ -98,13 +98,13 @@ interface IValidatorPool {
     /** 
      * @notice Returns list of operator addresses of current validators
      */ 
-    function getValidators() external view returns (address[] calldata);
+    function validators() external view returns (address[] calldata);
 
     /** 
      * @notice Returns validator information for a specificed validator
      * @param operator The operator address of the target validator
      */
-    function getValidator(address operator) external view returns (address, bytes32, Description calldata);
+    function validator(address operator) external view returns (address, bytes32, Description calldata);
 
     /** 
      * @notice Returns `true` after removing a validator with operator address equal to `msg.sender`

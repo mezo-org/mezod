@@ -97,9 +97,9 @@ func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 		NewCandidateOwnerMethod(pk),
 		NewTransferOwnershipMethod(pk),
 		NewAcceptOwnershipMethod(pk),
-		NewGetValidatorMethod(pk),
-		NewGetValidatorsMethod(pk),
-		NewGetApplicationMethod(pk),
-		NewGetApplicationsMethod(pk),
+		NewValidatorMethod(pk),
+		NewValidatorsMethod(pk),
+		NewApplicationMethod(pk),
+		NewApplicationsMethod(pk),
 	}
 }

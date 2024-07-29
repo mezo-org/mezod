@@ -291,40 +291,40 @@ func (e *ValidatorJoinedEvent) Arguments() []*precompile.EventArgument {
 	}
 }
 
-// GetApplicationsMethodName is the name of the getApplications method. It matches the name
+// ApplicationsMethodName is the name of the Applications method. It matches the name
 // of the method in the contract ABI.
-const GetApplicationsMethodName = "getApplications"
+const ApplicationsMethodName = "applications"
 
-// getApplicationsMethod is the implementation of the getApplications method that returns
-// the current getApplications
-type GetApplicationsMethod struct {
+// ApplicationsMethod is the implementation of the applications method that returns
+// the the operators addresses of all existing applications
+type ApplicationsMethod struct {
 	keeper PoaKeeper
 }
 
-func NewGetApplicationsMethod(pk PoaKeeper) *GetApplicationsMethod {
-	return &GetApplicationsMethod{
+func NewApplicationsMethod(pk PoaKeeper) *ApplicationsMethod {
+	return &ApplicationsMethod{
 		keeper: pk,
 	}
 }
 
-func (m *GetApplicationsMethod) MethodName() string {
-	return GetApplicationsMethodName
+func (m *ApplicationsMethod) MethodName() string {
+	return ApplicationsMethodName
 }
 
-func (m *GetApplicationsMethod) MethodType() precompile.MethodType {
+func (m *ApplicationsMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *GetApplicationsMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *ApplicationsMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *GetApplicationsMethod) Payable() bool {
+func (m *ApplicationsMethod) Payable() bool {
 	return false
 }
 
-func (m *GetApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
 		return nil, err
 	}
@@ -344,40 +344,40 @@ func (m *GetApplicationsMethod) Run(context *precompile.RunContext, inputs preco
 	return precompile.MethodOutputs{operators}, nil
 }
 
-// GetApplicationMethodName is the name of the getApplications method. It matches the name
+// ApplicationMethodName is the name of the applications method. It matches the name
 // of the method in the contract ABI.
-const GetApplicationMethodName = "getApplication"
+const ApplicationMethodName = "application"
 
-// getApplicationMethod is the implementation of the getApplication method that returns
-// the current getApplication
-type GetApplicationMethod struct {
+// ApplicationMethod is the implementation of the application method that returns
+// an application for a given operator address
+type ApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func NewGetApplicationMethod(pk PoaKeeper) *GetApplicationsMethod {
-	return &GetApplicationsMethod{
+func NewApplicationMethod(pk PoaKeeper) *ApplicationsMethod {
+	return &ApplicationsMethod{
 		keeper: pk,
 	}
 }
 
-func (m *GetApplicationMethod) MethodName() string {
-	return GetApplicationsMethodName
+func (m *ApplicationMethod) MethodName() string {
+	return ApplicationsMethodName
 }
 
-func (m *GetApplicationMethod) MethodType() precompile.MethodType {
+func (m *ApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *GetApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *ApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *GetApplicationMethod) Payable() bool {
+func (m *ApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *GetApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}

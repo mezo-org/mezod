@@ -313,7 +313,7 @@
                 "type": "address"
             }
         ],
-        "name": "getValidator",
+        "name": "validator",
         "outputs": [
             {
                 "internalType": "address",
@@ -369,7 +369,7 @@
                 "type": "address"
             }
         ],
-        "name": "getApplication",
+        "name": "application",
         "outputs": [
             {
                 "internalType": "address",
@@ -425,7 +425,7 @@
                 "type": "address"
             }
         ],
-        "name": "getValidators",
+        "name": "validators",
         "outputs": [
             {
                 "internalType": "address[]",
@@ -444,7 +444,7 @@
                 "type": "address"
             }
         ],
-        "name": "getApplications",
+        "name": "applications",
         "outputs": [
             {
                 "internalType": "address[]",
