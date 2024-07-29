@@ -78,13 +78,11 @@ interface IValidatorPool {
     
     /** 
      * @notice Returns `true` if validator application is successfully submitted
-     * @param operator The validators operator address
      * @param consPubKey The validators consensus pub key
      * @param description The validators description (moniker, identity, website, securityContact & details)
      */
     function submitApplication(
         bytes32 consPubKey,
-        address operator,
         Description calldata description
     ) external returns (bool);
     

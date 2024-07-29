@@ -238,11 +238,6 @@
                 "type": "bytes32"
             },
             {
-                "internalType": "address",
-                "name": "operator",
-                "type": "address"
-            },
-            {
                 "components": [
                     {
                         "internalType": "string",

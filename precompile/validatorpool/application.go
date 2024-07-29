@@ -20,7 +20,6 @@ const SubmitApplicationMethodName = "submitApplication"
 
 // The method has the following input arguments:
 // - consPubKey: the consensus public key of the validator used to vote on blocks
-// - operator: the EVM address identifying the validator
 // - description: the validators description info
 type SubmitApplicationMethod struct {
 	keeper PoaKeeper
@@ -51,7 +50,7 @@ func (m *SubmitApplicationMethod) Payable() bool {
 
 func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	// check method inputs
-	if err := precompile.ValidateMethodInputsCount(inputs, 3); err != nil {
+	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
 		return nil, err
 	}
 
@@ -60,15 +59,12 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, fmt.Errorf("consPubKey argument must be bytes32")
 	}
 
-	operator, ok := inputs[1].(common.Address)
-	if !ok {
-		return nil, fmt.Errorf("operator argument must be common.Address")
-	}
-
-	description, ok := inputs[2].(Description)
+	description, ok := inputs[1].(Description)
 	if !ok {
 		return nil, fmt.Errorf("description argument must be Description")
 	}
+
+	operator := context.MsgSender()
 
 	// Here we assume consPubKeyBytes is a valid ED25519 key, without performing any additional validation.
 	// We may need to add validation here.

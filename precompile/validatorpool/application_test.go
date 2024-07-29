@@ -1,6 +1,8 @@
 package validatorpool_test
 
 import (
+	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -27,7 +29,7 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 			name: "argument count mismatch",
 			run: func() []interface{} {
 				return []interface{}{
-					1, 2,
+					1, 2, 3,
 				}
 			},
 			errContains: "argument count mismatch",
@@ -37,14 +39,13 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 			run: func() []interface{} {
 				return []interface{}{
 					[32]byte(s.account1.ConsPubKey.Bytes()),
-					s.account1.EvmAddr,
 					s.account1.Description,
 				}
 			},
 			basicPass: true,
 			postCheck: func() {
 				application, found := s.keeper.GetApplication(s.ctx, types.ValAddress(s.account1.SdkAddr))
-				s.Require().True(found)
+				s.Require().True(found, fmt.Sprintf("application not found %s\n%v", types.ValAddress(s.account1.SdkAddr), s.keeper.GetAllApplications(s.ctx)))
 				operator := types.AccAddress(application.Validator.GetOperator())
 				s.Require().Equal(operator, s.account1.SdkAddr, "expected application operator to match")
 			},
@@ -81,7 +82,7 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
 			vmContract.Input = append(vmContract.Input, method.ID...)
 			vmContract.Input = append(vmContract.Input, methodInputArgs...)
-			vmContract.CallerAddress = s.account2.EvmAddr
+			vmContract.CallerAddress = s.account1.EvmAddr
 
 			output, err := s.validatorpoolPrecompile.Run(evm, vmContract, false)
 			s.Require().NoError(err, "expected no error")
