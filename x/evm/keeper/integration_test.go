@@ -21,11 +21,11 @@ import (
 	"github.com/evmos/evmos/v12/x/feemarket/types"
 
 	"cosmossdk.io/simapp"
-	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	dbm "github.com/cometbft/cometbft-db"
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/log"
-	dbm "github.com/tendermint/tm-db"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
 var _ = Describe("Feemarket", func() {
