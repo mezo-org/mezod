@@ -33,7 +33,7 @@ var _ = utilities.NewDoubleArray
 var _ = descriptor.ForMessage
 var _ = metadata.Join
 
-func request_Query_Params_0(ctx context.Context, _ runtime.Marshaler, client QueryClient, _ *http.Request, _ map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Query_Params_0(ctx context.Context, marshaler runtime.Marshaler, client QueryClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq QueryParamsRequest
 	var metadata runtime.ServerMetadata
 
@@ -42,7 +42,7 @@ func request_Query_Params_0(ctx context.Context, _ runtime.Marshaler, client Que
 
 }
 
-func local_request_Query_Params_0(ctx context.Context, _ runtime.Marshaler, server QueryServer, _ *http.Request, _ map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Query_Params_0(ctx context.Context, marshaler runtime.Marshaler, server QueryServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq QueryParamsRequest
 	var metadata runtime.ServerMetadata
 

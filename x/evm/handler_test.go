@@ -10,7 +10,7 @@ import (
 	"github.com/evmos/evmos/v12/x/evm/keeper"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	tmjson "github.com/cometbft/cometbft/libs/json"
@@ -44,8 +44,8 @@ import (
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	tmversion "github.com/cometbft/cometbft/proto/tendermint/version"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cometbft/cometbft/version"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
