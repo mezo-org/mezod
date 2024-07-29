@@ -11,14 +11,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
-type Description = struct {
-	Moniker         string `json:"moniker"`
-	Identity        string `json:"identity"`
-	Website         string `json:"website"`
-	SecurityContact string `json:"securityContact"`
-	Details         string `json:"details"`
-}
-
 // SubmitApplicationMethodName is the name of the submitApplication method. It matches the name
 // of the method in the contract ABI.
 const SubmitApplicationMethodName = "submitApplication"

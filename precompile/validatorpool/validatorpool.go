@@ -18,6 +18,26 @@ var filesystem embed.FS
 // used to avoid potential collisions with EVM native precompiles.
 const EvmAddress = "0x7b7c000000000000000000000000000000000011"
 
+// Description is the validator description structure that contains information
+// about the validator.
+//
+// Note: This struct mimics `poatypes.Description` however is declared with an
+// `= struct`, this is required for correct deserialization within a precompile
+// methods `Run` function
+type Description = struct {
+	// Moniker is the validator's name.
+	Moniker string `json:"moniker"`
+	// Identity is the optional identity signature (ex. UPort or Keybase).
+	Identity string `json:"identity"`
+	// Website is the optional website link.
+	Website string `json:"website"`
+	// SecurityContact is the optional security contact information.
+	SecurityContact string `json:"securityContact"`
+	// Details is the optional details about the validator.
+	Details string `json:"details"`
+}
+
+// PoaKeeper interface used by the precompile
 type PoaKeeper interface {
 	// GetApplication returns the application for a operator
 	GetApplication(types.Context, types.ValAddress) (poatypes.Application, bool)
