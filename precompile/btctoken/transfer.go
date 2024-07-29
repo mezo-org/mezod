@@ -221,24 +221,24 @@ const TransferEventName = "Transfer"
 // - from (indexed): the address from which the tokens are transferred,
 // - to (indexed): the address to which the tokens are transferred,
 // - value (non-indexed): the amount of tokens transferred.
-type transferEvent struct {
+type TransferEvent struct {
 	from, to common.Address
 	value    *big.Int
 }
 
-func NewTransferEvent(from, to common.Address, value *big.Int) *transferEvent {
-	return &transferEvent{
+func NewTransferEvent(from, to common.Address, value *big.Int) *TransferEvent {
+	return &TransferEvent{
 		from:  from,
 		to:    to,
 		value: value,
 	}
 }
 
-func (te *transferEvent) EventName() string {
+func (te *TransferEvent) EventName() string {
 	return TransferEventName
 }
 
-func (te *transferEvent) Arguments() []*precompile.EventArgument {
+func (te *TransferEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,
