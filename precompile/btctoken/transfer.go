@@ -182,7 +182,7 @@ func (tfm *transferFromMethod) Run(
 	} else {
 		authorization, _ := tfm.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
 		if authorization == nil {
-			return nil, fmt.Errorf("authorization to %s for address %s does not exist or is expired", SendMsgURL, spender)
+			return nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, spender)
 		}
 
 		_, ok := authorization.(*banktypes.SendAuthorization)
