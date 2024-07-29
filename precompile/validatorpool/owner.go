@@ -138,7 +138,7 @@ func (m *TransferOwnershipMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, err
 	}
 
-	newOwner, ok := inputs[1].(common.Address)
+	newOwner, ok := inputs[0].(common.Address)
 	if !ok {
 		return nil, fmt.Errorf("newOwner argument must be common.Address")
 	}

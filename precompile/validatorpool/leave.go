@@ -81,15 +81,15 @@ func NewValidatorLeftEvent(operator common.Address) *ValidatorLeftEvent {
 	}
 }
 
-func (te *ValidatorLeftEvent) EventName() string {
+func (e *ValidatorLeftEvent) EventName() string {
 	return ValidatorLeftEventName
 }
 
-func (te *ValidatorLeftEvent) Arguments() []*precompile.EventArgument {
+func (e *ValidatorLeftEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,
-			Value:   te.operator,
+			Value:   e.operator,
 		},
 	}
 }

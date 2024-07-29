@@ -70,14 +70,14 @@ type GetValidatorMethod struct {
 	keeper PoaKeeper
 }
 
-func NewGetValidatorMethod(pk PoaKeeper) *GetValidatorsMethod {
-	return &GetValidatorsMethod{
+func NewGetValidatorMethod(pk PoaKeeper) *GetValidatorMethod {
+	return &GetValidatorMethod{
 		keeper: pk,
 	}
 }
 
 func (m *GetValidatorMethod) MethodName() string {
-	return GetValidatorsMethodName
+	return GetValidatorMethodName
 }
 
 func (m *GetValidatorMethod) MethodType() precompile.MethodType {
@@ -103,15 +103,16 @@ func (m *GetValidatorMethod) Run(context *precompile.RunContext, inputs precompi
 		return nil, fmt.Errorf("operator argument must be of type common.Address")
 	}
 
-	validator, ok := m.keeper.GetValidator(
+	validator, found := m.keeper.GetValidator(
 		context.SdkCtx(),
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 	)
-	if !ok {
+	if !found {
 		return nil, fmt.Errorf("validator does not exist")
 	}
 
-	consPubKey := [32]byte(validator.GetConsPubKey().Bytes())
+	var consPubKey [32]byte
+	copy(consPubKey[:], validator.GetConsPubKey().Bytes())
 
 	return precompile.MethodOutputs{operator, consPubKey, validator.Description}, nil
 }

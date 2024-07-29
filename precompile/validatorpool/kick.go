@@ -49,7 +49,7 @@ func (m *KickMethod) Run(context *precompile.RunContext, inputs precompile.Metho
 		return nil, err
 	}
 
-	operator, ok := inputs[1].(common.Address)
+	operator, ok := inputs[0].(common.Address)
 	if !ok {
 		return nil, fmt.Errorf("operator argument must be common.Address")
 	}
@@ -68,7 +68,7 @@ func (m *KickMethod) Run(context *precompile.RunContext, inputs precompile.Metho
 		NewValidatorKickedEvent(operator),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emitv ValidatorKicked event: [%w]", err)
+		return nil, fmt.Errorf("failed to emit ValidatorKicked event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{true}, nil
