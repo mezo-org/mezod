@@ -129,8 +129,8 @@ const ApplicationSubmittedEventName = "ApplicationSubmitted"
 // - consPubKey (indexed): is the consensus public key of the validator used to vote on blocks.
 // - description: is the validators description info
 type ApplicationSubmittedEvent struct {
-	consPubKey  [32]byte
 	operator    common.Address
+	consPubKey  [32]byte
 	description Description
 }
 
@@ -167,39 +167,39 @@ func (e *ApplicationSubmittedEvent) Arguments() []*precompile.EventArgument {
 // of the method in the contract ABI.
 const ApproveApplicationMethodName = "approveApplication"
 
-// approveApplicationMethod is the implementation of the approveApplication method that approves
+// ApproveApplicationMethod is the implementation of the approveApplication method that approves
 // a pending validator application.
 
 // The method has the following input arguments:
 // - operator: the EVM address identifying the validator.
-type approveApplicationMethod struct {
+type ApproveApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func NewApproveApplicationMethod(pk PoaKeeper) *approveApplicationMethod {
-	return &approveApplicationMethod{
+func NewApproveApplicationMethod(pk PoaKeeper) *ApproveApplicationMethod {
+	return &ApproveApplicationMethod{
 		keeper: pk,
 	}
 }
 
-func (m *approveApplicationMethod) MethodName() string {
+func (m *ApproveApplicationMethod) MethodName() string {
 	return ApproveApplicationMethodName
 }
 
-func (m *approveApplicationMethod) MethodType() precompile.MethodType {
+func (m *ApproveApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *approveApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *ApproveApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *approveApplicationMethod) Payable() bool {
+func (m *ApproveApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *approveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ApproveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, err
 	}
@@ -395,16 +395,17 @@ func (m *GetApplicationMethod) Run(context *precompile.RunContext, inputs precom
 		return nil, fmt.Errorf("operator argument must be of type common.Address")
 	}
 
-	application, ok := m.keeper.GetApplication(
+	application, found := m.keeper.GetApplication(
 		context.SdkCtx(),
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 	)
-	if !ok {
+	if !found {
 		return nil, fmt.Errorf("application does not exist")
 	}
 
 	val := application.GetValidator()
-	consPubKey := [32]byte(val.GetConsPubKey().Bytes())
+	var consPubKey [32]byte
+	copy(consPubKey[:], val.GetConsPubKey().Bytes())
 
 	return precompile.MethodOutputs{operator, consPubKey, val.Description}, nil
 }
