@@ -78,6 +78,8 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		return nil, fmt.Errorf("description argument must be Description")
 	}
 
+	// Here we assume consPubKeyBytes is a valid ED25519 key, without performing any additional validation.
+	// We may need to add validation here.
 	tmpk := ed25519.PubKey(consPubKeyBytes[:])
 	consPubKey, err := cryptocdc.FromTmPubKeyInterface(tmpk)
 	if err != nil {
