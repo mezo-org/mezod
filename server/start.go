@@ -66,6 +66,8 @@ import (
 	"github.com/evmos/evmos/v12/server/config"
 	srvflags "github.com/evmos/evmos/v12/server/flags"
 	evmostypes "github.com/evmos/evmos/v12/types"
+
+	rpcclient "github.com/cometbft/cometbft/rpc/client"
 )
 
 // DBOpener is a function to open `application.db`, potentially with customized options.
@@ -406,10 +408,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 
 		app.RegisterTxService(clientCtx)
 		app.RegisterTendermintService(clientCtx)
-
-		if a, ok := app.(types.ApplicationQueryService); ok {
-			a.RegisterNodeService(clientCtx)
-		}
+		app.RegisterNodeService(clientCtx)
 	}
 
 	metrics, err := startTelemetry(config)
@@ -433,7 +432,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 
 		idxLogger := ctx.Logger.With("indexer", "evm")
 		idxer = indexer.NewKVIndexer(idxDB, idxLogger, clientCtx)
-		indexerService := NewEVMIndexerService(idxer, clientCtx.Client)
+		indexerService := NewEVMIndexerService(idxer, clientCtx.Client.(rpcclient.Client))
 		indexerService.SetLogger(idxLogger)
 
 		errCh := make(chan error)
