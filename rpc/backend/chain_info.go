@@ -17,9 +17,11 @@ package backend
 
 import (
 	"fmt"
+	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 	"math/big"
 	"strconv"
 
+	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -29,7 +31,8 @@ import (
 	"github.com/evmos/evmos/v12/types"
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
-	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
+
+	"github.com/pkg/errors"
 )
 
 // ChainID is the EIP-155 replay-protection chain id for the current ethereum chain config.
@@ -111,7 +114,12 @@ func (b *Backend) CurrentHeader() *ethtypes.Header {
 // PendingTransactions returns the transactions that are in the transaction pool
 // and have a from address that is one of the accounts this node manages.
 func (b *Backend) PendingTransactions() ([]*sdk.Tx, error) {
-	res, err := b.clientCtx.Client.UnconfirmedTxs(b.ctx, nil)
+	mempoolClient, ok := b.clientCtx.Client.(tmrpcclient.MempoolClient)
+	if !ok {
+		return nil, errors.New("unexpected RPC client type")
+	}
+
+	res, err := mempoolClient.UnconfirmedTxs(b.ctx, nil)
 	if err != nil {
 		return nil, err
 	}

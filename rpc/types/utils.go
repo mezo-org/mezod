@@ -18,6 +18,7 @@ package types
 import (
 	"context"
 	"fmt"
+	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 	"math/big"
 	"strings"
 
@@ -92,7 +93,12 @@ func EthHeaderFromTendermint(header tmtypes.Header, bloom ethtypes.Bloom, baseFe
 
 // BlockMaxGasFromConsensusParams returns the gas limit for the current block from the chain consensus params.
 func BlockMaxGasFromConsensusParams(goCtx context.Context, clientCtx client.Context, blockHeight int64) (int64, error) {
-	resConsParams, err := clientCtx.Client.ConsensusParams(goCtx, &blockHeight)
+	rpcClient, ok := clientCtx.Client.(tmrpcclient.Client)
+	if !ok {
+		panic("unexpected RPC client type")
+	}
+
+	resConsParams, err := rpcClient.ConsensusParams(goCtx, &blockHeight)
 	defaultGasLimit := int64(^uint32(0)) // #nosec G701
 	if err != nil {
 		return defaultGasLimit, err
