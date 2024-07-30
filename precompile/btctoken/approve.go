@@ -146,7 +146,7 @@ func (am approveMethod) createAuthorization(ctx sdk.Context, grantee, granter co
 
 	expiration := ctx.BlockTime().Add(ApprovalExpiration)
 
-	authorization := banktypes.NewSendAuthorization(coins)
+	authorization := banktypes.NewSendAuthorization(coins, nil)
 	if err := authorization.ValidateBasic(); err != nil {
 		return err
 	}
