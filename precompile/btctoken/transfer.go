@@ -73,33 +73,7 @@ func (tm *transferMethod) Run(
 		amount = big.NewInt(0)
 	}
 
-	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
-	}
-	coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}}
-
-	msg := banktypes.NewMsgSend(from.Bytes(), to.Bytes(), coins)
-
-	if err = msg.ValidateBasic(); err != nil {
-		return nil, err
-	}
-
-	msgSrv := bankkeeper.NewMsgServerImpl(tm.bankKeeper)
-	_, err = msgSrv.Send(sdk.WrapSDKContext(context.SdkCtx()), msg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Emit Transfer event.
-	err = context.EventEmitter().Emit(
-		NewTransferEvent(from, to, amount),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
-	}
-
-	return precompile.MethodOutputs{true}, nil
+	return transfer(context, tm.bankKeeper, tm.authzkeeper, from, to, amount)
 }
 
 type transferFromMethod struct {
@@ -160,6 +134,10 @@ func (tfm *transferFromMethod) Run(
 		amount = big.NewInt(0)
 	}
 
+	return transfer(context, tfm.bankKeeper, tfm.authzkeeper, from, to, amount)
+}
+
+func transfer(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, from, to common.Address, amount *big.Int) (precompile.MethodOutputs, error) {
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
@@ -177,10 +155,10 @@ func (tfm *transferFromMethod) Run(
 
 	if spender.Equals(sdk.AccAddress(from.Bytes())) {
 		// owner is spender
-		msgSrv := bankkeeper.NewMsgServerImpl(tfm.bankKeeper)
+		msgSrv := bankkeeper.NewMsgServerImpl(bankKeeper)
 		_, err = msgSrv.Send(sdk.WrapSDKContext(context.SdkCtx()), msg)
 	} else {
-		authorization, _ := tfm.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
+		authorization, _ := authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
 		if authorization == nil {
 			return nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, spender)
 		}
@@ -192,7 +170,7 @@ func (tfm *transferFromMethod) Run(
 			)
 		}
 
-		_, err = tfm.authzkeeper.DispatchActions(context.SdkCtx(), spender, []sdk.Msg{msg})
+		_, err = authzkeeper.DispatchActions(context.SdkCtx(), spender, []sdk.Msg{msg})
 	}
 
 	if err != nil {
