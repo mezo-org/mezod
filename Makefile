@@ -364,17 +364,9 @@ format:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-protoCosmosVer=0.11.5
-protoCosmosName=ghcr.io/cosmos/proto-builder:$(protoCosmosVer)
-protoCosmosImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protoCosmosName)
-# ------
-# NOTE: Link to the yoheimuta/protolint docker images:
-#       https://hub.docker.com/r/yoheimuta/protolint/tags
-#
-protolintVer=0.42.2
-protolintName=yoheimuta/protolint:$(protolintVer)
-protolintImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protolintName)
-
+protoVer=0.11.5
+protoImageName=ghcr.io/cosmos/proto-builder:$(protoVer)
+protoImage=$(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace --user 0 $(protoImageName)
 
 # ------
 # NOTE: If you are experiencing problems running these commands, try deleting
@@ -384,26 +376,25 @@ proto-all: proto-format proto-lint proto-gen
 
 proto-gen:
 	@echo "Generating Protobuf files"
-	$(protoCosmosImage) sh ./scripts/protocgen.sh
+	$(protoImage) sh ./scripts/protocgen.sh
 
 proto-swagger-gen:
 	@echo "Downloading Protobuf dependencies"
 	@make proto-download-deps
 	@echo "Generating Protobuf Swagger"
-	$(protoCosmosImage) sh ./scripts/protoc-swagger-gen.sh
+	$(protoImage) sh ./scripts/protoc-swagger-gen.sh
 
 proto-format:
 	@echo "Formatting Protobuf files"
-	$(protoCosmosImage) find ./ -name *.proto -exec clang-format -i {} \;
+	$(protoImage) find ./ -name *.proto -exec clang-format -i {} \;
 
-# NOTE: The linter configuration lives in .protolint.yaml
 proto-lint:
 	@echo "Linting Protobuf files"
-	$(protolintImage) lint ./proto
+	$(protoImage) buf lint --error-format=json
 
 proto-check-breaking:
 	@echo "Checking Protobuf files for breaking changes"
-	$(protoCosmosImage) buf breaking --against $(HTTPS_GIT)#branch=main
+	$(protoImage) buf breaking --against $(HTTPS_GIT) #branch=main
 
 SWAGGER_DIR=./swagger-proto
 THIRD_PARTY_DIR=$(SWAGGER_DIR)/third_party
