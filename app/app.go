@@ -134,6 +134,7 @@ var (
 	// non-dependant module elements, such as codec registration
 	// and genesis verification.
 	ModuleBasics = module.NewBasicManager(
+		consensusparams.AppModuleBasic{},
 		auth.AppModuleBasic{},
 		bank.AppModuleBasic{},
 		poa.AppModuleBasic{},
