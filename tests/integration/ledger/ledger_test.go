@@ -87,7 +87,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 				out, err := sdktestutilcli.ExecTestCLICmd(clientCtx, cmd, []string{
 					ledgerKey,
 					s.FormatFlag(flags.FlagUseLedger),
-					s.FormatFlag(flags.FlagKeyAlgorithm),
+					s.FormatFlag(flags.FlagKeyType),
 					string(hd.EthSecp256k1Type),
 				})
 
@@ -120,7 +120,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 			cmd.SetArgs([]string{
 				ledgerKey,
 				s.FormatFlag(flags.FlagUseLedger),
-				s.FormatFlag(flags.FlagKeyAlgorithm),
+				s.FormatFlag(flags.FlagKeyType),
 				"eth_secp256k1",
 			})
 			// add ledger key for following tests

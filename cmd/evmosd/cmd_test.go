@@ -36,6 +36,7 @@ func TestAddKeyLedgerCmd(t *testing.T) {
 		fmt.Sprintf("--%s", flags.FlagUseLedger),
 	})
 
-	err := svrcmd.Execute(rootCmd, "EVMOSD", app.DefaultNodeHome)
-	require.Error(t, err)
+	require.Panics(t, func() {
+		_ = svrcmd.Execute(rootCmd, "EVMOSD", app.DefaultNodeHome)
+	})
 }

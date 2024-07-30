@@ -2,11 +2,13 @@ package cosmos_test
 
 import (
 	"fmt"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"math/big"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/stretchr/testify/require"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -280,6 +282,17 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 
 	distantFuture := time.Date(9000, 1, 1, 0, 0, 0, 0, time.UTC)
 
+	// create a mock MsgEthereumTx for the test to avoid unpack tx data error
+	msgEthereumTx := evmtypes.NewTx(&evmtypes.EvmTxArgs{
+		ChainID:   big.NewInt(31611),
+		Nonce:     1,
+		GasLimit:  1,
+		GasFeeCap: suite.app.FeeMarketKeeper.GetBaseFee(suite.ctx),
+		GasTipCap: big.NewInt(1),
+		Input:     nil,
+		Accesses:  &ethtypes.AccessList{},
+	})
+
 	newMsgGrant := func(msgTypeUrl string) *authz.MsgGrant {
 		msg, err := authz.NewMsgGrant(
 			testAddresses[0],
@@ -326,7 +339,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 							testAddresses[3],
 							sdk.NewCoins(sdk.NewInt64Coin(evmtypes.DefaultEVMDenom, 100e6)),
 						),
-						&evmtypes.MsgEthereumTx{},
+						msgEthereumTx,
 					},
 				),
 			},
@@ -339,7 +352,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 					testAddresses[1],
 					2,
 					[]sdk.Msg{
-						&evmtypes.MsgEthereumTx{},
+						msgEthereumTx,
 					},
 				),
 			},

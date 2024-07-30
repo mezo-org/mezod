@@ -825,6 +825,20 @@ func (_m *Client) Validators(ctx context.Context, height *int64, page *int, perP
 	return r0, r1
 }
 
+func (_m *Client) Header(
+	ctx context.Context,
+	height *int64,
+) (*coretypes.ResultHeader, error) {
+	panic("not implemented")
+}
+
+func (_m *Client) HeaderByHash(
+	ctx context.Context,
+	hash bytes.HexBytes,
+) (*coretypes.ResultHeader, error) {
+	panic("not implemented")
+}
+
 type mockConstructorTestingTNewClient interface {
 	mock.TestingT
 	Cleanup(func())
