@@ -87,8 +87,14 @@ func (s *PrecompileTestSuite) TestTransfer() {
 					s.account2.EvmAddr, big.NewInt(0),
 				}
 			},
-			basicPass:   true,
-			errContains: "invalid coins",
+			basicPass: true,
+			postCheck: func() {
+				// Check the balance of the two accounts
+				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, utils.BaseDenom)
+				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, utils.BaseDenom)
+				s.Require().Equal(sdkmath.NewInt(42), acc1.Amount)
+				s.Require().Equal(sdkmath.NewInt(0), acc2.Amount)
+			},
 		},
 		{
 			name: "successful transfer",

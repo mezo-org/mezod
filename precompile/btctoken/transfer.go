@@ -138,47 +138,56 @@ func (tfm *transferFromMethod) Run(
 }
 
 func transfer(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, from, to common.Address, amount *big.Int) (precompile.MethodOutputs, error) {
-	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
-	}
-	coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}}
+	if amount.Sign() > 0 {
+		sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert amount: [%w]", err)
+		}
+		coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}}
 
-	msg := banktypes.NewMsgSend(from.Bytes(), to.Bytes(), coins)
+		msg := banktypes.NewMsgSend(from.Bytes(), to.Bytes(), coins)
 
-	if err = msg.ValidateBasic(); err != nil {
-		return nil, err
-	}
-
-	spenderAddr := context.MsgSender()
-	spender := sdk.AccAddress(spenderAddr.Bytes())
-
-	if spender.Equals(sdk.AccAddress(from.Bytes())) {
-		// owner is spender
-		msgSrv := bankkeeper.NewMsgServerImpl(bankKeeper)
-		_, err = msgSrv.Send(sdk.WrapSDKContext(context.SdkCtx()), msg)
-	} else {
-		authorization, _ := authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
-		if authorization == nil {
-			return nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, spender)
+		err = context.EventEmitter().Emit(
+			NewTransferEvent(from, to, amount),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
 		}
 
-		_, ok := authorization.(*banktypes.SendAuthorization)
-		if !ok {
-			return nil, fmt.Errorf(
-				"expected authorization to be a %T", banktypes.SendAuthorization{},
-			)
+		if err = msg.ValidateBasic(); err != nil {
+			return nil, err
 		}
 
-		_, err = authzkeeper.DispatchActions(context.SdkCtx(), spender, []sdk.Msg{msg})
-	}
+		spenderAddr := context.MsgSender()
+		spender := sdk.AccAddress(spenderAddr.Bytes())
 
-	if err != nil {
-		return nil, err
+		if spender.Equals(sdk.AccAddress(from.Bytes())) {
+			// owner is spender
+			msgSrv := bankkeeper.NewMsgServerImpl(bankKeeper)
+			_, err = msgSrv.Send(sdk.WrapSDKContext(context.SdkCtx()), msg)
+		} else {
+			authorization, _ := authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
+			if authorization == nil {
+				return nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, spender)
+			}
+
+			_, ok := authorization.(*banktypes.SendAuthorization)
+			if !ok {
+				return nil, fmt.Errorf(
+					"expected authorization to be a %T", banktypes.SendAuthorization{},
+				)
+			}
+
+			_, err = authzkeeper.DispatchActions(context.SdkCtx(), spender, []sdk.Msg{msg})
+		}
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Emit Transfer event.
-	err = context.EventEmitter().Emit(
+	err := context.EventEmitter().Emit(
 		NewTransferEvent(from, to, amount),
 	)
 	if err != nil {
