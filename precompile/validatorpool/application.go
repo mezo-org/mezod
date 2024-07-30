@@ -357,7 +357,7 @@ func NewApplicationMethod(pk PoaKeeper) *ApplicationsMethod {
 }
 
 func (m *ApplicationMethod) MethodName() string {
-	return ApplicationsMethodName
+	return ApplicationMethodName
 }
 
 func (m *ApplicationMethod) MethodType() precompile.MethodType {
