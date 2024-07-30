@@ -156,6 +156,9 @@ func (tfm *transferFromMethod) Run(
 	if !ok {
 		return nil, fmt.Errorf("invalid amount: %v", inputs[2])
 	}
+	if amount == nil || amount.Sign() < 0 {
+		amount = big.NewInt(0)
+	}
 
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
