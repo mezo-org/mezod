@@ -114,5 +114,5 @@ func (m *ValidatorMethod) Run(context *precompile.RunContext, inputs precompile.
 	var consPubKey [32]byte
 	copy(consPubKey[:], validator.GetConsPubKey().Bytes())
 
-	return precompile.MethodOutputs{operator, consPubKey, validator.Description}, nil
+	return precompile.MethodOutputs{consPubKey, validator.Description}, nil
 }

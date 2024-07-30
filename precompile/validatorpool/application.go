@@ -395,5 +395,5 @@ func (m *ApplicationMethod) Run(context *precompile.RunContext, inputs precompil
 	var consPubKey [32]byte
 	copy(consPubKey[:], val.GetConsPubKey().Bytes())
 
-	return precompile.MethodOutputs{operator, consPubKey, val.Description}, nil
+	return precompile.MethodOutputs{consPubKey, val.Description}, nil
 }
