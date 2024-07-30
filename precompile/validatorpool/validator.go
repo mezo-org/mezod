@@ -18,7 +18,7 @@ type ValidatorsMethod struct {
 	keeper PoaKeeper
 }
 
-func NewValidatorsMethod(pk PoaKeeper) *ValidatorsMethod {
+func newValidatorsMethod(pk PoaKeeper) *ValidatorsMethod {
 	return &ValidatorsMethod{
 		keeper: pk,
 	}
@@ -70,7 +70,7 @@ type ValidatorMethod struct {
 	keeper PoaKeeper
 }
 
-func NewValidatorMethod(pk PoaKeeper) *ValidatorMethod {
+func newValidatorMethod(pk PoaKeeper) *ValidatorMethod {
 	return &ValidatorMethod{
 		keeper: pk,
 	}

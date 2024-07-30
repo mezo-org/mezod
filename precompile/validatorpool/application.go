@@ -25,7 +25,7 @@ type SubmitApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func NewSubmitApplicationMethod(pk PoaKeeper) *SubmitApplicationMethod {
+func newSubmitApplicationMethod(pk PoaKeeper) *SubmitApplicationMethod {
 	return &SubmitApplicationMethod{
 		keeper: pk,
 	}
@@ -164,7 +164,7 @@ type ApproveApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func NewApproveApplicationMethod(pk PoaKeeper) *ApproveApplicationMethod {
+func newApproveApplicationMethod(pk PoaKeeper) *ApproveApplicationMethod {
 	return &ApproveApplicationMethod{
 		keeper: pk,
 	}
@@ -297,7 +297,7 @@ type ApplicationsMethod struct {
 	keeper PoaKeeper
 }
 
-func NewApplicationsMethod(pk PoaKeeper) *ApplicationsMethod {
+func newApplicationsMethod(pk PoaKeeper) *ApplicationsMethod {
 	return &ApplicationsMethod{
 		keeper: pk,
 	}
@@ -350,7 +350,7 @@ type ApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func NewApplicationMethod(pk PoaKeeper) *ApplicationsMethod {
+func newApplicationMethod(pk PoaKeeper) *ApplicationsMethod {
 	return &ApplicationsMethod{
 		keeper: pk,
 	}

@@ -17,7 +17,7 @@ type OwnerMethod struct {
 	keeper PoaKeeper
 }
 
-func NewOwnerMethod(pk PoaKeeper) *OwnerMethod {
+func newOwnerMethod(pk PoaKeeper) *OwnerMethod {
 	return &OwnerMethod{
 		keeper: pk,
 	}
@@ -62,7 +62,7 @@ type CandidateOwnerMethod struct {
 	keeper PoaKeeper
 }
 
-func NewCandidateOwnerMethod(pk PoaKeeper) *CandidateOwnerMethod {
+func newCandidateOwnerMethod(pk PoaKeeper) *CandidateOwnerMethod {
 	return &CandidateOwnerMethod{
 		keeper: pk,
 	}
@@ -110,7 +110,7 @@ type TransferOwnershipMethod struct {
 	keeper PoaKeeper
 }
 
-func NewTransferOwnershipMethod(pk PoaKeeper) *TransferOwnershipMethod {
+func newTransferOwnershipMethod(pk PoaKeeper) *TransferOwnershipMethod {
 	return &TransferOwnershipMethod{
 		keeper: pk,
 	}
@@ -209,7 +209,7 @@ type AcceptOwnershipMethod struct {
 	keeper PoaKeeper
 }
 
-func NewAcceptOwnershipMethod(pk PoaKeeper) *AcceptOwnershipMethod {
+func newAcceptOwnershipMethod(pk PoaKeeper) *AcceptOwnershipMethod {
 	return &AcceptOwnershipMethod{
 		keeper: pk,
 	}

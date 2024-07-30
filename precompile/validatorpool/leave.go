@@ -17,7 +17,7 @@ type LeaveMethod struct {
 	keeper PoaKeeper
 }
 
-func NewLeaveMethod(pk PoaKeeper) *LeaveMethod {
+func newLeaveMethod(pk PoaKeeper) *LeaveMethod {
 	return &LeaveMethod{
 		keeper: pk,
 	}

@@ -89,17 +89,17 @@ func NewPrecompile(pk PoaKeeper) (*precompile.Contract, error) {
 // All methods returned by this function are registered in the validator pool precompile.
 func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 	return []precompile.Method{
-		NewSubmitApplicationMethod(pk),
-		NewApproveApplicationMethod(pk),
-		NewKickMethod(pk),
-		NewLeaveMethod(pk),
-		NewOwnerMethod(pk),
-		NewCandidateOwnerMethod(pk),
-		NewTransferOwnershipMethod(pk),
-		NewAcceptOwnershipMethod(pk),
-		NewValidatorMethod(pk),
-		NewValidatorsMethod(pk),
-		NewApplicationMethod(pk),
-		NewApplicationsMethod(pk),
+		newSubmitApplicationMethod(pk),
+		newApproveApplicationMethod(pk),
+		newKickMethod(pk),
+		newLeaveMethod(pk),
+		newOwnerMethod(pk),
+		newCandidateOwnerMethod(pk),
+		newTransferOwnershipMethod(pk),
+		newAcceptOwnershipMethod(pk),
+		newValidatorMethod(pk),
+		newValidatorsMethod(pk),
+		newApplicationMethod(pk),
+		newApplicationsMethod(pk),
 	}
 }

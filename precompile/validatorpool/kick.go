@@ -21,7 +21,7 @@ type KickMethod struct {
 	keeper PoaKeeper
 }
 
-func NewKickMethod(pk PoaKeeper) *KickMethod {
+func newKickMethod(pk PoaKeeper) *KickMethod {
 	return &KickMethod{
 		keeper: pk,
 	}
