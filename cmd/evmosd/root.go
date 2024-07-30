@@ -63,6 +63,8 @@ import (
 	evmoskr "github.com/evmos/evmos/v12/crypto/keyring"
 
 	poacli "github.com/evmos/evmos/v12/x/poa/client/cli"
+
+	rosettacmd "cosmossdk.io/tools/rosetta/cmd"
 )
 
 const (
@@ -80,7 +82,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		WithLegacyAmino(encodingConfig.Amino).
 		WithInput(os.Stdin).
 		WithAccountRetriever(types.AccountRetriever{}).
-		WithBroadcastMode(flags.BroadcastBlock).
+		WithBroadcastMode(flags.BroadcastSync).
 		WithHomeDir(app.DefaultNodeHome).
 		WithKeyringOptions(evmoskr.Option()).
 		WithViper(EnvPrefix).
@@ -158,7 +160,12 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	}
 
 	// add rosetta
-	rootCmd.AddCommand(sdkserver.RosettaCommand(encodingConfig.InterfaceRegistry, encodingConfig.Codec))
+	rootCmd.AddCommand(
+		rosettacmd.RosettaCommand(
+			encodingConfig.InterfaceRegistry,
+			encodingConfig.Codec,
+		),
+	)
 
 	return rootCmd, encodingConfig
 }
@@ -298,8 +305,14 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 // appExport creates a new simapp (optionally at a given height)
 // and exports state.
 func (a appCreator) appExport(
-	logger log.Logger, db dbm.DB, traceStore io.Writer, height int64, forZeroHeight bool, jailAllowedAddrs []string,
+	logger log.Logger,
+	db dbm.DB,
+	traceStore io.Writer,
+	height int64,
+	forZeroHeight bool,
+	jailAllowedAddrs []string,
 	appOpts servertypes.AppOptions,
+	_ []string,
 ) (servertypes.ExportedApp, error) {
 	var evmosApp *app.Evmos
 	homePath, ok := appOpts.Get(flags.FlagHome).(string)
