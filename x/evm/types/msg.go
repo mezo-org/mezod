@@ -155,12 +155,6 @@ func (msg *MsgEthereumTx) FromEthereumTx(tx *ethtypes.Transaction) error {
 	return nil
 }
 
-// Route returns the route value of an MsgEthereumTx.
-func (msg MsgEthereumTx) Route() string { return RouterKey }
-
-// Type returns the type value of an MsgEthereumTx.
-func (msg MsgEthereumTx) Type() string { return TypeMsgEthereumTx }
-
 // ValidateBasic implements the sdk.Msg interface. It performs basic validation
 // checks of a Transaction. If returns an error if validation fails.
 func (msg MsgEthereumTx) ValidateBasic() error {
@@ -227,15 +221,6 @@ func (msg *MsgEthereumTx) GetSigners() []sdk.AccAddress {
 
 	signer := sdk.AccAddress(sender.Bytes())
 	return []sdk.AccAddress{signer}
-}
-
-// GetSignBytes returns the Amino bytes of an Ethereum transaction message used
-// for signing.
-//
-// NOTE: This method cannot be used as a chain ID is needed to create valid bytes
-// to sign over. Use 'RLPSignBytes' instead.
-func (msg MsgEthereumTx) GetSignBytes() []byte {
-	panic("must use 'RLPSignBytes' with a chain ID to get the valid bytes to sign")
 }
 
 // Sign calculates a secp256k1 ECDSA signature and signs the transaction. It
@@ -396,9 +381,4 @@ func (m *MsgUpdateParams) ValidateBasic() error {
 	}
 
 	return m.Params.Validate()
-}
-
-// GetSignBytes implements the LegacyMsg interface.
-func (m MsgUpdateParams) GetSignBytes() []byte {
-	return sdk.MustSortJSON(AminoCdc.MustMarshalJSON(&m))
 }
