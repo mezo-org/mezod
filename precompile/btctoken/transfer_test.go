@@ -75,6 +75,22 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			errContains: "insufficient funds",
 		},
 		{
+			name: "transfer zero amount",
+			run: func() []interface{} {
+				// Mint some coins to the module account and then send to the from address
+				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(1e18))})
+				s.Require().NoError(err, "failed to mint coins")
+				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})
+				s.Require().NoError(err, "failed to send coins from module to account")
+
+				return []interface{}{
+					s.account2.EvmAddr, big.NewInt(0),
+				}
+			},
+			basicPass:   true,
+			errContains: "invalid coins",
+		},
+		{
 			name: "successful transfer",
 			run: func() []interface{} {
 				// Mint some coins to the module account and then send to the from address
