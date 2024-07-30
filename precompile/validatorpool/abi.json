@@ -105,7 +105,7 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "operator",
                 "type": "address"
@@ -118,7 +118,7 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "operator",
                 "type": "address"
@@ -131,7 +131,7 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": false,
+                "indexed": true,
                 "internalType": "address",
                 "name": "operator",
                 "type": "address"
@@ -146,11 +146,81 @@
         "outputs": [
             {
                 "internalType": "bool",
-                "name": "success",
+                "name": "",
                 "type": "bool"
             }
         ],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "operator",
+                "type": "address"
+            }
+        ],
+        "name": "application",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "consPubKey",
+                "type": "bytes32"
+            },
+            {
+                "components": [
+                    {
+                        "internalType": "string",
+                        "name": "moniker",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "identity",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "website",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "securityContact",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "details",
+                        "type": "string"
+                    }
+                ],
+                "internalType": "struct Description",
+                "name": "description",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "operator",
+                "type": "address"
+            }
+        ],
+        "name": "applications",
+        "outputs": [
+            {
+                "internalType": "address[]",
+                "name": "",
+                "type": "address[]"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -165,11 +235,24 @@
         "outputs": [
             {
                 "internalType": "bool",
-                "name": "success",
+                "name": "",
                 "type": "bool"
             }
         ],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "candidateOwner",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -184,7 +267,7 @@
         "outputs": [
             {
                 "internalType": "bool",
-                "name": "success",
+                "name": "",
                 "type": "bool"
             }
         ],
@@ -197,7 +280,7 @@
         "outputs": [
             {
                 "internalType": "bool",
-                "name": "success",
+                "name": "",
                 "type": "bool"
             }
         ],
@@ -207,19 +290,6 @@
     {
         "inputs": [],
         "name": "owner",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "candidateOwner",
         "outputs": [
             {
                 "internalType": "address",
@@ -274,7 +344,7 @@
         "outputs": [
             {
                 "internalType": "bool",
-                "name": "success",
+                "name": "",
                 "type": "bool"
             }
         ],
@@ -293,7 +363,7 @@
         "outputs": [
             {
                 "internalType": "bool",
-                "name": "success",
+                "name": "",
                 "type": "bool"
             }
         ],
@@ -311,69 +381,8 @@
         "name": "validator",
         "outputs": [
             {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            },
-            {
                 "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            },
-            {
-                "components": [
-                    {
-                        "internalType": "string",
-                        "name": "moniker",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "identity",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "website",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "securityContact",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "details",
-                        "type": "string"
-                    }
-                ],
-                "internalType": "struct Description",
-                "name": "description",
-                "type": "tuple"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "operator",
-                "type": "address"
-            }
-        ],
-        "name": "application",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            },
-            {
-                "internalType": "bytes32",
-                "name": "",
+                "name": "consPubKey",
                 "type": "bytes32"
             },
             {
@@ -421,25 +430,6 @@
             }
         ],
         "name": "validators",
-        "outputs": [
-            {
-                "internalType": "address[]",
-                "name": "",
-                "type": "address[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "operator",
-                "type": "address"
-            }
-        ],
-        "name": "applications",
         "outputs": [
             {
                 "internalType": "address[]",
