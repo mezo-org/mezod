@@ -18,7 +18,6 @@ const (
 	TransferFromMethodName = "transferFrom"
 )
 
-// Transfer Method
 type transferMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
@@ -102,8 +101,6 @@ func (tm *transferMethod) Run(
 
 	return precompile.MethodOutputs{true}, nil
 }
-
-// TransferFrom Method
 
 type transferFromMethod struct {
 	bankKeeper  bankkeeper.Keeper
@@ -209,8 +206,6 @@ func (tfm *transferFromMethod) Run(
 
 	return precompile.MethodOutputs{true}, nil
 }
-
-// Transfer Event
 
 // TransferEventName is the name of the Transfer event. It matches the name
 // of the event in the contract ABI.
