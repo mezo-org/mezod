@@ -16,7 +16,6 @@
 package types
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -237,8 +236,8 @@ func BaseFeeFromEvents(events []abci.Event) *big.Int {
 		}
 
 		for _, attr := range event.Attributes {
-			if bytes.Equal(attr.Key, []byte(feemarkettypes.AttributeKeyBaseFee)) {
-				result, success := new(big.Int).SetString(string(attr.Value), 10)
+			if attr.Key == feemarkettypes.AttributeKeyBaseFee {
+				result, success := new(big.Int).SetString(attr.Value, 10)
 				if success {
 					return result
 				}
