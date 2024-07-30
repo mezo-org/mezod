@@ -17,6 +17,7 @@ package app
 
 import (
 	"encoding/json"
+
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/evmos/evmos/v12/utils"
 

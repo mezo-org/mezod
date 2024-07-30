@@ -13,6 +13,9 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	"cosmossdk.io/simapp"
+	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/cometbft/cometbft/crypto/tmhash"
+	tmjson "github.com/cometbft/cometbft/libs/json"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -34,9 +37,6 @@ import (
 	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/crypto/tmhash"
-	tmjson "github.com/cometbft/cometbft/libs/json"
 )
 
 type KeeperTestSuite struct {

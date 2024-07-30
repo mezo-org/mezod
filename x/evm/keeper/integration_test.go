@@ -2,8 +2,9 @@ package keeper_test
 
 import (
 	"encoding/json"
-	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"math/big"
+
+	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
 
 	"cosmossdk.io/math"
 	. "github.com/onsi/ginkgo/v2"

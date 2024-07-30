@@ -8,6 +8,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 
+	"github.com/cometbft/cometbft/crypto/tmhash"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	tmtypes "github.com/cometbft/cometbft/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -17,9 +20,6 @@ import (
 	"github.com/evmos/evmos/v12/x/evm/keeper"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 	"github.com/evmos/evmos/v12/x/evm/types"
-	"github.com/cometbft/cometbft/crypto/tmhash"
-	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
-	tmtypes "github.com/cometbft/cometbft/types"
 )
 
 func (suite *KeeperTestSuite) TestGetHashFn() {

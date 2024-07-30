@@ -17,10 +17,11 @@ package backend
 
 import (
 	"fmt"
-	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 	"math"
 	"math/big"
 	"strconv"
+
+	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"

@@ -2,8 +2,9 @@ package keeper_test
 
 import (
 	"fmt"
-	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"math/big"
+
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )

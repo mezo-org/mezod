@@ -2,10 +2,11 @@ package cosmos_test
 
 import (
 	"fmt"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"testing"
 	"time"
+
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/stretchr/testify/require"

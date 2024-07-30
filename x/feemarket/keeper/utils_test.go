@@ -2,9 +2,12 @@ package keeper_test
 
 import (
 	"encoding/json"
-	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"math/big"
 	"time"
+
+	"github.com/evmos/evmos/v12/utils"
+
+	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
@@ -104,7 +107,8 @@ func (suite *KeeperTestSuite) CommitAfter(t time.Duration) {
 
 // setupTestWithContext sets up a test chain with an example Cosmos send msg,
 // given a local (validator config) and a global (feemarket param) minGasPrice
-func setupTestWithContext(chainID, valMinGasPrice string, minGasPrice sdk.Dec, baseFee sdkmath.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
+func setupTestWithContext(valMinGasPrice string, minGasPrice sdk.Dec, baseFee sdkmath.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
+	chainID := utils.TestnetChainID + "-1"
 	privKey, msg := setupTest(valMinGasPrice+s.denom, chainID)
 	params := types.DefaultParams()
 	params.MinGasPrice = minGasPrice

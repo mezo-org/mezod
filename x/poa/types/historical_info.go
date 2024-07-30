@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/cosmos/cosmos-sdk/codec"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	"github.com/cosmos/cosmos-sdk/codec"
 )
 
 // NewHistoricalInfo will create a historical information struct from header and

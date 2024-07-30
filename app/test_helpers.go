@@ -18,9 +18,10 @@ package app
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
-	"time"
 
 	"github.com/cometbft/cometbft/crypto/ed25519"
 	//nolint:staticcheck

@@ -8,12 +8,13 @@ import (
 	"sort"
 	"strings"
 
+	cfg "github.com/cometbft/cometbft/config"
+	tmtypes "github.com/cometbft/cometbft/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
-	cfg "github.com/cometbft/cometbft/config"
-	tmtypes "github.com/cometbft/cometbft/types"
 
+	tmos "github.com/cometbft/cometbft/libs/os"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/server"
@@ -21,7 +22,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	tmos "github.com/cometbft/cometbft/libs/os"
 )
 
 // NewGenValCmd creates the Cobra command to generate a new validator.

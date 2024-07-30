@@ -18,9 +18,10 @@ package types
 import (
 	"context"
 	"fmt"
-	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 	"math/big"
 	"strings"
+
+	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	tmtypes "github.com/cometbft/cometbft/types"

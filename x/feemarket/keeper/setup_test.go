@@ -1,8 +1,9 @@
 package keeper_test
 
 import (
-	"github.com/evmos/evmos/v12/utils"
 	"testing"
+
+	"github.com/evmos/evmos/v12/utils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

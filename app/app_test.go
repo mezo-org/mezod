@@ -2,10 +2,11 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/cosmos/cosmos-sdk/baseapp"
-	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"os"
 	"testing"
+
+	"github.com/cosmos/cosmos-sdk/baseapp"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 
 	"github.com/cometbft/cometbft/crypto/ed25519"
 
