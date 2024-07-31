@@ -40,7 +40,7 @@ func TestParseChainID(t *testing.T) {
 			"invalid chain-id, uppercases", "MEZO_1-1", true, nil,
 		},
 		{
-			"invalid chain-id, mixed cases", "Evmos_1-1", true, nil,
+			"invalid chain-id, mixed cases", "Mezo_1-1", true, nil,
 		},
 		{
 			"invalid chain-id, special chars", "$&*#!_1-1", true, nil,

@@ -4,14 +4,14 @@ As part of our vulnerability disclosure policy,
 we operate a security vulnerability program through [Immunefi](https://immunefi.com/).
 This document serves as a complementary guideline for reporting vulnerabilities
 and how the disclosure process is managed.
-Please refer to the official Evmos [bug bounty program](https://immunefi.com/bounty/evmos/)
+Please refer to the official Mezo [bug bounty program](https://immunefi.com/bounty/evmos/)
 for up-to-date information.
 
 ## Guidelines
 
 We require that all researchers:
 
-- Use the Evmos [bug bounty program](https://immunefi.com/bounty/evmos/) on Immunefi to disclose all vulnerabilities,
+- Use the Mezo [bug bounty program](https://immunefi.com/bounty/evmos/) on Immunefi to disclose all vulnerabilities,
   and avoid posting vulnerability information in public places,
   including GitHub, Discord, Telegram, Twitter or other non-private channels.
 - Make every effort to avoid privacy violations, degradation of user experience, disruption to production systems,
@@ -28,7 +28,7 @@ If you follow these guidelines when reporting an issue to us, we commit to:
 
 ## Disclosure Process
 
-Evmos uses the following disclosure process:
+Mezo uses the following disclosure process:
 
 1. Once a security report is received via the Immunefi Bug Bounty program,
 the team works to verify the issue and confirm its severity level using [CVSS](https://nvd.nist.gov/vuln-metrics/cvss)
@@ -49,7 +49,7 @@ or [Immunefi’s Vulnerability Severity Classification System v2.2](https://immu
        the Security Lead (or Security Secondary) will revert to the reporter to request more info or close the report.
     3. The report is confirmed by the Security Lead to the reporter.
 
-2. The team determines the vulnerability’s potential impact on Evmos.
+2. The team determines the vulnerability’s potential impact on Mezo.
 
     1. Vulnerabilities with `Informational` and `Low` categorization will result in creating a public issue.
     2. Vulnerabilities with `Medium` categorization will result
@@ -59,14 +59,14 @@ or [Immunefi’s Vulnerability Severity Classification System v2.2](https://immu
 Once the vulnerability severity is defined, the following steps apply:
 
 - For `High` and `Critical`:
-    1. Patches are prepared for supported releases of Evmos in a
+    1. Patches are prepared for supported releases of Mezo in a
        [temporary private fork](https://docs.github.com/en/code-security/repository-security-advisories/collaborating-in-a-temporary-private-fork-to-resolve-a-repository-security-vulnerability)
        of the repository.
     2. Only relevant parties will be notified about an upcoming upgrade.
        These being validators, the core developer team, and users directly affected by the vulnerability.
     3. 24 hours following this notification, relevant releases with the patch will be made public.
-    4. The nodes and validators update their Evmos and Ethermint dependencies to use these releases.
-    5. A week (or less) after the security vulnerability has been patched on Evmos,
+    4. The nodes and validators update their Mezo and Ethermint dependencies to use these releases.
+    5. A week (or less) after the security vulnerability has been patched on Mezo,
        we will disclose that the mentioned release contained a security fix.
     6. After an additional 2 weeks, we will publish a public announcement of the vulnerability.
        We also publish a security Advisory on GitHub and publish a
@@ -85,15 +85,15 @@ Every effort will be made to handle the bug in as timely a manner as possible,
 however, it's important that we follow the process described above
 to ensure that disclosures are handled consistently
 and to keep Ethermint and its downstream dependent projects,
-including but not limited to Evmos,
+including but not limited to Mezo,
 as secure as possible.
 
 ### Payment Process
 
-The payment process will be executed according to Evmos’s Immunefi Bug Bounty program Rules.
+The payment process will be executed according to Mezo’s Immunefi Bug Bounty program Rules.
 
 ### Contact
 
-The Evmos Security Team is constantly being monitored.
+The Mezo Security Team is constantly being monitored.
 If you need to reach out to the team directly,
 please reach out via email: [security@evmos.org](mailto:security@evmos.org)

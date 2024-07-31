@@ -59,7 +59,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 		evmosd keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR"
 	done
 
-	# Set moniker and chain-id for Evmos (Moniker can be anything, chain-id must be an integer)
+	# Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
 	evmosd init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR"
 
 	# Set the PoA owner.

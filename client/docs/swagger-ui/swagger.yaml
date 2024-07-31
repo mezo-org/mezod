@@ -1,6 +1,6 @@
 swagger: '2.0'
 info:
-  title: Evmos Chain - gRPC Gateway docs
+  title: Mezo Chain - gRPC Gateway docs
   description: A REST interface for state queries and transactions
   version: 1.0.0
 paths:
@@ -44761,7 +44761,7 @@ definitions:
 
       excludes the team vesting distribution, as this is minted once at genesis.
 
-      The initial InflationDistribution can be calculated from the Evmos Token
+      The initial InflationDistribution can be calculated from the Mezo Token
 
       Model like this:
 

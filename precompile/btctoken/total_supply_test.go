@@ -17,7 +17,7 @@ import (
 
 func (s *PrecompileTestSuite) TestTotalSupply() {
 	testcases := map[string]struct {
-		run      func(sdk.Context, *app.Evmos)
+		run      func(sdk.Context, *app.Mezo)
 		expTotal *big.Int
 	}{
 		// This is minted by the existing test_helpers.go file for the generated
@@ -28,7 +28,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 		},
 		"add to total supply - mint more coins": {
 			expTotal: big.NewInt(100000000000042),
-			run: func(ctx sdk.Context, app *app.Evmos) {
+			run: func(ctx sdk.Context, app *app.Mezo) {
 				// Mint more coins to the evm module
 				err := app.BankKeeper.MintCoins(
 					ctx, evmtypes.ModuleName,

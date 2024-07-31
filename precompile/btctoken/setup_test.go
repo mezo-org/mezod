@@ -24,7 +24,7 @@ type Key struct {
 type PrecompileTestSuite struct {
 	suite.Suite
 
-	app *app.Evmos
+	app *app.Mezo
 	ctx sdk.Context
 
 	account1, account2 Key

@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package keyring
 
@@ -25,18 +25,18 @@ import (
 	"github.com/mezo-org/mezod/crypto/hd"
 )
 
-// AppName defines the Ledger app used for signing. Evmos uses the Ethereum app
+// AppName defines the Ledger app used for signing. Mezo uses the Ethereum app
 const AppName = "Ethereum"
 
 var (
-	// SupportedAlgorithms defines the list of signing algorithms used on Evmos:
+	// SupportedAlgorithms defines the list of signing algorithms used on Mezo:
 	//  - eth_secp256k1 (Ethereum)
 	SupportedAlgorithms = keyring.SigningAlgoList{hd.EthSecp256k1}
-	// SupportedAlgorithmsLedger defines the list of signing algorithms used on Evmos for the Ledger device:
+	// SupportedAlgorithmsLedger defines the list of signing algorithms used on Mezo for the Ledger device:
 	//  - secp256k1 (in order to comply with Cosmos SDK)
 	// The Ledger derivation function is responsible for all signing and address generation.
 	SupportedAlgorithmsLedger = keyring.SigningAlgoList{hd.EthSecp256k1}
-	// LedgerDerivation defines the Evmos Ledger Go derivation (Ethereum app with EIP-712 signing)
+	// LedgerDerivation defines the Mezo Ledger Go derivation (Ethereum app with EIP-712 signing)
 	LedgerDerivation = func() (cosmosLedger.SECP256K1, error) {
 		// TODO: So far LedgerDerivation was taken from an obsolete
 		//       github.com/evmos/evmos-ledger-go library that is no longer
