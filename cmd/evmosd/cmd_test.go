@@ -37,6 +37,6 @@ func TestAddKeyLedgerCmd(t *testing.T) {
 	})
 
 	require.Panics(t, func() {
-		_ = svrcmd.Execute(rootCmd, "EVMOSD", app.DefaultNodeHome)
+		_ = svrcmd.Execute(rootCmd, "MEZOD", app.DefaultNodeHome)
 	})
 }

@@ -110,10 +110,10 @@ start_func() {
     --keyring-backend test --home "$DATA_DIR$i" \
     >"$DATA_DIR"/node"$i".log 2>&1 & disown
 
-    EVMOS_PID=$!
-    echo "started evmos node, pid=$EVMOS_PID"
+    MEZO_PID=$!
+    echo "started evmos node, pid=$MEZO_PID"
     # add PID to array
-    arr+=("$EVMOS_PID")
+    arr+=("$MEZO_PID")
 
     if [[ $MODE == "pending" ]]; then
       echo "waiting for the first block..."
@@ -156,12 +156,12 @@ if [[ -z $TEST || $TEST == "rpc" ||  $TEST == "pending" ]]; then
 fi
 
 stop_func() {
-    EVMOS_PID=$i
-    echo "shutting down node, pid=$EVMOS_PID ..."
+    MEZO_PID=$i
+    echo "shutting down node, pid=$MEZO_PID ..."
 
     # Shutdown evmos node
-    kill -9 "$EVMOS_PID"
-    wait "$EVMOS_PID"
+    kill -9 "$MEZO_PID"
+    wait "$MEZO_PID"
 
     if [ $REMOVE_DATA_DIR == "true" ]
     then

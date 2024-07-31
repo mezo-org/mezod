@@ -6,8 +6,8 @@ CMTVERSION := $(shell go list -m github.com/cometbft/cometbft | sed 's:.* ::')
 COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
-EVMOS_BINARY = evmosd
-EVMOS_DIR = evmos
+MEZO_BINARY = evmosd
+MEZO_DIR = evmos
 BUILDDIR ?= $(CURDIR)/build
 HTTPS_GIT := https://github.com/mezo-org/mezod.git
 DOCKER := $(shell which docker)
@@ -59,7 +59,7 @@ build_tags := $(strip $(build_tags))
 # process linker flags
 
 ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=evmos \
-          -X github.com/cosmos/cosmos-sdk/version.AppName=$(EVMOS_BINARY) \
+          -X github.com/cosmos/cosmos-sdk/version.AppName=$(MEZO_BINARY) \
           -X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
           -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) \
           -X github.com/cometbft/cometbft/version.CMTSemVer=$(CMTVERSION)
@@ -456,7 +456,7 @@ localnet-docker-build:
 
 # Start a 4-node testnet locally
 localnet-docker-start: localnet-docker-stop
-	@if ! [ -f build/node0/$(EVMOS_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/evmos:Z meso/node "./evmosd testnet init-files --v 4 -o /evmos --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
+	@if ! [ -f build/node0/$(MEZO_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/evmos:Z meso/node "./evmosd testnet init-files --v 4 -o /evmos --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
 	docker-compose up -d
 
 # Stop testnet
