@@ -9,7 +9,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abci "github.com/cometbft/cometbft/abci/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -111,27 +111,6 @@ func NewAppModule(
 
 // RegisterInvariants registers the poa module invariants.
 func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
-
-// Deprecated: use RegisterServices
-func (AppModule) Route() sdk.Route {
-	// Return a zero value as this function is deprecated and RegisterServices
-	// is used by the SDK instead.
-	return sdk.Route{}
-}
-
-// Deprecated: use RegisterServices
-func (AppModule) QuerierRoute() string {
-	// Return a zero value as this function is deprecated and RegisterServices
-	// is used by the SDK instead.
-	return ""
-}
-
-// Deprecated: use RegisterServices
-func (am AppModule) LegacyQuerierHandler(_ *codec.LegacyAmino) sdk.Querier {
-	// Return a zero value as this function is deprecated and RegisterServices
-	// is used by the SDK instead.
-	return nil
-}
 
 // RegisterServices registers a gRPC query service to respond to the module-specific gRPC queries
 func (am AppModule) RegisterServices(cfg module.Configurator) {

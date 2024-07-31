@@ -17,8 +17,8 @@ package feemarket
 
 import (
 	errorsmod "cosmossdk.io/errors"
+	abci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/evmos/evmos/v12/x/feemarket/keeper"
 	"github.com/evmos/evmos/v12/x/feemarket/types"

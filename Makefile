@@ -2,7 +2,7 @@
 
 PACKAGES_NOSIMULATION=$(shell go list ./... | grep -v '/simulation')
 VERSION ?= $(shell echo $(shell git describe --tags --always) | sed 's/^v//')
-TMVERSION := $(shell go list -m github.com/tendermint/tendermint | sed 's:.* ::')
+CMTVERSION := $(shell go list -m github.com/cometbft/cometbft | sed 's:.* ::')
 COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
@@ -62,7 +62,7 @@ ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=evmos \
           -X github.com/cosmos/cosmos-sdk/version.AppName=$(EVMOS_BINARY) \
           -X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
           -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) \
-          -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(TMVERSION)
+          -X github.com/cometbft/cometbft/version.CMTSemVer=$(CMTVERSION)
 
 # DB backend selection
 ifeq (cleveldb,$(findstring cleveldb,$(COSMOS_BUILD_OPTIONS)))
@@ -364,30 +364,9 @@ format:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-# ------
-# NOTE: Link to the tendermintdev/sdk-proto-gen docker images:
-#       https://hub.docker.com/r/tendermintdev/sdk-proto-gen/tags
-#
-protoVer=v0.7
-protoImageName=tendermintdev/sdk-proto-gen:$(protoVer)
-protoImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protoImageName)
-# ------
-# NOTE: cosmos/proto-builder image is needed because clang-format is not installed
-#       on the tendermintdev/sdk-proto-gen docker image.
-#		Link to the cosmos/proto-builder docker images:
-#       https://github.com/cosmos/cosmos-sdk/pkgs/container/proto-builder
-#
-protoCosmosVer=0.11.2
-protoCosmosName=ghcr.io/cosmos/proto-builder:$(protoCosmosVer)
-protoCosmosImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protoCosmosName)
-# ------
-# NOTE: Link to the yoheimuta/protolint docker images:
-#       https://hub.docker.com/r/yoheimuta/protolint/tags
-#
-protolintVer=0.42.2
-protolintName=yoheimuta/protolint:$(protolintVer)
-protolintImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protolintName)
-
+protoVer=0.11.5
+protoImageName=ghcr.io/cosmos/proto-builder:$(protoVer)
+protoImage=$(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace --user 0 $(protoImageName)
 
 # ------
 # NOTE: If you are experiencing problems running these commands, try deleting
@@ -403,20 +382,19 @@ proto-swagger-gen:
 	@echo "Downloading Protobuf dependencies"
 	@make proto-download-deps
 	@echo "Generating Protobuf Swagger"
-	$(protoCosmosImage) sh ./scripts/protoc-swagger-gen.sh
+	$(protoImage) sh ./scripts/protoc-swagger-gen.sh
 
 proto-format:
 	@echo "Formatting Protobuf files"
-	$(protoCosmosImage) find ./ -name *.proto -exec clang-format -i {} \;
+	$(protoImage) find ./ -name *.proto -exec clang-format -i {} \;
 
-# NOTE: The linter configuration lives in .protolint.yaml
 proto-lint:
 	@echo "Linting Protobuf files"
-	$(protolintImage) lint ./proto
+	$(protoImage) buf lint --error-format=json
 
 proto-check-breaking:
 	@echo "Checking Protobuf files for breaking changes"
-	$(protoImage) buf breaking --against $(HTTPS_GIT)#branch=main
+	$(protoImage) buf breaking --against $(HTTPS_GIT) #branch=main
 
 SWAGGER_DIR=./swagger-proto
 THIRD_PARTY_DIR=$(SWAGGER_DIR)/third_party
@@ -516,6 +494,7 @@ localnet-docker-show-logstream:
 ###############################################################################
 
 LOCALNET_DIR = .localnet
+LOCALNET_CHAIN_ID = mezo_31611-10
 
 localnet-bin-init:
 	@if ! [ -d build ]; then \
@@ -530,13 +509,13 @@ localnet-bin-init:
 		--home $(LOCALNET_DIR) \
 		--keyring-backend=test \
 		--starting-ip-address localhost \
-		--chain-id mezo_31611-10; \
+		--chain-id $(LOCALNET_CHAIN_ID); \
 	else \
 		echo "Skipped initializing localnet configuration."; \
 	fi
 
 localnet-bin-start:
-	./scripts/localnet-start.sh
+	LOCALNET_CHAIN_ID=$(LOCALNET_CHAIN_ID) ./scripts/localnet-start.sh
 
 localnet-bin-clean:
 	rm -rf $(LOCALNET_DIR) build

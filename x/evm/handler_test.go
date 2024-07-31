@@ -10,12 +10,12 @@ import (
 	"github.com/evmos/evmos/v12/x/evm/keeper"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	tmjson "github.com/tendermint/tendermint/libs/json"
+	abci "github.com/cometbft/cometbft/abci/types"
+	tmjson "github.com/cometbft/cometbft/libs/json"
 
-	"github.com/cosmos/cosmos-sdk/simapp"
+	"cosmossdk.io/simapp"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
@@ -40,12 +40,12 @@ import (
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 	"github.com/evmos/evmos/v12/x/evm/types"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+	"github.com/cometbft/cometbft/crypto/tmhash"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	tmversion "github.com/cometbft/cometbft/proto/tendermint/version"
 
+	"github.com/cometbft/cometbft/version"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/tendermint/tendermint/version"
 
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )

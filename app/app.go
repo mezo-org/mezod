@@ -33,10 +33,10 @@ import (
 	"github.com/rakyll/statik/fs"
 	"github.com/spf13/cast"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/cometbft/cometbft-db"
+	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/cometbft/cometbft/libs/log"
+	tmos "github.com/cometbft/cometbft/libs/os"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -47,9 +47,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/api"
 	"github.com/cosmos/cosmos-sdk/server/config"
 
+	"cosmossdk.io/simapp"
+	simappparams "cosmossdk.io/simapp/params"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
-	"github.com/cosmos/cosmos-sdk/simapp"
-	simappparams "github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/cosmos/cosmos-sdk/store/streaming"
 	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -67,6 +67,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	consensusparams "github.com/cosmos/cosmos-sdk/x/consensus"
+	consensusparamskeeper "github.com/cosmos/cosmos-sdk/x/consensus/keeper"
+	consensusparamstypes "github.com/cosmos/cosmos-sdk/x/consensus/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
 	crisiskeeper "github.com/cosmos/cosmos-sdk/x/crisis/keeper"
 	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
@@ -131,6 +134,7 @@ var (
 	// non-dependant module elements, such as codec registration
 	// and genesis verification.
 	ModuleBasics = module.NewBasicManager(
+		consensusparams.AppModuleBasic{},
 		auth.AppModuleBasic{},
 		bank.AppModuleBasic{},
 		poa.AppModuleBasic{},
@@ -174,16 +178,17 @@ type Evmos struct {
 	tkeys map[string]*storetypes.TransientStoreKey
 
 	// keepers
-	AccountKeeper   authkeeper.AccountKeeper
-	BankKeeper      bankkeeper.Keeper
-	PoaKeeper       poakeeper.Keeper
-	CrisisKeeper    crisiskeeper.Keeper
-	UpgradeKeeper   upgradekeeper.Keeper
-	ParamsKeeper    paramskeeper.Keeper
-	AuthzKeeper     authzkeeper.Keeper
-	EvmKeeper       *evmkeeper.Keeper
-	FeeMarketKeeper feemarketkeeper.Keeper
-	BridgeKeeper    bridgekeeper.Keeper
+	ConsensusParamsKeeper consensusparamskeeper.Keeper
+	AccountKeeper         authkeeper.AccountKeeper
+	BankKeeper            bankkeeper.Keeper
+	PoaKeeper             poakeeper.Keeper
+	CrisisKeeper          *crisiskeeper.Keeper
+	UpgradeKeeper         *upgradekeeper.Keeper
+	ParamsKeeper          paramskeeper.Keeper
+	AuthzKeeper           authzkeeper.Keeper
+	EvmKeeper             *evmkeeper.Keeper
+	FeeMarketKeeper       feemarketkeeper.Keeper
+	BridgeKeeper          bridgekeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -226,9 +231,11 @@ func NewEvmos(
 	bApp.SetInterfaceRegistry(interfaceRegistry)
 
 	keys := sdk.NewKVStoreKeys(
+		consensusparamstypes.StoreKey,
 		authtypes.StoreKey,
 		banktypes.StoreKey,
 		poatypes.StoreKey,
+		crisistypes.StoreKey,
 		paramstypes.StoreKey,
 		authzkeeper.StoreKey,
 		upgradetypes.StoreKey,
@@ -239,7 +246,7 @@ func NewEvmos(
 	tkeys := sdk.NewTransientStoreKeys(paramstypes.TStoreKey, evmtypes.TransientKey, feemarkettypes.TransientKey)
 
 	// load state streaming if enabled
-	if _, _, err := streaming.LoadStreamingServices(bApp, appOpts, appCodec, keys); err != nil {
+	if _, _, err := streaming.LoadStreamingServices(bApp, appOpts, appCodec, logger, keys); err != nil {
 		fmt.Printf("failed to load state streaming: %s", err)
 		os.Exit(1)
 	}
@@ -272,26 +279,58 @@ func NewEvmos(
 
 	// init params keeper and subspaces
 	app.ParamsKeeper = initParamsKeeper(appCodec, cdc, keys[paramstypes.StoreKey], tkeys[paramstypes.TStoreKey])
+	// init consensus params keeper
+	app.ConsensusParamsKeeper = consensusparamskeeper.NewKeeper(
+		appCodec,
+		keys[consensusparamstypes.StoreKey],
+		authority.String(),
+	)
 	// set the BaseApp's parameter store
-	bApp.SetParamStore(app.ParamsKeeper.Subspace(baseapp.Paramspace).WithKeyTable(paramstypes.ConsensusParamsKeyTable()))
+	bApp.SetParamStore(&app.ConsensusParamsKeeper)
 
 	// use custom Ethermint account for contracts
 	app.AccountKeeper = authkeeper.NewAccountKeeper(
-		appCodec, keys[authtypes.StoreKey], app.GetSubspace(authtypes.ModuleName), evmostypes.ProtoAccount, maccPerms, sdk.GetConfig().GetBech32AccountAddrPrefix(),
+		appCodec,
+		keys[authtypes.StoreKey],
+		evmostypes.ProtoAccount,
+		maccPerms,
+		sdk.GetConfig().GetBech32AccountAddrPrefix(),
+		authority.String(),
 	)
 	app.BankKeeper = bankkeeper.NewBaseKeeper(
-		appCodec, keys[banktypes.StoreKey], app.AccountKeeper, app.GetSubspace(banktypes.ModuleName), app.BlockedAddrs(),
+		appCodec,
+		keys[banktypes.StoreKey],
+		app.AccountKeeper,
+		app.BlockedAddrs(),
+		authority.String(),
 	)
 	app.PoaKeeper = poakeeper.NewKeeper(
 		keys[poatypes.StoreKey],
 		appCodec,
 	)
 	app.CrisisKeeper = crisiskeeper.NewKeeper(
-		app.GetSubspace(crisistypes.ModuleName), invCheckPeriod, app.BankKeeper, authtypes.FeeCollectorName,
+		appCodec,
+		keys[crisistypes.StoreKey],
+		invCheckPeriod,
+		app.BankKeeper,
+		authtypes.FeeCollectorName,
+		authority.String(),
 	)
-	app.UpgradeKeeper = upgradekeeper.NewKeeper(skipUpgradeHeights, keys[upgradetypes.StoreKey], appCodec, homePath, app.BaseApp, authority.String())
+	app.UpgradeKeeper = upgradekeeper.NewKeeper(
+		skipUpgradeHeights,
+		keys[upgradetypes.StoreKey],
+		appCodec,
+		homePath,
+		app.BaseApp,
+		authority.String(),
+	)
 
-	app.AuthzKeeper = authzkeeper.NewKeeper(keys[authzkeeper.StoreKey], appCodec, app.MsgServiceRouter(), app.AccountKeeper)
+	app.AuthzKeeper = authzkeeper.NewKeeper(
+		keys[authzkeeper.StoreKey],
+		appCodec,
+		app.MsgServiceRouter(),
+		app.AccountKeeper,
+	)
 
 	tracer := cast.ToString(appOpts.Get(srvflags.EVMTracer))
 
@@ -303,10 +342,16 @@ func NewEvmos(
 	)
 
 	app.EvmKeeper = evmkeeper.NewKeeper(
-		appCodec, keys[evmtypes.StoreKey], tkeys[evmtypes.TransientKey],
+		appCodec,
+		keys[evmtypes.StoreKey],
+		tkeys[evmtypes.TransientKey],
 		authority,
-		app.AccountKeeper, app.BankKeeper, app.PoaKeeper, app.FeeMarketKeeper,
-		tracer, app.GetSubspace(evmtypes.ModuleName),
+		app.AccountKeeper,
+		app.BankKeeper,
+		app.PoaKeeper,
+		app.FeeMarketKeeper,
+		tracer,
+		app.GetSubspace(evmtypes.ModuleName),
 	)
 
 	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper)
@@ -324,9 +369,10 @@ func NewEvmos(
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
-		auth.NewAppModule(appCodec, app.AccountKeeper, authsims.RandomGenesisAccounts),
-		bank.NewAppModule(appCodec, app.BankKeeper, app.AccountKeeper),
-		crisis.NewAppModule(&app.CrisisKeeper, skipGenesisInvariants),
+		consensusparams.NewAppModule(appCodec, app.ConsensusParamsKeeper),
+		auth.NewAppModule(appCodec, app.AccountKeeper, authsims.RandomGenesisAccounts, app.GetSubspace(authtypes.ModuleName)),
+		bank.NewAppModule(appCodec, app.BankKeeper, app.AccountKeeper, app.GetSubspace(banktypes.ModuleName)),
+		crisis.NewAppModule(app.CrisisKeeper, skipGenesisInvariants, app.GetSubspace(crisistypes.ModuleName)),
 		poa.NewAppModule(app.PoaKeeper),
 		upgrade.NewAppModule(app.UpgradeKeeper),
 		params.NewAppModule(app.ParamsKeeper),
@@ -349,6 +395,7 @@ func NewEvmos(
 		authz.ModuleName,
 		paramstypes.ModuleName,
 		bridgetypes.ModuleName,
+		consensusparamstypes.ModuleName,
 	)
 
 	// NOTE: fee market module must go last in order to retrieve the block gas used.
@@ -356,13 +403,14 @@ func NewEvmos(
 		crisistypes.ModuleName,
 		poatypes.ModuleName,
 		evmtypes.ModuleName,
-		feemarkettypes.ModuleName,
 		authtypes.ModuleName,
 		banktypes.ModuleName,
 		authz.ModuleName,
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
+		consensusparamstypes.ModuleName,
+		feemarkettypes.ModuleName,
 	)
 
 	// NOTE: crisis module must go at the end to check for invariants on each module
@@ -377,10 +425,10 @@ func NewEvmos(
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
 		crisistypes.ModuleName,
+		consensusparamstypes.ModuleName,
 	)
 
-	app.mm.RegisterInvariants(&app.CrisisKeeper)
-	app.mm.RegisterRoutes(app.Router(), app.QueryRouter(), encodingConfig.Amino)
+	app.mm.RegisterInvariants(app.CrisisKeeper)
 	app.configurator = module.NewConfigurator(app.appCodec, app.MsgServiceRouter(), app.GRPCQueryRouter())
 	app.mm.RegisterServices(app.configurator)
 

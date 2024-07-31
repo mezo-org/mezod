@@ -33,7 +33,7 @@ del /s /q %HOME%
 evmosd config keyring-backend %KEYRING%
 evmosd config chain-id %CHAINID%
 
-evmosd keys add %KEY% --keyring-backend %KEYRING% --algo %KEYALGO%
+evmosd keys add %KEY% --keyring-backend %KEYRING% --key-type %KEYALGO%
 
 rem Set moniker and chain-id for Evmos (Moniker can be anything, chain-id must be an integer)
 evmosd init %MONIKER% --chain-id %CHAINID% 

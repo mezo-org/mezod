@@ -3,6 +3,8 @@ package keeper_test
 import (
 	"testing"
 
+	"github.com/evmos/evmos/v12/utils"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -50,5 +52,5 @@ func TestKeeperTestSuite(t *testing.T) {
 func (suite *KeeperTestSuite) SetupTest() {
 	checkTx := false
 	suite.app = app.Setup(checkTx, nil)
-	suite.SetupApp(checkTx)
+	suite.SetupApp(checkTx, utils.TestnetChainID+"-1")
 }

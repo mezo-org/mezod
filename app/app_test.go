@@ -5,20 +5,22 @@ import (
 	"os"
 	"testing"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/cosmos/cosmos-sdk/baseapp"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
+
+	"github.com/cometbft/cometbft/crypto/ed25519"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/cometbft/cometbft-db"
+	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/cometbft/cometbft/libs/log"
+	tmtypes "github.com/cometbft/cometbft/types"
 
 	"github.com/evmos/evmos/v12/encoding"
 	"github.com/evmos/evmos/v12/utils"
@@ -42,7 +44,19 @@ func TestEvmosExport(t *testing.T) {
 	}
 
 	db := dbm.NewMemDB()
-	app := NewEvmos(log.NewTMLogger(log.NewSyncWriter(os.Stdout)), db, nil, true, map[int64]bool{}, DefaultNodeHome, 0, encoding.MakeConfig(ModuleBasics), simapp.EmptyAppOptions{})
+	chainID := utils.MainnetChainID + "-1"
+	app := NewEvmos(
+		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+		db,
+		nil,
+		true,
+		map[int64]bool{},
+		DefaultNodeHome,
+		0,
+		encoding.MakeConfig(ModuleBasics),
+		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		baseapp.SetChainID(chainID),
+	)
 
 	genesisState := NewDefaultGenesisState()
 	genesisState = GenesisStateWithValSet(
@@ -67,7 +81,18 @@ func TestEvmosExport(t *testing.T) {
 	app.Commit()
 
 	// Making a new app object with the db, so that initchain hasn't been called
-	app2 := NewEvmos(log.NewTMLogger(log.NewSyncWriter(os.Stdout)), db, nil, true, map[int64]bool{}, DefaultNodeHome, 0, encoding.MakeConfig(ModuleBasics), simapp.EmptyAppOptions{})
+	app2 := NewEvmos(
+		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+		db,
+		nil,
+		true,
+		map[int64]bool{},
+		DefaultNodeHome,
+		0,
+		encoding.MakeConfig(ModuleBasics),
+		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		baseapp.SetChainID(chainID),
+	)
 	_, err = app2.ExportAppStateAndValidators(false, []string{})
 	require.NoError(t, err, "ExportAppStateAndValidators should not have an error")
 }
