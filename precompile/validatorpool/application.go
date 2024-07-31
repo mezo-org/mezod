@@ -3,12 +3,12 @@ package validatorpool
 import (
 	"fmt"
 
+	"github.com/cometbft/cometbft/crypto/ed25519"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
 // SubmitApplicationMethodName is the name of the submitApplication method. It matches the name

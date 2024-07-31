@@ -5,6 +5,7 @@ import (
 	"time"
 
 	errorsmod "cosmossdk.io/errors"
+	"github.com/cometbft/cometbft/crypto/ed25519"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -20,7 +21,6 @@ import (
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/stretchr/testify/suite"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"golang.org/x/exp/maps"
 )
 
