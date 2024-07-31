@@ -66,7 +66,7 @@ import (
 
 	poacli "github.com/evmos/evmos/v12/x/poa/client/cli"
 
-	rosettacmd "cosmossdk.io/tools/rosetta/cmd"
+	rosettacmd "github.com/cosmos/rosetta/cmd"
 )
 
 const (

@@ -1,13 +1,14 @@
 module github.com/evmos/evmos/v12
 
-go 1.21
+go 1.22.2
+
+toolchain go1.22.5
 
 require (
 	cosmossdk.io/errors v1.0.1
 	cosmossdk.io/math v1.3.0
 	cosmossdk.io/simapp v0.0.0-20240715094535-c64d1010800d
 	cosmossdk.io/store v1.1.0
-	cosmossdk.io/tools/rosetta v0.2.1
 	cosmossdk.io/x/upgrade v0.1.4-0.20240625194835-17173894fea9
 	github.com/armon/go-metrics v0.4.1
 	github.com/btcsuite/btcd v0.22.2
@@ -18,6 +19,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.50.8
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/cosmos/gogoproto v1.5.0
+	github.com/cosmos/rosetta v0.50.8
 	github.com/cpuguy83/go-md2man/v2 v2.0.3
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/ethereum/go-ethereum v1.10.26
@@ -80,6 +82,8 @@ require (
 	github.com/99designs/keyring v1.2.1 // indirect
 	github.com/DataDog/datadog-go v3.2.0+incompatible // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
+	github.com/PuerkitoBio/purell v1.1.1 // indirect
+	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/aws/aws-sdk-go v1.44.224 // indirect
@@ -150,6 +154,7 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.3 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
+	github.com/goware/urlx v0.3.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
