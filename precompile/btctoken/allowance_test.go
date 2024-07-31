@@ -4,6 +4,8 @@ import (
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/evmos/evmos/v12/precompile"
@@ -45,8 +47,8 @@ func (s *PrecompileTestSuite) TestAllowance() {
 			run: func() []interface{} {
 				return []interface{}{s.account1.EvmAddr, s.account2.EvmAddr}
 			},
-			basicPass:   true,
-			errContains: "allowance authorization not found",
+			basicPass:     true,
+			expectedValue: common.Big0,
 		},
 		{
 			name: "allowance exists for spender",
@@ -111,7 +113,13 @@ func (s *PrecompileTestSuite) TestAllowance() {
 
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
-			s.Require().Equal(tc.expectedValue, out[0], "expected different value")
+
+			val, ok := out[0].(*big.Int)
+			if !ok {
+				s.Require().Equal(tc.expectedValue, out[0], "expected different value")
+			} else {
+				s.Require().Equal(0, tc.expectedValue.Cmp(val), "expected different value")
+			}
 		})
 	}
 }

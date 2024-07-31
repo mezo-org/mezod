@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	sdkmath "cosmossdk.io/math"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -79,19 +80,20 @@ func (am *allowanceMethod) Run(
 		return precompile.MethodOutputs{abi.MaxUint256}, nil
 	}
 
+	var allowance sdkmath.Int
 	authorization, _ := am.authzkeeper.GetAuthorization(context.SdkCtx(), precompile.TypesConverter.Address.ToSDK(spender), precompile.TypesConverter.Address.ToSDK(owner), SendMsgURL)
 	if authorization == nil {
-		return nil, fmt.Errorf("allowance authorization not found")
-	}
+		allowance = sdkmath.ZeroInt()
+	} else {
+		sendAuth, ok := authorization.(*banktypes.SendAuthorization)
+		if !ok {
+			return nil, fmt.Errorf(
+				"expected authorization to be a %T", banktypes.SendAuthorization{},
+			)
+		}
 
-	sendAuth, ok := authorization.(*banktypes.SendAuthorization)
-	if !ok {
-		return nil, fmt.Errorf(
-			"expected authorization to be a %T", banktypes.SendAuthorization{},
-		)
+		allowance = sendAuth.SpendLimit.AmountOfNoDenomValidation(evm.DefaultEVMDenom)
 	}
-
-	allowance := sendAuth.SpendLimit.AmountOfNoDenomValidation(evm.DefaultEVMDenom)
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(allowance),
