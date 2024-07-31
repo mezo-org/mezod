@@ -49,5 +49,6 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.
 		newApproveMethod(bankKeeper, authzkeeper),
 		newTransferMethod(bankKeeper, authzkeeper),
 		newTransferFromMethod(bankKeeper, authzkeeper),
+		newAllowanceMethod(authzkeeper),
 	}
 }
