@@ -277,7 +277,7 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 				s.Require().NoError(err, "failed to send coins from module to account")
 
 				// Approve the spender (acct2) to spend from the from (acct1) address
-				sendAuthz := banktypes.NewSendAuthorization(amount)
+				sendAuthz := banktypes.NewSendAuthorization(amount, nil)
 				expiration := s.ctx.BlockTime().Add(time.Hour * 24 * 365)
 				err = s.app.AuthzKeeper.SaveGrant(s.ctx, s.account2.EvmAddr.Bytes(), s.account1.EvmAddr.Bytes(), sendAuthz, &expiration)
 				s.Require().NoError(err, "expected no error saving the grant")
