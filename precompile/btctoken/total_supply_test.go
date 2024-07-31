@@ -40,6 +40,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 
 	for testName, tc := range testcases {
 		s.Run(testName, func() {
+			s.SetupTest()
 			if tc.run != nil {
 				tc.run(s.ctx, s.app)
 			}
