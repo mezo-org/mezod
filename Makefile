@@ -494,6 +494,7 @@ localnet-docker-show-logstream:
 ###############################################################################
 
 LOCALNET_DIR = .localnet
+LOCALNET_CHAIN_ID = mezo_31611-10
 
 localnet-bin-init:
 	@if ! [ -d build ]; then \
@@ -508,13 +509,13 @@ localnet-bin-init:
 		--home $(LOCALNET_DIR) \
 		--keyring-backend=test \
 		--starting-ip-address localhost \
-		--chain-id mezo_31611-10; \
+		--chain-id $(LOCALNET_CHAIN_ID); \
 	else \
 		echo "Skipped initializing localnet configuration."; \
 	fi
 
 localnet-bin-start:
-	./scripts/localnet-start.sh
+	LOCALNET_CHAIN_ID=$(LOCALNET_CHAIN_ID) ./scripts/localnet-start.sh
 
 localnet-bin-clean:
 	rm -rf $(LOCALNET_DIR) build
