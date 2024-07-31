@@ -108,7 +108,7 @@ func (mm *mintMethod) Run(
 	}
 
 	err = context.EventEmitter().Emit(
-		newTransferEvent(
+		NewTransferEvent(
 			common.BigToAddress(big.NewInt(0)),
 			recipient,
 			amount,
