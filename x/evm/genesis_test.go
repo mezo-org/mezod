@@ -7,7 +7,7 @@ import (
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -118,7 +118,7 @@ func (suite *EvmTestSuite) TestInitGenesis() {
 		{
 			"ignore empty account code checking with non-empty codehash",
 			func() {
-				ethAcc := &evmostypes.EthAccount{
+				ethAcc := &mezotypes.EthAccount{
 					BaseAccount: authtypes.NewBaseAccount(address.Bytes(), nil, 0, 0),
 					CodeHash:    common.BytesToHash([]byte{1, 2, 3}).Hex(),
 				}

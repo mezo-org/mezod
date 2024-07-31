@@ -6,7 +6,7 @@ import (
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/keeper"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -124,7 +124,7 @@ func (suite *KeeperTestSuite) TestGetAccountStorage() {
 			tc.malleate()
 			i := 0
 			suite.app.AccountKeeper.IterateAccounts(suite.ctx, func(account authtypes.AccountI) bool {
-				ethAccount, ok := account.(evmostypes.EthAccountI)
+				ethAccount, ok := account.(mezotypes.EthAccountI)
 				if !ok {
 					// ignore non EthAccounts
 					return false

@@ -23,7 +23,7 @@ import (
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	"github.com/cometbft/cometbft/types"
 
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 )
 
 const (
@@ -36,13 +36,13 @@ const (
 type EVMIndexerService struct {
 	service.BaseService
 
-	txIdxr evmostypes.EVMTxIndexer
+	txIdxr mezotypes.EVMTxIndexer
 	client rpcclient.Client
 }
 
 // NewEVMIndexerService returns a new service instance.
 func NewEVMIndexerService(
-	txIdxr evmostypes.EVMTxIndexer,
+	txIdxr mezotypes.EVMTxIndexer,
 	client rpcclient.Client,
 ) *EVMIndexerService {
 	is := &EVMIndexerService{txIdxr: txIdxr, client: client}

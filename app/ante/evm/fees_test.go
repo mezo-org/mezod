@@ -55,8 +55,8 @@ func (suite *AnteTestSuite) TestEthMinGasPriceDecorator() {
 				err := suite.app.FeeMarketKeeper.SetParams(suite.ctx, params)
 				suite.Require().NoError(err)
 				testMsg := banktypes.MsgSend{
-					FromAddress: "evmos1x8fhpj9nmhqk8z9kpgjt95ck2xwyue0ptzkucp",
-					ToAddress:   "evmos1dx67l23hz9l0k9hcher8xz04uj7wf3yu26l2yn",
+					FromAddress: "mezo1x8fhpj9nmhqk8z9kpgjt95ck2xwyue0ptzkucp",
+					ToAddress:   "mezo1dx67l23hz9l0k9hcher8xz04uj7wf3yu26l2yn",
 					Amount:      sdk.Coins{sdk.Coin{Amount: sdkmath.NewInt(10), Denom: denom}},
 				}
 				txBuilder := suite.CreateTestCosmosTxBuilder(sdkmath.NewInt(0), denom, &testMsg)

@@ -16,8 +16,8 @@ RUN apt-get install ca-certificates jq -y
 
 WORKDIR /root
 
-COPY --from=build-env /go/src/github.com/mezo-org/mezod/build/evmosd /usr/bin/evmosd
+COPY --from=build-env /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 
 EXPOSE 26656 26657 1317 9090 8545 8546
 
-CMD ["evmosd"]
+CMD ["mezod"]

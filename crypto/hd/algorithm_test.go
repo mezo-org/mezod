@@ -17,7 +17,7 @@ import (
 
 	cryptocodec "github.com/mezo-org/mezod/crypto/codec"
 	enccodec "github.com/mezo-org/mezod/encoding/codec"
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 )
 
 var TestCodec amino.Codec
@@ -43,7 +43,7 @@ const (
 func TestKeyring(t *testing.T) {
 	dir := t.TempDir()
 	mockIn := strings.NewReader("")
-	kr, err := keyring.New("evmos", keyring.BackendTest, dir, mockIn, TestCodec, EthSecp256k1Option())
+	kr, err := keyring.New("mezo", keyring.BackendTest, dir, mockIn, TestCodec, EthSecp256k1Option())
 	require.NoError(t, err)
 
 	// fail in retrieving key
@@ -52,7 +52,7 @@ func TestKeyring(t *testing.T) {
 	require.Nil(t, info)
 
 	mockIn.Reset("password\npassword\n")
-	info, mnemonic, err := kr.NewMnemonic("foo", keyring.English, evmostypes.BIP44HDPath, keyring.DefaultBIP39Passphrase, EthSecp256k1)
+	info, mnemonic, err := kr.NewMnemonic("foo", keyring.English, mezotypes.BIP44HDPath, keyring.DefaultBIP39Passphrase, EthSecp256k1)
 	require.NoError(t, err)
 	require.NotEmpty(t, mnemonic)
 	require.Equal(t, "foo", info.Name)
@@ -61,7 +61,7 @@ func TestKeyring(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, string(EthSecp256k1Type), pubKey.Type())
 
-	hdPath := evmostypes.BIP44HDPath
+	hdPath := mezotypes.BIP44HDPath
 
 	bz, err := EthSecp256k1.Derive()(mnemonic, keyring.DefaultBIP39Passphrase, hdPath)
 	require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestKeyring(t *testing.T) {
 }
 
 func TestDerivation(t *testing.T) {
-	bz, err := EthSecp256k1.Derive()(mnemonic, keyring.DefaultBIP39Passphrase, evmostypes.BIP44HDPath)
+	bz, err := EthSecp256k1.Derive()(mnemonic, keyring.DefaultBIP39Passphrase, mezotypes.BIP44HDPath)
 	require.NoError(t, err)
 	require.NotEmpty(t, bz)
 
@@ -105,7 +105,7 @@ func TestDerivation(t *testing.T) {
 	wallet, err := hdwallet.NewFromMnemonic(mnemonic)
 	require.NoError(t, err)
 
-	path := hdwallet.MustParseDerivationPath(evmostypes.BIP44HDPath)
+	path := hdwallet.MustParseDerivationPath(mezotypes.BIP44HDPath)
 	account, err := wallet.Derive(path, false)
 	require.NoError(t, err)
 

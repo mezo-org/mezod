@@ -14,7 +14,7 @@ import (
 	"github.com/mezo-org/mezod/server/config"
 	"github.com/mezo-org/mezod/testutil/network"
 
-	evmosnetwork "github.com/mezo-org/mezod/testutil/network"
+	mezonetwork "github.com/mezo-org/mezod/testutil/network"
 )
 
 type IntegrationTestSuite struct {
@@ -27,7 +27,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	s.T().Log("setting up integration test suite")
 
 	var err error
-	cfg := evmosnetwork.DefaultConfig()
+	cfg := mezonetwork.DefaultConfig()
 	cfg.JSONRPCAddress = config.DefaultJSONRPCAddress
 	cfg.NumValidators = 1
 

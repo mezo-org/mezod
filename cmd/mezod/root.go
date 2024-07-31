@@ -52,17 +52,17 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/crisis"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 
-	evmosclient "github.com/mezo-org/mezod/client"
+	mezoclient "github.com/mezo-org/mezod/client"
 	"github.com/mezo-org/mezod/client/debug"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
-	evmosserver "github.com/mezo-org/mezod/server"
+	mezoserver "github.com/mezo-org/mezod/server"
 	servercfg "github.com/mezo-org/mezod/server/config"
 	srvflags "github.com/mezo-org/mezod/server/flags"
 
 	"github.com/mezo-org/mezod/app"
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
-	evmoskr "github.com/mezo-org/mezod/crypto/keyring"
+	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
 	poacli "github.com/mezo-org/mezod/x/poa/client/cli"
 
@@ -73,7 +73,7 @@ const (
 	EnvPrefix = "MEZO"
 )
 
-// NewRootCmd creates a new root command for evmosd. It is called once in the
+// NewRootCmd creates a new root command for mezod. It is called once in the
 // main function.
 func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
@@ -86,7 +86,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		WithAccountRetriever(types.AccountRetriever{}).
 		WithBroadcastMode(flags.BroadcastSync).
 		WithHomeDir(app.DefaultNodeHome).
-		WithKeyringOptions(evmoskr.Option()).
+		WithKeyringOptions(mezokr.Option()).
 		WithViper(EnvPrefix).
 		WithLedgerHasProtobuf(true)
 
@@ -127,7 +127,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 
 	a := appCreator{encodingConfig}
 	rootCmd.AddCommand(
-		evmosclient.ValidateChainID(
+		mezoclient.ValidateChainID(
 			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
 		),
 		MigrateGenesisCmd(),
@@ -142,9 +142,9 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		pruning.PruningCmd(a.newApp),
 	)
 
-	evmosserver.AddCommands(
+	mezoserver.AddCommands(
 		rootCmd,
-		evmosserver.NewDefaultStartOptions(a.newApp, app.DefaultNodeHome),
+		mezoserver.NewDefaultStartOptions(a.newApp, app.DefaultNodeHome),
 		a.appExport,
 		addModuleInitFlags,
 	)
@@ -154,7 +154,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		rpc.StatusCommand(),
 		queryCommand(),
 		txCommand(),
-		evmosclient.KeyCommands(app.DefaultNodeHome),
+		mezoclient.KeyCommands(app.DefaultNodeHome),
 	)
 	rootCmd, err := srvflags.AddTxFlags(rootCmd)
 	if err != nil {
@@ -305,7 +305,7 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 		chainID = clientConfig.ChainID
 	}
 
-	evmosApp := app.NewMezo(
+	mezoApp := app.NewMezo(
 		logger,
 		db,
 		traceStore,
@@ -329,7 +329,7 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 		baseapp.SetChainID(chainID),
 	)
 
-	return evmosApp
+	return mezoApp
 }
 
 // appExport creates a new simapp (optionally at a given height)
@@ -344,23 +344,23 @@ func (a appCreator) appExport(
 	appOpts servertypes.AppOptions,
 	_ []string,
 ) (servertypes.ExportedApp, error) {
-	var evmosApp *app.Mezo
+	var mezoApp *app.Mezo
 	homePath, ok := appOpts.Get(flags.FlagHome).(string)
 	if !ok || homePath == "" {
 		return servertypes.ExportedApp{}, errors.New("application home not set")
 	}
 
 	if height != -1 {
-		evmosApp = app.NewMezo(logger, db, traceStore, false, map[int64]bool{}, "", uint(1), a.encCfg, appOpts)
+		mezoApp = app.NewMezo(logger, db, traceStore, false, map[int64]bool{}, "", uint(1), a.encCfg, appOpts)
 
-		if err := evmosApp.LoadHeight(height); err != nil {
+		if err := mezoApp.LoadHeight(height); err != nil {
 			return servertypes.ExportedApp{}, err
 		}
 	} else {
-		evmosApp = app.NewMezo(logger, db, traceStore, true, map[int64]bool{}, "", uint(1), a.encCfg, appOpts)
+		mezoApp = app.NewMezo(logger, db, traceStore, true, map[int64]bool{}, "", uint(1), a.encCfg, appOpts)
 	}
 
-	return evmosApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
+	return mezoApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
 }
 
 // initTendermintConfig helps to override default Tendermint Config values.

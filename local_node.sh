@@ -11,7 +11,7 @@ MONIKER="localnode"
 KEYRING="test"
 KEYALGO="eth_secp256k1"
 LOGLEVEL="info"
-# Set dedicated home directory for the evmosd instance
+# Set dedicated home directory for the mezod instance
 HOMEDIR="./.localnode"
 # to trace evm
 #TRACE="--trace"
@@ -51,19 +51,19 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	rm -rf "$HOMEDIR"
 
 	# Set client config
-	evmosd config keyring-backend $KEYRING --home "$HOMEDIR"
-	evmosd config chain-id $CHAINID --home "$HOMEDIR"
+	mezod config keyring-backend $KEYRING --home "$HOMEDIR"
+	mezod config chain-id $CHAINID --home "$HOMEDIR"
 
 	# If keys exist they should be deleted
 	for KEY in "${KEYS[@]}"; do
-		evmosd keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR"
+		mezod keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR"
 	done
 
 	# Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
-	evmosd init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR"
+	mezod init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR"
 
 	# Set the PoA owner.
-	OWNER=$(evmosd keys show "${KEYS[0]}" --address --bech acc --keyring-backend $KEYRING --home "$HOMEDIR")
+	OWNER=$(mezod keys show "${KEYS[0]}" --address --bech acc --keyring-backend $KEYRING --home "$HOMEDIR")
 	jq '.app_state["poa"]["owner"]="'"$OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Change parameter token denominations to abtc
@@ -113,7 +113,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# Allocate genesis accounts (cosmos formatted addresses)
 	for KEY in "${KEYS[@]}"; do
-		evmosd add-genesis-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
+		mezod add-genesis-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
 	done
 
 	# bc is required to add these big numbers
@@ -121,13 +121,13 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	jq -r --arg total_supply "$total_supply" '.app_state["bank"]["supply"][0]["amount"]=$total_supply' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Generate the validator.
-	evmosd genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
+	mezod genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
 
 	# Collect generated validators.
-	evmosd collect-genvals --home "$HOMEDIR"
+	mezod collect-genvals --home "$HOMEDIR"
 
 	# Run this to ensure everything worked and that the genesis file is setup correctly
-	evmosd validate-genesis --home "$HOMEDIR"
+	mezod validate-genesis --home "$HOMEDIR"
 
 	if [[ $1 == "pending" ]]; then
 		echo "pending mode is on, please wait for the first block committed."
@@ -135,4 +135,4 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 fi
 
 # Start the node (remove the --pruning=nothing flag if historical queries are not needed)
-evmosd start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --home "$HOMEDIR"
+mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --home "$HOMEDIR"

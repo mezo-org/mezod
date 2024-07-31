@@ -34,7 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/server/config"
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -115,8 +115,8 @@ type EVMBackend interface {
 
 	// Tx Info
 	GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransaction, error)
-	GetTxByEthHash(txHash common.Hash) (*evmostypes.TxResult, error)
-	GetTxByTxIndex(height int64, txIndex uint) (*evmostypes.TxResult, error)
+	GetTxByEthHash(txHash common.Hash) (*mezotypes.TxResult, error)
+	GetTxByTxIndex(height int64, txIndex uint) (*mezotypes.TxResult, error)
 	GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, idx hexutil.Uint) (*rpctypes.RPCTransaction, error)
 	GetTransactionReceipt(hash common.Hash) (map[string]interface{}, error)
 	GetTransactionByBlockHashAndIndex(hash common.Hash, idx hexutil.Uint) (*rpctypes.RPCTransaction, error)
@@ -151,7 +151,7 @@ type Backend struct {
 	chainID             *big.Int
 	cfg                 config.Config
 	allowUnprotectedTxs bool
-	indexer             evmostypes.EVMTxIndexer
+	indexer             mezotypes.EVMTxIndexer
 }
 
 // NewBackend creates a new Backend instance for cosmos and ethereum namespaces
@@ -160,9 +160,9 @@ func NewBackend(
 	logger log.Logger,
 	clientCtx client.Context,
 	allowUnprotectedTxs bool,
-	indexer evmostypes.EVMTxIndexer,
+	indexer mezotypes.EVMTxIndexer,
 ) *Backend {
-	chainID, err := evmostypes.ParseChainID(clientCtx.ChainID)
+	chainID, err := mezotypes.ParseChainID(clientCtx.ChainID)
 	if err != nil {
 		panic(err)
 	}

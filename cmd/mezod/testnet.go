@@ -52,11 +52,11 @@ import (
 	"github.com/mezo-org/mezod/server/config"
 	srvflags "github.com/mezo-org/mezod/server/flags"
 
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
-	evmoskr "github.com/mezo-org/mezod/crypto/keyring"
+	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 	"github.com/mezo-org/mezod/testutil/network"
 
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
@@ -139,7 +139,7 @@ or a similar setup where each node has a manually configurable IP address.
 Note, strict routability for addresses is turned off in the config file.
 
 Example:
-	evmosd testnet init-files --v 4 --output-dir ./.testnets --starting-ip-address 192.168.10.2
+	mezod testnet init-files --v 4 --output-dir ./.testnets --starting-ip-address 192.168.10.2
 	`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
@@ -166,7 +166,7 @@ Example:
 
 	addTestnetFlagsToCmd(cmd)
 	cmd.Flags().String(flagNodeDirPrefix, "node", "Prefix the directory name for each node with (node results in node0, node1, ...)")
-	cmd.Flags().String(flagNodeDaemonHome, "evmosd", "Home directory of the node's daemon configuration")
+	cmd.Flags().String(flagNodeDaemonHome, "mezod", "Home directory of the node's daemon configuration")
 	cmd.Flags().String(flagStartingIPAddress, "192.168.0.1", "Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:46656, ID1@192.168.0.2:46656, ...). Setting this flag to localhost results in configuration generation for binary-based localnet")
 	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "Select keyring's backend (os|file|test)")
 
@@ -183,7 +183,7 @@ and generate "v" directories, populated with necessary validator configuration f
 (private validator, genesis, config, etc.).
 
 Example:
-	evmosd testnet --v 4 --output-dir ./.testnets
+	mezod testnet --v 4 --output-dir ./.testnets
 	`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			args := startArgs{}
@@ -282,7 +282,7 @@ func initTestnetFiles(
 			nodeDir,
 			inBuf,
 			clientCtx.Codec,
-			evmoskr.Option(),
+			mezokr.Option(),
 		)
 		if err != nil {
 			return err
@@ -329,7 +329,7 @@ func initTestnetFiles(
 			banktypes.Balance{Address: address.String(), Coins: coins.Sort()},
 		)
 		genAccounts = append(
-			genAccounts, &evmostypes.EthAccount{
+			genAccounts, &mezotypes.EthAccount{
 				BaseAccount: authtypes.NewBaseAccount(address, nil, 0, 0),
 				CodeHash:    common.BytesToHash(evmtypes.EmptyCodeHash).Hex(),
 			},

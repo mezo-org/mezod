@@ -32,7 +32,7 @@ import (
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/testutil"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 	"github.com/stretchr/testify/require"
@@ -186,7 +186,7 @@ func (suite *KeeperTestSuite) SetupAppWithT(checkTx bool, t require.TestingT) {
 	evmtypes.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
 	suite.queryClient = evmtypes.NewQueryClient(queryHelper)
 
-	acc := &evmostypes.EthAccount{
+	acc := &mezotypes.EthAccount{
 		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), nil, 0, 0),
 		CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
 	}

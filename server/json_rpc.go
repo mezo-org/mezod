@@ -30,7 +30,7 @@ import (
 	"github.com/mezo-org/mezod/rpc"
 
 	"github.com/mezo-org/mezod/server/config"
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 )
 
 // StartJSONRPC starts the JSON-RPC server
@@ -39,7 +39,7 @@ func StartJSONRPC(ctx *server.Context,
 	tmRPCAddr,
 	tmEndpoint string,
 	config *config.Config,
-	indexer evmostypes.EVMTxIndexer,
+	indexer mezotypes.EVMTxIndexer,
 ) (*http.Server, chan struct{}, error) {
 	tmWsClient := ConnectTmWS(tmRPCAddr, tmEndpoint, ctx.Logger)
 

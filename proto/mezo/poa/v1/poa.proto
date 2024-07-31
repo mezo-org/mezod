@@ -1,5 +1,5 @@
 syntax = "proto3";
-package evmos.poa.v1;
+package mezo.poa.v1;
 
 import "gogoproto/gogo.proto";
 import "tendermint/types/types.proto";

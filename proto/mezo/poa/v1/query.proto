@@ -1,7 +1,7 @@
 syntax = "proto3";
-package evmos.poa.v1;
+package mezo.poa.v1;
 
-import "evmos/poa/v1/poa.proto";
+import "mezo/poa/v1/poa.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
 
@@ -11,19 +11,19 @@ option go_package = "github.com/mezo-org/mezod/x/poa/types";
 service Query {
   // Params queries the parameters of the module.
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
-    option (google.api.http).get = "/evmos/poa/v1/params";
+    option (google.api.http).get = "/mezo/poa/v1/params";
   }
   // Validators queries all validators of the module.
   rpc Validators(QueryValidatorsRequest) returns (QueryValidatorsResponse) {
-    option (google.api.http).get = "/evmos/poa/v1/validators";
+    option (google.api.http).get = "/mezo/poa/v1/validators";
   }
   // Validator queries a single validator by address.
   rpc Validator(QueryValidatorRequest) returns (QueryValidatorResponse) {
-    option (google.api.http).get = "/evmos/poa/v1/validators/{operator}";
+    option (google.api.http).get = "/mezo/poa/v1/validators/{operator}";
   }
   // Applications queries all validators' applications of the module.
   rpc Applications(QueryApplicationsRequest) returns (QueryApplicationsResponse) {
-    option (google.api.http).get = "/evmos/poa/v1/applications";
+    option (google.api.http).get = "/mezo/poa/v1/applications";
   }
 }
 

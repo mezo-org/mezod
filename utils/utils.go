@@ -78,7 +78,7 @@ func IsSupportedKey(pubkey cryptotypes.PubKey) bool {
 
 // GetMezoAddressFromBech32 returns the sdk.Account address of given address,
 // while also changing bech32 human readable prefix (HRP) to the value set on
-// the global sdk.Config (eg: `evmos`).
+// the global sdk.Config (eg: `mezo`).
 // The function fails if the provided bech32 address is invalid.
 func GetMezoAddressFromBech32(address string) (sdk.AccAddress, error) {
 	bech32Prefix := strings.SplitN(address, "1", 2)[0]

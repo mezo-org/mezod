@@ -37,7 +37,7 @@ import (
 	"github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
-	evmoskr "github.com/mezo-org/mezod/crypto/keyring"
+	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 )
 
 // AddGenesisAccountCmd returns add-genesis-account cobra Command.
@@ -73,7 +73,7 @@ contain valid denominations. Accounts may optionally be supplied with vesting pa
 						clientCtx.HomeDir,
 						inBuf,
 						clientCtx.Codec,
-						evmoskr.Option(),
+						mezokr.Option(),
 					)
 					if err != nil {
 						return err

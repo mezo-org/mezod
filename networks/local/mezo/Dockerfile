@@ -22,9 +22,9 @@ WORKDIR /
 RUN apt-get update
 
 # Copy over binaries from the build-env
-COPY --from=build-env /go/src/github.com/mezo-org/mezod/build/evmosd /
+COPY --from=build-env /go/src/github.com/mezo-org/mezod/build/mezod /
 
 EXPOSE 26656 26657 1317 9090 8545 8546
 
-# Run evmosd by default, omit entrypoint to ease using container with evmosd
+# Run mezod by default, omit entrypoint to ease using container with mezod
 ENTRYPOINT ["/bin/bash", "-c"]

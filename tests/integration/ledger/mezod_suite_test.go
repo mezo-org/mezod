@@ -33,7 +33,7 @@ import (
 	cosmosledger "github.com/cosmos/cosmos-sdk/crypto/ledger"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	clientkeys "github.com/mezo-org/mezod/client/keys"
-	evmoskeyring "github.com/mezo-org/mezod/crypto/keyring"
+	mezokeyring "github.com/mezo-org/mezod/crypto/keyring"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -143,7 +143,7 @@ func (suite *LedgerTestSuite) NewKeyringAndCtxs(krHome string, input io.Reader, 
 	return kr, initClientCtx, ctx
 }
 
-func (suite *LedgerTestSuite) evmosAddKeyCmd() *cobra.Command {
+func (suite *LedgerTestSuite) mezoAddKeyCmd() *cobra.Command {
 	cmd := keys.AddKeyCommand()
 
 	algoFlag := cmd.Flag(flags.FlagKeyType)
@@ -168,12 +168,12 @@ func (suite *LedgerTestSuite) evmosAddKeyCmd() *cobra.Command {
 
 func (suite *LedgerTestSuite) MockKeyringOption() keyring.Option {
 	return func(options *keyring.Options) {
-		options.SupportedAlgos = evmoskeyring.SupportedAlgorithms
-		options.SupportedAlgosLedger = evmoskeyring.SupportedAlgorithmsLedger
+		options.SupportedAlgos = mezokeyring.SupportedAlgorithms
+		options.SupportedAlgosLedger = mezokeyring.SupportedAlgorithmsLedger
 		options.LedgerDerivation = func() (cosmosledger.SECP256K1, error) { return suite.ledger, nil }
-		options.LedgerCreateKey = evmoskeyring.CreatePubkey
-		options.LedgerAppName = evmoskeyring.AppName
-		options.LedgerSigSkipDERConv = evmoskeyring.SkipDERConversion
+		options.LedgerCreateKey = mezokeyring.CreatePubkey
+		options.LedgerAppName = mezokeyring.AppName
+		options.LedgerSigSkipDERConv = mezokeyring.SkipDERConversion
 	}
 }
 

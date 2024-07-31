@@ -85,7 +85,7 @@ import (
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
 	srvflags "github.com/mezo-org/mezod/server/flags"
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm"
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -115,17 +115,17 @@ func init() {
 		panic(err)
 	}
 
-	DefaultNodeHome = filepath.Join(userHomeDir, ".evmosd")
+	DefaultNodeHome = filepath.Join(userHomeDir, ".mezod")
 
 	// manually update the power reduction by replacing micro (u) -> atto (a) btc
-	sdk.DefaultPowerReduction = evmostypes.PowerReduction
+	sdk.DefaultPowerReduction = mezotypes.PowerReduction
 	// modify fee market parameter defaults through global
 	feemarkettypes.DefaultMinGasPrice = MainnetMinGasPrices
 	feemarkettypes.DefaultMinGasMultiplier = MainnetMinGasMultiplier
 }
 
 // Name defines the application binary name
-const Name = "evmosd"
+const Name = "mezod"
 
 var (
 	// DefaultNodeHome default home directories for the application daemon
@@ -293,7 +293,7 @@ func NewMezo(
 	app.AccountKeeper = authkeeper.NewAccountKeeper(
 		appCodec,
 		keys[authtypes.StoreKey],
-		evmostypes.ProtoAccount,
+		mezotypes.ProtoAccount,
 		maccPerms,
 		sdk.GetConfig().GetBech32AccountAddrPrefix(),
 		authority.String(),
@@ -472,7 +472,7 @@ func (app *Mezo) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) {
 		Cdc:                    app.appCodec,
 		AccountKeeper:          app.AccountKeeper,
 		BankKeeper:             app.BankKeeper,
-		ExtensionOptionChecker: evmostypes.HasDynamicFeeExtensionOption,
+		ExtensionOptionChecker: mezotypes.HasDynamicFeeExtensionOption,
 		EvmKeeper:              app.EvmKeeper,
 		FeeMarketKeeper:        app.FeeMarketKeeper,
 		SignModeHandler:        txConfig.SignModeHandler(),

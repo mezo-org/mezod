@@ -14,7 +14,7 @@ option go_package = "github.com/mezo-org/mezod/x/evm/types";
 service Msg {
   // EthereumTx defines a method submitting Ethereum transactions.
   rpc EthereumTx(MsgEthereumTx) returns (MsgEthereumTxResponse) {
-    option (google.api.http).post = "/evmos/evm/v1/ethereum_tx";
+    option (google.api.http).post = "/mezo/evm/v1/ethereum_tx";
   };
   // UpdateParams defined a governance operation for updating the x/evm module parameters.
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);

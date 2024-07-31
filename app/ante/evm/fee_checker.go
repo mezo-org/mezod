@@ -25,7 +25,7 @@ import (
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 	anteutils "github.com/mezo-org/mezod/app/ante/utils"
-	evmostypes "github.com/mezo-org/mezod/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -60,7 +60,7 @@ func NewDynamicFeeChecker(k DynamicFeeEVMKeeper) anteutils.TxFeeChecker {
 		// get the priority tip cap from the extension option.
 		if hasExtOptsTx, ok := feeTx.(authante.HasExtensionOptionsTx); ok {
 			for _, opt := range hasExtOptsTx.GetExtensionOptions() {
-				if extOpt, ok := opt.GetCachedValue().(*evmostypes.ExtensionOptionDynamicFeeTx); ok {
+				if extOpt, ok := opt.GetCachedValue().(*mezotypes.ExtensionOptionDynamicFeeTx); ok {
 					maxPriorityPrice = extOpt.MaxPriorityPrice
 					break
 				}
