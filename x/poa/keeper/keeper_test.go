@@ -7,7 +7,7 @@ import (
 
 	dbm "github.com/cometbft/cometbft-db"
 	"github.com/cometbft/cometbft/crypto/ed25519"
-	"github.com/cometbft/cometbft/libs/log"
+	"cosmossdk.io/log"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 
 	"cosmossdk.io/store"

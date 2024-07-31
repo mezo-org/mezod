@@ -24,7 +24,7 @@ import (
 	"github.com/pkg/errors"
 
 	tmjson "github.com/cometbft/cometbft/libs/json"
-	"github.com/cometbft/cometbft/libs/log"
+	"cosmossdk.io/log"
 	tmquery "github.com/cometbft/cometbft/libs/pubsub/query"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"

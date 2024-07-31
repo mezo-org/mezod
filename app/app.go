@@ -35,7 +35,7 @@ import (
 
 	dbm "github.com/cometbft/cometbft-db"
 	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/libs/log"
+	"cosmossdk.io/log"
 	tmos "github.com/cometbft/cometbft/libs/os"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"

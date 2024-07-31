@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	kitlog "github.com/go-kit/log"
 	"os"
 	"testing"
 
@@ -17,9 +18,9 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
+	"cosmossdk.io/log"
 	dbm "github.com/cometbft/cometbft-db"
 	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/libs/log"
 	tmtypes "github.com/cometbft/cometbft/types"
 
 	"github.com/evmos/evmos/v12/encoding"
@@ -46,7 +47,7 @@ func TestEvmosExport(t *testing.T) {
 	db := dbm.NewMemDB()
 	chainID := utils.MainnetChainID + "-1"
 	app := NewEvmos(
-		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+		log.NewLogger(kitlog.NewSyncWriter(os.Stdout)),
 		db,
 		nil,
 		true,
@@ -82,7 +83,7 @@ func TestEvmosExport(t *testing.T) {
 
 	// Making a new app object with the db, so that initchain hasn't been called
 	app2 := NewEvmos(
-		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+		log.NewLogger(kitlog.NewSyncWriter(os.Stdout)),
 		db,
 		nil,
 		true,

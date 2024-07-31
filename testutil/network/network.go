@@ -31,11 +31,9 @@ import (
 	"testing"
 	"time"
 
+	"cosmossdk.io/log"
 	"cosmossdk.io/math"
 	dbm "github.com/cometbft/cometbft-db"
-	tmcfg "github.com/cometbft/cometbft/config"
-	tmflags "github.com/cometbft/cometbft/libs/cli/flags"
-	"github.com/cometbft/cometbft/libs/log"
 	tmrand "github.com/cometbft/cometbft/libs/rand"
 	"github.com/cometbft/cometbft/node"
 	tmclient "github.com/cometbft/cometbft/rpc/client"
@@ -73,6 +71,8 @@ import (
 	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 
 	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
+
+	kitlog "github.com/go-kit/log"
 )
 
 // package-wide network lock to only allow one test network at a time
@@ -343,8 +343,16 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 
 		logger := log.NewNopLogger()
 		if cfg.EnableTMLogging {
-			logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-			logger, _ = tmflags.ParseLogLevel("info", logger, tmcfg.DefaultLogLevel)
+			filter, err := log.ParseLogLevel("info")
+			if err != nil {
+				return nil, err
+			}
+			logger = log.NewLogger(
+				log.NewFilterWriter(
+					kitlog.NewSyncWriter(os.Stdout),
+					filter,
+				),
+			)
 		}
 
 		ctx.Logger = logger
