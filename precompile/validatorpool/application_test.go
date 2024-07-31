@@ -5,24 +5,17 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/vm"
 
-	"github.com/evmos/evmos/v12/precompile"
 	"github.com/evmos/evmos/v12/precompile/validatorpool"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
+	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 )
 
 func (s *PrecompileTestSuite) TestSubmitApplication() {
-	testcases := []struct {
-		name        string
-		run         func() []interface{}
-		postCheck   func()
-		basicPass   bool
-		errContains string
-	}{
+	testcases := []TestCase{
 		{
 			name:        "empty args",
 			run:         func() []interface{} { return nil },
+			as:          s.account1.EvmAddr,
 			errContains: "argument count mismatch",
 		},
 		{
@@ -32,70 +25,46 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 					1, 2, 3,
 				}
 			},
+			as:          s.account1.EvmAddr,
 			errContains: "argument count mismatch",
+		},
+		{
+			name: "keeper returns error",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account2.ConsPubKeyBytes32(),
+					s.account2.Description,
+				}
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: poatypes.ErrAlreadyApplying.Error(),
 		},
 		{
 			name: "valid application",
 			run: func() []interface{} {
 				return []interface{}{
-					[32]byte(s.account1.ConsPubKey.Bytes()),
+					s.account1.ConsPubKeyBytes32(),
 					s.account1.Description,
 				}
 			},
+			as:        s.account1.EvmAddr,
 			basicPass: true,
+			output:    []interface{}{true},
 			postCheck: func() {
+				// Check the keeper was updated
 				application, found := s.keeper.GetApplication(s.ctx, types.ValAddress(s.account1.SdkAddr))
 				s.Require().True(found, fmt.Sprintf("application not found %s\n%v", types.ValAddress(s.account1.SdkAddr), s.keeper.GetAllApplications(s.ctx)))
 				operator := types.AccAddress(application.Validator.GetOperator())
 				s.Require().Equal(operator, s.account1.SdkAddr, "expected application operator to match")
+				description := validatorpool.Description(application.Validator.GetDescription())
+				s.Require().Equal(description.Moniker, s.account1.Description.Moniker, "expected moniker to match")
 			},
 		},
 	}
 
-	for _, tc := range testcases {
-		s.Run(tc.name, func() {
-			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
-			}
-
-			validatorpoolPrecompile, err := validatorpool.NewPrecompile(s.keeper)
-			s.Require().NoError(err)
-			s.validatorpoolPrecompile = validatorpoolPrecompile
-
-			var methodInputs []interface{}
-			if tc.run != nil {
-				methodInputs = tc.run()
-			}
-
-			method := s.validatorpoolPrecompile.Abi.Methods["submitApplication"]
-			var methodInputArgs []byte
-			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
-
-			if tc.basicPass {
-				s.Require().NoError(err, "expected no error")
-			} else {
-				s.Require().Error(err, "expected error")
-				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
-				return
-			}
-
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
-			vmContract.Input = append(vmContract.Input, method.ID...)
-			vmContract.Input = append(vmContract.Input, methodInputArgs...)
-			vmContract.CallerAddress = s.account1.EvmAddr
-
-			output, err := s.validatorpoolPrecompile.Run(evm, vmContract, false)
-			s.Require().NoError(err, "expected no error")
-
-			out, err := method.Outputs.Unpack(output)
-			s.Require().NoError(err)
-			s.Require().Equal(true, out[0], "expected different value")
-
-			if tc.postCheck != nil {
-				tc.postCheck()
-			}
-		})
-	}
+	s.RunMethodTestCases(testcases, "submitApplication")
 }
 
 func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
@@ -107,7 +76,7 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 		{
 			name:       "pass",
 			operator:   s.account1.EvmAddr,
-			consPubKey: [32]byte(s.account1.ConsPubKey.Bytes()),
+			consPubKey: s.account1.ConsPubKeyBytes32(),
 		},
 	}
 
@@ -135,13 +104,7 @@ func (s *PrecompileTestSuite) TestEmitApplicationSubmittedEvent() {
 }
 
 func (s *PrecompileTestSuite) TestApproveApplication() {
-	testcases := []struct {
-		name        string
-		run         func() []interface{}
-		postCheck   func()
-		basicPass   bool
-		errContains string
-	}{
+	testcases := []TestCase{
 		{
 			name:        "empty args",
 			run:         func() []interface{} { return nil },
@@ -156,52 +119,41 @@ func (s *PrecompileTestSuite) TestApproveApplication() {
 			},
 			errContains: "argument count mismatch",
 		},
+		{
+			name: "keeper returns error",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account2.EvmAddr,
+				}
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "sender is not owner",
+		},
+		{
+			name: "valid approval",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account2.EvmAddr,
+				}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				// Check the keeper was updated
+				validator, found := s.keeper.GetValidator(s.ctx, types.ValAddress(s.account2.SdkAddr))
+				s.Require().True(found, fmt.Sprintf("validator not found %s\n", types.ValAddress(s.account2.SdkAddr)))
+				operator := types.AccAddress(validator.GetOperator())
+				s.Require().Equal(operator, s.account2.SdkAddr, "expected validator operator to match")
+				description := validatorpool.Description(validator.GetDescription())
+				s.Require().Equal(description.Moniker, s.account2.Description.Moniker, "expected moniker to match")
+			},
+		},
 	}
 
-	for _, tc := range testcases {
-		s.Run(tc.name, func() {
-			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
-			}
-
-			validatorpoolPrecompile, err := validatorpool.NewPrecompile(s.keeper)
-			s.Require().NoError(err)
-			s.validatorpoolPrecompile = validatorpoolPrecompile
-
-			var methodInputs []interface{}
-			if tc.run != nil {
-				methodInputs = tc.run()
-			}
-
-			method := s.validatorpoolPrecompile.Abi.Methods["approveApplication"]
-			var methodInputArgs []byte
-			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
-
-			if tc.basicPass {
-				s.Require().NoError(err, "expected no error")
-			} else {
-				s.Require().Error(err, "expected error")
-				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
-				return
-			}
-
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
-			vmContract.Input = append(vmContract.Input, method.ID...)
-			vmContract.Input = append(vmContract.Input, methodInputArgs...)
-			vmContract.CallerAddress = s.account2.EvmAddr
-
-			output, err := s.validatorpoolPrecompile.Run(evm, vmContract, false)
-			s.Require().NoError(err, "expected no error")
-
-			out, err := method.Outputs.Unpack(output)
-			s.Require().NoError(err)
-			s.Require().Equal(true, out[0], "expected different value")
-
-			if tc.postCheck != nil {
-				tc.postCheck()
-			}
-		})
-	}
+	s.RunMethodTestCases(testcases, "approveApplication")
 }
 
 func (s *PrecompileTestSuite) TestEmitApplicationApprovedEvent() {
@@ -254,4 +206,76 @@ func (s *PrecompileTestSuite) TestEmitValidatorJoinedEvent() {
 			s.Require().Equal(tc.operator, args[0].Value)
 		})
 	}
+}
+
+func (s *PrecompileTestSuite) TestApplication() {
+	testcases := []TestCase{
+		{
+			name:        "empty args",
+			run:         func() []interface{} { return nil },
+			as:          s.account1.EvmAddr,
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1, 2, 3,
+				}
+			},
+			as:          s.account1.EvmAddr,
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "keeper returns error",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account3.EvmAddr,
+				}
+			},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "application does not exist",
+		},
+		{
+			name: "valid application",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account2.EvmAddr,
+				}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{s.account2.ConsPubKeyBytes32(), s.account2.Description},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "application")
+}
+
+func (s *PrecompileTestSuite) TestApplications() {
+	testcases := []TestCase{
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1, 2, 3,
+				}
+			},
+			as:          s.account1.EvmAddr,
+			errContains: "argument count mismatch",
+		},
+		{
+			name:      "valid call",
+			run:       func() []interface{} { return nil },
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output: []interface{}{
+				[]common.Address{s.account2.EvmAddr},
+			},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "applications")
 }

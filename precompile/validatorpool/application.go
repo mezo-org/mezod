@@ -56,12 +56,12 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 
 	consPubKeyBytes, ok := inputs[0].([32]byte)
 	if !ok {
-		return nil, fmt.Errorf("consPubKey argument must be bytes32")
+		return nil, fmt.Errorf("consPubKey argument must be type bytes32")
 	}
 
 	description, ok := inputs[1].(Description)
 	if !ok {
-		return nil, fmt.Errorf("description argument must be Description")
+		return nil, fmt.Errorf("description argument must be type Description")
 	}
 
 	operator := context.MsgSender()
@@ -350,8 +350,8 @@ type ApplicationMethod struct {
 	keeper PoaKeeper
 }
 
-func newApplicationMethod(pk PoaKeeper) *ApplicationsMethod {
-	return &ApplicationsMethod{
+func newApplicationMethod(pk PoaKeeper) *ApplicationMethod {
+	return &ApplicationMethod{
 		keeper: pk,
 	}
 }

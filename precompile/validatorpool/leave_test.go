@@ -1,27 +1,16 @@
 package validatorpool_test
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/vm"
+	"fmt"
 
-	"github.com/evmos/evmos/v12/precompile"
+	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/evmos/evmos/v12/precompile/validatorpool"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
 )
 
 func (s *PrecompileTestSuite) TestLeave() {
-	testcases := []struct {
-		name        string
-		run         func() []interface{}
-		postCheck   func()
-		basicPass   bool
-		errContains string
-	}{
-		{
-			name:      "empty args",
-			run:       func() []interface{} { return nil },
-			basicPass: true,
-		},
+	testcases := []TestCase{
 		{
 			name: "argument count mismatch",
 			run: func() []interface{} {
@@ -31,52 +20,33 @@ func (s *PrecompileTestSuite) TestLeave() {
 			},
 			errContains: "argument count mismatch",
 		},
+		{
+			name: "keeper returns error",
+			run: func() []interface{} {
+				return nil
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "not an active validator",
+		},
+		{
+			name: "valid leave",
+			run: func() []interface{} {
+				return nil
+			},
+			as:        s.account3.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				// Check the keeper was updated
+				_, found := s.keeper.GetValidator(s.ctx, types.ValAddress(s.account3.SdkAddr))
+				s.Require().False(found, fmt.Sprintf("validator hasn't left %s\n", types.ValAddress(s.account3.SdkAddr)))
+			},
+		},
 	}
 
-	for _, tc := range testcases {
-		s.Run(tc.name, func() {
-			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
-			}
-
-			validatorpoolPrecompile, err := validatorpool.NewPrecompile(s.keeper)
-			s.Require().NoError(err)
-			s.validatorpoolPrecompile = validatorpoolPrecompile
-
-			var methodInputs []interface{}
-			if tc.run != nil {
-				methodInputs = tc.run()
-			}
-
-			method := s.validatorpoolPrecompile.Abi.Methods["leave"]
-			var methodInputArgs []byte
-			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
-
-			if tc.basicPass {
-				s.Require().NoError(err, "expected no error")
-			} else {
-				s.Require().Error(err, "expected error")
-				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
-				return
-			}
-
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
-			vmContract.Input = append(vmContract.Input, method.ID...)
-			vmContract.Input = append(vmContract.Input, methodInputArgs...)
-			vmContract.CallerAddress = s.account2.EvmAddr
-
-			output, err := s.validatorpoolPrecompile.Run(evm, vmContract, false)
-			s.Require().NoError(err, "expected no error")
-
-			out, err := method.Outputs.Unpack(output)
-			s.Require().NoError(err)
-			s.Require().Equal(true, out[0], "expected different value")
-
-			if tc.postCheck != nil {
-				tc.postCheck()
-			}
-		})
-	}
+	s.RunMethodTestCases(testcases, "leave")
 }
 
 func (s *PrecompileTestSuite) TestEmitValidatorLeftEvent() {

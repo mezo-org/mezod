@@ -205,13 +205,7 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "operator",
-                "type": "address"
-            }
-        ],
+        "inputs": [],
         "name": "applications",
         "outputs": [
             {
@@ -422,13 +416,7 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "operator",
-                "type": "address"
-            }
-        ],
+        "inputs": [],
         "name": "validators",
         "outputs": [
             {
