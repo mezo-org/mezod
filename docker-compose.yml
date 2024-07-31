@@ -13,6 +13,7 @@ services:
     command:
       - >
         /evmosd start --home /evmos
+        --chain-id mezo_31611-10
         --json-rpc.address="0.0.0.0:8545" --json-rpc.ws-address="0.0.0.0:8546"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
@@ -31,6 +32,7 @@ services:
     command:
       - >
         /evmosd start --home /evmos
+        --chain-id mezo_31611-10
         --json-rpc.address="0.0.0.0:8547" --json-rpc.ws-address="0.0.0.0:8548"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
@@ -49,6 +51,7 @@ services:
     command:
       - >
         /evmosd start --home /evmos
+        --chain-id mezo_31611-10
         --json-rpc.address="0.0.0.0:8549" --json-rpc.ws-address="0.0.0.0:8550"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
@@ -67,6 +70,7 @@ services:
     command:
       - >
         /evmosd start --home /evmos
+        --chain-id mezo_31611-10
         --json-rpc.address="0.0.0.0:8551" --json-rpc.ws-address="0.0.0.0:8552"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
