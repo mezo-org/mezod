@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	"github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/spf13/cobra"
 )
 

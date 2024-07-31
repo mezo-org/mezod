@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package cosmos
 
@@ -25,7 +25,7 @@ import (
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	anteutils "github.com/evmos/evmos/v12/app/ante/utils"
+	anteutils "github.com/mezo-org/mezod/app/ante/utils"
 )
 
 // DeductFeeDecorator deducts fees from the first signer of the tx.

@@ -2,7 +2,7 @@ package keeper
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 // SubmitApplication submits a new application to become a validator.

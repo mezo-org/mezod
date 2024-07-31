@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package cosmos
 
 import (
@@ -32,11 +32,11 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/ethereum/eip712"
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/ethereum/eip712"
+	"github.com/mezo-org/mezod/types"
 
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 var evmosCodec codec.ProtoCodecMarshaler

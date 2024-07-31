@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package backend
 
 import (
@@ -30,7 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // SendTransaction sends transaction based on received args using Node's key to sign it

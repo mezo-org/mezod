@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package filters
 
 import (
@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/evmos/evmos/v12/rpc/backend"
-	"github.com/evmos/evmos/v12/rpc/types"
+	"github.com/mezo-org/mezod/rpc/backend"
+	"github.com/mezo-org/mezod/rpc/types"
 
 	"github.com/cometbft/cometbft/libs/log"
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"

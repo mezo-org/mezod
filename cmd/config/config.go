@@ -12,14 +12,14 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package config
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/types"
 )
 
 const (

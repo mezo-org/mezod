@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package server
 
 import (
@@ -61,11 +61,11 @@ import (
 	pruningtypes "github.com/cosmos/cosmos-sdk/store/pruning/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/evmos/evmos/v12/indexer"
-	ethdebug "github.com/evmos/evmos/v12/rpc/namespaces/ethereum/debug"
-	"github.com/evmos/evmos/v12/server/config"
-	srvflags "github.com/evmos/evmos/v12/server/flags"
-	evmostypes "github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/indexer"
+	ethdebug "github.com/mezo-org/mezod/rpc/namespaces/ethereum/debug"
+	"github.com/mezo-org/mezod/server/config"
+	srvflags "github.com/mezo-org/mezod/server/flags"
+	evmostypes "github.com/mezo-org/mezod/types"
 
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 )

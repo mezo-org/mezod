@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package client
 
 import (
@@ -25,8 +25,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	clientkeys "github.com/evmos/evmos/v12/client/keys"
-	"github.com/evmos/evmos/v12/crypto/hd"
+	clientkeys "github.com/mezo-org/mezod/client/keys"
+	"github.com/mezo-org/mezod/crypto/hd"
 )
 
 // KeyCommands registers a sub-tree of commands to interact with

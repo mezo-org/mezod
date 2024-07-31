@@ -12,7 +12,7 @@ import (
 	tmtypes "github.com/cometbft/cometbft/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	tmos "github.com/cometbft/cometbft/libs/os"
 	"github.com/cosmos/cosmos-sdk/client"

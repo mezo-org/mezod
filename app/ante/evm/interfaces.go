@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package evm
 
 import (
@@ -25,9 +25,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 )
 
 // EVMKeeper defines the expected keeper interface used on the AnteHandler

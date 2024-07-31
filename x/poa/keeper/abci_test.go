@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 func TestEndBlocker(t *testing.T) {

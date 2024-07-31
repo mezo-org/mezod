@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/utils"
 
 	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -22,14 +22,14 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/testutil"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	evmostypes "github.com/evmos/evmos/v12/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/testutil"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	evmostypes "github.com/mezo-org/mezod/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 
 	"github.com/stretchr/testify/require"
 

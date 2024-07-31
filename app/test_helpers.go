@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package app
 
@@ -26,7 +26,7 @@ import (
 	"github.com/cometbft/cometbft/crypto/ed25519"
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	"cosmossdk.io/simapp"
 	dbm "github.com/cometbft/cometbft-db"
@@ -40,11 +40,11 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/evmos/evmos/v12/encoding"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/encoding"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
-	"github.com/evmos/evmos/v12/cmd/config"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/cmd/config"
+	"github.com/mezo-org/mezod/utils"
 )
 
 func init() {

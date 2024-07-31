@@ -6,10 +6,10 @@ import (
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
-	evmostypes "github.com/evmos/evmos/v12/types"
-	"github.com/evmos/evmos/v12/x/evm/keeper"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	evmostypes "github.com/mezo-org/mezod/types"
+	"github.com/mezo-org/mezod/x/evm/keeper"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
 

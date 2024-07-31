@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package types
 
 import (
@@ -23,7 +23,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/types"
 )
 
 func NewLegacyTx(tx *ethtypes.Transaction) (*LegacyTx, error) {

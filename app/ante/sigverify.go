@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package ante
 
@@ -28,7 +28,7 @@ import (
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 )
 
 var _ authante.SignatureVerificationGasConsumer = SigVerificationGasConsumer

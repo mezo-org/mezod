@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package server
 
 import (
@@ -21,9 +21,9 @@ import (
 	"time"
 
 	// TODO update import to local pkg when rpc pkg is migrated
-	"github.com/evmos/evmos/v12/server/config"
 	"github.com/gorilla/mux"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/mezo-org/mezod/server/config"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/netutil"
 

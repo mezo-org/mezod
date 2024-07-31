@@ -6,7 +6,7 @@ import (
 	tmtypes "github.com/cometbft/cometbft/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 // InitGenesis initialize default parameters

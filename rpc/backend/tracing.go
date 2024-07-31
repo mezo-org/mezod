@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package backend
 
 import (
@@ -23,8 +23,8 @@ import (
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	rpctypes "github.com/evmos/evmos/v12/rpc/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
 )
 

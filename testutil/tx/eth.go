@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package tx
 
 import (
@@ -31,10 +31,10 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/server/config"
-	"github.com/evmos/evmos/v12/utils"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/server/config"
+	"github.com/mezo-org/mezod/utils"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // PrepareEthTx creates an ethereum tx and signs it with the provided messages and private key.

@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package debug
 
 import (
@@ -29,7 +29,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	stderrors "github.com/pkg/errors"
 
@@ -40,8 +40,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/evmos/evmos/v12/rpc/backend"
-	rpctypes "github.com/evmos/evmos/v12/rpc/types"
+	"github.com/mezo-org/mezod/rpc/backend"
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
 )
 
 // HandlerT keeps track of the cpu profiler and trace execution

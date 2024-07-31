@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package client
 
 import (
@@ -28,8 +28,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/crypto/hd"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/crypto/hd"
 )
 
 // UnsafeExportEthKeyCommand exports a key with the given name as a private key in hex format.

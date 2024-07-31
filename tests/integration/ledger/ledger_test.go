@@ -9,12 +9,12 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/hd"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/tests/integration/ledger/mocks"
-	"github.com/evmos/evmos/v12/testutil"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/hd"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/tests/integration/ledger/mocks"
+	"github.com/mezo-org/mezod/testutil"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
 
 	"github.com/spf13/cobra"
 

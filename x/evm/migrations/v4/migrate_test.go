@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package v4_test
 
 import (
@@ -20,14 +20,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/x/evm/types"
 
 	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/encoding"
-	v4 "github.com/evmos/evmos/v12/x/evm/migrations/v4"
-	v4types "github.com/evmos/evmos/v12/x/evm/migrations/v4/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/encoding"
+	v4 "github.com/mezo-org/mezod/x/evm/migrations/v4"
+	v4types "github.com/mezo-org/mezod/x/evm/migrations/v4/types"
 )
 
 type mockSubspace struct {

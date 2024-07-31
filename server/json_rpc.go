@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package server
 
 import (
@@ -27,10 +27,10 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/types"
 	ethlog "github.com/ethereum/go-ethereum/log"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/evmos/evmos/v12/rpc"
+	"github.com/mezo-org/mezod/rpc"
 
-	"github.com/evmos/evmos/v12/server/config"
-	evmostypes "github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/server/config"
+	evmostypes "github.com/mezo-org/mezod/types"
 )
 
 // StartJSONRPC starts the JSON-RPC server

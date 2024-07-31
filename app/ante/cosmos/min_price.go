@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package cosmos
 
 import (
@@ -21,7 +21,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
-	evmante "github.com/evmos/evmos/v12/app/ante/evm"
+	evmante "github.com/mezo-org/mezod/app/ante/evm"
 )
 
 // MinGasPriceDecorator will check if the transaction's fee is at least as large

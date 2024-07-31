@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package v4_test
 
 import (
@@ -20,10 +20,10 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/encoding"
-	v4 "github.com/evmos/evmos/v12/x/feemarket/migrations/v4"
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/encoding"
+	v4 "github.com/mezo-org/mezod/x/feemarket/migrations/v4"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 	"github.com/stretchr/testify/require"
 )
 

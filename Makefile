@@ -9,7 +9,7 @@ BINDIR ?= $(GOPATH)/bin
 EVMOS_BINARY = evmosd
 EVMOS_DIR = evmos
 BUILDDIR ?= $(CURDIR)/build
-HTTPS_GIT := https://github.com/evmos/evmos.git
+HTTPS_GIT := https://github.com/mezo-org/mezod.git
 DOCKER := $(shell which docker)
 NAMESPACE := tharsishq
 PROJECT := evmos
@@ -279,7 +279,7 @@ update-swagger-docs: statik
 .PHONY: update-swagger-docs
 
 godocs:
-	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/evmos/evmos"
+	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/mezo-org/mezod"
 	godoc -http=:6060
 
 ###############################################################################
@@ -527,7 +527,7 @@ localnet-bin-clean:
 ###                                Releasing                                ###
 ###############################################################################
 
-PACKAGE_NAME:=github.com/evmos/evmos
+PACKAGE_NAME:=github.com/mezo-org/mezod
 GOLANG_CROSS_VERSION  = v1.20
 GOPATH ?= '$(HOME)/go'
 release-dry-run:

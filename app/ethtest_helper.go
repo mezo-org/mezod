@@ -12,18 +12,18 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package app
 
 import (
 	"encoding/json"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/utils"
 
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	"cosmossdk.io/simapp"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -39,7 +39,7 @@ import (
 	tmtypes "github.com/cometbft/cometbft/types"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/encoding"
+	"github.com/mezo-org/mezod/encoding"
 )
 
 // EthSetup initializes a new EvmosApp. A Nop logger is set in EvmosApp.

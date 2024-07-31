@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evmos/evmos/v12/utils"
-	"github.com/evmos/evmos/v12/x/evm/keeper"
+	"github.com/mezo-org/mezod/utils"
+	"github.com/mezo-org/mezod/x/evm/keeper"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/gogoproto/proto"
@@ -19,7 +19,7 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -32,13 +32,13 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	evmostypes "github.com/evmos/evmos/v12/types"
-	"github.com/evmos/evmos/v12/x/evm"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	"github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	evmostypes "github.com/mezo-org/mezod/types"
+	"github.com/mezo-org/mezod/x/evm"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	"github.com/mezo-org/mezod/x/evm/types"
 
 	"github.com/cometbft/cometbft/crypto/tmhash"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
@@ -47,7 +47,7 @@ import (
 	"github.com/cometbft/cometbft/version"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
 
 type EvmTestSuite struct {

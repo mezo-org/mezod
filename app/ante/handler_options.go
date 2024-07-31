@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package ante
 
@@ -25,11 +25,11 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	anteutils "github.com/evmos/evmos/v12/app/ante/utils"
+	anteutils "github.com/mezo-org/mezod/app/ante/utils"
 
-	cosmosante "github.com/evmos/evmos/v12/app/ante/cosmos"
-	evmante "github.com/evmos/evmos/v12/app/ante/evm"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	cosmosante "github.com/mezo-org/mezod/app/ante/cosmos"
+	evmante "github.com/mezo-org/mezod/app/ante/evm"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	sdkvesting "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
 )

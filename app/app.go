@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package app
 
@@ -27,8 +27,8 @@ import (
 	"sort"
 
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/evmos/evmos/v12/precompile/btctoken"
-	"github.com/evmos/evmos/v12/precompile/validatorpool"
+	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/precompile/validatorpool"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
@@ -81,28 +81,28 @@ import (
 	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
 	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 
-	ethante "github.com/evmos/evmos/v12/app/ante/evm"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/ethereum/eip712"
-	srvflags "github.com/evmos/evmos/v12/server/flags"
-	evmostypes "github.com/evmos/evmos/v12/types"
-	"github.com/evmos/evmos/v12/x/evm"
-	evmkeeper "github.com/evmos/evmos/v12/x/evm/keeper"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	"github.com/evmos/evmos/v12/x/feemarket"
-	feemarketkeeper "github.com/evmos/evmos/v12/x/feemarket/keeper"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	ethante "github.com/mezo-org/mezod/app/ante/evm"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/ethereum/eip712"
+	srvflags "github.com/mezo-org/mezod/server/flags"
+	evmostypes "github.com/mezo-org/mezod/types"
+	"github.com/mezo-org/mezod/x/evm"
+	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	"github.com/mezo-org/mezod/x/feemarket"
+	feemarketkeeper "github.com/mezo-org/mezod/x/feemarket/keeper"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
 	// unnamed import of statik for swagger UI support
-	_ "github.com/evmos/evmos/v12/client/docs/statik"
+	_ "github.com/mezo-org/mezod/client/docs/statik"
 
-	"github.com/evmos/evmos/v12/app/ante"
-	"github.com/evmos/evmos/v12/x/bridge"
-	bridgekeeper "github.com/evmos/evmos/v12/x/bridge/keeper"
-	bridgetypes "github.com/evmos/evmos/v12/x/bridge/types"
-	"github.com/evmos/evmos/v12/x/poa"
-	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/app/ante"
+	"github.com/mezo-org/mezod/x/bridge"
+	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	"github.com/mezo-org/mezod/x/poa"
+	poakeeper "github.com/mezo-org/mezod/x/poa/keeper"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	// Force-load the tracer engines to trigger registration due to Go-Ethereum v1.10.15 changes
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"

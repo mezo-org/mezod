@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package net
 
 import (
@@ -21,7 +21,7 @@ import (
 
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/types"
 )
 
 // PublicAPI is the eth_ prefixed set of APIs in the Web3 JSON-RPC spec.

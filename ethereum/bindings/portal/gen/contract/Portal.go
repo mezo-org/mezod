@@ -17,7 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/evmos/evmos/v12/ethereum/bindings/portal/gen/abi"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
 
 	"github.com/ipfs/go-log"
 

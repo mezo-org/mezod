@@ -6,7 +6,7 @@ RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y $PACKAGES
 
 # Set working directory for the build
-WORKDIR /go/src/github.com/evmos/evmos
+WORKDIR /go/src/github.com/mezo-org/mezod
 
 # Add source files
 COPY . .
@@ -22,7 +22,7 @@ WORKDIR /
 RUN apt-get update
 
 # Copy over binaries from the build-env
-COPY --from=build-env /go/src/github.com/evmos/evmos/build/evmosd /
+COPY --from=build-env /go/src/github.com/mezo-org/mezod/build/evmosd /
 
 EXPOSE 26656 26657 1317 9090 8545 8546
 

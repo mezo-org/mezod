@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package tx
 
 import (
@@ -29,10 +29,10 @@ import (
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/evmos/evmos/v12/app"
-	cryptocodec "github.com/evmos/evmos/v12/crypto/codec"
-	"github.com/evmos/evmos/v12/ethereum/eip712"
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/app"
+	cryptocodec "github.com/mezo-org/mezod/crypto/codec"
+	"github.com/mezo-org/mezod/ethereum/eip712"
+	"github.com/mezo-org/mezod/types"
 )
 
 type EIP712TxArgs struct {

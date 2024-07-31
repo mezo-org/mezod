@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package evm
 
@@ -26,11 +26,11 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 
-	anteutils "github.com/evmos/evmos/v12/app/ante/utils"
-	"github.com/evmos/evmos/v12/types"
-	"github.com/evmos/evmos/v12/x/evm/keeper"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	anteutils "github.com/mezo-org/mezod/app/ante/utils"
+	"github.com/mezo-org/mezod/types"
+	"github.com/mezo-org/mezod/x/evm/keeper"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"

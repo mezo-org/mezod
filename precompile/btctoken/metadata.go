@@ -1,7 +1,7 @@
 package btctoken
 
 import (
-	"github.com/evmos/evmos/v12/precompile"
+	"github.com/mezo-org/mezod/precompile"
 )
 
 const (

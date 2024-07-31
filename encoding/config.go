@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package encoding
 
 import (
@@ -22,7 +22,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 
-	enccodec "github.com/evmos/evmos/v12/encoding/codec"
+	enccodec "github.com/mezo-org/mezod/encoding/codec"
 )
 
 // MakeConfig creates an EncodingConfig for testing

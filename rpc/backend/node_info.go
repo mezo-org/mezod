@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package backend
 
 import (
@@ -34,11 +34,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	rpctypes "github.com/evmos/evmos/v12/rpc/types"
-	"github.com/evmos/evmos/v12/server/config"
-	"github.com/evmos/evmos/v12/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
+	"github.com/mezo-org/mezod/server/config"
+	"github.com/mezo-org/mezod/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // Accounts returns the list of accounts available to this node.

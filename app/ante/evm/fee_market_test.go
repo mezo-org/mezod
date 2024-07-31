@@ -8,12 +8,12 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/evmos/evmos/v12/app/ante/evm"
-	"github.com/evmos/evmos/v12/testutil"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	"github.com/evmos/evmos/v12/types"
-	"github.com/evmos/evmos/v12/utils"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/app/ante/evm"
+	"github.com/mezo-org/mezod/testutil"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	"github.com/mezo-org/mezod/types"
+	"github.com/mezo-org/mezod/utils"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 func (suite *AnteTestSuite) TestGasWantedDecorator() {

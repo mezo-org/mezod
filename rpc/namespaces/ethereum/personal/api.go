@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package personal
 
 import (
@@ -21,10 +21,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/evmos/evmos/v12/rpc/backend"
+	"github.com/mezo-org/mezod/rpc/backend"
 
-	"github.com/evmos/evmos/v12/crypto/hd"
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/crypto/hd"
+	"github.com/mezo-org/mezod/types"
 
 	"github.com/cometbft/cometbft/libs/log"
 
@@ -36,7 +36,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // PrivateAccountAPI is the personal_ prefixed set of APIs in the Web3 JSON-RPC spec.

@@ -12,14 +12,14 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package codec
 
 import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 )
 
 // RegisterInterfaces register the Evmos key concrete types.

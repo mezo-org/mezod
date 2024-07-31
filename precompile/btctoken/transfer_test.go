@@ -6,15 +6,15 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/utils"
 
 	sdkmath "cosmossdk.io/math"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/precompile"
-	"github.com/evmos/evmos/v12/precompile/btctoken"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 func (s *PrecompileTestSuite) TestTransfer() {

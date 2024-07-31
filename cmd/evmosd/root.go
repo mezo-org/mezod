@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package main
 
@@ -52,19 +52,19 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/crisis"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 
-	evmosclient "github.com/evmos/evmos/v12/client"
-	"github.com/evmos/evmos/v12/client/debug"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/ethereum/eip712"
-	evmosserver "github.com/evmos/evmos/v12/server"
-	servercfg "github.com/evmos/evmos/v12/server/config"
-	srvflags "github.com/evmos/evmos/v12/server/flags"
+	evmosclient "github.com/mezo-org/mezod/client"
+	"github.com/mezo-org/mezod/client/debug"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/ethereum/eip712"
+	evmosserver "github.com/mezo-org/mezod/server"
+	servercfg "github.com/mezo-org/mezod/server/config"
+	srvflags "github.com/mezo-org/mezod/server/flags"
 
-	"github.com/evmos/evmos/v12/app"
-	cmdcfg "github.com/evmos/evmos/v12/cmd/config"
-	evmoskr "github.com/evmos/evmos/v12/crypto/keyring"
+	"github.com/mezo-org/mezod/app"
+	cmdcfg "github.com/mezo-org/mezod/cmd/config"
+	evmoskr "github.com/mezo-org/mezod/crypto/keyring"
 
-	poacli "github.com/evmos/evmos/v12/x/poa/client/cli"
+	poacli "github.com/mezo-org/mezod/x/poa/client/cli"
 
 	rosettacmd "cosmossdk.io/tools/rosetta/cmd"
 )

@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package app
 
@@ -23,7 +23,7 @@ import (
 
 	"cosmossdk.io/simapp"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
-	"github.com/evmos/evmos/v12/encoding"
+	"github.com/mezo-org/mezod/encoding"
 )
 
 // NewDefaultGenesisState generates the default state for the application.

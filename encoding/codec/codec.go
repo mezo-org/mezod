@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package codec
 
 import (
@@ -21,8 +21,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/std"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	cryptocodec "github.com/evmos/evmos/v12/crypto/codec"
-	"github.com/evmos/evmos/v12/types"
+	cryptocodec "github.com/mezo-org/mezod/crypto/codec"
+	"github.com/mezo-org/mezod/types"
 )
 
 // RegisterLegacyAminoCodec registers Interfaces from types, crypto, and SDK std.

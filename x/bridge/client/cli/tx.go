@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	"github.com/mezo-org/mezod/x/bridge/types"
 )
 
 var DefaultRelativePacketTimeoutTimestamp = uint64((time.Duration(10) * time.Minute).Nanoseconds())

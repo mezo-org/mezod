@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package server
 
 import (
@@ -25,7 +25,7 @@ import (
 	tmstore "github.com/cometbft/cometbft/store"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/server"
-	"github.com/evmos/evmos/v12/indexer"
+	"github.com/mezo-org/mezod/indexer"
 )
 
 func NewIndexTxCmd() *cobra.Command {

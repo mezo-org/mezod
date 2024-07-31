@@ -5,7 +5,7 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 )
 
 // UpdateParams implements the gRPC MsgServer interface. When an UpdateParams

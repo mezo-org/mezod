@@ -12,7 +12,7 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package testutil
 
 import (
@@ -26,9 +26,9 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/testutil/tx"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/testutil/tx"
 )
 
 // Commit commits a block at a given time. Reminder: At the end of each

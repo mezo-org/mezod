@@ -12,15 +12,15 @@
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Evmos packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package testutil
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/app/ante/evm"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
+	"github.com/mezo-org/mezod/app/ante/evm"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // NewStateDB returns a new StateDB for testing purposes.

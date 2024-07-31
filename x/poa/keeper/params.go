@@ -3,7 +3,7 @@ package keeper
 import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 // GetParams returns the total set of poa parameters.
