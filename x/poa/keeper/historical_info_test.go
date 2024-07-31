@@ -7,8 +7,8 @@ import (
 
 	"github.com/evmos/evmos/v12/x/poa/types"
 
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/stretchr/testify/require"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 func TestTrackHistoricalInfo(t *testing.T) {

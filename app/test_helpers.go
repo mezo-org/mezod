@@ -20,19 +20,22 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/baseapp"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
+
+	"github.com/cometbft/cometbft/crypto/ed25519"
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 
+	"cosmossdk.io/simapp"
+	dbm "github.com/cometbft/cometbft-db"
+	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/cometbft/cometbft/libs/log"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	tmtypes "github.com/cometbft/cometbft/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -52,8 +55,8 @@ func init() {
 
 // DefaultConsensusParams defines the default Tendermint consensus params used in
 // Evmos testing.
-var DefaultConsensusParams = &abci.ConsensusParams{
-	Block: &abci.BlockParams{
+var DefaultConsensusParams = &tmproto.ConsensusParams{
+	Block: &tmproto.BlockParams{
 		MaxBytes: 200000,
 		MaxGas:   -1, // no limit
 	},
@@ -98,7 +101,20 @@ func Setup(
 
 	db := dbm.NewMemDB()
 
-	app := NewEvmos(log.NewNopLogger(), db, nil, true, map[int64]bool{}, DefaultNodeHome, 5, encoding.MakeConfig(ModuleBasics), simapp.EmptyAppOptions{})
+	chainID := utils.MainnetChainID + "-1"
+
+	app := NewEvmos(
+		log.NewNopLogger(),
+		db,
+		nil,
+		true,
+		map[int64]bool{},
+		DefaultNodeHome,
+		5,
+		encoding.MakeConfig(ModuleBasics),
+		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		baseapp.SetChainID(chainID),
+	)
 	if !isCheckTx {
 		// init chain must be called to stop deliverState from being nil
 		genesisState := NewDefaultGenesisState()
@@ -128,7 +144,7 @@ func Setup(
 		// Initialize the chain
 		app.InitChain(
 			abci.RequestInitChain{
-				ChainId:         utils.MainnetChainID + "-1",
+				ChainId:         chainID,
 				Validators:      []abci.ValidatorUpdate{},
 				ConsensusParams: DefaultConsensusParams,
 				AppStateBytes:   stateBytes,
@@ -178,7 +194,13 @@ func GenesisStateWithValSet(
 	}
 
 	// update total supply
-	bankGenesis := banktypes.NewGenesisState(banktypes.DefaultGenesisState().Params, balances, totalSupply, []banktypes.Metadata{})
+	bankGenesis := banktypes.NewGenesisState(
+		banktypes.DefaultGenesisState().Params,
+		balances,
+		totalSupply,
+		[]banktypes.Metadata{},
+		[]banktypes.SendEnabled{},
+	)
 	genesisState[banktypes.ModuleName] = app.AppCodec().MustMarshalJSON(bankGenesis)
 
 	return genesisState

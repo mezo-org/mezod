@@ -2,6 +2,11 @@
 
 HOMEDIR=./.localnet
 
+if [ -z "${LOCALNET_CHAIN_ID}" ]; then
+  echo "Please set the LOCALNET_CHAIN_ID environment variable."
+  exit 1
+fi
+
 if [ ! -d "$HOMEDIR" ]; then
   echo "localnet directory $HOMEDIR does not exist; run make localnet-bin-init first."
   exit 1
@@ -36,6 +41,7 @@ NODE_HOMEDIR="$HOMEDIR/$NODE_NAME/evmosd"
 echo "starting node $NODE_NAME with home directory $NODE_HOMEDIR"
 
 ./build/evmosd start --home "$NODE_HOMEDIR" \
+  --chain-id=$LOCALNET_CHAIN_ID \
   --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" \
   --json-rpc.enable
 

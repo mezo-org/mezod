@@ -56,7 +56,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# If keys exist they should be deleted
 	for KEY in "${KEYS[@]}"; do
-		evmosd keys add "$KEY" --keyring-backend $KEYRING --algo $KEYALGO --home "$HOMEDIR"
+		evmosd keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR"
 	done
 
 	# Set moniker and chain-id for Evmos (Moniker can be anything, chain-id must be an integer)

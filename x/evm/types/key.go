@@ -31,9 +31,6 @@ const (
 	// TransientKey is the key to access the EVM transient store, that is reset
 	// during the Commit phase.
 	TransientKey = "transient_" + ModuleName
-
-	// RouterKey uses module name for routing
-	RouterKey = ModuleName
 )
 
 // prefix bytes for the EVM persistent store

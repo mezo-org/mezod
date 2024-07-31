@@ -200,7 +200,7 @@ func (s *PrecompileTestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, 
 func (s *PrecompileTestSuite) setupSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
 	authzKeeper := s.app.AuthzKeeper
 	expiration := s.ctx.BlockTime().Add(time.Hour * 24 * 365)
-	sendAuthz := banktypes.NewSendAuthorization(amount)
+	sendAuthz := banktypes.NewSendAuthorization(amount, nil)
 	err := sendAuthz.ValidateBasic()
 	s.Require().NoError(err, "expected no error validating the grant")
 

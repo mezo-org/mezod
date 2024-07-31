@@ -73,8 +73,7 @@ Check out our [good first issues](https://github.com/evmos/evmos/issues?q=label%
 ## <span id="adr">Architecture Decision Records (ADR)</span>
 
 When proposing an architecture decision for Evmos,
-please create an [ADR](https://github.com/evmos/evmos/blob/main/docs/architecture/README.md)
-so further discussions can be made.
+please create an ADR so further discussions can be made.
 We are following this process so all involved parties are in agreement
 before any party begins coding the proposed implementation.
 If you would like to see some examples of how these are written
@@ -143,7 +142,7 @@ on `go mod tidy -v`.
 ## <span id="protobuf">Protobuf</span>
 
 We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along
-with [gogoproto](https://github.com/gogo/protobuf) to generate code for use in Evmos.
+with [gogoproto](https://github.com/cosmos/gogoproto) to generate code for use in Evmos.
 
 For deterministic behavior around Protobuf tooling, everything is containerized using Docker. Make sure to have Docker
 installed on your machine, or head to [Docker's website](https://docs.docker.com/get-docker/) to install it.

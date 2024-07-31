@@ -5,13 +5,16 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/evmos/evmos/v12/utils"
+
+	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	poatypes "github.com/evmos/evmos/v12/x/poa/types"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -30,12 +33,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/cometbft/cometbft-db"
+	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/cometbft/cometbft/libs/log"
 )
 
-func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
+func (suite *KeeperTestSuite) SetupApp(checkTx bool, chainID string) {
 	t := suite.T()
 	// account key
 	accPriv, err := ethsecp256k1.GenerateKey()
@@ -48,7 +51,7 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	suite.consAddress = sdk.ConsAddress(priv.PubKey().Address())
 
 	header := testutil.NewHeader(
-		1, time.Now().UTC(), "mezo_31611-1", suite.consAddress, nil, nil,
+		1, time.Now().UTC(), chainID, suite.consAddress, nil, nil,
 	)
 
 	suite.ctx = suite.app.BaseApp.NewContext(checkTx, header)
@@ -105,7 +108,8 @@ func (suite *KeeperTestSuite) CommitAfter(t time.Duration) {
 // setupTestWithContext sets up a test chain with an example Cosmos send msg,
 // given a local (validator config) and a global (feemarket param) minGasPrice
 func setupTestWithContext(valMinGasPrice string, minGasPrice sdk.Dec, baseFee sdkmath.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
-	privKey, msg := setupTest(valMinGasPrice + s.denom)
+	chainID := utils.TestnetChainID + "-1"
+	privKey, msg := setupTest(valMinGasPrice+s.denom, chainID)
 	params := types.DefaultParams()
 	params.MinGasPrice = minGasPrice
 	err := s.app.FeeMarketKeeper.SetParams(s.ctx, params)
@@ -116,8 +120,8 @@ func setupTestWithContext(valMinGasPrice string, minGasPrice sdk.Dec, baseFee sd
 	return privKey, msg
 }
 
-func setupTest(localMinGasPrices string) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
-	setupChain(localMinGasPrices)
+func setupTest(localMinGasPrices, chainID string) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
+	setupChain(localMinGasPrices, chainID)
 
 	address, privKey := utiltx.NewAccAddressAndKey()
 	amount, ok := sdkmath.NewIntFromString("10000000000000000000")
@@ -141,7 +145,7 @@ func setupTest(localMinGasPrices string) (*ethsecp256k1.PrivKey, banktypes.MsgSe
 	return privKey, msg
 }
 
-func setupChain(localMinGasPricesStr string) {
+func setupChain(localMinGasPricesStr, chainID string) {
 	// Initialize the app, so we can use SetMinGasPrices to set the
 	// validator-specific min-gas-prices setting
 	db := dbm.NewMemDB()
@@ -154,7 +158,8 @@ func setupChain(localMinGasPricesStr string) {
 		app.DefaultNodeHome,
 		5,
 		encoding.MakeConfig(app.ModuleBasics),
-		simapp.EmptyAppOptions{},
+		simutils.NewAppOptionsWithFlagHome(app.DefaultNodeHome),
+		baseapp.SetChainID(chainID),
 		baseapp.SetMinGasPrices(localMinGasPricesStr),
 	)
 
@@ -167,7 +172,7 @@ func setupChain(localMinGasPricesStr string) {
 	// Initialize the chain
 	newapp.InitChain(
 		abci.RequestInitChain{
-			ChainId:         "mezo_31611-1",
+			ChainId:         chainID,
 			Validators:      []abci.ValidatorUpdate{},
 			AppStateBytes:   stateBytes,
 			ConsensusParams: app.DefaultConsensusParams,
@@ -175,7 +180,7 @@ func setupChain(localMinGasPricesStr string) {
 	)
 
 	s.app = newapp
-	s.SetupApp(false)
+	s.SetupApp(false, chainID)
 }
 
 func getNonce(addressBytes []byte) uint64 {

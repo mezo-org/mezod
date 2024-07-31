@@ -2,11 +2,11 @@ package types
 
 import (
 	errorsmod "cosmossdk.io/errors"
+	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	abci "github.com/tendermint/tendermint/abci/types"
 
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
