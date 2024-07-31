@@ -19,11 +19,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/viper"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
