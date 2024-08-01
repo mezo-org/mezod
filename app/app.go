@@ -28,6 +28,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/evmos/evmos/v12/precompile/btctoken"
+	"github.com/evmos/evmos/v12/precompile/validatorpool"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
@@ -354,7 +355,7 @@ func NewEvmos(
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
-	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper)
+	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
@@ -700,14 +701,21 @@ func initParamsKeeper(
 // customEvmPrecompiles builds custom precompiles of the EVM module.
 func customEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
-	authzkeeper authzkeeper.Keeper,
+	authzKeeper authzkeeper.Keeper,
+	poaKeeper poakeeper.Keeper,
 ) ([]vm.PrecompiledContract, error) {
-	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzkeeper)
+	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
 	}
 
+	validatorPoolPrecompile, err := validatorpool.NewPrecompile(poaKeeper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validatorpool precompile: [%w]", err)
+	}
+
 	return []vm.PrecompiledContract{
 		btcTokenPrecompile,
+		validatorPoolPrecompile,
 	}, nil
 }
