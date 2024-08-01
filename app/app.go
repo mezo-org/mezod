@@ -510,18 +510,29 @@ func (app *Evmos) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
 	return app.mm.EndBlock(ctx)
 }
 
-// The DeliverTx method is intentionally decomposed to calculate the transactions per second.
-func (app *Evmos) DeliverTx(req abci.RequestDeliverTx) (res abci.ResponseDeliverTx) {
+// FinalizeBlock method is intentionally decomposed to calculate the
+// transactions per second.
+func (app *Evmos) FinalizeBlock(req *abci.RequestFinalizeBlock) (
+	res *abci.ResponseFinalizeBlock,
+	err error,
+) {
 	defer func() {
-		// TODO: Record the count along with the code and or reason so as to display
-		// in the transactions per second live dashboards.
-		if res.IsErr() {
-			app.tpsCounter.incrementFailure()
-		} else {
-			app.tpsCounter.incrementSuccess()
+		// Check required to not panic during res.TxResults in case the
+		// upstream FinalizeBlock errors out and returns a nil response.
+		if res == nil {
+			return
+		}
+
+		for _, txResult := range res.TxResults {
+			if txResult.IsErr() {
+				app.tpsCounter.incrementFailure()
+			} else {
+				app.tpsCounter.incrementSuccess()
+			}
 		}
 	}()
-	return app.BaseApp.DeliverTx(req)
+
+	return app.BaseApp.FinalizeBlock(req)
 }
 
 // InitChainer updates at chain initialization
