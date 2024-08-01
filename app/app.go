@@ -383,8 +383,11 @@ func NewEvmos(
 	)
 
 	// NOTE: upgrade module must go first to handle software upgrades.
-	app.mm.SetOrderBeginBlockers(
+	app.mm.SetOrderPreBlockers(
 		upgradetypes.ModuleName,
+	)
+
+	app.mm.SetOrderBeginBlockers(
 		feemarkettypes.ModuleName,
 		evmtypes.ModuleName,
 		poatypes.ModuleName,
@@ -438,6 +441,7 @@ func NewEvmos(
 
 	// initialize BaseApp
 	app.SetInitChainer(app.InitChainer)
+	app.SetPreBlocker(app.PreBlocker)
 	app.SetBeginBlocker(app.BeginBlocker)
 
 	maxGasWanted := cast.ToUint64(appOpts.Get(srvflags.EVMMaxTxGasWanted))
@@ -498,14 +502,17 @@ func (app *Evmos) setPostHandler() {
 	app.SetPostHandler(postHandler)
 }
 
-// BeginBlocker runs the Tendermint ABCI BeginBlock logic. It executes state changes at the beginning
-// of the new block for every registered module. If there is a registered fork at the current height,
-// BeginBlocker will schedule the upgrade plan and perform the state migration (if any).
+func (app *Evmos) PreBlocker(
+	ctx sdk.Context,
+	_ *abci.RequestFinalizeBlock,
+) (*sdk.ResponsePreBlock, error) {
+	return app.mm.PreBlock(ctx)
+}
+
 func (app *Evmos) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 	return app.mm.BeginBlock(ctx)
 }
 
-// EndBlocker updates every end block
 func (app *Evmos) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
 	return app.mm.EndBlock(ctx)
 }
