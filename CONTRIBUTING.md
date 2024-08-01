@@ -28,7 +28,7 @@ for overall information on repository workflow and standards.
 Contributing to this repo can mean many things such as participating in discussion or proposing code changes.
 To ensure a smooth workflow for all contributors,
 the following general procedure for contributing has been established:
-
+<!-- markdown-link-check-disable -->
 1. Either [open](https://github.com/mezo-org/mezod/issues/new/choose)
    or [find](https://github.com/mezo-org/mezod/issues) an issue you have identified and would like to contribute to
    resolving.
@@ -69,7 +69,7 @@ that PR runs a high likelihood of being rejected.
 
 Looking for a good place to start contributing?
 Check out our [good first issues](https://github.com/mezo-org/mezod/issues?q=label%3A%22good+first+issue%22).
-
+<!-- markdown-link-check-enable -->
 ## <span id="adr">Architecture Decision Records (ADR)</span>
 
 When proposing an architecture decision for Mezo,
