@@ -1,9 +1,9 @@
 syntax = "proto3";
 package mezo.bridge.v1;
 
-import "mezo/bridge/v1/genesis.proto";
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
+import "mezo/bridge/v1/genesis.proto";
 
 option go_package = "github.com/mezo-org/mezod/x/bridge/types";
 

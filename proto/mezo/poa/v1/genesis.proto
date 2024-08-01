@@ -1,8 +1,8 @@
 syntax = "proto3";
 package mezo.poa.v1;
 
-import "mezo/poa/v1/poa.proto";
 import "gogoproto/gogo.proto";
+import "mezo/poa/v1/poa.proto";
 
 option go_package = "github.com/mezo-org/mezod/x/poa/types";
 
