@@ -12,14 +12,14 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/precompile"
-	"github.com/evmos/evmos/v12/precompile/validatorpool"
-	"github.com/evmos/evmos/v12/testutil"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/validatorpool"
+	"github.com/mezo-org/mezod/testutil"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/maps"
 )
@@ -61,7 +61,7 @@ func (k *Key) ConsPubKeyBytes32() [32]byte {
 type PrecompileTestSuite struct {
 	suite.Suite
 
-	app    *app.Evmos
+	app    *app.Mezo
 	keeper *FakePoaKeeper
 	ctx    sdk.Context
 

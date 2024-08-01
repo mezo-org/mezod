@@ -3,7 +3,7 @@ package validatorpool_test
 import (
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/evmos/evmos/v12/precompile/validatorpool"
+	"github.com/mezo-org/mezod/precompile/validatorpool"
 )
 
 func (s *PrecompileTestSuite) TestTransferOwnership() {
