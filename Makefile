@@ -456,7 +456,7 @@ localnet-docker-build:
 
 # Start a 4-node testnet locally
 localnet-docker-start: localnet-docker-stop
-	@if ! [ -f build/node0/$(MEZO_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/mezo:Z meso/node "./mezod testnet init-files --v 4 -o /mezo --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
+	@if ! [ -f build/node0/$(MEZO_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/mezo:Z mezo-org/mezod "./mezod testnet init-files --v 4 -o /mezo --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
 	docker-compose up -d
 
 # Stop testnet
@@ -472,15 +472,15 @@ localnet-docker-clean:
 localnet-docker-unsafe-reset:
 	docker-compose down
 ifeq ($(OS),Windows_NT)
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\mezod:/mezo\Z meso/node "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node1\mezod:/mezo\Z meso/node "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node2\mezod:/mezo\Z meso/node "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node3\mezod:/mezo\Z meso/node "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node1\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node2\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node3\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
 else
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node0/mezod:/mezo:Z meso/node "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node1/mezod:/mezo:Z meso/node "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node2/mezod:/mezo:Z meso/node "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node3/mezod:/mezo:Z meso/node "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node0/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node1/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node2/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node3/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
 endif
 
 # Clean testnet
