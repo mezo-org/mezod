@@ -2,8 +2,8 @@ FROM golang:1.20.2-bullseye AS build-env
 
 WORKDIR /go/src/github.com/mezo-org/mezod
 
-RUN apt-get update -y
-RUN apt-get install git -y
+RUN apt-get update -y && \
+    apt-get install git -y
 
 COPY . .
 
@@ -11,8 +11,8 @@ RUN make build
 
 FROM golang:1.20.2-bullseye
 
-RUN apt-get update -y
-RUN apt-get install ca-certificates jq -y
+RUN apt-get update -y && \
+    apt-get install ca-certificates jq -y
 
 WORKDIR /root
 
