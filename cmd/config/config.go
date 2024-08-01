@@ -43,7 +43,7 @@ const (
 const (
 	// DisplayDenom defines the denomination displayed to users in client applications.
 	DisplayDenom = "btc"
-	// BaseDenom defines to the default denomination used in Mezo (staking, EVM, governance, etc.)
+	// BaseDenom defines the default denomination used in Mezo
 	BaseDenom = "abtc"
 )
 
