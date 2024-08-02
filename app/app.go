@@ -703,8 +703,9 @@ func customEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
+	evmKeeper evmkeeper.Keeper,
 ) ([]vm.PrecompiledContract, error) {
-	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
 	}

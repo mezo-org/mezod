@@ -48,6 +48,16 @@ const (
 	prefixTransientGasUsed
 )
 
+// prefix bytes for the precompile store
+const (
+	prefixPrecompileBTC = iota + 1
+)
+
+// prefix bytes for the precompile state
+const (
+	prefixNonce = iota + 1
+)
+
 // KVStore key prefixes
 var (
 	KeyPrefixCode    = []byte{prefixCode}
@@ -66,6 +76,12 @@ var (
 // AddressStoragePrefix returns a prefix to iterate over a given account storage.
 func AddressStoragePrefix(address common.Address) []byte {
 	return append(KeyPrefixStorage, address.Bytes()...)
+}
+
+// PrecompileBTCNonceKey returns the key under which the nonce of the BTC precompile is stored
+// for a given address.
+func PrecompileBTCNonceKey(address common.Address) []byte {
+	return append(AddressStoragePrefix(address), []byte{prefixPrecompileBTC, prefixNonce}...)
 }
 
 // StateKey defines the full key under which an account state is stored.

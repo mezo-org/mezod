@@ -6,6 +6,7 @@ import (
 
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
+	evmkeeper "github.com/evmos/evmos/v12/x/evm/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
 )
@@ -19,7 +20,7 @@ var filesystem embed.FS
 const EvmAddress = "0x7b7c000000000000000000000000000000000000"
 
 // NewPrecompile creates a new BTC token precompile.
-func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper) (*precompile.Contract, error) {
+func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
@@ -30,7 +31,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper)
 		common.HexToAddress(EvmAddress),
 	)
 
-	methods := newPrecompileMethods(bankKeeper, authzkeeper)
+	methods := newPrecompileMethods(bankKeeper, authzkeeper, evmkeeper)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -38,7 +39,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper)
 
 // newPrecompileMethods builds the list of methods for the BTC token precompile.
 // All methods returned by this function are registered in the BTC token precompile.
-func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper) []precompile.Method {
+func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
 		newMintMethod(bankKeeper),
 		newBalanceOfMethod(bankKeeper),
@@ -50,6 +51,6 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.
 		newTransferMethod(bankKeeper, authzkeeper),
 		newTransferFromMethod(bankKeeper, authzkeeper),
 		newAllowanceMethod(authzkeeper),
-		newPermitMethod(bankKeeper, authzkeeper),
+		newPermitMethod(bankKeeper, authzkeeper, evmkeeper),
 	}
 }

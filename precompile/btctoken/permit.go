@@ -6,11 +6,14 @@ import (
 	"math/big"
 	"time"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/evmos/evmos/v12/precompile"
+	evmkeeper "github.com/evmos/evmos/v12/x/evm/keeper"
+	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
 )
 
 // PermitMethodName is the name of the permit method that should match the name
@@ -24,15 +27,18 @@ const (
 type permitMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
+	evmkeeper   evmkeeper.Keeper
 }
 
 func newPermitMethod(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
+	evmkeeper evmkeeper.Keeper,
 ) *permitMethod {
 	return &permitMethod{
 		bankKeeper:  bankKeeper,
 		authzkeeper: authzkeeper,
+		evmkeeper:   evmkeeper,
 	}
 }
 
@@ -129,12 +135,24 @@ func (am *permitMethod) Run(
 		return nil, fmt.Errorf("invalid signature values")
 	}
 
+	nonce, err := am.getNonce(owner, context.SdkCtx())
+	if err != nil {
+		return nil, err
+	}
+	permitHash := crypto.NewKeccakState()
+	permitHash.Write(nonce.Bytes())
+	// TODO: continue writing to has
+
 	// A message should consist of:
 	// - The EIP712 Domain Separator (name, version, chainId, this precompile address, salt). See: https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator
 	// - The Permit struct that includes: permit_typehash, owner, spender, value, nonce?, deadline. See: https://eips.ethereum.org/EIPS/eip-2612#specification
 	// - The hash of the message
-	message := []byte("...") // TODO: constuct the real message
-	digest := crypto.Keccak256Hash(message)
+
+	messageHash := crypto.NewKeccakState()
+	messageHash.Write([]byte("\x19\x01"))
+	// messageHash.Write("domainSepartor") // TODO: add domain separator
+	messageHash.Write(permitHash.Sum(nil))
+	digest := crypto.Keccak256Hash(messageHash.Sum(nil))
 
 	// Concatenate r, s, and v to form the full signature
 	signature := append(r.Bytes(), s.Bytes()...)
@@ -176,6 +194,11 @@ func (am *permitMethod) Run(
 		return nil, err
 	}
 
+	err = am.setNonce(owner, context.SdkCtx())
+	if err != nil {
+		return nil, fmt.Errorf("failed to set nonce: %w", err)
+	}
+
 	err = context.EventEmitter().Emit(
 		NewApprovalEvent(
 			owner,
@@ -189,3 +212,25 @@ func (am *permitMethod) Run(
 
 	return precompile.MethodOutputs{true}, nil
 }
+
+func (am *permitMethod) getNonce(address common.Address, ctx sdk.Context) (common.Hash, error) {
+	key := evmtypes.PrecompileBTCNonceKey(address)
+	nonce := am.evmkeeper.GetState(ctx, address, common.HexToHash(string(key)))
+	if len(nonce) == 0 {
+		return common.Hash{}, fmt.Errorf("failed to get nonce for address %s", address.Hex())
+	}
+	return nonce, nil
+}
+
+func (am *permitMethod) setNonce(address common.Address, ctx sdk.Context) error {
+	key := evmtypes.PrecompileBTCNonceKey(address)
+	nonce, err := am.getNonce(address, ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get nonce: %w", err)
+	}
+	nonce.Big().Add(nonce.Big(), big.NewInt(1))
+	am.evmkeeper.SetState(ctx, address, common.HexToHash(string(key)), nonce.Bytes())
+	return nil
+}
+
+// TODO: Add GetNonce as a new method so the users can get the nonce value
