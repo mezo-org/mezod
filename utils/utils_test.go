@@ -100,20 +100,20 @@ func TestGetMezoAddressFromBech32(t *testing.T) {
 		},
 		{
 			"mezo address",
-			"mezo1qql8ag4cluz6r4dz28p3w00dnc9w8ueuafmxps",
-			"mezo1qql8ag4cluz6r4dz28p3w00dnc9w8ueuafmxps",
+			"mezo1qql8ag4cluz6r4dz28p3w00dnc9w8ueug4dvgf",
+			"mezo1qql8ag4cluz6r4dz28p3w00dnc9w8ueug4dvgf",
 			false,
 		},
 		{
 			"cosmos address",
 			"cosmos1qql8ag4cluz6r4dz28p3w00dnc9w8ueulg2gmc",
-			"mezo1qql8ag4cluz6r4dz28p3w00dnc9w8ueuafmxps",
+			"mezo1qql8ag4cluz6r4dz28p3w00dnc9w8ueug4dvgf",
 			false,
 		},
 		{
 			"osmosis address",
 			"osmo1qql8ag4cluz6r4dz28p3w00dnc9w8ueuhnecd2",
-			"mezo1qql8ag4cluz6r4dz28p3w00dnc9w8ueuafmxps",
+			"mezo1qql8ag4cluz6r4dz28p3w00dnc9w8ueug4dvgf",
 			false,
 		},
 	}

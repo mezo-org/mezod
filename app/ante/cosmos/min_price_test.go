@@ -23,7 +23,7 @@ func (suite *AnteTestSuite) TestMinGasPriceDecorator() {
 	denom := utils.BaseDenom
 	testMsg := banktypes.MsgSend{
 		FromAddress: "mezo1x8fhpj9nmhqk8z9kpgjt95ck2xwyue0ptzkucp",
-		ToAddress:   "mezo1dx67l23hz9l0k9hcher8xz04uj7wf3yu26l2yn",
+		ToAddress:   "mezo1dx67l23hz9l0k9hcher8xz04uj7wf3yulxfqd2",
 		Amount:      sdk.Coins{sdk.Coin{Amount: sdkmath.NewInt(10), Denom: denom}},
 	}
 

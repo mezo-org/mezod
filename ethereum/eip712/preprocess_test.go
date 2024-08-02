@@ -31,7 +31,7 @@ var (
 		encoding.MakeConfig(app.ModuleBasics).TxConfig,
 	)
 )
-var feePayerAddress = "mezo17xpfvakm2amg962yls6f84z3kell8c5ljcjw34"
+var feePayerAddress = "mezo17xpfvakm2amg962yls6f84z3kell8c5l8yyycv"
 
 type TestCaseStruct struct {
 	txBuilder              client.TxBuilder
