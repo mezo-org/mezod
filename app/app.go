@@ -291,7 +291,7 @@ func NewMezo(
 		runtime.EventService{},
 	)
 	// set the BaseApp's parameter store
-	bApp.SetParamStore(&app.ConsensusParamsKeeper)
+	bApp.SetParamStore(app.ConsensusParamsKeeper.ParamsStore)
 
 	bech32Prefix := sdk.GetConfig().GetBech32AccountAddrPrefix()
 
