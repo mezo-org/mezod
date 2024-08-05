@@ -29,10 +29,10 @@ import (
 	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
 
-	dbm "github.com/cometbft/cometbft-db"
+	"cosmossdk.io/log"
 	tmcfg "github.com/cometbft/cometbft/config"
 	tmcli "github.com/cometbft/cometbft/libs/cli"
-	"cosmossdk.io/log"
+	dbm "github.com/cosmos/cosmos-db"
 
 	"cosmossdk.io/simapp/params"
 	"cosmossdk.io/store"
