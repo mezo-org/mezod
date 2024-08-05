@@ -52,7 +52,6 @@ import (
 
 	"cosmossdk.io/simapp"
 	simappparams "cosmossdk.io/simapp/params"
-	"cosmossdk.io/store/streaming"
 	storetypes "cosmossdk.io/store/types"
 	"cosmossdk.io/x/upgrade"
 	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
@@ -252,12 +251,6 @@ func NewMezo(
 		feemarkettypes.TransientKey,
 	)
 
-	// load state streaming if enabled
-	if _, _, err := streaming.LoadStreamingServices(bApp, appOpts, appCodec, logger, keys); err != nil {
-		fmt.Printf("failed to load state streaming: %s", err)
-		os.Exit(1)
-	}
-
 	app := &Mezo{
 		BaseApp:           bApp,
 		cdc:               cdc,
@@ -266,6 +259,10 @@ func NewMezo(
 		invCheckPeriod:    invCheckPeriod,
 		keys:              keys,
 		tkeys:             tkeys,
+	}
+
+	if err := app.RegisterStreamingServices(appOpts, app.keys); err != nil {
+		panic(fmt.Sprintf("failed to register streaming services: %s", err))
 	}
 
 	// Most of the modules require setting a Cosmos-level authority account
