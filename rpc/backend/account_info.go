@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package backend
 
 import (
@@ -28,8 +28,8 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	rpctypes "github.com/evmos/evmos/v12/rpc/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
 )
 
@@ -129,7 +129,7 @@ func (b *Backend) GetProof(address common.Address, storageKeys []string, blockNr
 		Balance:      (*hexutil.Big)(balance.BigInt()),
 		CodeHash:     common.HexToHash(res.CodeHash),
 		Nonce:        hexutil.Uint64(res.Nonce),
-		StorageHash:  common.Hash{}, // NOTE: Evmos doesn't have a storage hash. TODO: implement?
+		StorageHash:  common.Hash{}, // NOTE: Mezo doesn't have a storage hash. TODO: implement?
 		StorageProof: storageProofs,
 	}, nil
 }

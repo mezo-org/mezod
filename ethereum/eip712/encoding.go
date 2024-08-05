@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package eip712
 
 import (
@@ -26,7 +26,7 @@ import (
 	txTypes "github.com/cosmos/cosmos-sdk/types/tx"
 
 	apitypes "github.com/ethereum/go-ethereum/signer/core/apitypes"
-	evmostypes "github.com/evmos/evmos/v12/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 )
@@ -116,7 +116,7 @@ func decodeAminoSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		return apitypes.TypedData{}, err
 	}
 
-	chainID, err := evmostypes.ParseChainID(aminoDoc.ChainID)
+	chainID, err := mezotypes.ParseChainID(aminoDoc.ChainID)
 	if err != nil {
 		return apitypes.TypedData{}, errors.New("invalid chain ID passed as argument")
 	}
@@ -180,7 +180,7 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 
 	signerInfo := authInfo.SignerInfos[0]
 
-	chainID, err := evmostypes.ParseChainID(signDoc.ChainId)
+	chainID, err := mezotypes.ParseChainID(signDoc.ChainId)
 	if err != nil {
 		return apitypes.TypedData{}, fmt.Errorf("invalid chain ID passed as argument: %w", err)
 	}

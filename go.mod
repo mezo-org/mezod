@@ -1,4 +1,4 @@
-module github.com/evmos/evmos/v12
+module github.com/mezo-org/mezod
 
 go 1.22.2
 

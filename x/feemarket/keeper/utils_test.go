@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/utils"
 
 	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -22,14 +22,14 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/testutil"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	evmostypes "github.com/evmos/evmos/v12/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/testutil"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	mezotypes "github.com/mezo-org/mezod/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 
 	"github.com/stretchr/testify/require"
 
@@ -60,7 +60,7 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool, chainID string) {
 	types.RegisterQueryServer(queryHelper, suite.app.FeeMarketKeeper)
 	suite.queryClient = types.NewQueryClient(queryHelper)
 
-	acc := &evmostypes.EthAccount{
+	acc := &mezotypes.EthAccount{
 		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), nil, 0, 0),
 		CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
 	}
@@ -149,7 +149,7 @@ func setupChain(localMinGasPricesStr, chainID string) {
 	// Initialize the app, so we can use SetMinGasPrices to set the
 	// validator-specific min-gas-prices setting
 	db := dbm.NewMemDB()
-	newapp := app.NewEvmos(
+	newapp := app.NewMezo(
 		log.NewNopLogger(),
 		db,
 		nil,

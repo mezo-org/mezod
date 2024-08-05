@@ -1,30 +1,30 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package config
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/types"
 )
 
 const (
 	// Bech32Prefix defines the Bech32 prefix used for EthAccounts
-	Bech32Prefix = "evmos"
+	Bech32Prefix = "mezo"
 
 	// Bech32PrefixAccAddr defines the Bech32 prefix of an account's address
 	Bech32PrefixAccAddr = Bech32Prefix
@@ -43,7 +43,7 @@ const (
 const (
 	// DisplayDenom defines the denomination displayed to users in client applications.
 	DisplayDenom = "btc"
-	// BaseDenom defines to the default denomination used in Evmos (staking, EVM, governance, etc.)
+	// BaseDenom defines the default denomination used in Mezo
 	BaseDenom = "abtc"
 )
 

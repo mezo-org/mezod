@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/types"
 
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/stretchr/testify/require"

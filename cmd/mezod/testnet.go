@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package main
 
@@ -48,18 +48,18 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
-	"github.com/evmos/evmos/v12/crypto/hd"
-	"github.com/evmos/evmos/v12/server/config"
-	srvflags "github.com/evmos/evmos/v12/server/flags"
+	"github.com/mezo-org/mezod/crypto/hd"
+	"github.com/mezo-org/mezod/server/config"
+	srvflags "github.com/mezo-org/mezod/server/flags"
 
-	evmostypes "github.com/evmos/evmos/v12/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	mezotypes "github.com/mezo-org/mezod/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
-	cmdcfg "github.com/evmos/evmos/v12/cmd/config"
-	evmoskr "github.com/evmos/evmos/v12/crypto/keyring"
-	"github.com/evmos/evmos/v12/testutil/network"
+	cmdcfg "github.com/mezo-org/mezod/cmd/config"
+	mezokr "github.com/mezo-org/mezod/crypto/keyring"
+	"github.com/mezo-org/mezod/testutil/network"
 
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
 
 var (
@@ -139,7 +139,7 @@ or a similar setup where each node has a manually configurable IP address.
 Note, strict routability for addresses is turned off in the config file.
 
 Example:
-	evmosd testnet init-files --v 4 --output-dir ./.testnets --starting-ip-address 192.168.10.2
+	mezod testnet init-files --v 4 --output-dir ./.testnets --starting-ip-address 192.168.10.2
 	`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
@@ -166,7 +166,7 @@ Example:
 
 	addTestnetFlagsToCmd(cmd)
 	cmd.Flags().String(flagNodeDirPrefix, "node", "Prefix the directory name for each node with (node results in node0, node1, ...)")
-	cmd.Flags().String(flagNodeDaemonHome, "evmosd", "Home directory of the node's daemon configuration")
+	cmd.Flags().String(flagNodeDaemonHome, "mezod", "Home directory of the node's daemon configuration")
 	cmd.Flags().String(flagStartingIPAddress, "192.168.0.1", "Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:46656, ID1@192.168.0.2:46656, ...). Setting this flag to localhost results in configuration generation for binary-based localnet")
 	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "Select keyring's backend (os|file|test)")
 
@@ -183,7 +183,7 @@ and generate "v" directories, populated with necessary validator configuration f
 (private validator, genesis, config, etc.).
 
 Example:
-	evmosd testnet --v 4 --output-dir ./.testnets
+	mezod testnet --v 4 --output-dir ./.testnets
 	`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			args := startArgs{}
@@ -282,7 +282,7 @@ func initTestnetFiles(
 			nodeDir,
 			inBuf,
 			clientCtx.Codec,
-			evmoskr.Option(),
+			mezokr.Option(),
 		)
 		if err != nil {
 			return err
@@ -329,7 +329,7 @@ func initTestnetFiles(
 			banktypes.Balance{Address: address.String(), Coins: coins.Sort()},
 		)
 		genAccounts = append(
-			genAccounts, &evmostypes.EthAccount{
+			genAccounts, &mezotypes.EthAccount{
 				BaseAccount: authtypes.NewBaseAccount(address, nil, 0, 0),
 				CodeHash:    common.BytesToHash(evmtypes.EmptyCodeHash).Hex(),
 			},

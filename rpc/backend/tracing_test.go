@@ -11,10 +11,10 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/indexer"
-	"github.com/evmos/evmos/v12/rpc/backend/mocks"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/indexer"
+	"github.com/mezo-org/mezod/rpc/backend/mocks"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 func (suite *BackendTestSuite) TestTraceTransaction() {

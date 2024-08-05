@@ -3,7 +3,7 @@ package types_test
 import (
 	"testing"
 
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	"github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/require"
 )
 

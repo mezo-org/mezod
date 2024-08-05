@@ -1,10 +1,10 @@
 syntax = "proto3";
-package evmos.poa.v1;
+package mezo.poa.v1;
 
-import "evmos/poa/v1/poa.proto";
 import "gogoproto/gogo.proto";
+import "mezo/poa/v1/poa.proto";
 
-option go_package = "github.com/evmos/evmos/v12/x/poa/types";
+option go_package = "github.com/mezo-org/mezod/x/poa/types";
 
 // GenesisState defines the module's genesis state.
 message GenesisState {

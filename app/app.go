@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package app
 
@@ -29,7 +29,8 @@ import (
 	"sort"
 
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/evmos/evmos/v12/precompile/btctoken"
+	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/precompile/validatorpool"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
@@ -82,28 +83,28 @@ import (
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
-	ethante "github.com/evmos/evmos/v12/app/ante/evm"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/ethereum/eip712"
-	srvflags "github.com/evmos/evmos/v12/server/flags"
-	evmostypes "github.com/evmos/evmos/v12/types"
-	"github.com/evmos/evmos/v12/x/evm"
-	evmkeeper "github.com/evmos/evmos/v12/x/evm/keeper"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	"github.com/evmos/evmos/v12/x/feemarket"
-	feemarketkeeper "github.com/evmos/evmos/v12/x/feemarket/keeper"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	ethante "github.com/mezo-org/mezod/app/ante/evm"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/ethereum/eip712"
+	srvflags "github.com/mezo-org/mezod/server/flags"
+	mezotypes "github.com/mezo-org/mezod/types"
+	"github.com/mezo-org/mezod/x/evm"
+	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	"github.com/mezo-org/mezod/x/feemarket"
+	feemarketkeeper "github.com/mezo-org/mezod/x/feemarket/keeper"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
 	// unnamed import of statik for swagger UI support
-	_ "github.com/evmos/evmos/v12/client/docs/statik"
+	_ "github.com/mezo-org/mezod/client/docs/statik"
 
-	"github.com/evmos/evmos/v12/app/ante"
-	"github.com/evmos/evmos/v12/x/bridge"
-	bridgekeeper "github.com/evmos/evmos/v12/x/bridge/keeper"
-	bridgetypes "github.com/evmos/evmos/v12/x/bridge/types"
-	"github.com/evmos/evmos/v12/x/poa"
-	poakeeper "github.com/evmos/evmos/v12/x/poa/keeper"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/app/ante"
+	"github.com/mezo-org/mezod/x/bridge"
+	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	"github.com/mezo-org/mezod/x/poa"
+	poakeeper "github.com/mezo-org/mezod/x/poa/keeper"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	// Force-load the tracer engines to trigger registration due to Go-Ethereum v1.10.15 changes
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
@@ -116,17 +117,17 @@ func init() {
 		panic(err)
 	}
 
-	DefaultNodeHome = filepath.Join(userHomeDir, ".evmosd")
+	DefaultNodeHome = filepath.Join(userHomeDir, ".mezod")
 
 	// manually update the power reduction by replacing micro (u) -> atto (a) btc
-	sdk.DefaultPowerReduction = evmostypes.PowerReduction
+	sdk.DefaultPowerReduction = mezotypes.PowerReduction
 	// modify fee market parameter defaults through global
 	feemarkettypes.DefaultMinGasPrice = MainnetMinGasPrices
 	feemarkettypes.DefaultMinGasMultiplier = MainnetMinGasMultiplier
 }
 
 // Name defines the application binary name
-const Name = "evmosd"
+const Name = "mezod"
 
 var (
 	// DefaultNodeHome default home directories for the application daemon
@@ -160,12 +161,12 @@ var (
 	allowedReceivingModAcc = map[string]bool{}
 )
 
-var _ servertypes.Application = (*Evmos)(nil)
+var _ servertypes.Application = (*Mezo)(nil)
 
-// Evmos implements an extended ABCI application. It is an application
+// Mezo implements an extended ABCI application. It is an application
 // that may process transactions through Ethereum's EVM running atop of
 // Tendermint consensus.
-type Evmos struct {
+type Mezo struct {
 	*baseapp.BaseApp
 
 	// encoding
@@ -201,8 +202,8 @@ type Evmos struct {
 	tpsCounter *tpsCounter
 }
 
-// NewEvmos returns a reference to a new initialized Ethermint application.
-func NewEvmos(
+// NewMezo returns a reference to a new initialized Ethermint application.
+func NewMezo(
 	logger log.Logger,
 	db dbm.DB,
 	traceStore io.Writer,
@@ -213,7 +214,7 @@ func NewEvmos(
 	encodingConfig simappparams.EncodingConfig,
 	appOpts servertypes.AppOptions,
 	baseAppOptions ...func(*baseapp.BaseApp),
-) *Evmos {
+) *Mezo {
 	appCodec := encodingConfig.Codec
 	cdc := encodingConfig.Amino
 	interfaceRegistry := encodingConfig.InterfaceRegistry
@@ -257,7 +258,7 @@ func NewEvmos(
 		os.Exit(1)
 	}
 
-	app := &Evmos{
+	app := &Mezo{
 		BaseApp:           bApp,
 		cdc:               cdc,
 		appCodec:          appCodec,
@@ -300,8 +301,8 @@ func NewEvmos(
 	// use custom Ethermint account for contracts
 	app.AccountKeeper = authkeeper.NewAccountKeeper(
 		appCodec,
-		runtime.NewKVStoreService(keys[authtypes.StoreKey]),
-		evmostypes.ProtoAccount,
+		keys[authtypes.StoreKey],
+		mezotypes.ProtoAccount,
 		maccPerms,
 		authcodec.NewBech32Codec(bech32Prefix),
 		bech32Prefix,
@@ -366,7 +367,7 @@ func NewEvmos(
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
-	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper)
+	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
@@ -480,14 +481,14 @@ func NewEvmos(
 }
 
 // Name returns the name of the App
-func (app *Evmos) Name() string { return app.BaseApp.Name() }
+func (app *Mezo) Name() string { return app.BaseApp.Name() }
 
-func (app *Evmos) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) {
+func (app *Mezo) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) {
 	options := ante.HandlerOptions{
 		Cdc:                    app.appCodec,
 		AccountKeeper:          app.AccountKeeper,
 		BankKeeper:             app.BankKeeper,
-		ExtensionOptionChecker: evmostypes.HasDynamicFeeExtensionOption,
+		ExtensionOptionChecker: mezotypes.HasDynamicFeeExtensionOption,
 		EvmKeeper:              app.EvmKeeper,
 		FeeMarketKeeper:        app.FeeMarketKeeper,
 		SignModeHandler:        txConfig.SignModeHandler(),
@@ -503,7 +504,7 @@ func (app *Evmos) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) 
 	app.SetAnteHandler(ante.NewAnteHandler(options))
 }
 
-func (app *Evmos) setPostHandler() {
+func (app *Mezo) setPostHandler() {
 	postHandler, err := posthandler.NewPostHandler(
 		posthandler.HandlerOptions{},
 	)
@@ -514,24 +515,24 @@ func (app *Evmos) setPostHandler() {
 	app.SetPostHandler(postHandler)
 }
 
-func (app *Evmos) PreBlocker(
+func (app *Mezo) PreBlocker(
 	ctx sdk.Context,
 	_ *abci.RequestFinalizeBlock,
 ) (*sdk.ResponsePreBlock, error) {
 	return app.mm.PreBlock(ctx)
 }
 
-func (app *Evmos) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+func (app *Mezo) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 	return app.mm.BeginBlock(ctx)
 }
 
-func (app *Evmos) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
+func (app *Mezo) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
 	return app.mm.EndBlock(ctx)
 }
 
 // FinalizeBlock method is intentionally decomposed to calculate the
 // transactions per second.
-func (app *Evmos) FinalizeBlock(req *abci.RequestFinalizeBlock) (
+func (app *Mezo) FinalizeBlock(req *abci.RequestFinalizeBlock) (
 	res *abci.ResponseFinalizeBlock,
 	err error,
 ) {
@@ -555,7 +556,7 @@ func (app *Evmos) FinalizeBlock(req *abci.RequestFinalizeBlock) (
 }
 
 // InitChainer updates at chain initialization
-func (app *Evmos) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
+func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
 	var genesisState simapp.GenesisState
 	if err := json.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
 		panic(err)
@@ -567,12 +568,12 @@ func (app *Evmos) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abc
 }
 
 // LoadHeight loads state at a particular height
-func (app *Evmos) LoadHeight(height int64) error {
+func (app *Mezo) LoadHeight(height int64) error {
 	return app.LoadVersion(height)
 }
 
 // ModuleAccountAddrs returns all the app's module account addresses.
-func (app *Evmos) ModuleAccountAddrs() map[string]bool {
+func (app *Mezo) ModuleAccountAddrs() map[string]bool {
 	modAccAddrs := make(map[string]bool)
 
 	accs := make([]string, 0, len(maccPerms))
@@ -590,7 +591,7 @@ func (app *Evmos) ModuleAccountAddrs() map[string]bool {
 
 // BlockedAddrs returns all the app's module account addresses that are not
 // allowed to receive external tokens.
-func (app *Evmos) BlockedAddrs() map[string]bool {
+func (app *Mezo) BlockedAddrs() map[string]bool {
 	blockedAddrs := make(map[string]bool)
 
 	accs := make([]string, 0, len(maccPerms))
@@ -606,52 +607,52 @@ func (app *Evmos) BlockedAddrs() map[string]bool {
 	return blockedAddrs
 }
 
-// LegacyAmino returns Evmos's amino codec.
+// LegacyAmino returns Mezo's amino codec.
 //
 // NOTE: This is solely to be used for testing purposes as it may be desirable
 // for modules to register their own custom testing types.
-func (app *Evmos) LegacyAmino() *codec.LegacyAmino {
+func (app *Mezo) LegacyAmino() *codec.LegacyAmino {
 	return app.cdc
 }
 
-// AppCodec returns Evmos's app codec.
+// AppCodec returns Mezo's app codec.
 //
 // NOTE: This is solely to be used for testing purposes as it may be desirable
 // for modules to register their own custom testing types.
-func (app *Evmos) AppCodec() codec.Codec {
+func (app *Mezo) AppCodec() codec.Codec {
 	return app.appCodec
 }
 
-// InterfaceRegistry returns Evmos's InterfaceRegistry
-func (app *Evmos) InterfaceRegistry() types.InterfaceRegistry {
+// InterfaceRegistry returns Mezo's InterfaceRegistry
+func (app *Mezo) InterfaceRegistry() types.InterfaceRegistry {
 	return app.interfaceRegistry
 }
 
 // GetKey returns the KVStoreKey for the provided store key.
 //
 // NOTE: This is solely to be used for testing purposes.
-func (app *Evmos) GetKey(storeKey string) *storetypes.KVStoreKey {
+func (app *Mezo) GetKey(storeKey string) *storetypes.KVStoreKey {
 	return app.keys[storeKey]
 }
 
 // GetTKey returns the TransientStoreKey for the provided store key.
 //
 // NOTE: This is solely to be used for testing purposes.
-func (app *Evmos) GetTKey(storeKey string) *storetypes.TransientStoreKey {
+func (app *Mezo) GetTKey(storeKey string) *storetypes.TransientStoreKey {
 	return app.tkeys[storeKey]
 }
 
 // GetSubspace returns a param subspace for a given module name.
 //
 // NOTE: This is solely to be used for testing purposes.
-func (app *Evmos) GetSubspace(moduleName string) paramstypes.Subspace {
+func (app *Mezo) GetSubspace(moduleName string) paramstypes.Subspace {
 	subspace, _ := app.ParamsKeeper.GetSubspace(moduleName)
 	return subspace
 }
 
 // RegisterAPIRoutes registers all application module routes with the provided
 // API server.
-func (app *Evmos) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
+func (app *Mezo) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
 	clientCtx := apiSvr.ClientCtx
 
 	// Register new tx routes from grpc-gateway.
@@ -670,12 +671,12 @@ func (app *Evmos) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConf
 	}
 }
 
-func (app *Evmos) RegisterTxService(clientCtx client.Context) {
+func (app *Mezo) RegisterTxService(clientCtx client.Context) {
 	authtx.RegisterTxService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.BaseApp.Simulate, app.interfaceRegistry)
 }
 
 // RegisterTendermintService implements the Application.RegisterTendermintService method.
-func (app *Evmos) RegisterTendermintService(clientCtx client.Context) {
+func (app *Mezo) RegisterTendermintService(clientCtx client.Context) {
 	cmtservice.RegisterTendermintService(
 		clientCtx,
 		app.BaseApp.GRPCQueryRouter(),
@@ -686,17 +687,17 @@ func (app *Evmos) RegisterTendermintService(clientCtx client.Context) {
 
 // RegisterNodeService registers the node gRPC service on the provided
 // application gRPC query router.
-func (app *Evmos) RegisterNodeService(clientCtx client.Context) {
+func (app *Mezo) RegisterNodeService(clientCtx client.Context) {
 	node.RegisterNodeService(clientCtx, app.GRPCQueryRouter())
 }
 
 // GetBaseApp implements the TestingApp interface.
-func (app *Evmos) GetBaseApp() *baseapp.BaseApp {
+func (app *Mezo) GetBaseApp() *baseapp.BaseApp {
 	return app.BaseApp
 }
 
 // GetTxConfig implements the TestingApp interface.
-func (app *Evmos) GetTxConfig() client.TxConfig {
+func (app *Mezo) GetTxConfig() client.TxConfig {
 	cfg := encoding.MakeConfig(ModuleBasics)
 	return cfg.TxConfig
 }
@@ -730,14 +731,21 @@ func initParamsKeeper(
 // customEvmPrecompiles builds custom precompiles of the EVM module.
 func customEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
-	authzkeeper authzkeeper.Keeper,
+	authzKeeper authzkeeper.Keeper,
+	poaKeeper poakeeper.Keeper,
 ) ([]vm.PrecompiledContract, error) {
-	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzkeeper)
+	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
 	}
 
+	validatorPoolPrecompile, err := validatorpool.NewPrecompile(poaKeeper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validatorpool precompile: [%w]", err)
+	}
+
 	return []vm.PrecompiledContract{
 		btcTokenPrecompile,
+		validatorPoolPrecompile,
 	}, nil
 }

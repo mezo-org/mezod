@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	testkeeper "github.com/evmos/evmos/v12/testutil/keeper"
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	testkeeper "github.com/mezo-org/mezod/testutil/keeper"
+	"github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/require"
 )
 

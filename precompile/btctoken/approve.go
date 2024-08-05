@@ -11,8 +11,8 @@ import (
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/precompile"
-	evm "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/precompile"
+	evm "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // ApproveMethodName is the name of the approve method that should match the name

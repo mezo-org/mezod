@@ -6,7 +6,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/evmos/evmos/v12/ethereum/eip712"
+	"github.com/mezo-org/mezod/ethereum/eip712"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -22,10 +22,10 @@ import (
 	sdkante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	upgradetypes "cosmossdk.io/x/upgrade/types"
 )

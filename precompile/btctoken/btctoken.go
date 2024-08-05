@@ -7,7 +7,7 @@ import (
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/precompile"
+	"github.com/mezo-org/mezod/precompile"
 )
 
 //go:embed abi.json
@@ -49,5 +49,6 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.
 		newApproveMethod(bankKeeper, authzkeeper),
 		newTransferMethod(bankKeeper, authzkeeper),
 		newTransferFromMethod(bankKeeper, authzkeeper),
+		newAllowanceMethod(authzkeeper),
 	}
 }

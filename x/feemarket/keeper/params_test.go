@@ -3,7 +3,7 @@ package keeper_test
 import (
 	"reflect"
 
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 )
 
 func (suite *KeeperTestSuite) TestSetGetParams() {

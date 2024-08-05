@@ -6,13 +6,13 @@ CMTVERSION := $(shell go list -m github.com/cometbft/cometbft | sed 's:.* ::')
 COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
-EVMOS_BINARY = evmosd
-EVMOS_DIR = evmos
+MEZO_BINARY = mezod
+MEZO_DIR = mezo
 BUILDDIR ?= $(CURDIR)/build
-HTTPS_GIT := https://github.com/evmos/evmos.git
+HTTPS_GIT := https://github.com/mezo-org/mezod.git
 DOCKER := $(shell which docker)
 NAMESPACE := tharsishq
-PROJECT := evmos
+PROJECT := mezo
 DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DOCKER_TAG := $(COMMIT_HASH)
@@ -58,8 +58,8 @@ build_tags := $(strip $(build_tags))
 
 # process linker flags
 
-ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=evmos \
-          -X github.com/cosmos/cosmos-sdk/version.AppName=$(EVMOS_BINARY) \
+ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=mezo \
+          -X github.com/cosmos/cosmos-sdk/version.AppName=$(MEZO_BINARY) \
           -X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
           -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) \
           -X github.com/cometbft/cometbft/version.CMTSemVer=$(CMTVERSION)
@@ -130,7 +130,7 @@ build-reproducible: go.sum
 	$(DOCKER) rm latest-build || true
 	$(DOCKER) run --volume=$(CURDIR):/sources:ro \
         --env TARGET_PLATFORMS='linux/amd64' \
-        --env APP=evmosd \
+        --env APP=mezod \
         --env VERSION=$(VERSION) \
         --env COMMIT=$(COMMIT) \
         --env CGO_ENABLED=1 \
@@ -145,12 +145,12 @@ build-docker:
 	$(DOCKER) tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
 	# docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:${COMMIT_HASH}
 	# update old container
-	$(DOCKER) rm evmos || true
+	$(DOCKER) rm mezo || true
 	# create a new container from the latest image
-	$(DOCKER) create --name evmos -t -i ${DOCKER_IMAGE}:latest evmos
+	$(DOCKER) create --name mezo -t -i ${DOCKER_IMAGE}:latest mezo
 	# move the binaries to the ./build directory
 	mkdir -p ./build/
-	$(DOCKER) cp evmos:/usr/bin/evmosd ./build/
+	$(DOCKER) cp mezo:/usr/bin/mezod ./build/
 
 build-docker-linux:
 	$(DOCKER) buildx build --platform linux/amd64 --tag ${DOCKER_IMAGE}:${DOCKER_TAG} .
@@ -279,7 +279,7 @@ update-swagger-docs: statik
 .PHONY: update-swagger-docs
 
 godocs:
-	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/evmos/evmos"
+	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/mezo-org/mezod"
 	godoc -http=:6060
 
 ###############################################################################
@@ -456,7 +456,7 @@ localnet-docker-build:
 
 # Start a 4-node testnet locally
 localnet-docker-start: localnet-docker-stop
-	@if ! [ -f build/node0/$(EVMOS_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/evmos:Z meso/node "./evmosd testnet init-files --v 4 -o /evmos --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
+	@if ! [ -f build/node0/$(MEZO_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/mezo:Z mezo-org/mezod "./mezod testnet init-files --v 4 -o /mezo --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
 	docker-compose up -d
 
 # Stop testnet
@@ -472,15 +472,15 @@ localnet-docker-clean:
 localnet-docker-unsafe-reset:
 	docker-compose down
 ifeq ($(OS),Windows_NT)
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node1\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node2\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node3\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node1\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node2\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node3\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
 else
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node0/evmosd:/evmos:Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node1/evmosd:/evmos:Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node2/evmosd:/evmos:Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node3/evmosd:/evmos:Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node0/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node1/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node2/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node3/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
 endif
 
 # Clean testnet
@@ -503,7 +503,7 @@ localnet-bin-init:
 	fi
 	@if ! [ -d $(LOCALNET_DIR) ]; then \
 		echo "Initializing localnet configuration..."; \
-		./build/evmosd testnet init-files \
+		./build/mezod testnet init-files \
 		--v 4 \
 		--output-dir $(LOCALNET_DIR) \
 		--home $(LOCALNET_DIR) \
@@ -527,7 +527,7 @@ localnet-bin-clean:
 ###                                Releasing                                ###
 ###############################################################################
 
-PACKAGE_NAME:=github.com/evmos/evmos
+PACKAGE_NAME:=github.com/mezo-org/mezod
 GOLANG_CROSS_VERSION  = v1.20
 GOPATH ?= '$(HOME)/go'
 release-dry-run:
