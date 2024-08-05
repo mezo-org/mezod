@@ -687,8 +687,11 @@ func (app *Mezo) RegisterTendermintService(clientCtx client.Context) {
 
 // RegisterNodeService registers the node gRPC service on the provided
 // application gRPC query router.
-func (app *Mezo) RegisterNodeService(clientCtx client.Context) {
-	node.RegisterNodeService(clientCtx, app.GRPCQueryRouter())
+func (app *Mezo) RegisterNodeService(
+	clientCtx client.Context,
+	cfg config.Config,
+) {
+	node.RegisterNodeService(clientCtx, app.GRPCQueryRouter(), cfg)
 }
 
 // GetBaseApp implements the TestingApp interface.
