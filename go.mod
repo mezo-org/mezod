@@ -23,7 +23,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/graph-gophers/graphql-go v1.3.0
+	github.com/graph-gophers/graphql-go v1.5.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/influxdata/influxdb v1.8.3
