@@ -129,8 +129,9 @@ func (s *PrecompileTestSuite) TestTransfer() {
 
 			bankKeeper := s.app.BankKeeper
 			authzKeeper := s.app.AuthzKeeper
+			evmKeeper := *s.app.EvmKeeper
 
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper)
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 
@@ -307,8 +308,9 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 
 			bankKeeper := s.app.BankKeeper
 			authzKeeper := s.app.AuthzKeeper
+			evmKeeper := *s.app.EvmKeeper
 
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper)
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 

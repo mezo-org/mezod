@@ -355,7 +355,7 @@ func NewEvmos(
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
-	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper)
+	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper, *app.EvmKeeper)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
