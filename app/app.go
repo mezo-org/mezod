@@ -298,7 +298,7 @@ func NewMezo(
 	// use custom Ethermint account for contracts
 	app.AccountKeeper = authkeeper.NewAccountKeeper(
 		appCodec,
-		keys[authtypes.StoreKey],
+		runtime.NewKVStoreService(keys[authtypes.StoreKey]),
 		mezotypes.ProtoAccount,
 		maccPerms,
 		authcodec.NewBech32Codec(bech32Prefix),

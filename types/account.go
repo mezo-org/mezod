@@ -17,6 +17,7 @@ package types
 
 import (
 	"bytes"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -60,7 +61,7 @@ type EthAccountI interface {
 
 // ProtoAccount defines the prototype function for BaseAccount used for an
 // AccountKeeper.
-func ProtoAccount() authtypes.AccountI {
+func ProtoAccount() sdk.AccountI {
 	return &EthAccount{
 		BaseAccount: &authtypes.BaseAccount{},
 		CodeHash:    common.BytesToHash(emptyCodeHash).String(),
