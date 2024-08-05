@@ -8,7 +8,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 func TestEventEmitter_Emit(t *testing.T) {

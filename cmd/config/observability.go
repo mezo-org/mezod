@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package config
 
@@ -26,7 +26,7 @@ func EnableObservability() error {
 	// }
 
 	// pe, err := prometheus.NewExporter(prometheus.Options{
-	// 	Namespace: "evmosd",
+	// 	Namespace: "mezod",
 	// })
 	// if err != nil {
 	// 	return fmt.Errorf("cmd/config: failed to create the OpenCensus Prometheus exporter: %w", err)
@@ -41,7 +41,7 @@ func EnableObservability() error {
 	// mux := http.NewServeMux()
 	// mux.Handle("/metrics", pe)
 
-	// // TODO: Derive the Prometheus observability exporter from the Evmos config.
+	// // TODO: Derive the Prometheus observability exporter from the Mezo config.
 	// addr := ":8877"
 	// go func() {
 	// 	println("Serving the Prometheus observability exporter at", addr)

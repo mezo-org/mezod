@@ -15,7 +15,7 @@ connected to each other locally. The formulas use Docker Compose to set up the
 cluster so on macOS, Docker Desktop must be running locally.
 
 ```bash
-# Build and install the `meso/node` image locally.
+# Build and install the `mezo-org/mezod` image locally.
 $ make localnet-docker-build
 # Start four client instances.
 $ make localnet-docker-start

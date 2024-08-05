@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package types
 
 import (
@@ -24,16 +24,16 @@ import (
 )
 
 const (
-	// AttoBtc defines the default coin denomination used in Evmos in:
+	// AttoBtc defines the default coin denomination used in Mezo in:
 	//
 	// - Staking parameters: denomination used as stake in the dPoS chain
 	// - Mint parameters: denomination minted due to fee distribution rewards
 	// - Governance parameters: denomination used for spam prevention in proposal deposits
 	// - Crisis parameters: constant fee denomination used for spam prevention to check broken invariant
-	// - EVM parameters: denomination used for running EVM state transitions in Evmos.
+	// - EVM parameters: denomination used for running EVM state transitions in Mezo.
 	AttoBtc string = "abtc"
 
-	// BaseDenomUnit defines the base denomination unit for Evmos.
+	// BaseDenomUnit defines the base denomination unit for Mezo.
 	// 1 btc = 1x10^{BaseDenomUnit} abtc
 	BaseDenomUnit = 18
 
@@ -44,20 +44,20 @@ const (
 // PowerReduction defines the default power reduction value for staking
 var PowerReduction = sdkmath.NewIntFromBigInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(BaseDenomUnit), nil))
 
-// NewEvmosCoin is a utility function that returns an "abtc" coin with the given sdkmath.Int amount.
+// NewMezoCoin is a utility function that returns an "abtc" coin with the given sdkmath.Int amount.
 // The function will panic if the provided amount is negative.
-func NewEvmosCoin(amount sdkmath.Int) sdk.Coin {
+func NewMezoCoin(amount sdkmath.Int) sdk.Coin {
 	return sdk.NewCoin(AttoBtc, amount)
 }
 
-// NewEvmosDecCoin is a utility function that returns an "abtc" decimal coin with the given sdkmath.Int amount.
+// NewMezoDecCoin is a utility function that returns an "abtc" decimal coin with the given sdkmath.Int amount.
 // The function will panic if the provided amount is negative.
-func NewEvmosDecCoin(amount sdkmath.Int) sdk.DecCoin {
+func NewMezoDecCoin(amount sdkmath.Int) sdk.DecCoin {
 	return sdk.NewDecCoin(AttoBtc, amount)
 }
 
-// NewEvmosCoinInt64 is a utility function that returns an "abtc" coin with the given int64 amount.
+// NewMezoCoinInt64 is a utility function that returns an "abtc" coin with the given int64 amount.
 // The function will panic if the provided amount is negative.
-func NewEvmosCoinInt64(amount int64) sdk.Coin {
+func NewMezoCoinInt64(amount int64) sdk.Coin {
 	return sdk.NewInt64Coin(AttoBtc, amount)
 }

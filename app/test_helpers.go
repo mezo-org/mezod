@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 
 package app
 
@@ -26,7 +26,7 @@ import (
 	"github.com/cometbft/cometbft/crypto/ed25519"
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	"cosmossdk.io/simapp"
 	dbm "github.com/cometbft/cometbft-db"
@@ -40,11 +40,11 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/evmos/evmos/v12/encoding"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/encoding"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
-	"github.com/evmos/evmos/v12/cmd/config"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/cmd/config"
+	"github.com/mezo-org/mezod/utils"
 )
 
 func init() {
@@ -54,7 +54,7 @@ func init() {
 }
 
 // DefaultConsensusParams defines the default Tendermint consensus params used in
-// Evmos testing.
+// Mezo testing.
 var DefaultConsensusParams = &tmproto.ConsensusParams{
 	Block: &tmproto.BlockParams{
 		MaxBytes: 200000,
@@ -79,11 +79,11 @@ func init() {
 	config.SetBip44CoinType(cfg)
 }
 
-// Setup initializes a new Evmos. A Nop logger is set in Evmos.
+// Setup initializes a new Mezo. A Nop logger is set in Mezo.
 func Setup(
 	isCheckTx bool,
 	feemarketGenesis *feemarkettypes.GenesisState,
-) *Evmos {
+) *Mezo {
 	privVal := ed25519.GenPrivKey()
 	pubKey := privVal.PubKey()
 
@@ -103,7 +103,7 @@ func Setup(
 
 	chainID := utils.MainnetChainID + "-1"
 
-	app := NewEvmos(
+	app := NewMezo(
 		log.NewNopLogger(),
 		db,
 		nil,
@@ -156,7 +156,7 @@ func Setup(
 }
 
 func GenesisStateWithValSet(
-	app *Evmos,
+	app *Mezo,
 	genesisState simapp.GenesisState,
 	owner sdk.AccAddress,
 	valSet *tmtypes.ValidatorSet,

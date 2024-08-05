@@ -1,18 +1,18 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package rpc
 
 import (
@@ -42,11 +42,11 @@ import (
 	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 	tmtypes "github.com/cometbft/cometbft/types"
 
-	"github.com/evmos/evmos/v12/rpc/ethereum/pubsub"
-	rpcfilters "github.com/evmos/evmos/v12/rpc/namespaces/ethereum/eth/filters"
-	"github.com/evmos/evmos/v12/rpc/types"
-	"github.com/evmos/evmos/v12/server/config"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/rpc/ethereum/pubsub"
+	rpcfilters "github.com/mezo-org/mezod/rpc/namespaces/ethereum/eth/filters"
+	"github.com/mezo-org/mezod/rpc/types"
+	"github.com/mezo-org/mezod/server/config"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 type WebsocketsServer interface {

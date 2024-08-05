@@ -8,9 +8,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
-	"github.com/evmos/evmos/v12/precompile"
-	"github.com/evmos/evmos/v12/precompile/btctoken"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 func (s *PrecompileTestSuite) TestAllowance() {

@@ -15,10 +15,10 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/evmos/evmos/v12/x/bridge/keeper"
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	"github.com/mezo-org/mezod/x/bridge/keeper"
+	"github.com/mezo-org/mezod/x/bridge/types"
 
-	"github.com/evmos/evmos/v12/x/bridge/client/cli"
+	"github.com/mezo-org/mezod/x/bridge/client/cli"
 )
 
 var (

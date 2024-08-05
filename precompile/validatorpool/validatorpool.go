@@ -6,8 +6,8 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/precompile"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/precompile"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
 
 //go:embed abi.json

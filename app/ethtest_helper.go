@@ -1,29 +1,29 @@
 // Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
+// This file is part of the Mezo Network packages.
 //
-// Evmos is free software: you can redistribute it and/or modify
+// Mezo is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The Evmos packages are distributed in the hope that it will be useful,
+// The Mezo packages are distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
+// along with the Mezo packages. If not, see https://github.com/mezo-org/mezod/blob/main/LICENSE
 package app
 
 import (
 	"encoding/json"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/utils"
 
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	"cosmossdk.io/simapp"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -39,18 +39,18 @@ import (
 	tmtypes "github.com/cometbft/cometbft/types"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/encoding"
+	"github.com/mezo-org/mezod/encoding"
 )
 
-// EthSetup initializes a new EvmosApp. A Nop logger is set in EvmosApp.
-func EthSetup(isCheckTx bool, patchGenesis func(*Evmos, simapp.GenesisState) simapp.GenesisState) *Evmos {
+// EthSetup initializes a new MezoApp. A Nop logger is set in MezoApp.
+func EthSetup(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState) simapp.GenesisState) *Mezo {
 	return EthSetupWithDB(isCheckTx, patchGenesis, dbm.NewMemDB())
 }
 
-// EthSetupWithDB initializes a new EvmosApp. A Nop logger is set in EvmosApp.
-func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Evmos, simapp.GenesisState) simapp.GenesisState, db dbm.DB) *Evmos {
+// EthSetupWithDB initializes a new MezoApp. A Nop logger is set in MezoApp.
+func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState) simapp.GenesisState, db dbm.DB) *Mezo {
 	chainID := utils.TestnetChainID + "-1"
-	app := NewEvmos(
+	app := NewMezo(
 		log.NewNopLogger(),
 		db,
 		nil,

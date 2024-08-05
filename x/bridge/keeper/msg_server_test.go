@@ -5,9 +5,9 @@ package keeper_test
 // 	"testing"
 
 // 	sdk "github.com/cosmos/cosmos-sdk/types"
-// 	keepertest "github.com/evmos/evmos/v12/testutil/keeper"
-// 	"github.com/evmos/evmos/v12/x/bridge/keeper"
-// 	"github.com/evmos/evmos/v12/x/bridge/types"
+// 	keepertest "github.com/mezo-org/mezod/testutil/keeper"
+// 	"github.com/mezo-org/mezod/x/bridge/keeper"
+// 	"github.com/mezo-org/mezod/x/bridge/types"
 // )
 
 // func setupMsgServer(t testing.TB) (types.MsgServer, context.Context) {

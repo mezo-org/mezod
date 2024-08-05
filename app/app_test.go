@@ -22,11 +22,11 @@ import (
 	"github.com/cometbft/cometbft/libs/log"
 	tmtypes "github.com/cometbft/cometbft/types"
 
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/utils"
 )
 
-func TestEvmosExport(t *testing.T) {
+func TestMezoExport(t *testing.T) {
 	// create public key
 	privVal := ed25519.GenPrivKey()
 	pubKey := privVal.PubKey()
@@ -45,7 +45,7 @@ func TestEvmosExport(t *testing.T) {
 
 	db := dbm.NewMemDB()
 	chainID := utils.MainnetChainID + "-1"
-	app := NewEvmos(
+	app := NewMezo(
 		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
 		db,
 		nil,
@@ -81,7 +81,7 @@ func TestEvmosExport(t *testing.T) {
 	app.Commit()
 
 	// Making a new app object with the db, so that initchain hasn't been called
-	app2 := NewEvmos(
+	app2 := NewMezo(
 		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
 		db,
 		nil,

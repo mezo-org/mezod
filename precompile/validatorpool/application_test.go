@@ -6,8 +6,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/evmos/evmos/v12/precompile/validatorpool"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/precompile/validatorpool"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
 
 func (s *PrecompileTestSuite) TestSubmitApplication() {

@@ -10,8 +10,8 @@ import (
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 
-	"github.com/evmos/evmos/v12/x/poa/types"
 	"github.com/google/go-cmp/cmp"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 func TestValidateGenesis(t *testing.T) {
