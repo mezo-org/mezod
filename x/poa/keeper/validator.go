@@ -2,6 +2,7 @@ package keeper
 
 import (
 	errorsmod "cosmossdk.io/errors"
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/poa/types"
 )
@@ -207,7 +208,7 @@ func (k Keeper) removeValidator(ctx sdk.Context, operator sdk.ValAddress) {
 func (k Keeper) GetAllValidators(ctx sdk.Context) (validators []types.Validator) {
 	store := ctx.KVStore(k.storeKey)
 
-	iterator := sdk.KVStorePrefixIterator(store, types.ValidatorKeyPrefix)
+	iterator := storetypes.KVStorePrefixIterator(store, types.ValidatorKeyPrefix)
 	defer func() {
 		_ = iterator.Close()
 	}()
