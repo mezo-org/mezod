@@ -165,13 +165,12 @@ func (am *permitMethod) Run(
 	// TODO: remove
 	fmt.Println("Passed the signature validation")
 
-	// TODO: There's a problem with nonce, check it.
-	// nonce, err := am.getNonce(owner, context.SdkCtx())
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	digest, err := buildDigest(owner, spender, amount, deadline)
+	nonce, _, err := am.getNonce(owner, context.SdkCtx())
+	if err != nil {
+		return nil, err
+	}
+	
+	digest, err := buildDigest(owner, spender, amount, new(big.Int).SetBytes(nonce.Bytes()), deadline)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build digest: %v", err)
 	}
@@ -219,7 +218,9 @@ func (am *permitMethod) Run(
 		return nil, err
 	}
 
-	err = am.setNonce(owner, context.SdkCtx())
+	// After the approval is successful, the nonce should be incremented by 1 so
+	// that the signature can be used only once over the given message.
+	err = am.incrementNonce(owner, context.SdkCtx())
 	if err != nil {
 		return nil, fmt.Errorf("failed to set nonce: %w", err)
 	}
@@ -238,28 +239,30 @@ func (am *permitMethod) Run(
 	return precompile.MethodOutputs{true}, nil
 }
 
-func (am *permitMethod) getNonce(address common.Address, ctx sdk.Context) (common.Hash, error) {
+func (am *permitMethod) getNonce(address common.Address, ctx sdk.Context) (common.Hash, []byte, error) {
 	key := evmtypes.PrecompileBTCNonceKey(address)
 	nonce := am.evmkeeper.GetState(ctx, address, common.HexToHash(string(key)))
 	if len(nonce) == 0 {
-		return common.Hash{}, fmt.Errorf("failed to get nonce for address %s", address.Hex())
+		return common.Hash{}, nil, fmt.Errorf("failed to get nonce for address %s", address.Hex())
 	}
-	return nonce, nil
+	return nonce, key, nil
 }
 
-func (am *permitMethod) setNonce(address common.Address, ctx sdk.Context) error {
-	key := evmtypes.PrecompileBTCNonceKey(address)
-	nonce, err := am.getNonce(address, ctx)
+func (am *permitMethod) incrementNonce(address common.Address, ctx sdk.Context) error {
+	nonce, key, err := am.getNonce(address, ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get nonce: %w", err)
 	}
+	nonceBigInt := new(big.Int).SetBytes(nonce.Bytes())
 	// Increment nonce by 1 so that the signature can be used once over the message
-	nonce.Big().Add(nonce.Big(), big.NewInt(1))
-	am.evmkeeper.SetState(ctx, address, common.HexToHash(string(key)), nonce.Bytes())
+	nonceBigInt.Add(nonceBigInt, big.NewInt(1))
+	// Set the new nonce value
+	am.evmkeeper.SetState(ctx, address, common.HexToHash(string(key)), nonceBigInt.Bytes())
+
 	return nil
 }
 
-func buildDigest(owner, spender common.Address, amount, deadline *big.Int) ([]byte, error) {
+func buildDigest(owner, spender common.Address, amount, nonce, deadline *big.Int) ([]byte, error) {
 	bytes32Type, err := abi.NewType("bytes32", "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new type: %v", err)
@@ -277,7 +280,6 @@ func buildDigest(owner, spender common.Address, amount, deadline *big.Int) ([]by
 	var PermitTypehashBytes32 [32]byte
 	copy(PermitTypehashBytes32[:], crypto.Keccak256([]byte(PermitTypehash))[:32])
 
-	// TODO: Add nonce as type {Type: uint256Type} after 'amount'!
 	// Encode the permit parameters
 	encodedPermitParams, err := abi.Arguments{
 		{Type: bytes32Type},
@@ -285,18 +287,18 @@ func buildDigest(owner, spender common.Address, amount, deadline *big.Int) ([]by
 		{Type: addressType},
 		{Type: uint256Type},
 		{Type: uint256Type},
+		{Type: uint256Type},
 	}.Pack(
 		PermitTypehashBytes32,
 		owner,
 		spender,
 		amount,
+		nonce,
 		deadline,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode permit parameters: %v", err)
 	}
-
-	// TODO: ADD NONCE!
 
 	// A digest should consist of:
 	// - The EIP712 Domain Separator (name, version, chainId, this precompile address, salt). See: https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator

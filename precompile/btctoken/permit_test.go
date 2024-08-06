@@ -34,8 +34,9 @@ func (s *PrecompileTestSuite) TestPermit() {
 			name: "successful permit",
 			run: func() []interface{} {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
+				nonce := int64(0)
 
-				digest, err := buildDigest(s, deadline)
+				digest, err := buildDigest(s, nonce, deadline)
 				s.Require().NoError(err)
 
 				// Sign the hash with the private key
@@ -113,7 +114,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 	}
 }
 
-func buildDigest(s *PrecompileTestSuite, deadline int64) (common.Hash, error) {
+func buildDigest(s *PrecompileTestSuite, nonce, deadline int64) (common.Hash, error) {
 	var PermitTypehashBytes32 [32]byte
 	copy(PermitTypehashBytes32[:], crypto.Keccak256([]byte(PermitTypehash))[:32])
 
@@ -127,11 +128,13 @@ func buildDigest(s *PrecompileTestSuite, deadline int64) (common.Hash, error) {
 		{Type: addressType},
 		{Type: uint256Type},
 		{Type: uint256Type},
+		{Type: uint256Type},
 	}.Pack(
 		PermitTypehashBytes32,
 		s.account1.EvmAddr,
 		s.account2.EvmAddr,
 		big.NewInt(amount),
+		big.NewInt(nonce),
 		big.NewInt(deadline),
 	)
 	s.Require().NoError(err)
