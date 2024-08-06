@@ -140,7 +140,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		NewTestnetCmd(app.ModuleBasics),
 		debug.Cmd(),
 		confixcmd.ConfigCommand(),
-		pruning.PruningCmd(a.newApp),
+		pruning.Cmd(a.newApp, app.DefaultNodeHome),
 	)
 
 	mezoserver.AddCommands(
