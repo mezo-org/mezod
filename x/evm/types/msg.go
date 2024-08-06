@@ -34,9 +34,12 @@ import (
 
 	"github.com/mezo-org/mezod/types"
 
+	txsigning "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	protov2 "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 var (
@@ -199,9 +202,14 @@ func (msg MsgEthereumTx) ValidateBasic() error {
 	return nil
 }
 
-// GetMsgs returns a single MsgEthereumTx as an sdk.Msg.
+// GetMsgs returns a single MsgEthereumTx as a sdk.Msg.
 func (msg *MsgEthereumTx) GetMsgs() []sdk.Msg {
 	return []sdk.Msg{msg}
+}
+
+// GetMsgsV2 returns a single MsgEthereumTx as a google.golang.org/protobuf/proto.Message's.
+func (msg *MsgEthereumTx) GetMsgsV2() ([]protov2.Message, error) {
+	return []protov2.Message{protoadapt.MessageV2Of(msg)}, nil
 }
 
 // GetSigners returns the expected signers for an Ethereum transaction message.
@@ -239,7 +247,13 @@ func (msg *MsgEthereumTx) Sign(ethSigner ethtypes.Signer, keyringSigner keyring.
 	tx := msg.AsTransaction()
 	txHash := ethSigner.Hash(tx)
 
-	sig, _, err := keyringSigner.SignByAddress(from, txHash.Bytes())
+	sig, _, err := keyringSigner.SignByAddress(
+		from,
+		txHash.Bytes(),
+		// This parameter is relevant only for Ledger devices. Use the legacy
+		// Amino JSON signing mode for backwards compatibility.
+		txsigning.SignMode_SIGN_MODE_LEGACY_AMINO_JSON,
+	)
 	if err != nil {
 		return err
 	}
