@@ -17,8 +17,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+const PermitTypehash = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+const amount = int64(100)
+
 func (s *PrecompileTestSuite) TestPermit() {
-	amount := int64(100)
 
 	testcases := []struct {
 		name        string
@@ -31,36 +33,28 @@ func (s *PrecompileTestSuite) TestPermit() {
 		{
 			name: "successful permit",
 			run: func() []interface{} {
-				tmr := time.Now().Add(24 * time.Hour).Unix()
+				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
 
-				// Create a message hash
-				PermitTypehash := "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
-				var PermitTypehashBytes32 [32]byte
-				// Convert to bytes32 (32-byte array)
-				copy(PermitTypehashBytes32[:], crypto.Keccak256([]byte(PermitTypehash))[:32])
-
-				permit := crypto.Keccak256Hash(PermitTypehashBytes32[:])
-				// TODO: add more params to the message
-				message := permit[:]
-				hashedMessage := crypto.Keccak256Hash(message)
+				digest, err := buildDigest(s, deadline)
+				s.Require().NoError(err)
 
 				// Sign the hash with the private key
-				signature, err := crypto.Sign(hashedMessage.Bytes(), s.account1.Priv)
+				signature, err := crypto.Sign(digest.Bytes(), s.account1.Priv)
 				if err != nil {
 					s.Require().NoError(err)
 				}
 
 				var r_component [32]byte
-    		var s_component [32]byte
+				var s_component [32]byte
 
 				// Extract r, s, v values from the signature
 				// r_component := new(big.Int).SetBytes(signature[:32])
 				copy(r_component[:], signature[:32])
 				copy(s_component[:], signature[32:64])
 				v := uint8(signature[64]) + 27 // Ethereum specific adjustment
-				
+
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(tmr), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
 				}
 			},
 			basicPass: true,
@@ -119,6 +113,45 @@ func (s *PrecompileTestSuite) TestPermit() {
 	}
 }
 
+func buildDigest(s *PrecompileTestSuite, deadline int64) (common.Hash, error) {
+	var PermitTypehashBytes32 [32]byte
+	copy(PermitTypehashBytes32[:], crypto.Keccak256([]byte(PermitTypehash))[:32])
+
+	bytes32Type, _ := abi.NewType("bytes32", "", nil)
+	addressType, _ := abi.NewType("address", "", nil)
+	uint256Type, _ := abi.NewType("uint256", "", nil)
+
+	message, err := abi.Arguments{
+		{Type: bytes32Type},
+		{Type: addressType},
+		{Type: addressType},
+		{Type: uint256Type},
+		{Type: uint256Type},
+	}.Pack(
+		PermitTypehashBytes32,
+		s.account1.EvmAddr,
+		s.account2.EvmAddr,
+		big.NewInt(amount),
+		big.NewInt(deadline),
+	)
+	s.Require().NoError(err)
+
+	hashedMessage := crypto.Keccak256Hash(message)
+
+	var DomainSeparatorBytes32 [32]byte
+	domainSeparator, err := buildDomainSeparator()
+	if err != nil {
+		s.Require().NoError(err)
+	}
+
+	copy(DomainSeparatorBytes32[:], domainSeparator[:32])
+
+	encodedData := append([]byte("\x19\x01"), DomainSeparatorBytes32[:]...)
+	encodedData = append(encodedData, hashedMessage.Bytes()...)
+
+	return crypto.Keccak256Hash(encodedData), nil
+}
+
 // This functions implements the EIP712 domain separator for the permit function
 // and produces the same result as the Solidity code seen e.g. in the OpenZeppelin
 // lib https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/EIP712.sol#L89
@@ -173,7 +206,6 @@ func buildDomainSeparator() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode domain separator: %v", err)
 	}
-	encodedDomainSeparatorHashed := crypto.Keccak256(encodedDomainSeparator)
-
-	return encodedDomainSeparatorHashed, nil
+	
+	return crypto.Keccak256(encodedDomainSeparator), nil
 }
