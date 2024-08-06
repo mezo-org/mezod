@@ -102,8 +102,15 @@ func legacyDecodeAminoSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 	// Use first message for fee payer and type inference
 	msg := msgs[0]
 
+	msgWithSigners, ok := msg.(interface {
+		GetSigners() []sdk.AccAddress
+	})
+	if !ok {
+		return apitypes.TypedData{}, fmt.Errorf("message does not implement the GetSigners method")
+	}
+
 	// By convention, the fee payer is the first address in the list of signers.
-	feePayer := msg.GetSigners()[0]
+	feePayer := msgWithSigners.GetSigners()[0]
 	feeDelegation := &FeeDelegationOptions{
 		FeePayer: feePayer,
 	}
@@ -188,12 +195,17 @@ func legacyDecodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error
 		Gas:    authInfo.Fee.GasLimit,
 	}
 
-	feePayer := msg.GetSigners()[0]
+	msgWithSigners, ok := msg.(interface {
+		GetSigners() []sdk.AccAddress
+	})
+	if !ok {
+		return apitypes.TypedData{}, fmt.Errorf("message does not implement the GetSigners method")
+	}
+
+	feePayer := msgWithSigners.GetSigners()[0]
 	feeDelegation := &FeeDelegationOptions{
 		FeePayer: feePayer,
 	}
-
-	tip := authInfo.Tip
 
 	// WrapTxToTypedData expects the payload as an Amino Sign Doc
 	signBytes := legacytx.StdSignBytes(
@@ -204,7 +216,6 @@ func legacyDecodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error
 		*stdFee,
 		msgs,
 		body.Memo,
-		tip,
 	)
 
 	typedData, err := LegacyWrapTxToTypedData(
@@ -237,13 +248,23 @@ func legacyValidatePayloadMessages(msgs []sdk.Msg) error {
 			return err
 		}
 
-		if len(m.GetSigners()) != 1 {
+		msgWithSigners, ok := m.(interface {
+			GetSigners() []sdk.AccAddress
+		})
+		if !ok {
+			return errors.New(
+				"unable to build EIP-712 payload: message does not " +
+					"implement the GetSigners method",
+			)
+		}
+
+		if len(msgWithSigners.GetSigners()) != 1 {
 			return errors.New("unable to build EIP-712 payload: expect exactly 1 signer")
 		}
 
 		if i == 0 {
 			msgType = t
-			msgSigner = m.GetSigners()[0]
+			msgSigner = msgWithSigners.GetSigners()[0]
 			continue
 		}
 
@@ -251,7 +272,7 @@ func legacyValidatePayloadMessages(msgs []sdk.Msg) error {
 			return errors.New("unable to build EIP-712 payload: different types of messages detected")
 		}
 
-		if !msgSigner.Equals(m.GetSigners()[0]) {
+		if !msgSigner.Equals(msgWithSigners.GetSigners()[0]) {
 			return errors.New("unable to build EIP-712 payload: multiple signers detected")
 		}
 	}

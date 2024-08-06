@@ -232,16 +232,26 @@ func validatePayloadMessages(msgs []sdk.Msg) error {
 	var msgSigner sdk.AccAddress
 
 	for i, m := range msgs {
-		if len(m.GetSigners()) != 1 {
+		msgWithSigners, ok := m.(interface {
+			GetSigners() []sdk.AccAddress
+		})
+		if !ok {
+			return errors.New(
+				"unable to build EIP-712 payload: message does not " +
+					"implement the GetSigners method",
+			)
+		}
+
+		if len(msgWithSigners.GetSigners()) != 1 {
 			return errors.New("unable to build EIP-712 payload: expect exactly 1 signer")
 		}
 
 		if i == 0 {
-			msgSigner = m.GetSigners()[0]
+			msgSigner = msgWithSigners.GetSigners()[0]
 			continue
 		}
 
-		if !msgSigner.Equals(m.GetSigners()[0]) {
+		if !msgSigner.Equals(msgWithSigners.GetSigners()[0]) {
 			return errors.New("unable to build EIP-712 payload: multiple signers detected")
 		}
 	}
