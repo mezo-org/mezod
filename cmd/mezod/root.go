@@ -17,6 +17,7 @@
 package main
 
 import (
+	storetypes "cosmossdk.io/store/types"
 	"errors"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/client/config"
@@ -250,7 +251,7 @@ type appCreator struct {
 
 // newApp is an appCreator
 func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, appOpts servertypes.AppOptions) servertypes.Application {
-	var cache sdk.MultiStorePersistentCache
+	var cache storetypes.MultiStorePersistentCache
 
 	if cast.ToBool(appOpts.Get(sdkserver.FlagInterBlockCache)) {
 		cache = store.NewCommitKVStoreCacheManager()
