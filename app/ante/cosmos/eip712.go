@@ -201,7 +201,8 @@ func VerifySignature(
 				Amount: tx.GetFee(),
 				Gas:    tx.GetGas(),
 			},
-			msgs, tx.GetMemo(), tx.GetTip(),
+			msgs,
+			tx.GetMemo(),
 		)
 
 		signerChainID, err := types.ParseChainID(signerData.ChainID)
