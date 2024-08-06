@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/client/config"
+	"github.com/cosmos/cosmos-sdk/server"
 	"io"
 	"os"
 	"path/filepath"
@@ -152,7 +153,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 
 	// add keybase, auxiliary RPC, query, and tx child commands
 	rootCmd.AddCommand(
-		rpc.StatusCommand(),
+		server.StatusCommand(),
 		queryCommand(),
 		txCommand(),
 		mezoclient.KeyCommands(app.DefaultNodeHome),
