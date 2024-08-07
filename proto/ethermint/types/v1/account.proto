@@ -7,7 +7,7 @@ import "gogoproto/gogo.proto";
 
 option go_package = "github.com/mezo-org/mezod/types";
 
-// EthAccount implements the authtypes.AccountI interface and embeds an
+// EthAccount implements the sdk.AccountI interface and embeds an
 // authtypes.BaseAccount type. It is compatible with the auth AccountKeeper.
 message EthAccount {
   option (gogoproto.goproto_getters) = false;
