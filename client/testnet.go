@@ -19,6 +19,7 @@ package client
 
 import (
 	"bufio"
+	sdkmath "cosmossdk.io/math"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -330,8 +331,8 @@ func initTestnetFiles(
 			valPubKeys[i],
 			sdk.NewCoin(mezotypes.AttoBtc, valTokens),
 			stakingtypes.NewDescription(nodeDirName, "", "", "", ""),
-			stakingtypes.NewCommissionRates(sdk.OneDec(), sdk.OneDec(), sdk.OneDec()),
-			sdk.OneInt(),
+			stakingtypes.NewCommissionRates(sdkmath.LegacyOneDec(), sdkmath.LegacyOneDec(), sdkmath.LegacyOneDec()),
+			sdkmath.OneInt(),
 		)
 		if err != nil {
 			return err
