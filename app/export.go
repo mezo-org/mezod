@@ -38,7 +38,7 @@ func (app *Mezo) ExportAppStateAndValidators(
 	forZeroHeight bool, _ []string,
 ) (servertypes.ExportedApp, error) {
 	// Creates context with current height and checks txs for ctx to be usable by start of next block
-	ctx := app.NewContext(true, tmproto.Header{Height: app.LastBlockHeight()})
+	ctx := app.NewContextLegacy(true, tmproto.Header{Height: app.LastBlockHeight()})
 
 	// We export at last height + 1, because that's the height at which
 	// Tendermint will start InitChain.
@@ -47,7 +47,11 @@ func (app *Mezo) ExportAppStateAndValidators(
 		panic("for-zero-height export is not supported")
 	}
 
-	genState := app.mm.ExportGenesis(ctx, app.appCodec)
+	genState, err := app.mm.ExportGenesis(ctx, app.appCodec)
+	if err != nil {
+		return servertypes.ExportedApp{}, err
+	}
+
 	appState, err := json.MarshalIndent(genState, "", "  ")
 	if err != nil {
 		return servertypes.ExportedApp{}, err

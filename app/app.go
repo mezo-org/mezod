@@ -294,14 +294,14 @@ func NewMezo(
 	bApp.SetParamStore(app.ConsensusParamsKeeper.ParamsStore)
 
 	bech32Prefix := sdk.GetConfig().GetBech32AccountAddrPrefix()
+	addressCodec := authcodec.NewBech32Codec(bech32Prefix)
 
-	// use custom Ethermint account for contracts
 	app.AccountKeeper = authkeeper.NewAccountKeeper(
 		appCodec,
 		runtime.NewKVStoreService(keys[authtypes.StoreKey]),
 		mezotypes.ProtoAccount,
 		maccPerms,
-		authcodec.NewBech32Codec(bech32Prefix),
+		addressCodec,
 		bech32Prefix,
 		authority.String(),
 	)
@@ -384,7 +384,7 @@ func NewMezo(
 		bank.NewAppModule(appCodec, app.BankKeeper, app.AccountKeeper, app.GetSubspace(banktypes.ModuleName)),
 		crisis.NewAppModule(app.CrisisKeeper, skipGenesisInvariants, app.GetSubspace(crisistypes.ModuleName)),
 		poa.NewAppModule(app.PoaKeeper),
-		upgrade.NewAppModule(app.UpgradeKeeper),
+		upgrade.NewAppModule(app.UpgradeKeeper, addressCodec),
 		params.NewAppModule(app.ParamsKeeper),
 		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
