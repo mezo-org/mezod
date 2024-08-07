@@ -16,6 +16,7 @@
 package cosmos
 
 import (
+	sdkmath "cosmossdk.io/math"
 	"math/big"
 
 	errorsmod "cosmossdk.io/errors"
