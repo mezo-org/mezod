@@ -144,17 +144,17 @@ func (am *permitMethod) Run(
 	// expects it to be 0 or 1.
 	v -= 27
 
-	r_component, ok := inputs[5].([32]byte)
+	rComponent, ok := inputs[5].([32]byte)
 	if !ok {
 		return nil, fmt.Errorf("invalid r component of the signature: %v", inputs[5])
 	}
-	r := new(big.Int).SetBytes(r_component[:])
+	r := new(big.Int).SetBytes(rComponent[:])
 
-	s_component, ok := inputs[6].([32]byte)
+	sComponent, ok := inputs[6].([32]byte)
 	if !ok {
 		return nil, fmt.Errorf("invalid s component of the signature: %v", inputs[6])
 	}
-	s := new(big.Int).SetBytes(s_component[:])
+	s := new(big.Int).SetBytes(sComponent[:])
 
 	// A boolean set to true checks the signature with `s` value against the lower
 	// half of the secp256k1 curve's order and is considered valid.

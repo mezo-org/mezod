@@ -33,13 +33,13 @@ func (s *PrecompileTestSuite) TestPermit() {
 	}{
 		{
 			name:        "empty args",
-			run:         func(nonce int64) []interface{} { return nil },
+			run:         func(_ int64) []interface{} { return nil },
 			runs:        1,
 			errContains: "argument count mismatch",
 		},
 		{
 			name: "argument count mismatch",
-			run: func(nonce int64) []interface{} {
+			run: func(_ int64) []interface{} {
 				return []interface{}{
 					1, 2, 3,
 				}
@@ -49,7 +49,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 		},
 		{
 			name: "invalid owner address",
-			run: func(nonce int64) []interface{} {
+			run: func(_ int64) []interface{} {
 				return []interface{}{
 					"invalid address", s.account1.EvmAddr, big.NewInt(1), big.NewInt(2), uint8(1), [32]byte{}, [32]byte{},
 				}
@@ -59,7 +59,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 		},
 		{
 			name: "invalid spender address",
-			run: func(nonce int64) []interface{} {
+			run: func(_ int64) []interface{} {
 				return []interface{}{
 					s.account1.EvmAddr, "invalid address", big.NewInt(1), big.NewInt(2), uint8(1), [32]byte{}, [32]byte{},
 				}
@@ -69,7 +69,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 		},
 		{
 			name: "invalid amount",
-			run: func(nonce int64) []interface{} {
+			run: func(_ int64) []interface{} {
 				return []interface{}{
 					s.account1.EvmAddr, s.account2.EvmAddr, "invalid amount", big.NewInt(2), uint8(1), [32]byte{}, [32]byte{},
 				}
@@ -83,16 +83,15 @@ func (s *PrecompileTestSuite) TestPermit() {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
 
 				invalidPermitTypehash := "InvalidPermit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
-				digest, err := buildDigest(s, invalidPermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, invalidPermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
 			runs:        1,
@@ -104,16 +103,15 @@ func (s *PrecompileTestSuite) TestPermit() {
 			run: func(nonce int64) []interface{} {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
 
-				digest, err := buildDigest(s, PermitTypehash, s.account2.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, PermitTypehash, s.account2.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
 			runs:        1,
@@ -125,16 +123,15 @@ func (s *PrecompileTestSuite) TestPermit() {
 			run: func(nonce int64) []interface{} {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
 
-				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account1.EvmAddr, amount, nonce, deadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account1.EvmAddr, amount, nonce, deadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
 			runs:        1,
@@ -146,16 +143,15 @@ func (s *PrecompileTestSuite) TestPermit() {
 			run: func(nonce int64) []interface{} {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
 
-				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, int64(99), nonce, deadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, int64(99), nonce, deadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
 			runs:        1,
@@ -164,20 +160,19 @@ func (s *PrecompileTestSuite) TestPermit() {
 		},
 		{
 			name: "invalid nonce in the hashed digest",
-			run: func(nonce int64) []interface{} {
+			run: func(_ int64) []interface{} {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
 				invalidNonce := int64(1)
 
-				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, invalidNonce, deadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, invalidNonce, deadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
 			runs:        1,
@@ -189,16 +184,15 @@ func (s *PrecompileTestSuite) TestPermit() {
 			run: func(nonce int64) []interface{} {
 				deadline := time.Now().Add(25 * time.Hour).Unix() // tmr
 
-				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
 			runs:        1,
@@ -210,16 +204,15 @@ func (s *PrecompileTestSuite) TestPermit() {
 			run: func(nonce int64) []interface{} {
 				expiredDeadline := time.Now().Add(-24 * time.Hour).Unix() // yesterday
 
-				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, expiredDeadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, expiredDeadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(expiredDeadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(expiredDeadline), v, rComponent, sComponent,
 				}
 			},
 			runs:        1,
@@ -231,16 +224,15 @@ func (s *PrecompileTestSuite) TestPermit() {
 			run: func(nonce int64) []interface{} {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
 
-				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
 			runs:      1,
@@ -262,16 +254,15 @@ func (s *PrecompileTestSuite) TestPermit() {
 			run: func(nonce int64) []interface{} {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
 
-				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
-				s.Require().NoError(err)
+				digest := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
 
 				// Sign the hash with the private key
 				// Extract r, s, v values from the signature
-				// r_component := new(big.Int).SetBytes(signature[:32])
-				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+				// rComponent := new(big.Int).SetBytes(signature[:32])
+				rComponent, sComponent, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
-					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
 			runs:      2,
@@ -356,16 +347,16 @@ func sign(digest common.Hash, s *PrecompileTestSuite) ([32]byte, [32]byte, uint8
 		s.Require().NoError(err)
 	}
 
-	var r_component [32]byte
-	var s_component [32]byte
+	var rComponent [32]byte
+	var sComponent [32]byte
 
-	copy(r_component[:], signature[:32])
-	copy(s_component[:], signature[32:64])
-	v := uint8(signature[64]) + 27
-	return r_component, s_component, v
+	copy(rComponent[:], signature[:32])
+	copy(sComponent[:], signature[32:64])
+	v := signature[64] + 27
+	return rComponent, sComponent, v
 }
 
-func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender common.Address, amount, nonce, deadline int64) (common.Hash, error) {
+func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender common.Address, amount, nonce, deadline int64) common.Hash {
 	var PermitTypehashBytes32 [32]byte
 	copy(PermitTypehashBytes32[:], crypto.Keccak256([]byte(permitTypehash))[:32])
 
@@ -403,7 +394,7 @@ func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender c
 	encodedData := append([]byte("\x19\x01"), DomainSeparatorBytes32[:]...)
 	encodedData = append(encodedData, hashedMessage.Bytes()...)
 
-	return crypto.Keccak256Hash(encodedData), nil
+	return crypto.Keccak256Hash(encodedData)
 }
 
 // This functions implements the EIP712 domain separator for the permit function
