@@ -18,6 +18,8 @@ package filters
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/params"
+	"math/big"
 	"sync"
 	"time"
 
@@ -357,7 +359,8 @@ func (api *PublicFilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, er
 					continue
 				}
 
-				baseFee := types.BaseFeeFromEvents(data.ResultBeginBlock.Events)
+				// TODO: fetch from block events
+				baseFee := big.NewInt(params.InitialBaseFee)
 
 				// TODO: fetch bloom from events
 				header := types.EthHeaderFromTendermint(data.Header, ethtypes.Bloom{}, baseFee)
