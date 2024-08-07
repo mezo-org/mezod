@@ -7,6 +7,7 @@ import seed0 from "../../../build/node0/mezod/key_seed.json";
 import seed1 from "../../../build/node1/mezod/key_seed.json";
 import seed2 from "../../../build/node2/mezod/key_seed.json";
 import seed3 from "../../../build/node3/mezod/key_seed.json";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const pk0 = ethers.Wallet.fromPhrase(seed0.secret).privateKey;
 const pk1 = ethers.Wallet.fromPhrase(seed1.secret).privateKey;
@@ -24,6 +25,7 @@ const config: HardhatUserConfig = {
       url: "http://localhost:8545",
       chainId: 31611,
       accounts: [pk0, pk1, pk2, pk3],
+      blockGasLimit: 10000000
     },
   }
 };
@@ -37,6 +39,16 @@ const config: HardhatUserConfig = {
 //   }
 //   console.log(addresses);
 // });
+
+task("latest", "Returns latest block", async (taskArguments, hre, runSuper) => {
+  console.log(await hre.ethers.provider.getBlock("latest"));
+});
+
+task("balance", "Returns an accounts balance")
+  .addParam("account", "The accounts address")
+  .setAction(async (taskArguments, hre, runSuper) => {
+    console.log(await hre.ethers.provider.getBalance(taskArguments.account));
+  });
 
 task("owner", "Returns the current contract owner", async (taskArguments, hre, runSuper) => {
   const validatorPool = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
@@ -101,6 +113,37 @@ task("applications", "Returns an array of operator addresses for current applica
   if (candidates) {
     console.log(candidates);
     // Result(0) []
+  }
+});
+
+task("leave", "Removes the signers validator from the pool")
+  .addParam("signer", "The signer address (msg.sender)")
+  .setAction(async (taskArguments, hre, runSuper) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer);
+    if (signer) {
+      const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer);
+      const result = await validatorPool.leave({gasLimit: 5000000})
+      if (result) {
+        console.log(result);
+      }
+    } else {
+      console.log("Unknown signer")
+    }
+  });
+
+task("kick", "Kicks a validator from the pool")
+.addParam("signer", "The signer address (msg.sender)")
+.addParam("operator", "The operator address of the validator to be kicked")
+.setAction(async (taskArguments, hre, runSuper) => {
+  const signer = await hre.ethers.getSigner(taskArguments.signer);
+  if (signer) {
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer);
+    const result = await validatorPool.kick(taskArguments.operator)
+    if (result) {
+      console.log(result);
+    }
+  } else {
+    console.log("Unknown signer")
   }
 });
 export default config;
