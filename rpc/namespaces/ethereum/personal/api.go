@@ -21,10 +21,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/evmos/evmos/v12/rpc/backend"
+	"github.com/mezo-org/mezod/rpc/backend"
 
-	"github.com/evmos/evmos/v12/crypto/hd"
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/crypto/hd"
+	"github.com/mezo-org/mezod/types"
 
 	"github.com/cometbft/cometbft/libs/log"
 
@@ -36,7 +36,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // PrivateAccountAPI is the personal_ prefixed set of APIs in the Web3 JSON-RPC spec.
@@ -111,7 +111,7 @@ func (api *PrivateAccountAPI) NewAccount(password string) (common.Address, error
 	}
 	addr := common.BytesToAddress(pubKey.Address().Bytes())
 	api.logger.Info("Your new key was generated", "address", addr.String())
-	api.logger.Info("Please backup your key file!", "path", os.Getenv("HOME")+"/.evmos/"+name) // TODO: pass the correct binary
+	api.logger.Info("Please backup your key file!", "path", os.Getenv("HOME")+"/.mezo/"+name) // TODO: pass the correct binary
 	api.logger.Info("Please remember your password!")
 	return addr, nil
 }

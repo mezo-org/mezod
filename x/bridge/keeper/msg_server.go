@@ -1,7 +1,7 @@
 package keeper
 
 import (
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	"github.com/mezo-org/mezod/x/bridge/types"
 )
 
 var _ types.MsgServer = msgServer{}

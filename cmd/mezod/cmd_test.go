@@ -9,26 +9,26 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 	"github.com/stretchr/testify/require"
 
-	"github.com/evmos/evmos/v12/app"
-	evmosd "github.com/evmos/evmos/v12/cmd/evmosd"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/app"
+	mezod "github.com/mezo-org/mezod/cmd/mezod"
+	"github.com/mezo-org/mezod/utils"
 )
 
 func TestInitCmd(t *testing.T) {
-	rootCmd, _ := evmosd.NewRootCmd()
+	rootCmd, _ := mezod.NewRootCmd()
 	rootCmd.SetArgs([]string{
-		"init",       // Test the init cmd
-		"evmos-test", // Moniker
+		"init",      // Test the init cmd
+		"mezo-test", // Moniker
 		fmt.Sprintf("--%s=%s", cli.FlagOverwrite, "true"), // Overwrite genesis.json, in case it already exists
 		fmt.Sprintf("--%s=%s", flags.FlagChainID, utils.TestnetChainID+"-1"),
 	})
 
-	err := svrcmd.Execute(rootCmd, "evmosd", app.DefaultNodeHome)
+	err := svrcmd.Execute(rootCmd, "mezod", app.DefaultNodeHome)
 	require.NoError(t, err)
 }
 
 func TestAddKeyLedgerCmd(t *testing.T) {
-	rootCmd, _ := evmosd.NewRootCmd()
+	rootCmd, _ := mezod.NewRootCmd()
 	rootCmd.SetArgs([]string{
 		"keys",
 		"add",
@@ -37,6 +37,6 @@ func TestAddKeyLedgerCmd(t *testing.T) {
 	})
 
 	require.Panics(t, func() {
-		_ = svrcmd.Execute(rootCmd, "EVMOSD", app.DefaultNodeHome)
+		_ = svrcmd.Execute(rootCmd, "MEZOD", app.DefaultNodeHome)
 	})
 }

@@ -23,7 +23,7 @@ import (
 
 	"cosmossdk.io/simapp"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
-	"github.com/evmos/evmos/v12/encoding"
+	"github.com/mezo-org/mezod/encoding"
 )
 
 // NewDefaultGenesisState generates the default state for the application.
@@ -34,7 +34,7 @@ func NewDefaultGenesisState() simapp.GenesisState {
 
 // ExportAppStateAndValidators exports the state of the application for a genesis
 // file.
-func (app *Evmos) ExportAppStateAndValidators(
+func (app *Mezo) ExportAppStateAndValidators(
 	forZeroHeight bool, _ []string,
 ) (servertypes.ExportedApp, error) {
 	// Creates context with current height and checks txs for ctx to be usable by start of next block

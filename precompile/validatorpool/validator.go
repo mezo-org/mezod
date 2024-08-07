@@ -5,7 +5,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/precompile"
+	"github.com/mezo-org/mezod/precompile"
 )
 
 // ValidatorsMethodName is the name of the validators method. It matches the name

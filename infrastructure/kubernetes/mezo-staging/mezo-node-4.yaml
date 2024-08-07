@@ -109,7 +109,7 @@ spec:
               mountPath: /mnt/.mezod/keyring-file/99d1959700dfe4d2dc1fdc758828eeed72ef57d8.address
               subPath: 99d1959700dfe4d2dc1fdc758828eeed72ef57d8.address
           command:
-            - evmosd
+            - mezod
             - start
           args:
             - --home

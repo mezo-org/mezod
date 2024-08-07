@@ -28,15 +28,15 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   KEYRING_PASSWORD=$(openssl rand -hex 32)
 
   # Set some configuration options for the node to not repeat them in the commands.
-  ./build/evmosd --home=$NODE_HOMEDIR config chain-id $CHAIN_ID
-  ./build/evmosd --home=$NODE_HOMEDIR config keyring-backend file
+  ./build/mezod --home=$NODE_HOMEDIR config chain-id $CHAIN_ID
+  ./build/mezod --home=$NODE_HOMEDIR config keyring-backend file
 
   # Generate a new account key that will be used to authenticate blockchain transactions.
   # Capture the mnemonic used to generate that key.
-  KEYS_ADD_OUT=$(yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR keys add $NODE_KEY_NAME --output=json)
+  KEYS_ADD_OUT=$(yes $KEYRING_PASSWORD | ./build/mezod --home=$NODE_HOMEDIR keys add $NODE_KEY_NAME --output=json)
   MNEMONIC=$(echo $KEYS_ADD_OUT | jq -r '.mnemonic')
 
-  KEYS_SHOW_OUT=$(yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR keys show $NODE_KEY_NAME --output=json)
+  KEYS_SHOW_OUT=$(yes $KEYRING_PASSWORD | ./build/mezod --home=$NODE_HOMEDIR keys show $NODE_KEY_NAME --output=json)
   NODE_ADDRESS=$(echo $KEYS_SHOW_OUT | jq -r '.address')
 
   echo "[$NODE_NAME] account key generated"
@@ -49,14 +49,14 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # Worth noting that recover mode does not refer to the network key which is always
   # generated anew. However, the network key is not critical and can be replaced
   # without any consequences.
-  yes "$MNEMONIC" | ./build/evmosd --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover &> /dev/null
+  yes "$MNEMONIC" | ./build/mezod --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover &> /dev/null
 
   echo "[$NODE_NAME] init action done"
 
   # Generate validator data for the node using the genval command.
   # This step is skipped for mezo-faucet as this node is not a validator.
   if [ "$NODE_NAME" != "mezo-faucet" ]; then
-    yes $KEYRING_PASSWORD | ./build/evmosd --home=$NODE_HOMEDIR genval $NODE_KEY_NAME --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
+    yes $KEYRING_PASSWORD | ./build/mezod --home=$NODE_HOMEDIR genval $NODE_KEY_NAME --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
 
     NODE_GENVAL=$(find $NODE_HOMEDIR/config/genval -mindepth 1 -print -quit)
     NODE_MEMOS+=($(jq -r '.memo' $NODE_GENVAL))
@@ -81,7 +81,7 @@ GLOBAL_GENESIS_HOMEDIR=${NODE_HOMEDIRS[0]}
 
 for i in "${!NODE_NAMES[@]}"; do
   # Node's account balance must be added to the global genesis file explicitly.
-  ./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
+  ./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
 
   # Execute the rest for all nodes but the first.
   if [[ "$i" == '0' ]]; then
@@ -104,7 +104,7 @@ for i in "${!NODE_NAMES[@]}"; do
 done
 
 # Aggregate all genval files into the global genesis file.
-./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR collect-genvals &> /dev/null
+./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR collect-genvals &> /dev/null
 rm -rf $GLOBAL_GENESIS_HOMEDIR/config/genval
 
 GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/genesis.json
@@ -121,7 +121,7 @@ POA_OWNER=${NODE_ADDRESSES[0]}
 jq '.app_state["poa"]["owner"]="'"$POA_OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 # Validate the global genesis file and move it to the root directory.
-./build/evmosd --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
+./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
 mv $GENESIS $HOMEDIR/genesis.json
 GENESIS=$HOMEDIR/genesis.json # Reassign the GENESIS variable to the new location.
 

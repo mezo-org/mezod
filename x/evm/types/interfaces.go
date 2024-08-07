@@ -25,8 +25,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
 
 // AccountKeeper defines the expected account keeper interface

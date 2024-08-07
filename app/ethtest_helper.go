@@ -19,11 +19,11 @@ import (
 	"encoding/json"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/utils"
 
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	"cosmossdk.io/simapp"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -39,18 +39,18 @@ import (
 	tmtypes "github.com/cometbft/cometbft/types"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/encoding"
+	"github.com/mezo-org/mezod/encoding"
 )
 
-// EthSetup initializes a new EvmosApp. A Nop logger is set in EvmosApp.
-func EthSetup(isCheckTx bool, patchGenesis func(*Evmos, simapp.GenesisState) simapp.GenesisState) *Evmos {
+// EthSetup initializes a new MezoApp. A Nop logger is set in MezoApp.
+func EthSetup(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState) simapp.GenesisState) *Mezo {
 	return EthSetupWithDB(isCheckTx, patchGenesis, dbm.NewMemDB())
 }
 
-// EthSetupWithDB initializes a new EvmosApp. A Nop logger is set in EvmosApp.
-func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Evmos, simapp.GenesisState) simapp.GenesisState, db dbm.DB) *Evmos {
+// EthSetupWithDB initializes a new MezoApp. A Nop logger is set in MezoApp.
+func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState) simapp.GenesisState, db dbm.DB) *Mezo {
 	chainID := utils.TestnetChainID + "-1"
-	app := NewEvmos(
+	app := NewMezo(
 		log.NewNopLogger(),
 		db,
 		nil,

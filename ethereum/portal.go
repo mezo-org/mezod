@@ -3,7 +3,7 @@ package ethereum
 import (
 	"fmt"
 
-	"github.com/evmos/evmos/v12/ethereum/bindings/portal/gen/contract"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/contract"
 
 	"github.com/keep-network/keep-common/pkg/chain/ethereum"
 )

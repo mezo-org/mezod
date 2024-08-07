@@ -9,8 +9,8 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/precompile"
-	evm "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/precompile"
+	evm "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // AllowanceMethodName is the name of the Allowance method that should match the

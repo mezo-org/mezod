@@ -25,16 +25,16 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	anteutils "github.com/evmos/evmos/v12/app/ante/utils"
+	anteutils "github.com/mezo-org/mezod/app/ante/utils"
 
-	cosmosante "github.com/evmos/evmos/v12/app/ante/cosmos"
-	evmante "github.com/evmos/evmos/v12/app/ante/evm"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	cosmosante "github.com/mezo-org/mezod/app/ante/cosmos"
+	evmante "github.com/mezo-org/mezod/app/ante/evm"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	sdkvesting "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
 )
 
-// HandlerOptions defines the list of module keepers required to run the Evmos
+// HandlerOptions defines the list of module keepers required to run the Mezo
 // AnteHandler decorators.
 type HandlerOptions struct {
 	Cdc                    codec.BinaryCodec

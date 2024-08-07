@@ -7,8 +7,8 @@ import (
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/precompile"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/precompile"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
 
 // SubmitApplicationMethodName is the name of the submitApplication method. It matches the name

@@ -14,9 +14,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/evmos/evmos/v12/x/poa/client/cli"
-	"github.com/evmos/evmos/v12/x/poa/keeper"
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/client/cli"
+	"github.com/mezo-org/mezod/x/poa/keeper"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 // Type check to ensure the interface is properly implemented

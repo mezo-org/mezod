@@ -24,8 +24,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
-	"github.com/evmos/evmos/v12/utils"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/utils"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // FundAccount is a utility function that funds an account by minting and
@@ -39,7 +39,7 @@ func FundAccount(ctx sdk.Context, bankKeeper bankkeeper.Keeper, addr sdk.AccAddr
 }
 
 // FundAccountWithBaseDenom is a utility function that uses the FundAccount function
-// to fund an account with the default Evmos denomination.
+// to fund an account with the default Mezo denomination.
 func FundAccountWithBaseDenom(ctx sdk.Context, bankKeeper bankkeeper.Keeper, addr sdk.AccAddress, amount int64) error {
 	coins := sdk.NewCoins(
 		sdk.NewCoin(utils.BaseDenom, sdk.NewInt(amount)),
