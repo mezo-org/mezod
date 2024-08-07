@@ -162,9 +162,6 @@ func (am *permitMethod) Run(
 		return nil, fmt.Errorf("invalid signature values")
 	}
 
-	// TODO: remove
-	fmt.Println("Passed the signature validation")
-
 	nonce, _, err := am.getNonce(owner, context.SdkCtx())
 	if err != nil {
 		return nil, err
@@ -176,8 +173,7 @@ func (am *permitMethod) Run(
 	}
 
 	// Concatenate r, s, and v to form the full signature
-	signature := append(r.Bytes(), s.Bytes()...)
-	signature = append(signature, v)
+	signature := append(r.Bytes(), append(s.Bytes(), v)...)
 
 	// Recover the public key from the signature
 	recoveredPubKey, err := crypto.SigToPub(digest, signature)
@@ -187,11 +183,8 @@ func (am *permitMethod) Run(
 
 	// The recovered pub key is verified to ensure that the owner has signed the message.
 	if !bytes.Equal(crypto.PubkeyToAddress(*recoveredPubKey).Bytes(), owner.Bytes()) {
-		return nil, fmt.Errorf("signature verification failed")
+		return nil, fmt.Errorf("verification failed over the signed message")
 	}
-
-	// TODO: remove
-	fmt.Println("Passed the signature verification")
 
 	approveMethod := newApproveMethod(am.bankKeeper, am.authzkeeper)
 
@@ -293,4 +286,6 @@ func buildDigest(owner, spender common.Address, amount, nonce, deadline *big.Int
 	return crypto.Keccak256(encodedData), nil
 }
 
-// TODO: Add GetNonce as a new method so the users can get the nonce value
+// TODO: Add Nonce read only method.
+// TODO: Add DOMAIN_SEPARATOR read only method.
+// TODO: Add PERMIT_TYPEHASH read only method.

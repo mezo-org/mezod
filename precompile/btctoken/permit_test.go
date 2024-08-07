@@ -25,39 +25,256 @@ const (
 func (s *PrecompileTestSuite) TestPermit() {
 	testcases := []struct {
 		name        string
-		run         func() []interface{}
+		run         func(nonce int64) []interface{}
 		postCheck   func()
 		basicPass   bool
+		runs        int
 		errContains string
 	}{
-		// TODO: add more test cases
 		{
-			name: "successful permit",
-			run: func() []interface{} {
+			name:        "empty args",
+			run:         func(nonce int64) []interface{} { return nil },
+			runs:        1,
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "argument count mismatch",
+			run: func(nonce int64) []interface{} {
+				return []interface{}{
+					1, 2, 3,
+				}
+			},
+			runs:        1,
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "invalid owner address",
+			run: func(nonce int64) []interface{} {
+				return []interface{}{
+					"invalid address", s.account1.EvmAddr, big.NewInt(1), big.NewInt(2), uint8(1), [32]byte{}, [32]byte{},
+				}
+			},
+			runs:        1,
+			errContains: "cannot use string as type array as argument",
+		},
+		{
+			name: "invalid spender address",
+			run: func(nonce int64) []interface{} {
+				return []interface{}{
+					s.account1.EvmAddr, "invalid address", big.NewInt(1), big.NewInt(2), uint8(1), [32]byte{}, [32]byte{},
+				}
+			},
+			runs:        1,
+			errContains: "cannot use string as type array as argument",
+		},
+		{
+			name: "invalid amount",
+			run: func(nonce int64) []interface{} {
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, "invalid amount", big.NewInt(2), uint8(1), [32]byte{}, [32]byte{},
+				}
+			},
+			runs:        1,
+			errContains: "cannot use string as type ptr as argument",
+		},
+		{
+			name: "invalid permit typehash",
+			run: func(nonce int64) []interface{} {
 				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
-				nonce := int64(0)
 
-				digest, err := buildDigest(s, nonce, deadline)
+				invalidPermitTypehash := "InvalidPermit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+				digest, err := buildDigest(s, invalidPermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
 				s.Require().NoError(err)
 
 				// Sign the hash with the private key
-				signature, err := crypto.Sign(digest.Bytes(), s.account1.Priv)
-				if err != nil {
-					s.Require().NoError(err)
-				}
-
-				var r_component [32]byte
-				var s_component [32]byte
 				// Extract r, s, v values from the signature
 				// r_component := new(big.Int).SetBytes(signature[:32])
-				copy(r_component[:], signature[:32])
-				copy(s_component[:], signature[32:64])
-				v := uint8(signature[64]) + 27 // Ethereum specific adjustment
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
 
 				return []interface{}{
 					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
 				}
 			},
+			runs:        1,
+			basicPass:   true,
+			errContains: "verification failed over the signed message",
+		},
+		{
+			name: "invalid owner in the hashed digest",
+			run: func(nonce int64) []interface{} {
+				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
+
+				digest, err := buildDigest(s, PermitTypehash, s.account2.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
+				s.Require().NoError(err)
+
+				// Sign the hash with the private key
+				// Extract r, s, v values from the signature
+				// r_component := new(big.Int).SetBytes(signature[:32])
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+				}
+			},
+			runs:        1,
+			basicPass:   true,
+			errContains: "verification failed over the signed message",
+		},
+		{
+			name: "invalid spender in the hashed digest",
+			run: func(nonce int64) []interface{} {
+				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
+
+				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account1.EvmAddr, amount, nonce, deadline)
+				s.Require().NoError(err)
+
+				// Sign the hash with the private key
+				// Extract r, s, v values from the signature
+				// r_component := new(big.Int).SetBytes(signature[:32])
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+				}
+			},
+			runs:        1,
+			basicPass:   true,
+			errContains: "verification failed over the signed message",
+		},
+		{
+			name: "invalid amount in the hashed digest",
+			run: func(nonce int64) []interface{} {
+				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
+
+				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, int64(99), nonce, deadline)
+				s.Require().NoError(err)
+
+				// Sign the hash with the private key
+				// Extract r, s, v values from the signature
+				// r_component := new(big.Int).SetBytes(signature[:32])
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+				}
+			},
+			runs:        1,
+			basicPass:   true,
+			errContains: "verification failed over the signed message",
+		},
+		{
+			name: "invalid nonce in the hashed digest",
+			run: func(nonce int64) []interface{} {
+				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
+				invalidNonce := int64(1)
+
+				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, invalidNonce, deadline)
+				s.Require().NoError(err)
+
+				// Sign the hash with the private key
+				// Extract r, s, v values from the signature
+				// r_component := new(big.Int).SetBytes(signature[:32])
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+				}
+			},
+			runs:        1,
+			basicPass:   true,
+			errContains: "verification failed over the signed message",
+		},
+		{
+			name: "invalid deadline in the hashed digest",
+			run: func(nonce int64) []interface{} {
+				deadline := time.Now().Add(25 * time.Hour).Unix() // tmr
+
+				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
+				s.Require().NoError(err)
+
+				// Sign the hash with the private key
+				// Extract r, s, v values from the signature
+				// r_component := new(big.Int).SetBytes(signature[:32])
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+				}
+			},
+			runs:        1,
+			basicPass:   true,
+			errContains: "verification failed over the signed message",
+		},
+		{
+			name: "permit expired",
+			run: func(nonce int64) []interface{} {
+				expiredDeadline := time.Now().Add(-24 * time.Hour).Unix() // yesterday
+
+				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, expiredDeadline)
+				s.Require().NoError(err)
+
+				// Sign the hash with the private key
+				// Extract r, s, v values from the signature
+				// r_component := new(big.Int).SetBytes(signature[:32])
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(expiredDeadline), v, r_component, s_component,
+				}
+			},
+			runs:        1,
+			basicPass:   true,
+			errContains: "permit expired",
+		},
+		{
+			name: "successful permit",
+			run: func(nonce int64) []interface{} {
+				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
+
+				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
+				s.Require().NoError(err)
+
+				// Sign the hash with the private key
+				// Extract r, s, v values from the signature
+				// r_component := new(big.Int).SetBytes(signature[:32])
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+				}
+			},
+			runs:      1,
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account2.SdkAddr,
+					s.account1.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+				)
+			},
+		},
+		{
+			// This test is to check if the permit function can be executed twice with
+			// different nonces. The second execution should also pass since the nonce
+			// should be incremented by one in EVM storage for the given owner and in
+			// this test as well.
+			name: "successful permit executed twice",
+			run: func(nonce int64) []interface{} {
+				deadline := time.Now().Add(24 * time.Hour).Unix() // tmr
+
+				digest, err := buildDigest(s, PermitTypehash, s.account1.EvmAddr, s.account2.EvmAddr, amount, nonce, deadline)
+				s.Require().NoError(err)
+
+				// Sign the hash with the private key
+				// Extract r, s, v values from the signature
+				// r_component := new(big.Int).SetBytes(signature[:32])
+				r_component, s_component, v := sign(digest, s) // Ethereum specific adjustment
+
+				return []interface{}{
+					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, r_component, s_component,
+				}
+			},
+			runs:      2,
 			basicPass: true,
 			postCheck: func() {
 				s.requireSendAuthz(
@@ -71,6 +288,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
+			s.SetupTest()
 			evm := &vm.EVM{
 				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
 			}
@@ -83,47 +301,73 @@ func (s *PrecompileTestSuite) TestPermit() {
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 
-			var methodInputs []interface{}
-			if tc.run != nil {
-				methodInputs = tc.run()
-			}
+			// Default nonce for the tests starts with zero. Then we can increment it
+			// by one to check the permit function with different nonces.
+			nonce := int64(0)
+			for i := 0; i < tc.runs; i++ {
+				var methodInputs []interface{}
+				if tc.run != nil {
+					methodInputs = tc.run(nonce)
+				}
 
-			method := s.btcTokenPrecompile.Abi.Methods["permit"]
-			var methodInputArgs []byte
-			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
+				method := s.btcTokenPrecompile.Abi.Methods["permit"]
+				var methodInputArgs []byte
+				methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
-			if tc.basicPass {
+				if tc.basicPass {
+					s.Require().NoError(err, "expected no error")
+				} else {
+					s.Require().Error(err, "expected error")
+					s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+					return
+				}
+
+				vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+				// These first 4 bytes correspond to the method ID (first 4 bytes of the
+				// Keccak-256 hash of the function signature).
+				// In this case a function signature is 'function permit(address owner, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)'
+				vmContract.Input = append([]byte{0xd5, 0x05, 0xac, 0xcf}, methodInputArgs...)
+				vmContract.CallerAddress = s.account2.EvmAddr
+
+				output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+				if err != nil && tc.errContains != "" {
+					s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+					return
+				}
 				s.Require().NoError(err, "expected no error")
-			} else {
-				s.Require().Error(err, "expected error")
-				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
-				return
-			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
-			// These first 4 bytes correspond to the method ID (first 4 bytes of the
-			// Keccak-256 hash of the function signature).
-			// In this case a function signature is 'function permit(address owner, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)'
-			vmContract.Input = append([]byte{0xd5, 0x05, 0xac, 0xcf}, methodInputArgs...)
-			vmContract.CallerAddress = s.account2.EvmAddr
+				out, err := method.Outputs.Unpack(output)
+				s.Require().NoError(err)
+				s.Require().Equal(true, out[0], "expected different value")
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
-			s.Require().NoError(err, "expected no error")
+				if tc.postCheck != nil {
+					tc.postCheck()
+				}
 
-			out, err := method.Outputs.Unpack(output)
-			s.Require().NoError(err)
-			s.Require().Equal(true, out[0], "expected different value")
-
-			if tc.postCheck != nil {
-				tc.postCheck()
+				nonce++
 			}
 		})
 	}
 }
 
-func buildDigest(s *PrecompileTestSuite, nonce, deadline int64) (common.Hash, error) {
+func sign(digest common.Hash, s *PrecompileTestSuite) ([32]byte, [32]byte, uint8) {
+	signature, err := crypto.Sign(digest.Bytes(), s.account1.Priv)
+	if err != nil {
+		s.Require().NoError(err)
+	}
+
+	var r_component [32]byte
+	var s_component [32]byte
+
+	copy(r_component[:], signature[:32])
+	copy(s_component[:], signature[32:64])
+	v := uint8(signature[64]) + 27
+	return r_component, s_component, v
+}
+
+func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender common.Address, amount, nonce, deadline int64) (common.Hash, error) {
 	var PermitTypehashBytes32 [32]byte
-	copy(PermitTypehashBytes32[:], crypto.Keccak256([]byte(PermitTypehash))[:32])
+	copy(PermitTypehashBytes32[:], crypto.Keccak256([]byte(permitTypehash))[:32])
 
 	bytes32Type, _ := abi.NewType("bytes32", "", nil)
 	addressType, _ := abi.NewType("address", "", nil)
@@ -138,8 +382,8 @@ func buildDigest(s *PrecompileTestSuite, nonce, deadline int64) (common.Hash, er
 		{Type: uint256Type},
 	}.Pack(
 		PermitTypehashBytes32,
-		s.account1.EvmAddr,
-		s.account2.EvmAddr,
+		owner,
+		spender,
 		big.NewInt(amount),
 		big.NewInt(nonce),
 		big.NewInt(deadline),
