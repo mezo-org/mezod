@@ -3,11 +3,11 @@ package keeper
 import (
 	"testing"
 
+	"cosmossdk.io/log"
 	"cosmossdk.io/store"
 	storetypes "cosmossdk.io/store/types"
-	tmdb "github.com/cometbft/cometbft-db"
-	"cosmossdk.io/log"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	tmdb "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
