@@ -19,6 +19,7 @@ import (
 	"context"
 	"cosmossdk.io/log"
 	"fmt"
+	tmcfg "github.com/cometbft/cometbft/config"
 	"io"
 	"net"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	serverlog "github.com/cosmos/cosmos-sdk/server/log"
 	"github.com/cosmos/cosmos-sdk/telemetry"
 
 	"github.com/spf13/cobra"
@@ -266,12 +268,12 @@ func startStandAlone(ctx *server.Context, opts StartOptions) error {
 		return err
 	}
 
-	svr, err := abciserver.NewServer(addr, transport, app)
+	svr, err := abciserver.NewServer(addr, transport, server.NewCometABCIWrapper(app))
 	if err != nil {
 		return fmt.Errorf("error creating listener: %v", err)
 	}
 
-	svr.SetLogger(ctx.Logger.With("server", "abci"))
+	svr.SetLogger(serverlog.CometLoggerWrapper{Logger: ctx.Logger.With("server", "abci")})
 
 	err = svr.Start()
 	if err != nil {
@@ -377,11 +379,11 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 			cfg,
 			pvm.LoadOrGenFilePV(cfg.PrivValidatorKeyFile(), cfg.PrivValidatorStateFile()),
 			nodeKey,
-			proxy.NewLocalClientCreator(app),
+			proxy.NewLocalClientCreator(server.NewCometABCIWrapper(app)),
 			genDocProvider,
-			node.DefaultDBProvider,
+			tmcfg.DefaultDBProvider,
 			node.DefaultMetricsProvider(cfg.Instrumentation),
-			ctx.Logger.With("server", "node"),
+			serverlog.CometLoggerWrapper{Logger: ctx.Logger.With("server", "node")},
 		)
 		if err != nil {
 			logger.Error("failed init node", "error", err.Error())
@@ -408,7 +410,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 
 		app.RegisterTxService(clientCtx)
 		app.RegisterTendermintService(clientCtx)
-		app.RegisterNodeService(clientCtx)
+		app.RegisterNodeService(clientCtx, config.Config)
 	}
 
 	metrics, err := startTelemetry(config)
@@ -433,7 +435,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		idxLogger := ctx.Logger.With("indexer", "evm")
 		idxer = indexer.NewKVIndexer(idxDB, idxLogger, clientCtx)
 		indexerService := NewEVMIndexerService(idxer, clientCtx.Client.(rpcclient.Client))
-		indexerService.SetLogger(idxLogger)
+		indexerService.SetLogger(serverlog.CometLoggerWrapper{Logger: idxLogger})
 
 		errCh := make(chan error)
 		go func() {
