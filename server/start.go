@@ -445,7 +445,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		select {
 		case err := <-errCh:
 			return err
-		case <-time.After(types.ServerStartTime): // assume server started successfully
+		case <-time.After(ServerStartTime): // assume server started successfully
 		}
 	}
 
@@ -517,7 +517,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		select {
 		case err := <-errCh:
 			return err
-		case <-time.After(types.ServerStartTime): // assume server started successfully
+		case <-time.After(ServerStartTime): // assume server started successfully
 		}
 
 		defer apiSrv.Close()
@@ -636,7 +636,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		select {
 		case err := <-errCh:
 			return err
-		case <-time.After(types.ServerStartTime): // assume server started successfully
+		case <-time.After(ServerStartTime): // assume server started successfully
 		}
 	}
 	// Wait for SIGINT or SIGTERM signal
