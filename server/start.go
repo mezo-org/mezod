@@ -17,6 +17,7 @@ package server
 
 import (
 	"context"
+	"cosmossdk.io/log"
 	"fmt"
 	"io"
 	"net"
@@ -158,12 +159,10 @@ which accepts a path for the resulting pprof file.
 
 			// amino is needed here for backwards compatibility of REST routes
 			err = startInProcess(serverCtx, clientCtx, opts)
-			errCode, ok := err.(server.ErrorCode)
-			if !ok {
+			if err != nil {
 				return err
 			}
 
-			serverCtx.Logger.Debug(fmt.Sprintf("received quit signal: %d", errCode.Code))
 			return nil
 		},
 	}
@@ -286,7 +285,8 @@ func startStandAlone(ctx *server.Context, opts StartOptions) error {
 	}()
 
 	// Wait for SIGINT or SIGTERM signal
-	return server.WaitForQuitSignals()
+	waitForQuitSignals(ctx.Logger)
+	return nil
 }
 
 // legacyAminoCdc is used for the legacy REST API
@@ -587,7 +587,8 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 	// we do not need to start Rosetta or handle any Tendermint related processes.
 	if gRPCOnly {
 		// wait for signal capture and gracefully return
-		return server.WaitForQuitSignals()
+		waitForQuitSignals(logger)
+		return nil
 	}
 
 	var rosettaSrv crgserver.Server
@@ -640,7 +641,8 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		}
 	}
 	// Wait for SIGINT or SIGTERM signal
-	return server.WaitForQuitSignals()
+	waitForQuitSignals(logger)
+	return nil
 }
 
 func openDB(_ types.AppOptions, rootDir string, backendType dbm.BackendType) (dbm.DB, error) {
@@ -672,4 +674,10 @@ func startTelemetry(cfg config.Config) (*telemetry.Metrics, error) {
 		return nil, nil
 	}
 	return telemetry.New(cfg.Telemetry)
+}
+
+func waitForQuitSignals(logger log.Logger) {
+	quitCtx, cancelQuitCtx := context.WithCancel(context.Background())
+	server.ListenForQuitSignals(nil, false, cancelQuitCtx, logger)
+	<-quitCtx.Done()
 }
