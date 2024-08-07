@@ -17,6 +17,7 @@
 package network
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -100,14 +101,44 @@ func startInProcess(cfg Config, val *Validator) error {
 		app.RegisterTendermintService(val.ClientCtx)
 	}
 
+	if val.AppConfig.GRPC.Enable {
+		grpcSrv, err := servergrpc.NewGRPCServer(
+			val.ClientCtx,
+			app,
+			val.AppConfig.GRPC,
+		)
+		if err != nil {
+			return err
+		}
+
+		err = servergrpc.StartGRPCServer(
+			context.Background(),
+			logger,
+			val.AppConfig.GRPC,
+			grpcSrv,
+		)
+		if err != nil {
+			return err
+		}
+
+		val.grpc = grpcSrv
+	}
+
 	if val.AppConfig.API.Enable && val.APIAddress != "" {
-		apiSrv := api.New(val.ClientCtx, logger.With("module", "api-server"))
+		apiSrv := api.New(
+			val.ClientCtx,
+			logger.With("module", "api-server"),
+			val.grpc,
+		)
 		app.RegisterAPIRoutes(apiSrv, val.AppConfig.API)
 
 		errCh := make(chan error)
 
 		go func() {
-			if err := apiSrv.Start(val.AppConfig.Config); err != nil {
+			if err := apiSrv.Start(
+				context.Background(),
+				val.AppConfig.Config,
+			); err != nil {
 				errCh <- err
 			}
 		}()
@@ -119,22 +150,6 @@ func startInProcess(cfg Config, val *Validator) error {
 		}
 
 		val.api = apiSrv
-	}
-
-	if val.AppConfig.GRPC.Enable {
-		grpcSrv, err := servergrpc.StartGRPCServer(val.ClientCtx, app, val.AppConfig.GRPC)
-		if err != nil {
-			return err
-		}
-
-		val.grpc = grpcSrv
-
-		if val.AppConfig.GRPCWeb.Enable {
-			val.grpcWeb, err = servergrpc.StartGRPCWeb(grpcSrv, val.AppConfig.Config)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	if val.AppConfig.JSONRPC.Enable && val.AppConfig.JSONRPC.Address != "" {

@@ -498,18 +498,37 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		}
 	}
 
-	var apiSrv *api.Server
+	var grpcSrv *grpc.Server
+
+	if config.GRPC.Enable {
+		grpcSrv, err = servergrpc.NewGRPCServer(clientCtx, app, config.GRPC)
+		if err != nil {
+			return err
+		}
+
+		grpcSrvCtx, cancelGrpcSrvCtx := context.WithCancel(context.Background())
+		defer cancelGrpcSrvCtx()
+
+		err = servergrpc.StartGRPCServer(grpcSrvCtx, logger, config.GRPC, grpcSrv)
+		if err != nil {
+			return err
+		}
+	}
+
 	if config.API.Enable {
-		apiSrv = api.New(clientCtx, ctx.Logger.With("server", "api"))
+		apiSrv := api.New(clientCtx, ctx.Logger.With("server", "api"), grpcSrv)
 		app.RegisterAPIRoutes(apiSrv, config.API)
 
 		if config.Telemetry.Enabled {
 			apiSrv.SetTelemetry(metrics)
 		}
 
+		apiSrvCtx, cancelApiSrvCtx := context.WithCancel(context.Background())
+		defer cancelApiSrvCtx()
+
 		errCh := make(chan error)
 		go func() {
-			if err := apiSrv.Start(config.Config); err != nil {
+			if err := apiSrv.Start(apiSrvCtx, config.Config); err != nil {
 				errCh <- err
 			}
 		}()
@@ -518,34 +537,6 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		case err := <-errCh:
 			return err
 		case <-time.After(ServerStartTime): // assume server started successfully
-		}
-
-		defer apiSrv.Close()
-	}
-
-	var (
-		grpcSrv    *grpc.Server
-		grpcWebSrv *http.Server
-	)
-
-	if config.GRPC.Enable {
-		grpcSrv, err = servergrpc.StartGRPCServer(clientCtx, app, config.GRPC)
-		if err != nil {
-			return err
-		}
-		defer grpcSrv.Stop()
-		if config.GRPCWeb.Enable {
-			grpcWebSrv, err = servergrpc.StartGRPCWeb(grpcSrv, config.Config)
-			if err != nil {
-				ctx.Logger.Error("failed to start grpc-web http server", "error", err.Error())
-				return err
-			}
-
-			defer func() {
-				if err := grpcWebSrv.Close(); err != nil {
-					logger.Error("failed to close the grpc-web http server", "error", err.Error())
-				}
-			}()
 		}
 	}
 
