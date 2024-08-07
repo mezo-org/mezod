@@ -71,7 +71,6 @@ func (am *approveMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
-	logger := context.SdkCtx().Logger()
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
 		return nil, err
 	}
@@ -97,27 +96,7 @@ func (am *approveMethod) Run(
 
 	authorization, expiration := am.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
 
-	var err error
-
-	if authorization == nil {
-		logger.Debug("authorization to %s for address %s does not exist or is expired", SendMsgURL, spender)
-		if amount.Sign() == 0 {
-			// no authorization, amount 0 -> error
-			err = fmt.Errorf("no existing approvals, cannot approve 0")
-		} else {
-			// no authorization, amount positive -> create a new authorization
-			err = am.createAuthorization(context.SdkCtx(), spender, granter, amount)
-		}
-	} else {
-		if amount.Sign() == 0 {
-			// authorization exists, amount 0 -> delete authorization
-			err = am.authzkeeper.DeleteGrant(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
-		} else {
-			// authorization exists, amount positive -> update authorization
-			err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration)
-		}
-	}
-
+	err := am.handleAuthorization(authorization, spender, amount, context, granter, expiration)
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +113,29 @@ func (am *approveMethod) Run(
 	}
 
 	return precompile.MethodOutputs{true}, nil
+}
+
+// no authorization, amount 0 -> error
+// no authorization, amount positive -> create a new authorization
+// authorization exists, amount 0 -> delete authorization
+// authorization exists, amount positive -> update authorization
+func (am *approveMethod) handleAuthorization(authorization authz.Authorization, spender common.Address, amount *big.Int, context *precompile.RunContext, granter common.Address, expiration *time.Time) error {
+	var err error
+
+	if authorization == nil {
+		if amount.Sign() == 0 {
+			err = fmt.Errorf("no existing approvals, cannot approve 0")
+		} else {
+			err = am.createAuthorization(context.SdkCtx(), spender, granter, amount)
+		}
+	} else {
+		if amount.Sign() == 0 {
+			err = am.authzkeeper.DeleteGrant(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
+		} else {
+			err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration)
+		}
+	}
+	return err
 }
 
 func (am approveMethod) createAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int) error {

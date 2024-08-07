@@ -6,9 +6,9 @@ import (
 
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
-	evmkeeper "github.com/evmos/evmos/v12/x/evm/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/evmos/evmos/v12/precompile"
+	evmkeeper "github.com/evmos/evmos/v12/x/evm/keeper"
 )
 
 //go:embed abi.json

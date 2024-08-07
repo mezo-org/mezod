@@ -169,7 +169,7 @@ func (am *permitMethod) Run(
 	if err != nil {
 		return nil, err
 	}
-	
+
 	digest, err := buildDigest(owner, spender, amount, new(big.Int).SetBytes(nonce.Bytes()), deadline)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build digest: %v", err)
@@ -194,26 +194,10 @@ func (am *permitMethod) Run(
 	fmt.Println("Passed the signature verification")
 
 	approveMethod := newApproveMethod(am.bankKeeper, am.authzkeeper)
+
 	authorization, expiration := am.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), owner.Bytes(), SendMsgURL)
 
-	if authorization == nil {
-		if amount.Sign() == 0 {
-			// no authorization, amount 0 -> error
-			err = fmt.Errorf("no existing approvals, cannot approve 0")
-		} else {
-			// no authorization, amount positive -> create a new authorization
-			err = approveMethod.createAuthorization(context.SdkCtx(), spender, owner, amount)
-		}
-	} else {
-		if amount.Sign() == 0 {
-			// authorization exists, amount 0 -> delete authorization
-			err = am.authzkeeper.DeleteGrant(context.SdkCtx(), spender.Bytes(), owner.Bytes(), SendMsgURL)
-		} else {
-			// authorization exists, amount positive -> update authorization
-			err = approveMethod.updateAuthorization(context.SdkCtx(), spender, owner, amount, authorization, expiration)
-		}
-	}
-
+	err = approveMethod.handleAuthorization(authorization, spender, amount, context, owner, expiration)
 	if err != nil {
 		return nil, err
 	}

@@ -2,26 +2,27 @@ package btctoken_test
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/vm"
-
-	"math/big"
 
 	"github.com/evmos/evmos/v12/precompile"
 	"github.com/evmos/evmos/v12/precompile/btctoken"
 	"github.com/evmos/evmos/v12/x/evm/statedb"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const PermitTypehash = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
-const amount = int64(100)
+const (
+	PermitTypehash = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+	amount         = int64(100)
+)
 
 func (s *PrecompileTestSuite) TestPermit() {
-
 	testcases := []struct {
 		name        string
 		run         func() []interface{}
@@ -47,7 +48,6 @@ func (s *PrecompileTestSuite) TestPermit() {
 
 				var r_component [32]byte
 				var s_component [32]byte
-
 				// Extract r, s, v values from the signature
 				// r_component := new(big.Int).SetBytes(signature[:32])
 				copy(r_component[:], signature[:32])
@@ -59,6 +59,13 @@ func (s *PrecompileTestSuite) TestPermit() {
 				}
 			},
 			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account2.SdkAddr,
+					s.account1.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+				)
+			},
 		},
 	}
 
@@ -205,10 +212,9 @@ func buildDomainSeparator() ([]byte, error) {
 		chainID,
 		verifyingContract,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode domain separator: %v", err)
 	}
-	
+
 	return crypto.Keccak256(encodedDomainSeparator), nil
 }
