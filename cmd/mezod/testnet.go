@@ -20,6 +20,7 @@ package main
 
 import (
 	"bufio"
+	sdkmath "cosmossdk.io/math"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -321,7 +322,7 @@ func initTestnetFiles(
 			return err
 		}
 
-		balance, _ := sdk.NewIntFromString("100000000000000000000000000")
+		balance, _ := sdkmath.NewIntFromString("100000000000000000000000000")
 		coins := sdk.NewCoins(sdk.NewCoin(cmdcfg.BaseDenom, balance))
 
 		genBalances = append(
@@ -372,7 +373,6 @@ func initTestnetFiles(
 		appConfig.API.Enable = true
 		appConfig.API.Address = getAPIAddress(i, args.startingIPAddress)
 		appConfig.GRPC.Address = getGRPCAddress(i, args.startingIPAddress)
-		appConfig.GRPCWeb.Address = getGRPCWebAddress(i, args.startingIPAddress)
 		appConfig.Telemetry.Enabled = true
 		appConfig.Telemetry.PrometheusRetentionTime = 60
 		appConfig.Telemetry.EnableHostnameLabel = false
@@ -521,16 +521,6 @@ func getAPIAddress(i int, startingIPAddr string) string {
 
 func getGRPCAddress(i int, startingIPAddr string) string {
 	port := 9090
-
-	if startingIPAddr == localhost {
-		port += 2 * i
-	}
-
-	return fmt.Sprintf("0.0.0.0:%d", port)
-}
-
-func getGRPCWebAddress(i int, startingIPAddr string) string {
-	port := 9091
 
 	if startingIPAddr == localhost {
 		port += 2 * i
