@@ -12,9 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/evmos/evmos/v12/precompile"
-	evmkeeper "github.com/evmos/evmos/v12/x/evm/keeper"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/precompile"
+	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // PermitMethodName is the name of the permit method that should match the name
