@@ -315,7 +315,7 @@ func (nm *nonceMethod) Payable() bool {
 }
 
 // Returns the nonce of the given account.
-func (am *nonceMethod) Run(
+func (nm *nonceMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
@@ -328,7 +328,7 @@ func (am *nonceMethod) Run(
 		return nil, fmt.Errorf("account argument must be common.Address")
 	}
 
-	nonce, _, err := getNonce(am.evmkeeper, account, context.SdkCtx())
+	nonce, _, err := getNonce(nm.evmkeeper, account, context.SdkCtx())
 	if err != nil {
 		return nil, err
 	}
