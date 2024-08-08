@@ -39,7 +39,7 @@ type bigIntConverter struct{}
 // ToSDK converts the given big integer to the Cosmos SDK integer.
 func (bic bigIntConverter) ToSDK(value *big.Int) (sdkmath.Int, error) {
 	// Validate the value's bit length against the maximum bit length
-	// supported by the SDK. Otherwise, the sdk.NewIntFromBigInt may panic.
+	// supported by the SDK. Otherwise, the sdkmath.NewIntFromBigInt may panic.
 	if value.BitLen() > sdkmath.MaxBitLen {
 		return sdkmath.Int{}, fmt.Errorf(
 			"value is exceeding the maximum bit length: [%d]",

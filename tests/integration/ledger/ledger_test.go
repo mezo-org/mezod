@@ -3,6 +3,7 @@ package ledger_test
 import (
 	"bytes"
 	"context"
+	sdkmath "cosmossdk.io/math"
 
 	"cosmossdk.io/simapp/params"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -174,7 +175,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 						s.app.BankKeeper,
 						s.accAddr,
 						sdk.NewCoins(
-							sdk.NewCoin("abtc", sdk.NewInt(100000000000000)),
+							sdk.NewCoin("abtc", sdkmath.NewInt(100000000000000)),
 						),
 					)
 					s.Require().NoError(err)
@@ -199,7 +200,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 					cmd.SetArgs([]string{
 						ledgerKey,
 						receiverAccAddr.String(),
-						sdk.NewCoin("abtc", sdk.NewInt(1000)).String(),
+						sdk.NewCoin("abtc", sdkmath.NewInt(1000)).String(),
 						s.FormatFlag(flags.FlagUseLedger),
 						s.FormatFlag(flags.FlagSkipConfirmation),
 					})
@@ -217,7 +218,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 					cmd.SetArgs([]string{
 						ledgerKey,
 						receiverAccAddr.String(),
-						sdk.NewCoin("abtc", sdk.NewInt(1000)).String(),
+						sdk.NewCoin("abtc", sdkmath.NewInt(1000)).String(),
 						s.FormatFlag(flags.FlagUseLedger),
 						s.FormatFlag(flags.FlagSkipConfirmation),
 					})

@@ -3,7 +3,7 @@ package backend
 import (
 	"fmt"
 
-	"cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
 
 	"github.com/cosmos/cosmos-sdk/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -28,7 +28,7 @@ func (suite *BackendTestSuite) TestSendTransaction() {
 	priv, _ := ethsecp256k1.GenerateKey()
 	from := common.BytesToAddress(priv.PubKey().Address().Bytes())
 	nonce := hexutil.Uint64(1)
-	baseFee := sdk.NewInt(1)
+	baseFee := sdkmath.NewInt(1)
 	callArgsDefault := evmtypes.TransactionArgs{
 		From:     &from,
 		To:       &toAddr,
@@ -241,7 +241,7 @@ func (suite *BackendTestSuite) TestSignTypedData() {
 	}
 }
 
-func broadcastTx(suite *BackendTestSuite, priv *ethsecp256k1.PrivKey, baseFee math.Int, callArgsDefault evmtypes.TransactionArgs) (client *mocks.Client, txBytes []byte) {
+func broadcastTx(suite *BackendTestSuite, priv *ethsecp256k1.PrivKey, baseFee sdkmath.Int, callArgsDefault evmtypes.TransactionArgs) (client *mocks.Client, txBytes []byte) {
 	var header metadata.MD
 	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
 	client = suite.backend.clientCtx.Client.(*mocks.Client)

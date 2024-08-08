@@ -5,10 +5,10 @@ import (
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 
-	dbm "github.com/cometbft/cometbft-db"
-	"github.com/cometbft/cometbft/crypto/ed25519"
 	"cosmossdk.io/log"
+	"github.com/cometbft/cometbft/crypto/ed25519"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	dbm "github.com/cosmos/cosmos-db"
 
 	"cosmossdk.io/store"
 	storetypes "cosmossdk.io/store/types"

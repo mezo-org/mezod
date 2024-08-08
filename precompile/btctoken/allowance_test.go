@@ -1,6 +1,7 @@
 package btctoken_test
 
 import (
+	sdkmath "cosmossdk.io/math"
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -56,7 +57,7 @@ func (s *PrecompileTestSuite) TestAllowance() {
 				s.setupSendAuthz(
 					precompile.TypesConverter.Address.ToSDK(s.account1.EvmAddr),
 					precompile.TypesConverter.Address.ToSDK(s.account2.EvmAddr),
-					sdk.NewCoins(sdk.NewCoin("abtc", sdk.NewInt(42))),
+					sdk.NewCoins(sdk.NewCoin("abtc", sdkmath.NewInt(42))),
 				)
 
 				return []interface{}{s.account2.EvmAddr, s.account1.EvmAddr}
