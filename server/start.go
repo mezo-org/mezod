@@ -46,6 +46,7 @@ import (
 	pvm "github.com/cometbft/cometbft/privval"
 	"github.com/cometbft/cometbft/proxy"
 	"github.com/cometbft/cometbft/rpc/client/local"
+	tmtypes "github.com/cometbft/cometbft/types"
 	dbm "github.com/cosmos/cosmos-db"
 
 	ethmetricsexp "github.com/ethereum/go-ethereum/metrics/exp"
@@ -59,6 +60,7 @@ import (
 	serverconfig "github.com/cosmos/cosmos-sdk/server/config"
 	servergrpc "github.com/cosmos/cosmos-sdk/server/grpc"
 	"github.com/cosmos/cosmos-sdk/server/types"
+	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 	"github.com/mezo-org/mezod/indexer"
 	ethdebug "github.com/mezo-org/mezod/rpc/namespaces/ethereum/debug"
 	"github.com/mezo-org/mezod/server/config"
@@ -356,7 +358,17 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		return err
 	}
 
-	genDocProvider := node.DefaultGenesisDocProviderFunc(cfg)
+	genDocProvider := func() (*tmtypes.GenesisDoc, error) {
+		appGenesis, err := genutiltypes.AppGenesisFromFile(cfg.GenesisFile())
+		if err != nil {
+			return nil, err
+		}
+		genesisDoc, err := appGenesis.ToGenesisDoc()
+		if err != nil {
+			return nil, err
+		}
+		return genesisDoc, nil
+	}
 
 	var (
 		tmNode   *node.Node

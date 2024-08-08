@@ -27,6 +27,7 @@ import (
 	pvm "github.com/cometbft/cometbft/privval"
 	"github.com/cometbft/cometbft/proxy"
 	"github.com/cometbft/cometbft/rpc/client/local"
+	tmtypes "github.com/cometbft/cometbft/types"
 	tmtime "github.com/cometbft/cometbft/types/time"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
@@ -68,7 +69,18 @@ func startInProcess(cfg Config, val *Validator) error {
 
 	app := cfg.AppConstructor(*val)
 
-	genDocProvider := node.DefaultGenesisDocProviderFunc(tmCfg)
+	genDocProvider := func() (*tmtypes.GenesisDoc, error) {
+		appGenesis, err := genutiltypes.AppGenesisFromFile(tmCfg.GenesisFile())
+		if err != nil {
+			return nil, err
+		}
+		genesisDoc, err := appGenesis.ToGenesisDoc()
+		if err != nil {
+			return nil, err
+		}
+		return genesisDoc, nil
+	}
+
 	tmNode, err := node.NewNode(
 		tmCfg,
 		pvm.LoadOrGenFilePV(tmCfg.PrivValidatorKeyFile(), tmCfg.PrivValidatorStateFile()),
