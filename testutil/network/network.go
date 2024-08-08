@@ -25,14 +25,16 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"cosmossdk.io/log"
-	"cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
 	tmrand "github.com/cometbft/cometbft/libs/rand"
 	"github.com/cometbft/cometbft/node"
 	tmclient "github.com/cometbft/cometbft/rpc/client"
@@ -70,6 +72,7 @@ import (
 	mezotypes "github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
+	netutils "github.com/cosmos/cosmos-sdk/testutil/network"
 	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
 
 	kitlog "github.com/go-kit/log"
@@ -94,9 +97,9 @@ type Config struct {
 	AppConstructor    AppConstructor      // the ABCI application constructor
 	GenesisState      simapp.GenesisState // custom gensis state to provide
 	TimeoutCommit     time.Duration       // the consensus commitment timeout
-	AccountTokens     math.Int            // the amount of unique validator tokens (e.g. 1000node0)
-	StakingTokens     math.Int            // the amount of tokens each validator has available to stake
-	BondedTokens      math.Int            // the amount of tokens each validator stakes
+	AccountTokens     sdkmath.Int         // the amount of unique validator tokens (e.g. 1000node0)
+	StakingTokens     sdkmath.Int         // the amount of tokens each validator has available to stake
+	BondedTokens      sdkmath.Int         // the amount of tokens each validator stakes
 	NumValidators     int                 // the total number of validators to create and bond
 	ChainID           string              // the network chain-id
 	BondDenom         string              // the staking bond denomination
@@ -260,6 +263,13 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 
 	buf := bufio.NewReader(os.Stdin)
 
+	closeFns := make([]func() error, 0)
+	defer func() {
+		for _, closeFn := range closeFns {
+			_ = closeFn()
+		}
+	}()
+
 	// generate private keys, node IDs, and initial transactions
 	for i := 0; i < cfg.NumValidators; i++ {
 		appCfg := config.DefaultConfig()
@@ -286,11 +296,13 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 			if cfg.APIAddress != "" {
 				apiListenAddr = cfg.APIAddress
 			} else {
+				var closeFn func() error
 				var err error
-				apiListenAddr, _, err = server.FreeTCPAddr()
+				apiListenAddr, _, closeFn, err = netutils.FreeTCPAddr()
 				if err != nil {
 					return nil, err
 				}
+				closeFns = append(closeFns, closeFn)
 			}
 
 			appCfg.API.Address = apiListenAddr
@@ -303,38 +315,36 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 			if cfg.RPCAddress != "" {
 				tmCfg.RPC.ListenAddress = cfg.RPCAddress
 			} else {
-				rpcAddr, _, err := server.FreeTCPAddr()
+				rpcAddr, _, closeFn, err := netutils.FreeTCPAddr()
 				if err != nil {
 					return nil, err
 				}
+				closeFns = append(closeFns, closeFn)
 				tmCfg.RPC.ListenAddress = rpcAddr
 			}
 
 			if cfg.GRPCAddress != "" {
 				appCfg.GRPC.Address = cfg.GRPCAddress
 			} else {
-				_, grpcPort, err := server.FreeTCPAddr()
+				_, grpcPort, closeFn, err := netutils.FreeTCPAddr()
 				if err != nil {
 					return nil, err
 				}
+				closeFns = append(closeFns, closeFn)
 				appCfg.GRPC.Address = fmt.Sprintf("0.0.0.0:%s", grpcPort)
 			}
 			appCfg.GRPC.Enable = true
 
-			_, grpcWebPort, err := server.FreeTCPAddr()
-			if err != nil {
-				return nil, err
-			}
-			appCfg.GRPCWeb.Address = fmt.Sprintf("0.0.0.0:%s", grpcWebPort)
 			appCfg.GRPCWeb.Enable = true
 
 			if cfg.JSONRPCAddress != "" {
 				appCfg.JSONRPC.Address = cfg.JSONRPCAddress
 			} else {
-				_, jsonRPCPort, err := server.FreeTCPAddr()
+				_, jsonRPCPort, closeFn, err := netutils.FreeTCPAddr()
 				if err != nil {
 					return nil, err
 				}
+				closeFns = append(closeFns, closeFn)
 				appCfg.JSONRPC.Address = fmt.Sprintf("0.0.0.0:%s", jsonRPCPort)
 			}
 			appCfg.JSONRPC.Enable = true
@@ -376,16 +386,18 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 		tmCfg.Moniker = nodeDirName
 		monikers[i] = nodeDirName
 
-		proxyAddr, _, err := server.FreeTCPAddr()
+		proxyAddr, _, closeFn, err := netutils.FreeTCPAddr()
 		if err != nil {
 			return nil, err
 		}
+		closeFns = append(closeFns, closeFn)
 		tmCfg.ProxyApp = proxyAddr
 
-		p2pAddr, _, err := server.FreeTCPAddr()
+		p2pAddr, _, closeFn, err := netutils.FreeTCPAddr()
 		if err != nil {
 			return nil, err
 		}
+		closeFns = append(closeFns, closeFn)
 		tmCfg.P2P.ListenAddress = p2pAddr
 		tmCfg.P2P.AddrBookStrict = false
 		tmCfg.P2P.AllowDuplicateIP = true
@@ -449,7 +461,7 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 		}
 
 		createValMsg, err := stakingtypes.NewMsgCreateValidator(
-			sdk.ValAddress(addr),
+			sdk.ValAddress(addr).String(),
 			valPubKeys[i],
 			sdk.NewCoin(cfg.BondDenom, cfg.BondedTokens),
 			stakingtypes.NewDescription(nodeDirName, "", "", "", ""),
@@ -483,7 +495,13 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 			WithKeybase(kb).
 			WithTxConfig(cfg.TxConfig)
 
-		if err := tx.Sign(txFactory, nodeDirName, txBuilder, true); err != nil {
+		if err := tx.Sign(
+			context.Background(),
+			txFactory,
+			nodeDirName,
+			txBuilder,
+			true,
+		); err != nil {
 			return nil, err
 		}
 
@@ -555,7 +573,7 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 
 	// Ensure we cleanup incase any test was abruptly halted (e.g. SIGINT) as any
 	// defer in a test would not be called.
-	server.TrapSignal(network.Cleanup)
+	trapSignal(network.Cleanup)
 
 	return network, nil
 }
@@ -719,4 +737,28 @@ func centerText(text string, width int) string {
 	rightBuffer := strings.Repeat(" ", (width-textLen)/2+(width-textLen)%2)
 
 	return fmt.Sprintf("%s%s%s", leftBuffer, text, rightBuffer)
+}
+
+// trapSignal traps SIGINT and SIGTERM and calls os.Exit once a signal is received.
+func trapSignal(cleanupFunc func()) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigs
+
+		if cleanupFunc != nil {
+			cleanupFunc()
+		}
+		exitCode := 128
+
+		switch sig {
+		case syscall.SIGINT:
+			exitCode += int(syscall.SIGINT)
+		case syscall.SIGTERM:
+			exitCode += int(syscall.SIGTERM)
+		}
+
+		os.Exit(exitCode)
+	}()
 }
