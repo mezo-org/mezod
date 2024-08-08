@@ -48,9 +48,6 @@ import (
 	"github.com/cometbft/cometbft/rpc/client/local"
 	dbm "github.com/cosmos/cosmos-db"
 
-	"github.com/cosmos/rosetta"
-	crgserver "github.com/cosmos/rosetta/lib/server"
-
 	ethmetricsexp "github.com/ethereum/go-ethereum/metrics/exp"
 
 	errorsmod "cosmossdk.io/errors"
@@ -62,8 +59,6 @@ import (
 	serverconfig "github.com/cosmos/cosmos-sdk/server/config"
 	servergrpc "github.com/cosmos/cosmos-sdk/server/grpc"
 	"github.com/cosmos/cosmos-sdk/server/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/mezo-org/mezod/indexer"
 	ethdebug "github.com/mezo-org/mezod/rpc/namespaces/ethereum/debug"
 	"github.com/mezo-org/mezod/server/config"
@@ -584,55 +579,6 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		return nil
 	}
 
-	var rosettaSrv crgserver.Server
-	if config.Rosetta.Enable {
-		offlineMode := config.Rosetta.Offline
-
-		// If GRPC is not enabled rosetta cannot work in online mode, so it works in
-		// offline mode.
-		if !config.GRPC.Enable {
-			offlineMode = true
-		}
-
-		minGasPrices, err := sdk.ParseDecCoins(config.MinGasPrices)
-		if err != nil {
-			ctx.Logger.Error("failed to parse minimum-gas-prices", "error", err.Error())
-			return err
-		}
-
-		conf := &rosetta.Config{
-			Blockchain:          config.Rosetta.Blockchain,
-			Network:             config.Rosetta.Network,
-			TendermintRPC:       ctx.Config.RPC.ListenAddress,
-			GRPCEndpoint:        config.GRPC.Address,
-			Addr:                config.Rosetta.Address,
-			Retries:             config.Rosetta.Retries,
-			Offline:             offlineMode,
-			GasToSuggest:        config.Rosetta.GasToSuggest,
-			EnableFeeSuggestion: config.Rosetta.EnableFeeSuggestion,
-			GasPrices:           minGasPrices.Sort(),
-			Codec:               clientCtx.Codec.(*codec.ProtoCodec),
-			InterfaceRegistry:   clientCtx.InterfaceRegistry,
-		}
-
-		rosettaSrv, err = rosetta.ServerFromConfig(conf)
-		if err != nil {
-			return err
-		}
-
-		errCh := make(chan error)
-		go func() {
-			if err := rosettaSrv.Start(); err != nil {
-				errCh <- err
-			}
-		}()
-
-		select {
-		case err := <-errCh:
-			return err
-		case <-time.After(ServerStartTime): // assume server started successfully
-		}
-	}
 	// Wait for SIGINT or SIGTERM signal
 	waitForQuitSignals(logger)
 	return nil
