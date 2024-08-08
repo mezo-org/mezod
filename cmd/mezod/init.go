@@ -160,7 +160,9 @@ func InitCmd(mbm module.BasicManager, defaultNodeHome string) *cobra.Command {
 			}
 
 			appGenesis.ChainID = chainID
-			appGenesis.Consensus.Validators = nil
+			appGenesis.Consensus = &types.ConsensusGenesis{
+				Validators: nil,
+			}
 			appGenesis.AppState = appState
 
 			if err := genutil.ExportGenesisFile(appGenesis, genFile); err != nil {
