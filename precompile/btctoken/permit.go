@@ -162,7 +162,7 @@ func (am *permitMethod) Run(
 		return nil, fmt.Errorf("invalid signature values")
 	}
 
-	nonce, _, err := am.getNonce(owner, context.SdkCtx())
+	nonce, _, err := getNonce(am.evmkeeper, owner, context.SdkCtx())
 	if err != nil {
 		return nil, err
 	}
@@ -186,11 +186,9 @@ func (am *permitMethod) Run(
 		return nil, fmt.Errorf("verification failed over the signed message")
 	}
 
-	approveMethod := newApproveMethod(am.bankKeeper, am.authzkeeper)
-
 	authorization, expiration := am.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), owner.Bytes(), SendMsgURL)
 
-	err = approveMethod.handleAuthorization(authorization, spender, amount, context, owner, expiration)
+	err = handleAuthorization(authorization, spender, amount, context, owner, expiration, am.authzkeeper)
 	if err != nil {
 		return nil, err
 	}
@@ -216,17 +214,8 @@ func (am *permitMethod) Run(
 	return precompile.MethodOutputs{true}, nil
 }
 
-func (am *permitMethod) getNonce(address common.Address, ctx sdk.Context) (common.Hash, []byte, error) {
-	key := evmtypes.PrecompileBTCNonceKey(address)
-	nonce := am.evmkeeper.GetState(ctx, address, common.HexToHash(string(key)))
-	if len(nonce) == 0 {
-		return common.Hash{}, nil, fmt.Errorf("failed to get nonce for address %s", address.Hex())
-	}
-	return nonce, key, nil
-}
-
 func (am *permitMethod) incrementNonce(address common.Address, ctx sdk.Context) error {
-	nonce, key, err := am.getNonce(address, ctx)
+	nonce, key, err := getNonce(am.evmkeeper, address, ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get nonce: %w", err)
 	}
@@ -284,6 +273,15 @@ func buildDigest(owner, spender common.Address, amount, nonce, deadline *big.Int
 	encodedData = append(encodedData, crypto.Keccak256(encodedPermitParams)...)
 	// - The hash of the encoded data
 	return crypto.Keccak256(encodedData), nil
+}
+
+func getNonce(evmkeeper evmkeeper.Keeper, address common.Address, ctx sdk.Context) (common.Hash, []byte, error) {
+	key := evmtypes.PrecompileBTCNonceKey(address)
+	nonce := evmkeeper.GetState(ctx, address, common.HexToHash(string(key)))
+	if len(nonce) == 0 {
+		return common.Hash{}, nil, fmt.Errorf("failed to get nonce for address %s", address.Hex())
+	}
+	return nonce, key, nil
 }
 
 // TODO: Add Nonce read only method.
