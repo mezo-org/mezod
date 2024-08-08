@@ -21,6 +21,7 @@ import (
 // in the contract ABI.
 const (
 	PermitMethodName = "permit"
+	NonceMethodName  = "nonce"
 	PermitTypehash   = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
 )
 
@@ -284,6 +285,58 @@ func getNonce(evmkeeper evmkeeper.Keeper, address common.Address, ctx sdk.Contex
 	return nonce, key, nil
 }
 
-// TODO: Add Nonce read only method.
+type nonceMethod struct {
+	evmkeeper evmkeeper.Keeper
+}
+
+func newNonceMethod(
+	evmkeeper evmkeeper.Keeper,
+) *nonceMethod {
+	return &nonceMethod{
+		evmkeeper: evmkeeper,
+	}
+}
+
+func (nm *nonceMethod) MethodName() string {
+	return NonceMethodName
+}
+
+func (nm *nonceMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (nm *nonceMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (nm *nonceMethod) Payable() bool {
+	return false
+}
+
+// Returns the nonce of the given account.
+func (am *nonceMethod) Run(
+	context *precompile.RunContext,
+	inputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
+		return nil, err
+	}
+
+	account, ok := inputs[0].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("account argument must be common.Address")
+	}
+
+	nonce, _, err := getNonce(am.evmkeeper, account, context.SdkCtx())
+	if err != nil {
+		return nil, err
+	}
+
+	return precompile.MethodOutputs{
+		new(big.Int).SetBytes(nonce.Bytes()),
+	}, nil
+}
+
 // TODO: Add DOMAIN_SEPARATOR read only method.
 // TODO: Add PERMIT_TYPEHASH read only method.

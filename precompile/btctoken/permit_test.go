@@ -453,3 +453,99 @@ func buildDomainSeparator() ([]byte, error) {
 
 	return crypto.Keccak256(encodedDomainSeparator), nil
 }
+
+func (s *PrecompileTestSuite) TestNonce() {
+	testcases := []struct {
+		name          string
+		run           func() []interface{}
+		postCheck     func()
+		basicPass     bool
+		isCallerOwner bool
+		errContains   string
+	}{
+		{
+			name:        "empty args",
+			run:         func() []interface{} { return nil },
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1, 2,
+				}
+			},
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "invalid address",
+			run: func() []interface{} {
+				return []interface{}{
+					"invalid address",
+				}
+			},
+			errContains: "cannot use string as type array as argument",
+		},
+		{
+			name: "successful nonce call",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account1.EvmAddr,
+				}
+			},
+			basicPass: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		s.Run(tc.name, func() {
+			s.SetupTest()
+			evm := &vm.EVM{
+				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+			}
+
+			evmKeeper := *s.app.EvmKeeper
+			bankKeeper := s.app.BankKeeper
+			authzKeeper := s.app.AuthzKeeper
+
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper)
+			s.Require().NoError(err)
+			s.btcTokenPrecompile = btcTokenPrecompile
+
+			var methodInputs []interface{}
+			if tc.run != nil {
+				methodInputs = tc.run()
+			}
+
+			method := s.btcTokenPrecompile.Abi.Methods["nonce"]
+			var methodInputArgs []byte
+			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
+			if tc.basicPass {
+				s.Require().NoError(err, "expected no error")
+			} else {
+				s.Require().Error(err, "expected error")
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+
+			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			// These first 4 bytes correspond to the method ID (first 4 bytes of the
+			// Keccak-256 hash of the function signature).
+			// In this case a function signature is 'function nonce(address account)'
+			vmContract.Input = append([]byte{0x70, 0xae, 0x92, 0xd2}, methodInputArgs...)
+			vmContract.CallerAddress = s.account1.EvmAddr
+
+			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			if err != nil && tc.errContains != "" {
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+			s.Require().NoError(err, "expected no error")
+
+			out, err := method.Outputs.Unpack(output)
+			s.Require().NoError(err)
+			val, _ := out[0].(*big.Int)
+			s.Require().Equal(0, common.Big0.Cmp(val), "expected different value")
+		})
+	}
+}
