@@ -1,21 +1,19 @@
-import { task, HardhatUserConfig } from "hardhat/config";
-import { ethers } from "ethers";
+import { task, vars, HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import abi from "../abi.json";
 
-import seed0 from "../../../build/node0/mezod/key_seed.json";
-import seed1 from "../../../build/node1/mezod/key_seed.json";
-import seed2 from "../../../build/node2/mezod/key_seed.json";
-import seed3 from "../../../build/node3/mezod/key_seed.json";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-
-const pk0 = ethers.Wallet.fromPhrase(seed0.secret).privateKey;
-const pk1 = ethers.Wallet.fromPhrase(seed1.secret).privateKey;
-const pk2 = ethers.Wallet.fromPhrase(seed2.secret).privateKey;
-const pk3 = ethers.Wallet.fromPhrase(seed3.secret).privateKey;
-
-
 const precompileAddress = "0x7b7c000000000000000000000000000000000011";
+
+const getPrivKeys = (varname: string) : string[] => {
+  const strings: string[] = vars.get(varname, "").split(",");
+  const keys: string[] = []
+  for (let i = 0; i < keys.length; i++) {
+    if (strings[i] !== "") {
+      keys.push(strings[i]);
+    } 
+  }
+  return keys;
+}
 
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
@@ -24,31 +22,15 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://localhost:8545",
       chainId: 31611,
-      accounts: [pk0, pk1, pk2, pk3],
-      blockGasLimit: 10000000
+      accounts: getPrivKeys("MEZO_LOCALHOST_PRIVKEYS")
     },
+    mezo_testnet: {
+      url: "http://mezo-node-0.test.mezo.org:8545",
+      chainId: 31611,
+      accounts: getPrivKeys("MEZO_TESTNET_PRIVKEYS")
+    }
   }
 };
-
-// task("accounts", "Returns node addresses", async (taskArguments, hre, runSuper) => {
-//   const signers = await hre.ethers.getSigners();
-//   // const [ node0 ] = await hre.ethers.getSigners()
-//   let addresses = []
-//   for (let s of signers) {
-//     addresses.push(s.address);
-//   }
-//   console.log(addresses);
-// });
-
-task("latest", "Returns latest block", async (taskArguments, hre, runSuper) => {
-  console.log(await hre.ethers.provider.getBlock("latest"));
-});
-
-task("balance", "Returns an accounts balance")
-  .addParam("account", "The accounts address")
-  .setAction(async (taskArguments, hre, runSuper) => {
-    console.log(await hre.ethers.provider.getBalance(taskArguments.account));
-  });
 
 task("owner", "Returns the current contract owner", async (taskArguments, hre, runSuper) => {
   const validatorPool = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
