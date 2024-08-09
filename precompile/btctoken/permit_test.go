@@ -383,15 +383,12 @@ func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender c
 
 	hashedMessage := crypto.Keccak256Hash(message)
 
-	var DomainSeparatorBytes32 [32]byte
 	domainSeparator, err := buildDomainSeparator()
 	if err != nil {
 		s.Require().NoError(err)
 	}
 
-	copy(DomainSeparatorBytes32[:], domainSeparator[:32])
-
-	encodedData := append([]byte("\x19\x01"), DomainSeparatorBytes32[:]...)
+	encodedData := append([]byte("\x19\x01"), domainSeparator[:]...)
 	encodedData = append(encodedData, hashedMessage.Bytes()...)
 
 	return crypto.Keccak256Hash(encodedData)
@@ -403,7 +400,7 @@ func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender c
 // that is used by tBTC token https://github.com/keep-network/tbtc-v2/blob/main/solidity/contracts/token/TBTC.sol#L8
 // The result of this function is hardcoded in the production code (permit.go) to
 // comply with the EVM implementation.
-func buildDomainSeparator() ([]byte, error) {
+func buildDomainSeparator() ([32]byte, error) {
 	// Hash the domain type
 	domainType := "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
 	name := "BTC"
@@ -422,15 +419,15 @@ func buildDomainSeparator() ([]byte, error) {
 
 	bytes32Type, err := abi.NewType("bytes32", "", nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new type: %v", err)
+		return [32]byte{}, fmt.Errorf("failed to create new type: %v", err)
 	}
 	addressType, err := abi.NewType("address", "", nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new type: %v", err)
+		return [32]byte{}, fmt.Errorf("failed to create new type: %v", err)
 	}
 	uint256Type, err := abi.NewType("uint256", "", nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new type: %v", err)
+		return [32]byte{}, fmt.Errorf("failed to create new type: %v", err)
 	}
 
 	// Encode the permit parameters
@@ -448,10 +445,15 @@ func buildDomainSeparator() ([]byte, error) {
 		verifyingContract,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode domain separator: %v", err)
+		return [32]byte{}, fmt.Errorf("failed to encode domain separator: %v", err)
 	}
 
-	return crypto.Keccak256(encodedDomainSeparator), nil
+	domSeparator := crypto.Keccak256(encodedDomainSeparator)
+
+	var DomainSeparatorBytes32 [32]byte
+	copy(DomainSeparatorBytes32[:], domSeparator[:32])
+
+	return DomainSeparatorBytes32, nil
 }
 
 func (s *PrecompileTestSuite) TestNonce() {
@@ -546,6 +548,87 @@ func (s *PrecompileTestSuite) TestNonce() {
 			s.Require().NoError(err)
 			val, _ := out[0].(*big.Int)
 			s.Require().Equal(0, common.Big0.Cmp(val), "expected different value")
+		})
+	}
+}
+
+func (s *PrecompileTestSuite) TestDomainSeparator() {
+	testcases := []struct {
+		name          string
+		run           func() []interface{}
+		postCheck     func()
+		basicPass     bool
+		isCallerOwner bool
+		errContains   string
+	}{
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1,
+				}
+			},
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "successful domain separator call",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			basicPass: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		s.Run(tc.name, func() {
+			s.SetupTest()
+			evm := &vm.EVM{
+				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+			}
+
+			evmKeeper := *s.app.EvmKeeper
+			bankKeeper := s.app.BankKeeper
+			authzKeeper := s.app.AuthzKeeper
+
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper)
+			s.Require().NoError(err)
+			s.btcTokenPrecompile = btcTokenPrecompile
+
+			var methodInputs []interface{}
+			if tc.run != nil {
+				methodInputs = tc.run()
+			}
+
+			method := s.btcTokenPrecompile.Abi.Methods["DOMAIN_SEPARATOR"]
+			var methodInputArgs []byte
+			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
+			if tc.basicPass {
+				s.Require().NoError(err, "expected no error")
+			} else {
+				s.Require().Error(err, "expected error")
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+
+			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			// These first 4 bytes correspond to the method ID (first 4 bytes of the
+			// Keccak-256 hash of the function signature).
+			// In this case a function signature is 'function DOMAIN_SEPARATOR()'
+			vmContract.Input = append([]byte{0x36, 0x44, 0xe5, 0x15}, methodInputArgs...)
+			vmContract.CallerAddress = s.account1.EvmAddr
+
+			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			if err != nil && tc.errContains != "" {
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+			s.Require().NoError(err, "expected no error")
+
+			out, err := method.Outputs.Unpack(output)
+			s.Require().NoError(err)
+			expectedDomainSeparator, err := buildDomainSeparator()
+			s.Require().NoError(err)
+			s.Require().Equal(expectedDomainSeparator, out[0], "expected different value")
 		})
 	}
 }

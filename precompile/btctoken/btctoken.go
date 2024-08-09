@@ -53,5 +53,6 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.
 		newAllowanceMethod(authzkeeper),
 		newPermitMethod(bankKeeper, authzkeeper, evmkeeper),
 		newNonceMethod(evmkeeper),
+		newDomainSeparatorMethod(),
 	}
 }
