@@ -1,13 +1,62 @@
-# Sample Hardhat Project
+# Validator Pool Hardhat Tasks
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+## Networks
+Hardhat is configured with two supported networks:
+* `localhost` for connecting to local dev net (localnet-docker, localnet-bin).
+* `mezo_testnet` for connecting to the public testnet.
 
-Try running some of the following tasks:
+## Accounts
+Hardhat [vars](https://hardhat.org/hardhat-runner/docs/guides/configuration-variables) are used for configuring
+accounts/keys.
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.ts
 ```
+WARNING
+
+Configuration variables are stored in plain text on your disk. Avoid using this feature for data you wouldn’t
+normally save in an unencrypted file. Run npx hardhat vars path to find the storage's file location.
+```
+
+You can determine what `vars` are available by running:
+```
+npx hardhat vars setup
+💡 The following configuration variables are optional:
+
+  npx hardhat vars set MEZO_LOCALHOST_PRIVKEYS
+  npx hardhat vars set MEZO_TESTNET_PRIVKEYS
+``` 
+
+The vars can be set to either a) a single private key, or b) a comma separated list (no whitespace) or private keys.
+
+```
+$ npx hardhat vars set MEZO_TESTNET_PRIVKEYS
+✔ Enter value: ********************************
+```
+
+And can be removed with:
+
+```
+$ npx hardhat vars delete MEZO_TESTNET_PRIVKEYS
+```
+
+## Scripts
+Some helper scripts are included for convenience. It is recommended to run these scripts using `hardhat run` as they
+may not execute as expected if running directly with node.
+
+### accounts
+Lists available accounts.
+
+```
+npx hardhat --network localhost run scripts/accounts.ts
+```
+
+### localhost-keys
+Reads seed phrases from `build` dir used by localhost based localnets and prints a comma separated list of private
+keys. This output can be used to easily set `MEZO_LOCALHOST_PRIVKEYS` for `localhost` use.
+
+```
+npx hardhat run scripts/localhost-keys.ts
+```
+
+## Tasks
+
+TODO
