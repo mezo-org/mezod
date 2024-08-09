@@ -207,6 +207,8 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 						sdk.NewCoin("abtc", sdkmath.NewInt(1000)).String(),
 						s.FormatFlag(flags.FlagUseLedger),
 						s.FormatFlag(flags.FlagSkipConfirmation),
+						s.FormatFlag(flags.FlagSignMode),
+						flags.SignModeLegacyAminoJSON,
 					})
 					out := bytes.NewBufferString("")
 					cmd.SetOutput(out)
@@ -225,6 +227,8 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 						sdk.NewCoin("abtc", sdkmath.NewInt(1000)).String(),
 						s.FormatFlag(flags.FlagUseLedger),
 						s.FormatFlag(flags.FlagSkipConfirmation),
+						s.FormatFlag(flags.FlagSignMode),
+						flags.SignModeLegacyAminoJSON,
 					})
 					out := bytes.NewBufferString("")
 					cmd.SetOutput(out)
