@@ -16,8 +16,13 @@
 package eip712
 
 import (
+	msgv1 "cosmossdk.io/api/cosmos/msg/v1"
 	"errors"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"cosmossdk.io/simapp/params"
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
@@ -191,6 +196,7 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 	}
 
 	// WrapTxToTypedData expects the payload as an Amino Sign Doc
+	legacytx.RegressionTestingAminoCodec = legacy.Cdc
 	signBytes := legacytx.StdSignBytes(
 		signDoc.ChainId,
 		signDoc.AccountNumber,
@@ -229,29 +235,28 @@ func validatePayloadMessages(msgs []sdk.Msg) error {
 		return errors.New("unable to build EIP-712 payload: transaction does contain any messages")
 	}
 
-	var msgSigner sdk.AccAddress
+	var txSigner string
 
-	for i, m := range msgs {
-		msgWithSigners, ok := m.(interface {
-			GetSigners() []sdk.AccAddress
-		})
-		if !ok {
-			return errors.New(
-				"unable to build EIP-712 payload: message does not " +
-					"implement the GetSigners method",
-			)
-		}
+	for i, msg := range msgs {
+		msgV2 := protoadapt.MessageV2Of(msg).ProtoReflect()
+		msgV2Desc := msgV2.Descriptor()
 
-		if len(msgWithSigners.GetSigners()) != 1 {
+		signersFields := proto.GetExtension(msgV2Desc.Options(), msgv1.E_Signer).([]string)
+
+		if len(signersFields) != 1 {
 			return errors.New("unable to build EIP-712 payload: expect exactly 1 signer")
 		}
 
+		signerField := signersFields[0]
+		signerFieldDesc := msgV2Desc.Fields().ByName(protoreflect.Name(signerField))
+		signer := msgV2.Get(signerFieldDesc).String()
+
 		if i == 0 {
-			msgSigner = msgWithSigners.GetSigners()[0]
+			txSigner = signer
 			continue
 		}
 
-		if !msgSigner.Equals(msgWithSigners.GetSigners()[0]) {
+		if txSigner != signer {
 			return errors.New("unable to build EIP-712 payload: multiple signers detected")
 		}
 	}

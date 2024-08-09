@@ -17,6 +17,7 @@ package tx
 
 import (
 	"errors"
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -103,6 +104,7 @@ func PrepareEIP712CosmosTx(
 	fee := legacytx.NewStdFee(txArgs.Gas, txArgs.Fees) //nolint: staticcheck
 
 	msgs := txArgs.Msgs
+	legacytx.RegressionTestingAminoCodec = legacy.Cdc
 	data := legacytx.StdSignBytes(ctx.ChainID(), accNumber, nonce, 0, fee, msgs, "")
 
 	typedDataArgs := typedDataArgs{

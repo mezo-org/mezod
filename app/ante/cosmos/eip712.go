@@ -18,6 +18,7 @@ package cosmos
 import (
 	txsigning "cosmossdk.io/x/tx/signing"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -196,6 +197,7 @@ func VerifySignature(
 			return errorsmod.Wrap(errortypes.ErrNoSignatures, "tx doesn't contain any msgs to verify signature")
 		}
 
+		legacytx.RegressionTestingAminoCodec = legacy.Cdc
 		txBytes := legacytx.StdSignBytes(
 			signerData.ChainID,
 			signerData.AccountNumber,

@@ -2,6 +2,8 @@ package evm_test
 
 import (
 	"context"
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
+	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
@@ -371,14 +373,18 @@ func (suite *AnteTestSuite) createSignerBytes(chainID string, signMode signing.S
 		PubKey:        pubKey,
 	}
 
-	signerBytes, err := authsigning.GetSignBytesAdapter(
-		context.Background(),
-		suite.clientCtx.TxConfig.SignModeHandler(),
-		signMode,
-		signerInfo,
-		txBuilder.GetTx(),
+	tx := txBuilder.GetTx()
+
+	legacytx.RegressionTestingAminoCodec = legacy.Cdc
+	signerBytes := legacytx.StdSignBytes(
+		signerInfo.ChainID,
+		signerInfo.AccountNumber,
+		signerInfo.Sequence,
+		tx.GetTimeoutHeight(),
+		legacytx.NewStdFee(tx.GetGas(), tx.GetFee()),
+		tx.GetMsgs(),
+		tx.GetMemo(),
 	)
-	suite.Require().NoError(err)
 
 	return signerBytes
 }

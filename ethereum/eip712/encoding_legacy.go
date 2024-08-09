@@ -16,9 +16,14 @@
 package eip712
 
 import (
+	msgv1 "cosmossdk.io/api/cosmos/msg/v1"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
 
@@ -95,22 +100,19 @@ func legacyDecodeAminoSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		msgs[i] = m
 	}
 
-	if err := legacyValidatePayloadMessages(msgs); err != nil {
+	signer, err := legacyValidatePayloadMessages(msgs)
+	if err != nil {
 		return apitypes.TypedData{}, err
+	}
+	if len(signer) == 0 {
+		return apitypes.TypedData{}, errors.New("signer not found")
 	}
 
 	// Use first message for fee payer and type inference
 	msg := msgs[0]
 
-	msgWithSigners, ok := msg.(interface {
-		GetSigners() []sdk.AccAddress
-	})
-	if !ok {
-		return apitypes.TypedData{}, fmt.Errorf("message does not implement the GetSigners method")
-	}
-
 	// By convention, the fee payer is the first address in the list of signers.
-	feePayer := msgWithSigners.GetSigners()[0]
+	feePayer := sdk.AccAddress(signer)
 	feeDelegation := &FeeDelegationOptions{
 		FeePayer: feePayer,
 	}
@@ -176,8 +178,12 @@ func legacyDecodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error
 		msgs[i] = m
 	}
 
-	if err := legacyValidatePayloadMessages(msgs); err != nil {
+	signer, err := legacyValidatePayloadMessages(msgs)
+	if err != nil {
 		return apitypes.TypedData{}, err
+	}
+	if len(signer) == 0 {
+		return apitypes.TypedData{}, errors.New("signer not found")
 	}
 
 	// Use first message for fee payer and type inference
@@ -195,19 +201,13 @@ func legacyDecodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error
 		Gas:    authInfo.Fee.GasLimit,
 	}
 
-	msgWithSigners, ok := msg.(interface {
-		GetSigners() []sdk.AccAddress
-	})
-	if !ok {
-		return apitypes.TypedData{}, fmt.Errorf("message does not implement the GetSigners method")
-	}
-
-	feePayer := msgWithSigners.GetSigners()[0]
+	feePayer := sdk.AccAddress(signer)
 	feeDelegation := &FeeDelegationOptions{
 		FeePayer: feePayer,
 	}
 
 	// WrapTxToTypedData expects the payload as an Amino Sign Doc
+	legacytx.RegressionTestingAminoCodec = legacy.Cdc
 	signBytes := legacytx.StdSignBytes(
 		signDoc.ChainId,
 		signDoc.AccountNumber,
@@ -234,50 +234,49 @@ func legacyDecodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error
 
 // validatePayloadMessages ensures that the transaction messages can be represented in an EIP-712
 // encoding by checking that messages exist, are of the same type, and share a single signer.
-func legacyValidatePayloadMessages(msgs []sdk.Msg) error {
+func legacyValidatePayloadMessages(msgs []sdk.Msg) (string, error) {
 	if len(msgs) == 0 {
-		return errors.New("unable to build EIP-712 payload: transaction does contain any messages")
+		return "", errors.New("unable to build EIP-712 payload: transaction does contain any messages")
 	}
 
 	var msgType string
-	var msgSigner sdk.AccAddress
+	var txSigner string
 
-	for i, m := range msgs {
-		t, err := getMsgType(m)
+	for i, msg := range msgs {
+		t, err := getMsgType(msg)
 		if err != nil {
-			return err
+			return "", err
 		}
 
-		msgWithSigners, ok := m.(interface {
-			GetSigners() []sdk.AccAddress
-		})
-		if !ok {
-			return errors.New(
-				"unable to build EIP-712 payload: message does not " +
-					"implement the GetSigners method",
-			)
+		msgV2 := protoadapt.MessageV2Of(msg).ProtoReflect()
+		msgV2Desc := msgV2.Descriptor()
+
+		signersFields := proto.GetExtension(msgV2Desc.Options(), msgv1.E_Signer).([]string)
+
+		if len(signersFields) != 1 {
+			return "", errors.New("unable to build EIP-712 payload: expect exactly 1 signer")
 		}
 
-		if len(msgWithSigners.GetSigners()) != 1 {
-			return errors.New("unable to build EIP-712 payload: expect exactly 1 signer")
-		}
+		signerField := signersFields[0]
+		signerFieldDesc := msgV2Desc.Fields().ByName(protoreflect.Name(signerField))
+		signer := msgV2.Get(signerFieldDesc).String()
 
 		if i == 0 {
 			msgType = t
-			msgSigner = msgWithSigners.GetSigners()[0]
+			txSigner = signer
 			continue
 		}
 
 		if t != msgType {
-			return errors.New("unable to build EIP-712 payload: different types of messages detected")
+			return "", errors.New("unable to build EIP-712 payload: different types of messages detected")
 		}
 
-		if !msgSigner.Equals(msgWithSigners.GetSigners()[0]) {
-			return errors.New("unable to build EIP-712 payload: multiple signers detected")
+		if txSigner != signer {
+			return "", errors.New("unable to build EIP-712 payload: multiple signers detected")
 		}
 	}
 
-	return nil
+	return txSigner, nil
 }
 
 // getMsgType returns the message type prefix for the given Cosmos SDK Msg
