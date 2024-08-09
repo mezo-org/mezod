@@ -456,6 +456,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 
 			resFinalizeBlock, err := suite.app.FinalizeBlock(
 				&abci.RequestFinalizeBlock{
+					Height: suite.ctx.BlockHeight(),
 					Txs: [][]byte{bz},
 				},
 			)
