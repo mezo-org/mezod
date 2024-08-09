@@ -93,7 +93,7 @@ func (am *permitMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
-	timestamp := time.Now().Unix() // Now
+	timestamp := time.Now().Unix() // Unix time in seconds
 
 	if err := precompile.ValidateMethodInputsCount(inputs, 7); err != nil {
 		return nil, err
