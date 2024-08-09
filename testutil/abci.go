@@ -67,6 +67,15 @@ func Commit(ctx sdk.Context, app *app.Mezo, t time.Duration, vs *tmtypes.Validat
 	header.Time = header.Time.Add(t)
 	header.AppHash = app.LastCommitID().Hash
 
+	// After commit, the finalizeBlockState is set to nil and NewContextLegacy
+	// will panic in that case. We need to simulate the behavior of the
+	// actual application and call ProcessProposal to set the finalizeBlockState
+	// for the new block before creating a new context.
+	_, err = app.ProcessProposal(&abci.RequestProcessProposal{Height: header.Height})
+	if err != nil {
+		return ctx, err
+	}
+
 	return app.BaseApp.NewContextLegacy(false, header), nil
 }
 
@@ -94,13 +103,14 @@ func DeliverTx(
 	if err != nil {
 		return nil, err
 	}
-	return BroadcastTxBytes(appMezo, txConfig.TxEncoder(), tx)
+	return BroadcastTxBytes(appMezo, txConfig.TxEncoder(), tx, ctx.BlockHeight())
 }
 
 // DeliverEthTx generates and broadcasts a Cosmos Tx populated with MsgEthereumTx messages.
 // If a private key is provided, it will attempt to sign all messages with the given private key,
 // otherwise, it will assume the messages have already been signed.
 func DeliverEthTx(
+	ctx sdk.Context,
 	appMezo *app.Mezo,
 	priv cryptotypes.PrivKey,
 	msgs ...sdk.Msg,
@@ -111,7 +121,7 @@ func DeliverEthTx(
 	if err != nil {
 		return nil, err
 	}
-	return BroadcastTxBytes(appMezo, txConfig.TxEncoder(), tx)
+	return BroadcastTxBytes(appMezo, txConfig.TxEncoder(), tx, ctx.BlockHeight())
 }
 
 // CheckTx checks a cosmos tx for a given set of msgs
@@ -158,14 +168,22 @@ func CheckEthTx(
 }
 
 // BroadcastTxBytes encodes a transaction and calls DeliverTx on the app.
-func BroadcastTxBytes(app *app.Mezo, txEncoder sdk.TxEncoder, tx sdk.Tx) (*abci.ExecTxResult, error) {
+func BroadcastTxBytes(
+	app *app.Mezo,
+	txEncoder sdk.TxEncoder,
+	tx sdk.Tx,
+	blockHeight int64,
+) (*abci.ExecTxResult, error) {
 	// bz are bytes to be broadcasted over the network
 	bz, err := txEncoder(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	req := &abci.RequestFinalizeBlock{Txs: [][]byte{bz}}
+	req := &abci.RequestFinalizeBlock{
+		Height: blockHeight,
+		Txs: [][]byte{bz},
+	}
 	res, err := app.BaseApp.FinalizeBlock(req)
 	if err != nil {
 		return nil, errortypes.ErrInvalidRequest
