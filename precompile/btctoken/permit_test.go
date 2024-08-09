@@ -632,3 +632,86 @@ func (s *PrecompileTestSuite) TestDomainSeparator() {
 		})
 	}
 }
+
+func (s *PrecompileTestSuite) TestPermitTypehash() {
+	testcases := []struct {
+		name          string
+		run           func() []interface{}
+		postCheck     func()
+		basicPass     bool
+		isCallerOwner bool
+		errContains   string
+	}{
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1,
+				}
+			},
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "successful permit typehash call",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			basicPass: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		s.Run(tc.name, func() {
+			s.SetupTest()
+			evm := &vm.EVM{
+				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+			}
+
+			evmKeeper := *s.app.EvmKeeper
+			bankKeeper := s.app.BankKeeper
+			authzKeeper := s.app.AuthzKeeper
+
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper)
+			s.Require().NoError(err)
+			s.btcTokenPrecompile = btcTokenPrecompile
+
+			var methodInputs []interface{}
+			if tc.run != nil {
+				methodInputs = tc.run()
+			}
+
+			method := s.btcTokenPrecompile.Abi.Methods["PERMIT_TYPEHASH"]
+			var methodInputArgs []byte
+			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
+			if tc.basicPass {
+				s.Require().NoError(err, "expected no error")
+			} else {
+				s.Require().Error(err, "expected error")
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+
+			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			// These first 4 bytes correspond to the method ID (first 4 bytes of the
+			// Keccak-256 hash of the function signature).
+			// In this case a function signature is 'function PERMIT_TYPEHASH()'
+			vmContract.Input = append([]byte{0x30, 0xad, 0xf8, 0x1f}, methodInputArgs...)
+			vmContract.CallerAddress = s.account1.EvmAddr
+
+			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			if err != nil && tc.errContains != "" {
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+			s.Require().NoError(err, "expected no error")
+
+			out, err := method.Outputs.Unpack(output)
+			s.Require().NoError(err)
+
+			permitTypehashBytes := []byte("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+			var permitTypehash [32]byte
+			copy(permitTypehash[:], permitTypehashBytes)
+			s.Require().Equal(permitTypehash, out[0], "expected different value")
+		})
+	}
+}

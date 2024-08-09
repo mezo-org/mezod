@@ -54,5 +54,6 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.
 		newPermitMethod(bankKeeper, authzkeeper, evmkeeper),
 		newNonceMethod(evmkeeper),
 		newDomainSeparatorMethod(),
+		newPermitTypehashMethod(),
 	}
 }

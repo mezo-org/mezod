@@ -17,12 +17,11 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-// PermitMethodName is the name of the permit method that should match the name
-// in the contract ABI.
 const (
 	PermitMethodName          = "permit"
 	NonceMethodName           = "nonce"
 	DomainSeparatorMethodName = "DOMAIN_SEPARATOR"
+	PermitTypehashMethodName  = "PERMIT_TYPEHASH"
 	PermitTypehash            = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
 )
 
@@ -364,7 +363,7 @@ func (dsm *domainSeparatorMethod) Payable() bool {
 
 // Returns the domain separator.
 func (dsm *domainSeparatorMethod) Run(
-	context *precompile.RunContext,
+	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
@@ -378,4 +377,43 @@ func (dsm *domainSeparatorMethod) Run(
 	}, nil
 }
 
-// TODO: Add PERMIT_TYPEHASH read only method.
+type permitTypehashMethod struct{}
+
+func newPermitTypehashMethod() *permitTypehashMethod {
+	return &permitTypehashMethod{}
+}
+
+func (ptm *permitTypehashMethod) MethodName() string {
+	return PermitTypehashMethodName
+}
+
+func (ptm *permitTypehashMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (ptm *permitTypehashMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (ptm *permitTypehashMethod) Payable() bool {
+	return false
+}
+
+// Returns the permit typehash.
+func (ptm *permitTypehashMethod) Run(
+	_ *precompile.RunContext,
+	inputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
+	permitTypehashBytes := []byte(PermitTypehash)
+
+	var permitTypehash [32]byte
+	copy(permitTypehash[:], permitTypehashBytes)
+	return precompile.MethodOutputs{
+		permitTypehash,
+	}, nil
+}
