@@ -2,6 +2,7 @@ package eip712_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 
@@ -176,8 +177,8 @@ func (suite *EIP712TestSuite) TestEIP712() {
 		{
 			title: "Fails - Single Message / Multi-Signer",
 			msgs: []sdk.Msg{
-				banktypes.NewMsgMultiSend(
-					[]banktypes.Input{
+				&banktypes.MsgMultiSend{
+					Inputs: []banktypes.Input{
 						banktypes.NewInput(
 							suite.createTestAddress(),
 							suite.makeCoins(suite.denom, math.NewInt(50)),
@@ -187,7 +188,7 @@ func (suite *EIP712TestSuite) TestEIP712() {
 							suite.makeCoins(suite.denom, math.NewInt(50)),
 						),
 					},
-					[]banktypes.Output{
+					Outputs: []banktypes.Output{
 						banktypes.NewOutput(
 							suite.createTestAddress(),
 							suite.makeCoins(suite.denom, math.NewInt(50)),
@@ -197,7 +198,7 @@ func (suite *EIP712TestSuite) TestEIP712() {
 							suite.makeCoins(suite.denom, math.NewInt(50)),
 						),
 					},
-				),
+				},
 			},
 			expectSuccess: false,
 		},
@@ -249,11 +250,14 @@ func (suite *EIP712TestSuite) TestEIP712() {
 					Address:       sdk.MustBech32ifyAddressBytes(config.Bech32Prefix, pubKey.Bytes()),
 				}
 
-				bz, err := suite.clientCtx.TxConfig.SignModeHandler().GetSignBytes(
+				bz, err := authsigning.GetSignBytesAdapter(
+					context.Background(),
+					suite.clientCtx.TxConfig.SignModeHandler(),
 					signMode,
 					signerData,
 					txBuilder.GetTx(),
 				)
+
 				suite.Require().NoError(err)
 
 				suite.verifyEIP712SignatureVerification(tc.expectSuccess, *privKey, *pubKey, bz)

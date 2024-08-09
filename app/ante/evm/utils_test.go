@@ -1,6 +1,7 @@
 package evm_test
 
 import (
+	"context"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
@@ -114,7 +115,7 @@ func (suite *AnteTestSuite) CreateTestTxBuilder(
 		sigV2 := signing.SignatureV2{
 			PubKey: priv.PubKey(),
 			Data: &signing.SingleSignatureData{
-				SignMode:  suite.clientCtx.TxConfig.SignModeHandler().DefaultMode(),
+				SignMode: signing.SignMode(suite.clientCtx.TxConfig.SignModeHandler().DefaultMode()),
 				Signature: nil,
 			},
 			Sequence: txData.GetNonce(),
@@ -133,8 +134,13 @@ func (suite *AnteTestSuite) CreateTestTxBuilder(
 			Sequence:      txData.GetNonce(),
 		}
 		sigV2, err = tx.SignWithPrivKey(
-			suite.clientCtx.TxConfig.SignModeHandler().DefaultMode(), signerData,
-			txBuilder, priv, suite.clientCtx.TxConfig, txData.GetNonce(),
+			context.Background(),
+			signing.SignMode(suite.clientCtx.TxConfig.SignModeHandler().DefaultMode()),
+			signerData,
+			txBuilder,
+			priv,
+			suite.clientCtx.TxConfig,
+			txData.GetNonce(),
 		)
 		suite.Require().NoError(err)
 
@@ -365,7 +371,9 @@ func (suite *AnteTestSuite) createSignerBytes(chainID string, signMode signing.S
 		PubKey:        pubKey,
 	}
 
-	signerBytes, err := suite.clientCtx.TxConfig.SignModeHandler().GetSignBytes(
+	signerBytes, err := authsigning.GetSignBytesAdapter(
+		context.Background(),
+		suite.clientCtx.TxConfig.SignModeHandler(),
 		signMode,
 		signerInfo,
 		txBuilder.GetTx(),

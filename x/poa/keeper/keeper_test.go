@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"cosmossdk.io/store/metrics"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
@@ -19,7 +20,9 @@ import (
 )
 
 func mockContext() (sdk.Context, Keeper) {
-	keys := sdk.NewKVStoreKeys(types.StoreKey)
+	logger := log.NewNopLogger()
+
+	keys := storetypes.NewKVStoreKeys(types.StoreKey)
 
 	registry := codectypes.NewInterfaceRegistry()
 	cdc := codec.NewProtoCodec(registry)
@@ -29,7 +32,7 @@ func mockContext() (sdk.Context, Keeper) {
 
 	// Create multiStore in memory
 	db := dbm.NewMemDB()
-	cms := store.NewCommitMultiStore(db)
+	cms := store.NewCommitMultiStore(db, logger, metrics.NewNoOpMetrics())
 
 	// Mount stores
 	cms.MountStoreWithDB(keys[types.StoreKey], storetypes.StoreTypeIAVL, db)
@@ -39,7 +42,7 @@ func mockContext() (sdk.Context, Keeper) {
 	}
 
 	// Create context
-	ctx := sdk.NewContext(cms, tmproto.Header{}, false, log.NewNopLogger())
+	ctx := sdk.NewContext(cms, tmproto.Header{}, false, logger)
 
 	return ctx, poaKeeper
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	sdkmath "cosmossdk.io/math"
+	"github.com/cosmos/cosmos-sdk/types/tx/signing"
+	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 
 	"cosmossdk.io/simapp/params"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -145,7 +147,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 
 					msg := []byte("test message")
 
-					signed, _, err := kr.SignByAddress(ledgerAddr, msg)
+					signed, _, err := kr.SignByAddress(ledgerAddr, msg, signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON)
 					s.Require().NoError(err, "failed to sign messsage")
 
 					valid := s.pubKey.VerifySignature(msg, signed)
@@ -159,7 +161,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 
 					msg := []byte("test message")
 
-					_, _, err = kr.SignByAddress(ledgerAddr, msg)
+					_, _, err = kr.SignByAddress(ledgerAddr, msg, signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON)
 
 					s.Require().Error(err, "false positive result, error expected")
 
@@ -182,7 +184,9 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 
 					receiverAccAddr = sdk.AccAddress(utiltx.GenerateAddress().Bytes())
 
-					cmd = bankcli.NewSendTxCmd()
+					bech32Prefix := sdk.GetConfig().GetBech32AccountAddrPrefix()
+
+					cmd = bankcli.NewSendTxCmd(authcodec.NewBech32Codec(bech32Prefix))
 					mockedIn = sdktestutil.ApplyMockIODiscardOutErr(cmd)
 
 					kr, clientCtx, ctx = s.NewKeyringAndCtxs(krHome, mockedIn, encCfg)

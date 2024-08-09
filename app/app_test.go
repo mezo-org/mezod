@@ -74,7 +74,7 @@ func TestMezoExport(t *testing.T) {
 
 	// Initialize the chain
 	app.InitChain(
-		abci.RequestInitChain{
+		&abci.RequestInitChain{
 			ChainId:       utils.MainnetChainID + "-1",
 			Validators:    []abci.ValidatorUpdate{},
 			AppStateBytes: stateBytes,

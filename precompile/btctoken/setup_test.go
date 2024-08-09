@@ -60,5 +60,5 @@ func (s *PrecompileTestSuite) SetupTest() {
 	header := testutil.NewHeader(
 		1, time.Now().UTC(), "mezo_31612-1", consAddress, nil, nil,
 	)
-	s.ctx = s.app.BaseApp.NewContext(false, header)
+	s.ctx = s.app.BaseApp.NewContextLegacy(false, header)
 }

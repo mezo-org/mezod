@@ -2,6 +2,7 @@ package backend
 
 import (
 	"fmt"
+	"github.com/cometbft/cometbft/libs/bytes"
 	"math/big"
 
 	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
@@ -144,7 +145,12 @@ func (suite *BackendTestSuite) TestGetProof() {
 					client,
 					bn.Int64(),
 					"store/acc/key",
-					authtypes.AddressStoreKey(sdk.AccAddress(address1.Bytes())),
+					bytes.HexBytes(
+						append(
+							authtypes.AddressStoreKeyPrefix,
+							sdk.AccAddress(address1.Bytes())...,
+						),
+					),
 					tmrpcclient.ABCIQueryOptions{Height: iavlHeight, Prove: true},
 				)
 			},

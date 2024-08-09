@@ -54,15 +54,22 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool, chainID string) {
 		1, time.Now().UTC(), chainID, suite.consAddress, nil, nil,
 	)
 
-	suite.ctx = suite.app.BaseApp.NewContext(checkTx, header)
+	suite.ctx = suite.app.BaseApp.NewContextLegacy(checkTx, header)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	types.RegisterQueryServer(queryHelper, suite.app.FeeMarketKeeper)
 	suite.queryClient = types.NewQueryClient(queryHelper)
 
+	nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
+
 	acc := &mezotypes.EthAccount{
-		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), nil, 0, 0),
-		CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
+		BaseAccount: authtypes.NewBaseAccount(
+			suite.address.Bytes(),
+			nil,
+			nextAccNumber,
+			0,
+		),
+		CodeHash: common.BytesToHash(crypto.Keccak256(nil)).String(),
 	}
 
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
@@ -171,7 +178,7 @@ func setupChain(localMinGasPricesStr, chainID string) {
 
 	// Initialize the chain
 	newapp.InitChain(
-		abci.RequestInitChain{
+		&abci.RequestInitChain{
 			ChainId:         chainID,
 			Validators:      []abci.ValidatorUpdate{},
 			AppStateBytes:   stateBytes,
