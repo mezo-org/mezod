@@ -103,7 +103,13 @@ func DeliverTx(
 	if err != nil {
 		return nil, err
 	}
-	return BroadcastTxBytes(appMezo, txConfig.TxEncoder(), tx, ctx.BlockHeight())
+	return BroadcastTxBytes(
+		appMezo,
+		txConfig.TxEncoder(),
+		tx,
+		ctx.BlockHeight(),
+		nil, // proposer is not processed in Cosmos transactions.
+	)
 }
 
 // DeliverEthTx generates and broadcasts a Cosmos Tx populated with MsgEthereumTx messages.
@@ -112,6 +118,7 @@ func DeliverTx(
 func DeliverEthTx(
 	ctx sdk.Context,
 	appMezo *app.Mezo,
+	proposer sdk.ConsAddress,
 	priv cryptotypes.PrivKey,
 	msgs ...sdk.Msg,
 ) (*abci.ExecTxResult, error) {
@@ -121,7 +128,13 @@ func DeliverEthTx(
 	if err != nil {
 		return nil, err
 	}
-	return BroadcastTxBytes(appMezo, txConfig.TxEncoder(), tx, ctx.BlockHeight())
+	return BroadcastTxBytes(
+		appMezo,
+		txConfig.TxEncoder(),
+		tx,
+		ctx.BlockHeight(),
+		proposer, // proposer must be set as x/evm check the coinbase address
+	)
 }
 
 // CheckTx checks a cosmos tx for a given set of msgs
@@ -173,6 +186,7 @@ func BroadcastTxBytes(
 	txEncoder sdk.TxEncoder,
 	tx sdk.Tx,
 	blockHeight int64,
+	proposer sdk.ConsAddress,
 ) (*abci.ExecTxResult, error) {
 	// bz are bytes to be broadcasted over the network
 	bz, err := txEncoder(tx)
@@ -183,6 +197,7 @@ func BroadcastTxBytes(
 	req := &abci.RequestFinalizeBlock{
 		Height: blockHeight,
 		Txs: [][]byte{bz},
+		ProposerAddress: proposer,
 	}
 	res, err := app.BaseApp.FinalizeBlock(req)
 	if err != nil {

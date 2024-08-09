@@ -2,6 +2,7 @@ package keeper_test
 
 import (
 	"encoding/json"
+	"math"
 	"math/big"
 	"time"
 
@@ -119,6 +120,9 @@ func setupTestWithContext(valMinGasPrice string, minGasPrice sdkmath.LegacyDec, 
 	privKey, msg := setupTest(valMinGasPrice+s.denom, chainID)
 	params := types.DefaultParams()
 	params.MinGasPrice = minGasPrice
+	// Disable base fee recalculation in the x/feemarket BeginBlock hook to
+	// not overwrite the value set in this test.
+	params.EnableHeight = math.MaxInt64
 	err := s.app.FeeMarketKeeper.SetParams(s.ctx, params)
 	s.Require().NoError(err)
 	s.app.FeeMarketKeeper.SetBaseFee(s.ctx, baseFee.BigInt())

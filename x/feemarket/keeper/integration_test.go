@@ -267,7 +267,7 @@ var _ = Describe("Feemarket", func() {
 						p := malleate()
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
-						res, err := testutil.DeliverEthTx(s.ctx, s.app, privKey, msgEthereumTx)
+						res, err := testutil.DeliverEthTx(s.ctx, s.app, s.consAddress, privKey, msgEthereumTx)
 						Expect(err).To(BeNil())
 						Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 						Expect(
@@ -292,7 +292,7 @@ var _ = Describe("Feemarket", func() {
 						p := malleate()
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
-						res, err := testutil.DeliverEthTx(s.ctx, s.app, privKey, msgEthereumTx)
+						res, err := testutil.DeliverEthTx(s.ctx, s.app, s.consAddress, privKey, msgEthereumTx)
 						Expect(err).To(BeNil(), "transaction should have succeeded")
 						Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
 					},
@@ -393,7 +393,7 @@ var _ = Describe("Feemarket", func() {
 						p := malleate()
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
-						res, err := testutil.DeliverEthTx(s.ctx, s.app, privKey, msgEthereumTx)
+						res, err := testutil.DeliverEthTx(s.ctx, s.app, s.consAddress, privKey, msgEthereumTx)
 						Expect(err).To(BeNil())
 						Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 						Expect(
@@ -414,7 +414,7 @@ var _ = Describe("Feemarket", func() {
 						p := malleate()
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
-						res, err := testutil.DeliverEthTx(s.ctx, s.app, privKey, msgEthereumTx)
+						res, err := testutil.DeliverEthTx(s.ctx, s.app, s.consAddress, privKey, msgEthereumTx)
 						Expect(err).To(BeNil())
 						Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 						Expect(
@@ -436,7 +436,7 @@ var _ = Describe("Feemarket", func() {
 						p := malleate()
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
-						res, err := testutil.DeliverEthTx(s.ctx, s.app, privKey, msgEthereumTx)
+						res, err := testutil.DeliverEthTx(s.ctx, s.app, s.consAddress, privKey, msgEthereumTx)
 						Expect(err).To(BeNil())
 						Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
 					},
