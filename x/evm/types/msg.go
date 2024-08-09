@@ -18,6 +18,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"github.com/cosmos/gogoproto/proto"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
@@ -210,6 +211,63 @@ func (msg *MsgEthereumTx) GetMsgs() []sdk.Msg {
 // GetMsgsV2 returns a single MsgEthereumTx as a google.golang.org/protobuf/proto.Message's.
 func (msg *MsgEthereumTx) GetMsgsV2() ([]protov2.Message, error) {
 	return []protov2.Message{protoadapt.MessageV2Of(msg)}, nil
+}
+
+// MsgEthereumTx_GetSigners implements a custom GetSignersFunc for MsgEthereumTx.
+// Cosmos >0.50.x expects the message's signers to be resolved using the
+// cosmos.msg.v1.signer annotation in the proto file or with a custom GetSignersFunc.
+// MsgEthereumTx signer resolution is complex so the annotation cannot be used
+// so, we need to provide custom logic which is implemented within this function.
+func MsgEthereumTx_GetSigners(msgV2 protov2.Message) ([][]byte, error) {
+	msgAny, err := codectypes.NewAnyWithValue(protoadapt.MessageV1Of(msgV2))
+	if err != nil {
+		return nil, err
+	}
+
+	msgEthTx := new(MsgEthereumTx)
+	err = msgEthTx.Unmarshal(msgAny.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	// At this point, msgEthTx.Data is set and its underlying type is *types.Any.
+	// However, its cachedValue field is nil and this will cause failure of
+	// msgEthTx.GetSigners() method, because UnpackTxData expects
+	// msgEthTx.Data.cachedValue to hold a reference to TxData. To overcome this,
+	// we need to manually unmarshal Data again and covert it to *types.Any.
+	// This will result in setting the cachedValue field of msgEthTx.Data.
+	var txData interface{
+		proto.Message
+		proto.Unmarshaler
+	}
+	switch msgEthTx.Data.TypeUrl {
+	case "/ethermint.evm.v1.AccessListTx":
+		txData = new(AccessListTx)
+	case "/ethermint.evm.v1.DynamicFeeTx":
+		txData = new(DynamicFeeTx)
+	case "/ethermint.evm.v1.LegacyTx":
+		txData = new(LegacyTx)
+	default:
+		return nil, fmt.Errorf("unrecognized TxData type: %s", msgEthTx.Data.TypeUrl)
+	}
+
+	err = txData.Unmarshal(msgEthTx.Data.Value)
+	if err != nil {
+		return nil, err
+	}
+	msgEthTx.Data, err = codectypes.NewAnyWithValue(txData)
+	if err != nil {
+		return nil, err
+	}
+
+	signers := msgEthTx.GetSigners()
+
+	result := make([][]byte, len(signers))
+	for i, signer := range signers {
+		result[i] = signer
+	}
+
+	return result, nil
 }
 
 // GetSigners returns the expected signers for an Ethereum transaction message.
