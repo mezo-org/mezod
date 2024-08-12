@@ -5,17 +5,17 @@
 // networks:
 // * localhost
 // * mezo_testnet
-import hre from "hardhat"
+import hre from 'hardhat'
 
-async function main() {
-    const accounts = await hre.ethers.getSigners();
+async function main (): Promise<void> {
+  const accounts = await hre.ethers.getSigners()
 
-    for (const account of accounts) {
-        console.log(account.address);
-    }
+  for (const account of accounts) {
+    console.log(account.address)
+  }
 }
 
 main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+  console.error(error)
+  process.exitCode = 1
+})
