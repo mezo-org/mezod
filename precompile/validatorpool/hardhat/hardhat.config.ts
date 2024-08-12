@@ -1,19 +1,20 @@
 import { task, vars, HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import abi from "../abi.json";
+import { TransactionRequest } from "ethers";
 
 const precompileAddress = "0x7b7c000000000000000000000000000000000011";
 
 const getPrivKeys = (varname: string) : string[] => {
   const strings: string[] = vars.get(varname, "").split(",");
-  const keys: string[] = []
-  for (let i = 0; i < keys.length; i++) {
+  const keys: string[] = [];
+  for (let i = 0; i < strings.length; i++) {
     if (strings[i] !== "") {
       keys.push(strings[i]);
     } 
   }
   return keys;
-}
+};
 
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
@@ -22,7 +23,8 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://localhost:8545",
       chainId: 31611,
-      accounts: getPrivKeys("MEZO_LOCALHOST_PRIVKEYS")
+      accounts: getPrivKeys("MEZO_LOCALHOST_PRIVKEYS"),
+      gas: "auto"
     },
     mezo_testnet: {
       url: "http://mezo-node-0.test.mezo.org:8545",
@@ -33,7 +35,7 @@ const config: HardhatUserConfig = {
 };
 
 task("owner", "Returns the current contract owner", async (taskArguments, hre, runSuper) => {
-  const validatorPool = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+  const validatorPool = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider);
   let owner = await validatorPool.owner();
   if (owner) {
     console.log(owner);
@@ -42,7 +44,7 @@ task("owner", "Returns the current contract owner", async (taskArguments, hre, r
 });
 
 task("candidateOwner", "Returns the current contract candidateOwner", async (taskArguments, hre, runSuper) => {
-  const validatorPool = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+  const validatorPool = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider);
   let candidateOwner = await validatorPool.candidateOwner();
   if (candidateOwner) {
     console.log(candidateOwner);
@@ -104,12 +106,12 @@ task("leave", "Removes the signers validator from the pool")
     const signer = await hre.ethers.getSigner(taskArguments.signer);
     if (signer) {
       const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer);
-      const result = await validatorPool.leave({gasLimit: 5000000})
+      const result = await validatorPool.leave({gasLimit: 46128n});
       if (result) {
         console.log(result);
       }
     } else {
-      console.log("Unknown signer")
+      console.log("Unknown signer");
     }
   });
 
@@ -120,12 +122,88 @@ task("kick", "Kicks a validator from the pool")
   const signer = await hre.ethers.getSigner(taskArguments.signer);
   if (signer) {
     const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer);
-    const result = await validatorPool.kick(taskArguments.operator)
+    const result = await validatorPool.kick(taskArguments.operator);
     if (result) {
       console.log(result);
     }
   } else {
-    console.log("Unknown signer")
+    console.log("Unknown signer");
+  }
+});
+
+task("transferOwnership", "Begins the ownership transfer flow (owner)")
+.addParam("signer", "The signer address (msg.sender)")
+.addParam("to", "Address to transfer ownership to")
+.setAction(async (taskArguments, hre, runSuper) => {
+  const signer = await hre.ethers.getSigner(taskArguments.signer);
+  if (signer) {
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer);
+    const result = await validatorPool.transferOwnership(taskArguments.to);
+    if (result) {
+      console.log(result);
+    }
+  } else {
+    console.log("Unknown signer");
+  }
+});
+
+task("acceptOwnership", "Accepts a pending ownership transfer (candidateOwner)")
+.addParam("signer", "The signer address (msg.sender)")
+.setAction(async (taskArguments, hre, runSuper) => {
+  const signer = await hre.ethers.getSigner(taskArguments.signer);
+  if (signer) {
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer);
+    const result = await validatorPool.acceptOwnership({gasLimit: 50000});
+    if (result) {
+      console.log(result);
+    }
+  } else {
+    console.log("Unknown signer");
+  }
+});
+
+task("submitApplication", "Submit a new validator application")
+.addParam("signer", "The signer address (msg.sender)")
+.addParam("conspubkey", "The validator's consensus pub key")
+.addParam("moniker", "The validator's name")
+.addOptionalParam("identity", "Optional identity signature (ex. UPort or Keybase)", "")
+.addOptionalParam("website", "Optional website link", "")
+.addOptionalParam("security", "Optional security contact information", "")
+.addOptionalParam("details", "Optional details about the validator", "")
+.setAction(async (taskArguments, hre, runSuper) => {
+  const signer = await hre.ethers.getSigner(taskArguments.signer);
+  if (signer) {
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer);
+    const description: string[] = [
+      taskArguments.moniker,
+      taskArguments.identity,
+      taskArguments.website,
+      taskArguments.security,
+      taskArguments.details,
+    ];
+
+    const result = await validatorPool.submitApplication(taskArguments.conspubkey, description, {gasLimit: 50000});
+    if (result) {
+      console.log(result);
+    }
+  } else {
+    console.log("Unknown signer");
+  }
+});
+
+task("approveApplication", "Approves a pending validator application (owner)")
+.addParam("signer", "The signer address (msg.sender)")
+.addParam("operator", "The validator's operator address of the application to approve")
+.setAction(async (taskArguments, hre, runSuper) => {
+  const signer = await hre.ethers.getSigner(taskArguments.signer);
+  if (signer) {
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer);
+    const result = await validatorPool.approveApplication(taskArguments.operator, {gasLimit: 50000});
+    if (result) {
+      console.log(result);
+    }
+  } else {
+    console.log("Unknown signer");
   }
 });
 export default config;

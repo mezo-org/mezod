@@ -1,6 +1,6 @@
 import hre from "hardhat"
 
-const BUILD_DIR = "../../../../build/";
+const BUILD_DIR = "../../../../.localnet/";
 const COUNT = 4;
 
 async function main() {
