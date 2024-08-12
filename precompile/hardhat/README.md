@@ -1,4 +1,4 @@
-# Validator Pool Hardhat Tasks
+# Precompile Hardhat Tasks
 
 ## Networks
 Hardhat is configured with two supported networks:
@@ -19,22 +19,18 @@ normally save in an unencrypted file. Run npx hardhat vars path to find the stor
 You can determine what `vars` are available by running:
 ```
 npx hardhat vars setup
-💡 The following configuration variables are optional:
-
-  npx hardhat vars set MEZO_ACCOUNTS
 ``` 
 
-The vars can be set to either a) a single private key, or b) a comma separated list (no whitespace) or private keys.
+The vars can be set to either a) a single private key, or b) a comma separated list (no whitespace) of private keys.
 
 ```
-$ npx hardhat vars set MEZO_ACCOUNTS
-✔ Enter value: ********************************
+npx hardhat vars set MEZO_ACCOUNTS
 ```
 
 And can be removed with:
 
 ```
-$ npx hardhat vars delete MEZO_ACCOUNTS
+npx hardhat vars delete MEZO_ACCOUNTS
 ```
 
 ## Scripts
@@ -61,6 +57,27 @@ This output can be used to easily set `MEZO_ACCOUNTS` for `localhost` use.
 ```
 npx hardhat run scripts/localhost-keys.ts | npx hardhat vars set MEZO_ACCOUNTS
 ```
-## Tasks
 
-TODO
+## Tasks
+We name Hardhat [Tasks](https://hardhat.org/hardhat-runner/docs/advanced/create-task) with a precompile prefix. This
+provides clarity on which precompile the task runs against, and keeps the output of `npx hardhat help` clean as
+precompile tasks get grouped together. You can view the available tasks with:
+
+```
+npx hardhat help
+```
+
+_Note: The default Hardhat tasks are still visible (e.g `compile`), many of these will do nothing as we are only using
+Hardhat for tasks/testing._
+
+Help information for a specific task can be obtained using
+
+```
+npx hardhat help <TASK>
+```
+
+e.g:
+
+```
+npx hardhat help validatorPool:submitApplication
+
