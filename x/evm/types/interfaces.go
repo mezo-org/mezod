@@ -17,8 +17,9 @@ package types
 
 import (
 	"context"
-	"cosmossdk.io/core/address"
 	"math/big"
+
+	"cosmossdk.io/core/address"
 
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 

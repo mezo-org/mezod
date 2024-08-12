@@ -76,8 +76,7 @@ func (suite *KeeperTestSuite) TestQueryAccount() {
 			suite.SetupTest() // reset
 
 			tc.malleate()
-			ctx := sdk.WrapSDKContext(suite.ctx)
-			res, err := suite.queryClient.Account(ctx, req)
+			res, err := suite.queryClient.Account(suite.ctx, req)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -155,8 +154,7 @@ func (suite *KeeperTestSuite) TestQueryCosmosAccount() {
 			suite.SetupTest() // reset
 
 			tc.malleate()
-			ctx := sdk.WrapSDKContext(suite.ctx)
-			res, err := suite.queryClient.CosmosAccount(ctx, req)
+			res, err := suite.queryClient.CosmosAccount(suite.ctx, req)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -214,8 +212,7 @@ func (suite *KeeperTestSuite) TestQueryBalance() {
 			suite.SetupTest() // reset
 
 			tc.malleate()
-			ctx := sdk.WrapSDKContext(suite.ctx)
-			res, err := suite.queryClient.Balance(ctx, req)
+			res, err := suite.queryClient.Balance(suite.ctx, req)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -273,8 +270,7 @@ func (suite *KeeperTestSuite) TestQueryStorage() {
 			tc.malleate(vmdb)
 			suite.Require().NoError(vmdb.Commit())
 
-			ctx := sdk.WrapSDKContext(suite.ctx)
-			res, err := suite.queryClient.Storage(ctx, req)
+			res, err := suite.queryClient.Storage(suite.ctx, req)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -332,8 +328,7 @@ func (suite *KeeperTestSuite) TestQueryCode() {
 			tc.malleate(vmdb)
 			suite.Require().NoError(vmdb.Commit())
 
-			ctx := sdk.WrapSDKContext(suite.ctx)
-			res, err := suite.queryClient.Code(ctx, req)
+			res, err := suite.queryClient.Code(suite.ctx, req)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -402,10 +397,9 @@ func (suite *KeeperTestSuite) TestQueryTxLogs() {
 }
 
 func (suite *KeeperTestSuite) TestQueryParams() {
-	ctx := sdk.WrapSDKContext(suite.ctx)
 	expParams := types.DefaultParams()
 
-	res, err := suite.queryClient.Params(ctx, &types.QueryParamsRequest{})
+	res, err := suite.queryClient.Params(suite.ctx, &types.QueryParamsRequest{})
 	suite.Require().NoError(err)
 	suite.Require().Equal(expParams, res.Params)
 }
@@ -474,8 +468,7 @@ func (suite *KeeperTestSuite) TestQueryValidatorAccount() {
 			suite.SetupTest() // reset
 
 			tc.malleate()
-			ctx := sdk.WrapSDKContext(suite.ctx)
-			res, err := suite.queryClient.ValidatorAccount(ctx, req)
+			res, err := suite.queryClient.ValidatorAccount(suite.ctx, req)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -746,7 +739,7 @@ func (suite *KeeperTestSuite) TestEstimateGas() {
 				ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
 			}
 
-			rsp, err := suite.queryClient.EstimateGas(sdk.WrapSDKContext(suite.ctx), &req)
+			rsp, err := suite.queryClient.EstimateGas(suite.ctx, &req)
 			if tc.expPass {
 				suite.Require().NoError(err)
 				suite.Require().Equal(int64(tc.expGas), int64(rsp.Gas))
@@ -958,7 +951,7 @@ func (suite *KeeperTestSuite) TestTraceTx() {
 			if chainID != nil {
 				traceReq.ChainId = chainID.Int64()
 			}
-			res, err := suite.queryClient.TraceTx(sdk.WrapSDKContext(suite.ctx), &traceReq)
+			res, err := suite.queryClient.TraceTx(suite.ctx, &traceReq)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -1136,7 +1129,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 				traceReq.ChainId = chainID.Int64()
 			}
 
-			res, err := suite.queryClient.TraceBlock(sdk.WrapSDKContext(suite.ctx), &traceReq)
+			res, err := suite.queryClient.TraceBlock(suite.ctx, &traceReq)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -1177,14 +1170,14 @@ func (suite *KeeperTestSuite) TestNonceInQuery() {
 	})
 	suite.Require().NoError(err)
 	proposerAddress := suite.ctx.BlockHeader().ProposerAddress
-	_, err = suite.queryClient.EstimateGas(sdk.WrapSDKContext(suite.ctx), &types.EthCallRequest{
+	_, err = suite.queryClient.EstimateGas(suite.ctx, &types.EthCallRequest{
 		Args:            args,
 		GasCap:          config.DefaultGasCap,
 		ProposerAddress: proposerAddress,
 	})
 	suite.Require().NoError(err)
 
-	_, err = suite.queryClient.EthCall(sdk.WrapSDKContext(suite.ctx), &types.EthCallRequest{
+	_, err = suite.queryClient.EthCall(suite.ctx, &types.EthCallRequest{
 		Args:            args,
 		GasCap:          config.DefaultGasCap,
 		ProposerAddress: proposerAddress,

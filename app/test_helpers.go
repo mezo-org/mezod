@@ -17,9 +17,10 @@
 package app
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"encoding/json"
 	"time"
+
+	sdkmath "cosmossdk.io/math"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
@@ -143,7 +144,7 @@ func Setup(
 		}
 
 		// Initialize the chain
-		app.InitChain(
+		_, err = app.InitChain(
 			&abci.RequestInitChain{
 				ChainId:         chainID,
 				Validators:      []abci.ValidatorUpdate{},
@@ -151,6 +152,9 @@ func Setup(
 				AppStateBytes:   stateBytes,
 			},
 		)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return app
@@ -171,7 +175,7 @@ func GenesisStateWithValSet(
 	validators := make([]poatypes.Validator, 0, len(valSet.Validators))
 
 	for _, val := range valSet.Validators {
-		pk, _ := cryptocodec.FromTmPubKeyInterface(val.PubKey)
+		pk, _ := cryptocodec.FromCmtPubKeyInterface(val.PubKey)
 		validator := poatypes.Validator{
 			OperatorBech32: sdk.ValAddress(val.Address).String(),
 			//nolint:staticcheck

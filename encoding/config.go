@@ -44,12 +44,12 @@ func MakeConfig(mb module.BasicManager) params.EncodingConfig {
 
 	signingOptions.DefineCustomGetSigners(
 		"ethermint.evm.v1.MsgEthereumTx",
-		evmtypes.MsgEthereumTx_GetSigners,
+		evmtypes.MsgEthereumTxGetSigners,
 	)
 
 	interfaceRegistry, err := types.NewInterfaceRegistryWithOptions(
 		types.InterfaceRegistryOptions{
-			ProtoFiles: proto.HybridResolver,
+			ProtoFiles:     proto.HybridResolver,
 			SigningOptions: signingOptions,
 		},
 	)

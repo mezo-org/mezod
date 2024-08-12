@@ -17,9 +17,7 @@ package server
 
 import (
 	"context"
-	"cosmossdk.io/log"
 	"fmt"
-	tmcfg "github.com/cometbft/cometbft/config"
 	"io"
 	"net"
 	"net/http"
@@ -27,6 +25,10 @@ import (
 	"path/filepath"
 	"runtime/pprof"
 	"time"
+
+	"cosmossdk.io/log"
+
+	tmcfg "github.com/cometbft/cometbft/config"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -532,8 +534,8 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 			apiSrv.SetTelemetry(metrics)
 		}
 
-		apiSrvCtx, cancelApiSrvCtx := context.WithCancel(context.Background())
-		defer cancelApiSrvCtx()
+		apiSrvCtx, cancelAPISrvCtx := context.WithCancel(context.Background())
+		defer cancelAPISrvCtx()
 
 		errCh := make(chan error)
 		go func() {

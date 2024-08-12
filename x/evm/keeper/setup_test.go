@@ -166,7 +166,7 @@ func (suite *KeeperTestSuite) SetupAppWithT(checkTx bool, t require.TestingT) {
 		require.NoError(t, err)
 
 		// Initialize the chain
-		suite.app.InitChain(
+		_, err = suite.app.InitChain(
 			&abci.RequestInitChain{
 				ChainId:         "mezo_31611-1",
 				Validators:      []abci.ValidatorUpdate{},
@@ -174,6 +174,7 @@ func (suite *KeeperTestSuite) SetupAppWithT(checkTx bool, t require.TestingT) {
 				AppStateBytes:   stateBytes,
 			},
 		)
+		require.NoError(t, err)
 	}
 
 	header := testutil.NewHeader(

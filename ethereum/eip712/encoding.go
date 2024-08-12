@@ -16,9 +16,11 @@
 package eip712
 
 import (
-	msgv1 "cosmossdk.io/api/cosmos/msg/v1"
 	"errors"
 	"fmt"
+
+	msgv1 "cosmossdk.io/api/cosmos/msg/v1"
+
 	"github.com/cosmos/cosmos-sdk/codec/legacy"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/protoadapt"

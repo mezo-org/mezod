@@ -112,6 +112,7 @@ func (b *Backend) GetProof(address common.Address, storageKeys []string, blockNr
 	}
 
 	// query account proofs
+	//nolint:gocritic
 	accountKey := append(authtypes.AddressStoreKeyPrefix, sdk.AccAddress(address.Bytes())...)
 	_, proof, err := b.queryClient.GetProof(clientCtx, authtypes.StoreKey, accountKey)
 	if err != nil {

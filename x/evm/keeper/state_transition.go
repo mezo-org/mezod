@@ -16,8 +16,9 @@
 package keeper
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"math/big"
+
+	sdkmath "cosmossdk.io/math"
 
 	"golang.org/x/exp/maps"
 

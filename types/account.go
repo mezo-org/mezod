@@ -17,6 +17,7 @@ package types
 
 import (
 	"bytes"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"

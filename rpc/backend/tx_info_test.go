@@ -1,9 +1,10 @@
 package backend
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"fmt"
 	"math/big"
+
+	sdkmath "cosmossdk.io/math"
 
 	"cosmossdk.io/log"
 	abci "github.com/cometbft/cometbft/abci/types"

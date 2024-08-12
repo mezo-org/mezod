@@ -18,10 +18,11 @@ package filters
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/params"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/mezo-org/mezod/rpc/types"

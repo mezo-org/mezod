@@ -18,8 +18,9 @@ package types
 import (
 	"errors"
 	"fmt"
-	"github.com/cosmos/gogoproto/proto"
 	"math/big"
+
+	"github.com/cosmos/gogoproto/proto"
 
 	sdkmath "cosmossdk.io/math"
 
@@ -213,12 +214,12 @@ func (msg *MsgEthereumTx) GetMsgsV2() ([]protov2.Message, error) {
 	return []protov2.Message{protoadapt.MessageV2Of(msg)}, nil
 }
 
-// MsgEthereumTx_GetSigners implements a custom GetSignersFunc for MsgEthereumTx.
+// MsgEthereumTxGetSigners implements a custom GetSignersFunc for MsgEthereumTx.
 // Cosmos >0.50.x expects the message's signers to be resolved using the
 // cosmos.msg.v1.signer annotation in the proto file or with a custom GetSignersFunc.
 // MsgEthereumTx signer resolution is complex so the annotation cannot be used
 // so, we need to provide custom logic which is implemented within this function.
-func MsgEthereumTx_GetSigners(msgV2 protov2.Message) ([][]byte, error) {
+func MsgEthereumTxGetSigners(msgV2 protov2.Message) ([][]byte, error) {
 	msgAny, err := codectypes.NewAnyWithValue(protoadapt.MessageV1Of(msgV2))
 	if err != nil {
 		return nil, err
@@ -236,7 +237,7 @@ func MsgEthereumTx_GetSigners(msgV2 protov2.Message) ([][]byte, error) {
 	// msgEthTx.Data.cachedValue to hold a reference to TxData. To overcome this,
 	// we need to manually unmarshal Data again and covert it to *types.Any.
 	// This will result in setting the cachedValue field of msgEthTx.Data.
-	var txData interface{
+	var txData interface {
 		proto.Message
 		proto.Unmarshaler
 	}

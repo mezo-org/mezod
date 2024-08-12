@@ -2,8 +2,9 @@ package backend
 
 import (
 	"fmt"
-	"github.com/cometbft/cometbft/libs/bytes"
 	"math/big"
+
+	"github.com/cometbft/cometbft/libs/bytes"
 
 	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"

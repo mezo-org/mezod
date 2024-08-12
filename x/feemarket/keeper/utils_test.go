@@ -181,7 +181,7 @@ func setupChain(localMinGasPricesStr, chainID string) {
 	s.Require().NoError(err)
 
 	// Initialize the chain
-	newapp.InitChain(
+	_, err = newapp.InitChain(
 		&abci.RequestInitChain{
 			ChainId:         chainID,
 			Validators:      []abci.ValidatorUpdate{},
@@ -189,6 +189,7 @@ func setupChain(localMinGasPricesStr, chainID string) {
 			ConsensusParams: app.DefaultConsensusParams,
 		},
 	)
+	s.Require().NoError(err)
 
 	s.app = newapp
 	s.SetupApp(false, chainID)

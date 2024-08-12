@@ -1,9 +1,10 @@
 package keeper_test
 
 import (
-	sdkmath "cosmossdk.io/math"
 	_ "embed"
 	"math/big"
+
+	sdkmath "cosmossdk.io/math"
 )
 
 func (suite *KeeperTestSuite) TestSetGetBlockGasWanted() {

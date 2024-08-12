@@ -3,9 +3,10 @@ package eip712_test
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	"github.com/cosmos/cosmos-sdk/codec/legacy"
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
-	"testing"
 
 	"cosmossdk.io/math"
 
@@ -229,7 +230,7 @@ func (suite *EIP712TestSuite) TestEIP712() {
 					signerData.AccountNumber,
 					signerData.Sequence,
 					txBuilder.GetTx().GetTimeoutHeight(),
-					legacytx.NewStdFee(params.fee.GasLimit, params.fee.Amount),
+					legacytx.NewStdFee(params.fee.GasLimit, params.fee.Amount), //nolint:staticcheck
 					txBuilder.GetTx().GetMsgs(),
 					txBuilder.GetTx().GetMemo(),
 				)

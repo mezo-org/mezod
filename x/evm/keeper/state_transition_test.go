@@ -1,10 +1,11 @@
 package keeper_test
 
 import (
-	storetypes "cosmossdk.io/store/types"
 	"fmt"
 	"math"
 	"math/big"
+
+	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"

@@ -16,8 +16,9 @@
 package tx
 
 import (
-	protov2 "google.golang.org/protobuf/proto"
 	"math"
+
+	protov2 "google.golang.org/protobuf/proto"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -108,7 +109,7 @@ func signCosmosTx(
 	sigV2 := signing.SignatureV2{
 		PubKey: args.Priv.PubKey(),
 		Data: &signing.SingleSignatureData{
-			SignMode: signing.SignMode(args.TxCfg.SignModeHandler().DefaultMode()),
+			SignMode:  signing.SignMode(args.TxCfg.SignModeHandler().DefaultMode()),
 			Signature: nil,
 		},
 		Sequence: seq,

@@ -1,6 +1,10 @@
 package evm_test
 
 import (
+	"math/big"
+	"testing"
+	"time"
+
 	sdkmath "cosmossdk.io/math"
 	"cosmossdk.io/simapp"
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -23,9 +27,6 @@ import (
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"math/big"
-	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -40,14 +41,12 @@ import (
 type EvmTestSuite struct {
 	suite.Suite
 
-	ctx     sdk.Context
-	app     *app.Mezo
-	chainID *big.Int
+	ctx sdk.Context
+	app *app.Mezo
 
 	signer    keyring.Signer
 	ethSigner ethtypes.Signer
 	from      common.Address
-	to        sdk.AccAddress
 
 	dynamicTxFee bool
 }
@@ -121,7 +120,8 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 		ConsensusParams: app.DefaultConsensusParams,
 		AppStateBytes:   stateBytes,
 	}
-	suite.app.InitChain(req)
+	_, err = suite.app.InitChain(req)
+	require.NoError(t, err)
 
 	suite.ctx = suite.app.BaseApp.NewContextLegacy(checkTx, tmproto.Header{
 		Height:          1,

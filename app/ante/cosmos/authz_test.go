@@ -1,11 +1,12 @@
 package cosmos_test
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"fmt"
 	"math/big"
 	"testing"
 	"time"
+
+	sdkmath "cosmossdk.io/math"
 
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -457,7 +458,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 			resFinalizeBlock, err := suite.app.FinalizeBlock(
 				&abci.RequestFinalizeBlock{
 					Height: suite.ctx.BlockHeight(),
-					Txs: [][]byte{bz},
+					Txs:    [][]byte{bz},
 				},
 			)
 			suite.Require().NoError(err)

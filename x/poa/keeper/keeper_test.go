@@ -64,7 +64,7 @@ func mockValidator() (types.Validator, string) {
 
 	// Generate a consPubKey
 	tmpk = ed25519.GenPrivKey().PubKey()
-	pk, err := cryptocdc.FromTmPubKeyInterface(tmpk)
+	pk, err := cryptocdc.FromCmtPubKeyInterface(tmpk)
 	if err != nil {
 		panic(err)
 	}

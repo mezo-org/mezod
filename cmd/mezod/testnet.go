@@ -20,7 +20,6 @@ package main
 
 import (
 	"bufio"
-	sdkmath "cosmossdk.io/math"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -28,6 +27,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	sdkmath "cosmossdk.io/math"
 
 	"github.com/ethereum/go-ethereum/common"
 

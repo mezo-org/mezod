@@ -17,6 +17,7 @@ package tx
 
 import (
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 
 	"github.com/ethereum/go-ethereum/common"

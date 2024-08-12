@@ -16,8 +16,9 @@
 package evm
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"math/big"
+
+	sdkmath "cosmossdk.io/math"
 
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"

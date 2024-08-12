@@ -21,8 +21,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"sort"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
 	cryptohd "github.com/mezo-org/mezod/crypto/hd"
 

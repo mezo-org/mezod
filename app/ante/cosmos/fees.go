@@ -17,9 +17,10 @@
 package cosmos
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"fmt"
 	"math"
+
+	sdkmath "cosmossdk.io/math"
 
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"

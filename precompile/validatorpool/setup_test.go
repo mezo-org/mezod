@@ -74,7 +74,7 @@ func NewKey() Key {
 	addr, privKey := utiltx.NewAddrKey()
 	// Generate a consPubKey
 	tmpk := ed25519.GenPrivKey().PubKey()
-	consPubKey, err := cryptocdc.FromTmPubKeyInterface(tmpk)
+	consPubKey, err := cryptocdc.FromCmtPubKeyInterface(tmpk)
 	if err != nil {
 		panic(err)
 	}

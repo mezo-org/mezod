@@ -16,8 +16,10 @@
 package cosmos
 
 import (
-	txsigning "cosmossdk.io/x/tx/signing"
 	"fmt"
+
+	txsigning "cosmossdk.io/x/tx/signing"
+
 	"github.com/cosmos/cosmos-sdk/codec/legacy"
 
 	errorsmod "cosmossdk.io/errors"

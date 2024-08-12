@@ -17,6 +17,7 @@ package tx
 
 import (
 	"errors"
+
 	"github.com/cosmos/cosmos-sdk/codec/legacy"
 
 	"github.com/cosmos/cosmos-sdk/client"

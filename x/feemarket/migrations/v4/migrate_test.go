@@ -16,8 +16,9 @@
 package v4_test
 
 import (
-	storetypes "cosmossdk.io/store/types"
 	"testing"
+
+	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"

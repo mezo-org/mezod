@@ -69,7 +69,7 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 	// Here we assume consPubKeyBytes is a valid ED25519 key, without performing any additional validation.
 	// We may need to add validation here.
 	tmpk := ed25519.PubKey(consPubKeyBytes[:])
-	consPubKey, err := cryptocdc.FromTmPubKeyInterface(tmpk)
+	consPubKey, err := cryptocdc.FromCmtPubKeyInterface(tmpk)
 	if err != nil {
 		return nil, err
 	}

@@ -10,7 +10,6 @@ import (
 	kmultisig "github.com/cosmos/cosmos-sdk/crypto/keys/multisig"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,7 +19,7 @@ import (
 )
 
 func (suite *AnteTestSuite) TestAnteHandler() {
-	var acc authtypes.AccountI
+	var acc sdk.AccountI
 	addr, privKey := utiltx.NewAddrKey()
 	to := utiltx.GenerateAddress()
 	const incorrectChainID string = "mezo_31600-1"

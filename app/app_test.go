@@ -1,11 +1,13 @@
 package app
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"encoding/json"
-	kitlog "github.com/go-kit/log"
 	"os"
 	"testing"
+
+	sdkmath "cosmossdk.io/math"
+
+	kitlog "github.com/go-kit/log"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
@@ -73,13 +75,14 @@ func TestMezoExport(t *testing.T) {
 	require.NoError(t, err)
 
 	// Initialize the chain
-	app.InitChain(
+	_, err = app.InitChain(
 		&abci.RequestInitChain{
 			ChainId:       utils.MainnetChainID + "-1",
 			Validators:    []abci.ValidatorUpdate{},
 			AppStateBytes: stateBytes,
 		},
 	)
+	require.NoError(t, err, "InitChain should not have an error")
 
 	_, err = app.FinalizeBlock(&abci.RequestFinalizeBlock{Height: 1})
 	require.NoError(t, err, "FinalizeBlock should not have an error")

@@ -2,9 +2,10 @@ package evm_test
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/cosmos/cosmos-sdk/codec/legacy"
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
-	"math/big"
 
 	sdkmath "cosmossdk.io/math"
 
@@ -117,7 +118,7 @@ func (suite *AnteTestSuite) CreateTestTxBuilder(
 		sigV2 := signing.SignatureV2{
 			PubKey: priv.PubKey(),
 			Data: &signing.SingleSignatureData{
-				SignMode: signing.SignMode(suite.clientCtx.TxConfig.SignModeHandler().DefaultMode()),
+				SignMode:  signing.SignMode(suite.clientCtx.TxConfig.SignModeHandler().DefaultMode()),
 				Signature: nil,
 			},
 			Sequence: txData.GetNonce(),
@@ -362,7 +363,7 @@ func (suite *AnteTestSuite) RegisterAccount(pubKey cryptotypes.PubKey, balance *
 }
 
 // createSignerBytes generates sign doc bytes using the given parameters
-func (suite *AnteTestSuite) createSignerBytes(chainID string, signMode signing.SignMode, pubKey cryptotypes.PubKey, txBuilder client.TxBuilder) []byte {
+func (suite *AnteTestSuite) createSignerBytes(chainID string, _ signing.SignMode, pubKey cryptotypes.PubKey, txBuilder client.TxBuilder) []byte {
 	acc, err := sdkante.GetSignerAcc(suite.ctx, suite.app.AccountKeeper, sdk.AccAddress(pubKey.Address()))
 	suite.Require().NoError(err)
 	signerInfo := authsigning.SignerData{
@@ -381,7 +382,7 @@ func (suite *AnteTestSuite) createSignerBytes(chainID string, signMode signing.S
 		signerInfo.AccountNumber,
 		signerInfo.Sequence,
 		tx.GetTimeoutHeight(),
-		legacytx.NewStdFee(tx.GetGas(), tx.GetFee()),
+		legacytx.NewStdFee(tx.GetGas(), tx.GetFee()), //nolint:staticcheck
 		tx.GetMsgs(),
 		tx.GetMemo(),
 	)

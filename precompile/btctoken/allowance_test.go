@@ -1,8 +1,9 @@
 package btctoken_test
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"math/big"
+
+	sdkmath "cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 

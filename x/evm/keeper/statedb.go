@@ -16,9 +16,10 @@
 package keeper
 
 import (
-	storetypes "cosmossdk.io/store/types"
 	"fmt"
 	"math/big"
+
+	storetypes "cosmossdk.io/store/types"
 
 	sdkmath "cosmossdk.io/math"
 

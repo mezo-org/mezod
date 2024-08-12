@@ -160,7 +160,7 @@ func transfer(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, auth
 		if spender.Equals(sdk.AccAddress(from.Bytes())) {
 			// owner is spender
 			msgSrv := bankkeeper.NewMsgServerImpl(bankKeeper)
-			_, err = msgSrv.Send(sdk.WrapSDKContext(context.SdkCtx()), msg)
+			_, err = msgSrv.Send(context.SdkCtx(), msg)
 		} else {
 			authorization, _ := authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
 			if authorization == nil {

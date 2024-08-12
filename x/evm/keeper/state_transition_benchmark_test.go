@@ -2,9 +2,10 @@ package keeper_test
 
 import (
 	"errors"
-	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"math/big"
 	"testing"
+
+	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"

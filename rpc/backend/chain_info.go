@@ -16,10 +16,11 @@
 package backend
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"fmt"
 	"math/big"
 	"strconv"
+
+	sdkmath "cosmossdk.io/math"
 
 	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 

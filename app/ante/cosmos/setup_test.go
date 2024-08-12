@@ -1,10 +1,11 @@
 package cosmos_test
 
 import (
-	storetypes "cosmossdk.io/store/types"
 	"math"
 	"testing"
 	"time"
+
+	storetypes "cosmossdk.io/store/types"
 
 	"github.com/stretchr/testify/suite"
 

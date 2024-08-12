@@ -17,9 +17,10 @@ package backend
 
 import (
 	"context"
-	sdkmath "cosmossdk.io/math"
 	"math/big"
 	"time"
+
+	sdkmath "cosmossdk.io/math"
 
 	"cosmossdk.io/log"
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"

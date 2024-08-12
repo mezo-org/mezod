@@ -17,15 +17,16 @@
 package main
 
 import (
-	storetypes "cosmossdk.io/store/types"
 	"errors"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/client/config"
-	"github.com/cosmos/cosmos-sdk/server"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
+
+	storetypes "cosmossdk.io/store/types"
+
+	"github.com/cosmos/cosmos-sdk/client/config"
 
 	"github.com/spf13/viper"
 
@@ -154,7 +155,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 
 	// add keybase, auxiliary RPC, query, and tx child commands
 	rootCmd.AddCommand(
-		server.StatusCommand(),
+		sdkserver.StatusCommand(),
 		queryCommand(),
 		txCommand(),
 		mezoclient.KeyCommands(app.DefaultNodeHome),
@@ -191,7 +192,7 @@ func queryCommand() *cobra.Command {
 
 	cmd.AddCommand(
 		rpc.ValidatorCommand(),
-		server.QueryBlockCmd(),
+		sdkserver.QueryBlockCmd(),
 		authcmd.QueryTxsByEventsCmd(),
 		authcmd.QueryTxCmd(),
 	)

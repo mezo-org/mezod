@@ -1,10 +1,11 @@
 package evm_test
 
 import (
-	storetypes "cosmossdk.io/store/types"
 	"math"
 	"testing"
 	"time"
+
+	storetypes "cosmossdk.io/store/types"
 
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/stretchr/testify/suite"

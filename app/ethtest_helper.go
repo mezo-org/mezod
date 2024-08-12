@@ -16,8 +16,9 @@
 package app
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"encoding/json"
+
+	sdkmath "cosmossdk.io/math"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/mezo-org/mezod/utils"
@@ -76,7 +77,7 @@ func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState
 		}
 
 		// Initialize the chain
-		app.InitChain(
+		_, err = app.InitChain(
 			&abci.RequestInitChain{
 				ChainId:         chainID,
 				Validators:      []abci.ValidatorUpdate{},
@@ -84,6 +85,9 @@ func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState
 				AppStateBytes:   stateBytes,
 			},
 		)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return app
@@ -134,7 +138,7 @@ func genesisStateWithValSet(
 	validators := make([]poatypes.Validator, 0, len(valSet.Validators))
 
 	for _, val := range valSet.Validators {
-		pk, err := cryptocodec.FromTmPubKeyInterface(val.PubKey)
+		pk, err := cryptocodec.FromCmtPubKeyInterface(val.PubKey)
 		if err != nil {
 			panic(err)
 		}

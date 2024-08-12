@@ -1,9 +1,10 @@
 package evm
 
 import (
-	sdkmath "cosmossdk.io/math"
 	"math/big"
 	"testing"
+
+	sdkmath "cosmossdk.io/math"
 
 	"github.com/stretchr/testify/require"
 

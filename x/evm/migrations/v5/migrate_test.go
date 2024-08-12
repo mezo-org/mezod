@@ -16,8 +16,9 @@
 package v5_test
 
 import (
-	storetypes "cosmossdk.io/store/types"
 	"testing"
+
+	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/testutil"
 	"github.com/stretchr/testify/require"

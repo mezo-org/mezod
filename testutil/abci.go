@@ -195,8 +195,8 @@ func BroadcastTxBytes(
 	}
 
 	req := &abci.RequestFinalizeBlock{
-		Height: blockHeight,
-		Txs: [][]byte{bz},
+		Height:          blockHeight,
+		Txs:             [][]byte{bz},
 		ProposerAddress: proposer,
 	}
 	res, err := app.BaseApp.FinalizeBlock(req)

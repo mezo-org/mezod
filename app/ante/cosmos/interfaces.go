@@ -18,6 +18,7 @@ package cosmos
 
 import (
 	"context"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 

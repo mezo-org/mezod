@@ -49,7 +49,10 @@ func TestKick(t *testing.T) {
 
 	// Run validator updates so the validator 1 state switch to ValidatorStateActive.
 	// There is 1 active validator now.
-	poaKeeper.EndBlocker(ctx)
+	_, err = poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Try to impersonate the owner and kick validator 1.
 	err = poaKeeper.Kick(ctx,
@@ -114,7 +117,10 @@ func TestLeave(t *testing.T) {
 	// Append validator 1 as ValidatorStateJoining.
 	poaKeeper.createValidator(ctx, validator1)
 	// Run validator updates so the validator 1 state switch to ValidatorStateActive.
-	poaKeeper.EndBlocker(ctx)
+	_, err = poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Validator 1 cannot leave the set as it's the only active validator.
 	err = poaKeeper.Leave(ctx, sdk.AccAddress(validator1.GetOperator()))
@@ -130,7 +136,12 @@ func TestLeave(t *testing.T) {
 	poaKeeper.createValidator(ctx, validator2)
 	// Run validator updates so the validator 2 state switch to ValidatorStateActive.
 	// There are 2 active validators now.
-	poaKeeper.EndBlocker(ctx)
+	_, err = poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	// Validator 3 is not a validator yet so, it cannot leave the validator set.
 	err = poaKeeper.Leave(ctx, sdk.AccAddress(validator3.GetOperator()))
@@ -163,7 +174,10 @@ func TestLeave(t *testing.T) {
 
 	// Run validator updates so the validator 3 state switch to ValidatorStateActive.
 	// There are 3 active validators now.
-	poaKeeper.EndBlocker(ctx)
+	_, err = poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Validator 1 can leave the validator set as there are 3 active validators.
 	err = poaKeeper.Leave(ctx, sdk.AccAddress(validator1.GetOperator()))
