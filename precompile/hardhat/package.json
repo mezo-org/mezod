@@ -3,5 +3,10 @@
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.22.7",
     "ts-standard": "^12.0.2"
+  },
+  "eslintConfig": {
+    "parserOptions": {
+      "project": "./tsconfig.json"
+    }
   }
 }
