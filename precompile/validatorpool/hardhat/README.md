@@ -21,21 +21,20 @@ You can determine what `vars` are available by running:
 npx hardhat vars setup
 💡 The following configuration variables are optional:
 
-  npx hardhat vars set MEZO_LOCALHOST_PRIVKEYS
-  npx hardhat vars set MEZO_TESTNET_PRIVKEYS
+  npx hardhat vars set MEZO_ACCOUNTS
 ``` 
 
 The vars can be set to either a) a single private key, or b) a comma separated list (no whitespace) or private keys.
 
 ```
-$ npx hardhat vars set MEZO_TESTNET_PRIVKEYS
+$ npx hardhat vars set MEZO_ACCOUNTS
 ✔ Enter value: ********************************
 ```
 
 And can be removed with:
 
 ```
-$ npx hardhat vars delete MEZO_TESTNET_PRIVKEYS
+$ npx hardhat vars delete MEZO_ACCOUNTS
 ```
 
 ## Scripts
@@ -51,12 +50,17 @@ npx hardhat --network localhost run scripts/accounts.ts
 
 ### localhost-keys
 Reads seed phrases from `build` dir used by localhost based localnets and prints a comma separated list of private
-keys. This output can be used to easily set `MEZO_LOCALHOST_PRIVKEYS` for `localhost` use.
+keys.
 
 ```
 npx hardhat run scripts/localhost-keys.ts
 ```
 
+This output can be used to easily set `MEZO_ACCOUNTS` for `localhost` use.
+
+```
+npx hardhat run scripts/localhost-keys.ts | npx hardhat vars set MEZO_ACCOUNTS
+```
 ## Tasks
 
 TODO

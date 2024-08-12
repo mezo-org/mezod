@@ -1,12 +1,11 @@
 import { task, vars, HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import abi from "../abi.json";
-import { TransactionRequest } from "ethers";
 
 const precompileAddress = "0x7b7c000000000000000000000000000000000011";
 
-const getPrivKeys = (varname: string) : string[] => {
-  const strings: string[] = vars.get(varname, "").split(",");
+const getPrivKeys = () : string[] => {
+  const strings: string[] = vars.get("MEZO_ACCOUNTS", "").split(",");
   const keys: string[] = [];
   for (let i = 0; i < strings.length; i++) {
     if (strings[i] !== "") {
@@ -23,13 +22,13 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://localhost:8545",
       chainId: 31611,
-      accounts: getPrivKeys("MEZO_LOCALHOST_PRIVKEYS"),
+      accounts: getPrivKeys(),
       gas: "auto"
     },
     mezo_testnet: {
       url: "http://mezo-node-0.test.mezo.org:8545",
       chainId: 31611,
-      accounts: getPrivKeys("MEZO_TESTNET_PRIVKEYS")
+      accounts: getPrivKeys()
     }
   }
 };
