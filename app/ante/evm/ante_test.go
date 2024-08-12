@@ -298,7 +298,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 				txBuilder, err := suite.CreateTestEIP712TxBuilderMsgSend(from, privKey, suite.ctx.ChainID(), gas, amount)
 				suite.Require().NoError(err)
 				return txBuilder.GetTx()
-			}, false, false, true,
+			}, false, false, !(suite.useLegacyEIP712TypedData && !suite.useLegacyEIP712Extension),
 		},
 		{
 			"success- DeliverTx EIP712 Multiple MsgSend",
@@ -310,7 +310,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 				txBuilder, err := suite.CreateTestEIP712MultipleMsgSend(from, privKey, suite.ctx.ChainID(), gas, amount)
 				suite.Require().NoError(err)
 				return txBuilder.GetTx()
-			}, false, false, true,
+			}, false, false, !(suite.useLegacyEIP712TypedData && !suite.useLegacyEIP712Extension),
 		},
 		{
 			"success- DeliverTx EIP712 Multiple Different Msgs",
