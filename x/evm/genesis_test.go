@@ -150,8 +150,10 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	types.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
 
+	nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
+
 	acc := &mezotypes.EthAccount{
-		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(address.Bytes()), nil, 0, 0),
+		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(address.Bytes()), nil, nextAccNumber, 0),
 		CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
 	}
 
@@ -171,7 +173,7 @@ func (suite *EvmTestSuite) SignTx(tx *types.MsgEthereumTx) {
 }
 
 func (suite *EvmTestSuite) StateDB() *statedb.StateDB {
-	return statedb.New(suite.ctx, suite.app.EvmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(suite.ctx.HeaderHash().Bytes())))
+	return statedb.New(suite.ctx, suite.app.EvmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(suite.ctx.HeaderHash())))
 }
 
 func TestEvmTestSuite(t *testing.T) {
@@ -232,7 +234,9 @@ func (suite *EvmTestSuite) TestInitGenesis() {
 		{
 			"invalid account type",
 			func() {
+				nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
 				acc := authtypes.NewBaseAccountWithAddress(address.Bytes())
+				acc.AccountNumber = nextAccNumber
 				suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 			},
 			&types.GenesisState{
@@ -283,8 +287,10 @@ func (suite *EvmTestSuite) TestInitGenesis() {
 		{
 			"ignore empty account code checking with non-empty codehash",
 			func() {
+				nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
+
 				ethAcc := &mezotypes.EthAccount{
-					BaseAccount: authtypes.NewBaseAccount(address.Bytes(), nil, 0, 0),
+					BaseAccount: authtypes.NewBaseAccount(address.Bytes(), nil, nextAccNumber, 0),
 					CodeHash:    common.BytesToHash([]byte{1, 2, 3}).Hex(),
 				}
 

@@ -83,7 +83,8 @@ var _ = Describe("Feemarket", func() {
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasLimit, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
 						res, err := testutil.CheckEthTx(s.app, privKey, msgEthereumTx)
-						Expect(err).ToNot(BeNil(), "transaction should have failed", res.GetLog())
+						Expect(err).To(BeNil())
+						Expect(res.IsOK()).To(BeFalse(), "transaction should have failed", res.GetLog())
 					},
 					Entry("legacy tx", func() txParams {
 						return txParams{0, big.NewInt(baseFee), nil, nil, nil}
@@ -118,7 +119,8 @@ var _ = Describe("Feemarket", func() {
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasLimit, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
 						res, err := testutil.DeliverEthTx(s.ctx, s.app, s.consAddress, privKey, msgEthereumTx)
-						Expect(err).ToNot(BeNil(), "transaction should have failed", res.GetLog())
+						Expect(err).To(BeNil())
+						Expect(res.IsOK()).To(BeFalse(), "transaction should have failed", res.GetLog())
 					},
 					Entry("legacy tx", func() txParams {
 						return txParams{0, big.NewInt(baseFee), nil, nil, nil}

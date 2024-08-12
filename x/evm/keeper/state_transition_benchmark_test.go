@@ -2,6 +2,7 @@ package keeper_test
 
 import (
 	"errors"
+	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"math/big"
 	"testing"
 
@@ -62,7 +63,7 @@ func newSignedEthTx(
 		return nil, errors.New("unknown transaction type")
 	}
 
-	sig, _, err := krSigner.SignByAddress(addr, ethTx.Hash().Bytes())
+	sig, _, err := krSigner.SignByAddress(addr, ethTx.Hash().Bytes(), signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON)
 	if err != nil {
 		return nil, err
 	}
