@@ -80,7 +80,11 @@ func TestMezoExport(t *testing.T) {
 			AppStateBytes: stateBytes,
 		},
 	)
-	app.Commit()
+
+	_, err = app.FinalizeBlock(&abci.RequestFinalizeBlock{Height: 1})
+	require.NoError(t, err, "FinalizeBlock should not have an error")
+	_, err = app.Commit()
+	require.NoError(t, err, "Commit should not have an error")
 
 	// Making a new app object with the db, so that initchain hasn't been called
 	app2 := NewMezo(
