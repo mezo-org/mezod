@@ -38,9 +38,6 @@ interface IERC20WithPermit is IERC20, IERC20Metadata {
         bytes32 s
     ) external returns (bool);
 
-    // TODO: Revisit the burn() and burnFrom() functions.
-    //       It is not clear yet if they are needed.
-
     /// @notice Returns hash of EIP712 Domain struct with the token name as
     ///         a signing domain and token contract as a verifying contract.
     ///         Used to construct EIP2612 signature provided to `permit`
