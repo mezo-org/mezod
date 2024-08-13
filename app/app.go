@@ -106,7 +106,9 @@ import (
 
 	// Force-load the tracer engines to trigger registration due to Go-Ethereum v1.10.15 changes
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	//nolint:revive
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
+	//nolint:revive
 	_ "github.com/ethereum/go-ethereum/eth/tracers/native"
 )
 
