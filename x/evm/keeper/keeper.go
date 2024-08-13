@@ -26,6 +26,7 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	consensus "github.com/cosmos/cosmos-sdk/x/consensus/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -62,6 +63,8 @@ type Keeper struct {
 	stakingKeeper types.StakingKeeper
 	// fetch EIP1559 base fee and parameters
 	feeMarketKeeper types.FeeMarketKeeper
+	// access to consensus params
+	consensusKeeper consensus.Keeper
 
 	// chain ID number obtained from the context's chain id
 	eip155ChainID *big.Int
@@ -87,6 +90,7 @@ func NewKeeper(
 	bankKeeper types.BankKeeper,
 	sk types.StakingKeeper,
 	fmk types.FeeMarketKeeper,
+	ck consensus.Keeper,
 	tracer string,
 	ss paramstypes.Subspace,
 ) *Keeper {
@@ -108,6 +112,7 @@ func NewKeeper(
 		bankKeeper:        bankKeeper,
 		stakingKeeper:     sk,
 		feeMarketKeeper:   fmk,
+		consensusKeeper:   ck,
 		storeKey:          storeKey,
 		transientKey:      transientKey,
 		tracer:            tracer,
