@@ -157,10 +157,10 @@ func Setup(
 	return app
 }
 
-func newAppOptions(homePath, chainId string) servertypes.AppOptions {
+func newAppOptions(homePath, chainID string) servertypes.AppOptions {
 	return simtestutil.AppOptionsMap{
 		flags.FlagHome:    homePath,
-		flags.FlagChainID: chainId,
+		flags.FlagChainID: chainID,
 	}
 }
 

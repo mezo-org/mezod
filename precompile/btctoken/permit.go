@@ -54,7 +54,6 @@ func newPermitMethod(
 	var err error
 	DomainSeparator, err = buildDomainSeparator(chainID)
 	if err != nil {
-		fmt.Errorf("failed to build domain separator: %v", err)
 		return nil
 	}
 
