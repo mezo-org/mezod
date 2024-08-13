@@ -114,7 +114,7 @@ OPTIONS:
 validatorPool:validator: Returns a validator's consensus public key & description
 ```
 
-Here we can see the validatorPool:validator task has an operator argument. 
+Here we can see the validatorPool:validator task has an operator argument - correct usage would be:
 
 ```
 npx hardhat --network mezo_testnet validatorPool:validator --operator 0xc2f7Ae302a68CF215bb3dA243dadAB3290308015
@@ -133,4 +133,28 @@ Write tasks all require at minimum a signer argument, e.g:
 
 ```
 npx hardhat --network mezo_testnet validatorPool:leave --signer 0xc2f7Ae302a68CF215bb3dA243dadAB3290308015
+```
+
+## Localnet
+
+If running against a local dev net a minor adjustment to the genesis files is currently required. Due to this you must
+clean and re-initialize:
+
+```
+make localnet-bin-clean
+make localnet-bin-init
+```
+
+A small edit to the genesis files of each node then needs to be made before starting the network. In each nodes
+`genesis.json` (`.localnet/node*/mezod/config/genesis.json`) update `consensus_params.blocks.max_gas` to `10000000`
+(10 million). Then start the nodes as you normally would:
+
+```
+make localnet-bin-start
+```
+
+You can populate hardhat with the localnet accounts/private keys with the following
+
+```
+npx hardhat run scripts/localhost-keys.ts | npx hardhat vars set MEZO_ACCOUNTS
 ```
