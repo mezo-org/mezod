@@ -520,9 +520,22 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 		grpcSrvCtx, cancelGrpcSrvCtx := context.WithCancel(context.Background())
 		defer cancelGrpcSrvCtx()
 
-		err = servergrpc.StartGRPCServer(grpcSrvCtx, logger, config.GRPC, grpcSrv)
-		if err != nil {
+		errCh := make(chan error)
+		go func() {
+			if err = servergrpc.StartGRPCServer(
+				grpcSrvCtx,
+				logger,
+				config.GRPC,
+				grpcSrv,
+			); err != nil {
+				errCh <- err
+			}
+		}()
+
+		select {
+		case err := <-errCh:
 			return err
+		case <-time.After(ServerStartTime): // assume server started successfully
 		}
 	}
 

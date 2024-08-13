@@ -127,14 +127,23 @@ func startInProcess(cfg Config, val *Validator) error {
 			return err
 		}
 
-		err = servergrpc.StartGRPCServer(
-			context.Background(),
-			logger,
-			val.AppConfig.GRPC,
-			grpcSrv,
-		)
-		if err != nil {
+		errCh := make(chan error)
+
+		go func() {
+			if err = servergrpc.StartGRPCServer(
+				context.Background(),
+				logger,
+				val.AppConfig.GRPC,
+				grpcSrv,
+			); err != nil {
+				errCh <- err
+			}
+		}()
+
+		select {
+		case err := <-errCh:
 			return err
+		case <-time.After(server.ServerStartTime): // assume server started successfully
 		}
 
 		val.grpc = grpcSrv
