@@ -1,11 +1,25 @@
 # Precompile Hardhat Tasks
 
+*Node.js v20 or greater is recommended*
+
+Before getting started make sure you have changed to the hardhat directory and have installed the required
+dependencies:
+
+```
+cd precompile/hardhat
+npm install
+```
+
 ## Networks
 
 Hardhat is configured with two supported networks:
 
 * `localhost` for connecting to local dev net (localnet-docker, localnet-bin).
 * `mezo_testnet` for connecting to the public testnet.
+
+All tasks and scripts support hardhat's global options which includes the `--network` flag. `localhost` is
+used by default if no network is set. If running a task or script against `mezo_testnet` ensure you include
+`--network mezo_testnet` as a hardhat argument.
 
 ## Accounts
 
@@ -87,5 +101,36 @@ npx hardhat help <TASK>
 e.g:
 
 ```
-npx hardhat help validatorPool:submitApplication
+npx hardhat help validatorPool:validator
+```
+
+```
+Usage: hardhat [GLOBAL OPTIONS] validatorPool:validator --operator <STRING>
+
+OPTIONS:
+
+  --operator	The validator's operator address
+
+validatorPool:validator: Returns a validator's consensus public key & description
+```
+
+Here we can see the validatorPool:validator task has an operator argument. 
+
+```
+npx hardhat --network mezo_testnet validatorPool:validator --operator 0xc2f7Ae302a68CF215bb3dA243dadAB3290308015
+```
+
+### Running Tasks
+
+Tasks get run as if they are built in hardhat commands. Read tasks are executed using a basic ethers provider
+(no account), e.g:
+
+```
+npx hardhat --network mezo_testnet validatorPool:validators
+```
+
+Write tasks all require at minimum a signer argument, e.g:
+
+```
+npx hardhat --network mezo_testnet validatorPool:leave --signer 0xc2f7Ae302a68CF215bb3dA243dadAB3290308015
 ```
