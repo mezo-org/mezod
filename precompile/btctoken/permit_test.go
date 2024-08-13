@@ -1,7 +1,6 @@
 package btctoken_test
 
 import (
-	"fmt"
 	"math/big"
 	"time"
 
@@ -21,6 +20,24 @@ const (
 	PermitTypehash = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
 	amount         = int64(100)
 )
+
+// keccak256(encode(
+//
+//			keccak256(
+//				"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+//			),
+//			keccak256(BTC),
+//			keccak256(1),
+//			31612,
+//			0x7b7C000000000000000000000000000000000000
+//		)
+//	)
+//
+// Same in hex: f98315225d67e6d98b18f0a6b73bf711423ff8310bd350400db36e876c5cddf4
+var DomainSeparator = []byte{
+	249, 131, 21, 34, 93, 103, 230, 217, 139, 24, 240, 166, 183, 59, 247, 17,
+	66, 63, 248, 49, 11, 211, 80, 64, 13, 179, 110, 135, 108, 92, 221, 244,
+}
 
 func (s *PrecompileTestSuite) TestPermit() {
 	testcases := []struct {
@@ -288,7 +305,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 			authzKeeper := s.app.AuthzKeeper
 			evmKeeper := *s.app.EvmKeeper
 
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper)
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 
@@ -384,72 +401,10 @@ func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender c
 	hashedMessage := crypto.Keccak256Hash(message)
 
 	var DomainSeparatorBytes32 [32]byte
-	domainSeparator, err := buildDomainSeparator()
-	if err != nil {
-		s.Require().NoError(err)
-	}
-
-	copy(DomainSeparatorBytes32[:], domainSeparator[:32])
+	copy(DomainSeparatorBytes32[:], DomainSeparator[:32])
 
 	encodedData := append([]byte("\x19\x01"), DomainSeparatorBytes32[:]...)
 	encodedData = append(encodedData, hashedMessage.Bytes()...)
 
 	return crypto.Keccak256Hash(encodedData)
-}
-
-// This functions implements the EIP712 domain separator for the permit function
-// and produces the same result as the Solidity code seen e.g. in the OpenZeppelin
-// lib https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/EIP712.sol#L89
-// that is used by tBTC token https://github.com/keep-network/tbtc-v2/blob/main/solidity/contracts/token/TBTC.sol#L8
-// The result of this function is hardcoded in the production code (permit.go) to
-// comply with the EVM implementation.
-func buildDomainSeparator() ([]byte, error) {
-	// Hash the domain type
-	domainType := "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-	name := "BTC"
-	version := "1"
-	chainID := big.NewInt(31612)
-	verifyingContract := common.HexToAddress("0x7b7c000000000000000000000000000000000000")
-
-	var DomainTypeHashBytes32 [32]byte
-	var NameHashBytes32 [32]byte
-	var VersionHashBytes32 [32]byte
-
-	// Convert to bytes32 (32-byte array)
-	copy(DomainTypeHashBytes32[:], crypto.Keccak256([]byte(domainType))[:32])
-	copy(NameHashBytes32[:], crypto.Keccak256([]byte(name))[:32])
-	copy(VersionHashBytes32[:], crypto.Keccak256([]byte(version))[:32])
-
-	bytes32Type, err := abi.NewType("bytes32", "", nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new type: %v", err)
-	}
-	addressType, err := abi.NewType("address", "", nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new type: %v", err)
-	}
-	uint256Type, err := abi.NewType("uint256", "", nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new type: %v", err)
-	}
-
-	// Encode the permit parameters
-	encodedDomainSeparator, err := abi.Arguments{
-		{Type: bytes32Type},
-		{Type: bytes32Type},
-		{Type: bytes32Type},
-		{Type: uint256Type},
-		{Type: addressType},
-	}.Pack(
-		DomainTypeHashBytes32,
-		NameHashBytes32,
-		VersionHashBytes32,
-		chainID,
-		verifyingContract,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode domain separator: %v", err)
-	}
-
-	return crypto.Keccak256(encodedDomainSeparator), nil
 }
