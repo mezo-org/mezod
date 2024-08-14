@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"math/big"
 
-	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
-
 	"cosmossdk.io/math"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -25,6 +24,8 @@ import (
 	dbm "github.com/cometbft/cometbft-db"
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/log"
+	servertypes "github.com/cosmos/cosmos-sdk/server/types"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -185,7 +186,7 @@ func setupChain(localMinGasPricesStr string) {
 		app.DefaultNodeHome,
 		5,
 		encoding.MakeConfig(app.ModuleBasics),
-		simutils.NewAppOptionsWithFlagHome(app.DefaultNodeHome),
+		newAppOptions(app.DefaultNodeHome, chainID),
 		baseapp.SetChainID(chainID),
 		baseapp.SetMinGasPrices(localMinGasPricesStr),
 	)
@@ -208,6 +209,13 @@ func setupChain(localMinGasPricesStr string) {
 
 	s.app = newapp
 	s.SetupApp(false)
+}
+
+func newAppOptions(homePath, chainID string) servertypes.AppOptions {
+	return simtestutil.AppOptionsMap{
+		flags.FlagHome:    homePath,
+		flags.FlagChainID: chainID,
+	}
 }
 
 func getNonce(addressBytes []byte) uint64 {
