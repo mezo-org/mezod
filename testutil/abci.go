@@ -164,7 +164,7 @@ func BroadcastTxBytes(app *app.Mezo, txEncoder sdk.TxEncoder, tx sdk.Tx) (abci.R
 	req := abci.RequestDeliverTx{Tx: bz}
 	res := app.BaseApp.DeliverTx(req)
 	if res.Code != 0 {
-		return abci.ResponseDeliverTx{}, errorsmod.Wrapf(errortypes.ErrInvalidRequest, res.Log)
+		return abci.ResponseDeliverTx{}, errorsmod.Wrap(errortypes.ErrInvalidRequest, res.Log)
 	}
 
 	return res, nil
@@ -180,7 +180,7 @@ func checkTxBytes(app *app.Mezo, txEncoder sdk.TxEncoder, tx sdk.Tx) (abci.Respo
 	req := abci.RequestCheckTx{Tx: bz}
 	res := app.BaseApp.CheckTx(req)
 	if res.Code != 0 {
-		return abci.ResponseCheckTx{}, errorsmod.Wrapf(errortypes.ErrInvalidRequest, res.Log)
+		return abci.ResponseCheckTx{}, errorsmod.Wrap(errortypes.ErrInvalidRequest, res.Log)
 	}
 
 	return res, nil
