@@ -28,8 +28,8 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   KEYRING_PASSWORD=$(openssl rand -hex 32)
 
   # Set some configuration options for the node to not repeat them in the commands.
-  ./build/mezod --home=$NODE_HOMEDIR config chain-id $CHAIN_ID
-  ./build/mezod --home=$NODE_HOMEDIR config keyring-backend file
+  ./build/mezod --home=$NODE_HOMEDIR config set client chain-id $CHAIN_ID
+  ./build/mezod --home=$NODE_HOMEDIR config set client keyring-backend file
 
   # Generate a new account key that will be used to authenticate blockchain transactions.
   # Capture the mnemonic used to generate that key.

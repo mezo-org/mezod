@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/poa/types"
 )
@@ -187,7 +188,7 @@ func (k Keeper) removeApplication(
 func (k Keeper) GetAllApplications(ctx sdk.Context) (applications []types.Application) {
 	store := ctx.KVStore(k.storeKey)
 
-	iterator := sdk.KVStorePrefixIterator(store, types.ApplicationKeyPrefix)
+	iterator := storetypes.KVStorePrefixIterator(store, types.ApplicationKeyPrefix)
 	defer func() {
 		_ = iterator.Close()
 	}()

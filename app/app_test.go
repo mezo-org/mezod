@@ -5,6 +5,10 @@ import (
 	"os"
 	"testing"
 
+	sdkmath "cosmossdk.io/math"
+
+	kitlog "github.com/go-kit/log"
+
 	"github.com/cosmos/cosmos-sdk/baseapp"
 
 	"github.com/cometbft/cometbft/crypto/ed25519"
@@ -16,10 +20,10 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
-	dbm "github.com/cometbft/cometbft-db"
+	"cosmossdk.io/log"
 	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/libs/log"
 	tmtypes "github.com/cometbft/cometbft/types"
+	dbm "github.com/cosmos/cosmos-db"
 
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/utils"
@@ -39,13 +43,13 @@ func TestMezoExport(t *testing.T) {
 	acc := authtypes.NewBaseAccount(senderPrivKey.PubKey().Address().Bytes(), senderPrivKey.PubKey(), 0, 0)
 	balance := banktypes.Balance{
 		Address: acc.GetAddress().String(),
-		Coins:   sdk.NewCoins(sdk.NewCoin(utils.BaseDenom, sdk.NewInt(100000000000000))),
+		Coins:   sdk.NewCoins(sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(100000000000000))),
 	}
 
 	db := dbm.NewMemDB()
 	chainID := utils.MainnetChainID + "-1"
 	app := NewMezo(
-		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+		log.NewLogger(kitlog.NewSyncWriter(os.Stdout)),
 		db,
 		nil,
 		true,
@@ -70,18 +74,23 @@ func TestMezoExport(t *testing.T) {
 	require.NoError(t, err)
 
 	// Initialize the chain
-	app.InitChain(
-		abci.RequestInitChain{
+	_, err = app.InitChain(
+		&abci.RequestInitChain{
 			ChainId:       utils.MainnetChainID + "-1",
 			Validators:    []abci.ValidatorUpdate{},
 			AppStateBytes: stateBytes,
 		},
 	)
-	app.Commit()
+	require.NoError(t, err, "InitChain should not have an error")
+
+	_, err = app.FinalizeBlock(&abci.RequestFinalizeBlock{Height: 1})
+	require.NoError(t, err, "FinalizeBlock should not have an error")
+	_, err = app.Commit()
+	require.NoError(t, err, "Commit should not have an error")
 
 	// Making a new app object with the db, so that initchain hasn't been called
 	app2 := NewMezo(
-		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+		log.NewLogger(kitlog.NewSyncWriter(os.Stdout)),
 		db,
 		nil,
 		true,

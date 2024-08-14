@@ -158,8 +158,7 @@ func GasLimit(ctx sdk.Context, from common.Address, data evmtypes.HexString, que
 			return gas, err
 		}
 
-		goCtx := sdk.WrapSDKContext(ctx)
-		res, err := queryClientEvm.EstimateGas(goCtx, &evmtypes.EthCallRequest{
+		res, err := queryClientEvm.EstimateGas(ctx, &evmtypes.EthCallRequest{
 			Args:   args,
 			GasCap: config.DefaultGasCap,
 		})

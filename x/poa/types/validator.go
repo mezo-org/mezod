@@ -103,7 +103,7 @@ func (v Validator) GetConsAddress() sdk.ConsAddress {
 
 // ABCIValidatorUpdateAppend gets an ABCI validator update object from the validator.
 func (v Validator) ABCIValidatorUpdateAppend() abci.ValidatorUpdate {
-	pubKey, err := cryptocdc.ToTmProtoPublicKey(v.GetConsPubKey())
+	pubKey, err := cryptocdc.ToCmtProtoPublicKey(v.GetConsPubKey())
 	if err != nil {
 		panic(err)
 	}
@@ -117,7 +117,7 @@ func (v Validator) ABCIValidatorUpdateAppend() abci.ValidatorUpdate {
 // ABCIValidatorUpdateRemove gets a ABCI validator update with no voting power
 // from the validator.
 func (v Validator) ABCIValidatorUpdateRemove() abci.ValidatorUpdate {
-	pubKey, err := cryptocdc.ToTmProtoPublicKey(v.GetConsPubKey())
+	pubKey, err := cryptocdc.ToCmtProtoPublicKey(v.GetConsPubKey())
 	if err != nil {
 		panic(err)
 	}

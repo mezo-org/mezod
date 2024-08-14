@@ -10,7 +10,6 @@ import (
 	kmultisig "github.com/cosmos/cosmos-sdk/crypto/keys/multisig"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,7 +19,7 @@ import (
 )
 
 func (suite *AnteTestSuite) TestAnteHandler() {
-	var acc authtypes.AccountI
+	var acc sdk.AccountI
 	addr, privKey := utiltx.NewAddrKey()
 	to := utiltx.GenerateAddress()
 	const incorrectChainID string = "mezo_31600-1"
@@ -298,25 +297,25 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 				txBuilder, err := suite.CreateTestEIP712TxBuilderMsgSend(from, privKey, suite.ctx.ChainID(), gas, amount)
 				suite.Require().NoError(err)
 				return txBuilder.GetTx()
-			}, false, false, true,
+			}, false, false, !(suite.useLegacyEIP712TypedData && !suite.useLegacyEIP712Extension),
 		},
 		{
 			"success- DeliverTx EIP712 Multiple MsgSend",
 			func() sdk.Tx {
 				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
+				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(20))
 				amount := sdk.NewCoins(coinAmount)
 				gas := uint64(200000)
 				txBuilder, err := suite.CreateTestEIP712MultipleMsgSend(from, privKey, suite.ctx.ChainID(), gas, amount)
 				suite.Require().NoError(err)
 				return txBuilder.GetTx()
-			}, false, false, true,
+			}, false, false, !(suite.useLegacyEIP712TypedData && !suite.useLegacyEIP712Extension),
 		},
 		{
 			"success- DeliverTx EIP712 Multiple Different Msgs",
 			func() sdk.Tx {
 				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
+				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(20))
 				amount := sdk.NewCoins(coinAmount)
 				gas := uint64(200000)
 				txBuilder, err := suite.CreateTestEIP712MultipleDifferentMsgs(from, privKey, suite.ctx.ChainID(), gas, amount)
@@ -328,7 +327,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 			"success- DeliverTx EIP712 Same Msgs, Different Schemas",
 			func() sdk.Tx {
 				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
+				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(20))
 				amount := sdk.NewCoins(coinAmount)
 				gas := uint64(200000)
 				txBuilder, err := suite.CreateTestEIP712SameMsgDifferentSchemas(from, privKey, suite.ctx.ChainID(), gas, amount)
@@ -340,7 +339,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 			"success- DeliverTx EIP712 Zero Value Array (Should Not Omit Field)",
 			func() sdk.Tx {
 				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
+				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(20))
 				amount := sdk.NewCoins(coinAmount)
 				gas := uint64(200000)
 				txBuilder, err := suite.CreateTestEIP712ZeroValueArray(from, privKey, suite.ctx.ChainID(), gas, amount)
@@ -352,7 +351,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 			"success- DeliverTx EIP712 Zero Value Number (Should Not Omit Field)",
 			func() sdk.Tx {
 				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
+				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(20))
 				amount := sdk.NewCoins(coinAmount)
 				gas := uint64(200000)
 				txBuilder, err := suite.CreateTestEIP712ZeroValueNumber(from, privKey, suite.ctx.ChainID(), gas, amount)
@@ -364,7 +363,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 			"fails - DeliverTx EIP712 Multiple Signers",
 			func() sdk.Tx {
 				from := acc.GetAddress()
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
+				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(20))
 				amount := sdk.NewCoins(coinAmount)
 				gas := uint64(200000)
 				txBuilder, err := suite.CreateTestEIP712MultipleSignerMsgs(from, privKey, suite.ctx.ChainID(), gas, amount)
@@ -472,7 +471,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"btc",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)
@@ -502,7 +501,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"btc",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)
@@ -532,7 +531,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"btc",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)
@@ -562,7 +561,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"btc",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)
@@ -592,7 +591,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"btc",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)
@@ -622,7 +621,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"mezo",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)
@@ -652,7 +651,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"btc",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)
@@ -666,7 +665,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					"EIP-712",
 				)
 
-				msg.Amount[0].Amount = sdk.NewInt(5)
+				msg.Amount[0].Amount = sdkmath.NewInt(5)
 				err := txBuilder.SetMsgs(msg)
 				suite.Require().NoError(err)
 
@@ -686,7 +685,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"btc",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)
@@ -716,7 +715,7 @@ func (suite *AnteTestSuite) TestAnteHandler() {
 					sdk.NewCoins(
 						sdk.NewCoin(
 							"btc",
-							sdk.NewInt(1),
+							sdkmath.NewInt(1),
 						),
 					),
 				)

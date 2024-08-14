@@ -3,7 +3,7 @@ package precompile
 import (
 	"fmt"
 
-	store "github.com/cosmos/cosmos-sdk/store/types"
+	store "cosmossdk.io/store/types"
 )
 
 // methodIDByteLength is the length of the method ID in bytes.

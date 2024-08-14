@@ -30,7 +30,10 @@ func TestEndBlocker(t *testing.T) {
 	poaKeeper.setValidatorState(ctx, validator4, types.ValidatorStateLeaving)
 	poaKeeper.setValidatorState(ctx, validator5, types.ValidatorStateLeaving)
 
-	updates := poaKeeper.EndBlocker(ctx)
+	updates, err := poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// There should be 4 updates
 	if len(updates) != 4 {

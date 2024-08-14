@@ -1,6 +1,7 @@
 package cosmos_test
 
 import (
+	"context"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
@@ -83,7 +84,7 @@ func createTx(priv cryptotypes.PrivKey, msgs ...sdk.Msg) (sdk.Tx, error) {
 	sigV2 := signing.SignatureV2{
 		PubKey: priv.PubKey(),
 		Data: &signing.SingleSignatureData{
-			SignMode:  encodingConfig.TxConfig.SignModeHandler().DefaultMode(),
+			SignMode:  signing.SignMode(encodingConfig.TxConfig.SignModeHandler().DefaultMode()),
 			Signature: nil,
 		},
 		Sequence: 0,
@@ -101,8 +102,12 @@ func createTx(priv cryptotypes.PrivKey, msgs ...sdk.Msg) (sdk.Tx, error) {
 		Sequence:      0,
 	}
 	sigV2, err := tx.SignWithPrivKey(
-		encodingConfig.TxConfig.SignModeHandler().DefaultMode(), signerData,
-		txBuilder, priv, encodingConfig.TxConfig,
+		context.Background(),
+		signing.SignMode(encodingConfig.TxConfig.SignModeHandler().DefaultMode()),
+		signerData,
+		txBuilder,
+		priv,
+		encodingConfig.TxConfig,
 		0,
 	)
 	if err != nil {

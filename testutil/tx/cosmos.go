@@ -18,6 +18,8 @@ package tx
 import (
 	"math"
 
+	protov2 "google.golang.org/protobuf/proto"
+
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
@@ -32,7 +34,7 @@ import (
 
 var (
 	feeAmt     = math.Pow10(16)
-	DefaultFee = sdk.NewCoin(utils.BaseDenom, sdk.NewIntFromUint64(uint64(feeAmt))) // 0.01 BTC
+	DefaultFee = sdk.NewCoin(utils.BaseDenom, sdkmath.NewIntFromUint64(uint64(feeAmt))) // 0.01 BTC
 )
 
 // CosmosTxArgs contains the params to create a cosmos tx
@@ -107,7 +109,7 @@ func signCosmosTx(
 	sigV2 := signing.SignatureV2{
 		PubKey: args.Priv.PubKey(),
 		Data: &signing.SingleSignatureData{
-			SignMode:  args.TxCfg.SignModeHandler().DefaultMode(),
+			SignMode:  signing.SignMode(args.TxCfg.SignModeHandler().DefaultMode()),
 			Signature: nil,
 		},
 		Sequence: seq,
@@ -127,7 +129,8 @@ func signCosmosTx(
 		Sequence:      seq,
 	}
 	sigV2, err = tx.SignWithPrivKey(
-		args.TxCfg.SignModeHandler().DefaultMode(),
+		ctx.Context(),
+		signing.SignMode(args.TxCfg.SignModeHandler().DefaultMode()),
 		signerData,
 		txBuilder, args.Priv, args.TxCfg,
 		seq,
@@ -152,5 +155,9 @@ var _ sdk.Tx = &InvalidTx{}
 type InvalidTx struct{}
 
 func (InvalidTx) GetMsgs() []sdk.Msg { return []sdk.Msg{nil} }
+
+func (InvalidTx) GetMsgsV2() ([]protov2.Message, error) {
+	return []protov2.Message{nil}, nil
+}
 
 func (InvalidTx) ValidateBasic() error { return nil }

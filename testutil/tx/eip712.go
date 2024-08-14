@@ -18,6 +18,8 @@ package tx
 import (
 	"errors"
 
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
+
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -103,7 +105,8 @@ func PrepareEIP712CosmosTx(
 	fee := legacytx.NewStdFee(txArgs.Gas, txArgs.Fees) //nolint: staticcheck
 
 	msgs := txArgs.Msgs
-	data := legacytx.StdSignBytes(ctx.ChainID(), accNumber, nonce, 0, fee, msgs, "", nil)
+	legacytx.RegressionTestingAminoCodec = legacy.Cdc
+	data := legacytx.StdSignBytes(ctx.ChainID(), accNumber, nonce, 0, fee, msgs, "")
 
 	typedDataArgs := typedDataArgs{
 		chainID:        chainIDNum,
@@ -164,7 +167,12 @@ func signCosmosEIP712Tx(
 	}
 
 	keyringSigner := NewSigner(priv)
-	signature, pubKey, err := keyringSigner.SignByAddress(from, sigHash)
+	signature, pubKey, err := keyringSigner.SignByAddress(
+		from,
+		sigHash,
+		// Test signer ignores the sign mode so, it can be anything.
+		signing.SignMode_SIGN_MODE_UNSPECIFIED,
+	)
 	if err != nil {
 		return nil, err
 	}

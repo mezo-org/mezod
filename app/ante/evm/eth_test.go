@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/big"
 
+	storetypes "cosmossdk.io/store/types"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
@@ -322,7 +324,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			0,
 			func(ctx sdk.Context) sdk.Context {
 				vmdb.AddBalance(addr, big.NewInt(1e6))
-				return ctx.WithBlockGasMeter(sdk.NewGasMeter(1))
+				return ctx.WithBlockGasMeter(storetypes.NewGasMeter(1))
 			},
 			false, true,
 			0,
@@ -334,7 +336,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			tx2GasLimit, // it's capped
 			func(ctx sdk.Context) sdk.Context {
 				vmdb.AddBalance(addr, big.NewInt(1e16))
-				return ctx.WithBlockGasMeter(sdk.NewGasMeter(1e19))
+				return ctx.WithBlockGasMeter(storetypes.NewGasMeter(1e19))
 			},
 			true, false,
 			tx2Priority,
@@ -346,7 +348,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			tx2GasLimit, // it's capped
 			func(ctx sdk.Context) sdk.Context {
 				vmdb.AddBalance(addr, big.NewInt(1e16))
-				return ctx.WithBlockGasMeter(sdk.NewGasMeter(1e19))
+				return ctx.WithBlockGasMeter(storetypes.NewGasMeter(1e19))
 			},
 			true, false,
 			dynamicFeeTxPriority,
@@ -376,12 +378,12 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 
 			if tc.expPanic {
 				suite.Require().Panics(func() {
-					_, _ = dec.AnteHandle(cacheCtx.WithIsCheckTx(true).WithGasMeter(sdk.NewGasMeter(1)), tc.tx, false, testutil.NextFn)
+					_, _ = dec.AnteHandle(cacheCtx.WithIsCheckTx(true).WithGasMeter(storetypes.NewGasMeter(1)), tc.tx, false, testutil.NextFn)
 				})
 				return
 			}
 
-			ctx, err := dec.AnteHandle(cacheCtx.WithIsCheckTx(true).WithGasMeter(sdk.NewInfiniteGasMeter()), tc.tx, false, testutil.NextFn)
+			ctx, err := dec.AnteHandle(cacheCtx.WithIsCheckTx(true).WithGasMeter(storetypes.NewInfiniteGasMeter()), tc.tx, false, testutil.NextFn)
 			if tc.expPass {
 				suite.Require().NoError(err)
 				suite.Require().Equal(tc.expPriority, ctx.Priority())

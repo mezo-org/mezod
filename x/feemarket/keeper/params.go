@@ -18,6 +18,8 @@ package keeper
 import (
 	"math/big"
 
+	sdkmath "cosmossdk.io/math"
+
 	"github.com/mezo-org/mezod/x/feemarket/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -79,7 +81,7 @@ func (k Keeper) GetBaseFee(ctx sdk.Context) *big.Int {
 // SetBaseFee set's the base fee in the store
 func (k Keeper) SetBaseFee(ctx sdk.Context, baseFee *big.Int) {
 	params := k.GetParams(ctx)
-	params.BaseFee = sdk.NewIntFromBigInt(baseFee)
+	params.BaseFee = sdkmath.NewIntFromBigInt(baseFee)
 	err := k.SetParams(ctx, params)
 	if err != nil {
 		return
