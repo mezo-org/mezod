@@ -21,6 +21,7 @@ import (
 
 	"cosmossdk.io/core/address"
 
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -66,6 +67,14 @@ type FeeMarketKeeper interface {
 	GetBaseFee(ctx sdk.Context) *big.Int
 	GetParams(ctx sdk.Context) feemarkettypes.Params
 	AddTransientGasWanted(ctx sdk.Context, gasWanted uint64) (uint64, error)
+}
+
+// ConsensusKeeper
+type ConsensusKeeper interface {
+	Get(ctx sdk.Context) (*tmproto.ConsensusParams, error)
+	GetAuthority() string
+	Has(ctx sdk.Context) bool
+	Set(ctx sdk.Context, cp *tmproto.ConsensusParams)
 }
 
 // Event Hooks
