@@ -45,6 +45,8 @@ import (
 	"github.com/mezo-org/mezod/encoding"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	"github.com/mezo-org/mezod/cmd/config"
 	"github.com/mezo-org/mezod/utils"
 )
@@ -114,7 +116,7 @@ func Setup(
 		DefaultNodeHome,
 		5,
 		encoding.MakeConfig(ModuleBasics),
-		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		newAppOptions(DefaultNodeHome, chainID),
 		baseapp.SetChainID(chainID),
 	)
 	if !isCheckTx {
@@ -158,6 +160,13 @@ func Setup(
 	}
 
 	return app
+}
+
+func newAppOptions(homePath, chainID string) servertypes.AppOptions {
+	return simtestutil.AppOptionsMap{
+		flags.FlagHome:    homePath,
+		flags.FlagChainID: chainID,
+	}
 }
 
 func GenesisStateWithValSet(

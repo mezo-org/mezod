@@ -10,7 +10,6 @@ import (
 	kitlog "github.com/go-kit/log"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 
 	"github.com/cometbft/cometbft/crypto/ed25519"
 
@@ -58,7 +57,7 @@ func TestMezoExport(t *testing.T) {
 		DefaultNodeHome,
 		0,
 		encoding.MakeConfig(ModuleBasics),
-		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		newAppOptions(DefaultNodeHome, chainID),
 		baseapp.SetChainID(chainID),
 	)
 
@@ -99,7 +98,7 @@ func TestMezoExport(t *testing.T) {
 		DefaultNodeHome,
 		0,
 		encoding.MakeConfig(ModuleBasics),
-		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		newAppOptions(DefaultNodeHome, chainID),
 		baseapp.SetChainID(chainID),
 	)
 	_, err = app2.ExportAppStateAndValidators(false, []string{})

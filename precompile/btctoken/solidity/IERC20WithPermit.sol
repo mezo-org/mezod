@@ -23,6 +23,12 @@ interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
     ///         and possibly performing other actions in the same transaction.
     /// @dev    The deadline argument can be set to `type(uint256).max to create
     ///         permits that effectively never expire.
+    ///         This permit function returns a boolean value, differing from the permit
+    ///         function in the EIP2612 standard. In the EVM, if no value is returned,
+    ///         the EXTCODESIZE opcode returns 0, causing the CALL opcode to never be
+    ///         executed (which would call the permit function). By returning a value,
+    ///         the permit function will be correctly executed on Cosmos's underlying
+    ///         blockchains.
     function permit(
         address owner,
         address spender,
@@ -31,7 +37,7 @@ interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external;
+    ) external returns (bool);
 
     // TODO: Revisit the burn() and burnFrom() functions.
     //       It is not clear yet if they are needed.

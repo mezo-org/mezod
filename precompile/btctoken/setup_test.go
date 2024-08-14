@@ -1,10 +1,10 @@
 package btctoken_test
 
 import (
+	"crypto/ecdsa"
 	"testing"
 	"time"
 
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/app"
@@ -18,7 +18,7 @@ import (
 type Key struct {
 	EvmAddr common.Address
 	SdkAddr sdk.AccAddress
-	Priv    cryptotypes.PrivKey
+	Priv    *ecdsa.PrivateKey
 }
 
 type PrecompileTestSuite struct {
@@ -34,10 +34,11 @@ type PrecompileTestSuite struct {
 
 func NewKey() Key {
 	addr, privKey := utiltx.NewAddrKey()
+	privKeyECDSA, _ := privKey.ToECDSA()
 	return Key{
 		EvmAddr: addr,
 		SdkAddr: sdk.AccAddress(addr.Bytes()),
-		Priv:    privKey,
+		Priv:    privKeyECDSA,
 	}
 }
 

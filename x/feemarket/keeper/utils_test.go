@@ -8,8 +8,7 @@ import (
 
 	"github.com/mezo-org/mezod/utils"
 
-	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
-
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
@@ -37,6 +36,8 @@ import (
 	"cosmossdk.io/log"
 	abci "github.com/cometbft/cometbft/abci/types"
 	dbm "github.com/cosmos/cosmos-db"
+	servertypes "github.com/cosmos/cosmos-sdk/server/types"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 )
 
 func (suite *KeeperTestSuite) SetupApp(checkTx bool, chainID string) {
@@ -169,7 +170,7 @@ func setupChain(localMinGasPricesStr, chainID string) {
 		app.DefaultNodeHome,
 		5,
 		encoding.MakeConfig(app.ModuleBasics),
-		simutils.NewAppOptionsWithFlagHome(app.DefaultNodeHome),
+		newAppOptions(app.DefaultNodeHome, chainID),
 		baseapp.SetChainID(chainID),
 		baseapp.SetMinGasPrices(localMinGasPricesStr),
 	)
@@ -193,6 +194,13 @@ func setupChain(localMinGasPricesStr, chainID string) {
 
 	s.app = newapp
 	s.SetupApp(false, chainID)
+}
+
+func newAppOptions(homePath, chainID string) servertypes.AppOptions {
+	return simtestutil.AppOptionsMap{
+		flags.FlagHome:    homePath,
+		flags.FlagChainID: chainID,
+	}
 }
 
 func getNonce(addressBytes []byte) uint64 {

@@ -39,7 +39,6 @@ import (
 	abci "github.com/cometbft/cometbft/abci/types"
 	tmtypes "github.com/cometbft/cometbft/types"
 	dbm "github.com/cosmos/cosmos-db"
-	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/encoding"
 )
@@ -61,7 +60,7 @@ func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState
 		DefaultNodeHome,
 		5,
 		encoding.MakeConfig(ModuleBasics),
-		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		newAppOptions(DefaultNodeHome, chainID),
 		baseapp.SetChainID(chainID),
 	)
 	if !isCheckTx {

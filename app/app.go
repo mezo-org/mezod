@@ -107,7 +107,10 @@ import (
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	// Force-load the tracer engines to trigger registration due to Go-Ethereum v1.10.15 changes
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	//nolint:revive
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
+	//nolint:revive
 	_ "github.com/ethereum/go-ethereum/eth/tracers/native"
 )
 
@@ -365,7 +368,8 @@ func NewMezo(
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
-	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper)
+	chainID := appOpts.Get(flags.FlagChainID)
+	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper, *app.EvmKeeper, chainID.(string))
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
@@ -740,8 +744,10 @@ func customEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
+	evmKeeper evmkeeper.Keeper,
+	chainID string,
 ) ([]vm.PrecompiledContract, error) {
-	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
 	}

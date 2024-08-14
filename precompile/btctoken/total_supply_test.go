@@ -51,7 +51,8 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 
 			bankKeeper := s.app.BankKeeper
 			authzKeeper := s.app.AuthzKeeper
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+			evmKeeper := *s.app.EvmKeeper
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 

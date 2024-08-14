@@ -49,6 +49,7 @@ import (
 	pruningtypes "cosmossdk.io/store/pruning/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -73,9 +74,10 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	netutils "github.com/cosmos/cosmos-sdk/testutil/network"
-	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
-
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	kitlog "github.com/go-kit/log"
+
+	"github.com/mezo-org/mezod/utils"
 )
 
 // package-wide network lock to only allow one test network at a time
@@ -150,10 +152,17 @@ func NewAppConstructor(encodingCfg params.EncodingConfig) AppConstructor {
 		return app.NewMezo(
 			val.Ctx.Logger, dbm.NewMemDB(), nil, true, make(map[int64]bool), val.Ctx.Config.RootDir, 0,
 			encodingCfg,
-			simutils.NewAppOptionsWithFlagHome(val.Ctx.Config.RootDir),
+			newAppOptions(val.Ctx.Config.RootDir, utils.TestnetChainID+"-1"),
 			baseapp.SetPruning(pruningtypes.NewPruningOptionsFromString(val.AppConfig.Pruning)),
 			baseapp.SetMinGasPrices(val.AppConfig.MinGasPrices),
 		)
+	}
+}
+
+func newAppOptions(homePath, chainID string) servertypes.AppOptions {
+	return simtestutil.AppOptionsMap{
+		flags.FlagHome:    homePath,
+		flags.FlagChainID: chainID,
 	}
 }
 

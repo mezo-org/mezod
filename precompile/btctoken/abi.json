@@ -144,7 +144,7 @@
       { "internalType": "bytes32", "name": "s", "type": "bytes32" }
     ],
     "name": "permit",
-    "outputs": [],
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "stateMutability": "nonpayable",
     "type": "function"
   },
