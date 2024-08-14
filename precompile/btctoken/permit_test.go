@@ -581,7 +581,8 @@ func (s *PrecompileTestSuite) TestDomainSeparator() {
 
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
-			expectedDomainSeparator := DomainSeparator
+			var expectedDomainSeparator [32]byte
+			copy(expectedDomainSeparator[:], DomainSeparator)
 			s.Require().NoError(err)
 			s.Require().Equal(expectedDomainSeparator, out[0], "expected different value")
 		})
