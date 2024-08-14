@@ -182,7 +182,7 @@ func NewCollectGenValsCmd(defaultHome string) *cobra.Command {
 			// Get the app state (all modules) from global genesis.
 			appState, err := types.GenesisStateFromAppGenesis(appGenesis)
 			if err != nil {
-				return errors.Wrap(err, "failed to create genesis state from gen doc")
+				return errors.Wrap(err, "failed to create genesis state from app genesis")
 			}
 			// Get state of the x/poa module.
 			poaState := getModuleStateFromAppState(clientCtx.Codec, appState)
