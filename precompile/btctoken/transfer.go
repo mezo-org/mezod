@@ -147,13 +147,6 @@ func transfer(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, auth
 
 		msg := banktypes.NewMsgSend(from.Bytes(), to.Bytes(), coins)
 
-		err = context.EventEmitter().Emit(
-			NewTransferEvent(from, to, amount),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
-		}
-
 		spenderAddr := context.MsgSender()
 		spender := sdk.AccAddress(spenderAddr.Bytes())
 

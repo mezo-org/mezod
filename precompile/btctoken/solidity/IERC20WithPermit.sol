@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 
 import "./IERC20.sol";
 import "./IERC20Metadata.sol";
-import "./IApproveAndCall.sol";
 
 /// @title  IERC20WithPermit
 /// @notice ERC20 token with EIP2612 permit functionality. User can
@@ -14,7 +13,7 @@ import "./IApproveAndCall.sol";
 ///         calling the permit function, as specified in EIP2612 standard,
 ///         paying gas fees, and possibly performing other actions in the same
 ///         transaction.
-interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
+interface IERC20WithPermit is IERC20, IERC20Metadata {
     /// @notice EIP2612 approval made with secp256k1 signature.
     ///         Users can authorize a transfer of their tokens with a signature
     ///         conforming EIP712 standard, rather than an on-chain transaction
@@ -38,9 +37,6 @@ interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
         bytes32 r,
         bytes32 s
     ) external returns (bool);
-
-    // TODO: Revisit the burn() and burnFrom() functions.
-    //       It is not clear yet if they are needed.
 
     /// @notice Returns hash of EIP712 Domain struct with the token name as
     ///         a signing domain and token contract as a verifying contract.
