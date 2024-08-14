@@ -21,6 +21,8 @@ const (
 	amount         = int64(100)
 )
 
+var ChainID = "mezo_31612-1"
+
 // keccak256(encode(
 //
 //			keccak256(
@@ -305,7 +307,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 			authzKeeper := s.app.AuthzKeeper
 			evmKeeper := *s.app.EvmKeeper
 
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, ChainID)
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 
@@ -407,4 +409,265 @@ func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender c
 	encodedData = append(encodedData, hashedMessage.Bytes()...)
 
 	return crypto.Keccak256Hash(encodedData)
+}
+
+func (s *PrecompileTestSuite) TestNonce() {
+	testcases := []struct {
+		name          string
+		run           func() []interface{}
+		postCheck     func()
+		basicPass     bool
+		isCallerOwner bool
+		errContains   string
+	}{
+		{
+			name:        "empty args",
+			run:         func() []interface{} { return nil },
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1, 2,
+				}
+			},
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "invalid address",
+			run: func() []interface{} {
+				return []interface{}{
+					"invalid address",
+				}
+			},
+			errContains: "cannot use string as type array as argument",
+		},
+		{
+			name: "successful nonce call",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account1.EvmAddr,
+				}
+			},
+			basicPass: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		s.Run(tc.name, func() {
+			s.SetupTest()
+			evm := &vm.EVM{
+				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+			}
+
+			evmKeeper := *s.app.EvmKeeper
+			bankKeeper := s.app.BankKeeper
+			authzKeeper := s.app.AuthzKeeper
+
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, ChainID)
+			s.Require().NoError(err)
+			s.btcTokenPrecompile = btcTokenPrecompile
+
+			var methodInputs []interface{}
+			if tc.run != nil {
+				methodInputs = tc.run()
+			}
+
+			method := s.btcTokenPrecompile.Abi.Methods["nonce"]
+			var methodInputArgs []byte
+			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
+			if tc.basicPass {
+				s.Require().NoError(err, "expected no error")
+			} else {
+				s.Require().Error(err, "expected error")
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+
+			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			// These first 4 bytes correspond to the method ID (first 4 bytes of the
+			// Keccak-256 hash of the function signature).
+			// In this case a function signature is 'function nonce(address account)'
+			vmContract.Input = append([]byte{0x70, 0xae, 0x92, 0xd2}, methodInputArgs...)
+			vmContract.CallerAddress = s.account1.EvmAddr
+
+			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			if err != nil && tc.errContains != "" {
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+			s.Require().NoError(err, "expected no error")
+
+			out, err := method.Outputs.Unpack(output)
+			s.Require().NoError(err)
+			val, _ := out[0].(*big.Int)
+			s.Require().Equal(0, common.Big0.Cmp(val), "expected different value")
+		})
+	}
+}
+
+func (s *PrecompileTestSuite) TestDomainSeparator() {
+	testcases := []struct {
+		name          string
+		run           func() []interface{}
+		postCheck     func()
+		basicPass     bool
+		isCallerOwner bool
+		errContains   string
+	}{
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1,
+				}
+			},
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "successful domain separator call",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			basicPass: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		s.Run(tc.name, func() {
+			s.SetupTest()
+			evm := &vm.EVM{
+				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+			}
+
+			evmKeeper := *s.app.EvmKeeper
+			bankKeeper := s.app.BankKeeper
+			authzKeeper := s.app.AuthzKeeper
+
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, ChainID)
+			s.Require().NoError(err)
+			s.btcTokenPrecompile = btcTokenPrecompile
+
+			var methodInputs []interface{}
+			if tc.run != nil {
+				methodInputs = tc.run()
+			}
+
+			method := s.btcTokenPrecompile.Abi.Methods["DOMAIN_SEPARATOR"]
+			var methodInputArgs []byte
+			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
+			if tc.basicPass {
+				s.Require().NoError(err, "expected no error")
+			} else {
+				s.Require().Error(err, "expected error")
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+
+			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			// These first 4 bytes correspond to the method ID (first 4 bytes of the
+			// Keccak-256 hash of the function signature).
+			// In this case a function signature is 'function DOMAIN_SEPARATOR()'
+			vmContract.Input = append([]byte{0x36, 0x44, 0xe5, 0x15}, methodInputArgs...)
+			vmContract.CallerAddress = s.account1.EvmAddr
+
+			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			if err != nil && tc.errContains != "" {
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+			s.Require().NoError(err, "expected no error")
+
+			out, err := method.Outputs.Unpack(output)
+			s.Require().NoError(err)
+			var expectedDomainSeparator [32]byte
+			copy(expectedDomainSeparator[:], DomainSeparator)
+			s.Require().NoError(err)
+			s.Require().Equal(expectedDomainSeparator, out[0], "expected different value")
+		})
+	}
+}
+
+func (s *PrecompileTestSuite) TestPermitTypehash() {
+	testcases := []struct {
+		name          string
+		run           func() []interface{}
+		postCheck     func()
+		basicPass     bool
+		isCallerOwner bool
+		errContains   string
+	}{
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1,
+				}
+			},
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "successful permit typehash call",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			basicPass: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		s.Run(tc.name, func() {
+			s.SetupTest()
+			evm := &vm.EVM{
+				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+			}
+
+			evmKeeper := *s.app.EvmKeeper
+			bankKeeper := s.app.BankKeeper
+			authzKeeper := s.app.AuthzKeeper
+
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, ChainID)
+			s.Require().NoError(err)
+			s.btcTokenPrecompile = btcTokenPrecompile
+
+			var methodInputs []interface{}
+			if tc.run != nil {
+				methodInputs = tc.run()
+			}
+
+			method := s.btcTokenPrecompile.Abi.Methods["PERMIT_TYPEHASH"]
+			var methodInputArgs []byte
+			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
+			if tc.basicPass {
+				s.Require().NoError(err, "expected no error")
+			} else {
+				s.Require().Error(err, "expected error")
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+
+			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			// These first 4 bytes correspond to the method ID (first 4 bytes of the
+			// Keccak-256 hash of the function signature).
+			// In this case a function signature is 'function PERMIT_TYPEHASH()'
+			vmContract.Input = append([]byte{0x30, 0xad, 0xf8, 0x1f}, methodInputArgs...)
+			vmContract.CallerAddress = s.account1.EvmAddr
+
+			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			if err != nil && tc.errContains != "" {
+				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+				return
+			}
+			s.Require().NoError(err, "expected no error")
+
+			out, err := method.Outputs.Unpack(output)
+			s.Require().NoError(err)
+
+			permitTypehashBytes := []byte("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+			var permitTypehash [32]byte
+			copy(permitTypehash[:], permitTypehashBytes)
+			s.Require().Equal(permitTypehash, out[0], "expected different value")
+		})
+	}
 }
