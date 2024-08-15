@@ -23,7 +23,7 @@ import (
 	"math/big"
 	"time"
 
-	storetypes "github.com/cosmos/cosmos-sdk/store/types"
+	storetypes "cosmossdk.io/store/types"
 
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
@@ -311,10 +311,11 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		hi = uint64(*args.Gas)
 	} else {
 		// Query block gas limit
-		params, err := k.consensusKeeper.Get(ctx)
+		paramsreq, err := k.consensusKeeper.Params(ctx, nil)
 		if err != nil {
 			return nil, status.Error(codes.Internal, "failed to get consensus params")
 		}
+		params := paramsreq.GetParams()
 		if params != nil && params.Block != nil && params.Block.MaxGas > 0 {
 			hi = uint64(params.Block.MaxGas)
 		} else {

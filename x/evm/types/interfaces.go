@@ -21,7 +21,7 @@ import (
 
 	"cosmossdk.io/core/address"
 
-	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	consensustypes "github.com/cosmos/cosmos-sdk/x/consensus/types"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -71,10 +71,12 @@ type FeeMarketKeeper interface {
 
 // ConsensusKeeper
 type ConsensusKeeper interface {
-	Get(ctx sdk.Context) (*tmproto.ConsensusParams, error)
+	// Get(ctx sdk.Context) (*tmproto.ConsensusParams, error)
 	GetAuthority() string
-	Has(ctx sdk.Context) bool
-	Set(ctx sdk.Context, cp *tmproto.ConsensusParams)
+	// Has(ctx sdk.Context) bool
+	// Set(ctx sdk.Context, cp *tmproto.ConsensusParams)
+	Params(ctx context.Context, req *consensustypes.QueryParamsRequest) (*consensustypes.QueryParamsResponse, error)
+	UpdateParams(ctx context.Context, msg *consensustypes.MsgUpdateParams) (*consensustypes.MsgUpdateParamsResponse, error)
 }
 
 // Event Hooks
