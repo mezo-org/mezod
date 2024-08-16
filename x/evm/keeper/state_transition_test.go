@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/big"
 
+	storetypes "cosmossdk.io/store/types"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
@@ -516,7 +518,7 @@ func (suite *KeeperTestSuite) TestResetGasMeterAndConsumeGas() {
 			suite.SetupTest() // reset
 
 			panicF := func() {
-				gm := sdk.NewGasMeter(10)
+				gm := storetypes.NewGasMeter(10)
 				gm.ConsumeGas(tc.gasConsumed, "")
 				ctx := suite.ctx.WithGasMeter(gm)
 				suite.app.EvmKeeper.ResetGasMeterAndConsumeGas(ctx, tc.gasUsed)

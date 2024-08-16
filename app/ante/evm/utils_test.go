@@ -1,7 +1,11 @@
 package evm_test
 
 import (
+	"context"
 	"math/big"
+
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
+	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
 
 	sdkmath "cosmossdk.io/math"
 
@@ -27,7 +31,7 @@ import (
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
-	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
+	upgradetypes "cosmossdk.io/x/upgrade/types"
 )
 
 func (suite *AnteTestSuite) BuildTestEthTx(
@@ -114,7 +118,7 @@ func (suite *AnteTestSuite) CreateTestTxBuilder(
 		sigV2 := signing.SignatureV2{
 			PubKey: priv.PubKey(),
 			Data: &signing.SingleSignatureData{
-				SignMode:  suite.clientCtx.TxConfig.SignModeHandler().DefaultMode(),
+				SignMode:  signing.SignMode(suite.clientCtx.TxConfig.SignModeHandler().DefaultMode()),
 				Signature: nil,
 			},
 			Sequence: txData.GetNonce(),
@@ -133,8 +137,13 @@ func (suite *AnteTestSuite) CreateTestTxBuilder(
 			Sequence:      txData.GetNonce(),
 		}
 		sigV2, err = tx.SignWithPrivKey(
-			suite.clientCtx.TxConfig.SignModeHandler().DefaultMode(), signerData,
-			txBuilder, priv, suite.clientCtx.TxConfig, txData.GetNonce(),
+			context.Background(),
+			signing.SignMode(suite.clientCtx.TxConfig.SignModeHandler().DefaultMode()),
+			signerData,
+			txBuilder,
+			priv,
+			suite.clientCtx.TxConfig,
+			txData.GetNonce(),
 		)
 		suite.Require().NoError(err)
 
@@ -354,7 +363,7 @@ func (suite *AnteTestSuite) RegisterAccount(pubKey cryptotypes.PubKey, balance *
 }
 
 // createSignerBytes generates sign doc bytes using the given parameters
-func (suite *AnteTestSuite) createSignerBytes(chainID string, signMode signing.SignMode, pubKey cryptotypes.PubKey, txBuilder client.TxBuilder) []byte {
+func (suite *AnteTestSuite) createSignerBytes(chainID string, _ signing.SignMode, pubKey cryptotypes.PubKey, txBuilder client.TxBuilder) []byte {
 	acc, err := sdkante.GetSignerAcc(suite.ctx, suite.app.AccountKeeper, sdk.AccAddress(pubKey.Address()))
 	suite.Require().NoError(err)
 	signerInfo := authsigning.SignerData{
@@ -365,12 +374,18 @@ func (suite *AnteTestSuite) createSignerBytes(chainID string, signMode signing.S
 		PubKey:        pubKey,
 	}
 
-	signerBytes, err := suite.clientCtx.TxConfig.SignModeHandler().GetSignBytes(
-		signMode,
-		signerInfo,
-		txBuilder.GetTx(),
+	tx := txBuilder.GetTx()
+
+	legacytx.RegressionTestingAminoCodec = legacy.Cdc
+	signerBytes := legacytx.StdSignBytes(
+		signerInfo.ChainID,
+		signerInfo.AccountNumber,
+		signerInfo.Sequence,
+		tx.GetTimeoutHeight(),
+		legacytx.NewStdFee(tx.GetGas(), tx.GetFee()), //nolint:staticcheck
+		tx.GetMsgs(),
+		tx.GetMemo(),
 	)
-	suite.Require().NoError(err)
 
 	return signerBytes
 }
@@ -381,7 +396,7 @@ func (suite *AnteTestSuite) createBaseTxBuilder(msg sdk.Msg, gas uint64) client.
 
 	txBuilder.SetGasLimit(gas)
 	txBuilder.SetFeeAmount(sdk.NewCoins(
-		sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(10000)),
+		sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(10000)),
 	))
 
 	err := txBuilder.SetMsgs(msg)

@@ -166,28 +166,31 @@ func (suite *KeeperTestSuite) SetupAppWithT(checkTx bool, t require.TestingT) {
 		require.NoError(t, err)
 
 		// Initialize the chain
-		suite.app.InitChain(
-			abci.RequestInitChain{
+		_, err = suite.app.InitChain(
+			&abci.RequestInitChain{
 				ChainId:         "mezo_31611-1",
 				Validators:      []abci.ValidatorUpdate{},
 				ConsensusParams: app.DefaultConsensusParams,
 				AppStateBytes:   stateBytes,
 			},
 		)
+		require.NoError(t, err)
 	}
 
 	header := testutil.NewHeader(
 		1, time.Now().UTC(), "mezo_31611-1", suite.consAddress,
 		tmhash.Sum([]byte("app")), tmhash.Sum([]byte("validators")),
 	)
-	suite.ctx = suite.app.NewContext(checkTx, header)
+	suite.ctx = suite.app.NewContextLegacy(checkTx, header)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	evmtypes.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
 	suite.queryClient = evmtypes.NewQueryClient(queryHelper)
 
+	nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
+
 	acc := &mezotypes.EthAccount{
-		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), nil, 0, 0),
+		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), nil, nextAccNumber, 0),
 		CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
 	}
 

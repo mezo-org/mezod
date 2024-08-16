@@ -24,7 +24,10 @@ func TestTrackHistoricalInfo(t *testing.T) {
 	poaKeeper.createValidator(ctx, validator2)
 
 	// Refresh the validator set.
-	poaKeeper.EndBlocker(ctx)
+	_, err := poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Make sure the validator set is correct.
 	activeValSet := poaKeeper.GetActiveValidators(ctx)
@@ -57,7 +60,10 @@ func TestTrackHistoricalInfo(t *testing.T) {
 	poaKeeper.createValidator(ctx, validator3)
 
 	// Refresh the validator set.
-	poaKeeper.EndBlocker(ctx)
+	_, err = poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Make sure the validator set is correct.
 	activeValSet = poaKeeper.GetActiveValidators(ctx)

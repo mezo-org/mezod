@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cosmos/cosmos-sdk/types/tx/signing"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -62,7 +64,7 @@ func newSignedEthTx(
 		return nil, errors.New("unknown transaction type")
 	}
 
-	sig, _, err := krSigner.SignByAddress(addr, ethTx.Hash().Bytes())
+	sig, _, err := krSigner.SignByAddress(addr, ethTx.Hash().Bytes(), signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON)
 	if err != nil {
 		return nil, err
 	}

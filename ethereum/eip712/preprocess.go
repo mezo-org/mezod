@@ -18,6 +18,8 @@ package eip712
 import (
 	"fmt"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/cosmos/cosmos-sdk/client"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cosmoskr "github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -67,7 +69,7 @@ func PreprocessLedgerTx(chainID string, keyType cosmoskr.KeyType, txBuilder clie
 	// Add ExtensionOptionsWeb3Tx extension with signature
 	var option *codectypes.Any
 	option, err = codectypes.NewAnyWithValue(&types.ExtensionOptionsWeb3Tx{
-		FeePayer:         txBuilder.GetTx().FeePayer().String(),
+		FeePayer:         sdk.AccAddress(txBuilder.GetTx().FeePayer()).String(),
 		TypedDataChainID: chainIDInt.Uint64(),
 		FeePayerSig:      sigBytes,
 	})

@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	cfg "github.com/cometbft/cometbft/config"
-	tmtypes "github.com/cometbft/cometbft/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
@@ -176,14 +175,14 @@ func NewCollectGenValsCmd(defaultHome string) *cobra.Command {
 			}
 
 			// Read the global genesis file.
-			genesisDoc, err := tmtypes.GenesisDocFromFile(config.GenesisFile())
+			appGenesis, err := types.AppGenesisFromFile(config.GenesisFile())
 			if err != nil {
-				return errors.Wrap(err, "failed to read genesis doc from file")
+				return errors.Wrap(err, "failed to read app genesis from file")
 			}
 			// Get the app state (all modules) from global genesis.
-			appState, err := types.GenesisStateFromGenDoc(*genesisDoc)
+			appState, err := types.GenesisStateFromAppGenesis(appGenesis)
 			if err != nil {
-				return errors.Wrap(err, "failed to create genesis state from gen doc")
+				return errors.Wrap(err, "failed to create genesis state from app genesis")
 			}
 			// Get state of the x/poa module.
 			poaState := getModuleStateFromAppState(clientCtx.Codec, appState)
@@ -197,9 +196,9 @@ func NewCollectGenValsCmd(defaultHome string) *cobra.Command {
 				return errors.Wrap(err, "failed to marshal app state")
 			}
 			// Set the updated app state in the global genesis file.
-			genesisDoc.AppState = appStateBytes
+			appGenesis.AppState = appStateBytes
 			// Export the updated global genesis file.
-			err = genutil.ExportGenesisFile(genesisDoc, config.GenesisFile())
+			err = genutil.ExportGenesisFile(appGenesis, config.GenesisFile())
 			if err != nil {
 				return errors.Wrap(err, "failed to export genesis file")
 			}

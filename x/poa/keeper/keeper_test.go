@@ -1,25 +1,28 @@
 package keeper
 
 import (
+	"cosmossdk.io/store/metrics"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
 
-	dbm "github.com/cometbft/cometbft-db"
+	"cosmossdk.io/log"
 	"github.com/cometbft/cometbft/crypto/ed25519"
-	"github.com/cometbft/cometbft/libs/log"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	dbm "github.com/cosmos/cosmos-db"
 
+	"cosmossdk.io/store"
+	storetypes "cosmossdk.io/store/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/store"
-	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 func mockContext() (sdk.Context, Keeper) {
-	keys := sdk.NewKVStoreKeys(types.StoreKey)
+	logger := log.NewNopLogger()
+
+	keys := storetypes.NewKVStoreKeys(types.StoreKey)
 
 	registry := codectypes.NewInterfaceRegistry()
 	cdc := codec.NewProtoCodec(registry)
@@ -29,7 +32,7 @@ func mockContext() (sdk.Context, Keeper) {
 
 	// Create multiStore in memory
 	db := dbm.NewMemDB()
-	cms := store.NewCommitMultiStore(db)
+	cms := store.NewCommitMultiStore(db, logger, metrics.NewNoOpMetrics())
 
 	// Mount stores
 	cms.MountStoreWithDB(keys[types.StoreKey], storetypes.StoreTypeIAVL, db)
@@ -39,7 +42,7 @@ func mockContext() (sdk.Context, Keeper) {
 	}
 
 	// Create context
-	ctx := sdk.NewContext(cms, tmproto.Header{}, false, log.NewNopLogger())
+	ctx := sdk.NewContext(cms, tmproto.Header{}, false, logger)
 
 	return ctx, poaKeeper
 }
@@ -61,7 +64,7 @@ func mockValidator() (types.Validator, string) {
 
 	// Generate a consPubKey
 	tmpk = ed25519.GenPrivKey().PubKey()
-	pk, err := cryptocdc.FromTmPubKeyInterface(tmpk)
+	pk, err := cryptocdc.FromCmtPubKeyInterface(tmpk)
 	if err != nil {
 		panic(err)
 	}

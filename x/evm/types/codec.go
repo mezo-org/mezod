@@ -17,35 +17,13 @@ package types
 
 import (
 	errorsmod "cosmossdk.io/errors"
-	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/cosmos/cosmos-sdk/types/msgservice"
 	"github.com/cosmos/cosmos-sdk/types/tx"
-	proto "github.com/cosmos/gogoproto/proto"
+	"github.com/cosmos/gogoproto/proto"
 )
-
-var (
-	amino = codec.NewLegacyAmino()
-	// ModuleCdc references the global evm module codec. Note, the codec should
-	// ONLY be used in certain instances of tests and for JSON encoding.
-	ModuleCdc = codec.NewProtoCodec(codectypes.NewInterfaceRegistry())
-
-	// AminoCdc is a amino codec created to support amino JSON compatible msgs.
-	AminoCdc = codec.NewAminoCodec(amino)
-)
-
-const (
-	// Amino names
-	updateParamsName = "ethermint/MsgUpdateParams"
-)
-
-// NOTE: This is required for the GetSignBytes function
-func init() {
-	RegisterLegacyAminoCodec(amino)
-	amino.Seal()
-}
 
 // RegisterInterfaces registers the client interfaces to protobuf Any.
 func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
@@ -99,9 +77,4 @@ func UnpackTxData(any *codectypes.Any) (TxData, error) {
 	}
 
 	return txData, nil
-}
-
-// RegisterLegacyAminoCodec required for EIP-712
-func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
-	cdc.RegisterConcrete(&MsgUpdateParams{}, updateParamsName, nil)
 }

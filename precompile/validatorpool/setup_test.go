@@ -74,7 +74,7 @@ func NewKey() Key {
 	addr, privKey := utiltx.NewAddrKey()
 	// Generate a consPubKey
 	tmpk := ed25519.GenPrivKey().PubKey()
-	consPubKey, err := cryptocdc.FromTmPubKeyInterface(tmpk)
+	consPubKey, err := cryptocdc.FromCmtPubKeyInterface(tmpk)
 	if err != nil {
 		panic(err)
 	}
@@ -132,7 +132,7 @@ func (s *PrecompileTestSuite) SetupTest() {
 	header := testutil.NewHeader(
 		1, time.Now().UTC(), "mezo_31612-1", consAddress, nil, nil,
 	)
-	s.ctx = s.app.BaseApp.NewContext(false, header)
+	s.ctx = s.app.BaseApp.NewContextLegacy(false, header)
 }
 
 func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodName string) {

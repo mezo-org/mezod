@@ -2,13 +2,13 @@ package keeper_test
 
 import (
 	"encoding/json"
+	"math"
 	"math/big"
 	"time"
 
 	"github.com/mezo-org/mezod/utils"
 
-	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
-
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
@@ -33,9 +33,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/cometbft/cometbft-db"
+	"cosmossdk.io/log"
 	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/libs/log"
+	dbm "github.com/cosmos/cosmos-db"
+	servertypes "github.com/cosmos/cosmos-sdk/server/types"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 )
 
 func (suite *KeeperTestSuite) SetupApp(checkTx bool, chainID string) {
@@ -54,15 +56,22 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool, chainID string) {
 		1, time.Now().UTC(), chainID, suite.consAddress, nil, nil,
 	)
 
-	suite.ctx = suite.app.BaseApp.NewContext(checkTx, header)
+	suite.ctx = suite.app.BaseApp.NewContextLegacy(checkTx, header)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	types.RegisterQueryServer(queryHelper, suite.app.FeeMarketKeeper)
 	suite.queryClient = types.NewQueryClient(queryHelper)
 
+	nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
+
 	acc := &mezotypes.EthAccount{
-		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), nil, 0, 0),
-		CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
+		BaseAccount: authtypes.NewBaseAccount(
+			suite.address.Bytes(),
+			nil,
+			nextAccNumber,
+			0,
+		),
+		CodeHash: common.BytesToHash(crypto.Keccak256(nil)).String(),
 	}
 
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
@@ -107,11 +116,14 @@ func (suite *KeeperTestSuite) CommitAfter(t time.Duration) {
 
 // setupTestWithContext sets up a test chain with an example Cosmos send msg,
 // given a local (validator config) and a global (feemarket param) minGasPrice
-func setupTestWithContext(valMinGasPrice string, minGasPrice sdk.Dec, baseFee sdkmath.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
+func setupTestWithContext(valMinGasPrice string, minGasPrice sdkmath.LegacyDec, baseFee sdkmath.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
 	chainID := utils.TestnetChainID + "-1"
 	privKey, msg := setupTest(valMinGasPrice+s.denom, chainID)
 	params := types.DefaultParams()
 	params.MinGasPrice = minGasPrice
+	// Disable base fee recalculation in the x/feemarket BeginBlock hook to
+	// not overwrite the value set in this test.
+	params.EnableHeight = math.MaxInt64
 	err := s.app.FeeMarketKeeper.SetParams(s.ctx, params)
 	s.Require().NoError(err)
 	s.app.FeeMarketKeeper.SetBaseFee(s.ctx, baseFee.BigInt())
@@ -158,7 +170,7 @@ func setupChain(localMinGasPricesStr, chainID string) {
 		app.DefaultNodeHome,
 		5,
 		encoding.MakeConfig(app.ModuleBasics),
-		simutils.NewAppOptionsWithFlagHome(app.DefaultNodeHome),
+		newAppOptions(app.DefaultNodeHome, chainID),
 		baseapp.SetChainID(chainID),
 		baseapp.SetMinGasPrices(localMinGasPricesStr),
 	)
@@ -170,17 +182,25 @@ func setupChain(localMinGasPricesStr, chainID string) {
 	s.Require().NoError(err)
 
 	// Initialize the chain
-	newapp.InitChain(
-		abci.RequestInitChain{
+	_, err = newapp.InitChain(
+		&abci.RequestInitChain{
 			ChainId:         chainID,
 			Validators:      []abci.ValidatorUpdate{},
 			AppStateBytes:   stateBytes,
 			ConsensusParams: app.DefaultConsensusParams,
 		},
 	)
+	s.Require().NoError(err)
 
 	s.app = newapp
 	s.SetupApp(false, chainID)
+}
+
+func newAppOptions(homePath, chainID string) servertypes.AppOptions {
+	return simtestutil.AppOptionsMap{
+		flags.FlagHome:    homePath,
+		flags.FlagChainID: chainID,
+	}
 }
 
 func getNonce(addressBytes []byte) uint64 {

@@ -17,18 +17,45 @@ package encoding
 
 import (
 	"cosmossdk.io/simapp/params"
+	"cosmossdk.io/x/tx/signing"
 	amino "github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/codec/address"
 	"github.com/cosmos/cosmos-sdk/codec/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
-
+	"github.com/cosmos/gogoproto/proto"
 	enccodec "github.com/mezo-org/mezod/encoding/codec"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // MakeConfig creates an EncodingConfig for testing
 func MakeConfig(mb module.BasicManager) params.EncodingConfig {
 	cdc := amino.NewLegacyAmino()
-	interfaceRegistry := types.NewInterfaceRegistry()
+
+	signingOptions := signing.Options{
+		AddressCodec: address.Bech32Codec{
+			Bech32Prefix: sdk.GetConfig().GetBech32AccountAddrPrefix(),
+		},
+		ValidatorAddressCodec: address.Bech32Codec{
+			Bech32Prefix: sdk.GetConfig().GetBech32ValidatorAddrPrefix(),
+		},
+	}
+
+	signingOptions.DefineCustomGetSigners(
+		"ethermint.evm.v1.MsgEthereumTx",
+		evmtypes.MsgEthereumTxGetSigners,
+	)
+
+	interfaceRegistry, err := types.NewInterfaceRegistryWithOptions(
+		types.InterfaceRegistryOptions{
+			ProtoFiles:     proto.HybridResolver,
+			SigningOptions: signingOptions,
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
 	codec := amino.NewProtoCodec(interfaceRegistry)
 
 	encodingConfig := params.EncodingConfig{

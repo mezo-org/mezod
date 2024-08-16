@@ -3,6 +3,8 @@ package btctoken_test
 import (
 	"math/big"
 
+	sdkmath "cosmossdk.io/math"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -56,7 +58,7 @@ func (s *PrecompileTestSuite) TestAllowance() {
 				s.setupSendAuthz(
 					precompile.TypesConverter.Address.ToSDK(s.account1.EvmAddr),
 					precompile.TypesConverter.Address.ToSDK(s.account2.EvmAddr),
-					sdk.NewCoins(sdk.NewCoin("abtc", sdk.NewInt(42))),
+					sdk.NewCoins(sdk.NewCoin("abtc", sdkmath.NewInt(42))),
 				)
 
 				return []interface{}{s.account2.EvmAddr, s.account1.EvmAddr}
@@ -75,8 +77,9 @@ func (s *PrecompileTestSuite) TestAllowance() {
 
 			bankKeeper := s.app.BankKeeper
 			authzKeeper := s.app.AuthzKeeper
+			evmKeeper := *s.app.EvmKeeper
 
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 

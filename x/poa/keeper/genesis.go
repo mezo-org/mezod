@@ -62,7 +62,7 @@ func (k Keeper) ExportGenesisValidators(
 
 		pubKey := validator.GetConsPubKey()
 
-		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
+		tmPubKey, err := cryptocodec.ToCmtPubKeyInterface(pubKey)
 		if err != nil {
 			return nil, err
 		}

@@ -94,7 +94,7 @@ func TestInitGenesis(t *testing.T) {
 	}
 
 	// Correct public key
-	pubKey, err := cryptocdc.FromTmProtoPublicKey(validatorUpdates[0].PubKey)
+	pubKey, err := cryptocdc.FromCmtProtoPublicKey(validatorUpdates[0].PubKey)
 	if err != nil {
 		t.Errorf("incorrect public key: %v", err)
 	}

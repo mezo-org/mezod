@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
+
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -415,7 +417,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 			)
 
 			if tc.isEIP712 {
-				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(20))
+				coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(20))
 				fees := sdk.NewCoins(coinAmount)
 				cosmosTxArgs := utiltx.CosmosTxArgs{
 					TxCfg:   suite.clientCtx.TxConfig,
@@ -444,19 +446,23 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 			bz, err := txEncoder(tx)
 			suite.Require().NoError(err)
 
-			resCheckTx := suite.app.CheckTx(
-				abci.RequestCheckTx{
+			resCheckTx, err := suite.app.CheckTx(
+				&abci.RequestCheckTx{
 					Tx:   bz,
 					Type: abci.CheckTxType_New,
 				},
 			)
+			suite.Require().NoError(err)
 			suite.Require().Equal(resCheckTx.Code, tc.expectedCode, resCheckTx.Log)
 
-			resDeliverTx := suite.app.DeliverTx(
-				abci.RequestDeliverTx{
-					Tx: bz,
+			resFinalizeBlock, err := suite.app.FinalizeBlock(
+				&abci.RequestFinalizeBlock{
+					Height: suite.ctx.BlockHeight(),
+					Txs:    [][]byte{bz},
 				},
 			)
+			suite.Require().NoError(err)
+			resDeliverTx := resFinalizeBlock.TxResults[0]
 			suite.Require().Equal(resDeliverTx.Code, tc.expectedCode, resDeliverTx.Log)
 		})
 	}

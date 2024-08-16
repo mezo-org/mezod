@@ -144,14 +144,19 @@ func (am AppModule) ExportGenesis(
 }
 
 // BeginBlock returns the begin-blocker for the poa module.
-func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
-	am.keeper.BeginBlocker(ctx)
+func (am AppModule) BeginBlock(ctx context.Context) error {
+	return am.keeper.BeginBlocker(ctx)
 }
 
 // EndBlock returns the end blocker for the poa module.
 func (am AppModule) EndBlock(
-	ctx sdk.Context,
-	_ abci.RequestEndBlock,
-) []abci.ValidatorUpdate {
+	ctx context.Context,
+) ([]abci.ValidatorUpdate, error) {
 	return am.keeper.EndBlocker(ctx)
 }
+
+// IsOnePerModuleType implements the depinject.OnePerModuleType interface.
+func (am AppModule) IsOnePerModuleType() {}
+
+// IsAppModule implements the appmodule.AppModule interface.
+func (am AppModule) IsAppModule() {}

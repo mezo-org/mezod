@@ -26,6 +26,9 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/cosmos/cosmos-sdk/runtime"
+	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
+
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
@@ -34,15 +37,15 @@ import (
 	"github.com/rakyll/statik/fs"
 	"github.com/spf13/cast"
 
-	dbm "github.com/cometbft/cometbft-db"
+	"cosmossdk.io/log"
 	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/libs/log"
 	tmos "github.com/cometbft/cometbft/libs/os"
+	dbm "github.com/cosmos/cosmos-db"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
 	"github.com/cosmos/cosmos-sdk/client/grpc/node"
-	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/server/api"
@@ -50,9 +53,11 @@ import (
 
 	"cosmossdk.io/simapp"
 	simappparams "cosmossdk.io/simapp/params"
+	storetypes "cosmossdk.io/store/types"
+	"cosmossdk.io/x/upgrade"
+	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
+	upgradetypes "cosmossdk.io/x/upgrade/types"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
-	"github.com/cosmos/cosmos-sdk/store/streaming"
-	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/version"
@@ -77,9 +82,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/params"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
-	"github.com/cosmos/cosmos-sdk/x/upgrade"
-	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
-	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
 	"github.com/mezo-org/mezod/encoding"
@@ -105,7 +107,10 @@ import (
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	// Force-load the tracer engines to trigger registration due to Go-Ethereum v1.10.15 changes
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	//nolint:revive
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
+	//nolint:revive
 	_ "github.com/ethereum/go-ethereum/eth/tracers/native"
 )
 
@@ -231,7 +236,7 @@ func NewMezo(
 	bApp.SetVersion(version.Version)
 	bApp.SetInterfaceRegistry(interfaceRegistry)
 
-	keys := sdk.NewKVStoreKeys(
+	keys := storetypes.NewKVStoreKeys(
 		consensusparamstypes.StoreKey,
 		authtypes.StoreKey,
 		banktypes.StoreKey,
@@ -244,13 +249,11 @@ func NewMezo(
 		feemarkettypes.StoreKey,
 	)
 
-	tkeys := sdk.NewTransientStoreKeys(paramstypes.TStoreKey, evmtypes.TransientKey, feemarkettypes.TransientKey)
-
-	// load state streaming if enabled
-	if _, _, err := streaming.LoadStreamingServices(bApp, appOpts, appCodec, logger, keys); err != nil {
-		fmt.Printf("failed to load state streaming: %s", err)
-		os.Exit(1)
-	}
+	tkeys := storetypes.NewTransientStoreKeys(
+		paramstypes.TStoreKey,
+		evmtypes.TransientKey,
+		feemarkettypes.TransientKey,
+	)
 
 	app := &Mezo{
 		BaseApp:           bApp,
@@ -260,6 +263,10 @@ func NewMezo(
 		invCheckPeriod:    invCheckPeriod,
 		keys:              keys,
 		tkeys:             tkeys,
+	}
+
+	if err := app.RegisterStreamingServices(appOpts, app.keys); err != nil {
+		panic(fmt.Sprintf("failed to register streaming services: %s", err))
 	}
 
 	// Most of the modules require setting a Cosmos-level authority account
@@ -283,27 +290,32 @@ func NewMezo(
 	// init consensus params keeper
 	app.ConsensusParamsKeeper = consensusparamskeeper.NewKeeper(
 		appCodec,
-		keys[consensusparamstypes.StoreKey],
+		runtime.NewKVStoreService(keys[consensusparamstypes.StoreKey]),
 		authority.String(),
+		runtime.EventService{},
 	)
 	// set the BaseApp's parameter store
-	bApp.SetParamStore(&app.ConsensusParamsKeeper)
+	bApp.SetParamStore(app.ConsensusParamsKeeper.ParamsStore)
 
-	// use custom Ethermint account for contracts
+	bech32Prefix := sdk.GetConfig().GetBech32AccountAddrPrefix()
+	addressCodec := authcodec.NewBech32Codec(bech32Prefix)
+
 	app.AccountKeeper = authkeeper.NewAccountKeeper(
 		appCodec,
-		keys[authtypes.StoreKey],
+		runtime.NewKVStoreService(keys[authtypes.StoreKey]),
 		mezotypes.ProtoAccount,
 		maccPerms,
-		sdk.GetConfig().GetBech32AccountAddrPrefix(),
+		addressCodec,
+		bech32Prefix,
 		authority.String(),
 	)
 	app.BankKeeper = bankkeeper.NewBaseKeeper(
 		appCodec,
-		keys[banktypes.StoreKey],
+		runtime.NewKVStoreService(keys[banktypes.StoreKey]),
 		app.AccountKeeper,
 		app.BlockedAddrs(),
 		authority.String(),
+		logger,
 	)
 	app.PoaKeeper = poakeeper.NewKeeper(
 		keys[poatypes.StoreKey],
@@ -311,15 +323,16 @@ func NewMezo(
 	)
 	app.CrisisKeeper = crisiskeeper.NewKeeper(
 		appCodec,
-		keys[crisistypes.StoreKey],
+		runtime.NewKVStoreService(keys[crisistypes.StoreKey]),
 		invCheckPeriod,
 		app.BankKeeper,
 		authtypes.FeeCollectorName,
 		authority.String(),
+		app.AccountKeeper.AddressCodec(),
 	)
 	app.UpgradeKeeper = upgradekeeper.NewKeeper(
 		skipUpgradeHeights,
-		keys[upgradetypes.StoreKey],
+		runtime.NewKVStoreService(keys[upgradetypes.StoreKey]),
 		appCodec,
 		homePath,
 		app.BaseApp,
@@ -327,7 +340,7 @@ func NewMezo(
 	)
 
 	app.AuthzKeeper = authzkeeper.NewKeeper(
-		keys[authzkeeper.StoreKey],
+		runtime.NewKVStoreService(keys[authzkeeper.StoreKey]),
 		appCodec,
 		app.MsgServiceRouter(),
 		app.AccountKeeper,
@@ -355,7 +368,8 @@ func NewMezo(
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
-	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper)
+	chainID := appOpts.Get(flags.FlagChainID)
+	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper, *app.EvmKeeper, chainID.(string))
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
@@ -375,7 +389,7 @@ func NewMezo(
 		bank.NewAppModule(appCodec, app.BankKeeper, app.AccountKeeper, app.GetSubspace(banktypes.ModuleName)),
 		crisis.NewAppModule(app.CrisisKeeper, skipGenesisInvariants, app.GetSubspace(crisistypes.ModuleName)),
 		poa.NewAppModule(app.PoaKeeper),
-		upgrade.NewAppModule(app.UpgradeKeeper),
+		upgrade.NewAppModule(app.UpgradeKeeper, addressCodec),
 		params.NewAppModule(app.ParamsKeeper),
 		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
@@ -384,8 +398,11 @@ func NewMezo(
 	)
 
 	// NOTE: upgrade module must go first to handle software upgrades.
-	app.mm.SetOrderBeginBlockers(
+	app.mm.SetOrderPreBlockers(
 		upgradetypes.ModuleName,
+	)
+
+	app.mm.SetOrderBeginBlockers(
 		feemarkettypes.ModuleName,
 		evmtypes.ModuleName,
 		poatypes.ModuleName,
@@ -431,7 +448,10 @@ func NewMezo(
 
 	app.mm.RegisterInvariants(app.CrisisKeeper)
 	app.configurator = module.NewConfigurator(app.appCodec, app.MsgServiceRouter(), app.GRPCQueryRouter())
-	app.mm.RegisterServices(app.configurator)
+	err = app.mm.RegisterServices(app.configurator)
+	if err != nil {
+		panic(err)
+	}
 
 	// initialize stores
 	app.MountKVStores(keys)
@@ -439,6 +459,7 @@ func NewMezo(
 
 	// initialize BaseApp
 	app.SetInitChainer(app.InitChainer)
+	app.SetPreBlocker(app.PreBlocker)
 	app.SetBeginBlocker(app.BeginBlocker)
 
 	maxGasWanted := cast.ToUint64(appOpts.Get(srvflags.EVMMaxTxGasWanted))
@@ -499,40 +520,57 @@ func (app *Mezo) setPostHandler() {
 	app.SetPostHandler(postHandler)
 }
 
-// BeginBlocker runs the Tendermint ABCI BeginBlock logic. It executes state changes at the beginning
-// of the new block for every registered module. If there is a registered fork at the current height,
-// BeginBlocker will schedule the upgrade plan and perform the state migration (if any).
-func (app *Mezo) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	return app.mm.BeginBlock(ctx, req)
+func (app *Mezo) PreBlocker(
+	ctx sdk.Context,
+	_ *abci.RequestFinalizeBlock,
+) (*sdk.ResponsePreBlock, error) {
+	return app.mm.PreBlock(ctx)
 }
 
-// EndBlocker updates every end block
-func (app *Mezo) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return app.mm.EndBlock(ctx, req)
+func (app *Mezo) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+	return app.mm.BeginBlock(ctx)
 }
 
-// The DeliverTx method is intentionally decomposed to calculate the transactions per second.
-func (app *Mezo) DeliverTx(req abci.RequestDeliverTx) (res abci.ResponseDeliverTx) {
+func (app *Mezo) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
+	return app.mm.EndBlock(ctx)
+}
+
+// FinalizeBlock method is intentionally decomposed to calculate the
+// transactions per second.
+func (app *Mezo) FinalizeBlock(req *abci.RequestFinalizeBlock) (
+	res *abci.ResponseFinalizeBlock,
+	err error,
+) {
 	defer func() {
-		// TODO: Record the count along with the code and or reason so as to display
-		// in the transactions per second live dashboards.
-		if res.IsErr() {
-			app.tpsCounter.incrementFailure()
-		} else {
-			app.tpsCounter.incrementSuccess()
+		// Check required to not panic during res.TxResults in case the
+		// upstream FinalizeBlock errors out and returns a nil response.
+		if res == nil {
+			return
+		}
+
+		for _, txResult := range res.TxResults {
+			if txResult.IsErr() {
+				app.tpsCounter.incrementFailure()
+			} else {
+				app.tpsCounter.incrementSuccess()
+			}
 		}
 	}()
-	return app.BaseApp.DeliverTx(req)
+
+	return app.BaseApp.FinalizeBlock(req)
 }
 
 // InitChainer updates at chain initialization
-func (app *Mezo) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
+func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
 	var genesisState simapp.GenesisState
 	if err := json.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
 		panic(err)
 	}
 
-	app.UpgradeKeeper.SetModuleVersionMap(ctx, app.mm.GetVersionMap())
+	err := app.UpgradeKeeper.SetModuleVersionMap(ctx, app.mm.GetVersionMap())
+	if err != nil {
+		panic(err)
+	}
 
 	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
 }
@@ -628,7 +666,7 @@ func (app *Mezo) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfi
 	// Register new tx routes from grpc-gateway.
 	authtx.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
 	// Register new tendermint queries routes from grpc-gateway.
-	tmservice.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
+	cmtservice.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
 	// Register node gRPC service for grpc-gateway.
 	node.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
 
@@ -647,7 +685,7 @@ func (app *Mezo) RegisterTxService(clientCtx client.Context) {
 
 // RegisterTendermintService implements the Application.RegisterTendermintService method.
 func (app *Mezo) RegisterTendermintService(clientCtx client.Context) {
-	tmservice.RegisterTendermintService(
+	cmtservice.RegisterTendermintService(
 		clientCtx,
 		app.BaseApp.GRPCQueryRouter(),
 		app.interfaceRegistry,
@@ -657,8 +695,11 @@ func (app *Mezo) RegisterTendermintService(clientCtx client.Context) {
 
 // RegisterNodeService registers the node gRPC service on the provided
 // application gRPC query router.
-func (app *Mezo) RegisterNodeService(clientCtx client.Context) {
-	node.RegisterNodeService(clientCtx, app.GRPCQueryRouter())
+func (app *Mezo) RegisterNodeService(
+	clientCtx client.Context,
+	cfg config.Config,
+) {
+	node.RegisterNodeService(clientCtx, app.GRPCQueryRouter(), cfg)
 }
 
 // GetBaseApp implements the TestingApp interface.
@@ -703,8 +744,10 @@ func customEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
+	evmKeeper evmkeeper.Keeper,
+	chainID string,
 ) ([]vm.PrecompiledContract, error) {
-	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
 	}
