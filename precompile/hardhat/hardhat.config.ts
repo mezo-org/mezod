@@ -1,7 +1,7 @@
 import { vars, HardhatUserConfig } from 'hardhat/config'
 import '@nomicfoundation/hardhat-toolbox'
 // import precompile tasks
-import './tasks/validatorPool'
+import './tasks/validatorpool'
 import './tasks/btctoken'
 
 const getPrivKeys = (): string[] => {

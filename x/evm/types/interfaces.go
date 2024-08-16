@@ -71,12 +71,7 @@ type FeeMarketKeeper interface {
 
 // ConsensusKeeper
 type ConsensusKeeper interface {
-	// Get(ctx sdk.Context) (*tmproto.ConsensusParams, error)
-	GetAuthority() string
-	// Has(ctx sdk.Context) bool
-	// Set(ctx sdk.Context, cp *tmproto.ConsensusParams)
 	Params(ctx context.Context, req *consensustypes.QueryParamsRequest) (*consensustypes.QueryParamsResponse, error)
-	UpdateParams(ctx context.Context, msg *consensustypes.MsgUpdateParams) (*consensustypes.MsgUpdateParamsResponse, error)
 }
 
 // Event Hooks

@@ -386,7 +386,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			if err != nil {
 				return true, nil, err
 			}
-			// resetting the gasMeter after increasing the sequence to have an accurate gas estimation on EVM extensions transactions
+			// Resetting the gasMeter after increasing the sequence to have an accurate gas estimation on transactions against EVM precompiles.
 			gasMeter := mezotypes.NewInfiniteGasMeterWithLimit(msg.Gas())
 			tmpCtx = tmpCtx.WithGasMeter(gasMeter).
 				WithKVGasConfig(storetypes.GasConfig{}).
