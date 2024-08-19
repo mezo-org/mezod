@@ -53,6 +53,17 @@ func (k *Keeper) GetAccount(ctx sdk.Context, addr common.Address) *statedb.Accou
 func (k *Keeper) GetState(ctx sdk.Context, addr common.Address, key common.Hash) common.Hash {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStoragePrefix(addr))
 
+	return stateValue(store, key)
+}
+
+// GetStateExtension loads contract state from database, implements `statedb.Keeper` interface.
+func (k *Keeper) GetStateExtension(ctx sdk.Context, addr common.Address, key common.Hash) common.Hash {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStorageExtensionPrefix(addr))
+
+	return stateValue(store, key)
+}
+
+func stateValue(store prefix.Store, key common.Hash) common.Hash {
 	value := store.Get(key.Bytes())
 	if len(value) == 0 {
 		return common.Hash{}
@@ -159,6 +170,16 @@ func (k *Keeper) SetAccount(ctx sdk.Context, addr common.Address, account stated
 // SetState update contract storage, delete if value is empty.
 func (k *Keeper) SetState(ctx sdk.Context, addr common.Address, key common.Hash, value []byte) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStoragePrefix(addr))
+	k.stateAction(store, ctx, addr, key, value)
+}
+
+// SetStateExtension update contract storage, delete if value is empty.
+func (k *Keeper) SetStateExtension(ctx sdk.Context, addr common.Address, key common.Hash, value []byte) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStorageExtensionPrefix(addr))
+	k.stateAction(store, ctx, addr, key, value)
+}
+
+func (k *Keeper) stateAction(store prefix.Store, ctx sdk.Context, addr common.Address, key common.Hash, value []byte) {
 	action := "updated"
 	if len(value) == 0 {
 		store.Delete(key.Bytes())
