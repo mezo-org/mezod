@@ -222,7 +222,7 @@ func (am *permitMethod) incrementNonce(address common.Address, ctx sdk.Context) 
 	// Increment nonce by 1 so that the signature can be used once over the message
 	nonceBigInt.Add(nonceBigInt, big.NewInt(1))
 	// Set the new nonce value
-	am.evmkeeper.SetState(ctx, address, common.HexToHash(string(key)), nonceBigInt.Bytes())
+	am.evmkeeper.SetStateExtension(ctx, address, common.HexToHash(string(key)), nonceBigInt.Bytes())
 
 	return nil
 }
@@ -329,8 +329,11 @@ func buildDomainSeparator(chainID *big.Int) ([]byte, error) {
 }
 
 func getNonce(evmkeeper evmkeeper.Keeper, address common.Address, ctx sdk.Context) (common.Hash, []byte, error) {
-	key := evmtypes.PrecompileBTCNonceKey(address)
-	nonce := evmkeeper.GetState(ctx, address, common.HexToHash(string(key)))
+	key := evmtypes.PrecompileBTCNonceKey()
+	if len(key) > 32 {
+		return common.Hash{}, nil, fmt.Errorf("key %s is longer than 32 bytes", key)
+	}
+	nonce := evmkeeper.GetStateExtension(ctx, address, common.HexToHash(string(key)))
 	if len(nonce) == 0 {
 		return common.Hash{}, nil, fmt.Errorf("failed to get nonce for address %s", address.Hex())
 	}

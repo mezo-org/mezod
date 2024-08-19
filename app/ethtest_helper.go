@@ -32,6 +32,7 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/testutil/mock"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
@@ -60,7 +61,7 @@ func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState
 		DefaultNodeHome,
 		5,
 		encoding.MakeConfig(ModuleBasics),
-		newAppOptions(DefaultNodeHome, chainID),
+		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)
 	if !isCheckTx {
