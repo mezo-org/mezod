@@ -62,6 +62,8 @@ type Keeper struct {
 	stakingKeeper types.StakingKeeper
 	// fetch EIP1559 base fee and parameters
 	feeMarketKeeper types.FeeMarketKeeper
+	// access to consensus params
+	consensusKeeper types.ConsensusKeeper
 
 	// chain ID number obtained from the context's chain id
 	eip155ChainID *big.Int
@@ -87,6 +89,7 @@ func NewKeeper(
 	bankKeeper types.BankKeeper,
 	sk types.StakingKeeper,
 	fmk types.FeeMarketKeeper,
+	ck types.ConsensusKeeper,
 	tracer string,
 	ss paramstypes.Subspace,
 ) *Keeper {
@@ -108,6 +111,7 @@ func NewKeeper(
 		bankKeeper:        bankKeeper,
 		stakingKeeper:     sk,
 		feeMarketKeeper:   fmk,
+		consensusKeeper:   ck,
 		storeKey:          storeKey,
 		transientKey:      transientKey,
 		tracer:            tracer,

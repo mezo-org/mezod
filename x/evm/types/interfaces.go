@@ -21,6 +21,7 @@ import (
 
 	"cosmossdk.io/core/address"
 
+	consensustypes "github.com/cosmos/cosmos-sdk/x/consensus/types"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -66,6 +67,11 @@ type FeeMarketKeeper interface {
 	GetBaseFee(ctx sdk.Context) *big.Int
 	GetParams(ctx sdk.Context) feemarkettypes.Params
 	AddTransientGasWanted(ctx sdk.Context, gasWanted uint64) (uint64, error)
+}
+
+// ConsensusKeeper
+type ConsensusKeeper interface {
+	Params(ctx context.Context, req *consensustypes.QueryParamsRequest) (*consensustypes.QueryParamsResponse, error)
 }
 
 // Event Hooks

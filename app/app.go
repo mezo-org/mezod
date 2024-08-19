@@ -364,6 +364,7 @@ func NewMezo(
 		app.BankKeeper,
 		app.PoaKeeper,
 		app.FeeMarketKeeper,
+		&app.ConsensusParamsKeeper,
 		tracer,
 		app.GetSubspace(evmtypes.ModuleName),
 	)

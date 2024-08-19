@@ -49,7 +49,7 @@ task('validatorPool:leave', 'Removes the signers validator from the pool')
   .setAction(async (taskArguments, hre, runSuper) => {
     const signer = await hre.ethers.getSigner(taskArguments.signer)
     const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer)
-    const pending = await validatorPool.leave({ gasLimit: 46128n })
+    const pending = await validatorPool.leave()
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })
@@ -81,7 +81,7 @@ task('validatorPool:acceptOwnership', 'Accepts a pending ownership transfer (can
   .setAction(async (taskArguments, hre, runSuper) => {
     const signer = await hre.ethers.getSigner(taskArguments.signer)
     const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer)
-    const pending = await validatorPool.acceptOwnership({ gasLimit: 50000 })
+    const pending = await validatorPool.acceptOwnership()
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })
@@ -104,7 +104,7 @@ task('validatorPool:submitApplication', 'Submit a new validator application')
       taskArguments.security,
       taskArguments.details
     ]
-    const pending = await validatorPool.submitApplication(taskArguments.conspubkey, description, { gasLimit: 50000 })
+    const pending = await validatorPool.submitApplication(taskArguments.conspubkey, description)
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })
@@ -115,7 +115,7 @@ task('validatorPool:approveApplication', 'Approves a pending validator applicati
   .setAction(async (taskArguments, hre, runSuper) => {
     const signer = await hre.ethers.getSigner(taskArguments.signer)
     const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer)
-    const pending = await validatorPool.approveApplication(taskArguments.operator, { gasLimit: 50000 })
+    const pending = await validatorPool.approveApplication(taskArguments.operator)
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })
