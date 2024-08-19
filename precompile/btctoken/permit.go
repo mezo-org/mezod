@@ -329,7 +329,7 @@ func buildDomainSeparator(chainID *big.Int) ([]byte, error) {
 }
 
 func getNonce(evmkeeper evmkeeper.Keeper, address common.Address, ctx sdk.Context) (common.Hash, []byte, error) {
-	key := evmtypes.PrecompileBTCNonceKey(address)
+	key := evmtypes.PrecompileBTCNonceKey()
 	if len(key) > 32 {
 		return common.Hash{}, nil, fmt.Errorf("key %s is longer than 32 bytes", key)
 	}

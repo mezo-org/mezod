@@ -86,10 +86,9 @@ func AddressStorageExtensionPrefix(address common.Address) []byte {
 	return append(KeyPrefixStorageExtension, address.Bytes()...)
 }
 
-// PrecompileBTCNonceKey returns the key under which the nonce of the BTC precompile is stored
-// for a given address.
-func PrecompileBTCNonceKey(address common.Address) []byte {
-	return append(AddressStorageExtensionPrefix(address), []byte{prefixPrecompileBTC, prefixNonce}...)
+// PrecompileBTCNonceKey returns the key under which the nonce of the BTC precompile is stored.
+func PrecompileBTCNonceKey() []byte {
+	return []byte{prefixPrecompileBTC, prefixNonce}
 }
 
 // StateKey defines the full key under which an account state is stored.

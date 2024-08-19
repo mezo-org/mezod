@@ -56,7 +56,9 @@ func (k *Keeper) GetState(ctx sdk.Context, addr common.Address, key common.Hash)
 	return stateValue(store, key)
 }
 
-// GetStateExtension loads contract state from database, implements `statedb.Keeper` interface.
+// GetStateExtension loads contract state from database. This is used as a separate storage
+// that is not part of the main EVM persistent store. One of the use cases is storage
+// for BTC precompile functionality.
 func (k *Keeper) GetStateExtension(ctx sdk.Context, addr common.Address, key common.Hash) common.Hash {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStorageExtensionPrefix(addr))
 
@@ -173,7 +175,9 @@ func (k *Keeper) SetState(ctx sdk.Context, addr common.Address, key common.Hash,
 	k.stateAction(store, ctx, addr, key, value)
 }
 
-// SetStateExtension update contract storage, delete if value is empty.
+// SetStateExtension update contract extension storage, delete if value is empty. This is used as
+// a separate storage that is not part of the main EVM persistent store. One of the use cases is storage
+// for BTC precompile functionality.
 func (k *Keeper) SetStateExtension(ctx sdk.Context, addr common.Address, key common.Hash, value []byte) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStorageExtensionPrefix(addr))
 	k.stateAction(store, ctx, addr, key, value)
