@@ -115,7 +115,7 @@ TMP_GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/tmp_genesis.json
 # [Modification 1]: Set abtc as the token denomination for relevant Cosmos SDK modules.
 jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 # [Modification 2]: Set non-zero gas limit in genesis
-jq '.consensus_params["block"]["max_gas"]="10000000"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+jq '.consensus["params"]["block"]["max_gas"]="10000000"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 # [Modification 3]: Set the first node's address as the initial PoA owner.
 POA_OWNER=${NODE_ADDRESSES[0]}
 jq '.app_state["poa"]["owner"]="'"$POA_OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"

@@ -7,28 +7,12 @@ data:
   # The file below was generated using the `scripts/public-testnet.sh` script.
   genesis.json: |
     {
-      "genesis_time": "2024-07-25T10:30:29.149843Z",
+      "app_name": "",
+      "app_version": "",
+      "genesis_time": "2024-08-19T14:35:36.025749Z",
       "chain_id": "mezo_31611-1",
-      "initial_height": "1",
-      "consensus_params": {
-        "block": {
-          "max_bytes": "22020096",
-          "max_gas": "10000000",
-          "time_iota_ms": "1000"
-        },
-        "evidence": {
-          "max_age_num_blocks": "100000",
-          "max_age_duration": "172800000000000",
-          "max_bytes": "1048576"
-        },
-        "validator": {
-          "pub_key_types": [
-            "ed25519"
-          ]
-        },
-        "version": {}
-      },
-      "app_hash": "",
+      "initial_height": 1,
+      "app_hash": null,
       "app_state": {
         "auth": {
           "params": {
@@ -42,7 +26,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1dv063et0mlq2l7jqqarn4ykr47kkmrylt9ty6u",
+                "address": "mezo12wsc0qgyfwwfj3wrlpgm9q3lmndl2m4qmm34dp",
                 "pub_key": null,
                 "account_number": "0",
                 "sequence": "0"
@@ -52,9 +36,9 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1jm53lv0944kzrgrthdgv2xa6qpdcmnw59dgmfg",
+                "address": "mezo1xqurxvvh8z2xpj6wltq0tajxm47xnv7q6rtvja",
                 "pub_key": null,
-                "account_number": "0",
+                "account_number": "1",
                 "sequence": "0"
               },
               "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
@@ -62,9 +46,9 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1kum9w86tmafgnfyrhgzl9ja37pq2vvzf5wlufc",
+                "address": "mezo1jcurf087xx9eqsnmr8lszralupcfln2vjz8ucg",
                 "pub_key": null,
-                "account_number": "0",
+                "account_number": "2",
                 "sequence": "0"
               },
               "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
@@ -72,9 +56,9 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo14rrdcku8hgxp2xfxugkdxkdllnfrr4lagppjey",
+                "address": "mezo1j0ghx6d9kmerxhgn5ahr2nahs6yfulea4te22c",
                 "pub_key": null,
-                "account_number": "0",
+                "account_number": "3",
                 "sequence": "0"
               },
               "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
@@ -82,9 +66,9 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1n8get9cqmljd9hqlm36cs28wa4ew747cx6r7gc",
+                "address": "mezo120mkxfvkx2t72quddqh92md2dp7csq4wgqux06",
                 "pub_key": null,
-                "account_number": "0",
+                "account_number": "4",
                 "sequence": "0"
               },
               "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
@@ -92,9 +76,9 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo10zzhztgz7se7yz2psvske8sn4n0epx2k724svr",
+                "address": "mezo1dmr6mhh352vh9wa34xs0qxtr8thkqu39pw6x2p",
                 "pub_key": null,
-                "account_number": "0",
+                "account_number": "5",
                 "sequence": "0"
               },
               "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
@@ -111,7 +95,7 @@ data:
           },
           "balances": [
             {
-              "address": "mezo1dv063et0mlq2l7jqqarn4ykr47kkmrylt9ty6u",
+              "address": "mezo1xqurxvvh8z2xpj6wltq0tajxm47xnv7q6rtvja",
               "coins": [
                 {
                   "denom": "abtc",
@@ -120,7 +104,7 @@ data:
               ]
             },
             {
-              "address": "mezo10zzhztgz7se7yz2psvske8sn4n0epx2k724svr",
+              "address": "mezo12wsc0qgyfwwfj3wrlpgm9q3lmndl2m4qmm34dp",
               "coins": [
                 {
                   "denom": "abtc",
@@ -129,7 +113,7 @@ data:
               ]
             },
             {
-              "address": "mezo1jm53lv0944kzrgrthdgv2xa6qpdcmnw59dgmfg",
+              "address": "mezo120mkxfvkx2t72quddqh92md2dp7csq4wgqux06",
               "coins": [
                 {
                   "denom": "abtc",
@@ -138,7 +122,7 @@ data:
               ]
             },
             {
-              "address": "mezo1n8get9cqmljd9hqlm36cs28wa4ew747cx6r7gc",
+              "address": "mezo1dmr6mhh352vh9wa34xs0qxtr8thkqu39pw6x2p",
               "coins": [
                 {
                   "denom": "abtc",
@@ -147,7 +131,7 @@ data:
               ]
             },
             {
-              "address": "mezo14rrdcku8hgxp2xfxugkdxkdllnfrr4lagppjey",
+              "address": "mezo1j0ghx6d9kmerxhgn5ahr2nahs6yfulea4te22c",
               "coins": [
                 {
                   "denom": "abtc",
@@ -156,7 +140,7 @@ data:
               ]
             },
             {
-              "address": "mezo1kum9w86tmafgnfyrhgzl9ja37pq2vvzf5wlufc",
+              "address": "mezo1jcurf087xx9eqsnmr8lszralupcfln2vjz8ucg",
               "coins": [
                 {
                   "denom": "abtc",
@@ -171,7 +155,8 @@ data:
               "amount": "6000000000000000000000"
             }
           ],
-          "denom_metadata": []
+          "denom_metadata": [],
+          "send_enabled": []
         },
         "bridge": {
           "params": {}
@@ -225,38 +210,15 @@ data:
           },
           "block_gas": "0"
         },
-        "params": null,
         "poa": {
           "params": {
             "max_validators": 150
           },
-          "owner": "mezo1dv063et0mlq2l7jqqarn4ykr47kkmrylt9ty6u",
+          "owner": "mezo12wsc0qgyfwwfj3wrlpgm9q3lmndl2m4qmm34dp",
           "validators": [
             {
-              "operator_bech32": "mezovaloper1jm53lv0944kzrgrthdgv2xa6qpdcmnw5gr8tg4",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepq8qzmke7jjz9dyzd5lpvk9udegpwcckfftfldxc9mkmytxxh9nwwqq72vqp",
-              "description": {
-                "moniker": "mezo-node-1",
-                "identity": "",
-                "website": "",
-                "security_contact": "",
-                "details": ""
-              }
-            },
-            {
-              "operator_bech32": "mezovaloper1dv063et0mlq2l7jqqarn4ykr47kkmrylxty5mp",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqyeacp9yrtxk6w05q0vhv0vc0t2r85kfvh2c9kjv5y0n0snph8udszllayh",
-              "description": {
-                "moniker": "mezo-node-0",
-                "identity": "",
-                "website": "",
-                "security_contact": "",
-                "details": ""
-              }
-            },
-            {
-              "operator_bech32": "mezovaloper1kum9w86tmafgnfyrhgzl9ja37pq2vvzfeqsvg9",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqc8hwp67vk40magqq0hx7wdq7y3yecq4f0jv6s7vla9h9sjzuhh5qfnpwdr",
+              "operator_bech32": "mezovaloper1jcurf087xx9eqsnmr8lszralupcfln2vpee7f5",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepqzxlt3ane6spyrfh56s6phm2l72f6yezu48rq85eytjsdsrz6n25s78djw7",
               "description": {
                 "moniker": "mezo-node-2",
                 "identity": "",
@@ -266,8 +228,19 @@ data:
               }
             },
             {
-              "operator_bech32": "mezovaloper1n8get9cqmljd9hqlm36cs28wa4ew747ct5vwf9",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqqjf555wx0c8c2payst3nqht9v5mdn39m30yxr7z5wxqhsd2z67zq678u9f",
+              "operator_bech32": "mezovaloper1j0ghx6d9kmerxhgn5ahr2nahs6yfuleaxs8gmy",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepqv5thxepkqtrqlp8q50gwu2z69jy7dvq8jyzyl32eskzcfnhxnpmqc2cv5f",
+              "description": {
+                "moniker": "mezo-node-3",
+                "identity": "",
+                "website": "",
+                "security_contact": "",
+                "details": ""
+              }
+            },
+            {
+              "operator_bech32": "mezovaloper120mkxfvkx2t72quddqh92md2dp7csq4wmmzy7x",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepq6n8yrpds6fckj40ffhpyha6u44sg3egalmqlcegdzeccdad9489qxpmlqs",
               "description": {
                 "moniker": "mezo-node-4",
                 "identity": "",
@@ -277,10 +250,21 @@ data:
               }
             },
             {
-              "operator_bech32": "mezovaloper14rrdcku8hgxp2xfxugkdxkdllnfrr4la90wzce",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqugeq4n093tskaj7gevypcl5cpyce7z6hjwu0re5a6l84cfczu6ssl9jxu3",
+              "operator_bech32": "mezovaloper1xqurxvvh8z2xpj6wltq0tajxm47xnv7qfc4wrp",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepqkr0lyt63hqxafayvg24zuvmedns7w7zt05ug79zgrca4tuq6v4zs4f74dd",
               "description": {
-                "moniker": "mezo-node-3",
+                "moniker": "mezo-node-1",
+                "identity": "",
+                "website": "",
+                "security_contact": "",
+                "details": ""
+              }
+            },
+            {
+              "operator_bech32": "mezovaloper12wsc0qgyfwwfj3wrlpgm9q3lmndl2m4qgq0hua",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepqujpmsdk9tlly48qpnkgveqxrtnskma3vt8ktn3whuudhx9wu26lqsul36g",
+              "description": {
+                "moniker": "mezo-node-0",
                 "identity": "",
                 "website": "",
                 "security_contact": "",
@@ -290,5 +274,29 @@ data:
           ]
         },
         "upgrade": {}
+      },
+      "consensus": {
+        "params": {
+          "block": {
+            "max_bytes": "22020096",
+            "max_gas": "10000000"
+          },
+          "evidence": {
+            "max_age_num_blocks": "100000",
+            "max_age_duration": "172800000000000",
+            "max_bytes": "1048576"
+          },
+          "validator": {
+            "pub_key_types": [
+              "ed25519"
+            ]
+          },
+          "version": {
+            "app": "0"
+          },
+          "abci": {
+            "vote_extensions_enable_height": "0"
+          }
+        }
       }
     }
