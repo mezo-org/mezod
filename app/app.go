@@ -83,6 +83,7 @@ import (
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
+	appabci "github.com/mezo-org/mezod/app/abci"
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
@@ -100,6 +101,7 @@ import (
 
 	"github.com/mezo-org/mezod/app/ante"
 	"github.com/mezo-org/mezod/x/bridge"
+	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
 	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/mezo-org/mezod/x/poa"
@@ -468,6 +470,8 @@ func NewMezo(
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
 
+	app.setABCIExtensions()
+
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
 			tmos.Exit(err.Error())
@@ -573,6 +577,16 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 	}
 
 	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
+}
+
+// setABCIExtensions sets the ABCI++ extensions on the application.
+func (app *Mezo) setABCIExtensions() {
+	bridgeVoteExtensionHandler := bridgeabci.NewVoteExtensionHandler()
+	voteExtensionHandler := appabci.NewVoteExtensionHandler(
+		app.Logger(),
+		bridgeVoteExtensionHandler,
+	)
+	voteExtensionHandler.SetHandlers(app.BaseApp)
 }
 
 // LoadHeight loads state at a particular height
