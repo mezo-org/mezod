@@ -1,0 +1,11 @@
+syntax = "proto3";
+package mezo.abci.v1;
+
+option go_package = "github.com/mezo-org/mezod/app/abci/types";
+
+// VoteExtension defines the vote extension structure for the Mezo application.
+message VoteExtension {
+  // bridge_vote_extension is the part of the vote extension specific to the bridge.
+  // See proto/mezo/bridge/v1/vote_extension.proto for more details.
+  bytes bridge_vote_extension = 1;
+}
