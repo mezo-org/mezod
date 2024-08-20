@@ -1,0 +1,35 @@
+syntax = "proto3";
+package mezo.bridge.v1;
+
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mezo-org/mezod/x/bridge/abci/types";
+
+// VoteExtension defines the vote extension structure for the Bitcoin bridge.
+message VoteExtension {
+  repeated AssetsLockedEvent assets_locked_events = 1;
+}
+
+// AssetsLockedEvent represents the event where inbound assets are locked in
+// the Bitcoin bridge.
+//
+// TODO: Consider moving this proto to `proto/mezo/types/v1` package
+//  with `github.com/mezo-org/mezod/types` as the go_package. This may
+//  be useful as the Ethereum sidecar may also need to use this proto
+//  as part of its gRPC interface.
+message AssetsLockedEvent {
+  // sequence is the unique identifier of the event.
+  string sequence = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  // recipient is the account address to receive the locked assets on Mezo,
+  // in Bech32 format.
+  string recipient = 2;
+  // amount of assets locked, in 1e18 precision.
+  string amount = 3 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
