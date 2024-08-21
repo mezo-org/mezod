@@ -8,16 +8,13 @@ option go_package = "github.com/mezo-org/mezod/x/bridge/abci/types";
 
 // VoteExtension defines the vote extension structure for the Bitcoin bridge.
 message VoteExtension {
-  repeated AssetsLockedEvent assets_locked_events = 1;
+  repeated AssetsLockedEvent assets_locked_events = 1 [
+    (gogoproto.nullable) = false
+  ];
 }
 
 // AssetsLockedEvent represents the event where inbound assets are locked in
 // the Bitcoin bridge.
-//
-// TODO: Consider moving this proto to `proto/mezo/types/v1` package
-//  with `github.com/mezo-org/mezod/types` as the go_package. This may
-//  be useful as the Ethereum sidecar may also need to use this proto
-//  as part of its gRPC interface.
 message AssetsLockedEvent {
   // sequence is the unique identifier of the event.
   string sequence = 1 [

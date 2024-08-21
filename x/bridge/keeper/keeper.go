@@ -11,12 +11,10 @@ import (
 	"github.com/mezo-org/mezod/x/bridge/types"
 )
 
-type (
-	Keeper struct {
-		cdc      codec.Codec
-		storeKey storetypes.StoreKey
-	}
-)
+type Keeper struct {
+	cdc      codec.Codec
+	storeKey storetypes.StoreKey
+}
 
 func NewKeeper(
 	cdc codec.Codec,
