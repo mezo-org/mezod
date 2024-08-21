@@ -18,6 +18,7 @@ package evm
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -26,6 +27,7 @@ import (
 
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/keeper"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -54,7 +56,11 @@ func InitGenesis(
 		// check that the EVM balance the matches the account balance
 		acc := accountKeeper.GetAccount(ctx, accAddress)
 		if acc == nil {
-			panic(fmt.Errorf("account not found for address %s", account.Address))
+			// account not found. Create it
+			acc = accountKeeper.NewAccountWithAddress(ctx, accAddress)
+			if acc == nil {
+				panic(fmt.Errorf("unable to create account for address %s", account.Address))
+			}
 		}
 
 		ethAcct, ok := acc.(mezotypes.EthAccountI)
@@ -70,9 +76,19 @@ func InitGenesis(
 
 		// we ignore the empty Code hash checking, see ethermint PR#1234
 		if len(account.Code) != 0 && !bytes.Equal(ethAcct.GetCodeHash().Bytes(), codeHash.Bytes()) {
-			s := "the evm state code doesn't match with the codehash\n"
-			panic(fmt.Sprintf("%s account: %s , evm state codehash: %v, ethAccount codehash: %v, evm state code: %s\n",
-				s, account.Address, codeHash, ethAcct.GetCodeHash(), account.Code))
+			// Hashes don't match, evm account for precompile is empty. Create it
+			err = k.SetAccount(ctx, address, statedb.Account{
+				Nonce:    0,
+				Balance:  big.NewInt(0),
+				CodeHash: codeHash.Bytes(),
+			})
+			if err != nil {
+				panic(fmt.Errorf("error setting account %s", err))
+			}
+
+			// s := "the evm state code doesn't match with the codehash\n"
+			// panic(fmt.Sprintf("%s account: %s , evm state codehash: %v, ethAccount codehash: %v, evm state code: %s\n",
+			// 	s, account.Address, codeHash, ethAcct.GetCodeHash(), account.Code))
 		}
 
 		k.SetCode(ctx, codeHash.Bytes(), code)
