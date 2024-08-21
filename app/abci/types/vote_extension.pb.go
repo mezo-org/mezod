@@ -24,9 +24,10 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // VoteExtension defines the vote extension structure for the Mezo application.
 type VoteExtension struct {
-	// bridge_vote_extension is the part of the vote extension specific to the bridge.
-	// See proto/mezo/bridge/v1/vote_extension.proto for more details.
-	BridgeVoteExtension []byte `protobuf:"bytes,1,opt,name=bridge_vote_extension,json=bridgeVoteExtension,proto3" json:"bridge_vote_extension,omitempty"`
+	// height is the height of the block that the vote extension is for.
+	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
+	// parts is a map of vote extension parts, keyed by unique ID.
+	Parts map[uint32][]byte `protobuf:"bytes,2,rep,name=parts,proto3" json:"parts,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *VoteExtension) Reset()         { *m = VoteExtension{} }
@@ -62,32 +63,45 @@ func (m *VoteExtension) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_VoteExtension proto.InternalMessageInfo
 
-func (m *VoteExtension) GetBridgeVoteExtension() []byte {
+func (m *VoteExtension) GetHeight() int64 {
 	if m != nil {
-		return m.BridgeVoteExtension
+		return m.Height
+	}
+	return 0
+}
+
+func (m *VoteExtension) GetParts() map[uint32][]byte {
+	if m != nil {
+		return m.Parts
 	}
 	return nil
 }
 
 func init() {
 	proto.RegisterType((*VoteExtension)(nil), "mezo.abci.v1.VoteExtension")
+	proto.RegisterMapType((map[uint32][]byte)(nil), "mezo.abci.v1.VoteExtension.PartsEntry")
 }
 
 func init() { proto.RegisterFile("mezo/abci/v1/vote_extension.proto", fileDescriptor_a63a1d031dfd3455) }
 
 var fileDescriptor_a63a1d031dfd3455 = []byte{
-	// 171 bytes of a gzipped FileDescriptorProto
+	// 242 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x52, 0xcc, 0x4d, 0xad, 0xca,
 	0xd7, 0x4f, 0x4c, 0x4a, 0xce, 0xd4, 0x2f, 0x33, 0xd4, 0x2f, 0xcb, 0x2f, 0x49, 0x8d, 0x4f, 0xad,
 	0x28, 0x49, 0xcd, 0x2b, 0xce, 0xcc, 0xcf, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x01,
-	0x29, 0xd1, 0x03, 0x29, 0xd1, 0x2b, 0x33, 0x54, 0x72, 0xe6, 0xe2, 0x0d, 0xcb, 0x2f, 0x49, 0x75,
-	0x85, 0x29, 0x12, 0x32, 0xe2, 0x12, 0x4d, 0x2a, 0xca, 0x4c, 0x49, 0x4f, 0x8d, 0x47, 0xd5, 0x2d,
-	0xc1, 0xa8, 0xc0, 0xa8, 0xc1, 0x13, 0x24, 0x0c, 0x91, 0x44, 0xd1, 0xe3, 0xe4, 0x74, 0xe2, 0x91,
-	0x1c, 0xe3, 0x85, 0x47, 0x72, 0x8c, 0x0f, 0x1e, 0xc9, 0x31, 0x4e, 0x78, 0x2c, 0xc7, 0x70, 0xe1,
-	0xb1, 0x1c, 0xc3, 0x8d, 0xc7, 0x72, 0x0c, 0x51, 0x1a, 0xe9, 0x99, 0x25, 0x19, 0xa5, 0x49, 0x7a,
-	0xc9, 0xf9, 0xb9, 0xfa, 0x20, 0x7b, 0x75, 0xf3, 0x8b, 0xd2, 0xc1, 0x8c, 0x14, 0xfd, 0xc4, 0x82,
-	0x02, 0x88, 0x43, 0x4b, 0x2a, 0x0b, 0x52, 0x8b, 0x93, 0xd8, 0xc0, 0xae, 0x33, 0x06, 0x04, 0x00,
-	0x00, 0xff, 0xff, 0x0b, 0x78, 0x6b, 0xb4, 0xc2, 0x00, 0x00, 0x00,
+	0x29, 0xd1, 0x03, 0x29, 0xd1, 0x2b, 0x33, 0x54, 0x9a, 0xcf, 0xc8, 0xc5, 0x1b, 0x96, 0x5f, 0x92,
+	0xea, 0x0a, 0x53, 0x25, 0x24, 0xc6, 0xc5, 0x96, 0x91, 0x9a, 0x99, 0x9e, 0x51, 0x22, 0xc1, 0xa8,
+	0xc0, 0xa8, 0xc1, 0x1c, 0x04, 0xe5, 0x09, 0xd9, 0x70, 0xb1, 0x16, 0x24, 0x16, 0x95, 0x14, 0x4b,
+	0x30, 0x29, 0x30, 0x6b, 0x70, 0x1b, 0xa9, 0xe9, 0x21, 0x9b, 0xa3, 0x87, 0x62, 0x86, 0x5e, 0x00,
+	0x48, 0xa1, 0x6b, 0x5e, 0x49, 0x51, 0x65, 0x10, 0x44, 0x93, 0x94, 0x05, 0x17, 0x17, 0x42, 0x50,
+	0x48, 0x80, 0x8b, 0x39, 0x3b, 0xb5, 0x12, 0x6c, 0x01, 0x6f, 0x10, 0x88, 0x29, 0x24, 0xc2, 0xc5,
+	0x5a, 0x96, 0x98, 0x53, 0x9a, 0x2a, 0xc1, 0xa4, 0xc0, 0xa8, 0xc1, 0x13, 0x04, 0xe1, 0x58, 0x31,
+	0x59, 0x30, 0x3a, 0x39, 0x9d, 0x78, 0x24, 0xc7, 0x78, 0xe1, 0x91, 0x1c, 0xe3, 0x83, 0x47, 0x72,
+	0x8c, 0x13, 0x1e, 0xcb, 0x31, 0x5c, 0x78, 0x2c, 0xc7, 0x70, 0xe3, 0xb1, 0x1c, 0x43, 0x94, 0x46,
+	0x7a, 0x66, 0x49, 0x46, 0x69, 0x92, 0x5e, 0x72, 0x7e, 0xae, 0x3e, 0xc8, 0x31, 0xba, 0xf9, 0x45,
+	0xe9, 0x60, 0x46, 0x8a, 0x7e, 0x62, 0x41, 0x01, 0x24, 0x14, 0x4a, 0x2a, 0x0b, 0x52, 0x8b, 0x93,
+	0xd8, 0xc0, 0x5e, 0x37, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x6f, 0x9f, 0xd4, 0xa4, 0x1f, 0x01,
+	0x00, 0x00,
 }
 
 func (m *VoteExtension) Marshal() (dAtA []byte, err error) {
@@ -110,12 +124,29 @@ func (m *VoteExtension) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.BridgeVoteExtension) > 0 {
-		i -= len(m.BridgeVoteExtension)
-		copy(dAtA[i:], m.BridgeVoteExtension)
-		i = encodeVarintVoteExtension(dAtA, i, uint64(len(m.BridgeVoteExtension)))
+	if len(m.Parts) > 0 {
+		for k := range m.Parts {
+			v := m.Parts[k]
+			baseI := i
+			if len(v) > 0 {
+				i -= len(v)
+				copy(dAtA[i:], v)
+				i = encodeVarintVoteExtension(dAtA, i, uint64(len(v)))
+				i--
+				dAtA[i] = 0x12
+			}
+			i = encodeVarintVoteExtension(dAtA, i, uint64(k))
+			i--
+			dAtA[i] = 0x8
+			i = encodeVarintVoteExtension(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.Height != 0 {
+		i = encodeVarintVoteExtension(dAtA, i, uint64(m.Height))
 		i--
-		dAtA[i] = 0xa
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -137,9 +168,20 @@ func (m *VoteExtension) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.BridgeVoteExtension)
-	if l > 0 {
-		n += 1 + l + sovVoteExtension(uint64(l))
+	if m.Height != 0 {
+		n += 1 + sovVoteExtension(uint64(m.Height))
+	}
+	if len(m.Parts) > 0 {
+		for k, v := range m.Parts {
+			_ = k
+			_ = v
+			l = 0
+			if len(v) > 0 {
+				l = 1 + len(v) + sovVoteExtension(uint64(len(v)))
+			}
+			mapEntrySize := 1 + sovVoteExtension(uint64(k)) + l
+			n += mapEntrySize + 1 + sovVoteExtension(uint64(mapEntrySize))
+		}
 	}
 	return n
 }
@@ -180,10 +222,10 @@ func (m *VoteExtension) Unmarshal(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BridgeVoteExtension", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
 			}
-			var byteLen int
+			m.Height = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowVoteExtension
@@ -193,25 +235,124 @@ func (m *VoteExtension) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				byteLen |= int(b&0x7F) << shift
+				m.Height |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if byteLen < 0 {
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Parts", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVoteExtension
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
 				return ErrInvalidLengthVoteExtension
 			}
-			postIndex := iNdEx + byteLen
+			postIndex := iNdEx + msglen
 			if postIndex < 0 {
 				return ErrInvalidLengthVoteExtension
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.BridgeVoteExtension = append(m.BridgeVoteExtension[:0], dAtA[iNdEx:postIndex]...)
-			if m.BridgeVoteExtension == nil {
-				m.BridgeVoteExtension = []byte{}
+			if m.Parts == nil {
+				m.Parts = make(map[uint32][]byte)
 			}
+			var mapkey uint32
+			mapvalue := []byte{}
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowVoteExtension
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowVoteExtension
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapkey |= uint32(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+				} else if fieldNum == 2 {
+					var mapbyteLen uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowVoteExtension
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapbyteLen |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intMapbyteLen := int(mapbyteLen)
+					if intMapbyteLen < 0 {
+						return ErrInvalidLengthVoteExtension
+					}
+					postbytesIndex := iNdEx + intMapbyteLen
+					if postbytesIndex < 0 {
+						return ErrInvalidLengthVoteExtension
+					}
+					if postbytesIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = make([]byte, mapbyteLen)
+					copy(mapvalue, dAtA[iNdEx:postbytesIndex])
+					iNdEx = postbytesIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipVoteExtension(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
+						return ErrInvalidLengthVoteExtension
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Parts[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

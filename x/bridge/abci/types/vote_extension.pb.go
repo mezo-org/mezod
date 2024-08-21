@@ -72,6 +72,12 @@ func (m *VoteExtension) GetAssetsLockedEvents() []*AssetsLockedEvent {
 
 // AssetsLockedEvent represents the event where inbound assets are locked in
 // the Bitcoin bridge.
+//
+// TODO: Consider moving this proto to `proto/mezo/types/v1` package
+//
+//	with `github.com/mezo-org/mezod/types` as the go_package. This may
+//	be useful as the Ethereum sidecar may also need to use this proto
+//	as part of its gRPC interface.
 type AssetsLockedEvent struct {
 	// sequence is the unique identifier of the event.
 	Sequence cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=sequence,proto3,customtype=cosmossdk.io/math.Int" json:"sequence"`
