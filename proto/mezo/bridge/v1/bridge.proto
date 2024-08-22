@@ -5,6 +5,11 @@ import "gogoproto/gogo.proto";
 
 option go_package = "github.com/mezo-org/mezod/x/bridge/types";
 
+// Params defines the parameters for the module.
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+}
+
 // AssetsLockedEvent represents the event where inbound assets are locked in
 // the Bitcoin bridge.
 message AssetsLockedEvent {

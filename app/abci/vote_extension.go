@@ -1,8 +1,10 @@
 package abci
 
 import (
-	"cosmossdk.io/log"
 	"fmt"
+
+	"cosmossdk.io/log"
+
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -104,7 +106,7 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		// Marshal the vote extension into bytes.
 		voteExtensionBytes, err := voteExtension.Marshal()
 		if err != nil {
-			// If marshalling fails, we cannot recover, so return an error.
+			// If marshaling fails, we cannot recover, so return an error.
 			return nil, fmt.Errorf("failed to marshal vote extension: %w", err)
 		}
 

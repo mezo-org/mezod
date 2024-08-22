@@ -1,7 +1,0 @@
-syntax = "proto3";
-package mezo.bridge.v1;
-
-option go_package = "github.com/mezo-org/mezod/x/bridge/types";
-
-// Msg defines the Msg service.
-service Msg {}

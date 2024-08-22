@@ -2,7 +2,9 @@ package types
 
 import (
 	"context"
+
 	"cosmossdk.io/math"
+	"github.com/mezo-org/mezod/x/bridge/types"
 )
 
 // EthereumSidecarClient is an interface for a client that can interact with the
@@ -17,5 +19,5 @@ type EthereumSidecarClient interface {
 		ctx context.Context,
 		sequenceStart *math.Int,
 		sequenceEnd *math.Int,
-	) ([]AssetsLockedEvent, error)
+	) ([]types.AssetsLockedEvent, error)
 }

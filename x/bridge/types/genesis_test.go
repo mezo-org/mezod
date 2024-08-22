@@ -14,12 +14,12 @@ func TestGenesisState_Validate(t *testing.T) {
 		valid    bool
 	}{
 		{
-			desc:     "default is valid",
+			desc:     "default value",
 			genState: types.DefaultGenesis(),
 			valid:    true,
 		},
 		{
-			desc:     "valid genesis state",
+			desc:     "zero value",
 			genState: &types.GenesisState{},
 			valid:    true,
 		},

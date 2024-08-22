@@ -1,8 +1,10 @@
 package abci
 
 import (
-	"cosmossdk.io/math"
 	"fmt"
+
+	"cosmossdk.io/math"
+
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
@@ -23,7 +25,7 @@ type VoteExtensionHandler struct {
 // NewVoteExtensionHandler creates a new VoteExtensionHandler instance.
 func NewVoteExtensionHandler(
 	sidecarClient types.EthereumSidecarClient,
-	bridgeKeeper  keeper.Keeper,
+	bridgeKeeper keeper.Keeper,
 ) *VoteExtensionHandler {
 	return &VoteExtensionHandler{
 		sidecarClient: sidecarClient,
@@ -43,7 +45,7 @@ func NewVoteExtensionHandler(
 func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 	return func(
 		ctx sdk.Context,
-		req *cmtabci.RequestExtendVote,
+		_ *cmtabci.RequestExtendVote,
 	) (*cmtabci.ResponseExtendVote, error) {
 		// TODO: Fetched events will be finalized in the next block and the
 		//       tip will be updated then. Because of that, we may fetch the same
@@ -77,7 +79,7 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		// Marshal the vote extension into bytes.
 		voteExtensionBytes, err := voteExtension.Marshal()
 		if err != nil {
-			// If marshalling fails, we cannot recover, so return an error.
+			// If marshaling fails, we cannot recover, so return an error.
 			return nil, fmt.Errorf("failed to marshal vote extension: %w", err)
 		}
 
@@ -88,8 +90,8 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 // TODO: Implement and document the VerifyVoteExtensionHandler function.
 func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExtensionHandler {
 	return func(
-		ctx sdk.Context,
-		req *cmtabci.RequestVerifyVoteExtension,
+		_ sdk.Context,
+		_ *cmtabci.RequestVerifyVoteExtension,
 	) (*cmtabci.ResponseVerifyVoteExtension, error) {
 		return &cmtabci.ResponseVerifyVoteExtension{Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT}, nil
 	}

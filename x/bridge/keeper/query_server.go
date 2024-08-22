@@ -5,27 +5,29 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var _ types.QueryServer = queryServer{}
 
 type queryServer struct {
-	Keeper
+	keeper Keeper
 }
 
 // NewQueryServer returns an implementation of the QueryServer interface
 // for the provided Keeper.
 func NewQueryServer(keeper Keeper) types.QueryServer {
-	return &queryServer{Keeper: keeper}
+	return &queryServer{keeper: keeper}
 }
 
-func (k Keeper) Params(goCtx context.Context, req *types.QueryParamsRequest) (*types.QueryParamsResponse, error) {
-	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid request")
-	}
-	ctx := sdk.UnwrapSDKContext(goCtx)
+func (qs queryServer) Params(
+	ctx context.Context,
+	_ *types.QueryParamsRequest,
+) (*types.QueryParamsResponse, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
 
-	return &types.QueryParamsResponse{Params: k.GetParams(ctx)}, nil
+	params := qs.keeper.GetParams(sdkCtx)
+
+	return &types.QueryParamsResponse{
+		Params: params,
+	}, nil
 }

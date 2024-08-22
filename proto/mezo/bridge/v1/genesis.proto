@@ -2,6 +2,7 @@ syntax = "proto3";
 package mezo.bridge.v1;
 
 import "gogoproto/gogo.proto";
+import "mezo/bridge/v1/bridge.proto";
 
 option go_package = "github.com/mezo-org/mezod/x/bridge/types";
 
@@ -9,9 +10,4 @@ option go_package = "github.com/mezo-org/mezod/x/bridge/types";
 message GenesisState {
   // params defines all the parameters of related to bridge.
   Params params = 1 [(gogoproto.nullable) = false];
-}
-
-// Params defines the parameters for the module.
-message Params {
-  option (gogoproto.goproto_stringer) = false;
 }

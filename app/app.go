@@ -377,7 +377,7 @@ func NewMezo(
 	}
 	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
 
-	app.BridgeKeeper = *bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
+	app.BridgeKeeper = bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
 
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.
@@ -396,7 +396,7 @@ func NewMezo(
 		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
-		bridge.NewAppModule(appCodec, app.BridgeKeeper),
+		bridge.NewAppModule(app.BridgeKeeper),
 	)
 
 	// NOTE: upgrade module must go first to handle software upgrades.
@@ -580,8 +580,13 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 }
 
 // setABCIExtensions sets the ABCI++ extensions on the application.
+// This function assumes the BridgeKeeper is already set in the app.
 func (app *Mezo) setABCIExtensions() {
-	bridgeVoteExtensionHandler := bridgeabci.NewVoteExtensionHandler()
+	// TODO: Set proper sidecar.
+	bridgeVoteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
+		nil,
+		app.BridgeKeeper,
+	)
 	voteExtensionHandler := appabci.NewVoteExtensionHandler(
 		app.Logger(),
 		bridgeVoteExtensionHandler,

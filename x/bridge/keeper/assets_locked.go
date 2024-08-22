@@ -24,6 +24,7 @@ func (k Keeper) GetAssetsLockedSequenceTip(ctx sdk.Context) math.Int {
 // setAssetsLockedSequenceTip sets the current sequence tip for the AssetsLocked
 // events. The tip denotes the sequence number of the last event processed by
 // the x/bridge module.
+//nolint:all
 func (k Keeper) setAssetsLockedSequenceTip(
 	ctx sdk.Context,
 	sequenceTip math.Int,

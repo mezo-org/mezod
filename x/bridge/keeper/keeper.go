@@ -19,8 +19,8 @@ type Keeper struct {
 func NewKeeper(
 	cdc codec.Codec,
 	storeKey storetypes.StoreKey,
-) *Keeper {
-	return &Keeper{
+) Keeper {
+	return Keeper{
 		cdc:      cdc,
 		storeKey: storeKey,
 	}
