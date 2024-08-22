@@ -58,14 +58,28 @@ func (veh *VoteExtensionHandler) SetHandlers(baseApp *baseapp.BaseApp) {
 
 // ExtendVoteHandler returns the handler for the ExtendVote ABCI request.
 // It triggers the ExtendVote sub-handlers for each part of the vote extension
-// and combines the results into a single vote extension. If any sub-handler
-// fails, its error is logged and the part of the vote extension it was
-// responsible for is left empty. This way, handlers can fail independently
-// of each other.
+// and combines the results into a single app-level vote extension. If any
+// sub-handler fails, its error is logged and the part of the vote extension
+// it was responsible for is not included in the final app-level vote extension.
+// This way, handlers can fail independently of each other. A sub-handler
+// can also return empty bytes for its part of the vote extension and such an
+// empty part is included in the final app-level vote extension. This way
+// presence of the given part in the app-level vote extension indicates
+// the success/failure of the corresponding sub-handler and may be used
+// for debugging purposes.
 //
 // Dev note: It is fine to return a nil response and an error from this
 // function in case of failure. Cosmos SDK will log the error and return an
-// empty vote extension to the CometBFT engine.
+// empty app-level vote extension to the CometBFT engine.
+//
+// Invariants summary:
+// 1. Sub-handler's response is considered valid if no error is returned,
+//    regardless of whether the vote extension part being part of the response
+//    is empty or not.
+// 2. Returns an error if all sub-handlers return an invalid response.
+// 3. Returns a non-empty app-level vote extension if at least one sub-handler
+//    returns a valid response.
+// 4. Returns an error if the app-level vote extension cannot be marshaled.
 func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 	return func(
 		ctx sdk.Context,
@@ -90,6 +104,10 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 				continue
 			}
 
+			// Note that len(res.VoteExtension) may be 0 and this is a valid
+			// case. Such an empty part is still included in the app-level
+			// vote extension. Missing part indicates an error of the
+			// given sub-handler.
 			voteExtensionParts[part] = res.VoteExtension
 		}
 
@@ -119,9 +137,19 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 //
 // Dev note: It is fine to return a nil response and an error from this
 // function in case of failure. Cosmos SDK will log the error and REJECT
-// the vote extension. Rejecting the vote extension is a serious event
-// and has liveness implications for the CometBFT engine. Make sure you
+// the app-level vote extension. Rejecting the vote extension is a serious
+// event and has liveness implications for the CometBFT engine. Make sure you
 // know what you are doing before returning an error from this function.
+//
+// Invariants summary:
+// 1. Accepts empty app-level vote extension.
+// 2. Rejects app-level vote extension that cannot be unmarshaled.
+// 3. Rejects app-level vote extension with incorrect height.
+// 4. Rejects app-level vote extension with no parts.
+// 5. Accepts app-level vote extension only if each part corresponds to
+//    a known sub-handler.
+// 6. Accepts app-level vote extension only if each part is accepted by the
+//    corresponding sub-handler.
 func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExtensionHandler {
 	return func(
 		ctx sdk.Context,
@@ -129,7 +157,8 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 	) (*cmtabci.ResponseVerifyVoteExtension, error) {
 		if len(req.VoteExtension) == 0 {
 			// Accept empty vote extensions. This is necessary given that
-			// Cosmos SDK turns ExtendVote errors into empty vote extensions.
+			// Cosmos SDK turns this handler's ExtendVote errors into empty
+			// vote extensions.
 			return &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
 			}, nil
