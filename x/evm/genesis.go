@@ -29,6 +29,9 @@ import (
 	"github.com/mezo-org/mezod/x/evm/keeper"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
+
+	btctoken "github.com/mezo-org/mezod/precompile/btctoken"
+	validatorpool "github.com/mezo-org/mezod/precompile/validatorpool"
 )
 
 // InitGenesis initializes genesis state based on exported genesis
@@ -50,10 +53,26 @@ func InitGenesis(
 		panic("the EVM module account has not been set")
 	}
 
+	// add precompile addresses to genesis accounts
+	precompiles := []types.GenesisAccount{
+		{
+			Address: btctoken.EvmAddress,
+			Code:    btctoken.EvmByteCode,
+			Storage: types.Storage{},
+		},
+		{
+			Address: validatorpool.EvmAddress,
+			Code:    validatorpool.EvmByteCode,
+			Storage: types.Storage{},
+		},
+	}
+	// add precompile accounts to genesisState
+	data.Accounts = append(data.Accounts, precompiles...)
+
 	for _, account := range data.Accounts {
 		address := common.HexToAddress(account.Address)
 		accAddress := sdk.AccAddress(address.Bytes())
-		// check that the EVM balance the matches the account balance
+		// check that the EVM balance matches the account balance
 		acc := accountKeeper.GetAccount(ctx, accAddress)
 		if acc == nil {
 			// account not found. Create it
