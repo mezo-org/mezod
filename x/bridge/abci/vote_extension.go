@@ -1,6 +1,7 @@
 package abci
 
 import (
+	"cosmossdk.io/log"
 	"fmt"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"golang.org/x/exp/slices"
@@ -20,16 +21,19 @@ const AssetsLockedEventsLimit = 10
 // VoteExtensionHandler is the bridge-specific handler for the ExtendVote and
 // VerifyVoteExtension ABCI requests.
 type VoteExtensionHandler struct {
+	logger        log.Logger
 	sidecarClient types.EthereumSidecarClient
 	bridgeKeeper  keeper.Keeper
 }
 
 // NewVoteExtensionHandler creates a new VoteExtensionHandler instance.
 func NewVoteExtensionHandler(
+	logger log.Logger,
 	sidecarClient types.EthereumSidecarClient,
 	bridgeKeeper keeper.Keeper,
 ) *VoteExtensionHandler {
 	return &VoteExtensionHandler{
+		logger:        logger,
 		sidecarClient: sidecarClient,
 		bridgeKeeper:  bridgeKeeper,
 	}
@@ -50,18 +54,35 @@ func NewVoteExtensionHandler(
 func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 	return func(
 		ctx sdk.Context,
-		_ *cmtabci.RequestExtendVote,
+		req *cmtabci.RequestExtendVote,
 	) (*cmtabci.ResponseExtendVote, error) {
 		// TODO: Fetched events will be finalized in the next block and the
 		//       tip will be updated then. Because of that, we may fetch the same
 		//       set of events twice, in two subsequent blocks. Once the full
 		//       flow is implemented, we will need to check this behavior and
 		//       fix it if necessary.
+		veh.logger.Info(
+			"bridge is extending vote",
+			"height", req.Height,
+		)
 
 		sequenceTip := veh.bridgeKeeper.GetAssetsLockedSequenceTip(ctx)
 
+		veh.logger.Info(
+			"assets locked sequence tip fetched",
+			"height", req.Height,
+			"sequence_tip", sequenceTip,
+		)
+
 		sequenceStart := sequenceTip.Add(math.NewInt(1))
 		sequenceEnd := sequenceStart.Add(math.NewInt(AssetsLockedEventsLimit))
+
+		veh.logger.Info(
+			"fetching assets locked events from the sidecar",
+			"height", req.Height,
+			"sequence_start", sequenceStart,
+			"sequence_end", sequenceEnd,
+		)
 
 		events, err := veh.sidecarClient.GetAssetsLockedEvents(
 			ctx,
@@ -75,6 +96,12 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 				err,
 			)
 		}
+
+		veh.logger.Info(
+			"sidecar returned assets locked events",
+			"height", req.Height,
+			"events_count", len(events),
+		)
 
 		// Order events by sequence in ascending order.
 		slices.SortFunc(events, bridgetypes.AssetsLockedEventsCmp)
@@ -97,6 +124,11 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			return nil, fmt.Errorf("failed to marshal vote extension: %w", err)
 		}
 
+		veh.logger.Info(
+			"bridge extended vote",
+			"height", req.Height,
+		)
+
 		return &cmtabci.ResponseExtendVote{VoteExtension: voteExtensionBytes}, nil
 	}
 }
@@ -115,10 +147,24 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		ctx sdk.Context,
 		req *cmtabci.RequestVerifyVoteExtension,
 	) (*cmtabci.ResponseVerifyVoteExtension, error) {
+		from := sdk.ConsAddress(req.ValidatorAddress).String()
+
+		veh.logger.Debug(
+			"bridge is verifying vote extension",
+			"height", req.Height,
+			"from", from,
+		)
+
 		if len(req.VoteExtension) == 0 {
 			// Accept empty bridge-specific vote extensions. This is necessary
 			// given that this handler's ExtendVote produces empty ones when
 			//  the Ethereum sidecar returns no events.
+			veh.logger.Debug(
+				"bridge accepted empty vote extension",
+				"height", req.Height,
+				"from", from,
+			)
+
 			return &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
 			}, nil
@@ -152,6 +198,12 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			// Make sure the number of events does not exceed the limit.
 			return nil, fmt.Errorf("number of events exceeds the limit")
 		}
+
+		veh.logger.Debug(
+			"bridge accepted vote extension",
+			"height", req.Height,
+			"from", from,
+		)
 
 		return &cmtabci.ResponseVerifyVoteExtension{
 			Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,

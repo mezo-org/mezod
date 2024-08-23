@@ -1,9 +1,8 @@
 package abci
 
 import (
-	"fmt"
-
 	"cosmossdk.io/log"
+	"fmt"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -14,7 +13,7 @@ import (
 
 // VoteExtensionPart is an enumeration of the different parts of the app-level
 // vote extension.
-type VoteExtensionPart = uint32
+type VoteExtensionPart uint32
 
 const (
 	// VoteExtensionPartUnknown is an unknown vote extension part.
@@ -23,6 +22,17 @@ const (
 	// is specific to the Bitcoin bridge.
 	VoteExtensionPartBridge
 )
+
+// String returns a string representation of the vote extension part.
+func (vep VoteExtensionPart) String() string {
+	switch vep {
+	case VoteExtensionPartBridge:
+		return "bridge"
+	default:
+		return fmt.Sprintf("unknown: %d", vep)
+	}
+
+}
 
 // VoteExtensionHandler is a handler for the ExtendVote and
 // VerifyVoteExtension ABCI requests. It is designed to be used with
@@ -85,11 +95,17 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestExtendVote,
 	) (*cmtabci.ResponseExtendVote, error) {
-		voteExtensionParts := make(map[VoteExtensionPart][]byte)
+		voteExtensionParts := make(map[uint32][]byte)
 
 		// TODO: Consider running sub-handlers concurrently to speed up execution.
 
 		for part, subHandler := range veh.subHandlers {
+			veh.logger.Info(
+				"running sub-handler to extend vote",
+				"height", req.Height,
+				"part", part,
+			)
+
 			// Trigger the ExtendVote sub-handler for the given vote extension part.
 			res, err := subHandler.ExtendVoteHandler()(ctx, req)
 			if err != nil {
@@ -97,18 +113,26 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 				// are other sub-handlers in the queue. We do not want
 				// make sub-handlers dependent on each other.
 				veh.logger.Error(
-					"sub-handler failed to extend vote with part",
+					"sub-handler failed to extend vote",
+					"height", req.Height,
 					"part", part,
 					"err", err,
 				)
 				continue
 			}
 
+			veh.logger.Info(
+				"sub-handler extended vote",
+				"height", req.Height,
+				"part", part,
+				"part_byte_length", len(res.VoteExtension),
+			)
+
 			// Note that len(res.VoteExtension) may be 0 and this is a valid
 			// case. Such an empty part is still included in the app-level
 			// vote extension. Missing part indicates an error of the
 			// given sub-handler.
-			voteExtensionParts[part] = res.VoteExtension
+			voteExtensionParts[uint32(part)] = res.VoteExtension
 		}
 
 		if len(voteExtensionParts) == 0 {
@@ -127,6 +151,12 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			// If marshaling fails, we cannot recover, so return an error.
 			return nil, fmt.Errorf("failed to marshal vote extension: %w", err)
 		}
+
+		veh.logger.Info(
+			"vote extended",
+			"height", req.Height,
+			"ve_byte_length", len(voteExtensionBytes),
+		)
 
 		return &cmtabci.ResponseExtendVote{VoteExtension: voteExtensionBytes}, nil
 	}
@@ -155,10 +185,24 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		ctx sdk.Context,
 		req *cmtabci.RequestVerifyVoteExtension,
 	) (*cmtabci.ResponseVerifyVoteExtension, error) {
+		from := sdk.ConsAddress(req.ValidatorAddress).String()
+
+		veh.logger.Debug(
+			"verifying vote extension",
+			"height", req.Height,
+			"from", from,
+		)
+
 		if len(req.VoteExtension) == 0 {
 			// Accept empty vote extensions. This is necessary given that
 			// Cosmos SDK turns this handler's ExtendVote errors into empty
 			// vote extensions.
+			veh.logger.Debug(
+				"accepted empty vote extension",
+				"height", req.Height,
+				"from", from,
+			)
+
 			return &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
 			}, nil
@@ -186,13 +230,22 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			return nil, fmt.Errorf("vote extension has no parts")
 		}
 
-		for part, partBytes := range voteExtension.Parts {
+		for partUint, partBytes := range voteExtension.Parts {
+			part := VoteExtensionPart(partUint)
+
 			subHandler, ok := veh.subHandlers[part]
 			if !ok {
 				// Make sure the vote extension part is recognized. If not,
 				// reject the vote extension as something is clearly wrong.
 				return nil, fmt.Errorf("unknown vote extension part: %d", part)
 			}
+
+			veh.logger.Debug(
+				"running sub-handler to verify vote extension",
+				"height", req.Height,
+				"from", from,
+				"part", part,
+			)
 
 			res, err := subHandler.VerifyVoteExtensionHandler()(
 				ctx,
@@ -218,7 +271,20 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 					part,
 				)
 			}
+
+			veh.logger.Debug(
+				"sub-handler verified and accepted vote extension",
+				"height", req.Height,
+				"from", from,
+				"part", part,
+			)
 		}
+
+		veh.logger.Debug(
+			"accepted vote extension",
+			"height", req.Height,
+			"from", from,
+		)
 
 		return &cmtabci.ResponseVerifyVoteExtension{
 			Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
