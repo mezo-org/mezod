@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
@@ -111,7 +112,7 @@ func TestContract_Run(t *testing.T) {
 	tests := map[string]struct {
 		method         Method
 		methodInputs   MethodInputs
-		value          *big.Int
+		value          *uint256.Int
 		readOnlyMode   bool
 		expectedOutput []byte
 		expectedError  error
@@ -148,7 +149,7 @@ func TestContract_Run(t *testing.T) {
 				big.NewInt(10),
 				[]byte{0x7B}, // 123
 			},
-			value: big.NewInt(1000),
+			value: uint256.NewInt(1000),
 			// Sum of inputs (10 + 123 = 133) as hex, left-padded to 32 bytes.
 			expectedOutput: append(make([]byte, 31), 0x85),
 		},
@@ -161,7 +162,7 @@ func TestContract_Run(t *testing.T) {
 				big.NewInt(10),
 				[]byte{0x7B}, // 123
 			},
-			value:         big.NewInt(1000),
+			value:         uint256.NewInt(1000),
 			expectedError: fmt.Errorf("read method cannot accept value"),
 		},
 		"write method with read-only mode": {
@@ -186,7 +187,7 @@ func TestContract_Run(t *testing.T) {
 				big.NewInt(10),
 				[]byte{0x7B}, // 123
 			},
-			value:         big.NewInt(1000),
+			value:         uint256.NewInt(1000),
 			expectedError: fmt.Errorf("non-payable write method cannot accept value"),
 		},
 	}
@@ -293,12 +294,12 @@ func TestRunContext_TxOrigin(t *testing.T) {
 }
 
 func TestRunContext_MsgValue(t *testing.T) {
-	value := big.NewInt(10)
+	value := uint256.NewInt(10)
 	contract := vm.NewContract(&Contract{}, nil, value, 0)
 
 	runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
-	if actualValue := runContext.MsgValue(); value.Cmp(actualValue) != 0 {
+	if actualValue := runContext.MsgValue(); value.ToBig().Cmp(actualValue) != 0 {
 		t.Errorf(
 			"unexpected value\n expected: %v\n actual:   %v",
 			value,
@@ -310,17 +311,17 @@ func TestRunContext_MsgValue(t *testing.T) {
 func TestRunContext_IsMsgValue(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    *big.Int
+		value    *uint256.Int
 		expected bool
 	}{
 		{
 			name:     "value is greater than zero",
-			value:    big.NewInt(10),
+			value:    uint256.NewInt(10),
 			expected: true,
 		},
 		{
 			name:     "value is zero",
-			value:    big.NewInt(0),
+			value:    uint256.NewInt(0),
 			expected: false,
 		},
 		{

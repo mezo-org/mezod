@@ -155,7 +155,7 @@ func (k *Keeper) SetAccount(ctx sdk.Context, addr common.Address, account stated
 
 	k.accountKeeper.SetAccount(ctx, acct)
 
-	if err := k.SetBalance(ctx, addr, account.Balance); err != nil {
+	if err := k.SetBalance(ctx, addr, account.Balance.ToBig()); err != nil {
 		return err
 	}
 

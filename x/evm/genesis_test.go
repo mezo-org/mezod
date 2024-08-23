@@ -1,7 +1,6 @@
 package evm_test
 
 import (
-	"math/big"
 	"testing"
 	"time"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm"
@@ -203,7 +203,7 @@ func (suite *EvmTestSuite) TestInitGenesis() {
 		{
 			"valid account",
 			func() {
-				vmdb.AddBalance(address, big.NewInt(1))
+				vmdb.AddBalance(address, uint256.NewInt(1))
 			},
 			&types.GenesisState{
 				Params: types.DefaultParams(),

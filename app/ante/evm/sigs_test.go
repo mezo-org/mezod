@@ -3,6 +3,7 @@ package evm_test
 import (
 	"math/big"
 
+	"github.com/holiman/uint256"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -17,7 +18,7 @@ func (suite *AnteTestSuite) TestSignatures() {
 
 	acc := statedb.NewEmptyAccount()
 	acc.Nonce = 1
-	acc.Balance = big.NewInt(10000000000)
+	acc.Balance = uint256.NewInt(10000000000)
 
 	err := suite.app.EvmKeeper.SetAccount(suite.ctx, addr, *acc)
 	suite.Require().NoError(err)

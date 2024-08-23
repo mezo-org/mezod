@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethparams "github.com/ethereum/go-ethereum/params"
+	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/x/evm/keeper"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -204,7 +205,7 @@ func (suite *KeeperTestSuite) TestCheckSenderBalance() {
 	}
 
 	vmdb := suite.StateDB()
-	vmdb.AddBalance(suite.address, hundredInt.BigInt())
+	vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()))
 	balance := vmdb.GetBalance(suite.address)
 	suite.Require().Equal(balance, hundredInt.BigInt())
 	err := vmdb.Commit()
@@ -248,7 +249,7 @@ func (suite *KeeperTestSuite) TestCheckSenderBalance() {
 
 			acct := suite.app.EvmKeeper.GetAccountOrEmpty(suite.ctx, suite.address)
 			err := keeper.CheckSenderBalance(
-				sdkmath.NewIntFromBigInt(acct.Balance),
+				sdkmath.NewIntFromBigInt(acct.Balance.ToBig()),
 				txData,
 			)
 
@@ -464,7 +465,7 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 				} else {
 					gasTipCap = tc.gasTipCap
 				}
-				vmdb.AddBalance(suite.address, initBalance.BigInt())
+				vmdb.AddBalance(suite.address, uint256.NewInt(initBalance.Uint64()))
 				balance := vmdb.GetBalance(suite.address)
 				suite.Require().Equal(balance, initBalance.BigInt())
 			} else {
@@ -472,7 +473,7 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 					gasPrice = tc.gasPrice.BigInt()
 				}
 
-				vmdb.AddBalance(suite.address, hundredInt.BigInt())
+				vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()))
 				balance := vmdb.GetBalance(suite.address)
 				suite.Require().Equal(balance, hundredInt.BigInt())
 			}
