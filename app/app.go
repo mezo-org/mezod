@@ -100,6 +100,7 @@ import (
 	_ "github.com/mezo-org/mezod/client/docs/statik"
 
 	"github.com/mezo-org/mezod/app/ante"
+	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/x/bridge"
 	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
 	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
@@ -249,6 +250,7 @@ func NewMezo(
 		upgradetypes.StoreKey,
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
+		bridgetypes.StoreKey,
 	)
 
 	tkeys := storetypes.NewTransientStoreKeys(
@@ -582,11 +584,14 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 // setABCIExtensions sets the ABCI++ extensions on the application.
 // This function assumes the BridgeKeeper is already set in the app.
 func (app *Mezo) setABCIExtensions() {
-	// TODO: Set proper sidecar.
+	sidecarClient := ethsidecar.RunTestSidecar(context.Background())
+
 	bridgeVoteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
-		nil,
+		app.Logger(),
+		sidecarClient,
 		app.BridgeKeeper,
 	)
+
 	voteExtensionHandler := appabci.NewVoteExtensionHandler(
 		app.Logger(),
 		bridgeVoteExtensionHandler,
