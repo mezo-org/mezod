@@ -1,0 +1,57 @@
+syntax = "proto3";
+package mezo.poa.v1;
+
+import "gogoproto/gogo.proto";
+import "tendermint/types/types.proto";
+
+option go_package = "github.com/mezo-org/mezod/x/poa/types";
+
+// Params defines the parameters for the module.
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+
+  // max_validators defines the maximum number of validators in the network.
+  uint32 max_validators = 1;
+}
+
+// Validator represents a validator in the pool.
+message Validator {
+  // operator_bech32 is the Cosmos SDK address (bech32) identifying the validator.
+  string operator_bech32 = 1;
+  // cons_pub_key_bech32 is the consensus public key (bech32) of the validator
+  // used to vote on blocks.
+  string cons_pub_key_bech32 = 2;
+  // description holds some human-readable information about the validator.
+  Description description = 3 [(gogoproto.nullable) = false];
+}
+
+// Description defines a validator description.
+message Description {
+  // moniker is the validator's name.
+  string moniker = 1;
+  // identity is the optional identity signature (ex. UPort or Keybase).
+  string identity = 2;
+  // website is the optional website link.
+  string website = 3;
+  // security_contact is the optional security contact information.
+  string security_contact = 4;
+  // details is the optional details about the validator.
+  string details = 5;
+}
+
+// Application represents validator's application for joining the pool.
+message Application {
+  // validator is the candidate that is subject of the application.
+  Validator validator = 1 [(gogoproto.nullable) = false];
+}
+
+// HistoricalInfo contains header and validator information for a given block.
+// It is stored as part of poa module's state, which persists the `n` most
+// recent HistoricalInfo. The `n` is determined by the poa's module
+// HistoricalEntries constant.
+message HistoricalInfo {
+  // header contains the block's header.
+  tendermint.types.Header header = 1 [(gogoproto.nullable) = false];
+  // valset contains the active validator set at the block.
+  repeated Validator valset = 2 [(gogoproto.nullable) = false];
+}

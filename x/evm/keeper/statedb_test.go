@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"cosmossdk.io/store/prefix"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/cosmos/cosmos-sdk/store/prefix"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
@@ -16,10 +16,10 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	"github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	"github.com/mezo-org/mezod/x/evm/types"
 )
 
 func (suite *KeeperTestSuite) TestCreateAccount() {
@@ -221,7 +221,9 @@ func (suite *KeeperTestSuite) TestSetNonce() {
 
 func (suite *KeeperTestSuite) TestGetCodeHash() {
 	addr := utiltx.GenerateAddress()
+	nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
 	baseAcc := &authtypes.BaseAccount{Address: sdk.AccAddress(addr.Bytes()).String()}
+	baseAcc.AccountNumber = nextAccNumber
 	suite.app.AccountKeeper.SetAccount(suite.ctx, baseAcc)
 
 	testCases := []struct {
@@ -265,7 +267,9 @@ func (suite *KeeperTestSuite) TestGetCodeHash() {
 
 func (suite *KeeperTestSuite) TestSetCode() {
 	addr := utiltx.GenerateAddress()
+	nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
 	baseAcc := &authtypes.BaseAccount{Address: sdk.AccAddress(addr.Bytes()).String()}
+	baseAcc.AccountNumber = nextAccNumber
 	suite.app.AccountKeeper.SetAccount(suite.ctx, baseAcc)
 
 	testCases := []struct {
@@ -320,7 +324,9 @@ func (suite *KeeperTestSuite) TestSetCode() {
 
 func (suite *KeeperTestSuite) TestKeeperSetCode() {
 	addr := utiltx.GenerateAddress()
+	nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
 	baseAcc := &authtypes.BaseAccount{Address: sdk.AccAddress(addr.Bytes()).String()}
+	baseAcc.AccountNumber = nextAccNumber
 	suite.app.AccountKeeper.SetAccount(suite.ctx, baseAcc)
 
 	testCases := []struct {
@@ -725,7 +731,7 @@ func (suite *KeeperTestSuite) TestAddLog() {
 		suite.Run(tc.name, func() {
 			suite.SetupTest()
 			vmdb := statedb.New(suite.ctx, suite.app.EvmKeeper, statedb.NewTxConfig(
-				common.BytesToHash(suite.ctx.HeaderHash().Bytes()),
+				common.BytesToHash(suite.ctx.HeaderHash()),
 				tc.hash,
 				0, 0,
 			))

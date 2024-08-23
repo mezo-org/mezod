@@ -9,9 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/evmos/evmos/v12/x/evm/keeper"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	"github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/x/evm/keeper"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	"github.com/mezo-org/mezod/x/evm/types"
 )
 
 // LogRecordHook records all the logs
@@ -68,7 +68,7 @@ func (suite *KeeperTestSuite) TestEvmHooks() {
 		ctx := suite.ctx
 		txHash := common.BigToHash(big.NewInt(1))
 		vmdb := statedb.New(ctx, k, statedb.NewTxConfig(
-			common.BytesToHash(ctx.HeaderHash().Bytes()),
+			common.BytesToHash(ctx.HeaderHash()),
 			txHash,
 			0,
 			0,

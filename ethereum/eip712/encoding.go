@@ -19,14 +19,21 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/simapp/params"
+	msgv1 "cosmossdk.io/api/cosmos/msg/v1"
+
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
+	"google.golang.org/protobuf/reflect/protoreflect"
+
+	"cosmossdk.io/simapp/params"
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	txTypes "github.com/cosmos/cosmos-sdk/types/tx"
 
 	apitypes "github.com/ethereum/go-ethereum/signer/core/apitypes"
-	evmostypes "github.com/evmos/evmos/v12/types"
+	mezotypes "github.com/mezo-org/mezod/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 )
@@ -116,7 +123,7 @@ func decodeAminoSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		return apitypes.TypedData{}, err
 	}
 
-	chainID, err := evmostypes.ParseChainID(aminoDoc.ChainID)
+	chainID, err := mezotypes.ParseChainID(aminoDoc.ChainID)
 	if err != nil {
 		return apitypes.TypedData{}, errors.New("invalid chain ID passed as argument")
 	}
@@ -180,7 +187,7 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 
 	signerInfo := authInfo.SignerInfos[0]
 
-	chainID, err := evmostypes.ParseChainID(signDoc.ChainId)
+	chainID, err := mezotypes.ParseChainID(signDoc.ChainId)
 	if err != nil {
 		return apitypes.TypedData{}, fmt.Errorf("invalid chain ID passed as argument: %w", err)
 	}
@@ -190,9 +197,8 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		Gas:    authInfo.Fee.GasLimit,
 	}
 
-	tip := authInfo.Tip
-
 	// WrapTxToTypedData expects the payload as an Amino Sign Doc
+	legacytx.RegressionTestingAminoCodec = legacy.Cdc
 	signBytes := legacytx.StdSignBytes(
 		signDoc.ChainId,
 		signDoc.AccountNumber,
@@ -201,7 +207,6 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		*stdFee,
 		msgs,
 		body.Memo,
-		tip,
 	)
 
 	typedData, err := WrapTxToTypedData(
@@ -232,19 +237,28 @@ func validatePayloadMessages(msgs []sdk.Msg) error {
 		return errors.New("unable to build EIP-712 payload: transaction does contain any messages")
 	}
 
-	var msgSigner sdk.AccAddress
+	var txSigner string
 
-	for i, m := range msgs {
-		if len(m.GetSigners()) != 1 {
+	for i, msg := range msgs {
+		msgV2 := protoadapt.MessageV2Of(msg).ProtoReflect()
+		msgV2Desc := msgV2.Descriptor()
+
+		signersFields := proto.GetExtension(msgV2Desc.Options(), msgv1.E_Signer).([]string)
+
+		if len(signersFields) != 1 {
 			return errors.New("unable to build EIP-712 payload: expect exactly 1 signer")
 		}
 
+		signerField := signersFields[0]
+		signerFieldDesc := msgV2Desc.Fields().ByName(protoreflect.Name(signerField))
+		signer := msgV2.Get(signerFieldDesc).String()
+
 		if i == 0 {
-			msgSigner = m.GetSigners()[0]
+			txSigner = signer
 			continue
 		}
 
-		if !msgSigner.Equals(m.GetSigners()[0]) {
+		if txSigner != signer {
 			return errors.New("unable to build EIP-712 payload: multiple signers detected")
 		}
 	}

@@ -5,28 +5,31 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
+	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
+
 	"cosmossdk.io/math"
 
+	chainparams "cosmossdk.io/simapp/params"
 	"github.com/cosmos/cosmos-sdk/client"
-	chainparams "github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
-	"github.com/evmos/evmos/v12/ethereum/eip712"
+	"github.com/mezo-org/mezod/ethereum/eip712"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/cmd/config"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/cmd/config"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/utils"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -173,34 +176,6 @@ func (suite *EIP712TestSuite) TestEIP712() {
 			timeoutHeight: 1000,
 			expectSuccess: false,
 		},
-		{
-			title: "Fails - Single Message / Multi-Signer",
-			msgs: []sdk.Msg{
-				banktypes.NewMsgMultiSend(
-					[]banktypes.Input{
-						banktypes.NewInput(
-							suite.createTestAddress(),
-							suite.makeCoins(suite.denom, math.NewInt(50)),
-						),
-						banktypes.NewInput(
-							suite.createTestAddress(),
-							suite.makeCoins(suite.denom, math.NewInt(50)),
-						),
-					},
-					[]banktypes.Output{
-						banktypes.NewOutput(
-							suite.createTestAddress(),
-							suite.makeCoins(suite.denom, math.NewInt(50)),
-						),
-						banktypes.NewOutput(
-							suite.createTestAddress(),
-							suite.makeCoins(suite.denom, math.NewInt(50)),
-						),
-					},
-				),
-			},
-			expectSuccess: false,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -249,11 +224,17 @@ func (suite *EIP712TestSuite) TestEIP712() {
 					Address:       sdk.MustBech32ifyAddressBytes(config.Bech32Prefix, pubKey.Bytes()),
 				}
 
-				bz, err := suite.clientCtx.TxConfig.SignModeHandler().GetSignBytes(
-					signMode,
-					signerData,
-					txBuilder.GetTx(),
+				legacytx.RegressionTestingAminoCodec = legacy.Cdc
+				bz := legacytx.StdSignBytes(
+					signerData.ChainID,
+					signerData.AccountNumber,
+					signerData.Sequence,
+					txBuilder.GetTx().GetTimeoutHeight(),
+					legacytx.NewStdFee(params.fee.GasLimit, params.fee.Amount), //nolint:staticcheck
+					txBuilder.GetTx().GetMsgs(),
+					txBuilder.GetTx().GetMemo(),
 				)
+
 				suite.Require().NoError(err)
 
 				suite.verifyEIP712SignatureVerification(tc.expectSuccess, *privKey, *pubKey, bz)

@@ -2,17 +2,17 @@
 
 PACKAGES_NOSIMULATION=$(shell go list ./... | grep -v '/simulation')
 VERSION ?= $(shell echo $(shell git describe --tags --always) | sed 's/^v//')
-TMVERSION := $(shell go list -m github.com/tendermint/tendermint | sed 's:.* ::')
+CMTVERSION := $(shell go list -m github.com/cometbft/cometbft | sed 's:.* ::')
 COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
-EVMOS_BINARY = evmosd
-EVMOS_DIR = evmos
+MEZO_BINARY = mezod
+MEZO_DIR = mezo
 BUILDDIR ?= $(CURDIR)/build
-HTTPS_GIT := https://github.com/evmos/evmos.git
+HTTPS_GIT := https://github.com/mezo-org/mezod.git
 DOCKER := $(shell which docker)
 NAMESPACE := tharsishq
-PROJECT := evmos
+PROJECT := mezo
 DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DOCKER_TAG := $(COMMIT_HASH)
@@ -58,11 +58,11 @@ build_tags := $(strip $(build_tags))
 
 # process linker flags
 
-ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=evmos \
-          -X github.com/cosmos/cosmos-sdk/version.AppName=$(EVMOS_BINARY) \
+ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=mezo \
+          -X github.com/cosmos/cosmos-sdk/version.AppName=$(MEZO_BINARY) \
           -X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
           -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) \
-          -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(TMVERSION)
+          -X github.com/cometbft/cometbft/version.CMTSemVer=$(CMTVERSION)
 
 # DB backend selection
 ifeq (cleveldb,$(findstring cleveldb,$(COSMOS_BUILD_OPTIONS)))
@@ -130,7 +130,7 @@ build-reproducible: go.sum
 	$(DOCKER) rm latest-build || true
 	$(DOCKER) run --volume=$(CURDIR):/sources:ro \
         --env TARGET_PLATFORMS='linux/amd64' \
-        --env APP=evmosd \
+        --env APP=mezod \
         --env VERSION=$(VERSION) \
         --env COMMIT=$(COMMIT) \
         --env CGO_ENABLED=1 \
@@ -145,12 +145,12 @@ build-docker:
 	$(DOCKER) tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
 	# docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:${COMMIT_HASH}
 	# update old container
-	$(DOCKER) rm evmos || true
+	$(DOCKER) rm mezo || true
 	# create a new container from the latest image
-	$(DOCKER) create --name evmos -t -i ${DOCKER_IMAGE}:latest evmos
+	$(DOCKER) create --name mezo -t -i ${DOCKER_IMAGE}:latest mezo
 	# move the binaries to the ./build directory
 	mkdir -p ./build/
-	$(DOCKER) cp evmos:/usr/bin/evmosd ./build/
+	$(DOCKER) cp mezo:/usr/bin/mezod ./build/
 
 build-docker-linux:
 	$(DOCKER) buildx build --platform linux/amd64 --tag ${DOCKER_IMAGE}:${DOCKER_TAG} .
@@ -279,7 +279,7 @@ update-swagger-docs: statik
 .PHONY: update-swagger-docs
 
 godocs:
-	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/evmos/evmos"
+	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/mezo-org/mezod"
 	godoc -http=:6060
 
 ###############################################################################
@@ -364,30 +364,9 @@ format:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-# ------
-# NOTE: Link to the tendermintdev/sdk-proto-gen docker images:
-#       https://hub.docker.com/r/tendermintdev/sdk-proto-gen/tags
-#
-protoVer=v0.7
-protoImageName=tendermintdev/sdk-proto-gen:$(protoVer)
-protoImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protoImageName)
-# ------
-# NOTE: cosmos/proto-builder image is needed because clang-format is not installed
-#       on the tendermintdev/sdk-proto-gen docker image.
-#		Link to the cosmos/proto-builder docker images:
-#       https://github.com/cosmos/cosmos-sdk/pkgs/container/proto-builder
-#
-protoCosmosVer=0.11.2
-protoCosmosName=ghcr.io/cosmos/proto-builder:$(protoCosmosVer)
-protoCosmosImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protoCosmosName)
-# ------
-# NOTE: Link to the yoheimuta/protolint docker images:
-#       https://hub.docker.com/r/yoheimuta/protolint/tags
-#
-protolintVer=0.42.2
-protolintName=yoheimuta/protolint:$(protolintVer)
-protolintImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protolintName)
-
+protoVer=0.11.5
+protoImageName=ghcr.io/cosmos/proto-builder:$(protoVer)
+protoImage=$(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace --user 0 $(protoImageName)
 
 # ------
 # NOTE: If you are experiencing problems running these commands, try deleting
@@ -403,20 +382,19 @@ proto-swagger-gen:
 	@echo "Downloading Protobuf dependencies"
 	@make proto-download-deps
 	@echo "Generating Protobuf Swagger"
-	$(protoCosmosImage) sh ./scripts/protoc-swagger-gen.sh
+	$(protoImage) sh ./scripts/protoc-swagger-gen.sh
 
 proto-format:
 	@echo "Formatting Protobuf files"
-	$(protoCosmosImage) find ./ -name *.proto -exec clang-format -i {} \;
+	$(protoImage) find ./ -name *.proto -exec clang-format -i {} \;
 
-# NOTE: The linter configuration lives in .protolint.yaml
 proto-lint:
 	@echo "Linting Protobuf files"
-	$(protolintImage) lint ./proto
+	$(protoImage) buf lint --error-format=json
 
 proto-check-breaking:
 	@echo "Checking Protobuf files for breaking changes"
-	$(protoImage) buf breaking --against $(HTTPS_GIT)#branch=main
+	$(protoImage) buf breaking --against $(HTTPS_GIT) #branch=main
 
 SWAGGER_DIR=./swagger-proto
 THIRD_PARTY_DIR=$(SWAGGER_DIR)/third_party
@@ -478,7 +456,7 @@ localnet-docker-build:
 
 # Start a 4-node testnet locally
 localnet-docker-start: localnet-docker-stop
-	@if ! [ -f build/node0/$(EVMOS_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/evmos:Z meso/node "./evmosd testnet init-files --v 4 -o /evmos --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
+	@if ! [ -f build/node0/$(MEZO_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/mezo:Z mezo-org/mezod "./mezod testnet init-files --v 4 -o /mezo --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
 	docker-compose up -d
 
 # Stop testnet
@@ -494,15 +472,15 @@ localnet-docker-clean:
 localnet-docker-unsafe-reset:
 	docker-compose down
 ifeq ($(OS),Windows_NT)
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node1\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node2\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node3\evmosd:/evmos\Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node1\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node2\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node3\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
 else
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node0/evmosd:/evmos:Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node1/evmosd:/evmos:Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node2/evmosd:/evmos:Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node3/evmosd:/evmos:Z meso/node "./evmosd tendermint unsafe-reset-all --home=/evmos"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node0/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node1/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node2/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
+	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node3/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
 endif
 
 # Clean testnet
@@ -516,6 +494,7 @@ localnet-docker-show-logstream:
 ###############################################################################
 
 LOCALNET_DIR = .localnet
+LOCALNET_CHAIN_ID = mezo_31611-10
 
 localnet-bin-init:
 	@if ! [ -d build ]; then \
@@ -524,19 +503,19 @@ localnet-bin-init:
 	fi
 	@if ! [ -d $(LOCALNET_DIR) ]; then \
 		echo "Initializing localnet configuration..."; \
-		./build/evmosd testnet init-files \
+		./build/mezod testnet init-files \
 		--v 4 \
 		--output-dir $(LOCALNET_DIR) \
 		--home $(LOCALNET_DIR) \
 		--keyring-backend=test \
 		--starting-ip-address localhost \
-		--chain-id mezo_31611-10; \
+		--chain-id $(LOCALNET_CHAIN_ID); \
 	else \
 		echo "Skipped initializing localnet configuration."; \
 	fi
 
 localnet-bin-start:
-	./scripts/localnet-start.sh
+	LOCALNET_CHAIN_ID=$(LOCALNET_CHAIN_ID) ./scripts/localnet-start.sh
 
 localnet-bin-clean:
 	rm -rf $(LOCALNET_DIR) build
@@ -548,7 +527,7 @@ localnet-bin-clean:
 ###                                Releasing                                ###
 ###############################################################################
 
-PACKAGE_NAME:=github.com/evmos/evmos
+PACKAGE_NAME:=github.com/mezo-org/mezod
 GOLANG_CROSS_VERSION  = v1.20
 GOPATH ?= '$(HOME)/go'
 release-dry-run:

@@ -18,12 +18,14 @@ package v4_test
 import (
 	"testing"
 
+	storetypes "cosmossdk.io/store/types"
+
 	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/encoding"
-	v4 "github.com/evmos/evmos/v12/x/feemarket/migrations/v4"
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/encoding"
+	v4 "github.com/mezo-org/mezod/x/feemarket/migrations/v4"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,8 +49,8 @@ func TestMigrate(t *testing.T) {
 	encCfg := encoding.MakeConfig(app.ModuleBasics)
 	cdc := encCfg.Codec
 
-	storeKey := sdk.NewKVStoreKey(types.ModuleName)
-	tKey := sdk.NewTransientStoreKey("transient_test")
+	storeKey := storetypes.NewKVStoreKey(types.ModuleName)
+	tKey := storetypes.NewTransientStoreKey("transient_test")
 	ctx := testutil.DefaultContext(storeKey, tKey)
 	kvStore := ctx.KVStore(storeKey)
 

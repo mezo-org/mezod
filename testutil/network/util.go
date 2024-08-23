@@ -17,24 +17,29 @@
 package network
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"time"
 
+	tmcfg "github.com/cometbft/cometbft/config"
+	tmos "github.com/cometbft/cometbft/libs/os"
+	"github.com/cometbft/cometbft/node"
+	"github.com/cometbft/cometbft/p2p"
+	pvm "github.com/cometbft/cometbft/privval"
+	"github.com/cometbft/cometbft/proxy"
+	"github.com/cometbft/cometbft/rpc/client/local"
+	tmtypes "github.com/cometbft/cometbft/types"
+	tmtime "github.com/cometbft/cometbft/types/time"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 	"github.com/ethereum/go-ethereum/ethclient"
-	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/p2p"
-	pvm "github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/rpc/client/local"
-	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 
+	sdkserver "github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/server/api"
 	servergrpc "github.com/cosmos/cosmos-sdk/server/grpc"
-	srvtypes "github.com/cosmos/cosmos-sdk/server/types"
+	serverlog "github.com/cosmos/cosmos-sdk/server/log"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
@@ -44,8 +49,8 @@ import (
 	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
-	"github.com/evmos/evmos/v12/server"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/server"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 func startInProcess(cfg Config, val *Validator) error {
@@ -64,16 +69,27 @@ func startInProcess(cfg Config, val *Validator) error {
 
 	app := cfg.AppConstructor(*val)
 
-	genDocProvider := node.DefaultGenesisDocProviderFunc(tmCfg)
+	genDocProvider := func() (*tmtypes.GenesisDoc, error) {
+		appGenesis, err := genutiltypes.AppGenesisFromFile(tmCfg.GenesisFile())
+		if err != nil {
+			return nil, err
+		}
+		genesisDoc, err := appGenesis.ToGenesisDoc()
+		if err != nil {
+			return nil, err
+		}
+		return genesisDoc, nil
+	}
+
 	tmNode, err := node.NewNode(
 		tmCfg,
 		pvm.LoadOrGenFilePV(tmCfg.PrivValidatorKeyFile(), tmCfg.PrivValidatorStateFile()),
 		nodeKey,
-		proxy.NewLocalClientCreator(app),
+		proxy.NewLocalClientCreator(sdkserver.NewCometABCIWrapper(app)),
 		genDocProvider,
-		node.DefaultDBProvider,
+		tmcfg.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmCfg.Instrumentation),
-		logger.With("module", val.Moniker),
+		serverlog.CometLoggerWrapper{Logger: logger.With("module", val.Moniker)},
 	)
 	if err != nil {
 		return err
@@ -101,14 +117,25 @@ func startInProcess(cfg Config, val *Validator) error {
 		app.RegisterTendermintService(val.ClientCtx)
 	}
 
-	if val.AppConfig.API.Enable && val.APIAddress != "" {
-		apiSrv := api.New(val.ClientCtx, logger.With("module", "api-server"))
-		app.RegisterAPIRoutes(apiSrv, val.AppConfig.API)
+	if val.AppConfig.GRPC.Enable {
+		grpcSrv, err := servergrpc.NewGRPCServer(
+			val.ClientCtx,
+			app,
+			val.AppConfig.GRPC,
+		)
+		if err != nil {
+			return err
+		}
 
 		errCh := make(chan error)
 
 		go func() {
-			if err := apiSrv.Start(val.AppConfig.Config); err != nil {
+			if err = servergrpc.StartGRPCServer(
+				context.Background(),
+				logger,
+				val.AppConfig.GRPC,
+				grpcSrv,
+			); err != nil {
 				errCh <- err
 			}
 		}()
@@ -116,26 +143,38 @@ func startInProcess(cfg Config, val *Validator) error {
 		select {
 		case err := <-errCh:
 			return err
-		case <-time.After(srvtypes.ServerStartTime): // assume server started successfully
-		}
-
-		val.api = apiSrv
-	}
-
-	if val.AppConfig.GRPC.Enable {
-		grpcSrv, err := servergrpc.StartGRPCServer(val.ClientCtx, app, val.AppConfig.GRPC)
-		if err != nil {
-			return err
+		case <-time.After(server.ServerStartTime): // assume server started successfully
 		}
 
 		val.grpc = grpcSrv
+	}
 
-		if val.AppConfig.GRPCWeb.Enable {
-			val.grpcWeb, err = servergrpc.StartGRPCWeb(grpcSrv, val.AppConfig.Config)
-			if err != nil {
-				return err
+	if val.AppConfig.API.Enable && val.APIAddress != "" {
+		apiSrv := api.New(
+			val.ClientCtx,
+			logger.With("module", "api-server"),
+			val.grpc,
+		)
+		app.RegisterAPIRoutes(apiSrv, val.AppConfig.API)
+
+		errCh := make(chan error)
+
+		go func() {
+			if err := apiSrv.Start(
+				context.Background(),
+				val.AppConfig.Config,
+			); err != nil {
+				errCh <- err
 			}
+		}()
+
+		select {
+		case err := <-errCh:
+			return err
+		case <-time.After(server.ServerStartTime): // assume server started successfully
 		}
+
+		val.api = apiSrv
 	}
 
 	if val.AppConfig.JSONRPC.Enable && val.AppConfig.JSONRPC.Address != "" {
@@ -168,7 +207,7 @@ func collectGenFiles(cfg Config, vals []*Validator, outputDir string) error {
 	for i := 0; i < cfg.NumValidators; i++ {
 		tmCfg := vals[i].Ctx.Config
 
-		nodeDir := filepath.Join(outputDir, vals[i].Moniker, "evmosd")
+		nodeDir := filepath.Join(outputDir, vals[i].Moniker, "mezod")
 		gentxsDir := filepath.Join(outputDir, "gentxs")
 
 		tmCfg.Moniker = vals[i].Moniker
@@ -177,13 +216,24 @@ func collectGenFiles(cfg Config, vals []*Validator, outputDir string) error {
 		initCfg := genutiltypes.NewInitConfig(cfg.ChainID, gentxsDir, vals[i].NodeID, vals[i].PubKey)
 
 		genFile := tmCfg.GenesisFile()
-		genDoc, err := types.GenesisDocFromFile(genFile)
+		appGenesis, err := genutiltypes.AppGenesisFromFile(genFile)
 		if err != nil {
 			return err
 		}
 
-		appState, err := genutil.GenAppStateFromConfig(cfg.Codec, cfg.TxConfig,
-			tmCfg, initCfg, *genDoc, banktypes.GenesisBalancesIterator{})
+		bech32ValAddrPrefix := sdk.GetConfig().GetBech32ValidatorAddrPrefix()
+		valAddrCodec := authcodec.NewBech32Codec(bech32ValAddrPrefix)
+
+		appState, err := genutil.GenAppStateFromConfig(
+			cfg.Codec,
+			cfg.TxConfig,
+			tmCfg,
+			initCfg,
+			appGenesis,
+			banktypes.GenesisBalancesIterator{},
+			genutiltypes.DefaultMessageValidator,
+			valAddrCodec,
+		)
 		if err != nil {
 			return err
 		}
@@ -224,7 +274,7 @@ func initGenFiles(cfg Config, genAccounts []authtypes.GenesisAccount, genBalance
 	var govGenState govv1.GenesisState
 	cfg.Codec.MustUnmarshalJSON(cfg.GenesisState[govtypes.ModuleName], &govGenState)
 
-	govGenState.DepositParams.MinDeposit[0].Denom = cfg.BondDenom
+	govGenState.Params.MinDeposit[0].Denom = cfg.BondDenom
 	cfg.GenesisState[govtypes.ModuleName] = cfg.Codec.MustMarshalJSON(&govGenState)
 
 	var crisisGenState crisistypes.GenesisState
@@ -244,15 +294,11 @@ func initGenFiles(cfg Config, genAccounts []authtypes.GenesisAccount, genBalance
 		return err
 	}
 
-	genDoc := types.GenesisDoc{
-		ChainID:    cfg.ChainID,
-		AppState:   appGenStateJSON,
-		Validators: nil,
-	}
+	appGenesis := genutiltypes.NewAppGenesisWithVersion(cfg.ChainID, appGenStateJSON)
 
 	// generate empty genesis files for each validator and save
 	for i := 0; i < cfg.NumValidators; i++ {
-		if err := genDoc.SaveAs(genFiles[i]); err != nil {
+		if err := appGenesis.SaveAs(genFiles[i]); err != nil {
 			return err
 		}
 	}

@@ -1,5 +1,5 @@
 
-rem evmos compile on windows
+rem mezo compile on windows
 rem install golang , gcc, sed for windows
 rem 1. install msys2 : https://www.msys2.org/
 rem 2. pacman -S mingw-w64-x86_64-toolchain
@@ -17,26 +17,26 @@ set LOGLEVEL="info"
 # to trace evm
 #TRACE="--trace"
 set TRACE=""
-set HOME=%USERPROFILE%\.evmosd
+set HOME=%USERPROFILE%\.mezod
 echo %HOME%
 set ETHCONFIG=%HOME%\config\config.toml
 set GENESIS=%HOME%\config\genesis.json
 set TMPGENESIS=%HOME%\config\tmp_genesis.json
 
 @echo build binary
-go build .\cmd\evmosd
+go build .\cmd\mezod
 
 
 @echo clear home folder
 del /s /q %HOME%
 
-evmosd config keyring-backend %KEYRING%
-evmosd config chain-id %CHAINID%
+mezod config keyring-backend %KEYRING%
+mezod config chain-id %CHAINID%
 
-evmosd keys add %KEY% --keyring-backend %KEYRING% --algo %KEYALGO%
+mezod keys add %KEY% --keyring-backend %KEYRING% --key-type %KEYALGO%
 
-rem Set moniker and chain-id for Evmos (Moniker can be anything, chain-id must be an integer)
-evmosd init %MONIKER% --chain-id %CHAINID% 
+rem Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
+mezod init %MONIKER% --chain-id %CHAINID% 
 
 rem Change parameter token denominations to abtc
 cat %GENESIS% | jq ".app_state[\"staking\"][\"params\"][\"bond_denom\"]=\"abtc\""   >   %TMPGENESIS% && move %TMPGENESIS% %GENESIS%
@@ -54,18 +54,18 @@ rem setup
 sed -i "s/create_empty_blocks = true/create_empty_blocks = false/g" %ETHCONFIG%
 
 rem Allocate genesis accounts (cosmos formatted addresses)
-evmosd add-genesis-account %KEY% 100000000000000000000000000abtc --keyring-backend %KEYRING%
+mezod add-genesis-account %KEY% 100000000000000000000000000abtc --keyring-backend %KEYRING%
 
 rem Sign genesis transaction
-evmosd gentx %KEY% 1000000000000000000000abtc --keyring-backend %KEYRING% --chain-id %CHAINID%
+mezod gentx %KEY% 1000000000000000000000abtc --keyring-backend %KEYRING% --chain-id %CHAINID%
 
 rem Collect genesis tx
-evmosd collect-gentxs
+mezod collect-gentxs
 
 rem Run this to ensure everything worked and that the genesis file is setup correctly
-evmosd validate-genesis
+mezod validate-genesis
 
 
 
 rem Start the node (remove the --pruning=nothing flag if historical queries are not needed)
-evmosd start --pruning=nothing %TRACE% --log_level %LOGLEVEL% --minimum-gas-prices=0.0001abtc
+mezod start --pruning=nothing %TRACE% --log_level %LOGLEVEL% --minimum-gas-prices=0.0001abtc

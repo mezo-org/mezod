@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 
 import "./IERC20.sol";
 import "./IERC20Metadata.sol";
-import "./IApproveAndCall.sol";
 
 /// @title  IERC20WithPermit
 /// @notice ERC20 token with EIP2612 permit functionality. User can
@@ -14,7 +13,7 @@ import "./IApproveAndCall.sol";
 ///         calling the permit function, as specified in EIP2612 standard,
 ///         paying gas fees, and possibly performing other actions in the same
 ///         transaction.
-interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
+interface IERC20WithPermit is IERC20, IERC20Metadata {
     /// @notice EIP2612 approval made with secp256k1 signature.
     ///         Users can authorize a transfer of their tokens with a signature
     ///         conforming EIP712 standard, rather than an on-chain transaction
@@ -23,6 +22,12 @@ interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
     ///         and possibly performing other actions in the same transaction.
     /// @dev    The deadline argument can be set to `type(uint256).max to create
     ///         permits that effectively never expire.
+    ///         This permit function returns a boolean value, differing from the permit
+    ///         function in the EIP2612 standard. In the EVM, if no value is returned,
+    ///         the EXTCODESIZE opcode returns 0, causing the CALL opcode to never be
+    ///         executed (which would call the permit function). By returning a value,
+    ///         the permit function will be correctly executed on Cosmos's underlying
+    ///         blockchains.
     function permit(
         address owner,
         address spender,
@@ -31,10 +36,7 @@ interface IERC20WithPermit is IERC20, IERC20Metadata, IApproveAndCall {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external;
-
-    // TODO: Revisit the burn() and burnFrom() functions.
-    //       It is not clear yet if they are needed.
+    ) external returns (bool);
 
     /// @notice Returns hash of EIP712 Domain struct with the token name as
     ///         a signing domain and token contract as a verifying contract.

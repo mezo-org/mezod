@@ -21,9 +21,9 @@ import (
 	"time"
 
 	// TODO update import to local pkg when rpc pkg is migrated
-	"github.com/evmos/evmos/v12/server/config"
 	"github.com/gorilla/mux"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/mezo-org/mezod/server/config"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/netutil"
 
@@ -31,9 +31,10 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/types"
 	"github.com/cosmos/cosmos-sdk/version"
 
-	tmcmd "github.com/tendermint/tendermint/cmd/cometbft/commands"
-	tmlog "github.com/tendermint/tendermint/libs/log"
-	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	"cosmossdk.io/log"
+
+	tmcmd "github.com/cometbft/cometbft/cmd/cometbft/commands"
+	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 )
 
 // AddCommands adds server commands
@@ -72,7 +73,7 @@ func AddCommands(
 	)
 }
 
-func ConnectTmWS(tmRPCAddr, tmEndpoint string, logger tmlog.Logger) *rpcclient.WSClient {
+func ConnectTmWS(tmRPCAddr, tmEndpoint string, logger log.Logger) *rpcclient.WSClient {
 	tmWsClient, err := rpcclient.NewWS(tmRPCAddr, tmEndpoint,
 		rpcclient.MaxReconnectAttempts(256),
 		rpcclient.ReadWait(120*time.Second),
@@ -104,7 +105,7 @@ func MountGRPCWebServices(
 	router *mux.Router,
 	grpcWeb *grpcweb.WrappedGrpcServer,
 	grpcResources []string,
-	logger tmlog.Logger,
+	logger log.Logger,
 ) {
 	for _, res := range grpcResources {
 		logger.Info("[GRPC Web] HTTP POST mounted", "resource", res)

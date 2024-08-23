@@ -4,17 +4,19 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/cometbft/cometbft/libs/bytes"
+
+	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	tmrpcclient "github.com/tendermint/tendermint/rpc/client"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/evmos/evmos/v12/rpc/backend/mocks"
-	rpctypes "github.com/evmos/evmos/v12/rpc/types"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/rpc/backend/mocks"
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 func (suite *BackendTestSuite) TestGetCode() {
@@ -144,7 +146,12 @@ func (suite *BackendTestSuite) TestGetProof() {
 					client,
 					bn.Int64(),
 					"store/acc/key",
-					authtypes.AddressStoreKey(sdk.AccAddress(address1.Bytes())),
+					bytes.HexBytes(
+						append(
+							authtypes.AddressStoreKeyPrefix,
+							sdk.AccAddress(address1.Bytes())...,
+						),
+					),
 					tmrpcclient.ABCIQueryOptions{Height: iavlHeight, Prove: true},
 				)
 			},

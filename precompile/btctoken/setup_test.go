@@ -1,30 +1,30 @@
 package btctoken_test
 
 import (
+	"crypto/ecdsa"
 	"testing"
 	"time"
 
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/precompile"
-	"github.com/evmos/evmos/v12/testutil"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/testutil"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/stretchr/testify/suite"
 )
 
 type Key struct {
 	EvmAddr common.Address
 	SdkAddr sdk.AccAddress
-	Priv    cryptotypes.PrivKey
+	Priv    *ecdsa.PrivateKey
 }
 
 type PrecompileTestSuite struct {
 	suite.Suite
 
-	app *app.Evmos
+	app *app.Mezo
 	ctx sdk.Context
 
 	account1, account2 Key
@@ -34,10 +34,11 @@ type PrecompileTestSuite struct {
 
 func NewKey() Key {
 	addr, privKey := utiltx.NewAddrKey()
+	privKeyECDSA, _ := privKey.ToECDSA()
 	return Key{
 		EvmAddr: addr,
 		SdkAddr: sdk.AccAddress(addr.Bytes()),
-		Priv:    privKey,
+		Priv:    privKeyECDSA,
 	}
 }
 
@@ -60,5 +61,5 @@ func (s *PrecompileTestSuite) SetupTest() {
 	header := testutil.NewHeader(
 		1, time.Now().UTC(), "mezo_31612-1", consAddress, nil, nil,
 	)
-	s.ctx = s.app.BaseApp.NewContext(false, header)
+	s.ctx = s.app.BaseApp.NewContextLegacy(false, header)
 }

@@ -9,14 +9,14 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abci "github.com/cometbft/cometbft/abci/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/evmos/evmos/v12/x/poa/client/cli"
-	"github.com/evmos/evmos/v12/x/poa/keeper"
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/client/cli"
+	"github.com/mezo-org/mezod/x/poa/keeper"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 // Type check to ensure the interface is properly implemented
@@ -44,9 +44,7 @@ func (AppModuleBasic) RegisterLegacyAminoCodec(_ *codec.LegacyAmino) {}
 
 // RegisterInterfaces registers a module's interface types and their concrete
 // implementations as proto.Message
-func (a AppModuleBasic) RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
-	types.RegisterInterfaces(registry)
-}
+func (a AppModuleBasic) RegisterInterfaces(_ cdctypes.InterfaceRegistry) {}
 
 // DefaultGenesis returns default genesis state as raw bytes for the poa
 // module.
@@ -84,7 +82,7 @@ func (a AppModuleBasic) RegisterGRPCGatewayRoutes(
 
 // GetTxCmd returns the root tx command for the poa module.
 func (AppModuleBasic) GetTxCmd() *cobra.Command {
-	return cli.NewTxCmd()
+	return nil
 }
 
 // GetQueryCmd returns the root query command for the poa module.
@@ -114,30 +112,8 @@ func NewAppModule(
 // RegisterInvariants registers the poa module invariants.
 func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 
-// Deprecated: use RegisterServices
-func (AppModule) Route() sdk.Route {
-	// Return a zero value as this function is deprecated and RegisterServices
-	// is used by the SDK instead.
-	return sdk.Route{}
-}
-
-// Deprecated: use RegisterServices
-func (AppModule) QuerierRoute() string {
-	// Return a zero value as this function is deprecated and RegisterServices
-	// is used by the SDK instead.
-	return ""
-}
-
-// Deprecated: use RegisterServices
-func (am AppModule) LegacyQuerierHandler(_ *codec.LegacyAmino) sdk.Querier {
-	// Return a zero value as this function is deprecated and RegisterServices
-	// is used by the SDK instead.
-	return nil
-}
-
 // RegisterServices registers a gRPC query service to respond to the module-specific gRPC queries
 func (am AppModule) RegisterServices(cfg module.Configurator) {
-	types.RegisterMsgServer(cfg.MsgServer(), keeper.NewMsgServer(am.keeper))
 	types.RegisterQueryServer(cfg.QueryServer(), keeper.NewQueryServer(am.keeper))
 }
 
@@ -168,14 +144,19 @@ func (am AppModule) ExportGenesis(
 }
 
 // BeginBlock returns the begin-blocker for the poa module.
-func (am AppModule) BeginBlock(ctx sdk.Context, _ abci.RequestBeginBlock) {
-	am.keeper.BeginBlocker(ctx)
+func (am AppModule) BeginBlock(ctx context.Context) error {
+	return am.keeper.BeginBlocker(ctx)
 }
 
 // EndBlock returns the end blocker for the poa module.
 func (am AppModule) EndBlock(
-	ctx sdk.Context,
-	_ abci.RequestEndBlock,
-) []abci.ValidatorUpdate {
+	ctx context.Context,
+) ([]abci.ValidatorUpdate, error) {
 	return am.keeper.EndBlocker(ctx)
 }
+
+// IsOnePerModuleType implements the depinject.OnePerModuleType interface.
+func (am AppModule) IsOnePerModuleType() {}
+
+// IsAppModule implements the appmodule.AppModule interface.
+func (am AppModule) IsAppModule() {}

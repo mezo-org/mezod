@@ -18,24 +18,27 @@ package filters
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/evmos/evmos/v12/rpc/types"
+	"github.com/mezo-org/mezod/rpc/types"
 
-	"github.com/tendermint/tendermint/libs/log"
+	"cosmossdk.io/log"
 
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	tmtypes "github.com/tendermint/tendermint/types"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
+	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
+	tmtypes "github.com/cometbft/cometbft/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rpc"
 
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // FilterAPI gathers
@@ -357,7 +360,8 @@ func (api *PublicFilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, er
 					continue
 				}
 
-				baseFee := types.BaseFeeFromEvents(data.ResultBeginBlock.Events)
+				// TODO: fetch from block events
+				baseFee := big.NewInt(params.InitialBaseFee)
 
 				// TODO: fetch bloom from events
 				header := types.EthHeaderFromTendermint(data.Header, ethtypes.Bloom{}, baseFee)

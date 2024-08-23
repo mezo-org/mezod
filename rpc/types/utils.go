@@ -16,21 +16,22 @@
 package types
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/big"
 	"strings"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmrpcclient "github.com/cometbft/cometbft/rpc/client"
+
+	abci "github.com/cometbft/cometbft/abci/types"
+	tmtypes "github.com/cometbft/cometbft/types"
 
 	errorsmod "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/client"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -93,7 +94,12 @@ func EthHeaderFromTendermint(header tmtypes.Header, bloom ethtypes.Bloom, baseFe
 
 // BlockMaxGasFromConsensusParams returns the gas limit for the current block from the chain consensus params.
 func BlockMaxGasFromConsensusParams(goCtx context.Context, clientCtx client.Context, blockHeight int64) (int64, error) {
-	resConsParams, err := clientCtx.Client.ConsensusParams(goCtx, &blockHeight)
+	rpcClient, ok := clientCtx.Client.(tmrpcclient.Client)
+	if !ok {
+		panic("unexpected RPC client type")
+	}
+
+	resConsParams, err := rpcClient.ConsensusParams(goCtx, &blockHeight)
 	defaultGasLimit := int64(^uint32(0)) // #nosec G701
 	if err != nil {
 		return defaultGasLimit, err
@@ -237,8 +243,8 @@ func BaseFeeFromEvents(events []abci.Event) *big.Int {
 		}
 
 		for _, attr := range event.Attributes {
-			if bytes.Equal(attr.Key, []byte(feemarkettypes.AttributeKeyBaseFee)) {
-				result, success := new(big.Int).SetString(string(attr.Value), 10)
+			if attr.Key == feemarkettypes.AttributeKeyBaseFee {
+				result, success := new(big.Int).SetString(attr.Value, 10)
 				if success {
 					return result
 				}
@@ -271,12 +277,12 @@ func CheckTxFee(gasPrice *big.Int, gas uint64, cap float64) error {
 }
 
 // TxExceedBlockGasLimit returns true if the tx exceeds block gas limit.
-func TxExceedBlockGasLimit(res *abci.ResponseDeliverTx) bool {
+func TxExceedBlockGasLimit(res *abci.ExecTxResult) bool {
 	return strings.Contains(res.Log, ExceedBlockGasLimitError)
 }
 
 // TxSuccessOrExceedsBlockGasLimit returnsrue if the transaction was successful
 // or if it failed with an ExceedBlockGasLimit error
-func TxSuccessOrExceedsBlockGasLimit(res *abci.ResponseDeliverTx) bool {
+func TxSuccessOrExceedsBlockGasLimit(res *abci.ExecTxResult) bool {
 	return res.Code == 0 || TxExceedBlockGasLimit(res)
 }

@@ -16,13 +16,12 @@
 package codec
 
 import (
-	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/legacy"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 )
 
 // RegisterCrypto registers all crypto dependency types with the provided Amino
@@ -39,5 +38,4 @@ func RegisterCrypto(cdc *codec.LegacyAmino) {
 	// NOTE: update SDK's amino codec to include the ethsecp256k1 keys.
 	// DO NOT REMOVE unless deprecated on the SDK.
 	legacy.Cdc = cdc
-	keys.KeysCdc = cdc
 }

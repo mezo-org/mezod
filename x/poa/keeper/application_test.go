@@ -3,201 +3,274 @@ package keeper
 import (
 	"testing"
 
-	"github.com/evmos/evmos/v12/x/poa/types"
+	errorsmod "cosmossdk.io/errors"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
 	"github.com/google/go-cmp/cmp"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 func TestSubmitApplication(t *testing.T) {
-	// Test with maxValidator=15, quorum=66
 	ctx, poaKeeper := mockContext()
-	validator, _ := mockValidator()
-	err := poaKeeper.setParams(ctx, types.DefaultParams())
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
+	validator3, _ := mockValidator()
+
+	// Max validators is 2.
+	err := poaKeeper.setParams(ctx, types.NewParams(2))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// The application is submitted correctly
-	err = poaKeeper.SubmitApplication(ctx, validator)
-	if err != nil {
-		t.Errorf("SubmitApplication should submit an application, got error %v", err)
+	// Validator 1 is in the validator set from the beginning.
+	poaKeeper.createValidator(ctx, validator1)
+
+	// Try to impersonate the operator of validator 2 and submit an application.
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator1.GetOperator()),
+		validator2,
+	)
+	expectedErr := errorsmod.Wrapf(
+		sdkerrors.ErrUnauthorized,
+		"not the validator operator; expected %s, sender %s",
+		sdk.AccAddress(validator2.GetOperator()).String(),
+		sdk.AccAddress(validator1.GetOperator()).String(),
+	)
+	if err.Error() != expectedErr.Error() {
+		t.Errorf(
+			"SubmitApplication with wrong sender, error should be %v, got %v",
+			expectedErr.Error(),
+			err.Error(),
+		)
 	}
-	_, found := poaKeeper.GetApplication(ctx, validator.GetOperator())
+
+	// The application for validator 2 is submitted correctly
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator2.GetOperator()),
+		validator2,
+	)
+	if err != nil {
+		t.Errorf(
+			"SubmitApplication should submit an application, got error %v",
+			err,
+		)
+	}
+	_, found := poaKeeper.GetApplication(ctx, validator2.GetOperator())
 	if !found {
 		t.Errorf("SubmitApplication should submit an application, the application has not been found")
 	}
-	_, found = poaKeeper.GetApplicationByConsAddr(ctx, validator.GetConsAddr())
+	_, found = poaKeeper.GetApplicationByConsAddr(
+		ctx,
+		validator2.GetConsAddress(),
+	)
 	if !found {
 		t.Errorf("SubmitApplication should submit an application, the application has not been found by cons addr")
 	}
 
 	// A new application with the same validator cannot be created
-	err = poaKeeper.SubmitApplication(ctx, validator)
+	// (validator 2 just submitted an application).
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator2.GetOperator()),
+		validator2,
+	)
 	if err.Error() != types.ErrAlreadyApplying.Error() {
-		t.Errorf("SubmitApplication with duplicate, error should be %v, got %v", types.ErrAlreadyApplying.Error(), err.Error())
-	}
-
-	// Test with quorum=0
-	ctx, poaKeeper = mockContext()
-	validator, _ = mockValidator()
-	err = poaKeeper.setParams(ctx, types.NewParams(15, 0))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// The validator should be directly appended if the quorum is 0
-	err = poaKeeper.SubmitApplication(ctx, validator)
-	if err != nil {
-		t.Errorf("SubmitApplication with quorum 0 should append validator, got error %v", err)
-	}
-	_, found = poaKeeper.GetValidator(ctx, validator.GetOperator())
-	if !found {
-		t.Errorf("SubmitApplication with quorum 0 should append validator, the validator has not been found")
-	}
-	_, found = poaKeeper.GetValidatorByConsAddr(ctx, validator.GetConsAddr())
-	if !found {
-		t.Errorf("SubmitApplication with quorum 0 should append validator, the validator has not been found by cons addr")
-	}
-	foundState, found := poaKeeper.GetValidatorState(ctx, validator.GetOperator())
-	if !found {
-		t.Errorf("SubmitApplication with quorum 0 should append validator, the validator state has not been found")
-	}
-	if foundState != types.ValidatorStateJoining {
-		t.Errorf("SubmitApplication with quorum 0, the validator should have the state joining, if it is appended")
+		t.Errorf(
+			"SubmitApplication with duplicate, error should be %v, got %v",
+			types.ErrAlreadyApplying.Error(),
+			err.Error(),
+		)
 	}
 
 	// A new application cannot be created if the validator already exist
-	err = poaKeeper.SubmitApplication(ctx, validator)
+	// (validator 1 is in the validator set from the beginning).
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator1.GetOperator()),
+		validator1,
+	)
 	if err.Error() != types.ErrAlreadyValidator.Error() {
-		t.Errorf("SubmitApplication with duplicate, error should be %v, got %v", types.ErrAlreadyValidator.Error(), err.Error())
+		t.Errorf(
+			"SubmitApplication with duplicate, error should be %v, got %v",
+			types.ErrAlreadyValidator.Error(),
+			err.Error(),
+		)
 	}
 
-	// Test max validators condition
-	err = poaKeeper.setParams(ctx, types.NewParams(1, 0))
+	// A new application cannot be created if the validator already exist,
+	// even if they use a different consensus public key.
+	// (validator 1 is in the validator set from the beginning).
+	_, newPubKey := mockValidator()
+	validator1Copy := validator1
+	validator1Copy.ConsPubKeyBech32 = newPubKey
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator1.GetOperator()),
+		validator1Copy,
+	)
+	if err.Error() != types.ErrAlreadyValidator.Error() {
+		t.Errorf(
+			"SubmitApplication with duplicate, error should be %v, got %v",
+			types.ErrAlreadyValidator.Error(),
+			err.Error(),
+		)
+	}
+
+	// A new application cannot be created if the validator does not exist,
+	// but they use a consensus public key that is already in use
+	// (validator 1 is in the validator set from the beginning).
+	validator3Copy := validator3
+	validator3Copy.ConsPubKeyBech32 = validator1.GetConsPubKeyBech32()
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator3Copy.GetOperator()),
+		validator3Copy,
+	)
+	if err.Error() != types.ErrAlreadyValidator.Error() {
+		t.Errorf(
+			"SubmitApplication with duplicate, error should be %v, got %v",
+			types.ErrAlreadyValidator.Error(),
+			err.Error(),
+		)
+	}
+
+	// Test max validators condition.
+	err = poaKeeper.setParams(ctx, types.NewParams(1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = poaKeeper.SubmitApplication(ctx, validator)
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator3.GetOperator()),
+		validator3,
+	)
 	if err.Error() != types.ErrMaxValidatorsReached.Error() {
-		t.Errorf("SubmitApplication with max validators reached, error should be %v, got %v", types.ErrMaxValidatorsReached.Error(), err.Error())
+		t.Errorf(
+			"SubmitApplication with max validators reached, error should be %v, got %v",
+			types.ErrMaxValidatorsReached.Error(),
+			err.Error(),
+		)
 	}
 }
 
-func TestVoteApplication(t *testing.T) {
+func TestApproveApplication(t *testing.T) {
 	ctx, poaKeeper := mockContext()
-	voter1, _ := mockValidator()
-	voter2, _ := mockValidator()
-	candidate1, _ := mockValidator()
-	candidate2, _ := mockValidator()
-	nothing, _ := mockValidator()
-	err := poaKeeper.setParams(ctx, types.NewParams(15, 100))
+
+	// Max validators is 2.
+	err := poaKeeper.setParams(ctx, types.NewParams(2))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Add voter to validator set
-	poaKeeper.appendValidator(ctx, voter1)
-	poaKeeper.appendValidator(ctx, voter2)
+	// Generate an owner address using the mockValidator function.
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+	poaKeeper.setOwner(ctx, owner)
 
-	// Add candidate to application pool
-	poaKeeper.appendApplication(ctx, candidate1)
-	poaKeeper.appendApplication(ctx, candidate2)
+	// Generate two validators submitting applications.
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
 
-	// Cannot vote if candidate is not in application pool
-	err = poaKeeper.VoteApplication(ctx, voter1.GetOperator(), nothing.GetOperator(), true)
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator1.GetOperator()),
+		validator1,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = poaKeeper.SubmitApplication(
+		ctx,
+		sdk.AccAddress(validator2.GetOperator()),
+		validator2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Try to impersonate the owner and approve the application of validator 1.
+	err = poaKeeper.ApproveApplication(
+		ctx,
+		sdk.AccAddress(validator1.GetOperator()),
+		validator1.GetOperator(),
+	)
+	expectedErr := errorsmod.Wrapf(
+		sdkerrors.ErrUnauthorized,
+		"not the owner; expected %s, sender %s",
+		owner.String(),
+		sdk.AccAddress(validator1.GetOperator()).String(),
+	)
+	if err.Error() != expectedErr.Error() {
+		t.Errorf(
+			"ApproveApplication with wrong sender, error should be %v, got %v",
+			expectedErr.Error(),
+			err.Error(),
+		)
+	}
+
+	// Approve the application of validator 1.
+	err = poaKeeper.ApproveApplication(
+		ctx,
+		owner,
+		validator1.GetOperator(),
+	)
+	if err != nil {
+		t.Errorf("ApproveApplication should pass, got error %v", err)
+	}
+	// Make sure the application has been removed.
+	_, found := poaKeeper.GetApplication(ctx, validator1.GetOperator())
+	if found {
+		t.Errorf("ApproveApplication should remove the application from the set")
+	}
+	_, found = poaKeeper.GetApplicationByConsAddr(ctx, validator1.GetConsAddress())
+	if found {
+		t.Errorf("ApproveApplication should remove the application from the index by consensus address")
+	}
+	// Make sure the validator has been added.
+	_, found = poaKeeper.GetValidator(ctx, validator1.GetOperator())
+	if !found {
+		t.Errorf("ApproveApplication should add the candidate to the set")
+	}
+	_, found = poaKeeper.GetValidatorByConsAddr(ctx, validator1.GetConsAddress())
+	if !found {
+		t.Errorf("ApproveApplication should add the candidate to the index by consensus address")
+	}
+
+	// Approve the validator 1 application again and make sure it fails
+	// due to a non-existing application.
+	err = poaKeeper.ApproveApplication(
+		ctx,
+		owner,
+		validator1.GetOperator(),
+	)
 	if err.Error() != types.ErrNoApplicationFound.Error() {
-		t.Errorf("VoteApplication should fail with %v, got %v", types.ErrNoApplicationFound, err)
+		t.Errorf(
+			"ApproveApplication with non-existing application, error should be %v, got %v",
+			types.ErrNoApplicationFound.Error(),
+			err.Error(),
+		)
 	}
 
-	// Cannot vote if the voter is not in validator set
-	err = poaKeeper.VoteApplication(ctx, nothing.GetOperator(), candidate1.GetOperator(), true)
-	if err.Error() != types.ErrVoterNotValidator.Error() {
-		t.Errorf("VoteApplication should fail with %v, got %v", types.ErrVoterNotValidator, err)
-	}
-
-	// Can vote an application
-	err = poaKeeper.VoteApplication(ctx, voter1.GetOperator(), candidate1.GetOperator(), true)
-	if err != nil {
-		t.Errorf("VoteApplication should vote on an application, got error %v", err)
-	}
-	application, found := poaKeeper.GetApplication(ctx, candidate1.GetOperator())
-	if !found {
-		t.Errorf("VoteApplication with 1/2 approve should not remove the application")
-	}
-	_, found = poaKeeper.GetValidator(ctx, candidate1.GetOperator())
-	if found {
-		t.Errorf("VoteApplication with 1/2 approve should not append the candidate to the validator set")
-	}
-	if application.GetTotal() != 1 {
-		t.Errorf("VoteApplication with approve should add one vote to the application")
-	}
-	if application.GetApprovals() != 1 {
-		t.Errorf("VoteApplication with approve should add one approve to the application")
-	}
-
-	// Second approve should append the candidate to the validator pool
-	err = poaKeeper.VoteApplication(ctx, voter2.GetOperator(), candidate1.GetOperator(), true)
-	if err != nil {
-		t.Errorf("VoteApplication 2 should vote on an application, got error %v", err)
-	}
-	_, found = poaKeeper.GetApplication(ctx, candidate1.GetOperator())
-	if found {
-		t.Errorf("VoteApplication with 2/2 approve should remove the application")
-	}
-	_, found = poaKeeper.GetValidator(ctx, candidate1.GetOperator())
-	if !found {
-		t.Errorf("VoteApplication with 2/2 approve should append the candidate to the validator set")
-	}
-
-	// Quorum 100%: one reject is sufficient to reject the validator application
-	err = poaKeeper.VoteApplication(ctx, voter1.GetOperator(), candidate2.GetOperator(), false)
-	if err != nil {
-		t.Errorf("VoteApplication 3 should vote on an application, got error %v", err)
-	}
-	_, found = poaKeeper.GetApplication(ctx, candidate2.GetOperator())
-	if found {
-		t.Errorf("VoteApplication with 1 reject should reject the application")
-	}
-	_, found = poaKeeper.GetValidator(ctx, candidate2.GetOperator())
-	if found {
-		t.Errorf("VoteApplication application rejected should not append the candidate to the validator set")
-	}
-
-	// Reapply and set quorum to 1%
-	poaKeeper.appendApplication(ctx, candidate2)
-	err = poaKeeper.setParams(ctx, types.NewParams(15, 1))
+	// Test max validators condition. Try to approve the application of validator 2.
+	err = poaKeeper.setParams(ctx, types.NewParams(1))
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// One reject should update the vote but not reject totally the application
-	err = poaKeeper.VoteApplication(ctx, voter1.GetOperator(), candidate2.GetOperator(), false)
-	if err != nil {
-		t.Errorf("VoteApplication 4 should vote on an application, got error %v", err)
-	}
-	application, found = poaKeeper.GetApplication(ctx, candidate2.GetOperator())
-	if !found {
-		t.Errorf("VoteApplication with 1/3 reject should not remove the application")
-	}
-	_, found = poaKeeper.GetValidator(ctx, candidate2.GetOperator())
-	if found {
-		t.Errorf("VoteApplication with 1/3 reject should not append the candidate to the validator set")
-	}
-	if application.GetTotal() != 1 {
-		t.Errorf("VoteApplication with reject should add one vote to the application")
-	}
-	if application.GetApprovals() != 0 {
-		t.Errorf("VoteApplication with reject should not add one approve to the application")
-	}
-
-	// Cannot vote if validator set is full
-	err = poaKeeper.setParams(ctx, types.NewParams(3, 1))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = poaKeeper.VoteApplication(ctx, voter2.GetOperator(), candidate2.GetOperator(), false)
+	err = poaKeeper.ApproveApplication(
+		ctx,
+		owner,
+		validator2.GetOperator(),
+	)
 	if err.Error() != types.ErrMaxValidatorsReached.Error() {
-		t.Errorf("VoteApplication should fail with %v, got %v", types.ErrMaxValidatorsReached, err)
+		t.Errorf(
+			"ApproveApplication with max validators reached, error should be %v, got %v",
+			types.ErrMaxValidatorsReached.Error(),
+			err.Error(),
+		)
 	}
 }
 
@@ -205,24 +278,28 @@ func TestGetApplication(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator1, _ := mockValidator()
 	validator2, _ := mockValidator()
-	application := types.NewVote(validator1)
+	application := types.NewApplication(validator1)
 
 	poaKeeper.setApplication(ctx, application)
 
 	// Should find the correct application
-	retrievedApplication, found := poaKeeper.GetApplication(ctx, validator1.GetOperator())
+	retrievedApplication, found := poaKeeper.GetApplication(
+		ctx,
+		validator1.GetOperator(),
+	)
 	if !found {
 		t.Errorf("GetApplication should find application if it has been set")
 	}
 
-	if !cmp.Equal(application.GetSubject(), retrievedApplication.GetSubject()) {
-		t.Errorf("GetApplication should find %v, found %v", application.GetSubject(), retrievedApplication.GetSubject())
-	}
-	if application.GetTotal() != retrievedApplication.GetTotal() {
-		t.Errorf("GetApplication should find %v votes, found %v", application.GetTotal(), retrievedApplication.GetTotal())
-	}
-	if application.GetApprovals() != retrievedApplication.GetApprovals() {
-		t.Errorf("GetApplication should find %v approvals, found %v", application.GetApprovals(), retrievedApplication.GetApprovals())
+	if !cmp.Equal(
+		application.GetValidator(),
+		retrievedApplication.GetValidator(),
+	) {
+		t.Errorf(
+			"GetApplication should find %v, found %v",
+			application.GetValidator(),
+			retrievedApplication.GetValidator(),
+		)
 	}
 
 	// Should not find an unset application
@@ -236,26 +313,30 @@ func TestGetApplicationByConsAddr(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator1, _ := mockValidator()
 	validator2, _ := mockValidator()
-	application := types.NewVote(validator1)
-	application2 := types.NewVote(validator2)
+	application1 := types.NewApplication(validator1)
+	application2 := types.NewApplication(validator2)
 
-	poaKeeper.setApplication(ctx, application)
-	poaKeeper.setApplicationByConsAddr(ctx, application)
+	poaKeeper.setApplication(ctx, application1)
+	poaKeeper.setApplicationByConsAddr(ctx, application1)
 
 	// Should find the correct application
-	retrievedApplication, found := poaKeeper.GetApplicationByConsAddr(ctx, application.GetSubject().GetConsAddr())
+	retrievedApplication, found := poaKeeper.GetApplicationByConsAddr(
+		ctx,
+		application1.GetValidator().GetConsAddress(),
+	)
 	if !found {
 		t.Errorf("GetApplicationByConsAddr should find application if it has been set")
 	}
 
-	if !cmp.Equal(application.GetSubject(), retrievedApplication.GetSubject()) {
-		t.Errorf("GetApplicationByConsAddr should find %v, found %v", application.GetSubject(), retrievedApplication.GetSubject())
-	}
-	if application.GetTotal() != retrievedApplication.GetTotal() {
-		t.Errorf("GetApplicationByConsAddr should find %v votes, found %v", application.GetTotal(), retrievedApplication.GetTotal())
-	}
-	if application.GetApprovals() != retrievedApplication.GetApprovals() {
-		t.Errorf("GetApplicationByConsAddr should find %v approvals, found %v", application.GetApprovals(), retrievedApplication.GetApprovals())
+	if !cmp.Equal(
+		application1.GetValidator(),
+		retrievedApplication.GetValidator(),
+	) {
+		t.Errorf(
+			"GetApplicationByConsAddr should find %v, found %v",
+			application1.GetValidator(),
+			retrievedApplication.GetValidator(),
+		)
 	}
 
 	// Should not find an unset application
@@ -272,17 +353,27 @@ func TestGetApplicationByConsAddr(t *testing.T) {
 	}
 }
 
-func TestAppendApplication(t *testing.T) {
+func TestCreateApplication(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator, _ := mockValidator()
 
-	poaKeeper.appendApplication(ctx, validator)
+	poaKeeper.createApplication(ctx, validator)
 
-	_, foundApplication := poaKeeper.GetApplication(ctx, validator.GetOperator())
-	_, foundConsAddr := poaKeeper.GetApplicationByConsAddr(ctx, validator.GetConsAddr())
+	_, foundApplication := poaKeeper.GetApplication(
+		ctx,
+		validator.GetOperator(),
+	)
+	_, foundConsAddr := poaKeeper.GetApplicationByConsAddr(
+		ctx,
+		validator.GetConsAddress(),
+	)
 
 	if !foundApplication || !foundConsAddr {
-		t.Errorf("AppendValidator should append the application. Found val: %v, found consAddr: %v", foundApplication, foundConsAddr)
+		t.Errorf(
+			"CreateApplication should create the application. Found val: %v, found consAddr: %v",
+			foundApplication,
+			foundConsAddr,
+		)
 	}
 }
 
@@ -290,16 +381,26 @@ func TestRemoveApplication(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator, _ := mockValidator()
 
-	// Append  and remove application
-	poaKeeper.appendApplication(ctx, validator)
+	// Create and remove application
+	poaKeeper.createApplication(ctx, validator)
 	poaKeeper.removeApplication(ctx, validator.GetOperator())
 
 	// Should not find a removed validator
-	_, foundApplication := poaKeeper.GetApplication(ctx, validator.GetOperator())
-	_, foundConsAddr := poaKeeper.GetApplicationByConsAddr(ctx, validator.GetConsAddr())
+	_, foundApplication := poaKeeper.GetApplication(
+		ctx,
+		validator.GetOperator(),
+	)
+	_, foundConsAddr := poaKeeper.GetApplicationByConsAddr(
+		ctx,
+		validator.GetConsAddress(),
+	)
 
 	if foundApplication || foundConsAddr {
-		t.Errorf("RemoveApplication should remove application record. Found val: %v, found consAddr: %v", foundApplication, foundConsAddr)
+		t.Errorf(
+			"RemoveApplication should remove application record. Found val: %v, found consAddr: %v",
+			foundApplication,
+			foundConsAddr,
+		)
 	}
 }
 
@@ -307,14 +408,18 @@ func TestGetAllApplications(t *testing.T) {
 	ctx, poaKeeper := mockContext()
 	validator1, _ := mockValidator()
 	validator2, _ := mockValidator()
-	application1 := types.NewVote(validator1)
-	application2 := types.NewVote(validator2)
+	application1 := types.NewApplication(validator1)
+	application2 := types.NewApplication(validator2)
 
 	poaKeeper.setApplication(ctx, application1)
 	poaKeeper.setApplication(ctx, application2)
 
 	retrievedApplications := poaKeeper.GetAllApplications(ctx)
 	if len(retrievedApplications) != 2 {
-		t.Errorf("GetAllApplications should find %v applications, found %v", 2, len(retrievedApplications))
+		t.Errorf(
+			"GetAllApplications should find %v applications, found %v",
+			2,
+			len(retrievedApplications),
+		)
 	}
 }

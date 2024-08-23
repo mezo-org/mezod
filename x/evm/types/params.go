@@ -24,11 +24,11 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/utils"
 )
 
 var (
-	// DefaultEVMDenom defines the default EVM denomination on Evmos
+	// DefaultEVMDenom defines the default EVM denomination on Mezo
 	DefaultEVMDenom = utils.BaseDenom
 	// DefaultAllowUnprotectedTxs rejects all unprotected txs (i.e false)
 	DefaultAllowUnprotectedTxs = false

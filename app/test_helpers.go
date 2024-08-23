@@ -20,28 +20,33 @@ import (
 	"encoding/json"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
+
+	"github.com/cosmos/cosmos-sdk/baseapp"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
+
+	"github.com/cometbft/cometbft/crypto/ed25519"
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
+	"cosmossdk.io/log"
+	"cosmossdk.io/simapp"
+	abci "github.com/cometbft/cometbft/abci/types"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	tmtypes "github.com/cometbft/cometbft/types"
+	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/evmos/evmos/v12/encoding"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/encoding"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
-	"github.com/evmos/evmos/v12/cmd/config"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/cmd/config"
+	"github.com/mezo-org/mezod/utils"
 )
 
 func init() {
@@ -51,11 +56,11 @@ func init() {
 }
 
 // DefaultConsensusParams defines the default Tendermint consensus params used in
-// Evmos testing.
-var DefaultConsensusParams = &abci.ConsensusParams{
-	Block: &abci.BlockParams{
+// Mezo testing.
+var DefaultConsensusParams = &tmproto.ConsensusParams{
+	Block: &tmproto.BlockParams{
 		MaxBytes: 200000,
-		MaxGas:   -1, // no limit
+		MaxGas:   10000000,
 	},
 	Evidence: &tmproto.EvidenceParams{
 		MaxAgeNumBlocks: 302400,
@@ -70,17 +75,17 @@ var DefaultConsensusParams = &abci.ConsensusParams{
 }
 
 func init() {
-	feemarkettypes.DefaultMinGasPrice = sdk.ZeroDec()
+	feemarkettypes.DefaultMinGasPrice = sdkmath.LegacyZeroDec()
 	cfg := sdk.GetConfig()
 	config.SetBech32Prefixes(cfg)
 	config.SetBip44CoinType(cfg)
 }
 
-// Setup initializes a new Evmos. A Nop logger is set in Evmos.
+// Setup initializes a new Mezo. A Nop logger is set in Mezo.
 func Setup(
 	isCheckTx bool,
 	feemarketGenesis *feemarkettypes.GenesisState,
-) *Evmos {
+) *Mezo {
 	privVal := ed25519.GenPrivKey()
 	pubKey := privVal.PubKey()
 
@@ -93,17 +98,37 @@ func Setup(
 	acc := authtypes.NewBaseAccount(senderPrivKey.PubKey().Address().Bytes(), senderPrivKey.PubKey(), 0, 0)
 	balance := banktypes.Balance{
 		Address: acc.GetAddress().String(),
-		Coins:   sdk.NewCoins(sdk.NewCoin(utils.BaseDenom, sdk.NewInt(100000000000000))),
+		Coins:   sdk.NewCoins(sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(100000000000000))),
 	}
 
 	db := dbm.NewMemDB()
 
-	app := NewEvmos(log.NewNopLogger(), db, nil, true, map[int64]bool{}, DefaultNodeHome, 5, encoding.MakeConfig(ModuleBasics), simapp.EmptyAppOptions{})
+	chainID := utils.MainnetChainID + "-1"
+
+	app := NewMezo(
+		log.NewNopLogger(),
+		db,
+		nil,
+		true,
+		map[int64]bool{},
+		DefaultNodeHome,
+		5,
+		encoding.MakeConfig(ModuleBasics),
+		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		baseapp.SetChainID(chainID),
+	)
 	if !isCheckTx {
 		// init chain must be called to stop deliverState from being nil
 		genesisState := NewDefaultGenesisState()
 
-		genesisState = GenesisStateWithValSet(app, genesisState, valSet, []authtypes.GenesisAccount{acc}, balance)
+		genesisState = GenesisStateWithValSet(
+			app,
+			genesisState,
+			acc.GetAddress(),
+			valSet,
+			[]authtypes.GenesisAccount{acc},
+			balance,
+		)
 
 		// Verify feeMarket genesis
 		if feemarketGenesis != nil {
@@ -119,21 +144,28 @@ func Setup(
 		}
 
 		// Initialize the chain
-		app.InitChain(
-			abci.RequestInitChain{
-				ChainId:         utils.MainnetChainID + "-1",
+		_, err = app.InitChain(
+			&abci.RequestInitChain{
+				ChainId:         chainID,
 				Validators:      []abci.ValidatorUpdate{},
 				ConsensusParams: DefaultConsensusParams,
 				AppStateBytes:   stateBytes,
 			},
 		)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return app
 }
 
-func GenesisStateWithValSet(app *Evmos, genesisState simapp.GenesisState,
-	valSet *tmtypes.ValidatorSet, genAccs []authtypes.GenesisAccount,
+func GenesisStateWithValSet(
+	app *Mezo,
+	genesisState simapp.GenesisState,
+	owner sdk.AccAddress,
+	valSet *tmtypes.ValidatorSet,
+	genAccs []authtypes.GenesisAccount,
 	balances ...banktypes.Balance,
 ) simapp.GenesisState {
 	// set genesis accounts
@@ -143,18 +175,21 @@ func GenesisStateWithValSet(app *Evmos, genesisState simapp.GenesisState,
 	validators := make([]poatypes.Validator, 0, len(valSet.Validators))
 
 	for _, val := range valSet.Validators {
-		pk, _ := cryptocodec.FromTmPubKeyInterface(val.PubKey)
+		pk, _ := cryptocodec.FromCmtPubKeyInterface(val.PubKey)
 		validator := poatypes.Validator{
-			OperatorAddress: sdk.ValAddress(val.Address),
+			OperatorBech32: sdk.ValAddress(val.Address).String(),
 			//nolint:staticcheck
-			ConsensusPubkey: legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk),
-			Description:     poatypes.Description{},
+			ConsPubKeyBech32: legacybech32.MustMarshalPubKey(
+				legacybech32.ConsPK,
+				pk,
+			),
+			Description: poatypes.Description{},
 		}
 		validators = append(validators, validator)
 	}
 	// set validators and delegations
 	poaParams := poatypes.DefaultParams()
-	poaGenesis := poatypes.NewGenesisState(poaParams, validators)
+	poaGenesis := poatypes.NewGenesisState(poaParams, owner, validators)
 	genesisState[poatypes.ModuleName] = app.AppCodec().MustMarshalJSON(&poaGenesis)
 
 	totalSupply := sdk.NewCoins()
@@ -164,7 +199,13 @@ func GenesisStateWithValSet(app *Evmos, genesisState simapp.GenesisState,
 	}
 
 	// update total supply
-	bankGenesis := banktypes.NewGenesisState(banktypes.DefaultGenesisState().Params, balances, totalSupply, []banktypes.Metadata{})
+	bankGenesis := banktypes.NewGenesisState(
+		banktypes.DefaultGenesisState().Params,
+		balances,
+		totalSupply,
+		[]banktypes.Metadata{},
+		[]banktypes.SendEnabled{},
+	)
 	genesisState[banktypes.ModuleName] = app.AppCodec().MustMarshalJSON(bankGenesis)
 
 	return genesisState

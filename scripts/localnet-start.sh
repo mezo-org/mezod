@@ -2,6 +2,11 @@
 
 HOMEDIR=./.localnet
 
+if [ -z "${LOCALNET_CHAIN_ID}" ]; then
+  echo "Please set the LOCALNET_CHAIN_ID environment variable."
+  exit 1
+fi
+
 if [ ! -d "$HOMEDIR" ]; then
   echo "localnet directory $HOMEDIR does not exist; run make localnet-bin-init first."
   exit 1
@@ -31,11 +36,12 @@ if ! [[ "$NODE_INDEX" =~ ^[0-9]+$ ]] || [ "$NODE_INDEX" -ge "${#NODE_NAMES[@]}" 
 fi
 
 NODE_NAME=${NODE_NAMES[$NODE_INDEX]}
-NODE_HOMEDIR="$HOMEDIR/$NODE_NAME/evmosd"
+NODE_HOMEDIR="$HOMEDIR/$NODE_NAME/mezod"
 
 echo "starting node $NODE_NAME with home directory $NODE_HOMEDIR"
 
-./build/evmosd start --home "$NODE_HOMEDIR" \
+./build/mezod start --home "$NODE_HOMEDIR" \
+  --chain-id=$LOCALNET_CHAIN_ID \
   --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" \
   --json-rpc.enable
 

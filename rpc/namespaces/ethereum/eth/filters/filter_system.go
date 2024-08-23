@@ -23,12 +23,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	tmjson "github.com/tendermint/tendermint/libs/json"
-	"github.com/tendermint/tendermint/libs/log"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	tmtypes "github.com/tendermint/tendermint/types"
+	"cosmossdk.io/log"
+	tmjson "github.com/cometbft/cometbft/libs/json"
+	tmquery "github.com/cometbft/cometbft/libs/pubsub/query"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
+	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
+	tmtypes "github.com/cometbft/cometbft/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -37,13 +37,13 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/evmos/evmos/v12/rpc/ethereum/pubsub"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/rpc/ethereum/pubsub"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 var (
 	txEvents  = tmtypes.QueryForEvent(tmtypes.EventTx).String()
-	evmEvents = tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s.%s='%s'",
+	evmEvents = tmquery.MustCompile(fmt.Sprintf("%s='%s' AND %s.%s='%s'",
 		tmtypes.EventTypeKey,
 		tmtypes.EventTx,
 		sdk.EventTypeMessage,

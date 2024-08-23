@@ -3,7 +3,7 @@ package precompile
 import (
 	"testing"
 
-	store "github.com/cosmos/cosmos-sdk/store/types"
+	store "cosmossdk.io/store/types"
 )
 
 func TestDefaultRequiredGas(t *testing.T) {

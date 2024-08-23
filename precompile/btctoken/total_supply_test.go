@@ -4,20 +4,20 @@ import (
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/precompile"
-	"github.com/evmos/evmos/v12/precompile/btctoken"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/utils"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 func (s *PrecompileTestSuite) TestTotalSupply() {
 	testcases := map[string]struct {
-		run      func(sdk.Context, *app.Evmos)
+		run      func(sdk.Context, *app.Mezo)
 		expTotal *big.Int
 	}{
 		// This is minted by the existing test_helpers.go file for the generated
@@ -28,7 +28,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 		},
 		"add to total supply - mint more coins": {
 			expTotal: big.NewInt(100000000000042),
-			run: func(ctx sdk.Context, app *app.Evmos) {
+			run: func(ctx sdk.Context, app *app.Mezo) {
 				// Mint more coins to the evm module
 				err := app.BankKeeper.MintCoins(
 					ctx, evmtypes.ModuleName,
@@ -40,6 +40,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 
 	for testName, tc := range testcases {
 		s.Run(testName, func() {
+			s.SetupTest()
 			if tc.run != nil {
 				tc.run(s.ctx, s.app)
 			}
@@ -50,7 +51,8 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 
 			bankKeeper := s.app.BankKeeper
 			authzKeeper := s.app.AuthzKeeper
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+			evmKeeper := *s.app.EvmKeeper
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 

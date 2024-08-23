@@ -5,10 +5,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/types"
 
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/stretchr/testify/require"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 func TestTrackHistoricalInfo(t *testing.T) {
@@ -19,21 +19,15 @@ func TestTrackHistoricalInfo(t *testing.T) {
 	// Set historical entries in params to 5.
 	poaKeeper.historicalEntries = 5
 
-	// Set quorum to zero to add validators immediately upon
-	// application submission.
-	params := types.DefaultParams()
-	params.Quorum = 0
-	err := poaKeeper.setParams(ctx, params)
-	require.NoError(t, err)
-
 	// Add initial validators.
-	err = poaKeeper.SubmitApplication(ctx, validator1)
-	require.NoError(t, err)
-	err = poaKeeper.SubmitApplication(ctx, validator2)
-	require.NoError(t, err)
+	poaKeeper.createValidator(ctx, validator1)
+	poaKeeper.createValidator(ctx, validator2)
 
 	// Refresh the validator set.
-	poaKeeper.EndBlocker(ctx)
+	_, err := poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Make sure the validator set is correct.
 	activeValSet := poaKeeper.GetActiveValidators(ctx)
@@ -63,11 +57,13 @@ func TestTrackHistoricalInfo(t *testing.T) {
 
 	// Add a new validator.
 	validator3, _ := mockValidator()
-	err = poaKeeper.SubmitApplication(ctx, validator3)
-	require.NoError(t, err)
+	poaKeeper.createValidator(ctx, validator3)
 
 	// Refresh the validator set.
-	poaKeeper.EndBlocker(ctx)
+	_, err = poaKeeper.EndBlocker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Make sure the validator set is correct.
 	activeValSet = poaKeeper.GetActiveValidators(ctx)
@@ -75,8 +71,8 @@ func TestTrackHistoricalInfo(t *testing.T) {
 	// Sort the validator set in the same way that historical info does.
 	sort.SliceStable(activeValSet, func(i, j int) bool {
 		return bytes.Compare(
-			activeValSet[i].OperatorAddress,
-			activeValSet[j].OperatorAddress,
+			activeValSet[i].GetOperator(),
+			activeValSet[j].GetOperator(),
 		) == -1
 	})
 

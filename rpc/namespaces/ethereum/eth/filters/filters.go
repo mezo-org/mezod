@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/evmos/evmos/v12/rpc/backend"
-	"github.com/evmos/evmos/v12/rpc/types"
+	"github.com/mezo-org/mezod/rpc/backend"
+	"github.com/mezo-org/mezod/rpc/types"
 
+	"cosmossdk.io/log"
+	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/libs/log"
-	tmrpctypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"

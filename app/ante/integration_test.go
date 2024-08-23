@@ -5,15 +5,15 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	testutiltx "github.com/evmos/evmos/v12/testutil/tx"
+	testutiltx "github.com/mezo-org/mezod/testutil/tx"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/testutil"
-	"github.com/evmos/evmos/v12/utils"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/testutil"
+	"github.com/mezo-org/mezod/utils"
 )
 
 var _ = Describe("when sending a Cosmos transaction", func() {
@@ -24,14 +24,14 @@ var _ = Describe("when sending a Cosmos transaction", func() {
 	)
 
 	Context("and the sender account has enough balance to pay for the transaction cost", Ordered, func() {
-		balance := sdk.NewInt(1e18)
+		balance := sdkmath.NewInt(1e18)
 
 		BeforeEach(func() {
 			addr, priv = testutiltx.NewAccAddressAndKey()
 
 			msg = &banktypes.MsgSend{
 				FromAddress: addr.String(),
-				ToAddress:   "evmos1dx67l23hz9l0k9hcher8xz04uj7wf3yu26l2yn",
+				ToAddress:   "mezo1dx67l23hz9l0k9hcher8xz04uj7wf3yulxfqd2",
 				Amount:      sdk.Coins{sdk.Coin{Amount: sdkmath.NewInt(1e14), Denom: utils.BaseDenom}},
 			}
 
@@ -50,14 +50,14 @@ var _ = Describe("when sending a Cosmos transaction", func() {
 	})
 
 	Context("and the sender account has not enough balance to pay for the transaction cost", func() {
-		balance := sdk.NewInt(0)
+		balance := sdkmath.NewInt(0)
 
 		BeforeEach(func() {
 			addr, priv = testutiltx.NewAccAddressAndKey()
 
 			msg = &banktypes.MsgSend{
 				FromAddress: addr.String(),
-				ToAddress:   "evmos1dx67l23hz9l0k9hcher8xz04uj7wf3yu26l2yn",
+				ToAddress:   "mezo1dx67l23hz9l0k9hcher8xz04uj7wf3yulxfqd2",
 				Amount:      sdk.Coins{sdk.Coin{Amount: sdkmath.NewInt(1e14), Denom: utils.BaseDenom}},
 			}
 
@@ -70,8 +70,8 @@ var _ = Describe("when sending a Cosmos transaction", func() {
 
 		It("should fail", func() {
 			res, err := testutil.DeliverTx(s.ctx, s.app, priv, nil, msg)
-			Expect(res.IsOK()).To(BeTrue())
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(BeNil())
+			Expect(res.IsOK()).To(BeFalse())
 		})
 	})
 })

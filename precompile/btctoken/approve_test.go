@@ -10,11 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/precompile"
-	"github.com/evmos/evmos/v12/precompile/btctoken"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 func (s *PrecompileTestSuite) TestApprove() {
@@ -131,8 +131,9 @@ func (s *PrecompileTestSuite) TestApprove() {
 
 			bankKeeper := s.app.BankKeeper
 			authzKeeper := s.app.AuthzKeeper
+			evmKeeper := *s.app.EvmKeeper
 
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper)
+			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
 			s.Require().NoError(err)
 			s.btcTokenPrecompile = btcTokenPrecompile
 
@@ -200,7 +201,7 @@ func (s *PrecompileTestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, 
 func (s *PrecompileTestSuite) setupSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
 	authzKeeper := s.app.AuthzKeeper
 	expiration := s.ctx.BlockTime().Add(time.Hour * 24 * 365)
-	sendAuthz := banktypes.NewSendAuthorization(amount)
+	sendAuthz := banktypes.NewSendAuthorization(amount, nil)
 	err := sendAuthz.ValidateBasic()
 	s.Require().NoError(err, "expected no error validating the grant")
 

@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
+	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -12,20 +13,19 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/testutil"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	"github.com/evmos/evmos/v12/utils"
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/testutil"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	"github.com/mezo-org/mezod/utils"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 
-	"github.com/cosmos/cosmos-sdk/simapp"
+	"cosmossdk.io/log"
+	abci "github.com/cometbft/cometbft/abci/types"
+	dbm "github.com/cosmos/cosmos-db"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	dbm "github.com/tendermint/tm-db"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 var _ = Describe("Feemarket", func() {
@@ -55,7 +55,7 @@ var _ = Describe("Feemarket", func() {
 				// 100_000`. With the fee calculation `Fee = (baseFee + tip) * gasLimit`,
 				// a `minGasPrices = 5_000_000_000` results in `minGlobalFee =
 				// 500_000_000_000_000`
-				privKey, _ = setupTestWithContext("1", sdk.NewDec(minGasPrices), sdk.NewInt(baseFee))
+				privKey, _ = setupTestWithContext("1", sdkmath.LegacyNewDec(minGasPrices), sdkmath.NewInt(baseFee))
 			})
 
 			//nolint:all
@@ -82,7 +82,8 @@ var _ = Describe("Feemarket", func() {
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasLimit, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
 						res, err := testutil.CheckEthTx(s.app, privKey, msgEthereumTx)
-						Expect(err).ToNot(BeNil(), "transaction should have failed", res.GetLog())
+						Expect(err).To(BeNil())
+						Expect(res.IsOK()).To(BeFalse(), "transaction should have failed", res.GetLog())
 					},
 					Entry("legacy tx", func() txParams {
 						return txParams{0, big.NewInt(baseFee), nil, nil, nil}
@@ -100,7 +101,7 @@ var _ = Describe("Feemarket", func() {
 						p := malleate()
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasLimit, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
-						res, err := testutil.DeliverEthTx(s.app, privKey, msgEthereumTx)
+						res, err := testutil.DeliverEthTx(s.ctx, s.app, s.consAddress, privKey, msgEthereumTx)
 						Expect(err).To(BeNil())
 						Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
 					},
@@ -116,8 +117,9 @@ var _ = Describe("Feemarket", func() {
 						p := malleate()
 						to := utiltx.GenerateAddress()
 						msgEthereumTx := buildEthTx(privKey, &to, p.gasLimit, p.gasPrice, p.gasFeeCap, p.gasTipCap, p.accesses)
-						res, err := testutil.DeliverEthTx(s.app, privKey, msgEthereumTx)
-						Expect(err).ToNot(BeNil(), "transaction should have failed", res.GetLog())
+						res, err := testutil.DeliverEthTx(s.ctx, s.app, s.consAddress, privKey, msgEthereumTx)
+						Expect(err).To(BeNil())
+						Expect(res.IsOK()).To(BeFalse(), "transaction should have failed", res.GetLog())
 					},
 					Entry("legacy tx", func() txParams {
 						return txParams{0, big.NewInt(baseFee), nil, nil, nil}
@@ -133,7 +135,7 @@ var _ = Describe("Feemarket", func() {
 
 // setupTestWithContext sets up a test chain with an example Cosmos send msg,
 // given a local (validator config) and a global (feemarket param) minGasPrice
-func setupTestWithContext(valMinGasPrice string, minGasPrice sdk.Dec, baseFee math.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
+func setupTestWithContext(valMinGasPrice string, minGasPrice sdkmath.LegacyDec, baseFee sdkmath.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
 	privKey, msg := setupTest(valMinGasPrice + s.denom)
 	params := types.DefaultParams()
 	params.MinGasPrice = minGasPrice
@@ -149,7 +151,7 @@ func setupTest(localMinGasPrices string) (*ethsecp256k1.PrivKey, banktypes.MsgSe
 	setupChain(localMinGasPrices)
 
 	address, privKey := utiltx.NewAccAddressAndKey()
-	amount, ok := sdk.NewIntFromString("10000000000000000000")
+	amount, ok := sdkmath.NewIntFromString("10000000000000000000")
 	s.Require().True(ok)
 	initBalance := sdk.Coins{sdk.Coin{
 		Denom:  s.denom,
@@ -163,7 +165,7 @@ func setupTest(localMinGasPrices string) (*ethsecp256k1.PrivKey, banktypes.MsgSe
 		ToAddress:   address.String(),
 		Amount: sdk.Coins{sdk.Coin{
 			Denom:  s.denom,
-			Amount: sdk.NewInt(10000),
+			Amount: sdkmath.NewInt(10000),
 		}},
 	}
 	s.Commit()
@@ -174,7 +176,8 @@ func setupChain(localMinGasPricesStr string) {
 	// Initialize the app, so we can use SetMinGasPrices to set the
 	// validator-specific min-gas-prices setting
 	db := dbm.NewMemDB()
-	newapp := app.NewEvmos(
+	chainID := utils.TestnetChainID + "-1"
+	newapp := app.NewMezo(
 		log.NewNopLogger(),
 		db,
 		nil,
@@ -183,7 +186,8 @@ func setupChain(localMinGasPricesStr string) {
 		app.DefaultNodeHome,
 		5,
 		encoding.MakeConfig(app.ModuleBasics),
-		simapp.EmptyAppOptions{},
+		simutils.NewAppOptionsWithFlagHome(app.DefaultNodeHome),
+		baseapp.SetChainID(chainID),
 		baseapp.SetMinGasPrices(localMinGasPricesStr),
 	)
 
@@ -194,14 +198,15 @@ func setupChain(localMinGasPricesStr string) {
 	s.Require().NoError(err)
 
 	// Initialize the chain
-	newapp.InitChain(
-		abci.RequestInitChain{
+	_, err = newapp.InitChain(
+		&abci.RequestInitChain{
 			ChainId:         utils.TestnetChainID + "-1",
 			Validators:      []abci.ValidatorUpdate{},
 			AppStateBytes:   stateBytes,
 			ConsensusParams: app.DefaultConsensusParams,
 		},
 	)
+	s.Require().NoError(err)
 
 	s.app = newapp
 	s.SetupApp(false)

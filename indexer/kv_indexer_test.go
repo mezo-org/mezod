@@ -4,22 +4,22 @@ import (
 	"math/big"
 	"testing"
 
+	"cosmossdk.io/log"
+	"cosmossdk.io/simapp/params"
+	abci "github.com/cometbft/cometbft/abci/types"
+	tmtypes "github.com/cometbft/cometbft/types"
+	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	evmenc "github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/indexer"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	"github.com/evmos/evmos/v12/utils"
-	"github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	evmenc "github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/indexer"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	"github.com/mezo-org/mezod/utils"
+	"github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/tendermint/abci/types"
-	tmlog "github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func TestKVIndexer(t *testing.T) {
@@ -60,23 +60,23 @@ func TestKVIndexer(t *testing.T) {
 	testCases := []struct {
 		name        string
 		block       *tmtypes.Block
-		blockResult []*abci.ResponseDeliverTx
+		blockResult []*abci.ExecTxResult
 		expSuccess  bool
 	}{
 		{
 			"success, format 1",
 			&tmtypes.Block{Header: tmtypes.Header{Height: 1}, Data: tmtypes.Data{Txs: []tmtypes.Tx{txBz}}},
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{
 					Code: 0,
 					Events: []abci.Event{
 						{Type: types.EventTypeEthereumTx, Attributes: []abci.EventAttribute{
-							{Key: []byte("ethereumTxHash"), Value: []byte(txHash.Hex())},
-							{Key: []byte("txIndex"), Value: []byte("0")},
-							{Key: []byte("amount"), Value: []byte("1000")},
-							{Key: []byte("txGasUsed"), Value: []byte("21000")},
-							{Key: []byte("txHash"), Value: []byte("")},
-							{Key: []byte("recipient"), Value: []byte("0x775b87ef5D82ca211811C1a02CE0fE0CA3a455d7")},
+							{Key: "ethereumTxHash", Value: txHash.Hex()},
+							{Key: "txIndex", Value: "0"},
+							{Key: "amount", Value: "1000"},
+							{Key: "txGasUsed", Value: "21000"},
+							{Key: "txHash", Value: ""},
+							{Key: "recipient", Value: "0x775b87ef5D82ca211811C1a02CE0fE0CA3a455d7"},
 						}},
 					},
 				},
@@ -86,19 +86,19 @@ func TestKVIndexer(t *testing.T) {
 		{
 			"success, format 2",
 			&tmtypes.Block{Header: tmtypes.Header{Height: 1}, Data: tmtypes.Data{Txs: []tmtypes.Tx{txBz}}},
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{
 					Code: 0,
 					Events: []abci.Event{
 						{Type: types.EventTypeEthereumTx, Attributes: []abci.EventAttribute{
-							{Key: []byte("ethereumTxHash"), Value: []byte(txHash.Hex())},
-							{Key: []byte("txIndex"), Value: []byte("0")},
+							{Key: "ethereumTxHash", Value: txHash.Hex()},
+							{Key: "txIndex", Value: "0"},
 						}},
 						{Type: types.EventTypeEthereumTx, Attributes: []abci.EventAttribute{
-							{Key: []byte("amount"), Value: []byte("1000")},
-							{Key: []byte("txGasUsed"), Value: []byte("21000")},
-							{Key: []byte("txHash"), Value: []byte("14A84ED06282645EFBF080E0B7ED80D8D8D6A36337668A12B5F229F81CDD3F57")},
-							{Key: []byte("recipient"), Value: []byte("0x775b87ef5D82ca211811C1a02CE0fE0CA3a455d7")},
+							{Key: "amount", Value: "1000"},
+							{Key: "txGasUsed", Value: "21000"},
+							{Key: "txHash", Value: "14A84ED06282645EFBF080E0B7ED80D8D8D6A36337668A12B5F229F81CDD3F57"},
+							{Key: "recipient", Value: "0x775b87ef5D82ca211811C1a02CE0fE0CA3a455d7"},
 						}},
 					},
 				},
@@ -108,7 +108,7 @@ func TestKVIndexer(t *testing.T) {
 		{
 			"success, exceed block gas limit",
 			&tmtypes.Block{Header: tmtypes.Header{Height: 1}, Data: tmtypes.Data{Txs: []tmtypes.Tx{txBz}}},
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{
 					Code:   11,
 					Log:    "out of gas in location: block gas meter; gasWanted: 21000",
@@ -120,7 +120,7 @@ func TestKVIndexer(t *testing.T) {
 		{
 			"fail, failed eth tx",
 			&tmtypes.Block{Header: tmtypes.Header{Height: 1}, Data: tmtypes.Data{Txs: []tmtypes.Tx{txBz}}},
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{
 					Code:   15,
 					Log:    "nonce mismatch",
@@ -132,7 +132,7 @@ func TestKVIndexer(t *testing.T) {
 		{
 			"fail, invalid events",
 			&tmtypes.Block{Header: tmtypes.Header{Height: 1}, Data: tmtypes.Data{Txs: []tmtypes.Tx{txBz}}},
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{
 					Code:   0,
 					Events: []abci.Event{},
@@ -143,7 +143,7 @@ func TestKVIndexer(t *testing.T) {
 		{
 			"fail, not eth tx",
 			&tmtypes.Block{Header: tmtypes.Header{Height: 1}, Data: tmtypes.Data{Txs: []tmtypes.Tx{txBz2}}},
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{
 					Code:   0,
 					Events: []abci.Event{},
@@ -156,7 +156,7 @@ func TestKVIndexer(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			db := dbm.NewMemDB()
-			idxer := indexer.NewKVIndexer(db, tmlog.NewNopLogger(), clientCtx)
+			idxer := indexer.NewKVIndexer(db, log.NewNopLogger(), clientCtx)
 
 			err = idxer.IndexBlock(tc.block, tc.blockResult)
 			require.NoError(t, err)

@@ -7,16 +7,16 @@ import (
 	"strconv"
 	"testing"
 
-	"cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/rpc/backend/mocks"
-	rpc "github.com/evmos/evmos/v12/rpc/types"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/rpc/backend/mocks"
+	rpc "github.com/mezo-org/mezod/rpc/types"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	mock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -159,7 +159,7 @@ func RegisterEstimateGas(queryClient *mocks.EVMQueryClient, args evmtypes.Transa
 }
 
 // BaseFee
-func RegisterBaseFee(queryClient *mocks.EVMQueryClient, baseFee math.Int) {
+func RegisterBaseFee(queryClient *mocks.EVMQueryClient, baseFee sdkmath.Int) {
 	queryClient.On("BaseFee", rpc.ContextWithHeight(1), &evmtypes.QueryBaseFeeRequest{}).
 		Return(&evmtypes.QueryBaseFeeResponse{BaseFee: &baseFee}, nil)
 }
@@ -177,7 +177,7 @@ func RegisterBaseFeeDisabled(queryClient *mocks.EVMQueryClient) {
 }
 
 func TestRegisterBaseFee(t *testing.T) {
-	baseFee := sdk.NewInt(1)
+	baseFee := sdkmath.NewInt(1)
 	queryClient := mocks.NewEVMQueryClient(t)
 	RegisterBaseFee(queryClient, baseFee)
 	res, err := queryClient.BaseFee(rpc.ContextWithHeight(1), &evmtypes.QueryBaseFeeRequest{})

@@ -38,15 +38,15 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/tendermint/tendermint/libs/log"
-	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	tmtypes "github.com/tendermint/tendermint/types"
+	"cosmossdk.io/log"
+	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
+	tmtypes "github.com/cometbft/cometbft/types"
 
-	"github.com/evmos/evmos/v12/rpc/ethereum/pubsub"
-	rpcfilters "github.com/evmos/evmos/v12/rpc/namespaces/ethereum/eth/filters"
-	"github.com/evmos/evmos/v12/rpc/types"
-	"github.com/evmos/evmos/v12/server/config"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/rpc/ethereum/pubsub"
+	rpcfilters "github.com/mezo-org/mezod/rpc/namespaces/ethereum/eth/filters"
+	"github.com/mezo-org/mezod/rpc/types"
+	"github.com/mezo-org/mezod/server/config"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 type WebsocketsServer interface {

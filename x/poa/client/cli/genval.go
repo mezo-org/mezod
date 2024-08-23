@@ -8,12 +8,12 @@ import (
 	"sort"
 	"strings"
 
+	cfg "github.com/cometbft/cometbft/config"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
-	cfg "github.com/tendermint/tendermint/config"
-	tmtypes "github.com/tendermint/tendermint/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
+	tmos "github.com/cometbft/cometbft/libs/os"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/server"
@@ -21,7 +21,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 // NewGenValCmd creates the Cobra command to generate a new validator.
@@ -69,7 +68,7 @@ func NewGenValCmd(defaultHome string) *cobra.Command {
 			ip, _ := cmd.Flags().GetString(FlagIP)
 			p2pPort, _ := cmd.Flags().GetString(FlagP2PPort)
 
-			validator := poatypes.NewValidator(
+			validator, err := poatypes.NewValidator(
 				sdk.ValAddress(address),
 				valPubKey,
 				poatypes.Description{
@@ -80,6 +79,9 @@ func NewGenValCmd(defaultHome string) *cobra.Command {
 					Details:         details,
 				},
 			)
+			if err != nil {
+				return errors.Wrap(err, "failed to create validator")
+			}
 
 			outDocContent := map[string]interface{}{
 				"validator": validator,
@@ -173,14 +175,14 @@ func NewCollectGenValsCmd(defaultHome string) *cobra.Command {
 			}
 
 			// Read the global genesis file.
-			genesisDoc, err := tmtypes.GenesisDocFromFile(config.GenesisFile())
+			appGenesis, err := types.AppGenesisFromFile(config.GenesisFile())
 			if err != nil {
-				return errors.Wrap(err, "failed to read genesis doc from file")
+				return errors.Wrap(err, "failed to read app genesis from file")
 			}
 			// Get the app state (all modules) from global genesis.
-			appState, err := types.GenesisStateFromGenDoc(*genesisDoc)
+			appState, err := types.GenesisStateFromAppGenesis(appGenesis)
 			if err != nil {
-				return errors.Wrap(err, "failed to create genesis state from gen doc")
+				return errors.Wrap(err, "failed to create genesis state from app genesis")
 			}
 			// Get state of the x/poa module.
 			poaState := getModuleStateFromAppState(clientCtx.Codec, appState)
@@ -194,9 +196,9 @@ func NewCollectGenValsCmd(defaultHome string) *cobra.Command {
 				return errors.Wrap(err, "failed to marshal app state")
 			}
 			// Set the updated app state in the global genesis file.
-			genesisDoc.AppState = appStateBytes
+			appGenesis.AppState = appStateBytes
 			// Export the updated global genesis file.
-			err = genutil.ExportGenesisFile(genesisDoc, config.GenesisFile())
+			err = genutil.ExportGenesisFile(appGenesis, config.GenesisFile())
 			if err != nil {
 				return errors.Wrap(err, "failed to export genesis file")
 			}

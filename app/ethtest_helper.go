@@ -17,56 +17,43 @@ package app
 
 import (
 	"encoding/json"
-	"time"
+
+	sdkmath "cosmossdk.io/math"
+
+	"github.com/cosmos/cosmos-sdk/baseapp"
+	"github.com/mezo-org/mezod/utils"
 
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
+	"cosmossdk.io/simapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	"github.com/cosmos/cosmos-sdk/testutil/mock"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
+	"cosmossdk.io/log"
+	abci "github.com/cometbft/cometbft/abci/types"
+	tmtypes "github.com/cometbft/cometbft/types"
+	dbm "github.com/cosmos/cosmos-db"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/encoding"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/mezo-org/mezod/encoding"
 )
 
-// EthDefaultConsensusParams defines the default Tendermint consensus params used in
-// EvmosApp testing.
-var EthDefaultConsensusParams = &abci.ConsensusParams{
-	Block: &abci.BlockParams{
-		MaxBytes: 200000,
-		MaxGas:   -1, // no limit
-	},
-	Evidence: &tmproto.EvidenceParams{
-		MaxAgeNumBlocks: 302400,
-		MaxAgeDuration:  504 * time.Hour, // 3 weeks is the max duration
-		MaxBytes:        10000,
-	},
-	Validator: &tmproto.ValidatorParams{
-		PubKeyTypes: []string{
-			tmtypes.ABCIPubKeyTypeEd25519,
-		},
-	},
-}
-
-// EthSetup initializes a new EvmosApp. A Nop logger is set in EvmosApp.
-func EthSetup(isCheckTx bool, patchGenesis func(*Evmos, simapp.GenesisState) simapp.GenesisState) *Evmos {
+// EthSetup initializes a new MezoApp. A Nop logger is set in MezoApp.
+func EthSetup(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState) simapp.GenesisState) *Mezo {
 	return EthSetupWithDB(isCheckTx, patchGenesis, dbm.NewMemDB())
 }
 
-// EthSetupWithDB initializes a new EvmosApp. A Nop logger is set in EvmosApp.
-func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Evmos, simapp.GenesisState) simapp.GenesisState, db dbm.DB) *Evmos {
-	app := NewEvmos(log.NewNopLogger(),
+// EthSetupWithDB initializes a new MezoApp. A Nop logger is set in MezoApp.
+func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState) simapp.GenesisState, db dbm.DB) *Mezo {
+	chainID := utils.TestnetChainID + "-1"
+	app := NewMezo(
+		log.NewNopLogger(),
 		db,
 		nil,
 		true,
@@ -74,7 +61,9 @@ func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Evmos, simapp.GenesisStat
 		DefaultNodeHome,
 		5,
 		encoding.MakeConfig(ModuleBasics),
-		simapp.EmptyAppOptions{})
+		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
+		baseapp.SetChainID(chainID),
+	)
 	if !isCheckTx {
 		// init chain must be called to stop deliverState from being nil
 		genesisState := NewTestGenesisState(app.AppCodec())
@@ -88,14 +77,17 @@ func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Evmos, simapp.GenesisStat
 		}
 
 		// Initialize the chain
-		app.InitChain(
-			abci.RequestInitChain{
-				ChainId:         "mezo_31611-1",
+		_, err = app.InitChain(
+			&abci.RequestInitChain{
+				ChainId:         chainID,
 				Validators:      []abci.ValidatorUpdate{},
 				ConsensusParams: DefaultConsensusParams,
 				AppStateBytes:   stateBytes,
 			},
 		)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return app
@@ -117,15 +109,26 @@ func NewTestGenesisState(codec codec.Codec) simapp.GenesisState {
 	acc := authtypes.NewBaseAccount(senderPrivKey.PubKey().Address().Bytes(), senderPrivKey.PubKey(), 0, 0)
 	balance := banktypes.Balance{
 		Address: acc.GetAddress().String(),
-		Coins:   sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdk.NewInt(100000000000000))),
+		Coins:   sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdkmath.NewInt(100000000000000))),
 	}
 
 	genesisState := NewDefaultGenesisState()
-	return genesisStateWithValSet(codec, genesisState, valSet, []authtypes.GenesisAccount{acc}, balance)
+	return genesisStateWithValSet(
+		codec,
+		genesisState,
+		acc.GetAddress(),
+		valSet,
+		[]authtypes.GenesisAccount{acc},
+		balance,
+	)
 }
 
-func genesisStateWithValSet(codec codec.Codec, genesisState simapp.GenesisState,
-	valSet *tmtypes.ValidatorSet, genAccs []authtypes.GenesisAccount,
+func genesisStateWithValSet(
+	codec codec.Codec,
+	genesisState simapp.GenesisState,
+	owner sdk.AccAddress,
+	valSet *tmtypes.ValidatorSet,
+	genAccs []authtypes.GenesisAccount,
 	balances ...banktypes.Balance,
 ) simapp.GenesisState {
 	// set genesis accounts
@@ -135,20 +138,27 @@ func genesisStateWithValSet(codec codec.Codec, genesisState simapp.GenesisState,
 	validators := make([]poatypes.Validator, 0, len(valSet.Validators))
 
 	for _, val := range valSet.Validators {
-		pk, err := cryptocodec.FromTmPubKeyInterface(val.PubKey)
+		pk, err := cryptocodec.FromCmtPubKeyInterface(val.PubKey)
 		if err != nil {
 			panic(err)
 		}
 		validator := poatypes.Validator{
-			OperatorAddress: sdk.ValAddress(val.Address),
+			OperatorBech32: sdk.ValAddress(val.Address).String(),
 			//nolint:staticcheck
-			ConsensusPubkey: legacybech32.MustMarshalPubKey(legacybech32.ConsPK, pk),
-			Description:     poatypes.Description{},
+			ConsPubKeyBech32: legacybech32.MustMarshalPubKey(
+				legacybech32.ConsPK,
+				pk,
+			),
+			Description: poatypes.Description{},
 		}
 		validators = append(validators, validator)
 	}
 	// set validators and delegations
-	stakingGenesis := poatypes.NewGenesisState(poatypes.DefaultParams(), validators)
+	stakingGenesis := poatypes.NewGenesisState(
+		poatypes.DefaultParams(),
+		owner,
+		validators,
+	)
 	genesisState[poatypes.ModuleName] = codec.MustMarshalJSON(&stakingGenesis)
 
 	totalSupply := sdk.NewCoins()
@@ -158,7 +168,13 @@ func genesisStateWithValSet(codec codec.Codec, genesisState simapp.GenesisState,
 	}
 
 	// update total supply
-	bankGenesis := banktypes.NewGenesisState(banktypes.DefaultGenesisState().Params, balances, totalSupply, []banktypes.Metadata{})
+	bankGenesis := banktypes.NewGenesisState(
+		banktypes.DefaultGenesisState().Params,
+		balances,
+		totalSupply,
+		[]banktypes.Metadata{},
+		[]banktypes.SendEnabled{},
+	)
 	genesisState[banktypes.ModuleName] = codec.MustMarshalJSON(bankGenesis)
 
 	return genesisState

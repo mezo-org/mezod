@@ -24,16 +24,16 @@ import (
 )
 
 const (
-	// AttoBtc defines the default coin denomination used in Evmos in:
+	// AttoBtc defines the default coin denomination used in Mezo in:
 	//
 	// - Staking parameters: denomination used as stake in the dPoS chain
 	// - Mint parameters: denomination minted due to fee distribution rewards
 	// - Governance parameters: denomination used for spam prevention in proposal deposits
 	// - Crisis parameters: constant fee denomination used for spam prevention to check broken invariant
-	// - EVM parameters: denomination used for running EVM state transitions in Evmos.
+	// - EVM parameters: denomination used for running EVM state transitions in Mezo.
 	AttoBtc string = "abtc"
 
-	// BaseDenomUnit defines the base denomination unit for Evmos.
+	// BaseDenomUnit defines the base denomination unit for Mezo.
 	// 1 btc = 1x10^{BaseDenomUnit} abtc
 	BaseDenomUnit = 18
 
@@ -44,20 +44,20 @@ const (
 // PowerReduction defines the default power reduction value for staking
 var PowerReduction = sdkmath.NewIntFromBigInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(BaseDenomUnit), nil))
 
-// NewEvmosCoin is a utility function that returns an "abtc" coin with the given sdkmath.Int amount.
+// NewMezoCoin is a utility function that returns an "abtc" coin with the given sdkmath.Int amount.
 // The function will panic if the provided amount is negative.
-func NewEvmosCoin(amount sdkmath.Int) sdk.Coin {
+func NewMezoCoin(amount sdkmath.Int) sdk.Coin {
 	return sdk.NewCoin(AttoBtc, amount)
 }
 
-// NewEvmosDecCoin is a utility function that returns an "abtc" decimal coin with the given sdkmath.Int amount.
+// NewMezoDecCoin is a utility function that returns an "abtc" decimal coin with the given sdkmath.Int amount.
 // The function will panic if the provided amount is negative.
-func NewEvmosDecCoin(amount sdkmath.Int) sdk.DecCoin {
+func NewMezoDecCoin(amount sdkmath.Int) sdk.DecCoin {
 	return sdk.NewDecCoin(AttoBtc, amount)
 }
 
-// NewEvmosCoinInt64 is a utility function that returns an "abtc" coin with the given int64 amount.
+// NewMezoCoinInt64 is a utility function that returns an "abtc" coin with the given int64 amount.
 // The function will panic if the provided amount is negative.
-func NewEvmosCoinInt64(amount int64) sdk.Coin {
+func NewMezoCoinInt64(amount int64) sdk.Coin {
 	return sdk.NewInt64Coin(AttoBtc, amount)
 }

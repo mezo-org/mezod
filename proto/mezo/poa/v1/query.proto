@@ -1,0 +1,67 @@
+syntax = "proto3";
+package mezo.poa.v1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "mezo/poa/v1/poa.proto";
+
+option go_package = "github.com/mezo-org/mezod/x/poa/types";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Params queries the parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/mezo/poa/v1/params";
+  }
+  // Validators queries all validators of the module.
+  rpc Validators(QueryValidatorsRequest) returns (QueryValidatorsResponse) {
+    option (google.api.http).get = "/mezo/poa/v1/validators";
+  }
+  // Validator queries a single validator by address.
+  rpc Validator(QueryValidatorRequest) returns (QueryValidatorResponse) {
+    option (google.api.http).get = "/mezo/poa/v1/validators/{operator}";
+  }
+  // Applications queries all validators' applications of the module.
+  rpc Applications(QueryApplicationsRequest) returns (QueryApplicationsResponse) {
+    option (google.api.http).get = "/mezo/poa/v1/applications";
+  }
+}
+
+// QueryParamsRequest is request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  // params holds all the parameters of the module.
+  Params params = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryValidatorsRequest is request type for the Query/Validators RPC method.
+message QueryValidatorsRequest {}
+
+// QueryValidatorsResponse is response type for the Query/Validators RPC method.
+message QueryValidatorsResponse {
+  // validators holds all the validators of the module.
+  repeated Validator validators = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryValidatorRequest is request type for the Query/Validator RPC method.
+message QueryValidatorRequest {
+  // operator is the Cosmos SDK operator address (bech32) of the validator to query.
+  string operator = 1;
+}
+
+// QueryValidatorResponse is response type for the Query/Validator RPC method.
+message QueryValidatorResponse {
+  // validator holds the queried validator.
+  Validator validator = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryApplicationsRequest is request type for the Query/Applications RPC method.
+message QueryApplicationsRequest {}
+
+// QueryApplicationsResponse is response type for the Query/Applications RPC method.
+message QueryApplicationsResponse {
+  // applications holds all the validators' applications of the module.
+  repeated Application applications = 1 [(gogoproto.nullable) = false];
+}

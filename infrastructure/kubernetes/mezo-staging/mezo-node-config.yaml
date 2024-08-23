@@ -8,6 +8,7 @@ data:
   # and cleaned up from comments and blank lines to reduce size.
   app.toml: |
     minimum-gas-prices = "10000000000abtc"
+    query-gas-limit = "0"
     pruning = "nothing"
     pruning-keep-recent = "0"
     pruning-interval = "0"
@@ -18,7 +19,6 @@ data:
     index-events = []
     iavl-cache-size = 781250
     iavl-disable-fastnode = false
-    iavl-lazy-loading = false
     app-db-backend = ""
     [telemetry]    
       service-name = ""
@@ -28,6 +28,9 @@ data:
       enable-service-label = false
       prometheus-retention-time = 0
       global-labels = []
+      metrics-sink = ""
+      statsd-addr = ""
+      datadog-hostname = ""
     [api]
       enable = false
       swagger = false
@@ -36,17 +39,7 @@ data:
       rpc-read-timeout = 10
       rpc-write-timeout = 0
       rpc-max-body-bytes = 1000000
-      enabled-unsafe-cors = false
-    [rosetta]
-      enable = false
-      address = ":8080"
-      blockchain = "app"
-      network = "network"
-      retries = 3
-      offline = false
-      enable-fee-suggestion = false
-      gas-to-suggest = 200000
-      denom-to-suggest = "uatom"    
+      enabled-unsafe-cors = false  
     [grpc]
       enable = true
       address = "0.0.0.0:9090"
@@ -54,21 +47,16 @@ data:
       max-send-msg-size = "2147483647"
     [grpc-web]
       enable = true
-      address = "0.0.0.0:9091"
-      enable-unsafe-cors = false
     [state-sync]
       snapshot-interval = 5000
       snapshot-keep-recent = 2
-    [store]
-      streamers = []
-    [streamers]
-    [streamers.file]
-      keys = ["*", ]
-      write_dir = ""
-      prefix = ""
-      output-metadata = "true"
-      stop-node-on-error = "true"
-      fsync = "false"
+    [streaming]
+    [streaming.abci]
+      keys = []
+      plugin = ""
+      stop-node-on-err = true
+    [mempool]
+      max-txs = -1  
     [evm]
       tracer = ""
       max-tx-gas-wanted = 0
@@ -103,6 +91,7 @@ data:
     broadcast-mode = "sync"
 
   config.toml: |
+    version = "0.38.9"
     proxy_app = "tcp://0.0.0.0:26658"
     moniker = ""
     fast_sync = true
@@ -132,6 +121,7 @@ data:
       experimental_websocket_write_buffer_size = 200
       experimental_close_on_slow_client = false
       timeout_broadcast_tx_commit = "10s"
+      max_request_batch_size = 10
       max_body_bytes = 1000000
       max_header_bytes = 1048576
       tls_cert_file = ""
@@ -141,8 +131,7 @@ data:
       laddr = "tcp://0.0.0.0:26656"
       external_address = ""
       seeds = ""
-      persistent_peers = "41e961a000e42cc5a4ca3d625a7bb43547b92652@mezo-node-4.test.mezo.org:26656,7a91a2a6a94726543f97ae97c09464d1f9ef754c@mezo-node-3.test.mezo.org:26656,826d077e0357028a2e290020280b87cd0988b815@mezo-node-2.test.mezo.org:26656,8f7a31a4185ed87450e9866d7d748e949a688663@mezo-node-0.test.mezo.org:26656,9676a8ce4c0891044b8a19791f5d8143593c9b6f@mezo-node-1.test.mezo.org:26656"
-      upnp = false
+      persistent_peers = "e12010891c8e866caebf0a2af011396ed573485b@mezo-node-0.test.mezo.org:26656,c4b71ef1b07ec1a8bf157256974e11b5c065cd0d@mezo-node-1.test.mezo.org:26656,25440691ae65ebb8547817ee0a22eba75d56dfc7@mezo-node-2.test.mezo.org:26656,863e2707098d989aa1af814a6e2347f204e3a8a9@mezo-node-3.test.mezo.org:26656,aff788a263b957249765b8bb252e2bf6ba58a48d@mezo-node-4.test.mezo.org:26656"    
       addr_book_file = "config/addrbook.json"
       addr_book_strict = true
       max_num_inbound_peers = 240
@@ -160,8 +149,9 @@ data:
       handshake_timeout = "20s"
       dial_timeout = "3s"
     [mempool]
-      version = "v0"
+      type = "flood"
       recheck = true
+      recheck_timeout = "1s"
       broadcast = true
       wal_dir = ""
       size = 10000
@@ -170,8 +160,8 @@ data:
       keep-invalid-txs-in-cache = false
       max_tx_bytes = 1048576
       max_batch_bytes = 0
-      ttl-duration = "0s"
-      ttl-num-blocks = 0
+      experimental_max_gossip_connections_to_persistent_peers = 0
+      experimental_max_gossip_connections_to_non_persistent_peers = 0
     [statesync]
       enable = false
       rpc_servers = ""
@@ -182,7 +172,7 @@ data:
       temp_dir = ""
       chunk_request_timeout = "10s"
       chunk_fetchers = "4"
-    [fastsync]
+    [blocksync]
       version = "v0"
     [consensus]
       wal_file = "data/cs.wal/wal"
@@ -192,7 +182,7 @@ data:
       timeout_prevote_delta = "500ms"
       timeout_precommit = "1s"
       timeout_precommit_delta = "500ms"
-      timeout_commit = "5s"
+      timeout_commit = "3s"
       double_sign_check_height = 0
       skip_timeout_commit = false
       create_empty_blocks = true
@@ -209,4 +199,4 @@ data:
       prometheus_listen_addr = ":26660"
       max_open_connections = 3
       namespace = "cometbft"
-
+      

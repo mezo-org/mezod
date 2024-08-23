@@ -16,8 +16,12 @@
 package types
 
 import (
+	"context"
 	"math/big"
 
+	"cosmossdk.io/core/address"
+
+	consensustypes "github.com/cosmos/cosmos-sdk/x/consensus/types"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -25,30 +29,31 @@ import (
 
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	feemarkettypes "github.com/evmos/evmos/v12/x/feemarket/types"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
 
 // AccountKeeper defines the expected account keeper interface
 type AccountKeeper interface {
-	NewAccountWithAddress(ctx sdk.Context, addr sdk.AccAddress) authtypes.AccountI
+	NewAccountWithAddress(ctx context.Context, addr sdk.AccAddress) sdk.AccountI
 	GetModuleAddress(moduleName string) sdk.AccAddress
-	GetAllAccounts(ctx sdk.Context) (accounts []authtypes.AccountI)
-	IterateAccounts(ctx sdk.Context, cb func(account authtypes.AccountI) bool)
-	GetSequence(sdk.Context, sdk.AccAddress) (uint64, error)
-	GetAccount(ctx sdk.Context, addr sdk.AccAddress) authtypes.AccountI
-	SetAccount(ctx sdk.Context, account authtypes.AccountI)
-	RemoveAccount(ctx sdk.Context, account authtypes.AccountI)
-	GetParams(ctx sdk.Context) (params authtypes.Params)
+	GetAllAccounts(ctx context.Context) (accounts []sdk.AccountI)
+	IterateAccounts(ctx context.Context, cb func(account sdk.AccountI) bool)
+	GetSequence(context.Context, sdk.AccAddress) (uint64, error)
+	GetAccount(ctx context.Context, addr sdk.AccAddress) sdk.AccountI
+	SetAccount(ctx context.Context, account sdk.AccountI)
+	RemoveAccount(ctx context.Context, account sdk.AccountI)
+	GetParams(ctx context.Context) (params authtypes.Params)
+	AddressCodec() address.Codec
 }
 
 // BankKeeper defines the expected interface needed to retrieve account balances.
 type BankKeeper interface {
 	authtypes.BankKeeper
-	GetBalance(ctx sdk.Context, addr sdk.AccAddress, denom string) sdk.Coin
-	SendCoinsFromModuleToAccount(ctx sdk.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
-	MintCoins(ctx sdk.Context, moduleName string, amt sdk.Coins) error
-	BurnCoins(ctx sdk.Context, moduleName string, amt sdk.Coins) error
+	GetBalance(ctx context.Context, addr sdk.AccAddress, denom string) sdk.Coin
+	SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
+	MintCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
+	BurnCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
 }
 
 // StakingKeeper returns the historical headers kept in store.
@@ -62,6 +67,11 @@ type FeeMarketKeeper interface {
 	GetBaseFee(ctx sdk.Context) *big.Int
 	GetParams(ctx sdk.Context) feemarkettypes.Params
 	AddTransientGasWanted(ctx sdk.Context, gasWanted uint64) (uint64, error)
+}
+
+// ConsensusKeeper
+type ConsensusKeeper interface {
+	Params(ctx context.Context, req *consensustypes.QueryParamsRequest) (*consensustypes.QueryParamsResponse, error)
 }
 
 // Event Hooks

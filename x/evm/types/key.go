@@ -31,9 +31,6 @@ const (
 	// TransientKey is the key to access the EVM transient store, that is reset
 	// during the Commit phase.
 	TransientKey = "transient_" + ModuleName
-
-	// RouterKey uses module name for routing
-	RouterKey = ModuleName
 )
 
 // prefix bytes for the EVM persistent store
@@ -41,6 +38,7 @@ const (
 	prefixCode = iota + 1
 	prefixStorage
 	prefixParams
+	prefixStorageExtension
 )
 
 // prefix bytes for the EVM transient store
@@ -51,11 +49,22 @@ const (
 	prefixTransientGasUsed
 )
 
+// prefix bytes for the precompile store
+const (
+	prefixPrecompileBTC = iota + 1
+)
+
+// prefix bytes for the precompile state
+const (
+	prefixNonce = iota + 1
+)
+
 // KVStore key prefixes
 var (
-	KeyPrefixCode    = []byte{prefixCode}
-	KeyPrefixStorage = []byte{prefixStorage}
-	KeyPrefixParams  = []byte{prefixParams}
+	KeyPrefixCode             = []byte{prefixCode}
+	KeyPrefixStorage          = []byte{prefixStorage}
+	KeyPrefixParams           = []byte{prefixParams}
+	KeyPrefixStorageExtension = []byte{prefixStorageExtension}
 )
 
 // Transient Store key prefixes
@@ -69,6 +78,17 @@ var (
 // AddressStoragePrefix returns a prefix to iterate over a given account storage.
 func AddressStoragePrefix(address common.Address) []byte {
 	return append(KeyPrefixStorage, address.Bytes()...)
+}
+
+// AddressStorageExtensionPrefix returns a prefix to iterate over a given account storage extension
+// (i.e. the storage that is not managed by the EVM).
+func AddressStorageExtensionPrefix(address common.Address) []byte {
+	return append(KeyPrefixStorageExtension, address.Bytes()...)
+}
+
+// PrecompileBTCNonceKey returns the key under which the nonce of the BTC precompile is stored.
+func PrecompileBTCNonceKey() []byte {
+	return []byte{prefixPrecompileBTC, prefixNonce}
 }
 
 // StateKey defines the full key under which an account state is stored.

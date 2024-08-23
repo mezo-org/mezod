@@ -3,7 +3,7 @@ package keeper
 import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/types"
 )
 
 // GetParams returns the total set of poa parameters.
@@ -19,18 +19,15 @@ func (k Keeper) GetParams(ctx sdk.Context) (params types.Params) {
 }
 
 // UpdateParams updates the poa module's parameters.
+// Upstream is responsible for setting the `sender` parameter to the actual
+// actor performing the operation.
 func (k Keeper) UpdateParams(
 	ctx sdk.Context,
 	sender sdk.AccAddress,
 	params types.Params,
 ) error {
-	if k.authority.String() != sender.String() {
-		return errorsmod.Wrapf(
-			types.ErrInvalidSigner,
-			"invalid authority; expected %s, got %s",
-			k.authority.String(),
-			sender.String(),
-		)
+	if err := k.checkOwner(ctx, sender); err != nil {
+		return err
 	}
 
 	if err := params.Validate(); err != nil {

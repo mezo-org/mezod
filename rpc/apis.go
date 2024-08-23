@@ -23,18 +23,18 @@ import (
 
 	"github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/evmos/evmos/v12/rpc/backend"
-	"github.com/evmos/evmos/v12/rpc/namespaces/ethereum/debug"
-	"github.com/evmos/evmos/v12/rpc/namespaces/ethereum/eth"
-	"github.com/evmos/evmos/v12/rpc/namespaces/ethereum/eth/filters"
-	"github.com/evmos/evmos/v12/rpc/namespaces/ethereum/miner"
-	"github.com/evmos/evmos/v12/rpc/namespaces/ethereum/net"
-	"github.com/evmos/evmos/v12/rpc/namespaces/ethereum/personal"
-	"github.com/evmos/evmos/v12/rpc/namespaces/ethereum/txpool"
-	"github.com/evmos/evmos/v12/rpc/namespaces/ethereum/web3"
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/rpc/backend"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/debug"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/eth"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/eth/filters"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/miner"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/net"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/personal"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/txpool"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/web3"
+	"github.com/mezo-org/mezod/types"
 
-	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
+	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 )
 
 // RPC namespaces and API version

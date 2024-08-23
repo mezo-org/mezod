@@ -18,6 +18,8 @@ package tx
 import (
 	"errors"
 
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
+
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -29,10 +31,10 @@ import (
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/evmos/evmos/v12/app"
-	cryptocodec "github.com/evmos/evmos/v12/crypto/codec"
-	"github.com/evmos/evmos/v12/ethereum/eip712"
-	"github.com/evmos/evmos/v12/types"
+	"github.com/mezo-org/mezod/app"
+	cryptocodec "github.com/mezo-org/mezod/crypto/codec"
+	"github.com/mezo-org/mezod/ethereum/eip712"
+	"github.com/mezo-org/mezod/types"
 )
 
 type EIP712TxArgs struct {
@@ -65,12 +67,12 @@ type legacyWeb3ExtensionArgs struct {
 // It returns the signed transaction and an error
 func CreateEIP712CosmosTx(
 	ctx sdk.Context,
-	appEvmos *app.Evmos,
+	appMezo *app.Mezo,
 	args EIP712TxArgs,
 ) (sdk.Tx, error) {
 	builder, err := PrepareEIP712CosmosTx(
 		ctx,
-		appEvmos,
+		appMezo,
 		args,
 	)
 	return builder.GetTx(), err
@@ -81,7 +83,7 @@ func CreateEIP712CosmosTx(
 // It returns the tx builder with the signed transaction and an error
 func PrepareEIP712CosmosTx(
 	ctx sdk.Context,
-	appEvmos *app.Evmos,
+	appMezo *app.Mezo,
 	args EIP712TxArgs,
 ) (client.TxBuilder, error) {
 	txArgs := args.CosmosTxArgs
@@ -93,9 +95,9 @@ func PrepareEIP712CosmosTx(
 	chainIDNum := pc.Uint64()
 
 	from := sdk.AccAddress(txArgs.Priv.PubKey().Address().Bytes())
-	accNumber := appEvmos.AccountKeeper.GetAccount(ctx, from).GetAccountNumber()
+	accNumber := appMezo.AccountKeeper.GetAccount(ctx, from).GetAccountNumber()
 
-	nonce, err := appEvmos.AccountKeeper.GetSequence(ctx, from)
+	nonce, err := appMezo.AccountKeeper.GetSequence(ctx, from)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,8 @@ func PrepareEIP712CosmosTx(
 	fee := legacytx.NewStdFee(txArgs.Gas, txArgs.Fees) //nolint: staticcheck
 
 	msgs := txArgs.Msgs
-	data := legacytx.StdSignBytes(ctx.ChainID(), accNumber, nonce, 0, fee, msgs, "", nil)
+	legacytx.RegressionTestingAminoCodec = legacy.Cdc
+	data := legacytx.StdSignBytes(ctx.ChainID(), accNumber, nonce, 0, fee, msgs, "")
 
 	typedDataArgs := typedDataArgs{
 		chainID:        chainIDNum,
@@ -132,7 +135,7 @@ func PrepareEIP712CosmosTx(
 
 	return signCosmosEIP712Tx(
 		ctx,
-		appEvmos,
+		appMezo,
 		args,
 		builder,
 		chainIDNum,
@@ -144,7 +147,7 @@ func PrepareEIP712CosmosTx(
 // the provided private key and the typed data
 func signCosmosEIP712Tx(
 	ctx sdk.Context,
-	appEvmos *app.Evmos,
+	appMezo *app.Mezo,
 	args EIP712TxArgs,
 	builder authtx.ExtensionOptionsTxBuilder,
 	chainID uint64,
@@ -153,7 +156,7 @@ func signCosmosEIP712Tx(
 	priv := args.CosmosTxArgs.Priv
 
 	from := sdk.AccAddress(priv.PubKey().Address().Bytes())
-	nonce, err := appEvmos.AccountKeeper.GetSequence(ctx, from)
+	nonce, err := appMezo.AccountKeeper.GetSequence(ctx, from)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +167,12 @@ func signCosmosEIP712Tx(
 	}
 
 	keyringSigner := NewSigner(priv)
-	signature, pubKey, err := keyringSigner.SignByAddress(from, sigHash)
+	signature, pubKey, err := keyringSigner.SignByAddress(
+		from,
+		sigHash,
+		// Test signer ignores the sign mode so, it can be anything.
+		signing.SignMode_SIGN_MODE_UNSPECIFIED,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -206,14 +214,14 @@ func createTypedData(args typedDataArgs, useLegacy bool) (apitypes.TypedData, er
 		registry := codectypes.NewInterfaceRegistry()
 		types.RegisterInterfaces(registry)
 		cryptocodec.RegisterInterfaces(registry)
-		evmosCodec := codec.NewProtoCodec(registry)
+		mezoCodec := codec.NewProtoCodec(registry)
 
 		feeDelegation := &eip712.FeeDelegationOptions{
 			FeePayer: args.legacyFeePayer,
 		}
 
 		return eip712.LegacyWrapTxToTypedData(
-			evmosCodec,
+			mezoCodec,
 			args.chainID,
 			args.legacyMsg,
 			args.data,

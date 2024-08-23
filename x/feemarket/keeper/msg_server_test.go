@@ -2,8 +2,8 @@ package keeper_test
 
 import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 )
 
 func (suite *KeeperTestSuite) TestUpdateParams() {

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/x/poa/types"
+	"github.com/mezo-org/mezod/x/poa/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -55,18 +55,21 @@ func (qs queryServer) Validator(
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
 
-	if len(request.ValidatorAddr) == 0 {
+	if len(request.Operator) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "validator address cannot be empty")
 	}
 
-	validatorAddr, err := sdk.ValAddressFromBech32(request.ValidatorAddr)
+	// The request is expected to carry a bech32 encoded address of an operator.
+	// We use that operator address to fetch the corresponding validator
+	// instance from the store.
+	operator, err := sdk.ValAddressFromBech32(request.Operator)
 	if err != nil {
 		return nil, err
 	}
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 
-	validator, found := qs.keeper.GetValidator(sdkCtx, validatorAddr)
+	validator, found := qs.keeper.GetValidator(sdkCtx, operator)
 	if !found {
 		return nil, types.ErrNoValidatorFound
 	}
@@ -86,18 +89,5 @@ func (qs queryServer) Applications(
 
 	return &types.QueryApplicationsResponse{
 		Applications: applications,
-	}, nil
-}
-
-func (qs queryServer) KickProposals(
-	ctx context.Context,
-	_ *types.QueryKickProposalsRequest,
-) (*types.QueryKickProposalsResponse, error) {
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-
-	kickProposals := qs.keeper.GetAllKickProposals(sdkCtx)
-
-	return &types.QueryKickProposalsResponse{
-		KickProposals: kickProposals,
 	}, nil
 }

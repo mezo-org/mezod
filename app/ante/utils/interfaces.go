@@ -17,6 +17,8 @@
 package utils
 
 import (
+	"context"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
@@ -24,7 +26,7 @@ import (
 // BankKeeper defines the exposed interface for using functionality of the bank keeper
 // in the context of the AnteHandler utils package.
 type BankKeeper interface {
-	GetBalance(ctx sdk.Context, addr sdk.AccAddress, denom string) sdk.Coin
+	GetBalance(ctx context.Context, addr sdk.AccAddress, denom string) sdk.Coin
 }
 
 // StakingKeeper defines the exposed interface for using functionality of the staking keeper

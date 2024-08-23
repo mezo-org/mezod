@@ -11,8 +11,8 @@ import (
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/evmos/v12/precompile"
-	evm "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/precompile"
+	evm "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // ApproveMethodName is the name of the approve method that should match the name
@@ -71,7 +71,6 @@ func (am *approveMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
-	logger := context.SdkCtx().Logger()
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
 		return nil, err
 	}
@@ -97,27 +96,7 @@ func (am *approveMethod) Run(
 
 	authorization, expiration := am.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
 
-	var err error
-
-	if authorization == nil {
-		logger.Debug("authorization to %s for address %s does not exist or is expired", SendMsgURL, spender)
-		if amount.Sign() == 0 {
-			// no authorization, amount 0 -> error
-			err = fmt.Errorf("no existing approvals, cannot approve 0")
-		} else {
-			// no authorization, amount positive -> create a new authorization
-			err = am.createAuthorization(context.SdkCtx(), spender, granter, amount)
-		}
-	} else {
-		if amount.Sign() == 0 {
-			// authorization exists, amount 0 -> delete authorization
-			err = am.authzkeeper.DeleteGrant(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
-		} else {
-			// authorization exists, amount positive -> update authorization
-			err = am.updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration)
-		}
-	}
-
+	err := handleAuthorization(authorization, spender, amount, context, granter, expiration, am.authzkeeper)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +115,30 @@ func (am *approveMethod) Run(
 	return precompile.MethodOutputs{true}, nil
 }
 
-func (am approveMethod) createAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int) error {
+// no authorization, amount 0 -> error
+// no authorization, amount positive -> create a new authorization
+// authorization exists, amount 0 -> delete authorization
+// authorization exists, amount positive -> update authorization
+func handleAuthorization(authorization authz.Authorization, spender common.Address, amount *big.Int, context *precompile.RunContext, granter common.Address, expiration *time.Time, authzkeeper authzkeeper.Keeper) error {
+	var err error
+
+	if authorization == nil {
+		if amount.Sign() == 0 {
+			err = fmt.Errorf("no existing approvals, cannot approve 0")
+		} else {
+			err = createAuthorization(context.SdkCtx(), spender, granter, amount, authzkeeper)
+		}
+	} else {
+		if amount.Sign() == 0 {
+			err = authzkeeper.DeleteGrant(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
+		} else {
+			err = updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration, authzkeeper)
+		}
+	}
+	return err
+}
+
+func createAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int, authzkeeper authzkeeper.Keeper) error {
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
 		return fmt.Errorf("failed to convert amount: [%w]", err)
@@ -146,15 +148,15 @@ func (am approveMethod) createAuthorization(ctx sdk.Context, grantee, granter co
 
 	expiration := ctx.BlockTime().Add(ApprovalExpiration)
 
-	authorization := banktypes.NewSendAuthorization(coins)
+	authorization := banktypes.NewSendAuthorization(coins, nil)
 	if err := authorization.ValidateBasic(); err != nil {
 		return err
 	}
 
-	return am.authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), authorization, &expiration)
+	return authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), authorization, &expiration)
 }
 
-func (am approveMethod) updateAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int, authorization authz.Authorization, expiration *time.Time) error {
+func updateAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int, authorization authz.Authorization, expiration *time.Time, authzkeeper authzkeeper.Keeper) error {
 	sendAuthz, ok := authorization.(*banktypes.SendAuthorization)
 	if !ok {
 		return fmt.Errorf("unknown authorization type")
@@ -170,7 +172,7 @@ func (am approveMethod) updateAuthorization(ctx sdk.Context, grantee, granter co
 		return err
 	}
 
-	return am.authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), sendAuthz, expiration)
+	return authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), sendAuthz, expiration)
 }
 
 func isZeroAddress(address common.Address) bool {

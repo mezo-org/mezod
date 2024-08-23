@@ -26,12 +26,6 @@ func addValidatorDescriptionFlags(fs *flag.FlagSet) *flag.FlagSet {
 	return fs
 }
 
-func NewFlagSetSubmitApplication() *flag.FlagSet {
-	fs := flag.NewFlagSet("", flag.ContinueOnError)
-	fs = addValidatorDescriptionFlags(fs)
-	return fs
-}
-
 func NewFlagSetGenVal(defaultHome, defaultIP, defaultP2PPort string) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 

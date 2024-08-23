@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"cosmossdk.io/log"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestTPSCounter(t *testing.T) {
@@ -70,5 +70,5 @@ func (wl *writerLogger) Info(msg string, keyVals ...interface{}) {
 	defer wl.mu.Unlock()
 
 	wl.nTotalTPS += keyVals[1].(float64)
-	fmt.Fprintf(wl.w, msg+" "+fmt.Sprintf("%s %.2f\n", keyVals[0], keyVals[1]))
+	fmt.Fprint(wl.w, msg+" "+fmt.Sprintf("%s %.2f\n", keyVals[0], keyVals[1]))
 }

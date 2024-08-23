@@ -3,9 +3,9 @@ package bridge_test
 import (
 	"testing"
 
-	keepertest "github.com/evmos/evmos/v12/testutil/keeper"
-	"github.com/evmos/evmos/v12/x/bridge"
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	keepertest "github.com/mezo-org/mezod/testutil/keeper"
+	"github.com/mezo-org/mezod/x/bridge"
+	"github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/require"
 )
 

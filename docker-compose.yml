@@ -4,15 +4,16 @@ services:
   node0:
     container_name: mezo-node0
     platform: linux/amd64
-    image: "meso/node"
+    image: "mezo-org/mezod"
     ports:
       - "8545-8546:8545-8546"
       - "26656-26657:26656-26657"
     volumes:
-      - ./build/node0/evmosd:/evmos:Z
+      - ./build/node0/mezod:/mezo:Z
     command:
       - >
-        /evmosd start --home /evmos
+        /mezod start --home /mezo
+        --chain-id mezo_31611-10
         --json-rpc.address="0.0.0.0:8545" --json-rpc.ws-address="0.0.0.0:8546"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
@@ -22,15 +23,16 @@ services:
   node1:
     container_name: mezo-node1
     platform: linux/amd64
-    image: "meso/node"
+    image: "mezo-org/mezod"
     ports:
       - "8547-8548:8545-8546"
       - "26659-26660:26656-26657"
     volumes:
-      - ./build/node1/evmosd:/evmos:Z
+      - ./build/node1/mezod:/mezo:Z
     command:
       - >
-        /evmosd start --home /evmos
+        /mezod start --home /mezo
+        --chain-id mezo_31611-10
         --json-rpc.address="0.0.0.0:8547" --json-rpc.ws-address="0.0.0.0:8548"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
@@ -40,15 +42,16 @@ services:
   node2:
     container_name: mezo-node2
     platform: linux/amd64
-    image: "meso/node"
+    image: "mezo-org/mezod"
     ports:
       - "8549-8550:8545-8546"
       - "26661-26662:26656-26657"
     volumes:
-      - ./build/node2/evmosd:/evmos:Z
+      - ./build/node2/mezod:/mezo:Z
     command:
       - >
-        /evmosd start --home /evmos
+        /mezod start --home /mezo
+        --chain-id mezo_31611-10
         --json-rpc.address="0.0.0.0:8549" --json-rpc.ws-address="0.0.0.0:8550"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:
@@ -58,15 +61,16 @@ services:
   node3:
     container_name: mezo-node3
     platform: linux/amd64
-    image: "meso/node"
+    image: "mezo-org/mezod"
     ports:
       - "8551-8552:8545-8546"
       - "26663-26664:26656-26657"
     volumes:
-      - ./build/node3/evmosd:/evmos:Z
+      - ./build/node3/mezod:/mezo:Z
     command:
       - >
-        /evmosd start --home /evmos
+        /mezod start --home /mezo
+        --chain-id mezo_31611-10
         --json-rpc.address="0.0.0.0:8551" --json-rpc.ws-address="0.0.0.0:8552"
         --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" --json-rpc.enable
     networks:

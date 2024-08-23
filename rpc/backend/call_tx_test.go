@@ -5,21 +5,22 @@ import (
 	"fmt"
 	"math/big"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkmath "cosmossdk.io/math"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/evmos/evmos/v12/rpc/backend/mocks"
-	rpctypes "github.com/evmos/evmos/v12/rpc/types"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/rpc/backend/mocks"
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"google.golang.org/grpc/metadata"
 )
 
 func (suite *BackendTestSuite) TestResend() {
 	txNonce := (hexutil.Uint64)(1)
-	baseFee := sdk.NewInt(1)
+	baseFee := sdkmath.NewInt(1)
 	gasPrice := new(hexutil.Big)
 	toAddr := utiltx.GenerateAddress()
 	chainID := (*hexutil.Big)(suite.backend.chainID)
@@ -482,7 +483,7 @@ func (suite *BackendTestSuite) TestGasPrice() {
 				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, 1)
 				suite.Require().NoError(err)
-				RegisterBaseFee(queryClient, sdk.NewInt(1))
+				RegisterBaseFee(queryClient, sdkmath.NewInt(1))
 			},
 			defaultGasPrice,
 			true,
@@ -500,7 +501,7 @@ func (suite *BackendTestSuite) TestGasPrice() {
 				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, 1)
 				suite.Require().NoError(err)
-				RegisterBaseFee(queryClient, sdk.NewInt(1))
+				RegisterBaseFee(queryClient, sdkmath.NewInt(1))
 			},
 			defaultGasPrice,
 			false,

@@ -5,21 +5,23 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	storetypes "cosmossdk.io/store/types"
 
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
+
+	"github.com/cometbft/cometbft/crypto/tmhash"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	tmtypes "github.com/cometbft/cometbft/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	"github.com/evmos/evmos/v12/x/evm/keeper"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	"github.com/evmos/evmos/v12/x/evm/types"
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	"github.com/mezo-org/mezod/x/evm/keeper"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	"github.com/mezo-org/mezod/x/evm/types"
 )
 
 func (suite *KeeperTestSuite) TestGetHashFn() {
@@ -131,29 +133,28 @@ func (suite *KeeperTestSuite) TestGetCoinbaseAddress() {
 				// consensus key (must use pure secp256k1 curve due to Tendermint requirements)
 				privKey := secp256k1.GenPrivKey()
 
-				validator := poatypes.NewValidator(
+				validator, err := poatypes.NewValidator(
 					valOpAddr.Bytes(),
 					privKey.PubKey(),
 					poatypes.Description{},
 				)
-
-				valConsAddr := validator.GetConsAddr()
-
-				// Set zero quorum in the poa module to immediately
-				// add validators upon their application.
-				err := suite.app.PoaKeeper.UpdateParams(
-					suite.ctx,
-					suite.app.PoaKeeper.Authority(),
-					poatypes.Params{
-						MaxValidators: poatypes.DefaultMaxValidators,
-						Quorum:        0,
-					},
-				)
 				suite.Require().NoError(err)
+
+				valConsAddr := validator.GetConsAddress()
 
 				err = suite.app.PoaKeeper.SubmitApplication(
 					suite.ctx,
+					sdk.AccAddress(validator.GetOperator()),
 					validator,
+				)
+				suite.Require().NoError(err)
+
+				owner := suite.app.PoaKeeper.GetOwner(suite.ctx)
+
+				err = suite.app.PoaKeeper.ApproveApplication(
+					suite.ctx,
+					owner,
+					validator.GetOperator(),
 				)
 				suite.Require().NoError(err)
 
@@ -517,7 +518,7 @@ func (suite *KeeperTestSuite) TestResetGasMeterAndConsumeGas() {
 			suite.SetupTest() // reset
 
 			panicF := func() {
-				gm := sdk.NewGasMeter(10)
+				gm := storetypes.NewGasMeter(10)
 				gm.ConsumeGas(tc.gasConsumed, "")
 				ctx := suite.ctx.WithGasMeter(gm)
 				suite.app.EvmKeeper.ResetGasMeterAndConsumeGas(ctx, tc.gasUsed)

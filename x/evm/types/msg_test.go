@@ -17,12 +17,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
 
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/x/evm/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/x/evm/types"
 )
 
 const invalidAddress = "0x0000"
@@ -66,12 +66,9 @@ func (suite *MsgsTestSuite) TestMsgEthereumTx_Constructor() {
 	msg := types.NewTx(evmTx)
 
 	// suite.Require().Equal(msg.Data.To, suite.to.Hex())
-	suite.Require().Equal(msg.Route(), types.RouterKey)
-	suite.Require().Equal(msg.Type(), types.TypeMsgEthereumTx)
 	// suite.Require().NotNil(msg.To())
 	suite.Require().Equal(msg.GetMsgs(), []sdk.Msg{msg})
 	suite.Require().Panics(func() { msg.GetSigners() })
-	suite.Require().Panics(func() { msg.GetSignBytes() })
 
 	evmTx2 := &types.EvmTxArgs{
 		Nonce:    0,

@@ -2,8 +2,8 @@ package bridge
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/evmos/evmos/v12/x/bridge/keeper"
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	"github.com/mezo-org/mezod/x/bridge/keeper"
+	"github.com/mezo-org/mezod/x/bridge/types"
 )
 
 // InitGenesis initializes the module's state from a provided genesis state.

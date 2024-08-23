@@ -19,15 +19,17 @@ import (
 	"fmt"
 	"math/big"
 
+	storetypes "cosmossdk.io/store/types"
+
 	sdkmath "cosmossdk.io/math"
 
 	errorsmod "cosmossdk.io/errors"
-	"github.com/cosmos/cosmos-sdk/store/prefix"
+	"cosmossdk.io/store/prefix"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	evmostypes "github.com/evmos/evmos/v12/types"
-	"github.com/evmos/evmos/v12/x/evm/statedb"
-	"github.com/evmos/evmos/v12/x/evm/types"
+	mezotypes "github.com/mezo-org/mezod/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+	"github.com/mezo-org/mezod/x/evm/types"
 )
 
 var _ statedb.Keeper = &Keeper{}
@@ -51,6 +53,19 @@ func (k *Keeper) GetAccount(ctx sdk.Context, addr common.Address) *statedb.Accou
 func (k *Keeper) GetState(ctx sdk.Context, addr common.Address, key common.Hash) common.Hash {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStoragePrefix(addr))
 
+	return stateValue(store, key)
+}
+
+// GetStateExtension loads contract state from database. This is used as a separate storage
+// that is not part of the main EVM persistent store. One of the use cases is storage
+// for BTC precompile functionality.
+func (k *Keeper) GetStateExtension(ctx sdk.Context, addr common.Address, key common.Hash) common.Hash {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStorageExtensionPrefix(addr))
+
+	return stateValue(store, key)
+}
+
+func stateValue(store prefix.Store, key common.Hash) common.Hash {
 	value := store.Get(key.Bytes())
 	if len(value) == 0 {
 		return common.Hash{}
@@ -70,7 +85,7 @@ func (k *Keeper) ForEachStorage(ctx sdk.Context, addr common.Address, cb func(ke
 	store := ctx.KVStore(k.storeKey)
 	prefix := types.AddressStoragePrefix(addr)
 
-	iterator := sdk.KVStorePrefixIterator(store, prefix)
+	iterator := storetypes.KVStorePrefixIterator(store, prefix)
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {
@@ -132,7 +147,7 @@ func (k *Keeper) SetAccount(ctx sdk.Context, addr common.Address, account stated
 
 	codeHash := common.BytesToHash(account.CodeHash)
 
-	if ethAcct, ok := acct.(evmostypes.EthAccountI); ok {
+	if ethAcct, ok := acct.(mezotypes.EthAccountI); ok {
 		if err := ethAcct.SetCodeHash(codeHash); err != nil {
 			return err
 		}
@@ -157,6 +172,18 @@ func (k *Keeper) SetAccount(ctx sdk.Context, addr common.Address, account stated
 // SetState update contract storage, delete if value is empty.
 func (k *Keeper) SetState(ctx sdk.Context, addr common.Address, key common.Hash, value []byte) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStoragePrefix(addr))
+	k.stateAction(store, ctx, addr, key, value)
+}
+
+// SetStateExtension update contract extension storage, delete if value is empty. This is used as
+// a separate storage that is not part of the main EVM persistent store. One of the use cases is storage
+// for BTC precompile functionality.
+func (k *Keeper) SetStateExtension(ctx sdk.Context, addr common.Address, key common.Hash, value []byte) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.AddressStorageExtensionPrefix(addr))
+	k.stateAction(store, ctx, addr, key, value)
+}
+
+func (k *Keeper) stateAction(store prefix.Store, ctx sdk.Context, addr common.Address, key common.Hash, value []byte) {
 	action := "updated"
 	if len(value) == 0 {
 		store.Delete(key.Bytes())
@@ -202,7 +229,7 @@ func (k *Keeper) DeleteAccount(ctx sdk.Context, addr common.Address) error {
 	}
 
 	// NOTE: only Ethereum accounts (contracts) can be selfdestructed
-	_, ok := acct.(evmostypes.EthAccountI)
+	_, ok := acct.(mezotypes.EthAccountI)
 	if !ok {
 		return errorsmod.Wrapf(types.ErrInvalidAccount, "type %T, address %s", acct, addr)
 	}

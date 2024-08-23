@@ -3,19 +3,17 @@ package keeper_test
 import (
 	"testing"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	testkeeper "github.com/evmos/evmos/v12/testutil/keeper"
-	"github.com/evmos/evmos/v12/x/bridge/types"
+	testkeeper "github.com/mezo-org/mezod/testutil/keeper"
+	"github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestParamsQuery(t *testing.T) {
 	keeper, ctx := testkeeper.BridgeKeeper(t)
-	wctx := sdk.WrapSDKContext(ctx)
 	params := types.DefaultParams()
 	keeper.SetParams(ctx, params)
 
-	response, err := keeper.Params(wctx, &types.QueryParamsRequest{})
+	response, err := keeper.Params(ctx, &types.QueryParamsRequest{})
 	require.NoError(t, err)
 	require.Equal(t, &types.QueryParamsResponse{Params: params}, response)
 }

@@ -2,16 +2,19 @@ package keeper_test
 
 import (
 	"encoding/json"
+	"math"
 	"math/big"
 	"time"
 
+	simutils "github.com/cosmos/cosmos-sdk/testutil/sims"
+	"github.com/mezo-org/mezod/utils"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	poatypes "github.com/evmos/evmos/v12/x/poa/types"
+	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -19,23 +22,23 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/evmos/evmos/v12/app"
-	"github.com/evmos/evmos/v12/crypto/ethsecp256k1"
-	"github.com/evmos/evmos/v12/encoding"
-	"github.com/evmos/evmos/v12/testutil"
-	utiltx "github.com/evmos/evmos/v12/testutil/tx"
-	evmostypes "github.com/evmos/evmos/v12/types"
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
-	"github.com/evmos/evmos/v12/x/feemarket/types"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/mezo-org/mezod/encoding"
+	"github.com/mezo-org/mezod/testutil"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	mezotypes "github.com/mezo-org/mezod/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	"github.com/mezo-org/mezod/x/feemarket/types"
 
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	dbm "github.com/tendermint/tm-db"
+	"cosmossdk.io/log"
+	abci "github.com/cometbft/cometbft/abci/types"
+	dbm "github.com/cosmos/cosmos-db"
 )
 
-func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
+func (suite *KeeperTestSuite) SetupApp(checkTx bool, chainID string) {
 	t := suite.T()
 	// account key
 	accPriv, err := ethsecp256k1.GenerateKey()
@@ -48,41 +51,43 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	suite.consAddress = sdk.ConsAddress(priv.PubKey().Address())
 
 	header := testutil.NewHeader(
-		1, time.Now().UTC(), "mezo_31611-1", suite.consAddress, nil, nil,
+		1, time.Now().UTC(), chainID, suite.consAddress, nil, nil,
 	)
 
-	suite.ctx = suite.app.BaseApp.NewContext(checkTx, header)
+	suite.ctx = suite.app.BaseApp.NewContextLegacy(checkTx, header)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	types.RegisterQueryServer(queryHelper, suite.app.FeeMarketKeeper)
 	suite.queryClient = types.NewQueryClient(queryHelper)
 
-	acc := &evmostypes.EthAccount{
-		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), nil, 0, 0),
-		CodeHash:    common.BytesToHash(crypto.Keccak256(nil)).String(),
+	nextAccNumber := suite.app.AccountKeeper.NextAccountNumber(suite.ctx)
+
+	acc := &mezotypes.EthAccount{
+		BaseAccount: authtypes.NewBaseAccount(
+			suite.address.Bytes(),
+			nil,
+			nextAccNumber,
+			0,
+		),
+		CodeHash: common.BytesToHash(crypto.Keccak256(nil)).String(),
 	}
 
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
 	valAddr := sdk.ValAddress(suite.address.Bytes())
-	validator := poatypes.NewValidator(valAddr, priv.PubKey(), poatypes.Description{})
-
-	// Set zero quorum in the poa module to immediately
-	// add validators upon their application.
-	err = suite.app.PoaKeeper.UpdateParams(
-		suite.ctx,
-		suite.app.PoaKeeper.Authority(),
-		poatypes.Params{
-			MaxValidators: poatypes.DefaultMaxValidators,
-			Quorum:        0,
-		},
-	)
-	require.NoError(t, err)
+	validator, err := poatypes.NewValidator(valAddr, priv.PubKey(), poatypes.Description{})
+	suite.Require().NoError(err)
 
 	err = suite.app.PoaKeeper.SubmitApplication(
 		suite.ctx,
+		sdk.AccAddress(validator.GetOperator()),
 		validator,
 	)
+	require.NoError(t, err)
+
+	owner := suite.app.PoaKeeper.GetOwner(suite.ctx)
+
+	err = suite.app.PoaKeeper.ApproveApplication(suite.ctx, owner, validator.GetOperator())
 	require.NoError(t, err)
 
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
@@ -109,10 +114,14 @@ func (suite *KeeperTestSuite) CommitAfter(t time.Duration) {
 
 // setupTestWithContext sets up a test chain with an example Cosmos send msg,
 // given a local (validator config) and a global (feemarket param) minGasPrice
-func setupTestWithContext(valMinGasPrice string, minGasPrice sdk.Dec, baseFee sdkmath.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
-	privKey, msg := setupTest(valMinGasPrice + s.denom)
+func setupTestWithContext(valMinGasPrice string, minGasPrice sdkmath.LegacyDec, baseFee sdkmath.Int) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
+	chainID := utils.TestnetChainID + "-1"
+	privKey, msg := setupTest(valMinGasPrice+s.denom, chainID)
 	params := types.DefaultParams()
 	params.MinGasPrice = minGasPrice
+	// Disable base fee recalculation in the x/feemarket BeginBlock hook to
+	// not overwrite the value set in this test.
+	params.EnableHeight = math.MaxInt64
 	err := s.app.FeeMarketKeeper.SetParams(s.ctx, params)
 	s.Require().NoError(err)
 	s.app.FeeMarketKeeper.SetBaseFee(s.ctx, baseFee.BigInt())
@@ -121,8 +130,8 @@ func setupTestWithContext(valMinGasPrice string, minGasPrice sdk.Dec, baseFee sd
 	return privKey, msg
 }
 
-func setupTest(localMinGasPrices string) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
-	setupChain(localMinGasPrices)
+func setupTest(localMinGasPrices, chainID string) (*ethsecp256k1.PrivKey, banktypes.MsgSend) {
+	setupChain(localMinGasPrices, chainID)
 
 	address, privKey := utiltx.NewAccAddressAndKey()
 	amount, ok := sdkmath.NewIntFromString("10000000000000000000")
@@ -146,11 +155,11 @@ func setupTest(localMinGasPrices string) (*ethsecp256k1.PrivKey, banktypes.MsgSe
 	return privKey, msg
 }
 
-func setupChain(localMinGasPricesStr string) {
+func setupChain(localMinGasPricesStr, chainID string) {
 	// Initialize the app, so we can use SetMinGasPrices to set the
 	// validator-specific min-gas-prices setting
 	db := dbm.NewMemDB()
-	newapp := app.NewEvmos(
+	newapp := app.NewMezo(
 		log.NewNopLogger(),
 		db,
 		nil,
@@ -159,7 +168,8 @@ func setupChain(localMinGasPricesStr string) {
 		app.DefaultNodeHome,
 		5,
 		encoding.MakeConfig(app.ModuleBasics),
-		simapp.EmptyAppOptions{},
+		simutils.NewAppOptionsWithFlagHome(app.DefaultNodeHome),
+		baseapp.SetChainID(chainID),
 		baseapp.SetMinGasPrices(localMinGasPricesStr),
 	)
 
@@ -170,17 +180,18 @@ func setupChain(localMinGasPricesStr string) {
 	s.Require().NoError(err)
 
 	// Initialize the chain
-	newapp.InitChain(
-		abci.RequestInitChain{
-			ChainId:         "mezo_31611-1",
+	_, err = newapp.InitChain(
+		&abci.RequestInitChain{
+			ChainId:         chainID,
 			Validators:      []abci.ValidatorUpdate{},
 			AppStateBytes:   stateBytes,
 			ConsensusParams: app.DefaultConsensusParams,
 		},
 	)
+	s.Require().NoError(err)
 
 	s.app = newapp
-	s.SetupApp(false)
+	s.SetupApp(false, chainID)
 }
 
 func getNonce(addressBytes []byte) uint64 {

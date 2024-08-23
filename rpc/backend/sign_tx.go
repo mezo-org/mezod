@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/cosmos/cosmos-sdk/types/tx/signing"
+
 	errorsmod "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -30,7 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 
-	evmtypes "github.com/evmos/evmos/v12/x/evm/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // SendTransaction sends transaction based on received args using Node's key to sign it
@@ -133,7 +135,13 @@ func (b *Backend) Sign(address common.Address, data hexutil.Bytes) (hexutil.Byte
 	}
 
 	// Sign the requested hash with the wallet
-	signature, _, err := b.clientCtx.Keyring.SignByAddress(from, data)
+	signature, _, err := b.clientCtx.Keyring.SignByAddress(
+		from,
+		data,
+		// This parameter is relevant only for Ledger devices. Use the legacy
+		// Amino JSON signing mode for backwards compatibility.
+		signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON,
+	)
 	if err != nil {
 		b.logger.Error("keyring.SignByAddress failed", "address", address.Hex())
 		return nil, err
@@ -159,7 +167,13 @@ func (b *Backend) SignTypedData(address common.Address, typedData apitypes.Typed
 	}
 
 	// Sign the requested hash with the wallet
-	signature, _, err := b.clientCtx.Keyring.SignByAddress(from, sigHash)
+	signature, _, err := b.clientCtx.Keyring.SignByAddress(
+		from,
+		sigHash,
+		// This parameter is relevant only for Ledger devices. Use the legacy
+		// Amino JSON signing mode for backwards compatibility.
+		signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON,
+	)
 	if err != nil {
 		b.logger.Error("keyring.SignByAddress failed", "address", address.Hex())
 		return nil, err
