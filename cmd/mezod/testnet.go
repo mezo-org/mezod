@@ -22,6 +22,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 	"net"
 	"os"
 	"path/filepath"
@@ -454,13 +455,30 @@ func initGenesisFiles(
 	// generate genesis files for each validator and save
 	genTime := tmtime.Now()
 	for i := range validators {
+		genFile := genFiles[i]
+
+		// Create the genesis.json file.
 		if err := genutil.ExportGenesisFileWithTime(
-			genFiles[i],
+			genFile,
 			chainID,
 			nil,
 			appGenStateJSON,
 			genTime,
 		); err != nil {
+			return err
+		}
+
+		// Load the genesis.json file and update to update the consensus params.
+		appGenesis, err := types.AppGenesisFromFile(genFile)
+		if err != nil {
+			return err
+		}
+		// Set the block gas limit to 10M.
+		appGenesis.Consensus.Params.Block.MaxGas = 10_000_000
+		// Enable vote extensions from block 1.
+		appGenesis.Consensus.Params.ABCI.VoteExtensionsEnableHeight = 1
+		// Export the updated genesis file.
+		if err := genutil.ExportGenesisFile(appGenesis, genFile); err != nil {
 			return err
 		}
 	}
