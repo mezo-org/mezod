@@ -2,11 +2,9 @@ package abci
 
 import (
 	"cosmossdk.io/log"
+	"cosmossdk.io/math"
 	"fmt"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-	"golang.org/x/exp/slices"
-
-	"cosmossdk.io/math"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -103,13 +101,16 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			"events_count", len(events),
 		)
 
-		// Order events by sequence in ascending order.
-		slices.SortFunc(events, bridgetypes.AssetsLockedEventsCmp)
-
 		// Limit the number of events to the maximum allowed, just in case.
 		// The sidecar implementation can change in the future.
 		if len(events) > AssetsLockedEventsLimit {
 			events = events[:AssetsLockedEventsLimit]
+		}
+
+		if !bridgetypes.AssetsLockedEvents(events).IsStrictlyIncreasingSequence() {
+			// Make sure the events form a sequence strictly increasing by 1.
+			// This is important for further processing.
+			return nil, fmt.Errorf("events do not form a proper sequence")
 		}
 
 		voteExtension := types.VoteExtension{
@@ -185,18 +186,17 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			return nil, fmt.Errorf("failed to unmarshal vote extension: %w", err)
 		}
 
-		if !slices.IsSortedFunc(
-			voteExtension.AssetsLockedEvents,
-			bridgetypes.AssetsLockedEventsCmp,
-		) {
-			// Make sure the events are sorted in natural order. This is
-			// important for further processing.
-			return nil, fmt.Errorf("events not sorted in natural order")
-		}
-
 		if len(voteExtension.AssetsLockedEvents) > AssetsLockedEventsLimit {
 			// Make sure the number of events does not exceed the limit.
 			return nil, fmt.Errorf("number of events exceeds the limit")
+		}
+
+		if !bridgetypes.AssetsLockedEvents(
+			voteExtension.AssetsLockedEvents,
+		).IsStrictlyIncreasingSequence() {
+			// Make sure the events form a sequence strictly increasing by 1.
+			// This is important for further processing.
+			return nil, fmt.Errorf("events do not form a proper sequence")
 		}
 
 		veh.logger.Debug(
