@@ -1,9 +1,11 @@
 package abci
 
 import (
+	"fmt"
+
 	"cosmossdk.io/log"
 	"cosmossdk.io/math"
-	"fmt"
+
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
@@ -145,7 +147,7 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 // will handle the error gracefully and reject the app-level vote extension.
 func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExtensionHandler {
 	return func(
-		ctx sdk.Context,
+		_ sdk.Context,
 		req *cmtabci.RequestVerifyVoteExtension,
 	) (*cmtabci.ResponseVerifyVoteExtension, error) {
 		from := sdk.ConsAddress(req.ValidatorAddress).String()

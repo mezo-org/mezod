@@ -1,8 +1,9 @@
 package abci
 
 import (
-	"cosmossdk.io/log"
 	"fmt"
+
+	"cosmossdk.io/log"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -31,7 +32,6 @@ func (vep VoteExtensionPart) String() string {
 	default:
 		return fmt.Sprintf("unknown: %d", vep)
 	}
-
 }
 
 // VoteExtensionHandler is a handler for the ExtendVote and
@@ -83,13 +83,13 @@ func (veh *VoteExtensionHandler) SetHandlers(baseApp *baseapp.BaseApp) {
 // empty app-level vote extension to the CometBFT engine.
 //
 // Invariants summary:
-// 1. Sub-handler's response is considered valid if no error is returned,
-//    regardless of whether the vote extension part being part of the response
-//    is empty or not.
-// 2. Returns an error if all sub-handlers return an invalid response.
-// 3. Returns a non-empty app-level vote extension if at least one sub-handler
-//    returns a valid response.
-// 4. Returns an error if the app-level vote extension cannot be marshaled.
+//  1. Sub-handler's response is considered valid if no error is returned,
+//     regardless of whether the vote extension part being part of the response
+//     is empty or not.
+//  2. Returns an error if all sub-handlers return an invalid response.
+//  3. Returns a non-empty app-level vote extension if at least one sub-handler
+//     returns a valid response.
+//  4. Returns an error if the app-level vote extension cannot be marshaled.
 func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 	return func(
 		ctx sdk.Context,
@@ -172,14 +172,14 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 // know what you are doing before returning an error from this function.
 //
 // Invariants summary:
-// 1. Accepts empty app-level vote extension.
-// 2. Rejects app-level vote extension that cannot be unmarshaled.
-// 3. Rejects app-level vote extension with incorrect height.
-// 4. Rejects app-level vote extension with no parts.
-// 5. Accepts app-level vote extension only if each part corresponds to
-//    a known sub-handler.
-// 6. Accepts app-level vote extension only if each part is accepted by the
-//    corresponding sub-handler.
+//  1. Accepts empty app-level vote extension.
+//  2. Rejects app-level vote extension that cannot be unmarshaled.
+//  3. Rejects app-level vote extension with incorrect height.
+//  4. Rejects app-level vote extension with no parts.
+//  5. Accepts app-level vote extension only if each part corresponds to
+//     a known sub-handler.
+//  6. Accepts app-level vote extension only if each part is accepted by the
+//     corresponding sub-handler.
 func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExtensionHandler {
 	return func(
 		ctx sdk.Context,

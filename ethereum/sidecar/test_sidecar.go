@@ -2,13 +2,14 @@ package sidecar
 
 import (
 	"context"
+	"math/big"
+	"math/rand"
+	"time"
+
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-	"math/big"
-	"math/rand"
-	"time"
 )
 
 // TODO: Once real Ethereum sidecar is implemented, remove this file.
@@ -43,13 +44,15 @@ func (ts *TestSidecar) run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
+			//nolint:gosec
 			eventsCount := rand.Intn(11) // [0, 10] events
 
 			for i := 0; i < eventsCount; i++ {
 				ts.sequenceTip = ts.sequenceTip.Add(sdkmath.OneInt())
 
 				amount := new(big.Int).Mul(
-					big.NewInt(rand.Int63n(10) + 1),
+					//nolint:gosec
+					big.NewInt(rand.Int63n(10)+1),
 					precision,
 				)
 

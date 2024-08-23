@@ -22,12 +22,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 	"net"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 
 	sdkmath "cosmossdk.io/math"
 

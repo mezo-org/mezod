@@ -1,7 +1,6 @@
 syntax = "proto3";
 package mezo.bridge.v1;
 
-import "cosmos_proto/cosmos.proto";
 import "gogoproto/gogo.proto";
 import "mezo/bridge/v1/bridge.proto";
 
@@ -9,6 +8,7 @@ option go_package = "github.com/mezo-org/mezod/x/bridge/abci/types";
 
 // VoteExtension defines the vote extension structure for the Bitcoin bridge.
 message VoteExtension {
+  // assets_locked_events is a list of AssetsLockedEvent that are part of the vote extension.
   repeated AssetsLockedEvent assets_locked_events = 1 [
     (gogoproto.nullable) = false
   ];
