@@ -18,6 +18,10 @@ func (k Keeper) GetAssetsLockedSequenceTip(ctx sdk.Context) math.Int {
 		panic(err)
 	}
 
+	if sequenceTip.IsNil() {
+		sequenceTip = math.ZeroInt()
+	}
+
 	return sequenceTip
 }
 
