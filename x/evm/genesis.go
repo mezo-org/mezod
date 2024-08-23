@@ -29,9 +29,6 @@ import (
 	"github.com/mezo-org/mezod/x/evm/keeper"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
-
-	btctoken "github.com/mezo-org/mezod/precompile/btctoken"
-	validatorpool "github.com/mezo-org/mezod/precompile/validatorpool"
 )
 
 // InitGenesis initializes genesis state based on exported genesis
@@ -53,61 +50,48 @@ func InitGenesis(
 		panic("the EVM module account has not been set")
 	}
 
-	// add precompile addresses to genesis accounts
-	precompiles := []types.GenesisAccount{
-		{
-			Address: btctoken.EvmAddress,
-			Code:    btctoken.EvmByteCode,
-			Storage: types.Storage{},
-		},
-		{
-			Address: validatorpool.EvmAddress,
-			Code:    validatorpool.EvmByteCode,
-			Storage: types.Storage{},
-		},
-	}
-	// add precompile accounts to genesisState
-	data.Accounts = append(data.Accounts, precompiles...)
+	// add precompile genesis accounts to genesis state
+	precompileGenesisAccounts := k.PrecompileGenesisAccounts()
+	data.Accounts = append(data.Accounts, precompileGenesisAccounts...)
 
 	for _, account := range data.Accounts {
 		address := common.HexToAddress(account.Address)
-		accAddress := sdk.AccAddress(address.Bytes())
-		// check that the EVM balance matches the account balance
-		acc := accountKeeper.GetAccount(ctx, accAddress)
-		if acc == nil {
-			// account not found. Create it
-			acc = accountKeeper.NewAccountWithAddress(ctx, accAddress)
-			if acc == nil {
-				panic(fmt.Errorf("unable to create account for address %s", account.Address))
-			}
-		}
-
-		ethAcct, ok := acc.(mezotypes.EthAccountI)
-		if !ok {
-			panic(
-				fmt.Errorf("account %s must be an EthAccount interface, got %T",
-					account.Address, acc,
-				),
-			)
-		}
 		code := common.Hex2Bytes(account.Code)
 		codeHash := crypto.Keccak256Hash(code)
 
-		// we ignore the empty Code hash checking, see ethermint PR#1234
-		if len(account.Code) != 0 && !bytes.Equal(ethAcct.GetCodeHash().Bytes(), codeHash.Bytes()) {
-			// Hashes don't match, evm account for precompile is empty. Create it
+		if k.IsPrecompile(address) {
 			err = k.SetAccount(ctx, address, statedb.Account{
 				Nonce:    0,
 				Balance:  big.NewInt(0),
 				CodeHash: codeHash.Bytes(),
 			})
 			if err != nil {
-				panic(fmt.Errorf("error setting account %s", err))
+				panic(fmt.Errorf("error setting precompile account %s", err))
+			}
+		} else {
+			accAddress := sdk.AccAddress(address.Bytes())
+			// check that the EVM balance matches the account balance
+			acc := accountKeeper.GetAccount(ctx, accAddress)
+			if acc == nil {
+				panic(fmt.Errorf("account not found for address %s", account.Address))
 			}
 
-			// s := "the evm state code doesn't match with the codehash\n"
-			// panic(fmt.Sprintf("%s account: %s , evm state codehash: %v, ethAccount codehash: %v, evm state code: %s\n",
-			// 	s, account.Address, codeHash, ethAcct.GetCodeHash(), account.Code))
+			ethAcct, ok := acc.(mezotypes.EthAccountI)
+			if !ok {
+				panic(
+					fmt.Errorf("account %s must be an EthAccount interface, got %T",
+						account.Address, acc,
+					),
+				)
+			}
+
+			// we ignore the empty Code hash checking, see ethermint PR#1234
+			if len(account.Code) != 0 && !bytes.Equal(ethAcct.GetCodeHash().Bytes(), codeHash.Bytes()) {
+				s := "the evm state code doesn't match with the codehash\n"
+				panic(fmt.Sprintf("%s account: %s , evm state codehash: %v, ethAccount codehash: %v, evm state code: %s\n",
+					s, account.Address, codeHash, ethAcct.GetCodeHash(), account.Code))
+
+			}
 		}
 
 		k.SetCode(ctx, codeHash.Bytes(), code)
