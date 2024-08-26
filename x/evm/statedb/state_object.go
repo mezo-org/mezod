@@ -78,6 +78,13 @@ type stateObject struct {
 	// flags
 	dirtyCode bool
 	suicided  bool
+
+	// This is an EIP-6780 flag indicating whether the object is eligible for
+	// self-destruct according to EIP-6780. The flag could be set either when
+	// the contract is just created within the current transaction, or when the
+	// object was previously existent and is being deployed as a contract within
+	// the current transaction.
+	newContract bool
 }
 
 // newObject creates a state object.
@@ -208,6 +215,13 @@ func (s *stateObject) Balance() *uint256.Int {
 // Nonce returns the nonce of account
 func (s *stateObject) Nonce() uint64 {
 	return s.account.Nonce
+}
+
+func (s *stateObject) Root() common.Hash {
+	// noop
+	// TODO: Decide if we need to implement this.
+	// return s.data.Root
+	return common.Hash{}
 }
 
 // GetCommittedState query the committed state

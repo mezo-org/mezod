@@ -9,6 +9,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/stretchr/testify/suite"
@@ -137,7 +138,7 @@ func (suite *StateDBTestSuite) TestDBError() {
 		}},
 		{"delete account", func(db vm.StateDB) {
 			db.SetNonce(errAddress, 1)
-			suite.Require().True(db.Suicide(errAddress))
+			db.SelfDestruct(errAddress)
 		}},
 	}
 	for _, tc := range testCases {
@@ -313,7 +314,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 		{"suicide", func(db vm.StateDB) {
 			db.SetState(address, v1, v2)
 			db.SetCode(address, []byte("hello world"))
-			suite.Require().True(db.Suicide(address))
+			db.SelfDestruct(address)
 		}},
 		{"add log", func(db vm.StateDB) {
 			db.AddLog(&ethtypes.Log{
@@ -440,7 +441,9 @@ func (suite *StateDBTestSuite) TestAccessList() {
 				Address:     address3,
 				StorageKeys: []common.Hash{value1},
 			}}
-			db.PrepareAccessList(address, &address2, vm.PrecompiledAddressesBerlin, al)
+			c := &params.ChainConfig{}
+			var rules = c.Rules(new(big.Int), false, 0)
+			db.Prepare(rules, address, address, &address2, vm.PrecompiledAddressesBerlin, al)
 
 			// check sender and dst
 			suite.Require().True(db.AddressInAccessList(address))
@@ -534,50 +537,6 @@ func (suite *StateDBTestSuite) TestRefund() {
 			})
 		}
 	}
-}
-
-func (suite *StateDBTestSuite) TestIterateStorage() {
-	key1 := common.BigToHash(big.NewInt(1))
-	value1 := common.BigToHash(big.NewInt(2))
-	key2 := common.BigToHash(big.NewInt(3))
-	value2 := common.BigToHash(big.NewInt(4))
-
-	keeper := NewMockKeeper()
-	db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
-	db.SetState(address, key1, value1)
-	db.SetState(address, key2, value2)
-
-	// ForEachStorage only iterate committed state
-	suite.Require().Empty(CollectContractStorage(db))
-
-	suite.Require().NoError(db.Commit())
-
-	storage := CollectContractStorage(db)
-	suite.Require().Equal(2, len(storage))
-	suite.Require().Equal(keeper.accounts[address].states, storage)
-
-	// break early iteration
-	storage = make(statedb.Storage)
-	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
-		storage[k] = v
-		// return false to break early
-		return false
-	})
-	suite.Require().NoError(err)
-	suite.Require().Equal(1, len(storage))
-}
-
-func CollectContractStorage(db vm.StateDB) statedb.Storage {
-	storage := make(statedb.Storage)
-	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
-		storage[k] = v
-		return true
-	})
-	if err != nil {
-		return nil
-	}
-
-	return storage
 }
 
 func TestStateDBTestSuite(t *testing.T) {

@@ -27,6 +27,7 @@ import (
 	"cosmossdk.io/store/prefix"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -45,7 +46,8 @@ func (k *Keeper) GetAccount(ctx sdk.Context, addr common.Address) *statedb.Accou
 		return nil
 	}
 
-	acct.Balance = k.GetBalance(ctx, addr)
+	balance := k.GetBalance(ctx, addr)
+	acct.Balance = uint256.NewInt(balance.Uint64())
 	return acct
 }
 
