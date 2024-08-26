@@ -34,6 +34,15 @@ func (vep VoteExtensionPart) String() string {
 	}
 }
 
+// IVoteExtensionHandler is an interface representing a vote extension handler.
+type IVoteExtensionHandler interface {
+	// ExtendVoteHandler returns the handler for the ExtendVote ABCI request.
+	ExtendVoteHandler() sdk.ExtendVoteHandler
+	// VerifyVoteExtensionHandler returns the handler for the VerifyVoteExtension
+	// ABCI request.
+	VerifyVoteExtensionHandler() sdk.VerifyVoteExtensionHandler
+}
+
 // VoteExtensionHandler is a handler for the ExtendVote and
 // VerifyVoteExtension ABCI requests. It is designed to be used with
 // multiple sub-handlers, each responsible for a specific part of the
@@ -41,7 +50,7 @@ func (vep VoteExtensionPart) String() string {
 // results of the sub-handlers into a single vote extension.
 type VoteExtensionHandler struct {
 	logger      log.Logger
-	subHandlers map[VoteExtensionPart]*bridgeabci.VoteExtensionHandler
+	subHandlers map[VoteExtensionPart]IVoteExtensionHandler
 }
 
 // NewVoteExtensionHandler creates a new VoteExtensionHandler instance.
@@ -49,7 +58,7 @@ func NewVoteExtensionHandler(
 	logger log.Logger,
 	bridgeSubHandler *bridgeabci.VoteExtensionHandler,
 ) *VoteExtensionHandler {
-	subHandlers := map[VoteExtensionPart]*bridgeabci.VoteExtensionHandler{
+	subHandlers := map[VoteExtensionPart]IVoteExtensionHandler{
 		VoteExtensionPartBridge: bridgeSubHandler,
 	}
 
