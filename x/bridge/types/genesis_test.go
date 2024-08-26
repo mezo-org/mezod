@@ -1,26 +1,25 @@
-package types_test
+package types
 
 import (
 	"testing"
 
-	"github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGenesisState_Validate(t *testing.T) {
 	for _, tc := range []struct {
 		desc     string
-		genState *types.GenesisState
+		genState *GenesisState
 		valid    bool
 	}{
 		{
 			desc:     "default value",
-			genState: types.DefaultGenesis(),
+			genState: DefaultGenesis(),
 			valid:    true,
 		},
 		{
 			desc:     "zero value",
-			genState: &types.GenesisState{},
+			genState: &GenesisState{},
 			valid:    true,
 		},
 	} {
