@@ -6,6 +6,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
@@ -205,7 +206,7 @@ func (suite *KeeperTestSuite) TestCheckSenderBalance() {
 	}
 
 	vmdb := suite.StateDB()
-	vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()))
+	vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()), tracing.BalanceChangeUnspecified)
 	balance := vmdb.GetBalance(suite.address)
 	suite.Require().Equal(balance, hundredInt.BigInt())
 	err := vmdb.Commit()
@@ -465,7 +466,7 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 				} else {
 					gasTipCap = tc.gasTipCap
 				}
-				vmdb.AddBalance(suite.address, uint256.NewInt(initBalance.Uint64()))
+				vmdb.AddBalance(suite.address, uint256.NewInt(initBalance.Uint64()), tracing.BalanceChangeUnspecified)
 				balance := vmdb.GetBalance(suite.address)
 				suite.Require().Equal(balance, initBalance.BigInt())
 			} else {
@@ -473,7 +474,7 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 					gasPrice = tc.gasPrice.BigInt()
 				}
 
-				vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()))
+				vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()), tracing.BalanceChangeUnspecified)
 				balance := vmdb.GetBalance(suite.address)
 				suite.Require().Equal(balance, hundredInt.BigInt())
 			}

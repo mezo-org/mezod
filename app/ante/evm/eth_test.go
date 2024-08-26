@@ -16,6 +16,7 @@ import (
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/holiman/uint256"
 )
@@ -80,7 +81,7 @@ func (suite *AnteTestSuite) TestNewEthAccountVerificationDecorator() {
 			"success new account",
 			tx,
 			func() {
-				vmdb.AddBalance(addr, uint256.NewInt(1000000))
+				vmdb.AddBalance(addr, uint256.NewInt(1000000), tracing.BalanceChangeUnspecified)
 			},
 			true,
 			true,
@@ -92,7 +93,7 @@ func (suite *AnteTestSuite) TestNewEthAccountVerificationDecorator() {
 				acc := suite.app.AccountKeeper.NewAccountWithAddress(suite.ctx, addr.Bytes())
 				suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
-				vmdb.AddBalance(addr, uint256.NewInt(1000000))
+				vmdb.AddBalance(addr, uint256.NewInt(1000000), tracing.BalanceChangeUnspecified)
 			},
 			true,
 			true,
@@ -312,7 +313,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			tx2,
 			0,
 			func(ctx sdk.Context) sdk.Context {
-				vmdb.AddBalance(addr, uint256.NewInt(1e6))
+				vmdb.AddBalance(addr, uint256.NewInt(1e6), tracing.BalanceChangeUnspecified)
 				return ctx
 			},
 			false, true,
@@ -324,7 +325,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			tx2,
 			0,
 			func(ctx sdk.Context) sdk.Context {
-				vmdb.AddBalance(addr, uint256.NewInt(1e6))
+				vmdb.AddBalance(addr, uint256.NewInt(1e6), tracing.BalanceChangeUnspecified)
 				return ctx.WithBlockGasMeter(storetypes.NewGasMeter(1))
 			},
 			false, true,
@@ -336,7 +337,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			tx2,
 			tx2GasLimit, // it's capped
 			func(ctx sdk.Context) sdk.Context {
-				vmdb.AddBalance(addr, uint256.NewInt(1e16))
+				vmdb.AddBalance(addr, uint256.NewInt(1e16), tracing.BalanceChangeUnspecified)
 				return ctx.WithBlockGasMeter(storetypes.NewGasMeter(1e19))
 			},
 			true, false,
@@ -348,7 +349,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			dynamicFeeTx,
 			tx2GasLimit, // it's capped
 			func(ctx sdk.Context) sdk.Context {
-				vmdb.AddBalance(addr, uint256.NewInt(1e16))
+				vmdb.AddBalance(addr, uint256.NewInt(1e16), tracing.BalanceChangeUnspecified)
 				return ctx.WithBlockGasMeter(storetypes.NewGasMeter(1e19))
 			},
 			true, false,
@@ -360,7 +361,7 @@ func (suite *AnteTestSuite) TestEthGasConsumeDecorator() {
 			dynamicFeeTx,
 			0, // for reCheckTX mode, gas limit should be set to 0
 			func(ctx sdk.Context) sdk.Context {
-				vmdb.AddBalance(addr, uint256.NewInt(1e15))
+				vmdb.AddBalance(addr, uint256.NewInt(1e15), tracing.BalanceChangeUnspecified)
 				return ctx.WithIsReCheckTx(true)
 			},
 			true, false,
@@ -450,7 +451,7 @@ func (suite *AnteTestSuite) TestCanTransferDecorator() {
 				acc := suite.app.AccountKeeper.NewAccountWithAddress(suite.ctx, addr.Bytes())
 				suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
-				vmdb.AddBalance(addr, uint256.NewInt(1000000))
+				vmdb.AddBalance(addr, uint256.NewInt(1000000), tracing.BalanceChangeUnspecified)
 			},
 			true,
 		},

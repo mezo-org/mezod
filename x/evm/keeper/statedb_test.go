@@ -13,6 +13,7 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -34,7 +35,7 @@ func (suite *KeeperTestSuite) TestCreateAccount() {
 			"reset account (keep balance)",
 			suite.address,
 			func(vmdb vm.StateDB, addr common.Address) {
-				vmdb.AddBalance(addr, uint256.NewInt(100))
+				vmdb.AddBalance(addr, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 				suite.Require().NotZero(vmdb.GetBalance(addr))
 			},
 			func(vmdb vm.StateDB, addr common.Address) {
@@ -85,7 +86,7 @@ func (suite *KeeperTestSuite) TestAddBalance() {
 		suite.Run(tc.name, func() {
 			vmdb := suite.StateDB()
 			prev := vmdb.GetBalance(suite.address)
-			vmdb.AddBalance(suite.address, tc.amount)
+			vmdb.AddBalance(suite.address, tc.amount, tracing.BalanceChangeUnspecified)
 			post := vmdb.GetBalance(suite.address)
 
 			if tc.isNoOp {
@@ -114,7 +115,7 @@ func (suite *KeeperTestSuite) TestSubBalance() {
 			"positive amount, above zero",
 			uint256.NewInt(50),
 			func(vmdb vm.StateDB) {
-				vmdb.AddBalance(suite.address, uint256.NewInt(100))
+				vmdb.AddBalance(suite.address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 			},
 			false,
 		},
@@ -132,7 +133,7 @@ func (suite *KeeperTestSuite) TestSubBalance() {
 			tc.malleate(vmdb)
 
 			prev := vmdb.GetBalance(suite.address)
-			vmdb.SubBalance(suite.address, tc.amount)
+			vmdb.SubBalance(suite.address, tc.amount, tracing.BalanceChangeUnspecified)
 			post := vmdb.GetBalance(suite.address)
 
 			if tc.isNoOp {
@@ -528,7 +529,9 @@ func (suite *KeeperTestSuite) TestEmpty() {
 		{
 			"not empty, positive balance",
 			suite.address,
-			func(vmdb vm.StateDB) { vmdb.AddBalance(suite.address, uint256.NewInt(100)) },
+			func(vmdb vm.StateDB) {
+				vmdb.AddBalance(suite.address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+			},
 			false,
 		},
 		{"empty, account doesn't exist", utiltx.GenerateAddress(), func(vm.StateDB) {}, true},

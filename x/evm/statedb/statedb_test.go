@@ -6,6 +6,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -70,7 +71,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 			// create a contract account
 			db.CreateAccount(address)
 			db.SetCode(address, []byte("hello world"))
-			db.AddBalance(address, uint256.NewInt(100))
+			db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 			db.SetState(address, key1, value1)
 			db.SetState(address, key2, value2)
 			suite.Require().NoError(db.Commit())
@@ -116,7 +117,7 @@ func (suite *StateDBTestSuite) TestAccountOverride() {
 	amount := uint256.NewInt(1)
 
 	// init an EOA account, account overridden only happens on EOA account.
-	db.AddBalance(address, amount)
+	db.AddBalance(address, amount, tracing.BalanceChangeUnspecified)
 	db.SetNonce(address, 1)
 
 	// override
@@ -156,19 +157,19 @@ func (suite *StateDBTestSuite) TestBalance() {
 		expBalance *big.Int
 	}{
 		{"add balance", func(db *statedb.StateDB) {
-			db.AddBalance(address, uint256.NewInt(10))
+			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(10)},
 		{"sub balance", func(db *statedb.StateDB) {
-			db.AddBalance(address, uint256.NewInt(10))
+			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
 			// get dirty balance
 			suite.Require().Equal(big.NewInt(10), db.GetBalance(address))
-			db.SubBalance(address, uint256.NewInt(2))
+			db.SubBalance(address, uint256.NewInt(2), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(8)},
 		{"add zero balance", func(db *statedb.StateDB) {
-			db.AddBalance(address, uint256.NewInt(0))
+			db.AddBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(0)},
 		{"sub zero balance", func(db *statedb.StateDB) {
-			db.SubBalance(address, uint256.NewInt(0))
+			db.SubBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(0)},
 	}
 
@@ -302,8 +303,8 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			db.SetNonce(address, 10)
 		}},
 		{"change balance", func(db vm.StateDB) {
-			db.AddBalance(address, uint256.NewInt(10))
-			db.SubBalance(address, uint256.NewInt(5))
+			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+			db.SubBalance(address, uint256.NewInt(5), tracing.BalanceChangeUnspecified)
 		}},
 		{"override account", func(db vm.StateDB) {
 			db.CreateAccount(address)
@@ -339,7 +340,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 				// do some arbitrary changes to the storage
 				db := statedb.New(ctx, keeper, emptyTxConfig)
 				db.SetNonce(address, 1)
-				db.AddBalance(address, uint256.NewInt(100))
+				db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 				db.SetCode(address, []byte("hello world"))
 				db.SetState(address, v1, v2)
 				db.SetNonce(address2, 1)
