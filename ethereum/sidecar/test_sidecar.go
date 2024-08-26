@@ -111,4 +111,3 @@ func (ts *TestSidecar) GetAssetsLockedEvents(
 
 	return matchingEvents, nil
 }
-
