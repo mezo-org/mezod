@@ -32,9 +32,6 @@ func (ga GenesisAccount) Validate() error {
 // DefaultGenesisState sets default evm genesis state with empty accounts and default params and
 // chain config values.
 func DefaultGenesisState() *GenesisState {
-	// TODO(iquidus): These precompile accounts should not be hardcoded here
-	// Ideally we would import them from the precompile modules however some restructuring
-	// is required due to circular imports.
 	return &GenesisState{
 		Accounts: []GenesisAccount{},
 		Params:   DefaultParams(),

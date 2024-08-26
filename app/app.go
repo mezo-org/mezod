@@ -748,7 +748,7 @@ func customEvmPrecompiles(
 	poaKeeper poakeeper.Keeper,
 	evmKeeper evmkeeper.Keeper,
 	chainID string,
-) ([]precompile.Contract, error) {
+) ([]*precompile.Contract, error) {
 	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
@@ -759,8 +759,8 @@ func customEvmPrecompiles(
 		return nil, fmt.Errorf("failed to create validatorpool precompile: [%w]", err)
 	}
 
-	return []precompile.Contract{
-		*btcTokenPrecompile,
-		*validatorPoolPrecompile,
+	return []*precompile.Contract{
+		btcTokenPrecompile,
+		validatorPoolPrecompile,
 	}, nil
 }

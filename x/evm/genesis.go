@@ -50,16 +50,16 @@ func InitGenesis(
 		panic("the EVM module account has not been set")
 	}
 
-	// add precompile genesis accounts to genesis state
-	precompileGenesisAccounts := k.PrecompileGenesisAccounts()
-	data.Accounts = append(data.Accounts, precompileGenesisAccounts...)
+	// add custom precompile genesis accounts to genesis state
+	customPrecompileGenesisAccounts := k.CustomPrecompileGenesisAccounts()
+	data.Accounts = append(data.Accounts, customPrecompileGenesisAccounts...)
 
 	for _, account := range data.Accounts {
 		address := common.HexToAddress(account.Address)
 		code := common.Hex2Bytes(account.Code)
 		codeHash := crypto.Keccak256Hash(code)
 
-		if k.IsPrecompile(address) {
+		if k.IsCustomPrecompile(address) {
 			err = k.SetAccount(ctx, address, statedb.Account{
 				Nonce:    0,
 				Balance:  big.NewInt(0),

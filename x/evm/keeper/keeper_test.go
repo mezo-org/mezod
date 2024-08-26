@@ -122,11 +122,11 @@ func (suite *KeeperTestSuite) TestGetAccountStorage() {
 			suite.SetupTest()
 			tc.malleate()
 			i := 0
-			// IterateAccounts also iterates through precompile accounts
+			// IterateAccounts also iterates through custom precompile accounts
 			// as they get added at genesis, so we need to append the expected
 			// storage length of each precompile to expRes to avoid an out of
 			// index error during the test
-			precompileGenesisAccounts := suite.app.EvmKeeper.PrecompileGenesisAccounts()
+			precompileGenesisAccounts := suite.app.EvmKeeper.CustomPrecompileGenesisAccounts()
 			for _, pga := range precompileGenesisAccounts {
 				tc.expRes = append(tc.expRes, len(pga.Storage))
 			}
@@ -139,7 +139,7 @@ func (suite *KeeperTestSuite) TestGetAccountStorage() {
 				}
 				addr := ethAccount.EthAddress()
 				storage := suite.app.EvmKeeper.GetAccountStorage(suite.ctx, addr)
-				suite.Require().Equal(tc.expRes[i], len(storage), addr)
+				suite.Require().Equal(tc.expRes[i], len(storage))
 				i++
 				return false
 			})

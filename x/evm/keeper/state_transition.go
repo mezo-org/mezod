@@ -81,7 +81,7 @@ func (k *Keeper) NewEVM(
 	// Add custom precompiles into the mix. Note that if a custom precompile
 	// uses the same address as a default precompile, the custom one will be used.
 	for k, v := range k.customPrecompiles {
-		precompiles[k] = vm.PrecompiledContract(&v)
+		precompiles[k] = vm.PrecompiledContract(v)
 	}
 	// Add all precompiles to the EVM instance.
 	evm.WithPrecompiles(precompiles, maps.Keys(precompiles))

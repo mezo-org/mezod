@@ -23,7 +23,7 @@ const EvmAddress = "0x7b7c000000000000000000000000000000000000"
 
 // EvmByteCode is the EVM bytecode of the BTC token precompile. This code is
 // returned by eth_getCode and ensures the precompile address is detected as a
-// smart contract by external services. note: It shoould NOT contain a 0x prefix
+// smart contract by external services. note: It should NOT contain a 0x prefix
 const EvmByteCode = "7b7c000000000000000000000000000000000000"
 
 // Parsed chain ID represented as a big integer.
