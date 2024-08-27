@@ -26,10 +26,10 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - uses: golangci/golangci-lint-action@v3.4.0
+      - uses: golangci/golangci-lint-action@v6.1.0
         with:
-          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: latest
+          install-mode: goinstall
+          version: 3298c104802d118670a487b330ddd3761f7afe20 # Commit hash of 1.60.1
           args: --timeout 10m
           github-token: ${{ secrets.github_token }}
         # Check only if there are differences in the source code
