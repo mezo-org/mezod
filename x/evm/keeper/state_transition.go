@@ -173,8 +173,9 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	}
 	txConfig := k.TxConfig(ctx, tx.Hash())
 
+	blockTime := big.NewInt(ctx.BlockTime().Unix())
 	// get the signer according to the chain rules from the config and block height
-	signer := ethtypes.MakeSigner(cfg.ChainConfig, big.NewInt(ctx.BlockHeight()))
+	signer := ethtypes.MakeSigner(cfg.ChainConfig, big.NewInt(ctx.BlockHeight()), blockTime.Uint64())
 	msg, err := tx.AsMessage(signer, cfg.BaseFee)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "failed to return ethereum transaction as core message")
@@ -379,7 +380,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
 	if rules := cfg.Rules(ctx.BlockHeight()); rules.IsBerlin {
-		stateDB.PrepareAccessList(msg.From(), msg.To(), evm.ActivePrecompiles(rules), msg.AccessList())
+		stateDB.PrepareAccessList(msg.From, msg.To, evm.ActivePrecompiles(rules), msg.AccessList)
 	}
 
 	if contractCreation {

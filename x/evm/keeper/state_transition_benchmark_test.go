@@ -144,7 +144,8 @@ func newNativeMessage(
 	data []byte,
 	accessList ethtypes.AccessList,
 ) (core.Message, error) {
-	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(blockHeight))
+	blockTime := big.NewInt(ctx.BlockTime().Unix())
+	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(blockHeight), blockTime.Uint64())
 
 	msg, baseFee, err := newEthMsgTx(nonce, address, krSigner, ethSigner, txType, data, accessList)
 	if err != nil {

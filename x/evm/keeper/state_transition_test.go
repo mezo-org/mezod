@@ -686,7 +686,8 @@ func (suite *KeeperTestSuite) createContractGethMsg(nonce uint64, signer ethtype
 		return nil, err
 	}
 
-	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(suite.ctx.BlockHeight()))
+	blockTime := big.NewInt(ctx.BlockTime().Unix())
+	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(suite.ctx.BlockHeight()), blockTime.Uint64())
 	return ethMsg.AsMessage(msgSigner, nil)
 }
 
