@@ -409,6 +409,245 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 }
 
 func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
+	marshalVE := func(ve types.VoteExtension) []byte {
+		veBytes, err := ve.Marshal()
+		s.Require().NoError(err)
+		return veBytes
+	}
+
+	mockEvent := func(sequence int64) bridgetypes.AssetsLockedEvent {
+		return bridgetypes.AssetsLockedEvent{
+			Sequence:  sdkmath.NewInt(sequence),
+			Recipient: "recipient",
+			Amount:    sdkmath.ZeroInt(),
+		}
+	}
+
+	tests := []struct {
+		name            string
+		voteExtensionFn func() []byte
+		expectedRes     *cmtabci.ResponseVerifyVoteExtension
+		errContains     string
+	}{
+		{
+			name:            "empty vote extension",
+			voteExtensionFn: func() []byte { return []byte{} },
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			},
+			errContains: "",
+		},
+		{
+			name:            "nil vote extension",
+			voteExtensionFn: func() []byte { return nil },
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			},
+			errContains: "",
+		},
+		{
+			name:            "non-unmarshalable vote extension",
+			voteExtensionFn: func() []byte { return []byte("corrupted") },
+			expectedRes:     nil,
+			errContains:     "failed to unmarshal vote extension",
+		},
+		{
+			name: "empty events slice",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{},
+				})
+			},
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			},
+			errContains: "",
+		},
+		{
+			name: "nil events slice",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: nil,
+				})
+			},
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			},
+			errContains: "",
+		},
+		{
+			name: "single-event slice",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+						mockEvent(1),
+					},
+				})
+			},
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			},
+			errContains: "",
+		},
+		{
+			name: "events slice forming improper sequence - strictly decreasing",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+						mockEvent(3),
+						mockEvent(2),
+						mockEvent(1),
+					},
+				})
+			},
+			expectedRes: nil,
+			errContains: "events do not form a proper sequence",
+		},
+		{
+			name: "events slice forming improper sequence - increasing (non-strictly)",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+						mockEvent(1),
+						mockEvent(1),
+						mockEvent(2),
+						mockEvent(3),
+					},
+				})
+			},
+			expectedRes: nil,
+			errContains: "events do not form a proper sequence",
+		},
+		{
+			name: "events slice forming improper sequence - decreasing (non-strictly)",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+						mockEvent(3),
+						mockEvent(3),
+						mockEvent(2),
+						mockEvent(1),
+					},
+				})
+			},
+			expectedRes: nil,
+			errContains: "events do not form a proper sequence",
+		},
+		{
+			name: "events slice forming improper sequence - gap",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+						mockEvent(1),
+						mockEvent(2),
+						mockEvent(4),
+					},
+				})
+			},
+			expectedRes: nil,
+			errContains: "events do not form a proper sequence",
+		},
+		{
+			name: "events slice forming improper sequence - duplicate",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+						mockEvent(1),
+						mockEvent(2),
+						mockEvent(3),
+						mockEvent(1),
+					},
+				})
+			},
+			expectedRes: nil,
+			errContains: "events do not form a proper sequence",
+		},
+		{
+			name: "events slice exceeding the limit",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+						mockEvent(1),
+						mockEvent(2),
+						mockEvent(3),
+						mockEvent(4),
+						mockEvent(5),
+						mockEvent(6),
+						mockEvent(7),
+						mockEvent(8),
+						mockEvent(9),
+						mockEvent(10),
+						mockEvent(11),
+						mockEvent(12),
+					},
+				})
+			},
+			expectedRes: nil,
+			errContains: "number of events exceeds the limit",
+		},
+		{
+			name: "events slice within the limit",
+			voteExtensionFn: func() []byte {
+				return marshalVE(types.VoteExtension{
+					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+						mockEvent(1),
+						mockEvent(2),
+						mockEvent(3),
+						mockEvent(4),
+						mockEvent(5),
+						mockEvent(6),
+						mockEvent(7),
+						mockEvent(8),
+						mockEvent(9),
+						mockEvent(10),
+					},
+				})
+			},
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			},
+			errContains: "",
+		},
+	}
+
+	for _, test := range tests {
+		s.Run(test.name, func() {
+			s.SetupTest()
+
+			s.handler = NewVoteExtensionHandler(
+				s.logger,
+				newMockEthereumSidecarClient(),
+				s.keeper,
+			)
+
+			req := &cmtabci.RequestVerifyVoteExtension{
+				Hash:             []byte("hash"),
+				ValidatorAddress: []byte("validatorAddress"),
+				Height:           s.requestHeight,
+				VoteExtension:    test.voteExtensionFn(),
+			}
+
+			res, err := s.handler.VerifyVoteExtensionHandler()(s.ctx, req)
+
+			if len(test.errContains) == 0 {
+				s.Require().NoError(err, "expected no error")
+			} else {
+				// ErrorContains checks if the error is non-nil so no need
+				// for an explicit check here.
+				s.Require().ErrorContains(
+					err,
+					test.errContains,
+					"expected different error message",
+				)
+			}
+
+			s.Require().Equal(
+				test.expectedRes,
+				res,
+				"expected different response",
+			)
+		})
+	}
 }
 
 type mockEthereumSidecarClient struct {
