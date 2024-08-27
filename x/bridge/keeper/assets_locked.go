@@ -25,11 +25,14 @@ func (k Keeper) GetAssetsLockedSequenceTip(ctx sdk.Context) math.Int {
 	return sequenceTip
 }
 
-// setAssetsLockedSequenceTip sets the current sequence tip for the AssetsLocked
+// SetAssetsLockedSequenceTip sets the current sequence tip for the AssetsLocked
 // events. The tip denotes the sequence number of the last event processed by
 // the x/bridge module.
+//
 //nolint:all
-func (k Keeper) setAssetsLockedSequenceTip(
+//
+// TODO: Make it package-private once minting based on AssetsLocked events is implemented.
+func (k Keeper) SetAssetsLockedSequenceTip(
 	ctx sdk.Context,
 	sequenceTip math.Int,
 ) {

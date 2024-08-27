@@ -11,7 +11,7 @@ func TestGetAssetsLockedSequenceTip(t *testing.T) {
 	ctx, k := mockContext()
 
 	newTip := math.NewInt(100)
-	k.setAssetsLockedSequenceTip(ctx, newTip)
+	k.SetAssetsLockedSequenceTip(ctx, newTip)
 
 	require.EqualValues(t, newTip, k.GetAssetsLockedSequenceTip(ctx))
 }

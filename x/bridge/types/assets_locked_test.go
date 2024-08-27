@@ -16,6 +16,10 @@ func TestAssetsLockedEvents_IsStrictlyIncreasingSequence(t *testing.T) {
 			events:      AssetsLockedEvents{},
 			expectedRes: true,
 		},
+		"nil": {
+			events:      nil,
+			expectedRes: true,
+		},
 		"single element": {
 			events:      AssetsLockedEvents{{Sequence: math.NewInt(1)}},
 			expectedRes: true,
