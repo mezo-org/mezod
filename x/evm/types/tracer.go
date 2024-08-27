@@ -18,14 +18,19 @@ package types
 import (
 	"math/big"
 	"os"
-	"time"
 
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
+
+	"encoding/json"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
+
+	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 )
 
 const (
@@ -35,9 +40,19 @@ const (
 	TracerMarkdown   = "markdown"
 )
 
+// TxTraceResult is the result of a single transaction trace during a block trace.
+type TxTraceResult struct {
+	Result interface{} `json:"result,omitempty"` // Trace results produced by the tracer
+	Error  string      `json:"error,omitempty"`  // Trace failure produced by the tracer
+}
+
+// noOpTracer is a go implementation of the Tracer interface which
+// performs no action. It's mostly useful for testing purposes.
+type NoOpTracer struct{}
+
 // NewTracer creates a new Logger tracer to collect execution traces from an
 // EVM transaction.
-func NewTracer(tracer string, msg core.Message, cfg *params.ChainConfig, height int64) vm.EVMLogger {
+func NewTracer(tracer string, msg core.Message, cfg *params.ChainConfig, height int64) *tracers.Tracer {
 	// TODO: enable additional log configuration
 	logCfg := &logger.Config{
 		Debug: true,
@@ -46,80 +61,95 @@ func NewTracer(tracer string, msg core.Message, cfg *params.ChainConfig, height 
 	switch tracer {
 	case TracerAccessList:
 		preCompiles := vm.DefaultActivePrecompiles(cfg.Rules(big.NewInt(height), cfg.MergeNetsplitBlock != nil))
-		return logger.NewAccessListTracer(msg.AccessList(), msg.From(), *msg.To(), preCompiles)
+		lgr := logger.NewAccessListTracer(msg.AccessList(), msg.From(), *msg.To(), preCompiles)
+		tracer := &tracers.Tracer{
+			Hooks: lgr.Hooks(),
+		}
+		return tracer
 	case TracerJSON:
-		return logger.NewJSONLogger(logCfg, os.Stderr)
+		tracer := &tracers.Tracer{
+			Hooks: logger.NewJSONLogger(logCfg, os.Stderr),
+		}
+		return tracer
 	case TracerMarkdown:
-		return logger.NewMarkdownLogger(logCfg, os.Stdout) // TODO: Stderr ?
+		lgr := logger.NewMarkdownLogger(logCfg, os.Stdout)
+		tracer := &tracers.Tracer{
+			Hooks: lgr.Hooks(),
+		}
+		return tracer
 	case TracerStruct:
-		return logger.NewStructLogger(logCfg)
+		lgr := logger.NewStructLogger(logCfg)
+		tracer := &tracers.Tracer{
+			Hooks:     lgr.Hooks(),
+			GetResult: lgr.GetResult,
+			Stop:      lgr.Stop,
+		}
+		return tracer
 	default:
-		return NewNoOpTracer()
+		tracer, _ := NewNoopTracer()
+		return tracer
 	}
 }
 
-// TxTraceResult is the result of a single transaction trace during a block trace.
-type TxTraceResult struct {
-	Result interface{} `json:"result,omitempty"` // Trace results produced by the tracer
-	Error  string      `json:"error,omitempty"`  // Trace failure produced by the tracer
+// newNoopTracer returns a new noop tracer.
+func NewNoopTracer() (*tracers.Tracer, error) {
+	t := &NoOpTracer{}
+	return &tracers.Tracer{
+		Hooks: &tracing.Hooks{
+			OnTxStart:       t.OnTxStart,
+			OnTxEnd:         t.OnTxEnd,
+			OnEnter:         t.OnEnter,
+			OnExit:          t.OnExit,
+			OnOpcode:        t.OnOpcode,
+			OnFault:         t.OnFault,
+			OnGasChange:     t.OnGasChange,
+			OnBalanceChange: t.OnBalanceChange,
+			OnNonceChange:   t.OnNonceChange,
+			OnCodeChange:    t.OnCodeChange,
+			OnStorageChange: t.OnStorageChange,
+			OnLog:           t.OnLog,
+		},
+		GetResult: t.GetResult,
+		Stop:      t.Stop,
+	}, nil
 }
 
-var _ vm.EVMLogger = &NoOpTracer{}
-
-// NoOpTracer is an empty implementation of vm.Tracer interface
-type NoOpTracer struct{}
-
-// NewNoOpTracer creates a no-op vm.Tracer
-func NewNoOpTracer() *NoOpTracer {
-	return &NoOpTracer{}
+func (t *NoOpTracer) OnOpcode(pc uint64, op byte, gas, cost uint64, scope tracing.OpContext, rData []byte, depth int, err error) {
 }
 
-// CaptureStart implements vm.Tracer interface
-//
-//nolint:revive // allow unused parameters to indicate expected signature
-func (dt NoOpTracer) CaptureStart(env *vm.EVM,
-	from common.Address,
-	to common.Address,
-	create bool,
-	input []byte,
-	gas uint64,
-	value *big.Int) {
+func (t *NoOpTracer) OnFault(pc uint64, op byte, gas, cost uint64, _ tracing.OpContext, depth int, err error) {
 }
 
-// CaptureState implements vm.Tracer interface
-//
-//nolint:revive // allow unused parameters to indicate expected signature
-func (dt NoOpTracer) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, scope *vm.ScopeContext, rData []byte, depth int, err error) {
+func (t *NoOpTracer) OnGasChange(old, new uint64, reason tracing.GasChangeReason) {}
+
+func (t *NoOpTracer) OnEnter(depth int, typ byte, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) {
 }
 
-// CaptureFault implements vm.Tracer interface
-//
-//nolint:revive // allow unused parameters to indicate expected signature
-func (dt NoOpTracer) CaptureFault(pc uint64, op vm.OpCode, gas, cost uint64, scope *vm.ScopeContext, depth int, err error) {
+func (t *NoOpTracer) OnExit(depth int, output []byte, gasUsed uint64, err error, reverted bool) {
 }
 
-// CaptureEnd implements vm.Tracer interface
-//
-//nolint:revive // allow unused parameters to indicate expected signature
-func (dt NoOpTracer) CaptureEnd(output []byte, gasUsed uint64, tm time.Duration, err error) {}
-
-// CaptureEnter implements vm.Tracer interface
-//
-//nolint:revive // allow unused parameters to indicate expected signature
-func (dt NoOpTracer) CaptureEnter(typ vm.OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) {
+func (*NoOpTracer) OnTxStart(env *tracing.VMContext, tx *types.Transaction, from common.Address) {
 }
 
-// CaptureExit implements vm.Tracer interface
-//
-//nolint:revive // allow unused parameters to indicate expected signature
-func (dt NoOpTracer) CaptureExit(output []byte, gasUsed uint64, err error) {}
+func (*NoOpTracer) OnTxEnd(receipt *types.Receipt, err error) {}
 
-// CaptureTxStart implements vm.Tracer interface
-//
-//nolint:revive // allow unused parameters to indicate expected signature
-func (dt NoOpTracer) CaptureTxStart(gasLimit uint64) {}
+func (*NoOpTracer) OnBalanceChange(a common.Address, prev, new *big.Int, reason tracing.BalanceChangeReason) {
+}
 
-// CaptureTxEnd implements vm.Tracer interface
-//
-//nolint:revive // allow unused parameters to indicate expected signature
-func (dt NoOpTracer) CaptureTxEnd(restGas uint64) {}
+func (*NoOpTracer) OnNonceChange(a common.Address, prev, new uint64) {}
+
+func (*NoOpTracer) OnCodeChange(a common.Address, prevCodeHash common.Hash, prev []byte, codeHash common.Hash, code []byte) {
+}
+
+func (*NoOpTracer) OnStorageChange(a common.Address, k, prev, new common.Hash) {}
+
+func (*NoOpTracer) OnLog(log *types.Log) {}
+
+// GetResult returns an empty json object.
+func (t *NoOpTracer) GetResult() (json.RawMessage, error) {
+	return json.RawMessage(`{}`), nil
+}
+
+// Stop terminates execution of the tracer at the first opportune moment.
+func (t *NoOpTracer) Stop(err error) {
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 
+	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
@@ -35,7 +36,7 @@ type EVMKeeper interface { //nolint: revive
 	statedb.Keeper
 	DynamicFeeEVMKeeper
 
-	NewEVM(ctx sdk.Context, msg core.Message, cfg *statedb.EVMConfig, tracer vm.EVMLogger, stateDB vm.StateDB) *vm.EVM
+	NewEVM(ctx sdk.Context, msg core.Message, cfg *statedb.EVMConfig, tracer *tracers.Tracer, stateDB vm.StateDB) *vm.EVM
 	DeductTxCostsFromUserBalance(ctx sdk.Context, fees sdk.Coins, from common.Address) error
 	GetBalance(ctx sdk.Context, addr common.Address) *big.Int
 	ResetTransientGasUsed(ctx sdk.Context)

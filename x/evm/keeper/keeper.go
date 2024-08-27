@@ -37,6 +37,8 @@ import (
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
 
+	"github.com/ethereum/go-ethereum/eth/tracers"
+
 	"github.com/holiman/uint256"
 )
 
@@ -280,7 +282,7 @@ func (k *Keeper) PostTxProcessing(ctx sdk.Context, msg core.Message, receipt *et
 }
 
 // Tracer return a default vm.Tracer based on current keeper state
-func (k Keeper) Tracer(ctx sdk.Context, msg core.Message, ethCfg *params.ChainConfig) vm.EVMLogger {
+func (k Keeper) Tracer(ctx sdk.Context, msg core.Message, ethCfg *params.ChainConfig) *tracers.Tracer {
 	return types.NewTracer(k.tracer, msg, ethCfg, ctx.BlockHeight())
 }
 

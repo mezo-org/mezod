@@ -473,7 +473,11 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		}
 		txConfig.TxHash = ethTx.Hash()
 		txConfig.TxIndex = uint(i)
-		rsp, err := k.ApplyMessageWithConfig(ctx, msg, types.NewNoOpTracer(), true, cfg, txConfig)
+		tracer, err := types.NewNoopTracer()
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		rsp, err := k.ApplyMessageWithConfig(ctx, msg, tracer, true, cfg, txConfig)
 		if err != nil {
 			continue
 		}
@@ -583,7 +587,7 @@ func (k *Keeper) traceTx(
 ) (*interface{}, uint, error) {
 	// Assemble the structured logger or the JavaScript tracer
 	var (
-		tracer    tracers.Tracer
+		tracer    *tracers.Tracer
 		overrides *ethparams.ChainConfig
 		err       error
 		timeout   = defaultTraceTimeout
@@ -611,18 +615,15 @@ func (k *Keeper) traceTx(
 		Overrides:        overrides,
 	}
 
-	tracer = logger.NewStructLogger(&logConfig)
-
 	tCtx := &tracers.Context{
 		BlockHash: txConfig.BlockHash,
 		TxIndex:   int(txConfig.TxIndex),
 		TxHash:    txConfig.TxHash,
 	}
 
-	if traceConfig.Tracer != "" {
-		if tracer, err = tracers.New(traceConfig.Tracer, tCtx, tracerJSONConfig); err != nil {
-			return nil, 0, status.Error(codes.Internal, err.Error())
-		}
+	tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig)
+	if err != nil {
+		return nil, 0, status.Error(codes.Internal, err.Error())
 	}
 
 	// Define a meaningful timeout of a single transaction trace

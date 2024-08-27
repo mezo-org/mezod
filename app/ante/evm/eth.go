@@ -309,7 +309,11 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		}
 
 		stateDB := statedb.New(ctx, ctd.evmKeeper, statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash())))
-		evm := ctd.evmKeeper.NewEVM(ctx, coreMsg, cfg, evmtypes.NewNoOpTracer(), stateDB)
+		tracer, err := evmtypes.NewNoopTracer()
+		if err != nil {
+			return ctx, errorsmod.Wrap(err, "failed to create a new noop tracer")
+		}
+		evm := ctd.evmKeeper.NewEVM(ctx, coreMsg, cfg, tracer, stateDB)
 
 		// check that caller has enough balance to cover asset transfer for **topmost** call
 		// NOTE: here the gas consumed is from the context with the infinite gas meter

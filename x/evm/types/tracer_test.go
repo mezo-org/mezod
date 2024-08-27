@@ -7,5 +7,6 @@ import (
 )
 
 func TestNewNoOpTracer(t *testing.T) {
-	require.Equal(t, &NoOpTracer{}, NewNoOpTracer())
+	tracer, _ := NewNoopTracer()
+	require.Equal(t, &NoOpTracer{}, tracer)
 }
