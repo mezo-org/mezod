@@ -42,10 +42,10 @@ func NewVoteExtensionHandler(
 // ExtendVoteHandler returns the handler for the ExtendVote ABCI request.
 // It fetches the AssetsLocked events from the sidecar and includes them in the
 // vote extension, in their natural order (by sequence asc).
-// Events are fetched starting from the currently stored sequence tip + 1 and
-// up to the sequence tip + AssetsLockedEventsLimit. It is guaranteed that the
-// number of events included in the vote extension will not exceed
-// AssetsLockedEventsLimit.
+// Events are fetched from a half-open range [start, end), where `start` is the
+// currently stored sequence tip + 1, and `end` is `start` + AssetsLockedEventsLimit.
+// It is guaranteed that the number of events included in the vote extension
+// will not exceed AssetsLockedEventsLimit.
 //
 // Dev note: It is fine to return a nil response and an error from this
 // function in case of failure. The upstream app-level vote extension handler
