@@ -107,6 +107,8 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		voteExtensionParts := make(map[uint32][]byte)
 
 		// TODO: Consider running sub-handlers concurrently to speed up execution.
+		//
+		// TODO: Consider changing logging to debug level once this code matures.
 
 		for part, subHandler := range veh.subHandlers {
 			veh.logger.Info(

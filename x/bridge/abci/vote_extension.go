@@ -61,6 +61,9 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		//       set of events twice, in two subsequent blocks. Once the full
 		//       flow is implemented, we will need to check this behavior and
 		//       fix it if necessary.
+		//
+		// TODO: Consider changing logging to debug level once this code matures.
+
 		veh.logger.Info(
 			"bridge is extending vote",
 			"height", req.Height,
