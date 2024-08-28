@@ -34,6 +34,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/holiman/uint256"
 )
 
 // EthAccountVerificationDecorator validates an account balance checks
@@ -292,11 +293,11 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 					"base fee is supported but evm block context value is nil",
 				)
 			}
-			if coreMsg.GasFeeCap().Cmp(baseFee) < 0 {
+			if coreMsg.GasFeeCap.Cmp(baseFee) < 0 {
 				return ctx, errorsmod.Wrapf(
 					errortypes.ErrInsufficientFee,
 					"max fee per gas less than block base fee (%s < %s)",
-					coreMsg.GasFeeCap(), baseFee,
+					coreMsg.GasFeeCap, baseFee,
 				)
 			}
 		}
@@ -318,12 +319,12 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 
 		// check that caller has enough balance to cover asset transfer for **topmost** call
 		// NOTE: here the gas consumed is from the context with the infinite gas meter
-		if coreMsg.Value().Sign() > 0 && !evm.Context.CanTransfer(stateDB, coreMsg.From(), coreMsg.Value()) {
+		if coreMsg.Value.Sign() > 0 && !evm.Context.CanTransfer(stateDB, coreMsg.From, uint256.NewInt(coreMsg.Value.Uint64())) {
 			return ctx, errorsmod.Wrapf(
 				errortypes.ErrInsufficientFunds,
 				"failed to transfer %s from address %s using the EVM block context transfer function",
-				coreMsg.Value(),
-				coreMsg.From(),
+				coreMsg.Value,
+				coreMsg.From,
 			)
 		}
 	}

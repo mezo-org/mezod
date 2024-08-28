@@ -451,7 +451,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 
 			vmdb.AddRefund(params.TxGas)
 
-			if tc.leftoverGas > m.Gas() {
+			if tc.leftoverGas > m.GasLimit {
 				return
 			}
 
@@ -459,7 +459,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 				tc.malleate()
 			}
 
-			gasUsed := m.Gas() - tc.leftoverGas
+			gasUsed := m.GasLimit - tc.leftoverGas
 			refund := keeper.GasToRefund(vmdb.GetRefund(), gasUsed, tc.refundQuotient)
 			suite.Require().Equal(tc.expGasRefund, refund)
 
