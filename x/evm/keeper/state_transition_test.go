@@ -290,6 +290,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 				ethtypes.AccessListTxType,
 				tc.data,
 				tc.accessList,
+				big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 			)
 			suite.Require().NoError(err)
 
@@ -420,6 +421,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 					ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID()),
 					keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID()),
 					big.NewInt(-100),
+					big.NewInt(suite.ctx.BlockTime().Unix()),
 				)
 				suite.Require().NoError(err)
 			},
@@ -446,6 +448,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 				ethtypes.AccessListTxType,
 				nil,
 				nil,
+				big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 			)
 			suite.Require().NoError(err)
 
@@ -574,6 +577,7 @@ func (suite *KeeperTestSuite) TestApplyMessage() {
 		ethtypes.AccessListTxType,
 		nil,
 		nil,
+		big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 	)
 	suite.Require().NoError(err)
 
@@ -615,6 +619,7 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 					ethtypes.AccessListTxType,
 					nil,
 					nil,
+					big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 				)
 				suite.Require().NoError(err)
 			},
@@ -634,6 +639,7 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 					ethtypes.AccessListTxType,
 					nil,
 					nil,
+					big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 				)
 				suite.Require().NoError(err)
 			},
@@ -642,7 +648,8 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 		{
 			"create contract tx with config param EnableCreate = false",
 			func() {
-				msg, err = suite.createContractGethMsg(vmdb.GetNonce(suite.address), signer, chainCfg, big.NewInt(1))
+				suite.ctx.BlockTime()
+				msg, err = suite.createContractGethMsg(vmdb.GetNonce(suite.address), signer, chainCfg, big.NewInt(1), big.NewInt(suite.ctx.BlockTime().Unix()))
 				suite.Require().NoError(err)
 				config.Params.EnableCreate = false
 			},
@@ -680,13 +687,12 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 	}
 }
 
-func (suite *KeeperTestSuite) createContractGethMsg(nonce uint64, signer ethtypes.Signer, cfg *params.ChainConfig, gasPrice *big.Int) (core.Message, error) {
+func (suite *KeeperTestSuite) createContractGethMsg(nonce uint64, signer ethtypes.Signer, cfg *params.ChainConfig, gasPrice, blockTime *big.Int) (core.Message, error) {
 	ethMsg, err := suite.createContractMsgTx(nonce, signer, gasPrice)
 	if err != nil {
-		return nil, err
+		return core.Message{}, err
 	}
 
-	blockTime := big.NewInt(ctx.BlockTime().Unix())
 	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(suite.ctx.BlockHeight()), blockTime.Uint64())
 	return ethMsg.AsMessage(msgSigner, nil)
 }

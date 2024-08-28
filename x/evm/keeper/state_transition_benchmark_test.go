@@ -143,18 +143,18 @@ func newNativeMessage(
 	txType byte,
 	data []byte,
 	accessList ethtypes.AccessList,
+	blockTime uint64,
 ) (core.Message, error) {
-	blockTime := big.NewInt(ctx.BlockTime().Unix())
-	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(blockHeight), blockTime.Uint64())
+	msgSigner := ethtypes.MakeSigner(cfg, big.NewInt(blockHeight), blockTime)
 
 	msg, baseFee, err := newEthMsgTx(nonce, address, krSigner, ethSigner, txType, data, accessList)
 	if err != nil {
-		return nil, err
+		return core.Message{}, err
 	}
 
 	m, err := msg.AsMessage(msgSigner, baseFee)
 	if err != nil {
-		return nil, err
+		return core.Message{}, err
 	}
 
 	return m, nil
@@ -265,6 +265,7 @@ func BenchmarkApplyMessage(b *testing.B) {
 			ethtypes.AccessListTxType,
 			nil,
 			nil,
+			big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 		)
 		require.NoError(b, err)
 
@@ -301,6 +302,7 @@ func BenchmarkApplyMessageWithLegacyTx(b *testing.B) {
 			ethtypes.LegacyTxType,
 			nil,
 			nil,
+			big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 		)
 		require.NoError(b, err)
 
@@ -336,6 +338,7 @@ func BenchmarkApplyMessageWithDynamicFeeTx(b *testing.B) {
 			ethtypes.DynamicFeeTxType,
 			nil,
 			nil,
+			big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 		)
 		require.NoError(b, err)
 
