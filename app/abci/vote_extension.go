@@ -302,3 +302,12 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		}, nil
 	}
 }
+
+// isVoteExtensionsEnabled returns true if the vote extensions are enabled
+// at the given height.
+func isVoteExtensionsEnabled(ctx sdk.Context, height int64) bool {
+	cp := ctx.ConsensusParams()
+	return cp.Abci != nil &&
+		cp.Abci.VoteExtensionsEnableHeight > 0 &&
+		height > cp.Abci.VoteExtensionsEnableHeight
+}
