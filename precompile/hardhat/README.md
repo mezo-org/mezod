@@ -158,3 +158,26 @@ You can populate hardhat with the localnet accounts/private keys with the follow
 ```
 npx hardhat run scripts/localhost-keys.ts | npx hardhat vars set MEZO_ACCOUNTS
 ```
+
+### Custom precompile contract verification (blockscout)
+
+## EvmByteCode
+
+Generating the `EvmByteCode` used by a custom precompile can be done via `npx hardhat compile`. Look for the 
+`deployedBytecode` value in the contract artifact json file. Use this value as `EvmByteCode` - *make sure to remove
+the 0x prefix*
+
+## Source code
+
+Flatten into a single solidity file to make verfication easier, e.g:
+
+`npx hardhat flatten contracts/ValidatorPool.sol > ~/Desktop/ValidatorPool.sol`
+
+Use this file when verifying.
+
+## Solc options
+
+version: "0.8.24"
+optimize: true
+runs: 200
+evmVersion: "paris"
