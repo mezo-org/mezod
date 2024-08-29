@@ -62,9 +62,10 @@ type EVMConfig struct {
 }
 
 // Rules returns the EVM rules for the given block height.
-func (ec *EVMConfig) Rules(blockHeight int64) params.Rules {
+func (ec *EVMConfig) Rules(blockHeight int64, timestamp uint64) params.Rules {
 	return ec.ChainConfig.Rules(
 		big.NewInt(blockHeight),
 		ec.ChainConfig.MergeNetsplitBlock != nil,
+		timestamp,
 	)
 }

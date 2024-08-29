@@ -80,7 +80,7 @@ func (k *Keeper) NewEVM(
 	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
 
 	// Load default EVM precompiles for the recent fork.
-	precompiles := vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight()))
+	precompiles := vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())))
 	// Add custom precompiles into the mix. Note that if a custom precompile
 	// uses the same address as a default precompile, the custom one will be used.
 	maps.Copy(precompiles, k.customPrecompiles)
@@ -378,7 +378,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
-	if rules := cfg.Rules(ctx.BlockHeight()); rules.IsBerlin {
+	if rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())); rules.IsBerlin {
 		stateDB.PrepareAccessList(msg.From, msg.To, evm.ActivePrecompiles(rules), msg.AccessList)
 	}
 
