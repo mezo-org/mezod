@@ -80,7 +80,9 @@ func (k *Keeper) NewEVM(
 	precompiles := vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight()))
 	// Add custom precompiles into the mix. Note that if a custom precompile
 	// uses the same address as a default precompile, the custom one will be used.
-	maps.Copy(precompiles, k.customPrecompiles)
+	for k, v := range k.customPrecompiles {
+		precompiles[k] = vm.PrecompiledContract(v)
+	}
 	// Add all precompiles to the EVM instance.
 	evm.WithPrecompiles(precompiles, maps.Keys(precompiles))
 
