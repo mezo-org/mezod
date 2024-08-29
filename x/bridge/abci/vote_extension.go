@@ -22,14 +22,14 @@ const AssetsLockedEventsLimit = 10
 // VerifyVoteExtension ABCI requests.
 type VoteExtensionHandler struct {
 	logger        log.Logger
-	sidecarClient types.EthereumSidecarClient
+	sidecarClient EthereumSidecarClient
 	bridgeKeeper  keeper.Keeper
 }
 
 // NewVoteExtensionHandler creates a new VoteExtensionHandler instance.
 func NewVoteExtensionHandler(
 	logger log.Logger,
-	sidecarClient types.EthereumSidecarClient,
+	sidecarClient EthereumSidecarClient,
 	bridgeKeeper keeper.Keeper,
 ) *VoteExtensionHandler {
 	return &VoteExtensionHandler{
