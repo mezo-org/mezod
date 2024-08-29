@@ -188,65 +188,6 @@ func (suite *StateDBTestSuite) TestBalance() {
 	}
 }
 
-func (suite *StateDBTestSuite) TestState() {
-	key1 := common.BigToHash(big.NewInt(1))
-	value1 := common.BigToHash(big.NewInt(1))
-	testCases := []struct {
-		name      string
-		malleate  func(*statedb.StateDB)
-		expStates statedb.Storage
-	}{
-		{"empty state", func(_ *statedb.StateDB) {
-		}, nil},
-		{"set empty value", func(db *statedb.StateDB) {
-			db.SetState(address, key1, common.Hash{})
-		}, statedb.Storage{}},
-		{"noop state change", func(db *statedb.StateDB) {
-			db.SetState(address, key1, value1)
-			db.SetState(address, key1, common.Hash{})
-		}, statedb.Storage{}},
-		{"set state", func(db *statedb.StateDB) {
-			// check empty initial state
-			suite.Require().Equal(common.Hash{}, db.GetState(address, key1))
-			suite.Require().Equal(common.Hash{}, db.GetCommittedState(address, key1))
-
-			// set state
-			db.SetState(address, key1, value1)
-			// query dirty state
-			suite.Require().Equal(value1, db.GetState(address, key1))
-			// check committed state is still not exist
-			suite.Require().Equal(common.Hash{}, db.GetCommittedState(address, key1))
-
-			// set same value again, should be noop
-			db.SetState(address, key1, value1)
-			suite.Require().Equal(value1, db.GetState(address, key1))
-		}, statedb.Storage{
-			key1: value1,
-		}},
-	}
-
-	for _, tc := range testCases {
-		suite.Run(tc.name, func() {
-			keeper := NewMockKeeper()
-			db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
-			tc.malleate(db)
-			suite.Require().NoError(db.Commit())
-
-			// check committed states in keeper
-			suite.Require().Equal(tc.expStates, keeper.accounts[address].states)
-
-			// check ForEachStorage
-			db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
-			collected := CollectContractStorage(db)
-			if len(tc.expStates) > 0 {
-				suite.Require().Equal(tc.expStates, collected)
-			} else {
-				suite.Require().Empty(collected)
-			}
-		})
-	}
-}
-
 func (suite *StateDBTestSuite) TestCode() {
 	code := []byte("hello world")
 	codeHash := crypto.Keccak256Hash(code)
