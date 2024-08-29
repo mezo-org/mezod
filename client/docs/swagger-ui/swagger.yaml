@@ -3836,15 +3836,15 @@ paths:
                         title: >-
                           merge_netsplit_block: Virtual fork after The Merge to
                           use as a network splitter
-                      shanghai_block:
+                      shanghai_time:
                         type: string
                         title: >-
-                          shanghai_block switch block (nil = no fork, 0 =
+                          shanghai_time switch block (nil = no fork, 0 =
                           already on shanghai)
-                      cancun_block:
+                      cancun_time:
                         type: string
                         title: >-
-                          cancun_block switch block (nil = no fork, 0 = already
+                          cancun_time switch block (nil = no fork, 0 = already
                           on cancun)
                     description: >-
                       ChainConfig defines the Ethereum ChainConfig parameters
@@ -4648,15 +4648,15 @@ paths:
           in: query
           required: false
           type: string
-        - name: trace_config.overrides.shanghai_block
+        - name: trace_config.overrides.shanghai_time
           description: >-
-            shanghai_block switch block (nil = no fork, 0 = already on
+            shanghai_time switch block (nil = no fork, 0 = already on
             shanghai).
           in: query
           required: false
           type: string
-        - name: trace_config.overrides.cancun_block
-          description: cancun_block switch block (nil = no fork, 0 = already on cancun).
+        - name: trace_config.overrides.cancun_time
+          description: cancun_time switch block (nil = no fork, 0 = already on cancun).
           in: query
           required: false
           type: string
@@ -5157,15 +5157,15 @@ paths:
           in: query
           required: false
           type: string
-        - name: trace_config.overrides.shanghai_block
+        - name: trace_config.overrides.shanghai_time
           description: >-
-            shanghai_block switch block (nil = no fork, 0 = already on
+            shanghai_time switch block (nil = no fork, 0 = already on
             shanghai).
           in: query
           required: false
           type: string
-        - name: trace_config.overrides.cancun_block
-          description: cancun_block switch block (nil = no fork, 0 = already on cancun).
+        - name: trace_config.overrides.cancun_time
+          description: cancun_time switch block (nil = no fork, 0 = already on cancun).
           in: query
           required: false
           type: string
@@ -45116,12 +45116,12 @@ definitions:
         title: >-
           merge_netsplit_block: Virtual fork after The Merge to use as a network
           splitter
-      shanghai_block:
+      shanghai_time:
         type: string
-        title: shanghai_block switch block (nil = no fork, 0 = already on shanghai)
-      cancun_block:
+        title: shanghai_time switch block (nil = no fork, 0 = already on shanghai)
+      cancun_time:
         type: string
-        title: cancun_block switch block (nil = no fork, 0 = already on cancun)
+        title: cancun_time switch block (nil = no fork, 0 = already on cancun)
     description: >-
       ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int
       values
@@ -45583,14 +45583,14 @@ definitions:
             title: >-
               merge_netsplit_block: Virtual fork after The Merge to use as a
               network splitter
-          shanghai_block:
+          shanghai_time:
             type: string
             title: >-
-              shanghai_block switch block (nil = no fork, 0 = already on
+              shanghai_time switch block (nil = no fork, 0 = already on
               shanghai)
-          cancun_block:
+          cancun_time:
             type: string
-            title: cancun_block switch block (nil = no fork, 0 = already on cancun)
+            title: cancun_time switch block (nil = no fork, 0 = already on cancun)
         description: >-
           ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int
           values
@@ -45782,15 +45782,15 @@ definitions:
                 title: >-
                   merge_netsplit_block: Virtual fork after The Merge to use as a
                   network splitter
-              shanghai_block:
+              shanghai_time:
                 type: string
                 title: >-
-                  shanghai_block switch block (nil = no fork, 0 = already on
+                  shanghai_time switch block (nil = no fork, 0 = already on
                   shanghai)
-              cancun_block:
+              cancun_time:
                 type: string
                 title: >-
-                  cancun_block switch block (nil = no fork, 0 = already on
+                  cancun_time switch block (nil = no fork, 0 = already on
                   cancun)
             description: >-
               ChainConfig defines the Ethereum ChainConfig parameters using
@@ -45965,14 +45965,14 @@ definitions:
             title: >-
               merge_netsplit_block: Virtual fork after The Merge to use as a
               network splitter
-          shanghai_block:
+          shanghai_time:
             type: string
             title: >-
-              shanghai_block switch block (nil = no fork, 0 = already on
+              shanghai_time switch block (nil = no fork, 0 = already on
               shanghai)
-          cancun_block:
+          cancun_time:
             type: string
-            title: cancun_block switch block (nil = no fork, 0 = already on cancun)
+            title: cancun_time switch block (nil = no fork, 0 = already on cancun)
         description: >-
           ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int
           values
