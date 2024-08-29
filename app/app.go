@@ -29,7 +29,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/runtime"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 
-	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
 
@@ -88,6 +88,7 @@ import (
 	"github.com/mezo-org/mezod/ethereum/eip712"
 	srvflags "github.com/mezo-org/mezod/server/flags"
 	mezotypes "github.com/mezo-org/mezod/types"
+
 	"github.com/mezo-org/mezod/x/evm"
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -110,6 +111,7 @@ import (
 
 	//nolint:revive
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
+
 	//nolint:revive
 	_ "github.com/ethereum/go-ethereum/eth/tracers/native"
 )
@@ -746,7 +748,7 @@ func customEvmPrecompiles(
 	poaKeeper poakeeper.Keeper,
 	evmKeeper evmkeeper.Keeper,
 	chainID string,
-) ([]vm.PrecompiledContract, error) {
+) ([]*precompile.Contract, error) {
 	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
@@ -757,7 +759,7 @@ func customEvmPrecompiles(
 		return nil, fmt.Errorf("failed to create validatorpool precompile: [%w]", err)
 	}
 
-	return []vm.PrecompiledContract{
+	return []*precompile.Contract{
 		btcTokenPrecompile,
 		validatorPoolPrecompile,
 	}, nil

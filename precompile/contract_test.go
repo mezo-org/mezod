@@ -17,7 +17,7 @@ import (
 func TestContract_Address(t *testing.T) {
 	address := common.HexToAddress("0x1")
 
-	contract := NewContract(abi.ABI{}, address)
+	contract := NewContract(abi.ABI{}, address, "")
 
 	if actualAddress := contract.Address(); address != actualAddress {
 		t.Errorf(
@@ -65,7 +65,7 @@ func TestContract_RequiredGas(t *testing.T) {
 				},
 			}
 
-			contract := NewContract(contractAbi, common.HexToAddress("0x1"))
+			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "")
 
 			contract.RegisterMethods(test.method)
 
@@ -85,7 +85,7 @@ func TestContract_RequiredGas(t *testing.T) {
 }
 
 func TestContract_RegisterMethods(t *testing.T) {
-	contract := NewContract(abi.ABI{}, common.HexToAddress("0x1"))
+	contract := NewContract(abi.ABI{}, common.HexToAddress("0x1"), "")
 
 	method1 := &mockMethod{methodName: "testMethod1", methodType: Write}
 	method2Write := &mockMethod{methodName: "testMethod2", methodType: Write}
@@ -222,7 +222,7 @@ func TestContract_Run(t *testing.T) {
 				},
 			}
 
-			contract := NewContract(contractAbi, common.HexToAddress("0x1"))
+			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "")
 
 			contract.RegisterMethods(test.method)
 

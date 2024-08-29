@@ -18,17 +18,19 @@ var _ vm.PrecompiledContract = &Contract{}
 
 // Contract represents a precompiled contract that can be executed by the EVM.
 type Contract struct {
-	Abi     abi.ABI
-	address common.Address
-	methods map[string]Method
+	Abi      abi.ABI
+	address  common.Address
+	bytecode string
+	methods  map[string]Method
 }
 
 // NewContract creates a new precompiled contract with the given ABI and address.
-func NewContract(abi abi.ABI, address common.Address) *Contract {
+func NewContract(abi abi.ABI, address common.Address, bytecode string) *Contract {
 	return &Contract{
-		Abi:     abi,
-		address: address,
-		methods: make(map[string]Method),
+		Abi:      abi,
+		address:  address,
+		bytecode: bytecode,
+		methods:  make(map[string]Method),
 	}
 }
 
@@ -220,6 +222,11 @@ func (c *Contract) methodByID(methodID []byte) (Method, *abi.Method, error) {
 	}
 
 	return method, methodABI, nil
+}
+
+// Bytecode returns the EVM bytecode of the contract.
+func (c *Contract) Bytecode() string {
+	return c.bytecode
 }
 
 // RunContext represents the context in which a precompiled contract method is
