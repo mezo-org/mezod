@@ -75,13 +75,13 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 	tests := []struct {
 		name        string
-		sidecarFn   func() types.EthereumSidecarClient
+		sidecarFn   func() EthereumSidecarClient
 		expectedVE  *types.VoteExtension
 		errContains string
 	}{
 		{
 			name: "sidecar returning error",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -98,7 +98,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning empty slice",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -117,7 +117,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning nil slice",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -136,7 +136,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning single event",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -159,7 +159,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - strictly decreasing",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -180,7 +180,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - increasing (non-strictly)",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -202,7 +202,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - decreasing (non-strictly)",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -224,7 +224,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - gap",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -245,7 +245,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - duplicate",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -267,7 +267,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning more events than the limit",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -310,7 +310,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning events within the limit",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
