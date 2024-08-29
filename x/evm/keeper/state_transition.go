@@ -34,6 +34,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -354,11 +355,8 @@ func (k *Keeper) ApplyMessageWithConfig(
 
 	// Allow the tracer captures the tx level events, mainly the gas consumption.
 	vmCfg := evm.Config
-	if vmCfg.Debug {
-		vmCfg.Trace.CaptureTxStart(leftoverGas)
-		defer func() {
-			vmCfg.Tracer.CaptureTxEnd(leftoverGas)
-		}()
+	if t := vmCfg.Tracer; t != nil && t.OnGasChange != nil {
+		t.OnGasChange(leftoverGas, leftoverGas, tracing.GasChangeTxIntrinsicGas)
 	}
 
 	sender := vm.AccountRef(msg.From)

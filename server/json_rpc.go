@@ -17,6 +17,7 @@ package server
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -44,18 +45,8 @@ func StartJSONRPC(ctx *server.Context,
 ) (*http.Server, chan struct{}, error) {
 	tmWsClient := ConnectTmWS(tmRPCAddr, tmEndpoint, ctx.Logger)
 
-	logger := ctx.Logger.With("module", "geth")
-	ethlog.Root().SetHandler(ethlog.FuncHandler(func(r *ethlog.Record) error {
-		switch r.Lvl {
-		case ethlog.LvlTrace, ethlog.LvlDebug:
-			logger.Debug(r.Msg, r.Ctx...)
-		case ethlog.LvlInfo, ethlog.LvlWarn:
-			logger.Info(r.Msg, r.Ctx...)
-		case ethlog.LvlError, ethlog.LvlCrit:
-			logger.Error(r.Msg, r.Ctx...)
-		}
-		return nil
-	}))
+	// TODO: Decide if we need to make the logger level dynamic and change between debug, info and error
+	ethlog.SetDefault(ethlog.NewLogger(ethlog.NewTerminalHandlerWithLevel(os.Stderr, ethlog.LevelDebug, true)))
 
 	rpcServer := ethrpc.NewServer()
 
