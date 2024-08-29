@@ -35,7 +35,6 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		DAOForkBlock:            getBlockValue(cc.DAOForkBlock),
 		DAOForkSupport:          cc.DAOForkSupport,
 		EIP150Block:             getBlockValue(cc.EIP150Block),
-		EIP150Hash:              common.HexToHash(cc.EIP150Hash),
 		EIP155Block:             getBlockValue(cc.EIP155Block),
 		EIP158Block:             getBlockValue(cc.EIP158Block),
 		ByzantiumBlock:          getBlockValue(cc.ByzantiumBlock),
