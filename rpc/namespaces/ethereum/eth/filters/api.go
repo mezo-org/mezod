@@ -638,7 +638,7 @@ func (api *PublicFilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
 		hashes := f.hashes
 		f.hashes = nil
 		return returnHashes(hashes), nil
-	case filters.LogsSubscription, filters.MinedAndPendingLogsSubscription:
+	case filters.LogsSubscription:
 		logs := make([]*ethtypes.Log, len(f.logs))
 		copy(logs, f.logs)
 		f.logs = []*ethtypes.Log{}
