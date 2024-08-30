@@ -22,14 +22,14 @@ const AssetsLockedEventsLimit = 10
 // VerifyVoteExtension ABCI requests.
 type VoteExtensionHandler struct {
 	logger        log.Logger
-	sidecarClient types.EthereumSidecarClient
+	sidecarClient EthereumSidecarClient
 	bridgeKeeper  keeper.Keeper
 }
 
 // NewVoteExtensionHandler creates a new VoteExtensionHandler instance.
 func NewVoteExtensionHandler(
 	logger log.Logger,
-	sidecarClient types.EthereumSidecarClient,
+	sidecarClient EthereumSidecarClient,
 	bridgeKeeper keeper.Keeper,
 ) *VoteExtensionHandler {
 	return &VoteExtensionHandler{
@@ -106,10 +106,16 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			"events_count", len(events),
 		)
 
-		// Limit the number of events to the maximum allowed, just in case.
-		// The sidecar implementation can change in the future.
+		// NOTE: Despite the sidecar client should abide the contract defined in
+		// the EthereumSidecarClient interface, we are doing validation of the
+		// returned data to maintain parity with the VerifyVoteExtension logic.
+		// The ExtendVote handler is used by honest validators so, it must
+		// guarantee that the produced vote extension is accepted by the
+		// VerifyVoteExtension handler.
+
 		if len(events) > AssetsLockedEventsLimit {
-			events = events[:AssetsLockedEventsLimit]
+			// Make sure the number of events does not exceed the limit.
+			return nil, fmt.Errorf("number of events exceeds the limit")
 		}
 
 		if !bridgetypes.AssetsLockedEvents(events).IsValid() {
@@ -150,9 +156,16 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 // If the vote extension is valid, it is accepted. Empty vote extensions are
 // accepted by default.
 //
-// Dev note: It is fine to return a nil response and an error from this
-// function in case of failure. The upstream app-level vote extension handler
-// will handle the error gracefully and reject the app-level vote extension.
+// Dev note: In case the vote extension is invalid, we REJECT it explicitly
+// and return an error describing the reason. Due to the limitations of the
+// Cosmos interface, REJECT without an error does not provide any details about
+// the reason. Conversely, error without REJECT is confusing as it should rather
+// denote a failure of the handler itself. The upstream app-level vote extension
+// handler will handle all non-ACCEPT cases gracefully and reject the app-level
+// vote extension.
+//
+// See Skip's price oracle VerifyVoteExtension handler for a similar pattern:
+// https://github.com/skip-mev/connect/blob/8c9ac8bf5b5bf239caa11086db34f88f30efe2c5/abci/ve/vote_extension.go#L213
 func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExtensionHandler {
 	return func(
 		_ sdk.Context,
@@ -193,12 +206,16 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		var voteExtension types.VoteExtension
 		if err := voteExtension.Unmarshal(req.VoteExtension); err != nil {
 			// If the vote extension cannot be unmarshalled, we cannot recover.
-			return nil, fmt.Errorf("failed to unmarshal vote extension: %w", err)
+			return &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			}, fmt.Errorf("failed to unmarshal vote extension: %w", err)
 		}
 
 		if len(voteExtension.AssetsLockedEvents) > AssetsLockedEventsLimit {
 			// Make sure the number of events does not exceed the limit.
-			return nil, fmt.Errorf("number of events exceeds the limit")
+			return &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			}, fmt.Errorf("number of events exceeds the limit")
 		}
 
 		if !bridgetypes.AssetsLockedEvents(voteExtension.AssetsLockedEvents).IsValid() {
@@ -206,7 +223,9 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			// number, positive amount, proper bech32 recipient) and form a
 			// sequence strictly increasing by 1. This is important  for
 			// further processing.
-			return nil, fmt.Errorf("events list is not valid")
+			return &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			}, fmt.Errorf("events list is not valid")
 		}
 
 		veh.logger.Debug(

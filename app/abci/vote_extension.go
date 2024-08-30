@@ -191,6 +191,21 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 //     a known sub-handler.
 //  6. Accepts app-level vote extension only if each part is accepted by the
 //     corresponding sub-handler.
+//
+// TODO: Currently, this function either ACCEPT the vote extension or return
+// an error - it does not REJECT anything explicitly. This is fine as
+// Cosmos SDK handles the error gracefully by logging it on the error
+// level and rejecting the vote extension. This is fine for now, but we
+// may consider a more granular approach and start distinguish between
+// a case when the validation completes successfully but the vote extension
+// is invalid and a case when the validation fails (sub-handlers can
+// distinguish between these cases by returning either REJECT + error
+// holding the reason or nil + error, respectively). Having this distinction
+// could allow us to log rejections on warn level and leave log errors
+// for actual errors. The main motivation here is validator experience.
+// Error logs should ideally lead to action items for the given validator
+// while rejection warnings should stay informative and highlight potential
+// misbehavior of other validators.
 func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExtensionHandler {
 	return func(
 		ctx sdk.Context,
