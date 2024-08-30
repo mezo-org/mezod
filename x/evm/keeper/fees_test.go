@@ -208,7 +208,7 @@ func (suite *KeeperTestSuite) TestCheckSenderBalance() {
 	vmdb := suite.StateDB()
 	vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()), tracing.BalanceChangeUnspecified)
 	balance := vmdb.GetBalance(suite.address)
-	suite.Require().Equal(balance, hundredInt.BigInt())
+	suite.Require().Equal(balance, uint256.NewInt(hundredInt.Uint64()))
 	err := vmdb.Commit()
 	suite.Require().NoError(err, "Unexpected error while committing to vmdb: %d", err)
 

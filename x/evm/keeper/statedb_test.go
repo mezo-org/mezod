@@ -39,7 +39,7 @@ func (suite *KeeperTestSuite) TestCreateAccount() {
 				suite.Require().NotZero(vmdb.GetBalance(addr))
 			},
 			func(vmdb vm.StateDB, addr common.Address) {
-				suite.Require().Equal(vmdb.GetBalance(addr), int64(100))
+				suite.Require().Equal(vmdb.GetBalance(addr), uint256.NewInt(100))
 			},
 		},
 		{
