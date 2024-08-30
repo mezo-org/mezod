@@ -435,8 +435,10 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 		{
 			name:            "non-unmarshalable vote extension",
 			voteExtensionFn: func() []byte { return []byte("corrupted") },
-			expectedRes:     nil,
-			errContains:     "failed to unmarshal vote extension",
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
+			errContains: "failed to unmarshal vote extension",
 		},
 		{
 			name: "empty events slice",
@@ -487,7 +489,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -502,7 +506,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -517,7 +523,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -531,7 +539,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -546,7 +556,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -569,7 +581,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "number of events exceeds the limit",
 		},
 		{

@@ -151,9 +151,16 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 // the number of events does not exceed the limit. If the vote extension is
 // valid, it is accepted. Empty vote extensions are accepted by default.
 //
-// Dev note: It is fine to return a nil response and an error from this
-// function in case of failure. The upstream app-level vote extension handler
-// will handle the error gracefully and reject the app-level vote extension.
+// Dev note: In case the vote extension is invalid, we REJECT it explicitly
+// and return an error describing the reason. Due to the limitations of the
+// Cosmos interface, REJECT without an error does not provide any details about
+// the reason. Conversely, error without REJECT is confusing as it should rather
+// denote a failure of the handler itself. The upstream app-level vote extension
+// handler will handle all non-ACCEPT cases gracefully and reject the app-level
+// vote extension.
+//
+// See Skip's price oracle VerifyVoteExtension handler for a similar pattern:
+// https://github.com/skip-mev/connect/blob/8c9ac8bf5b5bf239caa11086db34f88f30efe2c5/abci/ve/vote_extension.go#L213
 func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExtensionHandler {
 	return func(
 		_ sdk.Context,
@@ -194,12 +201,16 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		var voteExtension types.VoteExtension
 		if err := voteExtension.Unmarshal(req.VoteExtension); err != nil {
 			// If the vote extension cannot be unmarshalled, we cannot recover.
-			return nil, fmt.Errorf("failed to unmarshal vote extension: %w", err)
+			return &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			}, fmt.Errorf("failed to unmarshal vote extension: %w", err)
 		}
 
 		if len(voteExtension.AssetsLockedEvents) > AssetsLockedEventsLimit {
 			// Make sure the number of events does not exceed the limit.
-			return nil, fmt.Errorf("number of events exceeds the limit")
+			return &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			}, fmt.Errorf("number of events exceeds the limit")
 		}
 
 		if !bridgetypes.AssetsLockedEvents(
@@ -207,7 +218,9 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		).IsStrictlyIncreasingSequence() {
 			// Make sure the events form a sequence strictly increasing by 1.
 			// This is important for further processing.
-			return nil, fmt.Errorf("events do not form a proper sequence")
+			return &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			}, fmt.Errorf("events do not form a proper sequence")
 		}
 
 		veh.logger.Debug(
