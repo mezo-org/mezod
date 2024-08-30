@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import { IValidatorPool, Description } from "../interfaces/IValidatorPool.sol";
 
-contract ValidatorPool is IValidatorPool {
+contract ValidatorPoolCaller is IValidatorPool {
     address private precompile = 0x7B7C000000000000000000000000000000000011;
 
     function acceptOwnership() external returns (bool) {
