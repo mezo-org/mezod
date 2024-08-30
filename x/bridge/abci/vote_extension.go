@@ -106,10 +106,16 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			"events_count", len(events),
 		)
 
-		// Limit the number of events to the maximum allowed, just in case.
-		// The sidecar implementation can change in the future.
+		// NOTE: Despite the sidecar client should abide the contract defined in
+		// the EthereumSidecarClient interface, we are doing validation of the
+		// returned data to maintain parity with the VerifyVoteExtension logic.
+		// The ExtendVote handler is used by honest validators so, it must
+		// guarantee that the produced vote extension is accepted by the
+		// VerifyVoteExtension handler.
+
 		if len(events) > AssetsLockedEventsLimit {
-			events = events[:AssetsLockedEventsLimit]
+			// Make sure the number of events does not exceed the limit.
+			return nil, fmt.Errorf("number of events exceeds the limit")
 		}
 
 		if !bridgetypes.AssetsLockedEvents(events).IsStrictlyIncreasingSequence() {

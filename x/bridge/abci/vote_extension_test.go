@@ -292,21 +292,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				return sidecar
 			},
-			expectedVE: &types.VoteExtension{
-				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
-					mockEvent(2),
-					mockEvent(3),
-					mockEvent(4),
-					mockEvent(5),
-					mockEvent(6),
-					mockEvent(7),
-					mockEvent(8),
-					mockEvent(9),
-					mockEvent(10),
-				},
-			},
-			errContains: "",
+			expectedVE:  nil,
+			errContains: "number of events exceeds the limit",
 		},
 		{
 			name: "sidecar returning events within the limit",
