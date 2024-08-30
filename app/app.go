@@ -584,21 +584,51 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 }
 
 // setABCIExtensions sets the ABCI++ extensions on the application.
-// This function assumes the BridgeKeeper is already set in the app.
+// This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
 func (app *Mezo) setABCIExtensions() {
-	sidecarClient := ethsidecar.RunTestSidecar(context.Background())
+	// Create the bridge ABCI handlers.
+	bridgeVoteExtensionHandler, bridgeProposalHandler := app.bridgeABCIHandlers()
 
-	bridgeVoteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
-		app.Logger(),
-		sidecarClient,
-		app.BridgeKeeper,
-	)
-
+	// Create and attach the app-level composite vote extension handler for
+	// ExtendVote and VerifyVoteExtension ABCI requests.
 	voteExtensionHandler := appabci.NewVoteExtensionHandler(
 		app.Logger(),
 		bridgeVoteExtensionHandler,
 	)
 	voteExtensionHandler.SetHandlers(app.BaseApp)
+
+	// Create and attach the app-level composite proposal handler for
+	// PrepareProposal and ProcessProposal ABCI requests.
+	proposalHandler := appabci.NewProposalHandler(
+		app.Logger(),
+		app.PoaKeeper,
+		bridgeProposalHandler,
+	)
+	proposalHandler.SetHandlers(app.BaseApp)
+}
+
+// bridgeABCIHandlers returns the bridge ABCI handlers.
+// This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
+func (app *Mezo) bridgeABCIHandlers() (
+	*bridgeabci.VoteExtensionHandler,
+	*bridgeabci.ProposalHandler,
+) {
+	// TODO: Instantiate a real sidecar client.
+	sidecarClient := ethsidecar.RunTestSidecar(context.Background())
+
+	voteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
+		app.Logger(),
+		sidecarClient,
+		app.BridgeKeeper,
+	)
+
+	proposalHandler := bridgeabci.NewProposalHandler(
+		app.Logger(),
+		app.PoaKeeper,
+		appabci.VoteExtensionDecomposer(appabci.VoteExtensionPartBridge),
+	)
+
+	return voteExtensionHandler, proposalHandler
 }
 
 // LoadHeight loads state at a particular height

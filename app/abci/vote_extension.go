@@ -326,3 +326,19 @@ func isVoteExtensionsEnabled(ctx sdk.Context, height int64) bool {
 		cp.Abci.VoteExtensionsEnableHeight > 0 &&
 		height > cp.Abci.VoteExtensionsEnableHeight
 }
+
+// VoteExtensionDecomposer returns a function that decomposes a composite
+// app-level vote extension and returns the given part.
+func VoteExtensionDecomposer(part VoteExtensionPart) func([]byte) ([]byte, error) {
+	return func(voteExtensionBytes []byte) ([]byte, error) {
+		var voteExtension types.VoteExtension
+		if err := voteExtension.Unmarshal(voteExtensionBytes); err != nil {
+			return nil, fmt.Errorf(
+				"failed to unmarshal composite vote extension: %w",
+				err,
+			)
+		}
+
+		return voteExtension.Parts[uint32(part)], nil
+	}
+}
