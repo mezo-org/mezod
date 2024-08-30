@@ -384,7 +384,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 				StorageKeys: []common.Hash{value1},
 			}}
 			c := &params.ChainConfig{}
-			var rules = c.Rules(new(big.Int), false, 0)
+			rules := c.Rules(new(big.Int), false, 0)
 			db.Prepare(rules, address, address, &address2, vm.PrecompiledAddressesBerlin, al)
 
 			// check sender and dst

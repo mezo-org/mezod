@@ -16,12 +16,11 @@
 package types
 
 import (
+	"encoding/json"
 	"math/big"
 	"os"
 
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
-
-	"encoding/json"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
