@@ -112,10 +112,12 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			events = events[:AssetsLockedEventsLimit]
 		}
 
-		if !bridgetypes.AssetsLockedEvents(events).IsStrictlyIncreasingSequence() {
-			// Make sure the events form a sequence strictly increasing by 1.
-			// This is important for further processing.
-			return nil, fmt.Errorf("events do not form a proper sequence")
+		if !bridgetypes.AssetsLockedEvents(events).IsValid() {
+			// Make sure all events in the slice are valid (positive sequence
+			// number, positive amount, proper bech32 recipient) and form a
+			// sequence strictly increasing by 1. This is important  for
+			// further processing.
+			return nil, fmt.Errorf("events list is not valid")
 		}
 
 		voteExtension := types.VoteExtension{
@@ -140,10 +142,13 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 }
 
 // VerifyVoteExtensionHandler returns the handler for the VerifyVoteExtension
-// ABCI request. It verifies the vote extension by checking that it unmarshals,
-// AssetsLocked events are sorted in natural order (by sequence asc), and that
-// the number of events does not exceed the limit. If the vote extension is
-// valid, it is accepted. Empty vote extensions are accepted by default.
+// ABCI request. It verifies the vote extension by checking that:
+// - The vote extension unmarshals
+// - AssetsLocked events are valid (positive sequence number, positive amount,
+//   proper bech32 recipient) and form a sequence strictly increasing by 1
+// - The number of AssetsLocked events does not exceed the limit
+// If the vote extension is valid, it is accepted. Empty vote extensions are
+// accepted by default.
 //
 // Dev note: It is fine to return a nil response and an error from this
 // function in case of failure. The upstream app-level vote extension handler
@@ -196,12 +201,12 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			return nil, fmt.Errorf("number of events exceeds the limit")
 		}
 
-		if !bridgetypes.AssetsLockedEvents(
-			voteExtension.AssetsLockedEvents,
-		).IsStrictlyIncreasingSequence() {
-			// Make sure the events form a sequence strictly increasing by 1.
-			// This is important for further processing.
-			return nil, fmt.Errorf("events do not form a proper sequence")
+		if !bridgetypes.AssetsLockedEvents(voteExtension.AssetsLockedEvents).IsValid() {
+			// Make sure all events in the slice are valid (positive sequence
+			// number, positive amount, proper bech32 recipient) and form a
+			// sequence strictly increasing by 1. This is important  for
+			// further processing.
+			return nil, fmt.Errorf("events list is not valid")
 		}
 
 		veh.logger.Debug(
