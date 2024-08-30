@@ -1,0 +1,12 @@
+syntax = "proto3";
+package mezo.abci.v1;
+
+option go_package = "github.com/mezo-org/mezod/app/abci/types";
+
+// VoteExtension defines the vote extension structure for the Mezo application.
+message VoteExtension {
+  // height is the height of the block that the vote extension is for.
+  int64 height = 1;
+  // parts is a map of vote extension parts, keyed by unique ID.
+  map<uint32, bytes> parts = 2;
+}

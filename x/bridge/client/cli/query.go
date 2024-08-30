@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -8,10 +9,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetQueryCmd returns the cli query commands for this module
-func GetQueryCmd(_ string) *cobra.Command {
-	// Group bridge queries under a subcommand
-	cmd := &cobra.Command{
+// NewQueryCmd returns the cli query commands for this module
+func NewQueryCmd() *cobra.Command {
+	// Group poa queries under a subcommand
+	queryCmd := &cobra.Command{
 		Use:                        types.ModuleName,
 		Short:                      fmt.Sprintf("Querying commands for the %s module", types.ModuleName),
 		DisableFlagParsing:         true,
@@ -19,5 +20,35 @@ func GetQueryCmd(_ string) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
-	return cmd
+	queryCmd.AddCommand(
+		NewCmdQueryParams(),
+	)
+
+	return queryCmd
+}
+
+// NewCmdQueryParams queries the params
+func NewCmdQueryParams() *cobra.Command {
+	return &cobra.Command{
+		Use:   "params",
+		Short: "Query the params",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			queryClient := types.NewQueryClient(clientCtx)
+
+			request := &types.QueryParamsRequest{}
+
+			response, err := queryClient.Params(context.Background(), request)
+			if err != nil {
+				return err
+			}
+
+			return clientCtx.PrintProto(response)
+		},
+	}
 }
