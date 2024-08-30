@@ -113,36 +113,36 @@ func NewNoopTracer() (*tracers.Tracer, error) {
 	}, nil
 }
 
-func (t *NoOpTracer) OnOpcode(pc uint64, op byte, gas, cost uint64, scope tracing.OpContext, rData []byte, depth int, err error) {
+func (t *NoOpTracer) OnOpcode(_ uint64, _ byte, _, _ uint64, _ tracing.OpContext, _ []byte, _ int, _ error) {
 }
 
-func (t *NoOpTracer) OnFault(pc uint64, op byte, gas, cost uint64, _ tracing.OpContext, depth int, err error) {
+func (t *NoOpTracer) OnFault(_ uint64, _ byte, _, _ uint64, _ tracing.OpContext, _ int, _ error) {
 }
 
-func (t *NoOpTracer) OnGasChange(old, new uint64, reason tracing.GasChangeReason) {}
+func (t *NoOpTracer) OnGasChange(_, _ uint64, _ tracing.GasChangeReason) {}
 
-func (t *NoOpTracer) OnEnter(depth int, typ byte, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) {
+func (t *NoOpTracer) OnEnter(_ int, _ byte, _ common.Address, _ common.Address, _ []byte, _ uint64, _ *big.Int) {
 }
 
-func (t *NoOpTracer) OnExit(depth int, output []byte, gasUsed uint64, err error, reverted bool) {
+func (t *NoOpTracer) OnExit(_ int, _ []byte, _ uint64, _ error, _ bool) {
 }
 
-func (*NoOpTracer) OnTxStart(env *tracing.VMContext, tx *types.Transaction, from common.Address) {
+func (*NoOpTracer) OnTxStart(_ *tracing.VMContext, _ *types.Transaction, _ common.Address) {
 }
 
-func (*NoOpTracer) OnTxEnd(receipt *types.Receipt, err error) {}
+func (*NoOpTracer) OnTxEnd(_ *types.Receipt, _ error) {}
 
-func (*NoOpTracer) OnBalanceChange(a common.Address, prev, new *big.Int, reason tracing.BalanceChangeReason) {
+func (*NoOpTracer) OnBalanceChange(_ common.Address, _, _ *big.Int, _ tracing.BalanceChangeReason) {
 }
 
-func (*NoOpTracer) OnNonceChange(a common.Address, prev, new uint64) {}
+func (*NoOpTracer) OnNonceChange(_ common.Address, _, _ uint64) {}
 
-func (*NoOpTracer) OnCodeChange(a common.Address, prevCodeHash common.Hash, prev []byte, codeHash common.Hash, code []byte) {
+func (*NoOpTracer) OnCodeChange(_ common.Address, _ common.Hash, _ []byte, _ common.Hash, _ []byte) {
 }
 
-func (*NoOpTracer) OnStorageChange(a common.Address, k, prev, new common.Hash) {}
+func (*NoOpTracer) OnStorageChange(_ common.Address, _, _, _ common.Hash) {}
 
-func (*NoOpTracer) OnLog(log *types.Log) {}
+func (*NoOpTracer) OnLog(_ *types.Log) {}
 
 // GetResult returns an empty json object.
 func (t *NoOpTracer) GetResult() (json.RawMessage, error) {
@@ -150,5 +150,5 @@ func (t *NoOpTracer) GetResult() (json.RawMessage, error) {
 }
 
 // Stop terminates execution of the tracer at the first opportune moment.
-func (t *NoOpTracer) Stop(err error) {
+func (t *NoOpTracer) Stop(_ error) {
 }
