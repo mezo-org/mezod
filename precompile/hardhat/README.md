@@ -167,6 +167,9 @@ Generating the `EvmByteCode` used by a custom precompile can be done via `npx ha
 `deployedBytecode` value in the contract artifact json file. Use this value as `EvmByteCode` - *make sure to remove
 the 0x prefix*
 
+The precompiles Caller contract is used for bytecode generation, technically this is a trick, we could use any contract that satisfies the precompile's interface and matches the precompile's ABI. The caller contracts are used as
+they are minimal implementations of the interfaces, and is semantically close to what's happening in reality.
+
 ## Source code
 
 Flatten into a single solidity file to make verfication easier, e.g:
@@ -174,10 +177,3 @@ Flatten into a single solidity file to make verfication easier, e.g:
 `npx hardhat flatten contracts/ValidatorPool.sol > ~/Desktop/ValidatorPool.sol`
 
 Use this file when verifying.
-
-## Solc options
-
-version: "0.8.24"
-optimize: true
-runs: 200
-evmVersion: "paris"
