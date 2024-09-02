@@ -29,8 +29,6 @@ import (
 // EthereumConfig returns an Ethereum ChainConfig for EVM state transitions.
 // All the negative or nil values are converted to nil
 func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
-	shanghaiTime := cc.ShanghaiTime.BigInt().Uint64()
-	cancunTime := cc.CancunTime.BigInt().Uint64()
 	return &params.ChainConfig{
 		ChainID:                 chainID,
 		HomesteadBlock:          getBlockValue(cc.HomesteadBlock),
@@ -49,8 +47,8 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		ArrowGlacierBlock:       getBlockValue(cc.ArrowGlacierBlock),
 		GrayGlacierBlock:        getBlockValue(cc.GrayGlacierBlock),
 		MergeNetsplitBlock:      getBlockValue(cc.MergeNetsplitBlock),
-		ShanghaiTime:            &shanghaiTime,
-		CancunTime:              &cancunTime,
+		ShanghaiTime:            getTimeValue(cc.ShanghaiTime),
+		CancunTime:              getTimeValue(cc.CancunTime),
 		TerminalTotalDifficulty: nil,
 		Ethash:                  nil,
 		Clique:                  nil,
@@ -75,7 +73,7 @@ func DefaultChainConfig() ChainConfig {
 	grayGlacierBlock := sdkmath.ZeroInt()
 	mergeNetsplitBlock := sdkmath.ZeroInt()
 	shanghaiTime := sdkmath.ZeroInt()
-	cancunBlock := sdkmath.ZeroInt()
+	cancunTime := sdkmath.ZeroInt()
 
 	return ChainConfig{
 		HomesteadBlock:      &homesteadBlock,
@@ -96,7 +94,7 @@ func DefaultChainConfig() ChainConfig {
 		GrayGlacierBlock:    &grayGlacierBlock,
 		MergeNetsplitBlock:  &mergeNetsplitBlock,
 		ShanghaiTime:        &shanghaiTime,
-		CancunTime:          &cancunBlock,
+		CancunTime:          &cancunTime,
 	}
 }
 
@@ -106,6 +104,15 @@ func getBlockValue(block *sdkmath.Int) *big.Int {
 	}
 
 	return block.BigInt()
+}
+
+func getTimeValue(time *sdkmath.Int) *uint64 {
+	if time == nil || time.IsNegative() {
+		return nil
+	}
+
+	value := time.BigInt().Uint64()
+	return &value
 }
 
 // Validate performs a basic validation of the ChainConfig params. The function will return an error

@@ -40,7 +40,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 		{"non-exist account", func(db *statedb.StateDB) {
 			suite.Require().Equal(false, db.Exist(address))
 			suite.Require().Equal(true, db.Empty(address))
-			suite.Require().Equal(big.NewInt(0), db.GetBalance(address))
+			suite.Require().Equal(uint256.NewInt(0), db.GetBalance(address))
 			suite.Require().Equal([]byte(nil), db.GetCode(address))
 			suite.Require().Equal(common.Hash{}, db.GetCodeHash(address))
 			suite.Require().Equal(uint64(0), db.GetNonce(address))
@@ -58,7 +58,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 			db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 			suite.Require().Equal(true, db.Exist(address))
 			suite.Require().Equal(true, db.Empty(address))
-			suite.Require().Equal(big.NewInt(0), db.GetBalance(address))
+			suite.Require().Equal(uint256.NewInt(0), db.GetBalance(address))
 			suite.Require().Equal([]byte(nil), db.GetCode(address))
 			suite.Require().Equal(common.BytesToHash(emptyCodeHash), db.GetCodeHash(address))
 			suite.Require().Equal(uint64(0), db.GetNonce(address))
@@ -84,7 +84,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 			// check dirty state
 			suite.Require().True(db.HasSuicided(address))
 			// balance is cleared
-			suite.Require().Equal(big.NewInt(0), db.GetBalance(address))
+			suite.Require().Equal(uint256.NewInt(0), db.GetBalance(address))
 			// but code and state are still accessible in dirty state
 			suite.Require().Equal(value1, db.GetState(address, key1))
 			suite.Require().Equal([]byte("hello world"), db.GetCode(address))
@@ -162,7 +162,7 @@ func (suite *StateDBTestSuite) TestBalance() {
 		{"sub balance", func(db *statedb.StateDB) {
 			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
 			// get dirty balance
-			suite.Require().Equal(big.NewInt(10), db.GetBalance(address))
+			suite.Require().Equal(uint256.NewInt(10), db.GetBalance(address))
 			db.SubBalance(address, uint256.NewInt(2), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(8)},
 		{"add zero balance", func(db *statedb.StateDB) {
@@ -180,10 +180,10 @@ func (suite *StateDBTestSuite) TestBalance() {
 			tc.malleate(db)
 
 			// check dirty state
-			suite.Require().Equal(tc.expBalance, db.GetBalance(address))
+			suite.Require().Equal(uint256.NewInt(tc.expBalance.Uint64()), db.GetBalance(address))
 			suite.Require().NoError(db.Commit())
 			// check committed balance too
-			suite.Require().Equal(tc.expBalance, keeper.accounts[address].account.Balance)
+			suite.Require().Equal(uint256.NewInt(tc.expBalance.Uint64()), keeper.accounts[address].account.Balance)
 		})
 	}
 }
