@@ -113,17 +113,8 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		// guarantee that the produced vote extension is accepted by the
 		// VerifyVoteExtension handler.
 
-		if len(events) > AssetsLockedEventsLimit {
-			// Make sure the number of events does not exceed the limit.
-			return nil, fmt.Errorf("number of events exceeds the limit")
-		}
-
-		if !bridgetypes.AssetsLockedEvents(events).IsValid() {
-			// Make sure all events in the slice are valid (positive sequence
-			// number, positive amount, proper bech32 recipient) and form a
-			// sequence strictly increasing by 1. This is important  for
-			// further processing.
-			return nil, fmt.Errorf("events list is not valid")
+		if err := validateAssetsLockedEvents(events); err != nil {
+			return nil, err
 		}
 
 		voteExtension := types.VoteExtension{
@@ -182,7 +173,7 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		if len(req.VoteExtension) == 0 {
 			// Accept empty bridge-specific vote extensions. This is necessary
 			// given that this handler's ExtendVote produces empty ones when
-			//  the Ethereum sidecar returns no events.
+			// the Ethereum sidecar returns no events.
 			veh.logger.Debug(
 				"bridge accepted empty vote extension",
 				"height", req.Height,
@@ -211,21 +202,10 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			}, fmt.Errorf("failed to unmarshal vote extension: %w", err)
 		}
 
-		if len(voteExtension.AssetsLockedEvents) > AssetsLockedEventsLimit {
-			// Make sure the number of events does not exceed the limit.
+		if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
 			return &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
-			}, fmt.Errorf("number of events exceeds the limit")
-		}
-
-		if !bridgetypes.AssetsLockedEvents(voteExtension.AssetsLockedEvents).IsValid() {
-			// Make sure all events in the slice are valid (positive sequence
-			// number, positive amount, proper bech32 recipient) and form a
-			// sequence strictly increasing by 1. This is important  for
-			// further processing.
-			return &cmtabci.ResponseVerifyVoteExtension{
-				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
-			}, fmt.Errorf("events list is not valid")
+			}, err
 		}
 
 		veh.logger.Debug(
@@ -238,4 +218,27 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
 		}, nil
 	}
+}
+
+// validateAssetsLockedEvents validates the given list of AssetsLocked events
+// in the context of the bridge vote extension.
+//
+// The given list is considered valid if:
+// - The number of events does not exceed the AssetsLockedEventsLimit
+// - All events in the slice are valid (positive sequence number, positive
+//   amount, proper bech32 recipient) and form a sequence strictly increasing
+//   by 1
+//
+// If the validation passes, the function returns nil. Otherwise, it returns
+// an error describing the reason.
+func validateAssetsLockedEvents(events []bridgetypes.AssetsLockedEvent) error {
+	if len(events) > AssetsLockedEventsLimit {
+		return fmt.Errorf("number of events exceeds the limit")
+	}
+
+	if !bridgetypes.AssetsLockedEvents(events).IsValid() {
+		return fmt.Errorf("events list is not valid")
+	}
+
+	return nil
 }

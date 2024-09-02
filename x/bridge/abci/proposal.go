@@ -107,6 +107,21 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 				continue
 			}
 
+			if len(voteExtension.AssetsLockedEvents) == 0 {
+				// TODO: Log this event.
+				continue
+			}
+
+			// ABCI++ specification requires that PrepareProposal validates
+			// vote extensions in the same manner as done in VerifyVoteExtension.
+			// This is because extensions of votes included in the commit info
+			// after the minimum of +2/3 had been reached are not verified.
+			// See: https://docs.cometbft.com/v0.38/spec/abci/abci++_methods#prepareproposal
+			if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
+				// TODO: Log this event.
+				continue
+			}
+
 			// TODO: Record asset locked events from this vote extension.
 			//       Add the voting power of this validator to the non-bridge
 			//       or bridge voting power counter of each asset locked event.
