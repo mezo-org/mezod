@@ -2,6 +2,7 @@ package abci
 
 import (
 	"cosmossdk.io/log"
+	"fmt"
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
@@ -119,11 +120,15 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 			}
 		}
 
-		// TODO: Aggregate a common assets locked events sequence based
-		//       on the voting power behind each event. Make sure the
-		//       aggregated sequence starts just after the current sequence
-		//       tip.
+		canonicalEvents, err := voteCounter.canonicalEvents()
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to determine canonical AssetsLocked events: %w",
+				err,
+			)
+		}
 
+		// TODO: Make sure the canonical events sequence starts just after the current sequence tip.
 		// TODO: Inject the pseudo-transaction into the proposal.
 
 		return nil, nil
@@ -148,7 +153,7 @@ type assetsLockedVoteCounter struct {
 	// A map of AssetsLocked vote infos indexed by their sequence number.
 	// In case validators have a different view of the world, the given
 	// sequence number may have more than one item associated with it.
-	votesInfo map[string][]*assetsLockedVoteInfo
+	voteInfoMap map[string][]*assetsLockedVoteInfo
 	// The total voting power of validators with the bridge privilege
 	// (totalVP - nonBridgeValsTotalVP).
 	bridgeValsTotalVP int64
@@ -160,8 +165,8 @@ type assetsLockedVoteCounter struct {
 // newAssetsLockedVoteCounter creates a new assetsLockedVoteCounter instance.
 func newAssetsLockedVoteCounter() *assetsLockedVoteCounter {
 	return &assetsLockedVoteCounter{
-		votesInfo: make(map[string][]*assetsLockedVoteInfo),
-		bridgeValsTotalVP: 0,
+		voteInfoMap:          make(map[string][]*assetsLockedVoteInfo),
+		bridgeValsTotalVP:    0,
 		nonBridgeValsTotalVP: 0,
 	}
 }
@@ -177,7 +182,9 @@ func (alvc *assetsLockedVoteCounter) registerVoter(vp int64, isBridgeVal bool) {
 }
 
 // addVote adds the given voting power to the sum of the bridge or non-bridge
-// voting power behind the given AssetsLocked event.
+// voting power behind the given AssetsLocked event. This function assumes
+// the given event is valid and does not perform any validation over it.
+// The caller is responsible for ensuring the event is actually valid.
 func (alvc *assetsLockedVoteCounter) addVote(
 	event *bridgetypes.AssetsLockedEvent,
 	vp int64,
@@ -186,7 +193,7 @@ func (alvc *assetsLockedVoteCounter) addVote(
 	sequenceKey := event.Sequence.String()
 
 	if index := slices.IndexFunc(
-		alvc.votesInfo[sequenceKey],
+		alvc.voteInfoMap[sequenceKey],
 		func(v *assetsLockedVoteInfo) bool {
 			// It's enough to compare the recipient and the amount.
 			// The sequence number is used as the votesInfo map key hence
@@ -194,13 +201,92 @@ func (alvc *assetsLockedVoteCounter) addVote(
 			return event.Recipient == v.event.Recipient &&
 				event.Amount.Equal(v.event.Amount)
 		},
-	); index != -1 {
-		alvc.votesInfo[sequenceKey][index].add(vp, isBridgeVal)
+	); index >= 0 {
+		alvc.voteInfoMap[sequenceKey][index].add(vp, isBridgeVal)
 	} else {
 		voteInfo := newAssetsLockedVoteInfo(event)
 		voteInfo.add(vp, isBridgeVal)
-		alvc.votesInfo[sequenceKey] = append(alvc.votesInfo[sequenceKey], voteInfo)
+		alvc.voteInfoMap[sequenceKey] = append(
+			alvc.voteInfoMap[sequenceKey],
+			voteInfo,
+		)
 	}
+}
+
+// canonicalEvents returns the sequence of canonical AssetsLocked events
+// supported by 2/3+ of the bridge validators and confirmed by 2/3+ of the
+// non-bridge validators. If the sequence of canonical events cannot be
+// determined, the function returns an error. Otherwise, it returns the
+// canonical events in a sequence strictly increasing by 1.
+func (alvc *assetsLockedVoteCounter) canonicalEvents() (
+	[]bridgetypes.AssetsLockedEvent,
+	error,
+) {
+	// Should never happen but just in case.
+	if alvc.bridgeValsTotalVP <= 0 {
+		return nil, fmt.Errorf("total bridge validators voting power must be positive")
+	}
+	if alvc.nonBridgeValsTotalVP <= 0 {
+		return nil, fmt.Errorf("total non-bridge validators voting power must be positive")
+	}
+
+	requiredBridgeValsVP := ((alvc.bridgeValsTotalVP * 2) / 3) + 1
+	requiredNonBridgeValsVP := ((alvc.nonBridgeValsTotalVP * 2) / 3) + 1
+
+	canonicalEvents := make([]bridgetypes.AssetsLockedEvent, 0)
+
+	for _, voteInfos := range alvc.voteInfoMap {
+		// Filter out events that do not have the required super-majority
+		// support from both bridge and non-bridge validators. Only 0 or 1
+		// event should pass this filter.
+		superMajorityEvents := make([]bridgetypes.AssetsLockedEvent, 0)
+		for _, voteInfo := range voteInfos {
+			if voteInfo.bridgeValsVP >= requiredBridgeValsVP &&
+				voteInfo.nonBridgeValsVP >= requiredNonBridgeValsVP {
+				superMajorityEvents = append(
+					superMajorityEvents,
+					*voteInfo.event,
+				)
+			}
+		}
+
+		switch len(superMajorityEvents) {
+		case 0:
+			// None of the events for the given sequence number have
+			// received the required super-majority support from both
+			// bridge and non-bridge validators. Skip this sequence number.
+			continue
+		case 1:
+			// Exactly one event for the given sequence number has received
+			// the required super-majority support from both bridge and
+			// non-bridge validators. Add it to the canonical events slice.
+			canonicalEvents = append(canonicalEvents, superMajorityEvents[0])
+		default:
+			// Multiple events for the given sequence number have received
+			// the super-majority support. This case is not possible in the
+			// current implementation of the bridge module. If this happens,
+			// a serious bug has occurred and the function should panic.
+			panic("multiple canonical AssetsLocked events for the same sequence")
+		}
+	}
+
+	// Sort the canonical events slice by sequence number so achieve an
+	// increasing sequence order. All events processed here are assumed to be
+	// valid hence we sort without nil-checking the sequence number (see addVote).
+	slices.SortFunc(canonicalEvents, func(a, b bridgetypes.AssetsLockedEvent) int {
+		return a.Sequence.BigInt().Cmp(b.Sequence.BigInt())
+	})
+
+	// Ensure the sequence of canonical events is strictly increasing by 1.
+	// In this context, we make sure there are no gaps between the sequence
+	// numbers of the events and that each event is unique by its sequence.
+	// We use IsStrictlyIncreasingSequence and not the full IsValid function
+	// because we assume all events in the voteInfoMap are valid (see addVote).
+	if !bridgetypes.AssetsLockedEvents(canonicalEvents).IsStrictlyIncreasingSequence() {
+		return nil, fmt.Errorf("canonical events sequence is not strictly increasing")
+	}
+
+	return canonicalEvents, nil
 }
 
 // assetsLockedVoteInfo is a helper structure that holds the bridge and
