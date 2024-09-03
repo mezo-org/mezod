@@ -152,9 +152,29 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 			return &cmtabci.ResponsePrepareProposal{Txs: req.Txs}, nil
 		}
 
-		// TODO: Inject the pseudo-transaction into the proposal.
+		extendedCommitInfo, err := req.LocalLastCommit.Marshal()
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal the extended commit info: %w", err)
+		}
 
-		return nil, nil
+		// Construct the bridge-specific injected pseudo-transaction.
+		injectedTx := types.InjectedTx{
+			AssetsLockedEvents: canonicalEvents,
+			ExtendedCommitInfo: extendedCommitInfo,
+		}
+		// Marshal the injected pseudo-transaction into bytes.
+		injectedTxBytes, err := injectedTx.Marshal()
+		if err != nil {
+			// If marshaling fails, we cannot recover, so return an error.
+			return nil, fmt.Errorf("failed to marshal injected tx: %w", err)
+		}
+		// Inject the pseudo-transaction at the beginning of the original
+		// transaction list being part of the proposal. No need to check
+		// for req.MaxTxBytes as this is done by the composite app-level
+		// handler upstream.
+		txs := append([][]byte{injectedTxBytes}, req.Txs...)
+
+		return &cmtabci.ResponsePrepareProposal{Txs: txs}, nil
 	}
 }
 
