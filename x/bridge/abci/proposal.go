@@ -6,6 +6,7 @@ import (
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
+	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"slices"
 )
@@ -23,6 +24,7 @@ type ProposalHandler struct {
 	logger                  log.Logger
 	valStore                bridgetypes.ValidatorStore
 	voteExtensionDecomposer VoteExtensionDecomposer
+	keeper                  bridgekeeper.Keeper
 }
 
 // NewProposalHandler creates a new ProposalHandler instance.
@@ -30,11 +32,13 @@ func NewProposalHandler(
 	logger log.Logger,
 	valStore bridgetypes.ValidatorStore,
 	voteExtensionDecomposer VoteExtensionDecomposer,
+	keeper bridgekeeper.Keeper,
 ) *ProposalHandler {
 	return &ProposalHandler{
 		logger:                  logger,
 		valStore:                valStore,
 		voteExtensionDecomposer: voteExtensionDecomposer,
+		keeper:                  keeper,
 	}
 }
 
@@ -115,11 +119,16 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 				continue
 			}
 
+			// addVote assumes the given event is valid and does not perform
+			// any validation over it. We ensure validity by calling
+			// validateAssetsLockedEvents above.
 			for _, event := range voteExtension.AssetsLockedEvents {
 				voteCounter.addVote(&event, valVP, isBridgeVal)
 			}
 		}
 
+		// canonicalEvents returns the sequence of canonical AssetsLocked events
+		// and guarantees that the sequence is strictly increasing by 1.
 		canonicalEvents, err := voteCounter.canonicalEvents()
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -128,7 +137,21 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 			)
 		}
 
-		// TODO: Make sure the canonical events sequence starts just after the current sequence tip.
+		// If there are no canonical events, we do not inject the pseudo-transaction
+		// and return the proposal txs vector as is.
+		if len(canonicalEvents) == 0 {
+			return &cmtabci.ResponsePrepareProposal{Txs: req.Txs}, nil
+		}
+
+		sequenceTip := ph.keeper.GetAssetsLockedSequenceTip(ctx)
+		// If sequence of canonical events does not start directly after the
+		// current sequence tip, that means some earlier AssetsLocked events
+		// are missing. In this case, we do not inject the pseudo-transaction
+		// and return the proposal txs vector as is.
+		if !canonicalEvents[0].Sequence.Equal(sequenceTip.AddRaw(1)) {
+			return &cmtabci.ResponsePrepareProposal{Txs: req.Txs}, nil
+		}
+
 		// TODO: Inject the pseudo-transaction into the proposal.
 
 		return nil, nil
