@@ -9,6 +9,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/app/abci/types"
 	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
+	connectproposals "github.com/skip-mev/connect/v2/abci/proposals"
 )
 
 // IProposalHandler is an interface representing a proposal handler.
@@ -35,9 +36,11 @@ func NewProposalHandler(
 	logger log.Logger,
 	valStore baseapp.ValidatorStore,
 	bridgeSubHandler *bridgeabci.ProposalHandler,
+	connectSubHandler *connectproposals.ProposalHandler,
 ) *ProposalHandler {
 	subHandlers := map[VoteExtensionPart]IProposalHandler{
-		VoteExtensionPartBridge: bridgeSubHandler,
+		VoteExtensionPartBridge:  bridgeSubHandler,
+		VoteExtensionPartConnect: connectSubHandler,
 	}
 
 	return &ProposalHandler{

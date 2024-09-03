@@ -227,7 +227,8 @@ type Mezo struct {
 	tpsCounter *tpsCounter
 
 	// Connect client
-	oracleClient oracleclient.OracleClient
+	oracleClient      oracleclient.OracleClient
+	connectPreBlocker *connectpreblocker.PreBlockHandler
 }
 
 // NewMezo returns a reference to a new initialized Ethermint application.
@@ -494,7 +495,7 @@ func NewMezo(
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
 
-	app.setABCIExtensions()
+	app.setABCIExtensions(appOpts)
 
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
@@ -550,9 +551,9 @@ func (app *Mezo) setPostHandler() {
 
 func (app *Mezo) PreBlocker(
 	ctx sdk.Context,
-	_ *abci.RequestFinalizeBlock,
+	req *abci.RequestFinalizeBlock,
 ) (*sdk.ResponsePreBlock, error) {
-	return app.mm.PreBlock(ctx)
+	return app.connectPreBlocker.WrappedPreBlocker(app.mm)(ctx, req)
 }
 
 func (app *Mezo) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
@@ -605,15 +606,19 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 
 // setABCIExtensions sets the ABCI++ extensions on the application.
 // This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
-func (app *Mezo) setABCIExtensions() {
+func (app *Mezo) setABCIExtensions(appOpts servertypes.AppOptions) {
 	// Create the bridge ABCI handlers.
 	bridgeVoteExtensionHandler, bridgeProposalHandler := app.bridgeABCIHandlers()
+
+	// Create the Connect ABCI handlers.
+	connectVEHandler, connectProposalHandler, connectPreBlocker := app.connectABCIHandlers(appOpts)
 
 	// Create and attach the app-level composite vote extension handler for
 	// ExtendVote and VerifyVoteExtension ABCI requests.
 	voteExtensionHandler := appabci.NewVoteExtensionHandler(
 		app.Logger(),
 		bridgeVoteExtensionHandler,
+		connectVEHandler,
 	)
 	voteExtensionHandler.SetHandlers(app.BaseApp)
 
@@ -623,8 +628,11 @@ func (app *Mezo) setABCIExtensions() {
 		app.Logger(),
 		app.PoaKeeper,
 		bridgeProposalHandler,
+		connectProposalHandler,
 	)
 	proposalHandler.SetHandlers(app.BaseApp)
+
+	app.connectPreBlocker = connectPreBlocker
 }
 
 // bridgeABCIHandlers returns the bridge ABCI handlers.
