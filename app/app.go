@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/cosmos/cosmos-sdk/runtime"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
@@ -83,6 +84,19 @@ import (
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
+	// Connect imports
+	connectpreblocker "github.com/skip-mev/connect/v2/abci/preblock/oracle"
+	connectproposals "github.com/skip-mev/connect/v2/abci/proposals"
+	"github.com/skip-mev/connect/v2/abci/strategies/aggregator"
+	compression "github.com/skip-mev/connect/v2/abci/strategies/codec"
+	"github.com/skip-mev/connect/v2/abci/strategies/currencypair"
+	connectve "github.com/skip-mev/connect/v2/abci/ve"
+	oracleconfig "github.com/skip-mev/connect/v2/oracle/config"
+	"github.com/skip-mev/connect/v2/pkg/math/voteweighted"
+	oracleclient "github.com/skip-mev/connect/v2/service/clients/oracle"
+	servicemetrics "github.com/skip-mev/connect/v2/service/metrics"
+	oraclekeeper "github.com/skip-mev/connect/v2/x/oracle/keeper"
+
 	appabci "github.com/mezo-org/mezod/app/abci"
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
 	"github.com/mezo-org/mezod/encoding"
@@ -140,6 +154,8 @@ const Name = "mezod"
 var (
 	// DefaultNodeHome default home directories for the application daemon
 	DefaultNodeHome string
+
+	DefaultOracleTimeout = time.Second
 
 	// ModuleBasics defines the module BasicManager is in charge of setting up basic,
 	// non-dependant module elements, such as codec registration
@@ -200,6 +216,7 @@ type Mezo struct {
 	EvmKeeper             *evmkeeper.Keeper
 	FeeMarketKeeper       feemarketkeeper.Keeper
 	BridgeKeeper          bridgekeeper.Keeper
+	OracleKeeper          oraclekeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -208,6 +225,9 @@ type Mezo struct {
 	configurator module.Configurator
 
 	tpsCounter *tpsCounter
+
+	// Connect client
+	oracleClient oracleclient.OracleClient
 }
 
 // NewMezo returns a reference to a new initialized Ethermint application.
@@ -629,6 +649,99 @@ func (app *Mezo) bridgeABCIHandlers() (
 	)
 
 	return voteExtensionHandler, proposalHandler
+}
+
+// connectABCIHandlers returns the Connect ABCI handlers.
+func (app *Mezo) connectABCIHandlers(appOpts servertypes.AppOptions) (
+	*connectve.VoteExtensionHandler, *connectproposals.ProposalHandler, *connectpreblocker.PreBlockHandler) {
+
+	// Read general config from app-opts, and construct oracle service.
+	cfg, err := oracleconfig.ReadConfigFromAppOpts(appOpts)
+	if err != nil {
+		panic(err)
+	}
+
+	// If app level instrumentation is enabled, then wrap the oracle service with a metrics client
+	// to get metrics on the oracle service (for ABCI++). This will allow the instrumentation to track
+	// latency in VerifyVoteExtension requests and more.
+	oracleMetrics, err := servicemetrics.NewMetricsFromConfig(cfg, app.ChainID())
+	if err != nil {
+		panic(err)
+	}
+
+	veCodec := compression.NewCompressionVoteExtensionCodec(
+		compression.NewDefaultVoteExtensionCodec(),
+		compression.NewZLibCompressor(),
+	)
+	extCommitCodec := compression.NewCompressionExtendedCommitCodec(
+		compression.NewDefaultExtendedCommitCodec(),
+		compression.NewZStdCompressor(),
+	)
+	priceApplier := aggregator.NewOraclePriceApplier(
+		aggregator.NewDefaultVoteAggregator(
+			app.Logger(),
+			voteweighted.MedianFromContext(
+				app.Logger(),
+				app.PoaKeeper,
+				voteweighted.DefaultPowerThreshold,
+			),
+			currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
+		),
+		&app.OracleKeeper,
+		veCodec,
+		extCommitCodec,
+		app.Logger(),
+	)
+	voteExtensionsHandler := connectve.NewVoteExtensionHandler(
+		app.Logger(),
+		app.oracleClient,
+		DefaultOracleTimeout,
+		currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
+		veCodec,
+		priceApplier,
+		oracleMetrics,
+	)
+
+	proposalHandler := connectproposals.NewProposalHandler(
+		app.Logger(),
+		// Inject no-ops here since we're not wrapping other handlers, we're including ours as a sub-handler
+		baseapp.NoOpPrepareProposal(),
+		baseapp.NoOpProcessProposal(),
+		connectve.NewDefaultValidateVoteExtensionsFn(app.PoaKeeper),
+		compression.NewCompressionVoteExtensionCodec(
+			compression.NewDefaultVoteExtensionCodec(),
+			compression.NewZLibCompressor(),
+		),
+		compression.NewCompressionExtendedCommitCodec(
+			compression.NewDefaultExtendedCommitCodec(),
+			compression.NewZStdCompressor(),
+		),
+		currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
+		oracleMetrics,
+	)
+
+	aggregatorFn := voteweighted.MedianFromContext(
+		app.Logger(),
+		app.PoaKeeper,
+		voteweighted.DefaultPowerThreshold,
+	)
+	preBlocker := connectpreblocker.NewOraclePreBlockHandler(
+		app.Logger(),
+		aggregatorFn,
+		&app.OracleKeeper,
+		oracleMetrics,
+		currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
+		compression.NewCompressionVoteExtensionCodec(
+			compression.NewDefaultVoteExtensionCodec(),
+			compression.NewZLibCompressor(),
+		),
+		compression.NewCompressionExtendedCommitCodec(
+			compression.NewDefaultExtendedCommitCodec(),
+			compression.NewZStdCompressor(),
+		),
+	)
+
+	return voteExtensionsHandler, proposalHandler, preBlocker
 }
 
 // LoadHeight loads state at a particular height

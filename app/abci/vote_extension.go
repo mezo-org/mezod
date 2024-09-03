@@ -57,6 +57,7 @@ type VoteExtensionHandler struct {
 func NewVoteExtensionHandler(
 	logger log.Logger,
 	bridgeSubHandler *bridgeabci.VoteExtensionHandler,
+
 ) *VoteExtensionHandler {
 	subHandlers := map[VoteExtensionPart]IVoteExtensionHandler{
 		VoteExtensionPartBridge: bridgeSubHandler,
