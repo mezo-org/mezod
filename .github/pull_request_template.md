@@ -46,6 +46,7 @@ on your own and provide a short summary of the results in this section.
 ---
 
 ### Author's checklist
+
 - [ ] Provided the appropriate description of the pull request
 - [ ] Updated relevant unit and integration tests
 - [ ] Updated relevant documentation (`docs/`) or specification (`x/<module>/spec/`)
@@ -53,6 +54,7 @@ on your own and provide a short summary of the results in this section.
 - [ ] Assigned `mezod-developers` in the `Reviewers` field and notified them on Discord
 
 ### Reviewer's checklist
+
 - [ ] Confirmed all author's checklist items have been addressed
 - [ ] Considered security implications of the code changes
 - [ ] Considered performance implications of the code changes
