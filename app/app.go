@@ -86,16 +86,14 @@ import (
 
 	// Connect imports
 	connectpreblocker "github.com/skip-mev/connect/v2/abci/preblock/oracle"
-	connectproposals "github.com/skip-mev/connect/v2/abci/proposals"
-	"github.com/skip-mev/connect/v2/abci/strategies/aggregator"
-	compression "github.com/skip-mev/connect/v2/abci/strategies/codec"
-	"github.com/skip-mev/connect/v2/abci/strategies/currencypair"
-	connectve "github.com/skip-mev/connect/v2/abci/ve"
-	oracleconfig "github.com/skip-mev/connect/v2/oracle/config"
-	"github.com/skip-mev/connect/v2/pkg/math/voteweighted"
 	oracleclient "github.com/skip-mev/connect/v2/service/clients/oracle"
 	servicemetrics "github.com/skip-mev/connect/v2/service/metrics"
+	"github.com/skip-mev/connect/v2/x/marketmap"
+	marketmapkeeper "github.com/skip-mev/connect/v2/x/marketmap/keeper"
+	marketmaptypes "github.com/skip-mev/connect/v2/x/marketmap/types"
+	"github.com/skip-mev/connect/v2/x/oracle"
 	oraclekeeper "github.com/skip-mev/connect/v2/x/oracle/keeper"
+	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 
 	appabci "github.com/mezo-org/mezod/app/abci"
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
@@ -172,6 +170,8 @@ var (
 		evm.AppModuleBasic{},
 		feemarket.AppModuleBasic{},
 		bridge.AppModuleBasic{},
+		marketmap.AppModuleBasic{},
+		oracle.AppModuleBasic{},
 	)
 
 	// module account permissions
@@ -217,6 +217,7 @@ type Mezo struct {
 	FeeMarketKeeper       feemarketkeeper.Keeper
 	BridgeKeeper          bridgekeeper.Keeper
 	OracleKeeper          oraclekeeper.Keeper
+	MarketMapKeeper       marketmapkeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -228,6 +229,7 @@ type Mezo struct {
 
 	// Connect client
 	oracleClient      oracleclient.OracleClient
+	oracleMetrics     servicemetrics.Metrics
 	connectPreBlocker *connectpreblocker.PreBlockHandler
 }
 
@@ -274,6 +276,8 @@ func NewMezo(
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
 		bridgetypes.StoreKey,
+		marketmaptypes.StoreKey,
+		oracletypes.StoreKey,
 	)
 
 	tkeys := storetypes.NewTransientStoreKeys(
@@ -404,6 +408,18 @@ func NewMezo(
 
 	app.BridgeKeeper = bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
 
+	app.MarketMapKeeper = *marketmapkeeper.NewKeeper(
+		runtime.NewKVStoreService(keys[marketmaptypes.StoreKey]),
+		appCodec,
+		authority,
+	)
+	app.OracleKeeper = oraclekeeper.NewKeeper(
+		runtime.NewKVStoreService(keys[oracletypes.StoreKey]),
+		appCodec,
+		&app.MarketMapKeeper,
+		authority,
+	)
+
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.
 	skipGenesisInvariants := cast.ToBool(appOpts.Get(crisis.FlagSkipGenesisInvariants))
@@ -422,6 +438,8 @@ func NewMezo(
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
 		bridge.NewAppModule(app.BridgeKeeper),
+		marketmap.NewAppModule(appCodec, &app.MarketMapKeeper),
+		oracle.NewAppModule(appCodec, app.OracleKeeper),
 	)
 
 	// NOTE: upgrade module must go first to handle software upgrades.
@@ -433,6 +451,7 @@ func NewMezo(
 		feemarkettypes.ModuleName,
 		evmtypes.ModuleName,
 		poatypes.ModuleName,
+		oracletypes.ModuleName,
 		// no-op modules
 		authtypes.ModuleName,
 		banktypes.ModuleName,
@@ -441,6 +460,7 @@ func NewMezo(
 		paramstypes.ModuleName,
 		bridgetypes.ModuleName,
 		consensusparamstypes.ModuleName,
+		marketmaptypes.ModuleName,
 	)
 
 	// NOTE: fee market module must go last in order to retrieve the block gas used.
@@ -455,6 +475,8 @@ func NewMezo(
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
 		consensusparamstypes.ModuleName,
+		marketmaptypes.ModuleName,
+		oracletypes.ModuleName,
 		feemarkettypes.ModuleName,
 	)
 
@@ -469,6 +491,8 @@ func NewMezo(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
+		marketmaptypes.ModuleName,
+		oracletypes.ModuleName,
 		crisistypes.ModuleName,
 		consensusparamstypes.ModuleName,
 	)
@@ -484,8 +508,23 @@ func NewMezo(
 	app.MountKVStores(keys)
 	app.MountTransientStores(tkeys)
 
-	// initialize BaseApp
-	app.SetInitChainer(app.InitChainer)
+	// initialize the BaseApp with markets in state.
+	app.SetInitChainer(func(ctx sdk.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
+		// set vote extension height. (must be greater than 1).
+		req.ConsensusParams.Abci.VoteExtensionsEnableHeight = 2
+
+		// initialize module state
+		app.OracleKeeper.InitGenesis(ctx, *oracletypes.DefaultGenesisState())
+		app.MarketMapKeeper.InitGenesis(ctx, *marketmaptypes.DefaultGenesisState())
+
+		// initialize markets
+		err := app.setupMarkets(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return app.InitChainer(ctx, req)
+	})
 	app.SetPreBlocker(app.PreBlocker)
 	app.SetBeginBlocker(app.BeginBlocker)
 
@@ -495,7 +534,15 @@ func NewMezo(
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
 
-	app.setABCIExtensions(appOpts)
+	// Set the x/marketmap keeper hooks
+	app.MarketMapKeeper.SetHooks(app.OracleKeeper.Hooks())
+	// oracle initialization
+	app.oracleClient, app.oracleMetrics, err = app.initializeOracle(appOpts)
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize oracle client and metrics: %s", err))
+	}
+	// Connect ABCI initialization requires the oracle client/metrics to be setup first.
+	app.setABCIExtensions()
 
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
@@ -606,12 +653,12 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 
 // setABCIExtensions sets the ABCI++ extensions on the application.
 // This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
-func (app *Mezo) setABCIExtensions(appOpts servertypes.AppOptions) {
+func (app *Mezo) setABCIExtensions() {
 	// Create the bridge ABCI handlers.
 	bridgeVoteExtensionHandler, bridgeProposalHandler := app.bridgeABCIHandlers()
 
 	// Create the Connect ABCI handlers.
-	connectVEHandler, connectProposalHandler, connectPreBlocker := app.connectABCIHandlers(appOpts)
+	connectVEHandler, connectProposalHandler, connectPreBlocker := app.connectABCIHandlers()
 
 	// Create and attach the app-level composite vote extension handler for
 	// ExtendVote and VerifyVoteExtension ABCI requests.
@@ -657,99 +704,6 @@ func (app *Mezo) bridgeABCIHandlers() (
 	)
 
 	return voteExtensionHandler, proposalHandler
-}
-
-// connectABCIHandlers returns the Connect ABCI handlers.
-func (app *Mezo) connectABCIHandlers(appOpts servertypes.AppOptions) (
-	*connectve.VoteExtensionHandler, *connectproposals.ProposalHandler, *connectpreblocker.PreBlockHandler) {
-
-	// Read general config from app-opts, and construct oracle service.
-	cfg, err := oracleconfig.ReadConfigFromAppOpts(appOpts)
-	if err != nil {
-		panic(err)
-	}
-
-	// If app level instrumentation is enabled, then wrap the oracle service with a metrics client
-	// to get metrics on the oracle service (for ABCI++). This will allow the instrumentation to track
-	// latency in VerifyVoteExtension requests and more.
-	oracleMetrics, err := servicemetrics.NewMetricsFromConfig(cfg, app.ChainID())
-	if err != nil {
-		panic(err)
-	}
-
-	veCodec := compression.NewCompressionVoteExtensionCodec(
-		compression.NewDefaultVoteExtensionCodec(),
-		compression.NewZLibCompressor(),
-	)
-	extCommitCodec := compression.NewCompressionExtendedCommitCodec(
-		compression.NewDefaultExtendedCommitCodec(),
-		compression.NewZStdCompressor(),
-	)
-	priceApplier := aggregator.NewOraclePriceApplier(
-		aggregator.NewDefaultVoteAggregator(
-			app.Logger(),
-			voteweighted.MedianFromContext(
-				app.Logger(),
-				app.PoaKeeper,
-				voteweighted.DefaultPowerThreshold,
-			),
-			currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
-		),
-		&app.OracleKeeper,
-		veCodec,
-		extCommitCodec,
-		app.Logger(),
-	)
-	voteExtensionsHandler := connectve.NewVoteExtensionHandler(
-		app.Logger(),
-		app.oracleClient,
-		DefaultOracleTimeout,
-		currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
-		veCodec,
-		priceApplier,
-		oracleMetrics,
-	)
-
-	proposalHandler := connectproposals.NewProposalHandler(
-		app.Logger(),
-		// Inject no-ops here since we're not wrapping other handlers, we're including ours as a sub-handler
-		baseapp.NoOpPrepareProposal(),
-		baseapp.NoOpProcessProposal(),
-		connectve.NewDefaultValidateVoteExtensionsFn(app.PoaKeeper),
-		compression.NewCompressionVoteExtensionCodec(
-			compression.NewDefaultVoteExtensionCodec(),
-			compression.NewZLibCompressor(),
-		),
-		compression.NewCompressionExtendedCommitCodec(
-			compression.NewDefaultExtendedCommitCodec(),
-			compression.NewZStdCompressor(),
-		),
-		currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
-		oracleMetrics,
-	)
-
-	aggregatorFn := voteweighted.MedianFromContext(
-		app.Logger(),
-		app.PoaKeeper,
-		voteweighted.DefaultPowerThreshold,
-	)
-	preBlocker := connectpreblocker.NewOraclePreBlockHandler(
-		app.Logger(),
-		aggregatorFn,
-		&app.OracleKeeper,
-		oracleMetrics,
-		currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
-		compression.NewCompressionVoteExtensionCodec(
-			compression.NewDefaultVoteExtensionCodec(),
-			compression.NewZLibCompressor(),
-		),
-		compression.NewCompressionExtendedCommitCodec(
-			compression.NewDefaultExtendedCommitCodec(),
-			compression.NewZStdCompressor(),
-		),
-	)
-
-	return voteExtensionsHandler, proposalHandler, preBlocker
 }
 
 // LoadHeight loads state at a particular height
