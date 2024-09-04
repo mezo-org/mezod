@@ -18,6 +18,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	oracleconfig "github.com/skip-mev/connect/v2/oracle/config"
 	"path"
 	"time"
 
@@ -93,9 +94,10 @@ var evmTracers = []string{"json", "markdown", "struct", "access_list"}
 type Config struct {
 	config.Config
 
-	EVM     EVMConfig     `mapstructure:"evm"`
-	JSONRPC JSONRPCConfig `mapstructure:"json-rpc"`
-	TLS     TLSConfig     `mapstructure:"tls"`
+	EVM     EVMConfig              `mapstructure:"evm"`
+	JSONRPC JSONRPCConfig          `mapstructure:"json-rpc"`
+	TLS     TLSConfig              `mapstructure:"tls"`
+	Oracle  oracleconfig.AppConfig `mapstructure:"oracle" json:"oracle"`
 }
 
 // EVMConfig defines the application configuration values for the EVM.
@@ -185,9 +187,10 @@ func AppConfig(denom string) (string, interface{}) {
 		EVM:     *DefaultEVMConfig(),
 		JSONRPC: *DefaultJSONRPCConfig(),
 		TLS:     *DefaultTLSConfig(),
+		Oracle:  *DefaultOracleConfig(),
 	}
 
-	customAppTemplate := config.DefaultConfigTemplate + DefaultConfigTemplate
+	customAppTemplate := config.DefaultConfigTemplate + DefaultConfigTemplate + oracleconfig.DefaultConfigTemplate
 
 	return customAppTemplate, customAppConfig
 }
@@ -199,6 +202,7 @@ func DefaultConfig() *Config {
 		EVM:     *DefaultEVMConfig(),
 		JSONRPC: *DefaultJSONRPCConfig(),
 		TLS:     *DefaultTLSConfig(),
+		Oracle:  *DefaultOracleConfig(),
 	}
 }
 
@@ -207,6 +211,15 @@ func DefaultEVMConfig() *EVMConfig {
 	return &EVMConfig{
 		Tracer:         DefaultEVMTracer,
 		MaxTxGasWanted: DefaultMaxTxGasWanted,
+	}
+}
+
+func DefaultOracleConfig() *oracleconfig.AppConfig {
+	return &oracleconfig.AppConfig{
+		Enabled:        true,
+		OracleAddress:  "localhost:8080",
+		ClientTimeout:  time.Second * 2,
+		MetricsEnabled: true,
 	}
 }
 
