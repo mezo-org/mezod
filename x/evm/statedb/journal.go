@@ -106,7 +106,7 @@ type (
 	resetObjectChange struct {
 		prev *stateObject
 	}
-	suicideChange struct {
+	selfDestructChange struct {
 		account     *common.Address
 		prev        bool // whether account had already suicided
 		prevbalance *uint256.Int
@@ -144,6 +144,12 @@ type (
 		address *common.Address
 		slot    *common.Hash
 	}
+
+	// Changes to transient storage
+	transientStorageChange struct {
+		account       *common.Address
+		key, prevalue common.Hash
+	}
 )
 
 func (ch createObjectChange) Revert(s *StateDB) {
@@ -170,15 +176,15 @@ func (ch resetObjectChange) Dirtied() *common.Address {
 	return nil
 }
 
-func (ch suicideChange) Revert(s *StateDB) {
+func (ch selfDestructChange) Revert(s *StateDB) {
 	obj := s.getStateObject(*ch.account)
 	if obj != nil {
-		obj.suicided = ch.prev
+		obj.selfDestructed = ch.prev
 		obj.setBalance(ch.prevbalance)
 	}
 }
 
-func (ch suicideChange) Dirtied() *common.Address {
+func (ch selfDestructChange) Dirtied() *common.Address {
 	return ch.account
 }
 
@@ -252,5 +258,13 @@ func (ch accessListAddSlotChange) Revert(s *StateDB) {
 }
 
 func (ch accessListAddSlotChange) Dirtied() *common.Address {
+	return nil
+}
+
+func (ch transientStorageChange) Revert(s *StateDB) {
+	s.setTransientState(*ch.account, ch.key, ch.prevalue)
+}
+
+func (ch transientStorageChange) Dirtied() *common.Address {
 	return nil
 }

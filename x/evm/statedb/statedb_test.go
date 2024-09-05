@@ -3,15 +3,19 @@ package statedb_test
 import (
 	"math/big"
 	"testing"
+	"time"
 
+	"github.com/cometbft/cometbft/crypto/tmhash"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
+	"github.com/mezo-org/mezod/app"
+	"github.com/mezo-org/mezod/testutil"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/stretchr/testify/suite"
 )
@@ -26,6 +30,24 @@ var (
 
 type StateDBTestSuite struct {
 	suite.Suite
+
+	app         *app.Mezo
+	consAddress sdk.ConsAddress
+	ctx         sdk.Context
+}
+
+func (suite *StateDBTestSuite) SetupTest() {
+	checkTx := false
+	suite.app = app.Setup(checkTx, nil)
+
+	priv := secp256k1.GenPrivKey()
+	suite.consAddress = sdk.ConsAddress(priv.PubKey().Address())
+
+	header := testutil.NewHeader(
+		1, time.Now().UTC(), "mezo_31611-1", suite.consAddress,
+		tmhash.Sum([]byte("app")), tmhash.Sum([]byte("validators")),
+	)
+	suite.ctx = suite.app.NewContextLegacy(checkTx, header)
 }
 
 func (suite *StateDBTestSuite) TestAccount() {
@@ -65,8 +87,8 @@ func (suite *StateDBTestSuite) TestAccount() {
 		}},
 		{"suicide", func(db *statedb.StateDB) {
 			// non-exist account.
-			suite.Require().False(db.Suicide(address))
-			suite.Require().False(db.HasSuicided(address))
+			db.SelfDestruct(address)
+			suite.Require().False(db.HasSelfDestructed(address))
 
 			// create a contract account
 			db.CreateAccount(address)
@@ -78,8 +100,9 @@ func (suite *StateDBTestSuite) TestAccount() {
 
 			// suicide
 			db = statedb.New(sdk.Context{}, db.Keeper(), emptyTxConfig)
-			suite.Require().False(db.HasSuicided(address))
-			suite.Require().True(db.Suicide(address))
+			suite.Require().False(db.HasSelfDestructed(address))
+			db.SelfDestruct(address)
+			suite.Require().True(db.HasSelfDestructed(address))
 
 			// check dirty state
 			suite.Require().True(db.HasSuicided(address))
@@ -340,11 +363,13 @@ func (suite *StateDBTestSuite) TestAccessList() {
 	value1 := common.BigToHash(big.NewInt(1))
 	value2 := common.BigToHash(big.NewInt(2))
 
+	suite.SetupTest()
+
 	testCases := []struct {
 		name     string
-		malleate func(vm.StateDB)
+		malleate func(statedb.StateDB)
 	}{
-		{"add address", func(db vm.StateDB) {
+		{"add address", func(db statedb.StateDB) {
 			suite.Require().False(db.AddressInAccessList(address))
 			db.AddAddressToAccessList(address)
 			suite.Require().True(db.AddressInAccessList(address))
@@ -357,7 +382,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 			db.AddAddressToAccessList(address)
 			suite.Require().True(db.AddressInAccessList(address))
 		}},
-		{"add slot", func(db vm.StateDB) {
+		{"add slot", func(db statedb.StateDB) {
 			addrPresent, slotPresent := db.SlotInAccessList(address, value1)
 			suite.Require().False(addrPresent)
 			suite.Require().False(slotPresent)
@@ -378,13 +403,16 @@ func (suite *StateDBTestSuite) TestAccessList() {
 			suite.Require().True(addrPresent)
 			suite.Require().True(slotPresent)
 		}},
-		{"prepare access list", func(db vm.StateDB) {
+		{"prepare access list", func(db statedb.StateDB) {
 			al := ethtypes.AccessList{{
 				Address:     address3,
 				StorageKeys: []common.Hash{value1},
 			}}
-			c := &params.ChainConfig{}
-			rules := c.Rules(new(big.Int), false, 0)
+
+			evmParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+			ethCfg := evmParams.GetChainConfig().EthereumConfig(nil)
+			rules := ethCfg.Rules(new(big.Int), false, 0)
+
 			db.Prepare(rules, address, address, &address2, vm.PrecompiledAddressesBerlin, al)
 
 			// check sender and dst
@@ -405,7 +433,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 
 	for _, tc := range testCases {
 		db := statedb.New(sdk.Context{}, NewMockKeeper(), emptyTxConfig)
-		tc.malleate(db)
+		tc.malleate(*db)
 	}
 }
 

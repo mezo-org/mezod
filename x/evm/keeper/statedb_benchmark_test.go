@@ -189,6 +189,6 @@ func BenchmarkSuicide(b *testing.B) {
 		vmdb.CreateAccount(addr)
 		b.StartTimer()
 
-		vmdb.Suicide(addr)
+		vmdb.SelfDestruct(addr)
 	}
 }

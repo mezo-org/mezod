@@ -466,8 +466,9 @@ func (suite *KeeperTestSuite) TestSuicide() {
 		db.SetState(addr2, common.BytesToHash([]byte(fmt.Sprintf("key%d", i))), common.BytesToHash([]byte(fmt.Sprintf("value%d", i))))
 	}
 
-	// Call Suicide
-	suite.Require().Equal(true, db.Suicide(suite.address))
+	// Call SelfDestruct
+	db.SelfDestruct(suite.address)
+	suite.Require().Equal(true, db.HasSelfDestructed(suite.address))
 
 	// Check suicided is marked
 	suite.Require().Equal(true, db.HasSuicided(suite.address))
@@ -738,7 +739,7 @@ func (suite *KeeperTestSuite) TestAddLog() {
 	}
 }
 
-func (suite *KeeperTestSuite) TestPrepareAccessList() {
+func (suite *KeeperTestSuite) TestPrepare() {
 	dest := utiltx.GenerateAddress()
 	precompiles := []common.Address{utiltx.GenerateAddress(), utiltx.GenerateAddress()}
 	accesses := ethtypes.AccessList{
@@ -746,8 +747,12 @@ func (suite *KeeperTestSuite) TestPrepareAccessList() {
 		{Address: utiltx.GenerateAddress(), StorageKeys: []common.Hash{common.BytesToHash([]byte("key1"))}},
 	}
 
+	evmParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+	ethCfg := evmParams.GetChainConfig().EthereumConfig(nil)
+	rules := ethCfg.Rules(new(big.Int), false, 0)
+
 	vmdb := suite.StateDB()
-	vmdb.PrepareAccessList(suite.address, &dest, precompiles, accesses)
+	vmdb.Prepare(rules, suite.address, suite.address, &dest, precompiles, accesses)
 
 	suite.Require().True(vmdb.AddressInAccessList(suite.address))
 	suite.Require().True(vmdb.AddressInAccessList(dest))

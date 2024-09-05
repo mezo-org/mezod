@@ -381,7 +381,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
 	if rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())); rules.IsBerlin {
-		stateDB.PrepareAccessList(msg.From, msg.To, evm.ActivePrecompiles(rules), msg.AccessList)
+		stateDB.Prepare(rules, msg.From, evm.Context.Coinbase, msg.To, evm.ActivePrecompiles(rules), msg.AccessList)
 	}
 
 	if contractCreation {

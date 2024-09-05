@@ -17,6 +17,7 @@ package statedb
 
 import (
 	"bytes"
+	"maps"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -62,6 +63,10 @@ func (s Storage) SortedKeys() []common.Hash {
 	return keys
 }
 
+func (s Storage) Copy() Storage {
+	return maps.Clone(s)
+}
+
 // stateObject is the state of an acount
 type stateObject struct {
 	db *StateDB
@@ -75,10 +80,12 @@ type stateObject struct {
 
 	address common.Address
 
-	// flags
-	dirtyCode bool
-	suicided  bool
+	// Cache flags.
+	dirtyCode bool // true if the code was updated
 
+	// Flag whether the account was marked as self-destructed. The self-destructed
+	// account is still accessible in the scope of same transaction.
+	selfDestructed bool
 	// This is an EIP-6780 flag indicating whether the object is eligible for
 	// self-destruct according to EIP-6780. The flag could be set either when
 	// the contract is just created within the current transaction, or when the
@@ -109,8 +116,8 @@ func (s *stateObject) empty() bool {
 	return s.account.Nonce == 0 && s.account.Balance.Sign() == 0 && bytes.Equal(s.account.CodeHash, emptyCodeHash)
 }
 
-func (s *stateObject) markSuicided() {
-	s.suicided = true
+func (s *stateObject) markSelfdestructed() {
+	s.selfDestructed = true
 }
 
 // AddBalance adds amount to s's balance.
