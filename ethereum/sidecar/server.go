@@ -2,6 +2,7 @@ package sidecar
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"time"
@@ -59,13 +60,19 @@ func (s *Server) run(ctx context.Context) {
 
 				recipient := sdk.AccAddress(key.PubKey().Address().Bytes())
 
-				s.events = append(
-					s.events,
-					bridgetypes.AssetsLockedEvent{
-						Sequence:  s.sequenceTip,
-						Recipient: recipient.String(),
-						Amount:    sdkmath.NewIntFromBigInt(amount),
-					},
+				event := bridgetypes.AssetsLockedEvent{
+					Sequence:  s.sequenceTip,
+					Recipient: recipient.String(),
+					Amount:    sdkmath.NewIntFromBigInt(amount),
+				}
+
+				s.events = append(s.events, event)
+
+				fmt.Printf(
+					"New AssetsLocked event (sequence: %s, recipient: %s, amount: %s)\n",
+					event.Sequence.String(),
+					event.Recipient,
+					event.Amount.String(),
 				)
 
 				// Prune old events. Once the cache reaches 10000 elements,
