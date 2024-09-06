@@ -1,0 +1,29 @@
+syntax = "proto3";
+package mezo.bridge.v1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/mezo-org/mezod/x/bridge/types";
+
+// Params defines the parameters for the module.
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+}
+
+// AssetsLockedEvent represents the event where inbound assets are locked in
+// the Bitcoin bridge.
+message AssetsLockedEvent {
+  // sequence is the unique identifier of the event.
+  string sequence = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  // recipient is the account address to receive the locked assets on Mezo,
+  // in Bech32 format.
+  string recipient = 2;
+  // amount of assets locked, in 1e18 precision.
+  string amount = 3 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}

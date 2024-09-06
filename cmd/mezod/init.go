@@ -32,6 +32,7 @@ import (
 	"github.com/cometbft/cometbft/libs/cli"
 	tmos "github.com/cometbft/cometbft/libs/os"
 	tmrand "github.com/cometbft/cometbft/libs/rand"
+	tmtypes "github.com/cometbft/cometbft/types"
 
 	"github.com/cosmos/go-bip39"
 
@@ -160,9 +161,16 @@ func InitCmd(mbm module.BasicManager, defaultNodeHome string) *cobra.Command {
 			}
 
 			appGenesis.ChainID = chainID
+
 			appGenesis.Consensus = &types.ConsensusGenesis{
 				Validators: nil,
+				Params:     tmtypes.DefaultConsensusParams(),
 			}
+			// Set the block gas limit to 10M.
+			appGenesis.Consensus.Params.Block.MaxGas = 10_000_000
+			// Enable vote extensions from block 1.
+			appGenesis.Consensus.Params.ABCI.VoteExtensionsEnableHeight = 1
+
 			appGenesis.AppState = appState
 
 			if err := genutil.ExportGenesisFile(appGenesis, genFile); err != nil {

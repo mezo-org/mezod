@@ -98,7 +98,7 @@ data:
     db_backend = "goleveldb"
     db_dir = "data"
     log_level = "info"
-    log_format = "plain"
+    log_format = "json"
     genesis_file = "config/genesis.json"
     priv_validator_key_file = "config/priv_validator_key.json"
     priv_validator_state_file = "data/priv_validator_state.json"

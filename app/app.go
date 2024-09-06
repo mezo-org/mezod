@@ -83,6 +83,7 @@ import (
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
+	appabci "github.com/mezo-org/mezod/app/abci"
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
@@ -100,7 +101,9 @@ import (
 	_ "github.com/mezo-org/mezod/client/docs/statik"
 
 	"github.com/mezo-org/mezod/app/ante"
+	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/x/bridge"
+	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
 	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/mezo-org/mezod/x/poa"
@@ -249,6 +252,7 @@ func NewMezo(
 		upgradetypes.StoreKey,
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
+		bridgetypes.StoreKey,
 	)
 
 	tkeys := storetypes.NewTransientStoreKeys(
@@ -377,7 +381,7 @@ func NewMezo(
 	}
 	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
 
-	app.BridgeKeeper = *bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
+	app.BridgeKeeper = bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
 
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.
@@ -396,7 +400,7 @@ func NewMezo(
 		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
-		bridge.NewAppModule(appCodec, app.BridgeKeeper),
+		bridge.NewAppModule(app.BridgeKeeper),
 	)
 
 	// NOTE: upgrade module must go first to handle software upgrades.
@@ -469,6 +473,8 @@ func NewMezo(
 	app.setAnteHandler(encodingConfig.TxConfig, maxGasWanted)
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
+
+	app.setABCIExtensions()
 
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
@@ -575,6 +581,24 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 	}
 
 	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
+}
+
+// setABCIExtensions sets the ABCI++ extensions on the application.
+// This function assumes the BridgeKeeper is already set in the app.
+func (app *Mezo) setABCIExtensions() {
+	sidecarClient := ethsidecar.RunTestSidecar(context.Background())
+
+	bridgeVoteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
+		app.Logger(),
+		sidecarClient,
+		app.BridgeKeeper,
+	)
+
+	voteExtensionHandler := appabci.NewVoteExtensionHandler(
+		app.Logger(),
+		bridgeVoteExtensionHandler,
+	)
+	voteExtensionHandler.SetHandlers(app.BaseApp)
 }
 
 // LoadHeight loads state at a particular height

@@ -5,11 +5,27 @@ import (
 	"github.com/mezo-org/mezod/x/bridge/types"
 )
 
-// GetParams get all parameters as types.Params
-func (k Keeper) GetParams(_ sdk.Context) types.Params {
-	return types.NewParams()
+// GetParams returns the total set of bridge parameters.
+func (k Keeper) GetParams(ctx sdk.Context) (params types.Params) {
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(types.ParamsKey)
+	if len(bz) == 0 {
+		return params
+	}
+
+	k.cdc.MustUnmarshal(bz, &params)
+	return params
 }
 
-// SetParams set the params
-func (k Keeper) SetParams(_ sdk.Context, _ types.Params) {
+// SetParams sets the bridge module's parameters.
+func (k Keeper) SetParams(ctx sdk.Context, params types.Params) error {
+	store := ctx.KVStore(k.storeKey)
+	bz, err := k.cdc.Marshal(&params)
+	if err != nil {
+		return err
+	}
+
+	store.Set(types.ParamsKey, bz)
+
+	return nil
 }
