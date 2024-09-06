@@ -171,11 +171,8 @@ func (s *StateDB) GetNonce(addr common.Address) uint64 {
 
 // GetStorageRoot retrieves the storage root from the given address or empty
 // if object not found.
-func (s *StateDB) GetStorageRoot(addr common.Address) common.Hash {
-	stateObject := s.getStateObject(addr)
-	if stateObject != nil {
-		return stateObject.Root()
-	}
+func (s *StateDB) GetStorageRoot(_ common.Address) common.Hash {
+	// The root is not used in the state transition, so we return an empty hash
 	return common.Hash{}
 }
 

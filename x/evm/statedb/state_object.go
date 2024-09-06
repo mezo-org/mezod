@@ -224,13 +224,6 @@ func (s *stateObject) Nonce() uint64 {
 	return s.account.Nonce
 }
 
-func (s *stateObject) Root() common.Hash {
-	// noop
-	// TODO: Decide if we need to implement this.
-	// return s.data.Root
-	return common.Hash{}
-}
-
 // GetCommittedState query the committed state
 func (s *stateObject) GetCommittedState(key common.Hash) common.Hash {
 	if value, cached := s.originStorage[key]; cached {
