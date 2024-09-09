@@ -18,14 +18,14 @@ const getPrivKeys = (): string[] => {
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.24",
+    version: '0.8.24',
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 200
       },
-      evmVersion: "cancun"
-    },
+      evmVersion: 'cancun'
+    }
   },
   defaultNetwork: 'localhost',
   networks: {
