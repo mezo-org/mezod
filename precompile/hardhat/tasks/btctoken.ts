@@ -145,7 +145,7 @@ task('btcToken:PERMIT_SIGNATURE', 'Returns a signature that can be used with `pe
     // should not be used there.
     const signer = await hre.ethers.getSigner(taskArguments.signer)
     const privkeys: string[] = vars.get('MEZO_ACCOUNTS', '').split(',')
-    const prefix = "0x1901"
+    const prefix: string = '0x1901'
     // Loop through available keys, create SigningKey based wallet
     // to compare addresses with the given signer address
     for (let i = 0; i < privkeys.length; i++) {
@@ -159,21 +159,23 @@ task('btcToken:PERMIT_SIGNATURE', 'Returns a signature that can be used with `pe
         const typehash = await btctoken.PERMIT_TYPEHASH()
         const nonce = await btctoken.nonce(signer.address)
         // Encode data
-        const abiCoder = new hre.ethers.AbiCoder
+        const abiCoder = new hre.ethers.AbiCoder()
         const message = abiCoder.encode(
           ['bytes32', 'address', 'address', 'uint256', 'uint256', 'uint256'],
           [typehash, taskArguments.owner, taskArguments.spender, taskArguments.amount, nonce, taskArguments.deadline]
         )
+
         // Create digest and sign
         const digest = hre.ethers.keccak256(
-          prefix + String(domainSeparator).substring(2) + hre.ethers.keccak256(message).substring(2)
+          prefix.concat(String(domainSeparator).substring(2), hre.ethers.keccak256(message).substring(2))
         )
         const signature = wallet.signingKey.sign(digest)
+
         // Output signature values
-        console.log("v: " + signature.v)
-        console.log("r: " + signature.r)
-        console.log("s: " + signature.s)
+        console.log('v: %d', signature.v)
+        console.log('r: %s', signature.r)
+        console.log('s: %s', signature.s)
         break
       }
     }
-})
+  })
