@@ -1,4 +1,4 @@
-import { task } from 'hardhat/config'
+import { task, vars } from 'hardhat/config'
 import '@nomicfoundation/hardhat-toolbox'
 
 import abi from '../../btctoken/abi.json'
@@ -128,4 +128,52 @@ task('btcToken:PERMIT_TYPEHASH', 'Returns the EIP2612 Permit message hash', asyn
   const btctoken = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
   const permitTypehash = await btctoken.PERMIT_TYPEHASH()
   console.log(permitTypehash)
+})
+
+task('btcToken:PERMIT_SIGNATURE', 'Returns a signature that can be used with `permit`')
+  .addParam('signer', 'The signer address (msg.sender)')
+  .addParam('owner', 'Account owning the funds')
+  .addParam('spender', 'Account allowed to spend funds on behalf of the owner')
+  .addParam('amount', 'Allowance value (abtc)')
+  .addParam('deadline', 'Expiry time for the permit (in Unix format)')
+  .setAction(async (taskArguments, hre) => {
+    // We use ethers.SigningKey for a Wallet instead of
+    // Signer.signMessage to do not add '\x19Ethereum Signed Message:\n'
+    // prefix to the signed message. The '\x19` protection (see EIP191 for
+    // more details on '\x19' rationale and format) is already included in
+    // EIP2612 permit signed message and '\x19Ethereum Signed Message:\n'
+    // should not be used there.
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const privkeys: string[] = vars.get('MEZO_ACCOUNTS', '').split(',')
+    const prefix = "0x1901"
+    // Loop through available keys, create SigningKey based wallet
+    // to compare addresses with the given signer address
+    for (let i = 0; i < privkeys.length; i++) {
+      const signingKey = new hre.ethers.SigningKey(privkeys[i])
+      const wallet = new hre.ethers.BaseWallet(signingKey)
+      if (wallet.address === signer.address) {
+        // This is the correct key/wallet. Get info from contract/precompile
+        // to produce data to sign
+        const btctoken = new hre.ethers.Contract(precompileAddress, abi, signer)
+        const domainSeparator = await btctoken.DOMAIN_SEPARATOR()
+        const typehash = await btctoken.PERMIT_TYPEHASH()
+        const nonce = await btctoken.nonce(signer.address)
+        // Encode data
+        const abiCoder = new hre.ethers.AbiCoder
+        const message = abiCoder.encode(
+          ['bytes32', 'address', 'address', 'uint256', 'uint256', 'uint256'],
+          [typehash, taskArguments.owner, taskArguments.spender, taskArguments.amount, nonce, taskArguments.deadline]
+        )
+        // Create digest and sign
+        const digest = hre.ethers.keccak256(
+          prefix + String(domainSeparator).substring(2) + hre.ethers.keccak256(message).substring(2)
+        )
+        const signature = wallet.signingKey.sign(digest)
+        // Output signature values
+        console.log("v: " + signature.v)
+        console.log("r: " + signature.r)
+        console.log("s: " + signature.s)
+        break
+      }
+    }
 })
