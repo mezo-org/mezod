@@ -464,10 +464,8 @@ func (ptm *permitTypehashMethod) Run(
 		return nil, err
 	}
 
-	permitTypehashBytes := []byte(PermitTypehash)
-
 	var permitTypehash [32]byte
-	copy(permitTypehash[:], permitTypehashBytes)
+	copy(permitTypehash[:], crypto.Keccak256([]byte(PermitTypehash))[:32])
 	return precompile.MethodOutputs{
 		permitTypehash,
 	}, nil

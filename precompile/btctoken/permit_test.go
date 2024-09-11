@@ -666,7 +666,7 @@ func (s *PrecompileTestSuite) TestPermitTypehash() {
 
 			permitTypehashBytes := []byte("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 			var permitTypehash [32]byte
-			copy(permitTypehash[:], permitTypehashBytes)
+			copy(permitTypehash[:], crypto.Keccak256(permitTypehashBytes)[:32])
 			s.Require().Equal(permitTypehash, out[0], "expected different value")
 		})
 	}
