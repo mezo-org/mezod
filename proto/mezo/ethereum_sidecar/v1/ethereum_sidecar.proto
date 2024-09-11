@@ -1,0 +1,29 @@
+syntax = "proto3";
+package mezo.ethereum_sidecar.v1;
+
+import "gogoproto/gogo.proto";
+import "mezo/bridge/v1/bridge.proto";
+
+option go_package = "github.com/mezo-org/mezod/x/ethereum_sidecar/types";
+
+// EthereumSidecar defines the Ethereum sidecar service.
+service EthereumSidecar {
+  // AssetsLockedEvents returns AssetsLockedEvents within a sequence range.
+  rpc AssetsLockedEvents(AssetsLockedEventsRequest) returns (AssetsLockedEventsResponse);
+}
+
+// AssetsLockedEventsRequest is the request type for the GetAssetsLockedEvents
+// query.
+message AssetsLockedEventsRequest {
+  // sequence_start is the start of the sequence range (inclusive). If null, unbounded on the lower side.
+  string sequence_start = 1 [(gogoproto.customtype) = "cosmossdk.io/math.Int", (gogoproto.nullable) = true];
+  // sequence_end is the end of the sequence range (exclusive). If null, unbounded on the upper side.
+  string sequence_end = 2 [(gogoproto.customtype) = "cosmossdk.io/math.Int", (gogoproto.nullable) = true];
+}
+
+// AssetsLockedEventsResponse is the response type for the GetAssetsLockedEvents
+// query.
+message AssetsLockedEventsResponse {
+  // events contains a list of AssetsLockedEvents.
+  repeated mezo.bridge.v1.AssetsLockedEvent events = 1;
+}
