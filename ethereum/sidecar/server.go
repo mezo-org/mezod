@@ -5,12 +5,17 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"net"
+	"sync"
 	"time"
+
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"google.golang.org/grpc"
 
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	pb "github.com/mezo-org/mezod/x/ethereum_sidecar/types"
 )
 
 // Server observes events emitted by the Mezo `BitcoinBridge` contract on the
@@ -18,21 +23,32 @@ import (
 // the contract. It is intended to be run as a separate process.
 type Server struct {
 	sequenceTip sdkmath.Int
+	eventsMutex sync.Mutex
 	events      []bridgetypes.AssetsLockedEvent
+	grpcServer  *grpc.Server
 }
 
-func RunSever(ctx context.Context) *Server {
+// RunServer initializes the server, starts the event observing routine and
+// starts the gRPC server.
+func RunServer(ctx context.Context) *Server {
 	server := &Server{
 		sequenceTip: sdkmath.ZeroInt(),
 		events:      make([]bridgetypes.AssetsLockedEvent, 0),
+		grpcServer:  grpc.NewServer(),
 	}
 
-	go server.run(ctx)
+	// Start observing AssetsLocked events.
+	go server.observeEvents(ctx)
+
+	// Start the gRPC server.
+	go server.startGRPCServer(ctx)
 
 	return server
 }
 
-func (s *Server) run(ctx context.Context) {
+// observeEvents starts the AssetLocked observing routine. For now it is
+// generating dummy events.
+func (s *Server) observeEvents(ctx context.Context) {
 	// TODO: Replace with the code that actually observes the Ethereum chain.
 	//       Temporarily generate some dummy events.
 	ticker := time.NewTicker(1 * time.Second)
@@ -66,6 +82,7 @@ func (s *Server) run(ctx context.Context) {
 					Amount:    sdkmath.NewIntFromBigInt(amount),
 				}
 
+				s.eventsMutex.Lock()
 				s.events = append(s.events, event)
 
 				fmt.Printf(
@@ -80,9 +97,87 @@ func (s *Server) run(ctx context.Context) {
 				if len(s.events) > 10000 {
 					s.events = s.events[100:]
 				}
+
+				s.eventsMutex.Unlock()
 			}
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+// startGRPCServer starts the gRPC server and registers the Ethereum sidecar
+// service.
+func (s *Server) startGRPCServer(ctx context.Context) {
+	// TODO: Add address selection to configuration.
+	address := ":50051"
+
+	//nolint:gosec
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		panic(fmt.Sprintf("failed to listen: [%v]", err))
+	}
+
+	pb.RegisterEthereumSidecarServer(s.grpcServer, s)
+	fmt.Printf("gRPC server started on [%s]\n", address)
+
+	go func() {
+		if err := s.grpcServer.Serve(listener); err != nil {
+			panic(fmt.Sprintf("gRPC server failure: [%v]", err))
+		}
+	}()
+
+	<-ctx.Done()
+
+	fmt.Println("Shutting down gRPC server...")
+	s.grpcServer.GracefulStop()
+
+	fmt.Println("gRPC server stopped")
+}
+
+// AssetsLockedEvents returns a list of AssetsLocked events based on the
+// passed request. It is executed by the gRPC server.
+func (s *Server) AssetsLockedEvents(
+	_ context.Context,
+	req *pb.AssetsLockedEventsRequest,
+) (
+	*pb.AssetsLockedEventsResponse,
+	error,
+) {
+	s.eventsMutex.Lock()
+	defer s.eventsMutex.Unlock()
+
+	var sequenceStart, sequenceEnd sdkmath.Int
+
+	// Use the requested sequence start if it is not nil. Otherwise, set the
+	// sequence start to zero.
+	if req.SequenceStart.IsNil() {
+		sequenceStart = sdkmath.ZeroInt()
+	} else {
+		sequenceStart = *req.SequenceStart
+	}
+
+	// Use the requested sequence end if it is not nil. Otherwise, set the
+	// sequence end to the total amount of events so far.
+	if req.SequenceEnd.IsNil() {
+		sequenceEnd = sdkmath.NewInt(int64(len(s.events)))
+	} else {
+		sequenceEnd = *req.SequenceEnd
+	}
+
+	// Filter events that fit into the requested range.
+	filteredEvents := []*bridgetypes.AssetsLockedEvent{}
+	for _, event := range s.events {
+		if event.Sequence.GTE(sequenceStart) && event.Sequence.LT(sequenceEnd) {
+			filteredEvents = append(filteredEvents, &bridgetypes.AssetsLockedEvent{
+				Sequence:  event.Sequence,
+				Recipient: event.Recipient,
+				Amount:    event.Amount,
+			})
+		}
+	}
+
+	return &pb.AssetsLockedEventsResponse{
+		Events: filteredEvents,
+	}, nil
 }

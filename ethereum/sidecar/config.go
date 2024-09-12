@@ -22,8 +22,9 @@ func NewEthereumSidecarCmd() *cobra.Command {
 func ethereumSidecar(_ *cobra.Command, _ []string) error {
 	ctx := context.Background()
 
-	RunSever(ctx)
+	RunServer(ctx)
 
 	<-ctx.Done()
+
 	return fmt.Errorf("unexpected context cancellation")
 }
