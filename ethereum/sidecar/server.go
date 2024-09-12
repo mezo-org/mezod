@@ -30,7 +30,11 @@ type Server struct {
 
 // RunServer initializes the server, starts the event observing routine and
 // starts the gRPC server.
-func RunServer(ctx context.Context) *Server {
+func RunServer(
+	ctx context.Context,
+	grpcAddress string,
+	_ string,
+) *Server {
 	server := &Server{
 		sequenceTip: sdkmath.ZeroInt(),
 		events:      make([]bridgetypes.AssetsLockedEvent, 0),
@@ -41,7 +45,10 @@ func RunServer(ctx context.Context) *Server {
 	go server.observeEvents(ctx)
 
 	// Start the gRPC server.
-	go server.startGRPCServer(ctx)
+	go server.startGRPCServer(
+		ctx,
+		grpcAddress,
+	)
 
 	return server
 }
@@ -108,11 +115,10 @@ func (s *Server) observeEvents(ctx context.Context) {
 
 // startGRPCServer starts the gRPC server and registers the Ethereum sidecar
 // service.
-func (s *Server) startGRPCServer(ctx context.Context) {
-	// TODO: Add address selection to configuration.
-	address := ":50051"
-
-	//nolint:gosec
+func (s *Server) startGRPCServer(
+	ctx context.Context,
+	address string,
+) {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		panic(fmt.Sprintf("failed to listen: [%v]", err))

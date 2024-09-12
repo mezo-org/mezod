@@ -68,7 +68,7 @@ import (
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
-	"github.com/mezo-org/mezod/ethereum/sidecar"
+	escli "github.com/mezo-org/mezod/x/ethereum_sidecar/server/cli"
 	poacli "github.com/mezo-org/mezod/x/poa/client/cli"
 
 	rosettacmd "github.com/cosmos/rosetta/cmd"
@@ -138,7 +138,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		MigrateGenesisCmd(),
 		poacli.NewGenValCmd(app.DefaultNodeHome),
 		poacli.NewCollectGenValsCmd(app.DefaultNodeHome),
-		sidecar.NewEthereumSidecarCmd(),
+		escli.NewEthereumSidecarCmd(),
 		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
 		AddGenesisAccountCmd(app.DefaultNodeHome),
 		tmcli.NewCompletionCmd(rootCmd, true),
