@@ -3,6 +3,7 @@ import '@nomicfoundation/hardhat-toolbox'
 // import precompile tasks
 import './tasks/validatorpool'
 import './tasks/btctoken'
+import './tasks/util'
 
 const getPrivKeys = (): string[] => {
   const strings: string[] = vars.get('MEZO_ACCOUNTS', '').split(',')
@@ -16,7 +17,16 @@ const getPrivKeys = (): string[] => {
 }
 
 const config: HardhatUserConfig = {
-  solidity: '0.8.24',
+  solidity: {
+    version: '0.8.24',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      },
+      evmVersion: 'cancun'
+    }
+  },
   defaultNetwork: 'localhost',
   networks: {
     localhost: {
