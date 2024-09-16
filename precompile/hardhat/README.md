@@ -160,7 +160,7 @@ You can populate hardhat with the localnet accounts/private keys with the follow
 npx hardhat run scripts/localhost-keys.ts | npx hardhat vars set MEZO_ACCOUNTS
 ```
 
-### Custom precompile contract verification (blockscout)
+# Custom precompile contract verification (blockscout)
 
 ## EvmByteCode
 
@@ -176,6 +176,6 @@ minimal implementations of the interfaces, and is semantically close to what's h
 
 Flatten into a single solidity file to make verfication easier, e.g:
 
-`npx hardhat flatten contracts/ValidatorPool.sol > ~/Desktop/ValidatorPool.sol`
+`npx hardhat flatten contracts/ValidatorPoolCaller.sol > ~/Desktop/ValidatorPoolCaller.sol`
 
 Use this file when verifying.
