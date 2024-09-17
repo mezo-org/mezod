@@ -165,6 +165,9 @@ func (ch createContractChange) Revert(s *StateDB) {
 }
 
 func (ch createContractChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking create contract changes. This change
+	// only manages the newContract flag on the state object, which is an internal
+	// bookkeeping detail and is not relevant for state sync.
 	return nil
 }
 
@@ -173,6 +176,9 @@ func (ch resetObjectChange) Revert(s *StateDB) {
 }
 
 func (ch resetObjectChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking reset object changes. Reset object
+	// changes are not tracked because they are not used in the state trie and
+	// are not relevant for state sync.
 	return nil
 }
 
@@ -225,6 +231,9 @@ func (ch refundChange) Revert(s *StateDB) {
 }
 
 func (ch refundChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking refund changes. Refund changes are
+	// not tracked because they are not used in the state trie and are not
+	// relevant for state sync.
 	return nil
 }
 
@@ -250,6 +259,9 @@ func (ch accessListAddAccountChange) Revert(s *StateDB) {
 }
 
 func (ch accessListAddAccountChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking access list changes. Access list
+	// changes are not tracked because they are not used in the state trie and
+	// are not relevant for state sync.
 	return nil
 }
 
@@ -258,6 +270,9 @@ func (ch accessListAddSlotChange) Revert(s *StateDB) {
 }
 
 func (ch accessListAddSlotChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking access list changes. Access list
+	// changes are not tracked because they are not used in the state trie and
+	// are not relevant for state sync.
 	return nil
 }
 
@@ -266,5 +281,8 @@ func (ch transientStorageChange) Revert(s *StateDB) {
 }
 
 func (ch transientStorageChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking transient storage changes. Transient
+	// storage changes are not tracked because they are not used in the state
+	// trie and are not relevant for state sync.
 	return nil
 }
