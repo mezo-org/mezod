@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+
 	flag "github.com/spf13/pflag"
 )
 
@@ -18,12 +20,18 @@ func NewFlagSetEthereumSidecar(
 	fs.String(
 		FlagServerAddress,
 		defaultServerAddress,
-		"The ethereum sidecar gRPC address (e.g. 127.0.0.1:5051)",
+		fmt.Sprintf(
+			"The sidecar server gRPC listen address (e.g. %s)",
+			defaultServerAddress,
+		),
 	)
 	fs.String(
 		FlagServerEthereumNodeAddress,
 		defaultServerEthereumNodeAddress,
-		"The ethereum node address (e.g. ws://127.0.0.1:8546)",
+		fmt.Sprintf(
+			"The sidecar server Ethereum node address (e.g. %s)",
+			defaultServerEthereumNodeAddress,
+		),
 	)
 
 	return fs

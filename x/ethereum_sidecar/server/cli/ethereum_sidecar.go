@@ -4,16 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/spf13/cobra"
 )
 
 func NewEthereumSidecarCmd() *cobra.Command {
-	defaultGRPCIP, _ := server.ExternalIP()
-	defaultGRPCAddress := fmt.Sprintf("%s:50051", defaultGRPCIP)
-
-	defaultEthNodeAddress := "ws://127.0.0.1:8546"
+	defaultServerAddress := "0.0.0.0:7500"
+	defaultServerEthereumNodeAddress := "ws://127.0.0.1:8546"
 
 	cmd := &cobra.Command{
 		Use:   "ethereum-sidecar",
@@ -25,8 +22,8 @@ func NewEthereumSidecarCmd() *cobra.Command {
 
 	cmd.Flags().AddFlagSet(
 		NewFlagSetEthereumSidecar(
-			defaultGRPCAddress,
-			defaultEthNodeAddress,
+			defaultServerAddress,
+			defaultServerEthereumNodeAddress,
 		))
 
 	return cmd
