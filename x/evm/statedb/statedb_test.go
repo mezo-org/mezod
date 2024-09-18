@@ -512,3 +512,47 @@ func (suite *StateDBTestSuite) TestRefund() {
 func TestStateDBTestSuite(t *testing.T) {
 	suite.Run(t, &StateDBTestSuite{})
 }
+
+func (suite *StateDBTestSuite) TestIterateStorage() {
+	key1 := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	key2 := common.BigToHash(big.NewInt(3))
+	value2 := common.BigToHash(big.NewInt(4))
+
+	keeper := NewMockKeeper()
+	db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+	db.SetState(address, key1, value1)
+	db.SetState(address, key2, value2)
+
+	// // ForEachStorage only iterate committed state
+	suite.Require().Empty(CollectContractStorage(db))
+
+	suite.Require().NoError(db.Commit())
+
+	storage := CollectContractStorage(db)
+	suite.Require().Equal(2, len(storage))
+	suite.Require().Equal(keeper.accounts[address].states, storage)
+
+	// break early iteration
+	storage = make(statedb.Storage)
+	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
+		storage[k] = v
+		// return false to break early
+		return false
+	})
+	suite.Require().NoError(err)
+	suite.Require().Equal(1, len(storage))
+}
+
+func CollectContractStorage(db *statedb.StateDB) statedb.Storage {
+	storage := make(statedb.Storage)
+	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
+		storage[k] = v
+		return true
+	})
+	if err != nil {
+		return nil
+	}
+
+	return storage
+}
