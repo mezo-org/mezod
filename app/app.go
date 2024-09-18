@@ -601,7 +601,6 @@ func (app *Mezo) setABCIExtensions() {
 	// PrepareProposal and ProcessProposal ABCI requests.
 	proposalHandler := appabci.NewProposalHandler(
 		app.Logger(),
-		app.PoaKeeper,
 		bridgeProposalHandler,
 	)
 	proposalHandler.SetHandlers(app.BaseApp)

@@ -4,6 +4,7 @@ import (
 	"cosmossdk.io/log"
 	"fmt"
 	cmtabci "github.com/cometbft/cometbft/abci/types"
+	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
 	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
@@ -48,6 +49,20 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestPrepareProposal,
 	) (*cmtabci.ResponsePrepareProposal, error) {
+		// According to the app-level proposal handler requirements, this
+		// handler must validate signatures of the commit's vote extensions
+		// on their own.
+		err := baseapp.ValidateVoteExtensions(
+			ctx,
+			ph.valStore,
+			req.Height,
+			ctx.ChainID(),
+			req.LocalLastCommit,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate vote extensions: %w", err)
+		}
+
 		bridgeValsConsAddrs := ph.valStore.GetValidatorsConsAddrsByPrivilege(
 			bridgetypes.ValidatorPrivilege,
 		)

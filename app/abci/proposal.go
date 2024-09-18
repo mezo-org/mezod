@@ -26,14 +26,12 @@ type IProposalHandler interface {
 // results of the sub-handlers into a single proposal.
 type ProposalHandler struct {
 	logger      log.Logger
-	valStore    baseapp.ValidatorStore
 	subHandlers map[VoteExtensionPart]IProposalHandler
 }
 
 // NewProposalHandler creates a new ProposalHandler instance.
 func NewProposalHandler(
 	logger log.Logger,
-	valStore baseapp.ValidatorStore,
 	bridgeSubHandler *bridgeabci.ProposalHandler,
 ) *ProposalHandler {
 	subHandlers := map[VoteExtensionPart]IProposalHandler{
@@ -42,7 +40,6 @@ func NewProposalHandler(
 
 	return &ProposalHandler{
 		logger:      logger,
-		valStore:    valStore,
 		subHandlers: subHandlers,
 	}
 }
@@ -87,17 +84,6 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestPrepareProposal,
 	) (*cmtabci.ResponsePrepareProposal, error) {
-		err := baseapp.ValidateVoteExtensions(
-			ctx,
-			ph.valStore,
-			req.Height,
-			ctx.ChainID(),
-			req.LocalLastCommit,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to validate vote extensions: %w", err)
-		}
-
 		if !isVoteExtensionsEnabled(ctx, req.Height) {
 			// Short-circuit if vote extensions are not enabled.
 			return &cmtabci.ResponsePrepareProposal{Txs: req.Txs}, nil
@@ -109,6 +95,7 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 			// Trigger the PrepareProposal sub-handler for the given part.
 			//
 			// The sub-handler is responsible for:
+			// - Validating the signatures of the commit's vote extensions (using baseapp.ValidateVoteExtensions)
 			// - Extracting its respective parts from the commit's vote extensions
 			// - Validating whether the extracted parts are valid according to the sub-handler's rules
 			// - Making sure valid parts are backed by the super-majority of the validators
