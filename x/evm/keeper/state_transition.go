@@ -384,15 +384,17 @@ func (k *Keeper) ApplyMessageWithConfig(
 		stateDB.Prepare(rules, msg.From, evm.Context.Coinbase, msg.To, evm.ActivePrecompiles(rules), msg.AccessList)
 	}
 
+	value := uint256.NewInt(0)
+	value.SetFromBig(msg.Value)
 	if contractCreation {
 		// take over the nonce management from evm:
 		// - reset sender's nonce to msg.Nonce() before calling evm.
 		// - increase sender's nonce by one no matter the result.
 		stateDB.SetNonce(sender.Address(), msg.Nonce)
-		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, uint256.NewInt(msg.Value.Uint64()))
+		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, value)
 		stateDB.SetNonce(sender.Address(), msg.Nonce+1)
 	} else {
-		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, uint256.NewInt(msg.Value.Uint64()))
+		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, value)
 	}
 
 	refundQuotient := params.RefundQuotient

@@ -203,10 +203,12 @@ func (suite *StateDBTestSuite) TestBalance() {
 			tc.malleate(db)
 
 			// check dirty state
-			suite.Require().Equal(uint256.NewInt(tc.expBalance.Uint64()), db.GetBalance(address))
+			value := uint256.NewInt(0)
+			value.SetFromBig(tc.expBalance)
+			suite.Require().Equal(value, db.GetBalance(address))
 			suite.Require().NoError(db.Commit())
 			// check committed balance too
-			suite.Require().Equal(uint256.NewInt(tc.expBalance.Uint64()), keeper.accounts[address].account.Balance)
+			suite.Require().Equal(value, keeper.accounts[address].account.Balance)
 		})
 	}
 }

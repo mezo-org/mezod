@@ -206,9 +206,11 @@ func (suite *KeeperTestSuite) TestCheckSenderBalance() {
 	}
 
 	vmdb := suite.StateDB()
-	vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()), tracing.BalanceChangeUnspecified)
+	value := uint256.NewInt(0)
+	value.SetFromBig(hundredInt.BigInt())
+	vmdb.AddBalance(suite.address, value, tracing.BalanceChangeUnspecified)
 	balance := vmdb.GetBalance(suite.address)
-	suite.Require().Equal(balance, uint256.NewInt(hundredInt.Uint64()))
+	suite.Require().Equal(balance, value)
 	err := vmdb.Commit()
 	suite.Require().NoError(err, "Unexpected error while committing to vmdb: %d", err)
 
@@ -466,17 +468,20 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 				} else {
 					gasTipCap = tc.gasTipCap
 				}
-				vmdb.AddBalance(suite.address, uint256.NewInt(initBalance.Uint64()), tracing.BalanceChangeUnspecified)
+				value := uint256.NewInt(0)
+				value.SetFromBig(initBalance.BigInt())
+				vmdb.AddBalance(suite.address, value, tracing.BalanceChangeUnspecified)
 				balance := vmdb.GetBalance(suite.address)
-				suite.Require().Equal(balance, uint256.NewInt(initBalance.Uint64()))
+				suite.Require().Equal(balance, value)
 			} else {
 				if tc.gasPrice != nil {
 					gasPrice = tc.gasPrice.BigInt()
 				}
-
-				vmdb.AddBalance(suite.address, uint256.NewInt(hundredInt.Uint64()), tracing.BalanceChangeUnspecified)
+				value := uint256.NewInt(0)
+				value.SetFromBig(hundredInt.BigInt())
+				vmdb.AddBalance(suite.address, value, tracing.BalanceChangeUnspecified)
 				balance := vmdb.GetBalance(suite.address)
-				suite.Require().Equal(balance, uint256.NewInt(hundredInt.Uint64()))
+				suite.Require().Equal(balance, value)
 			}
 			err := vmdb.Commit()
 			suite.Require().NoError(err, "Unexpected error while committing to vmdb: %d", err)
