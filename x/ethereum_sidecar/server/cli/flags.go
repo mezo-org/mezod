@@ -5,24 +5,24 @@ import (
 )
 
 const (
-	FlagGRPCAddress    = "ethereum-sidecar.server.grpc-address"
-	FlagEthNodeAddress = "ethereum-sidecar.server.ethereum-node-address"
+	FlagServerAddress             = "ethereum-sidecar.server.address"
+	FlagServerEthereumNodeAddress = "ethereum-sidecar.server.ethereum-node-address"
 )
 
 func NewFlagSetEthereumSidecar(
-	defaultAddress,
-	defaultEthNodeAddress string,
+	defaultServerAddress,
+	defaultServerEthereumNodeAddress string,
 ) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
 	fs.String(
-		FlagGRPCAddress,
-		defaultAddress,
+		FlagServerAddress,
+		defaultServerAddress,
 		"The ethereum sidecar gRPC address (e.g. 127.0.0.1:5051)",
 	)
 	fs.String(
-		FlagEthNodeAddress,
-		defaultEthNodeAddress,
+		FlagServerEthereumNodeAddress,
+		defaultServerEthereumNodeAddress,
 		"The ethereum node address (e.g. ws://127.0.0.1:8546)",
 	)
 

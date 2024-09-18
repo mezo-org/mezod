@@ -33,8 +33,8 @@ func NewEthereumSidecarCmd() *cobra.Command {
 }
 
 func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
-	grpcAddress, _ := cmd.Flags().GetString(FlagGRPCAddress)
-	ethNodeAddress, _ := cmd.Flags().GetString(FlagEthNodeAddress)
+	grpcAddress, _ := cmd.Flags().GetString(FlagServerAddress)
+	ethNodeAddress, _ := cmd.Flags().GetString(FlagServerEthereumNodeAddress)
 
 	ctx := context.Background()
 	sidecar.RunServer(ctx, grpcAddress, ethNodeAddress)
