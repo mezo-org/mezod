@@ -43,7 +43,21 @@ func NewProposalHandler(
 	}
 }
 
-// TODO: Document this function.
+// PrepareProposalHandler returns the handler for the PrepareProposal ABCI request.
+// This function:
+// - Validates the signatures of the commit's vote extensions
+// - Extracts the bridge-specific parts from the vote extensions that hold
+//   the AssetsLocked events
+// - Determines the sequence of canonical AssetsLocked events supported
+//   by 2/3+ of the bridge validators and confirmed by 2/3+ of the non-bridge
+//   validators
+// - Injects the pseudo-transaction containing the canonical events at the
+//   beginning of the original transaction list being part of the proposal.
+//
+// Dev note: It is fine to return a nil response and an error from this
+// function in case of failure. The upstream app-level vote extension handler
+// will handle the error gracefully and won't include the bridge-specific part
+// in the app-level proposal.
 func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 	return func(
 		ctx sdk.Context,
