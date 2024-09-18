@@ -75,13 +75,13 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 	tests := []struct {
 		name        string
-		sidecarFn   func() types.EthereumSidecarClient
+		sidecarFn   func() EthereumSidecarClient
 		expectedVE  *types.VoteExtension
 		errContains string
 	}{
 		{
 			name: "sidecar returning error",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -98,7 +98,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning empty slice",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -117,7 +117,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning nil slice",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -136,7 +136,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning single event",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -159,7 +159,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - strictly decreasing",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -180,7 +180,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - increasing (non-strictly)",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -202,7 +202,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - decreasing (non-strictly)",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -224,7 +224,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - gap",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -245,7 +245,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning improper sequence - duplicate",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -267,7 +267,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		},
 		{
 			name: "sidecar returning more events than the limit",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -292,25 +292,12 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				return sidecar
 			},
-			expectedVE: &types.VoteExtension{
-				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
-					mockEvent(2),
-					mockEvent(3),
-					mockEvent(4),
-					mockEvent(5),
-					mockEvent(6),
-					mockEvent(7),
-					mockEvent(8),
-					mockEvent(9),
-					mockEvent(10),
-				},
-			},
-			errContains: "",
+			expectedVE:  nil,
+			errContains: "number of events exceeds the limit",
 		},
 		{
 			name: "sidecar returning events within the limit",
-			sidecarFn: func() types.EthereumSidecarClient {
+			sidecarFn: func() EthereumSidecarClient {
 				sidecar := newMockEthereumSidecarClient()
 
 				sidecar.On(
@@ -448,8 +435,10 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 		{
 			name:            "non-unmarshalable vote extension",
 			voteExtensionFn: func() []byte { return []byte("corrupted") },
-			expectedRes:     nil,
-			errContains:     "failed to unmarshal vote extension",
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
+			errContains: "failed to unmarshal vote extension",
 		},
 		{
 			name: "empty events slice",
@@ -500,7 +489,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -515,7 +506,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -530,7 +523,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -544,7 +539,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -559,7 +556,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "events do not form a proper sequence",
 		},
 		{
@@ -582,7 +581,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 					},
 				})
 			},
-			expectedRes: nil,
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
+			},
 			errContains: "number of events exceeds the limit",
 		},
 		{

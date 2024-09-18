@@ -39,6 +39,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 	contract := precompile.NewContract(
 		contractAbi,
 		common.HexToAddress(EvmAddress),
+		EvmByteCode,
 	)
 
 	methods := newPrecompileMethods(bankKeeper, authzkeeper, evmkeeper)

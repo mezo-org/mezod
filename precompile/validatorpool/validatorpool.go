@@ -77,6 +77,7 @@ func NewPrecompile(pk PoaKeeper) (*precompile.Contract, error) {
 	contract := precompile.NewContract(
 		contractAbi,
 		common.HexToAddress(EvmAddress),
+		EvmByteCode,
 	)
 
 	methods := newPrecompileMethods(pk)

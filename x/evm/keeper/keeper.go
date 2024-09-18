@@ -33,6 +33,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 
+	"github.com/mezo-org/mezod/precompile"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -77,7 +78,7 @@ type Keeper struct {
 	ss paramstypes.Subspace
 
 	// Custom precompiles registered with the keeper.
-	customPrecompiles map[common.Address]vm.PrecompiledContract
+	customPrecompiles map[common.Address]*precompile.Contract
 }
 
 // NewKeeper generates new evm module keeper
@@ -116,7 +117,7 @@ func NewKeeper(
 		transientKey:      transientKey,
 		tracer:            tracer,
 		ss:                ss,
-		customPrecompiles: make(map[common.Address]vm.PrecompiledContract),
+		customPrecompiles: make(map[common.Address]*precompile.Contract),
 	}
 }
 
@@ -407,8 +408,28 @@ func (k Keeper) AddTransientGasUsed(ctx sdk.Context, gasUsed uint64) (uint64, er
 // RegisterCustomPrecompiles registers custom precompiled contracts with the keeper.
 // This function does not check for duplicates. If a precompile with the same
 // address is already registered, it will be overwritten.
-func (k *Keeper) RegisterCustomPrecompiles(precompiles ...vm.PrecompiledContract) {
+func (k *Keeper) RegisterCustomPrecompiles(precompiles ...*precompile.Contract) {
 	for _, precompile := range precompiles {
 		k.customPrecompiles[precompile.Address()] = precompile
 	}
+}
+
+// IsCustomPrecompile iterates through the keepers customPrecompiles map, returning
+// true if the input address matches a precompile.
+func (k Keeper) IsCustomPrecompile(address common.Address) bool {
+	_, found := k.customPrecompiles[address]
+	return found
+}
+
+// CustomPrecompileGenesisAccounts
+func (k Keeper) CustomPrecompileGenesisAccounts() []types.GenesisAccount {
+	accounts := []types.GenesisAccount{}
+	for k, v := range k.customPrecompiles {
+		accounts = append(accounts, types.GenesisAccount{
+			Address: k.String(),
+			Code:    v.Bytecode(),
+			Storage: types.Storage{},
+		})
+	}
+	return accounts
 }
