@@ -3,6 +3,7 @@ package faucet
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"math/big"
 	"net/http"
 	"strings"
@@ -97,8 +98,8 @@ func distribute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// write response
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write([]byte(transfer.Hash().String()))
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(transfer)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
