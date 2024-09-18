@@ -23,7 +23,7 @@ import (
 // the contract. It is intended to be run as a separate process.
 type Server struct {
 	sequenceTip sdkmath.Int
-	eventsMutex sync.Mutex
+	eventsMutex sync.RWMutex
 	events      []bridgetypes.AssetsLockedEvent
 	grpcServer  *grpc.Server
 }
@@ -150,8 +150,8 @@ func (s *Server) AssetsLockedEvents(
 	*pb.AssetsLockedEventsResponse,
 	error,
 ) {
-	s.eventsMutex.Lock()
-	defer s.eventsMutex.Unlock()
+	s.eventsMutex.RLock()
+	defer s.eventsMutex.RUnlock()
 
 	var sequenceStart, sequenceEnd sdkmath.Int
 
