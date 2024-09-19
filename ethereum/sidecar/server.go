@@ -12,6 +12,7 @@ import (
 	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	"google.golang.org/grpc"
 
+	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -26,6 +27,8 @@ type Server struct {
 	eventsMutex sync.RWMutex
 	events      []bridgetypes.AssetsLockedEvent
 	grpcServer  *grpc.Server
+
+	logger log.Logger
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -34,11 +37,13 @@ func RunServer(
 	ctx context.Context,
 	grpcAddress string,
 	_ string,
+	logger log.Logger,
 ) *Server {
 	server := &Server{
 		sequenceTip: sdkmath.ZeroInt(),
 		events:      make([]bridgetypes.AssetsLockedEvent, 0),
 		grpcServer:  grpc.NewServer(),
+		logger:      logger,
 	}
 
 	// Start observing AssetsLocked events.
@@ -92,11 +97,11 @@ func (s *Server) observeEvents(ctx context.Context) {
 				s.eventsMutex.Lock()
 				s.events = append(s.events, event)
 
-				fmt.Printf(
-					"New AssetsLocked event (sequence: %s, recipient: %s, amount: %s)\n",
-					event.Sequence.String(),
-					event.Recipient,
-					event.Amount.String(),
+				s.logger.Info(
+					"new AssetsLocked event",
+					"sequence", event.Sequence.String(),
+					"recipient", event.Recipient,
+					"amount", event.Amount.String(),
 				)
 
 				// Prune old events. Once the cache reaches 10000 elements,
@@ -125,7 +130,11 @@ func (s *Server) startGRPCServer(
 	}
 
 	pb.RegisterEthereumSidecarServer(s.grpcServer, s)
-	fmt.Printf("gRPC server started on [%s]\n", address)
+
+	s.logger.Info(
+		"gRPC server started",
+		"address", address,
+	)
 
 	go func() {
 		if err := s.grpcServer.Serve(listener); err != nil {
@@ -135,10 +144,10 @@ func (s *Server) startGRPCServer(
 
 	<-ctx.Done()
 
-	fmt.Println("Shutting down gRPC server...")
+	s.logger.Info("shutting down gRPC server...")
 	s.grpcServer.GracefulStop()
 
-	fmt.Println("gRPC server stopped")
+	s.logger.Info("gRPC server stopped")
 }
 
 // AssetsLockedEvents returns a list of AssetsLocked events based on the

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/spf13/cobra"
 )
@@ -30,11 +31,16 @@ func NewEthereumSidecarCmd() *cobra.Command {
 }
 
 func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
+	logger := server.GetServerContextFromCmd(cmd).Logger.With(
+		"module",
+		"ethereum-sidecar",
+	)
+
 	grpcAddress, _ := cmd.Flags().GetString(FlagServerAddress)
 	ethNodeAddress, _ := cmd.Flags().GetString(FlagServerEthereumNodeAddress)
 
 	ctx := context.Background()
-	sidecar.RunServer(ctx, grpcAddress, ethNodeAddress)
+	sidecar.RunServer(ctx, grpcAddress, ethNodeAddress, logger)
 	<-ctx.Done()
 
 	return fmt.Errorf("unexpected context cancellation")
