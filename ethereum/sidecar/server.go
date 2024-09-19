@@ -15,9 +15,13 @@ import (
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
+
+// ErrSequencePointerNil is the error returned when the start or end of the
+// sequence is nil in the received request.
+var ErrSequencePointerNil = fmt.Errorf("sequence start or end is a nil pointer")
 
 // Server observes events emitted by the Mezo `BitcoinBridge` contract on the
 // Ethereum chain. It enables retrieval of information on the assets locked by
@@ -167,9 +171,7 @@ func (s *Server) AssetsLockedEvents(
 	// tested using the `isNil` function) but the pointers themselves must be
 	// non-nil.
 	if req.SequenceStart == nil || req.SequenceEnd == nil {
-		return nil, fmt.Errorf(
-			"sequence start or end is a nil pointer in the request",
-		)
+		return nil, ErrSequencePointerNil
 	}
 
 	start, end := *req.SequenceStart, *req.SequenceEnd
