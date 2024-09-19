@@ -214,10 +214,10 @@ type V4ChainConfig struct {
 	GrayGlacierBlock *cosmossdk_io_math.Int `protobuf:"bytes,20,opt,name=gray_glacier_block,json=grayGlacierBlock,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Int" json:"gray_glacier_block,omitempty" yaml:"gray_glacier_block"`
 	// merge_netsplit_block: Virtual fork after The Merge to use as a network splitter
 	MergeNetsplitBlock *cosmossdk_io_math.Int `protobuf:"bytes,21,opt,name=merge_netsplit_block,json=mergeNetsplitBlock,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Int" json:"merge_netsplit_block,omitempty" yaml:"merge_netsplit_block"`
-	// shanghai_block switch block (nil = no fork, 0 = already on shanghai)
-	ShanghaiBlock *cosmossdk_io_math.Int `protobuf:"bytes,22,opt,name=shanghai_block,json=shanghaiBlock,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Int" json:"shanghai_block,omitempty" yaml:"shanghai_block"`
-	// cancun_block switch block (nil = no fork, 0 = already on cancun)
-	CancunBlock *cosmossdk_io_math.Int `protobuf:"bytes,23,opt,name=cancun_block,json=cancunBlock,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Int" json:"cancun_block,omitempty" yaml:"cancun_block"`
+	// shanghai_time switch block (nil = no fork, 0 = already on shanghai)
+	ShanghaiTime *cosmossdk_io_math.Int `protobuf:"bytes,22,opt,name=shanghai_time,json=shanghaiBlock,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Int" json:"shanghai_time,omitempty" yaml:"shanghai_time"`
+	// cancun_time switch block (nil = no fork, 0 = already on cancun)
+	CancunTime *cosmossdk_io_math.Int `protobuf:"bytes,23,opt,name=cancun_time,json=cancunBlock,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Int" json:"cancun_time,omitempty" yaml:"cancun_time"`
 }
 
 func (m *V4ChainConfig) Reset()         { *m = V4ChainConfig{} }
@@ -1032,11 +1032,11 @@ func (m *V4ChainConfig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.CancunBlock != nil {
+	if m.CancunTime != nil {
 		{
-			size := m.CancunBlock.Size()
+			size := m.CancunTime.Size()
 			i -= size
-			if _, err := m.CancunBlock.MarshalTo(dAtA[i:]); err != nil {
+			if _, err := m.CancunTime.MarshalTo(dAtA[i:]); err != nil {
 				return 0, err
 			}
 			i = encodeVarintEvm(dAtA, i, uint64(size))
@@ -1046,11 +1046,11 @@ func (m *V4ChainConfig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0xba
 	}
-	if m.ShanghaiBlock != nil {
+	if m.ShanghaiTime != nil {
 		{
-			size := m.ShanghaiBlock.Size()
+			size := m.ShanghaiTime.Size()
 			i -= size
-			if _, err := m.ShanghaiBlock.MarshalTo(dAtA[i:]); err != nil {
+			if _, err := m.ShanghaiTime.MarshalTo(dAtA[i:]); err != nil {
 				return 0, err
 			}
 			i = encodeVarintEvm(dAtA, i, uint64(size))
@@ -1785,12 +1785,12 @@ func (m *V4ChainConfig) Size() (n int) {
 		l = m.MergeNetsplitBlock.Size()
 		n += 2 + l + sovEvm(uint64(l))
 	}
-	if m.ShanghaiBlock != nil {
-		l = m.ShanghaiBlock.Size()
+	if m.ShanghaiTime != nil {
+		l = m.ShanghaiTime.Size()
 		n += 2 + l + sovEvm(uint64(l))
 	}
-	if m.CancunBlock != nil {
-		l = m.CancunBlock.Size()
+	if m.CancunTime != nil {
+		l = m.CancunTime.Size()
 		n += 2 + l + sovEvm(uint64(l))
 	}
 	return n
@@ -2936,7 +2936,7 @@ func (m *V4ChainConfig) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 22:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ShanghaiBlock", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ShanghaiTime", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -2965,14 +2965,14 @@ func (m *V4ChainConfig) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			var v cosmossdk_io_math.Int
-			m.ShanghaiBlock = &v
-			if err := m.ShanghaiBlock.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.ShanghaiTime = &v
+			if err := m.ShanghaiTime.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		case 23:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CancunBlock", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field CancunTime", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -3001,8 +3001,8 @@ func (m *V4ChainConfig) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			var v cosmossdk_io_math.Int
-			m.CancunBlock = &v
-			if err := m.CancunBlock.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.CancunTime = &v
+			if err := m.CancunTime.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

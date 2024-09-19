@@ -35,7 +35,6 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		DAOForkBlock:            getBlockValue(cc.DAOForkBlock),
 		DAOForkSupport:          cc.DAOForkSupport,
 		EIP150Block:             getBlockValue(cc.EIP150Block),
-		EIP150Hash:              common.HexToHash(cc.EIP150Hash),
 		EIP155Block:             getBlockValue(cc.EIP155Block),
 		EIP158Block:             getBlockValue(cc.EIP158Block),
 		ByzantiumBlock:          getBlockValue(cc.ByzantiumBlock),
@@ -48,8 +47,8 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		ArrowGlacierBlock:       getBlockValue(cc.ArrowGlacierBlock),
 		GrayGlacierBlock:        getBlockValue(cc.GrayGlacierBlock),
 		MergeNetsplitBlock:      getBlockValue(cc.MergeNetsplitBlock),
-		ShanghaiBlock:           getBlockValue(cc.ShanghaiBlock),
-		CancunBlock:             getBlockValue(cc.CancunBlock),
+		ShanghaiTime:            getTimeValue(cc.ShanghaiTime),
+		CancunTime:              getTimeValue(cc.CancunTime),
 		TerminalTotalDifficulty: nil,
 		Ethash:                  nil,
 		Clique:                  nil,
@@ -73,8 +72,8 @@ func DefaultChainConfig() ChainConfig {
 	arrowGlacierBlock := sdkmath.ZeroInt()
 	grayGlacierBlock := sdkmath.ZeroInt()
 	mergeNetsplitBlock := sdkmath.ZeroInt()
-	shanghaiBlock := sdkmath.ZeroInt()
-	cancunBlock := sdkmath.ZeroInt()
+	shanghaiTime := sdkmath.ZeroInt()
+	cancunTime := sdkmath.ZeroInt()
 
 	return ChainConfig{
 		HomesteadBlock:      &homesteadBlock,
@@ -94,8 +93,8 @@ func DefaultChainConfig() ChainConfig {
 		ArrowGlacierBlock:   &arrowGlacierBlock,
 		GrayGlacierBlock:    &grayGlacierBlock,
 		MergeNetsplitBlock:  &mergeNetsplitBlock,
-		ShanghaiBlock:       &shanghaiBlock,
-		CancunBlock:         &cancunBlock,
+		ShanghaiTime:        &shanghaiTime,
+		CancunTime:          &cancunTime,
 	}
 }
 
@@ -105,6 +104,15 @@ func getBlockValue(block *sdkmath.Int) *big.Int {
 	}
 
 	return block.BigInt()
+}
+
+func getTimeValue(time *sdkmath.Int) *uint64 {
+	if time == nil || time.IsNegative() {
+		return nil
+	}
+
+	value := time.BigInt().Uint64()
+	return &value
 }
 
 // Validate performs a basic validation of the ChainConfig params. The function will return an error
@@ -158,11 +166,11 @@ func (cc ChainConfig) Validate() error {
 	if err := validateBlock(cc.MergeNetsplitBlock); err != nil {
 		return errorsmod.Wrap(err, "MergeNetsplitBlock")
 	}
-	if err := validateBlock(cc.ShanghaiBlock); err != nil {
-		return errorsmod.Wrap(err, "ShanghaiBlock")
+	if err := validateBlock(cc.ShanghaiTime); err != nil {
+		return errorsmod.Wrap(err, "ShanghaiTime")
 	}
-	if err := validateBlock(cc.CancunBlock); err != nil {
-		return errorsmod.Wrap(err, "CancunBlock")
+	if err := validateBlock(cc.CancunTime); err != nil {
+		return errorsmod.Wrap(err, "CancunTime")
 	}
 	// NOTE: chain ID is not needed to check config order
 	if err := cc.EthereumConfig(nil).CheckConfigForkOrder(); err != nil {

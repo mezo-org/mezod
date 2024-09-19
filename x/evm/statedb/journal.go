@@ -18,10 +18,10 @@ package statedb
 
 import (
 	"bytes"
-	"math/big"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 )
 
 // JournalEntry is a modification entry in the state change journal that can be
@@ -96,19 +96,26 @@ type (
 	createObjectChange struct {
 		account *common.Address
 	}
+
+	// createContractChange represents an account becoming a contract-account.
+	// This event happens prior to executing initcode. The journal-event simply
+	// manages the created-flag, in order to allow same-tx destruction.
+	createContractChange struct {
+		account common.Address
+	}
 	resetObjectChange struct {
 		prev *stateObject
 	}
-	suicideChange struct {
+	selfDestructChange struct {
 		account     *common.Address
 		prev        bool // whether account had already suicided
-		prevbalance *big.Int
+		prevbalance *uint256.Int
 	}
 
 	// Changes to individual accounts.
 	balanceChange struct {
 		account *common.Address
-		prev    *big.Int
+		prev    *uint256.Int
 	}
 	nonceChange struct {
 		account *common.Address
@@ -137,6 +144,12 @@ type (
 		address *common.Address
 		slot    *common.Hash
 	}
+
+	// Changes to transient storage
+	transientStorageChange struct {
+		account       *common.Address
+		key, prevalue common.Hash
+	}
 )
 
 func (ch createObjectChange) Revert(s *StateDB) {
@@ -147,23 +160,37 @@ func (ch createObjectChange) Dirtied() *common.Address {
 	return ch.account
 }
 
+func (ch createContractChange) Revert(s *StateDB) {
+	s.getStateObject(ch.account).newContract = false
+}
+
+func (ch createContractChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking create contract changes. This change
+	// only manages the newContract flag on the state object, which is an internal
+	// bookkeeping detail and is not relevant for state sync.
+	return nil
+}
+
 func (ch resetObjectChange) Revert(s *StateDB) {
 	s.setStateObject(ch.prev)
 }
 
 func (ch resetObjectChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking reset object changes. Reset object
+	// changes are not tracked because they are not used in the state trie and
+	// are not relevant for state sync.
 	return nil
 }
 
-func (ch suicideChange) Revert(s *StateDB) {
+func (ch selfDestructChange) Revert(s *StateDB) {
 	obj := s.getStateObject(*ch.account)
 	if obj != nil {
-		obj.suicided = ch.prev
+		obj.selfDestructed = ch.prev
 		obj.setBalance(ch.prevbalance)
 	}
 }
 
-func (ch suicideChange) Dirtied() *common.Address {
+func (ch selfDestructChange) Dirtied() *common.Address {
 	return ch.account
 }
 
@@ -204,6 +231,9 @@ func (ch refundChange) Revert(s *StateDB) {
 }
 
 func (ch refundChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking refund changes. Refund changes are
+	// not tracked because they are not used in the state trie and are not
+	// relevant for state sync.
 	return nil
 }
 
@@ -229,6 +259,9 @@ func (ch accessListAddAccountChange) Revert(s *StateDB) {
 }
 
 func (ch accessListAddAccountChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking access list changes. Access list
+	// changes are not tracked because they are not used in the state trie and
+	// are not relevant for state sync.
 	return nil
 }
 
@@ -237,5 +270,19 @@ func (ch accessListAddSlotChange) Revert(s *StateDB) {
 }
 
 func (ch accessListAddSlotChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking access list changes. Access list
+	// changes are not tracked because they are not used in the state trie and
+	// are not relevant for state sync.
+	return nil
+}
+
+func (ch transientStorageChange) Revert(s *StateDB) {
+	s.setTransientState(*ch.account, ch.key, ch.prevalue)
+}
+
+func (ch transientStorageChange) Dirtied() *common.Address {
+	// By returning nil, we are not tracking transient storage changes. Transient
+	// storage changes are not tracked because they are not used in the state
+	// trie and are not relevant for state sync.
 	return nil
 }
