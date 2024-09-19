@@ -309,6 +309,8 @@ func (s *StateDB) PointCache() *utils.PointCache {
 }
 
 // Witness retrieves the current state witness being collected.
+// As of now, witness is not initialized in the StateDB, but each reference
+// perform a nil-check.
 func (s *StateDB) Witness() *stateless.Witness {
 	return s.witness
 }
