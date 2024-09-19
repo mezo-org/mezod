@@ -1,9 +1,8 @@
 package abci
 
 import (
-	"fmt"
-
 	"cosmossdk.io/log"
+	"fmt"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -110,6 +109,27 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		//
 		// TODO: Consider changing logging to debug level once this code matures.
 
+		// If the transaction vector for this block proposal is not empty, the
+		// first transaction must be the app-level pseudo-transaction injected
+		// during PrepareProposal. An empty transaction vector is a valid case
+		// and indicates that no pseudo-transaction was injected, most likely
+		// due to its size exceeding the maximum allowed block size.
+		var injectedTx types.InjectedTx
+		var regularTxs [][]byte
+		if len(req.Txs) > 0 {
+			if err := injectedTx.Unmarshal(req.Txs[0]); err != nil {
+				// If the transaction vector is not empty, the first
+				// transaction must be the injected pseudo-transaction
+				// and unmarshaling must succeed. If it fails, we cannot
+				// recover, so return an error.
+				return nil, fmt.Errorf("failed to unmarshal injected tx: %w", err)
+			}
+
+			// Regular transactions are all application-specific transactions
+			// that occur after the injected pseudo-transaction.
+			regularTxs = req.Txs[1:]
+		}
+
 		for part, subHandler := range veh.subHandlers {
 			veh.logger.Info(
 				"running sub-handler to extend vote",
@@ -117,8 +137,27 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 				"part", part,
 			)
 
+			// Replace the app-level pseudo-transaction with the part-specific
+			// pseudo-transaction. Note that the part-specific pseudo-transaction
+			// may be zero-length, which is a valid case. The sub-handler is
+			// responsible for handling this case.
+			var injectedTxPart []byte
+			if injectedTx.Parts != nil {
+				injectedTxPart = injectedTx.Parts[uint32(part)]
+			}
+			subTxs := append([][]byte{injectedTxPart}, regularTxs...)
+
 			// Trigger the ExtendVote sub-handler for the given vote extension part.
-			res, err := subHandler.ExtendVoteHandler()(ctx, req)
+			res, err := subHandler.ExtendVoteHandler()(ctx, &cmtabci.RequestExtendVote{
+				Hash:               req.Hash,
+				Height:             req.Height,
+				Time:               req.Time,
+				Txs:                subTxs,
+				ProposedLastCommit: req.ProposedLastCommit,
+				Misbehavior:        req.Misbehavior,
+				NextValidatorsHash: req.NextValidatorsHash,
+				ProposerAddress:    req.ProposerAddress,
+			})
 			if err != nil {
 				// Just log the error and continue execution in case there
 				// are other sub-handlers in the queue. We do not want

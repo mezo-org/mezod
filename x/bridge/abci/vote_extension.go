@@ -56,12 +56,6 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestExtendVote,
 	) (*cmtabci.ResponseExtendVote, error) {
-		// TODO: Fetched events will be finalized in the next block and the
-		//       tip will be updated then. Because of that, we may fetch the same
-		//       set of events twice, in two subsequent blocks. Once the full
-		//       flow is implemented, we will need to check this behavior and
-		//       fix it if necessary.
-		//
 		// TODO: Consider changing logging to debug level once this code matures.
 
 		veh.logger.Info(
@@ -69,7 +63,39 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			"height", req.Height,
 		)
 
-		sequenceTip := veh.bridgeKeeper.GetAssetsLockedSequenceTip(ctx)
+		// Try to extract the sequence tip from AssetsLocked events that are
+		// included in this block's proposal. Those events are very likely
+		// to be processed upon block finalization, and they will move
+		// ahead the sequence tip in the bridge state. By determining the sequence
+		// tip based on the proposal's events, we can avoid fetching the same
+		// events from the sidecar twice and burning vote extension cycles on them.
+		var sequenceTip math.Int
+		if len(req.Txs) > 0 && len(req.Txs[0]) > 0 {
+			var injectedTx types.InjectedTx
+			if err := injectedTx.Unmarshal(req.Txs[0]); err == nil {
+				// If the transaction vector and the first tx are not empty, the
+				// first transaction must be the injected bridge-specific
+				// pseudo-transaction and unmarshaling must succeed.
+				// If it fails, we cannot recover, so return an error.
+				return nil, fmt.Errorf("failed to unmarshal injected tx: %w", err)
+			}
+
+			events := injectedTx.AssetsLockedEvents
+			if len(events) == 0 {
+				// This should not happen because the proposal phase guarantees
+				// the presence of AssetsLocked events in the injected
+				// bridge-specific pseudo-transaction.
+				return nil, fmt.Errorf("no AssetsLocked events in the injected tx")
+			}
+
+			sequenceTip = events[len(events)-1].Sequence
+		}
+
+		// If the sequence tip is not determined from the proposal, fetch it from
+		// the bridge state.
+		if sequenceTip.IsNil() {
+			sequenceTip = veh.bridgeKeeper.GetAssetsLockedSequenceTip(ctx)
+		}
 
 		veh.logger.Info(
 			"assets locked sequence tip fetched",
