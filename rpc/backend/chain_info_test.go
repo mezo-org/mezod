@@ -16,6 +16,7 @@ import (
 	"github.com/cometbft/cometbft/abci/types"
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
 
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
 	rpc "github.com/mezo-org/mezod/rpc/types"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
@@ -326,7 +327,7 @@ func (suite *BackendTestSuite) TestFeeHistory() {
 	testCases := []struct {
 		name           string
 		registerMock   func(validator sdk.AccAddress)
-		userBlockCount ethrpc.DecimalOrHex
+		userBlockCount math.HexOrDecimal64
 		latestBlock    ethrpc.BlockNumber
 		expFeeHistory  *rpc.FeeHistoryResult
 		validator      sdk.AccAddress

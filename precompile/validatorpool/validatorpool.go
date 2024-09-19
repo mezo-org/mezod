@@ -18,11 +18,6 @@ var filesystem embed.FS
 // used to avoid potential collisions with EVM native precompiles.
 const EvmAddress = "0x7b7c000000000000000000000000000000000011"
 
-// EvmByteCode is the EVM bytecode of the validatorpool precompile. This code is
-// returned by eth_getCode and ensures the precompile address is detected as a
-// smart contract by external services. note: It should NOT contain a 0x prefix
-const EvmByteCode = "7b7c000000000000000000000000000000000011"
-
 // Description is the validator description structure that contains information
 // about the validator.
 //

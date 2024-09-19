@@ -275,7 +275,7 @@ func (rc *RunContext) TxOrigin() common.Address {
 // msg.value in Solidity.
 func (rc *RunContext) MsgValue() *big.Int {
 	if value := rc.contract.Value(); value != nil {
-		return value
+		return value.ToBig()
 	}
 
 	return big.NewInt(0)

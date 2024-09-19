@@ -192,8 +192,8 @@ data:
               "arrow_glacier_block": "0",
               "gray_glacier_block": "0",
               "merge_netsplit_block": "0",
-              "shanghai_block": "0",
-              "cancun_block": "0"
+              "shanghai_time": "0",
+              "cancun_time": "0"
             },
             "allow_unprotected_txs": false
           }
