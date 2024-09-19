@@ -16,7 +16,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-	pb "github.com/mezo-org/mezod/x/ethereum_sidecar/types"
+	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 )
 
 // Server observes events emitted by the Mezo `BitcoinBridge` contract on the

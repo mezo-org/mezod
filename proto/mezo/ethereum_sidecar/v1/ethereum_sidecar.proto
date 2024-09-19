@@ -4,7 +4,7 @@ package mezo.ethereum_sidecar.v1;
 import "gogoproto/gogo.proto";
 import "mezo/bridge/v1/bridge.proto";
 
-option go_package = "github.com/mezo-org/mezod/x/ethereum_sidecar/types";
+option go_package = "github.com/mezo-org/mezod/ethereum/sidecar/types";
 
 // EthereumSidecar defines the Ethereum sidecar service.
 service EthereumSidecar {

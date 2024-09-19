@@ -68,7 +68,7 @@ import (
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
-	escli "github.com/mezo-org/mezod/x/ethereum_sidecar/server/cli"
+	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
 	poacli "github.com/mezo-org/mezod/x/poa/client/cli"
 
 	rosettacmd "github.com/cosmos/rosetta/cmd"
