@@ -358,7 +358,14 @@ func (k *Keeper) ApplyMessageWithConfig(
 	// Allow the tracer captures the tx level events, mainly the gas consumption.
 	vmCfg := evm.Config
 	if t := vmCfg.Tracer; t != nil && t.OnGasChange != nil {
-		t.OnGasChange(leftoverGas, leftoverGas, tracing.GasChangeTxIntrinsicGas)
+		startLeftoverGas := leftoverGas
+		defer func() {
+			// leftoverGas during function execution represents the gas at the end of the transaction.
+
+			// TODO: we can trace this more granularly by providing the specific reason for entire
+			// transaction: intrinsic, call, create, and refund
+			t.OnGasChange(startLeftoverGas, leftoverGas, tracing.GasChangeUnspecified)
+		}()
 	}
 
 	sender := vm.AccountRef(msg.From)
