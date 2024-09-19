@@ -449,6 +449,9 @@ func (k *Keeper) ApplyMessageWithConfig(
 
 	gasUsed := sdkmath.LegacyMaxDec(minimumGasUsed, sdkmath.LegacyNewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
 
+	// reset leftoverGas, to be used by the tracer
+	leftoverGas = msg.GasLimit - gasUsed
+
 	return &types.MsgEthereumTxResponse{
 		GasUsed: gasUsed,
 		VmError: vmError,
