@@ -10,6 +10,13 @@ cd precompile/hardhat
 npm install
 ```
 
+Also make sure you have copied the solidity interfaces from the precompile directories to this hardhat project. There
+is a helper script included for this, simply run:
+
+```
+./copy-interfaces.sh
+```
+
 ## Networks
 
 Hardhat is configured with two supported networks:
@@ -143,14 +150,8 @@ clean and re-initialize:
 ```
 make localnet-bin-clean
 make localnet-bin-init
-```
-
-A small edit to the genesis files of each node then needs to be made before starting the network. In each nodes
-`genesis.json` (`.localnet/node*/mezod/config/genesis.json`) update `consensus_params.blocks.max_gas` to `10000000`
-(10 million). Then start the nodes as you normally would:
-
-```
 make localnet-bin-start
+...
 ```
 
 You can populate hardhat with the localnet accounts/private keys with the following
@@ -158,3 +159,23 @@ You can populate hardhat with the localnet accounts/private keys with the follow
 ```
 npx hardhat run scripts/localhost-keys.ts | npx hardhat vars set MEZO_ACCOUNTS
 ```
+
+# Custom precompile contract verification (blockscout)
+
+## EvmByteCode
+
+Generating the `EvmByteCode` used by a custom precompile can be done via `npx hardhat compile`. Look for the
+`deployedBytecode` value in the contract artifact json file. Use this value as `EvmByteCode` - *make sure to remove
+the 0x prefix*
+
+The precompiles Caller contract is used for bytecode generation, technically this is a trick, we could use any contract
+that satisfies the precompile's interface and matches the precompile's ABI. The caller contracts are used as they are
+minimal implementations of the interfaces, and is semantically close to what's happening in reality.
+
+## Source code
+
+Flatten into a single solidity file to make verfication easier, e.g:
+
+`npx hardhat flatten contracts/ValidatorPoolCaller.sol > ~/Desktop/ValidatorPoolCaller.sol`
+
+Use this file when verifying.
