@@ -169,10 +169,20 @@ func (s *StateDB) GetNonce(addr common.Address) uint64 {
 	return 0
 }
 
-// GetStorageRoot retrieves the storage root from the given address or empty
-// if object not found.
-func (s *StateDB) GetStorageRoot(_ common.Address) common.Hash {
-	// The root is not used in the state transition, so we return an empty hash
+// GetStorageRoot returns a dummy storage root if the state exists for the given
+// address or empty hash if object not found.
+func (s *StateDB) GetStorageRoot(addr common.Address) common.Hash {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		// NOTE! The intention here is to return a state root hash to comply with
+		// https://eips.ethereum.org/EIPS/eip-7610 Proper implementation is used
+		// to revert contract creation if address already has the non-empty storage.
+		// However, our current codebase does not support tracking the storage root
+		// hash that is required by the currently used go-ethereum version. For now,
+		// we just return a dummy hash to indicate that the storage exists behind this
+		// address. This should be good enough for now.
+		return common.HexToHash("6d657a6f")
+	}
 	return common.Hash{}
 }
 
