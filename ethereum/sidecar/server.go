@@ -19,9 +19,17 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
-// ErrSequencePointerNil is the error returned when the start or end of the
-// sequence is nil in the received request.
-var ErrSequencePointerNil = fmt.Errorf("sequence start or end is a nil pointer")
+var (
+	// ErrSequencePointerNil is the error returned when the start or end of the
+	// sequence is nil in the received request.
+	ErrSequencePointerNil = fmt.Errorf("sequence start or end is a nil pointer")
+
+	// ErrSequenceStartNotLower is the error returned when the start of
+	// the sequence is not lower than sequence end.
+	ErrSequenceStartNotLower = fmt.Errorf(
+		"sequence start is not lower than sequence end",
+	)
+)
 
 // Server observes events emitted by the Mezo `BitcoinBridge` contract on the
 // Ethereum chain. It enables retrieval of information on the assets locked by
@@ -179,9 +187,7 @@ func (s *Server) AssetsLockedEvents(
 	// The sequence start must be lower than the sequence end if both values are
 	// non-nil.
 	if !start.IsNil() && !end.IsNil() && start.GTE(end) {
-		return nil, fmt.Errorf(
-			"sequence start is equal to or greater than sequence end",
-		)
+		return nil, ErrSequenceStartNotLower
 	}
 
 	// Filter events that fit into the requested range.
