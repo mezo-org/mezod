@@ -105,7 +105,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 			suite.Require().True(db.HasSelfDestructed(address))
 
 			// check dirty state
-			suite.Require().True(db.HasSuicided(address))
+			suite.Require().True(db.HasSelfDestructed(address))
 			// balance is cleared
 			suite.Require().Equal(uint256.NewInt(0), db.GetBalance(address))
 			// but code and state are still accessible in dirty state

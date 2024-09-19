@@ -471,7 +471,7 @@ func (suite *KeeperTestSuite) TestSuicide() {
 	suite.Require().Equal(true, db.HasSelfDestructed(suite.address))
 
 	// Check suicided is marked
-	suite.Require().Equal(true, db.HasSuicided(suite.address))
+	suite.Require().Equal(true, db.HasSelfDestructed(suite.address))
 
 	// Commit state
 	suite.Require().NoError(db.Commit())
@@ -492,7 +492,7 @@ func (suite *KeeperTestSuite) TestSuicide() {
 
 	// Check code is still present in addr2 and suicided is false
 	suite.Require().NotNil(db.GetCode(addr2))
-	suite.Require().Equal(false, db.HasSuicided(addr2))
+	suite.Require().Equal(false, db.HasSelfDestructed(addr2))
 }
 
 func (suite *KeeperTestSuite) TestExist() {
