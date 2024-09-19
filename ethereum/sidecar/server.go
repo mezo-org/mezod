@@ -153,28 +153,30 @@ func (s *Server) AssetsLockedEvents(
 	s.eventsMutex.RLock()
 	defer s.eventsMutex.RUnlock()
 
-	var sequenceStart, sequenceEnd sdkmath.Int
-
-	// Use the requested sequence start if it is not nil. Otherwise, set the
-	// sequence start to zero.
-	if req.SequenceStart.IsNil() {
-		sequenceStart = sdkmath.ZeroInt()
-	} else {
-		sequenceStart = *req.SequenceStart
+	// The sequence start and end must be non-nil pointers in the request.
+	// Notice that the sequence start and end may store nil values (which can be
+	// tested using the `isNil` function) but the pointers themselves must be
+	// non-nil.
+	if req.SequenceStart == nil || req.SequenceEnd == nil {
+		return nil, fmt.Errorf(
+			"sequence start or end is a nil pointer in the request",
+		)
 	}
 
-	// Use the requested sequence end if it is not nil. Otherwise, set the
-	// sequence end to the total amount of events so far.
-	if req.SequenceEnd.IsNil() {
-		sequenceEnd = sdkmath.NewInt(int64(len(s.events)))
-	} else {
-		sequenceEnd = *req.SequenceEnd
+	start, end := *req.SequenceStart, *req.SequenceEnd
+
+	// The sequence start must be lower than the sequence end if both values are
+	// non-nil.
+	if !start.IsNil() && !end.IsNil() && start.GTE(end) {
+		return nil, fmt.Errorf(
+			"sequence start is equal to or greater than sequence end",
+		)
 	}
 
 	// Filter events that fit into the requested range.
 	filteredEvents := []*bridgetypes.AssetsLockedEvent{}
 	for _, event := range s.events {
-		if event.Sequence.GTE(sequenceStart) && event.Sequence.LT(sequenceEnd) {
+		if (start.IsNil() || event.Sequence.GTE(start)) && (end.IsNil() || event.Sequence.LT(end)) {
 			filteredEvents = append(filteredEvents, &bridgetypes.AssetsLockedEvent{
 				Sequence:  event.Sequence,
 				Recipient: event.Recipient,
