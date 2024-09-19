@@ -45,8 +45,7 @@ func StartJSONRPC(ctx *server.Context,
 ) (*http.Server, chan struct{}, error) {
 	tmWsClient := ConnectTmWS(tmRPCAddr, tmEndpoint, ctx.Logger)
 
-	// TODO: Decide if we need to make the logger level dynamic and change between debug, info and error
-	ethlog.SetDefault(ethlog.NewLogger(ethlog.NewTerminalHandlerWithLevel(os.Stderr, ethlog.LevelDebug, true)))
+	ethlog.SetDefault(ethlog.NewLogger(ethlog.NewTerminalHandlerWithLevel(os.Stdout, ethlog.LevelInfo, true)))
 
 	rpcServer := ethrpc.NewServer()
 
