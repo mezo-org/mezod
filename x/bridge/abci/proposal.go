@@ -77,88 +77,10 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 			return nil, fmt.Errorf("failed to validate vote extensions: %w", err)
 		}
 
-		bridgeValsConsAddrs := ph.valStore.GetValidatorsConsAddrsByPrivilege(
-			bridgetypes.ValidatorPrivilege,
-		)
-
-		voteCounter := newAssetsLockedVoteCounter()
-
-		// req.LocalLastCommit.Votes is actually a list of validators in the
-		// last CometBFT validator set, with voting information regarding
-		// the last block included. That means validators who did not vote
-		// for the last block are not included in this list. Such votes
-		// have an appropriate value of the BlockIdFlag set and their
-		// vote extension is empty. This loop must take this into account.
-		for _, vote := range req.LocalLastCommit.Votes {
-			valConsAddr := sdk.ConsAddress(vote.Validator.Address)
-			valVP := vote.Validator.Power
-
-			isBridgeVal := slices.ContainsFunc(
-				bridgeValsConsAddrs,
-				func(address sdk.ConsAddress) bool {
-					return address.Equals(valConsAddr)
-				},
-			)
-
-			voteCounter.registerVoter(valVP, isBridgeVal)
-
-			// The vote extension validators vote on and which is delivered
-			// here is an app-level composite vote extension that contains
-			// multiple vote extension parts. This bridge handler must decompose
-			// it using the provided VoteExtensionDecomposer and process
-			// just the vote extension part that is relevant to the bridge.
-			compositeVoteExtension := vote.VoteExtension
-
-			if len(compositeVoteExtension) == 0 {
-				// TODO: Log this event.
-				continue
-			}
-
-			voteExtensionBytes, err := ph.voteExtensionDecomposer(
-				compositeVoteExtension,
-			)
-			if err != nil {
-				// TODO: Log this event.
-				continue
-			}
-
-			if len(voteExtensionBytes) == 0 {
-				// TODO: Log this event.
-				continue
-			}
-
-			var voteExtension types.VoteExtension
-			if err := voteExtension.Unmarshal(voteExtensionBytes); err != nil {
-				// TODO: Log this event.
-				continue
-			}
-
-			if len(voteExtension.AssetsLockedEvents) == 0 {
-				// TODO: Log this event.
-				continue
-			}
-
-			// ABCI++ specification requires that PrepareProposal validates
-			// vote extensions in the same manner as done in VerifyVoteExtension.
-			// This is because extensions of votes included in the commit info
-			// after the minimum of +2/3 had been reached are not verified.
-			// See: https://docs.cometbft.com/v0.38/spec/abci/abci++_methods#prepareproposal
-			if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
-				// TODO: Log this event.
-				continue
-			}
-
-			// addVote assumes the given event is valid and does not perform
-			// any validation over it. We ensure validity by calling
-			// validateAssetsLockedEvents above.
-			for _, event := range voteExtension.AssetsLockedEvents {
-				voteCounter.addVote(&event, valVP, isBridgeVal)
-			}
-		}
-
-		// canonicalEvents returns the sequence of canonical AssetsLocked events
-		// and guarantees that the sequence is strictly increasing by 1.
-		canonicalEvents, err := voteCounter.canonicalEvents()
+		// determineCanonicalEvents determines the sequence of canonical
+		// AssetsLocked events and guarantees that the sequence is strictly
+		// increasing by 1.
+		canonicalEvents, err := ph.determineCanonicalEvents(req.LocalLastCommit)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"failed to determine canonical AssetsLocked events: %w",
@@ -207,13 +129,240 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 	}
 }
 
+// determineCanonicalEvents determines the sequence of canonical AssetsLocked
+// events supported by 2/3+ of the bridge validators and confirmed by 2/3+ of
+// the non-bridge validators. If the sequence of canonical events cannot be
+// determined, the function returns an error. Otherwise, it returns the canonical
+// events in a sequence strictly increasing by 1.
+func (ph *ProposalHandler) determineCanonicalEvents(
+	extendedCommitInfo cmtabci.ExtendedCommitInfo,
+) (bridgetypes.AssetsLockedEvents, error) {
+	bridgeValsConsAddrs := ph.valStore.GetValidatorsConsAddrsByPrivilege(
+		bridgetypes.ValidatorPrivilege,
+	)
+
+	voteCounter := newAssetsLockedVoteCounter()
+
+	// extendedCommitInfo.Votes is actually a list of validators in the
+	// last CometBFT validator set, with voting information regarding
+	// the last block included. That means validators who did not vote
+	// for the last block are not included in this list. Such votes
+	// have an appropriate value of the BlockIdFlag set and their
+	// vote extension is empty. This loop must take this into account.
+	for _, vote := range extendedCommitInfo.Votes {
+		valConsAddr := sdk.ConsAddress(vote.Validator.Address)
+		valVP := vote.Validator.Power
+
+		isBridgeVal := slices.ContainsFunc(
+			bridgeValsConsAddrs,
+			func(address sdk.ConsAddress) bool {
+				return address.Equals(valConsAddr)
+			},
+		)
+
+		voteCounter.registerVoter(valVP, isBridgeVal)
+
+		// The vote extension validators vote on and which is delivered
+		// here is an app-level composite vote extension that contains
+		// multiple vote extension parts. This bridge handler must decompose
+		// it using the provided VoteExtensionDecomposer and process
+		// just the vote extension part that is relevant to the bridge.
+		compositeVoteExtension := vote.VoteExtension
+
+		if len(compositeVoteExtension) == 0 {
+			// TODO: Log this event.
+			continue
+		}
+
+		voteExtensionBytes, err := ph.voteExtensionDecomposer(
+			compositeVoteExtension,
+		)
+		if err != nil {
+			// TODO: Log this event.
+			continue
+		}
+
+		if len(voteExtensionBytes) == 0 {
+			// TODO: Log this event.
+			continue
+		}
+
+		var voteExtension types.VoteExtension
+		if err := voteExtension.Unmarshal(voteExtensionBytes); err != nil {
+			// TODO: Log this event.
+			continue
+		}
+
+		if len(voteExtension.AssetsLockedEvents) == 0 {
+			// TODO: Log this event.
+			continue
+		}
+
+		// ABCI++ specification requires that the proposal phase validates
+		// vote extensions in the same manner as done in VerifyVoteExtension.
+		// This is because extensions of votes included in the commit info
+		// after the minimum of +2/3 had been reached are not verified.
+		// See: https://docs.cometbft.com/v0.38/spec/abci/abci++_methods#prepareproposal
+		if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
+			// TODO: Log this event.
+			continue
+		}
+
+		// addVote assumes the given event is valid and does not perform
+		// any validation over it. We ensure validity by calling
+		// validateAssetsLockedEvents above.
+		for _, event := range voteExtension.AssetsLockedEvents {
+			voteCounter.addVote(&event, valVP, isBridgeVal)
+		}
+	}
+
+	// canonicalEvents returns the sequence of canonical AssetsLocked events
+	// and guarantees that the sequence is strictly increasing by 1.
+	return voteCounter.canonicalEvents()
+}
+
+// ProcessProposalHandler returns the handler for the ProcessProposal ABCI request.
+// This function validates the injected bridge-specific pseudo-tx to determine
+// proposal acceptance or rejection. Specifically it:
+// - Makes sure the injected pseudo-tx exists and unmarshals correctly
+// - Verifies whether the commit info attached to the pseudo-tx unmarshals correctly
+// - Ensures injected pseudo-tx contains a non-empty slice of AssetsLocked events
+// - Validates the signatures of the vote extensions attached to the injected
+//   pseudo-tx (as part of the commit info)
+// - Recreates the canonical sequence of AssetsLocked events using the attached
+//   vote extensions and ensures it matches the AssetsLocked events from the
+//   injected pseudo-tx
+// - Makes sure the AssetsLocked events from the injected pseudo-tx start directly
+//   after the current sequence tip
+// If the injected pseudo-tx is valid, the proposal is accepted. Empty pseudo-txs
+// lead to proposal acceptance by default.
+//
+// Dev note: In case the injected pseudo-tx is invalid, we REJECT the proposal
+// explicitly and return an error describing the reason. Due to the limitations
+// of the Cosmos interface, REJECT without an error does not provide any details
+// about the reason. Conversely, error without REJECT is confusing as it should
+// rather denote a failure of the handler itself. The upstream app-level proposal
+// handler will handle all non-ACCEPT cases gracefully and reject the app-level
+// proposal.
+//
+// See Skip's price oracle ProcessProposal handler for a similar pattern:
+// https://github.com/skip-mev/connect/blob/53b22d1ff50f5b60d50346640e32bbd77472e95e/abci/proposals/proposals.go#L255
 func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 	return func(
 		ctx sdk.Context,
 		req *cmtabci.RequestProcessProposal,
 	) (*cmtabci.ResponseProcessProposal, error) {
-		// TODO: Implement the ProcessProposalHandler.
-		return nil, nil
+		if len(req.Txs) == 0 {
+			// The app-level handler always passes a transaction vector
+			// with at least one element (representing the possibly empty
+			// bridge-specific pseudo-transaction). If the vector is empty,
+			// something went wrong upstream and we cannot recover so, return
+			// an error.
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf("empty transaction vector in the proposal")
+		}
+
+		if len(req.Txs[0]) == 0 {
+			// As said above, the app-level handler always passes a transaction
+			// vector with at least one element (representing the possibly empty
+			// bridge-specific pseudo-transaction). The first element can be a
+			// byte slice if the bridge-level PrepareProposal handler decided to
+			// not inject the pseudo-transaction. In this case, we do not need to
+			// do anything and return ACCEPT.
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_ACCEPT,
+			}, nil
+		}
+
+		var injectedTx types.InjectedTx
+		if err := injectedTx.Unmarshal(req.Txs[0]); err != nil {
+			// If unmarshaling of the injected pseudo-transaction fails,
+			// we cannot recover, so return an error.
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf("failed to unmarshal injected tx: %w", err)
+		}
+
+		// If the pseudo-transaction is present but holds an empty slice of
+		// AssetsLocked events, we reject the proposal as the block proposer
+		// misbehaved.
+		if len(injectedTx.AssetsLockedEvents) == 0 {
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf("injected tx does not contain AssetsLocked events")
+		}
+
+		var extendedCommitInfo cmtabci.ExtendedCommitInfo
+		if err := extendedCommitInfo.Unmarshal(injectedTx.ExtendedCommitInfo); err != nil {
+			// If unmarshaling of the attached commit info fails,
+			// we cannot recover, so return an error.
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf("failed to unmarshal commit info from injected tx: %w", err)
+		}
+
+		// According to the app-level proposal handler requirements, this
+		// handler must re-validate signatures of the vote extensions
+		// attached by the block proposer on their own.
+		err := baseapp.ValidateVoteExtensions(
+			ctx,
+			ph.valStore,
+			req.Height,
+			ctx.ChainID(),
+			extendedCommitInfo,
+		)
+		if err != nil {
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf(
+				"failed to validate vote extensions from injexted tx: %w",
+				err,
+			)
+		}
+
+		// Re-create the canonical events using vote extensions from the
+		// injected pseudo-transaction. determineCanonicalEvents guarantees
+		// that the sequence is valid and strictly increasing by 1.
+		recreatedCanonicalEvents, err := ph.determineCanonicalEvents(extendedCommitInfo)
+		if err != nil {
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf("failed to recreate canonical AssetsLocked events: %w", err)
+		}
+
+		// Make sure the recreated canonical events match the injected ones.
+		// This is a proof that the block proposer behaved correctly and used
+		// signed vote extensions to inject the canonical AssetsLocked events.
+		if !recreatedCanonicalEvents.Equal(injectedTx.AssetsLockedEvents) {
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf(
+				"recreated canonical AssetsLocked events do not match " +
+					"events from injected tx",
+			)
+		}
+
+		sequenceTip := ph.keeper.GetAssetsLockedSequenceTip(ctx)
+		// If sequence of injected events does not start directly after the
+		// current sequence tip, that means some earlier AssetsLocked events
+		// are missing. That means the block proposer misbehaved and the proposal
+		// should be rejected. Note that we could have done this check earlier
+		// but, at this point, we know that the injected events match the recreated
+		// canonical events that are guaranteed to be valid. This way, we can safely
+		// compare the sequence of the first injected event with the sequence tip.
+		if !injectedTx.AssetsLockedEvents[0].Sequence.Equal(sequenceTip.AddRaw(1)) {
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf(
+				"AssetsLocked events from injected tx do not start " +
+					"after the current sequence tip",
+			)
+		}
+
+		return &cmtabci.ResponseProcessProposal{
+			Status: cmtabci.ResponseProcessProposal_ACCEPT,
+		}, nil
 	}
 }
 
