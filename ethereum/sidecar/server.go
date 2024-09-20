@@ -174,15 +174,7 @@ func (s *Server) AssetsLockedEvents(
 	s.eventsMutex.RLock()
 	defer s.eventsMutex.RUnlock()
 
-	// The sequence start and end must be non-nil pointers in the request.
-	// Notice that the sequence start and end may store nil values (which can be
-	// tested using the `isNil` function) but the pointers themselves must be
-	// non-nil.
-	if req.SequenceStart == nil || req.SequenceEnd == nil {
-		return nil, ErrSequencePointerNil
-	}
-
-	start, end := *req.SequenceStart, *req.SequenceEnd
+	start, end := req.SequenceStart, req.SequenceEnd
 
 	// The sequence start must be lower than the sequence end if both values are
 	// non-nil.

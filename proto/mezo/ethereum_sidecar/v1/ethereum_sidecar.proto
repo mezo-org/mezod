@@ -16,9 +16,15 @@ service EthereumSidecar {
 // query.
 message AssetsLockedEventsRequest {
   // sequence_start is the start of the sequence range (inclusive). If null, unbounded on the lower side.
-  string sequence_start = 1 [(gogoproto.customtype) = "cosmossdk.io/math.Int"];
+  string sequence_start = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
   // sequence_end is the end of the sequence range (exclusive). If null, unbounded on the upper side.
-  string sequence_end = 2 [(gogoproto.customtype) = "cosmossdk.io/math.Int"];
+  string sequence_end = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
 }
 
 // AssetsLockedEventsResponse is the response type for the GetAssetsLockedEvents

@@ -2,7 +2,6 @@ package sidecar
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
@@ -13,40 +12,17 @@ import (
 )
 
 func TestServer_AssetsLockedEvents(t *testing.T) {
-	bigIntToSdkInt := func(i *big.Int) *sdkmath.Int {
-		newInt := sdkmath.NewIntFromBigInt(i)
-		return &newInt
-	}
-
 	tests := map[string]struct {
 		events           []bridgetypes.AssetsLockedEvent
 		request          *pb.AssetsLockedEventsRequest
 		expectedResponse *pb.AssetsLockedEventsResponse
 		expectedErr      error
 	}{
-		"when sequence start pointer is nil": {
-			events: []bridgetypes.AssetsLockedEvent{},
-			request: &pb.AssetsLockedEventsRequest{
-				SequenceStart: nil,
-				SequenceEnd:   bigIntToSdkInt(big.NewInt(5)),
-			},
-			expectedResponse: nil,
-			expectedErr:      ErrSequencePointerNil,
-		},
-		"when sequence end pointer is nil": {
-			events: []bridgetypes.AssetsLockedEvent{},
-			request: &pb.AssetsLockedEventsRequest{
-				SequenceStart: bigIntToSdkInt(big.NewInt(2)),
-				SequenceEnd:   nil,
-			},
-			expectedResponse: nil,
-			expectedErr:      ErrSequencePointerNil,
-		},
 		"when sequence start is equal to end": {
 			events: []bridgetypes.AssetsLockedEvent{},
 			request: &pb.AssetsLockedEventsRequest{
-				SequenceStart: bigIntToSdkInt(big.NewInt(2)),
-				SequenceEnd:   bigIntToSdkInt(big.NewInt(2)),
+				SequenceStart: sdkmath.NewInt(2),
+				SequenceEnd:   sdkmath.NewInt(2),
 			},
 			expectedResponse: nil,
 			expectedErr:      ErrSequenceStartNotLower,
@@ -54,8 +30,8 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 		"when sequence start is greater than end": {
 			events: []bridgetypes.AssetsLockedEvent{},
 			request: &pb.AssetsLockedEventsRequest{
-				SequenceStart: bigIntToSdkInt(big.NewInt(3)),
-				SequenceEnd:   bigIntToSdkInt(big.NewInt(2)),
+				SequenceStart: sdkmath.NewInt(3),
+				SequenceEnd:   sdkmath.NewInt(2),
 			},
 			expectedResponse: nil,
 			expectedErr:      ErrSequenceStartNotLower,
@@ -69,8 +45,8 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 				},
 			},
 			request: &pb.AssetsLockedEventsRequest{
-				SequenceStart: bigIntToSdkInt(nil),
-				SequenceEnd:   bigIntToSdkInt(big.NewInt(4)),
+				SequenceStart: sdkmath.Int{},
+				SequenceEnd:   sdkmath.NewInt(4),
 			},
 			expectedResponse: &pb.AssetsLockedEventsResponse{
 				Events: []*bridgetypes.AssetsLockedEvent{
@@ -92,8 +68,8 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 				},
 			},
 			request: &pb.AssetsLockedEventsRequest{
-				SequenceStart: bigIntToSdkInt(big.NewInt(3)),
-				SequenceEnd:   bigIntToSdkInt(nil),
+				SequenceStart: sdkmath.NewInt(3),
+				SequenceEnd:   sdkmath.Int{},
 			},
 			expectedResponse: &pb.AssetsLockedEventsResponse{
 				Events: []*bridgetypes.AssetsLockedEvent{
@@ -120,8 +96,8 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 				},
 			},
 			request: &pb.AssetsLockedEventsRequest{
-				SequenceStart: bigIntToSdkInt(nil),
-				SequenceEnd:   bigIntToSdkInt(nil),
+				SequenceStart: sdkmath.Int{},
+				SequenceEnd:   sdkmath.Int{},
 			},
 			expectedResponse: &pb.AssetsLockedEventsResponse{
 				Events: []*bridgetypes.AssetsLockedEvent{
@@ -163,8 +139,8 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 				},
 			},
 			request: &pb.AssetsLockedEventsRequest{
-				SequenceStart: bigIntToSdkInt(big.NewInt(2)),
-				SequenceEnd:   bigIntToSdkInt(big.NewInt(4)),
+				SequenceStart: sdkmath.NewInt(2),
+				SequenceEnd:   sdkmath.NewInt(4),
 			},
 			expectedResponse: &pb.AssetsLockedEventsResponse{
 				Events: []*bridgetypes.AssetsLockedEvent{
