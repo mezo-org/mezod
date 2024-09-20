@@ -166,10 +166,11 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 
 // VerifyVoteExtensionHandler returns the handler for the VerifyVoteExtension
 // ABCI request. It verifies the vote extension by checking that:
-// - The vote extension unmarshals
-// - AssetsLocked events are valid (positive sequence number, positive amount,
-//   proper bech32 recipient) and form a sequence strictly increasing by 1
-// - The number of AssetsLocked events does not exceed the limit
+//   - The vote extension unmarshals
+//   - AssetsLocked events are valid (positive sequence number, positive amount,
+//     proper bech32 recipient) and form a sequence strictly increasing by 1
+//   - The number of AssetsLocked events does not exceed the limit
+//
 // If the vote extension is valid, it is accepted. Empty vote extensions are
 // accepted by default.
 //
@@ -250,10 +251,10 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 // in the context of the bridge vote extension.
 //
 // The given list is considered valid if:
-// - The number of events does not exceed the AssetsLockedEventsLimit
-// - All events in the slice are valid (positive sequence number, positive
-//   amount, proper bech32 recipient) and form a sequence strictly increasing
-//   by 1
+//   - The number of events does not exceed the AssetsLockedEventsLimit
+//   - All events in the slice are valid (positive sequence number, positive
+//     amount, proper bech32 recipient) and form a sequence strictly increasing
+//     by 1
 //
 // If the validation passes, the function returns nil. Otherwise, it returns
 // an error describing the reason.

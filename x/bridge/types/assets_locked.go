@@ -1,8 +1,9 @@
 package types
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"slices"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 // IsValid returns true if the event is valid. An event is considered valid if
@@ -19,11 +20,7 @@ func (ale AssetsLockedEvent) IsValid() bool {
 	}
 
 	amountValid := !ale.Amount.IsNil() && ale.Amount.IsPositive()
-	if !amountValid {
-		return false
-	}
-
-	return true
+	return amountValid
 }
 
 // Equal returns true if this AssetsLockedEvents is equal to the other event.

@@ -2,8 +2,10 @@ package abci
 
 import (
 	"bytes"
-	"cosmossdk.io/log"
 	"fmt"
+
+	"cosmossdk.io/log"
+
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -162,7 +164,7 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		txsBytes := int64(0)
 		for _, tx := range draftTxs {
 			txLen := int64(len(tx))
-			if txsBytes + txLen > req.MaxTxBytes {
+			if txsBytes+txLen > req.MaxTxBytes {
 				break
 			}
 			txs = append(txs, tx)

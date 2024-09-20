@@ -3,13 +3,14 @@ package keeper
 import (
 	"bytes"
 	"context"
+	"slices"
+
 	errorsmod "cosmossdk.io/errors"
 	storetypes "cosmossdk.io/store/types"
 	cmtprotocrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/poa/types"
-	"slices"
 )
 
 // Kick forcibly removes a validator from the validator pool.

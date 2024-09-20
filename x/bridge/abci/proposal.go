@@ -1,15 +1,17 @@
 package abci
 
 import (
-	"cosmossdk.io/log"
 	"fmt"
+	"slices"
+
+	"cosmossdk.io/log"
+
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
 	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-	"slices"
 )
 
 // VoteExtensionDecomposer is a function that decomposes a composite app-level
@@ -45,14 +47,14 @@ func NewProposalHandler(
 
 // PrepareProposalHandler returns the handler for the PrepareProposal ABCI request.
 // This function:
-// - Validates the signatures of the commit's vote extensions
-// - Extracts the bridge-specific parts from the vote extensions that hold
-//   the AssetsLocked events
-// - Determines the sequence of canonical AssetsLocked events supported
-//   by 2/3+ of the bridge validators and confirmed by 2/3+ of the non-bridge
-//   validators
-// - Injects the pseudo-transaction containing the canonical events at the
-//   beginning of the original transaction list being part of the proposal.
+//   - Validates the signatures of the commit's vote extensions
+//   - Extracts the bridge-specific parts from the vote extensions that hold
+//     the AssetsLocked events
+//   - Determines the sequence of canonical AssetsLocked events supported
+//     by 2/3+ of the bridge validators and confirmed by 2/3+ of the non-bridge
+//     validators
+//   - Injects the pseudo-transaction containing the canonical events at the
+//     beginning of the original transaction list being part of the proposal.
 //
 // Dev note: It is fine to return a nil response and an error from this
 // function in case of failure. The upstream app-level vote extension handler
@@ -129,7 +131,7 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		// and return the proposal txs vector as is.
 		if !canonicalEvents[0].Sequence.Equal(sequenceTip.AddRaw(1)) {
 			ph.logger.Info(
-				"canonical AssetsLocked events sequence does not " +
+				"canonical AssetsLocked events sequence does not "+
 					"stick to the current sequence tip",
 				"height", req.Height,
 				"events_count", len(canonicalEvents),
@@ -218,7 +220,7 @@ func (ph *ProposalHandler) determineCanonicalEvents(
 
 		logInvalidVoteExtension := func(cause string) {
 			ph.logger.Debug(
-				"invalid vote extension while determining " +
+				"invalid vote extension while determining "+
 					"canonical AssetsLocked events",
 				"height", height,
 				"from", valConsAddr.String(),
@@ -288,16 +290,17 @@ func (ph *ProposalHandler) determineCanonicalEvents(
 // ProcessProposalHandler returns the handler for the ProcessProposal ABCI request.
 // This function validates the injected bridge-specific pseudo-tx to determine
 // proposal acceptance or rejection. Specifically it:
-// - Makes sure the injected pseudo-tx exists and unmarshals correctly
-// - Verifies whether the commit info attached to the pseudo-tx unmarshals correctly
-// - Ensures injected pseudo-tx contains a non-empty slice of AssetsLocked events
-// - Validates the signatures of the vote extensions attached to the injected
-//   pseudo-tx (as part of the commit info)
-// - Recreates the canonical sequence of AssetsLocked events using the attached
-//   vote extensions and ensures it matches the AssetsLocked events from the
-//   injected pseudo-tx
-// - Makes sure the AssetsLocked events from the injected pseudo-tx start directly
-//   after the current sequence tip
+//   - Makes sure the injected pseudo-tx exists and unmarshals correctly
+//   - Verifies whether the commit info attached to the pseudo-tx unmarshals correctly
+//   - Ensures injected pseudo-tx contains a non-empty slice of AssetsLocked events
+//   - Validates the signatures of the vote extensions attached to the injected
+//     pseudo-tx (as part of the commit info)
+//   - Recreates the canonical sequence of AssetsLocked events using the attached
+//     vote extensions and ensures it matches the AssetsLocked events from the
+//     injected pseudo-tx
+//   - Makes sure the AssetsLocked events from the injected pseudo-tx start directly
+//     after the current sequence tip
+//
 // If the injected pseudo-tx is valid, the proposal is accepted. Empty pseudo-txs
 // lead to proposal acceptance by default.
 //
@@ -392,11 +395,11 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		)
 		if err != nil {
 			return &cmtabci.ResponseProcessProposal{
-				Status: cmtabci.ResponseProcessProposal_REJECT,
-			}, fmt.Errorf(
-				"failed to validate vote extensions from injexted tx: %w",
-				err,
-			)
+					Status: cmtabci.ResponseProcessProposal_REJECT,
+				}, fmt.Errorf(
+					"failed to validate vote extensions from injexted tx: %w",
+					err,
+				)
 		}
 
 		// Re-create the canonical events using vote extensions from the
@@ -418,11 +421,11 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		// signed vote extensions to inject the canonical AssetsLocked events.
 		if !recreatedCanonicalEvents.Equal(injectedTx.AssetsLockedEvents) {
 			return &cmtabci.ResponseProcessProposal{
-				Status: cmtabci.ResponseProcessProposal_REJECT,
-			}, fmt.Errorf(
-				"recreated canonical AssetsLocked events do not match " +
-					"events from injected tx",
-			)
+					Status: cmtabci.ResponseProcessProposal_REJECT,
+				}, fmt.Errorf(
+					"recreated canonical AssetsLocked events do not match " +
+						"events from injected tx",
+				)
 		}
 
 		sequenceTip := ph.keeper.GetAssetsLockedSequenceTip(ctx)
@@ -435,11 +438,11 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		// compare the sequence of the first injected event with the sequence tip.
 		if !injectedTx.AssetsLockedEvents[0].Sequence.Equal(sequenceTip.AddRaw(1)) {
 			return &cmtabci.ResponseProcessProposal{
-				Status: cmtabci.ResponseProcessProposal_REJECT,
-			}, fmt.Errorf(
-				"AssetsLocked events from injected tx do not start " +
-					"after the current sequence tip",
-			)
+					Status: cmtabci.ResponseProcessProposal_REJECT,
+				}, fmt.Errorf(
+					"AssetsLocked events from injected tx do not start " +
+						"after the current sequence tip",
+				)
 		}
 
 		ph.logger.Debug(
@@ -531,7 +534,7 @@ func (alvc *assetsLockedVoteCounter) canonicalEvents() (
 	[]bridgetypes.AssetsLockedEvent,
 	error,
 ) {
-	if alvc.bridgeValsTotalVP <= 0 || alvc.nonBridgeValsTotalVP <= 0  {
+	if alvc.bridgeValsTotalVP <= 0 || alvc.nonBridgeValsTotalVP <= 0 {
 		// This case means either:
 		// - None of the bridge/non-bridge validators has voted for the block OR
 		// - The bridge/non-bridge validators do not exist in the current validator set.
