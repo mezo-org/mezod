@@ -93,6 +93,7 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		// AssetsLocked events and guarantees that the sequence is strictly
 		// increasing by 1.
 		canonicalEvents, err := ph.determineCanonicalEvents(
+			ctx,
 			req.LocalLastCommit,
 			req.Height,
 		)
@@ -185,10 +186,12 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 // determined, the function returns an error. Otherwise, it returns the canonical
 // events in a sequence strictly increasing by 1.
 func (ph *ProposalHandler) determineCanonicalEvents(
+	ctx sdk.Context,
 	extendedCommitInfo cmtabci.ExtendedCommitInfo,
 	height int64,
 ) (bridgetypes.AssetsLockedEvents, error) {
 	bridgeValsConsAddrs := ph.valStore.GetValidatorsConsAddrsByPrivilege(
+		ctx,
 		bridgetypes.ValidatorPrivilege,
 	)
 
@@ -400,6 +403,7 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		// injected pseudo-transaction. determineCanonicalEvents guarantees
 		// that the sequence is valid and strictly increasing by 1.
 		recreatedCanonicalEvents, err := ph.determineCanonicalEvents(
+			ctx,
 			extendedCommitInfo,
 			req.Height,
 		)

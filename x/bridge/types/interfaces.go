@@ -17,5 +17,8 @@ type ValidatorStore interface {
 	// all validators that are currently present in the store and have the
 	// given privilege. There is no guarantee that the returned validators
 	// are currently part of the CometBFT validator set.
-	GetValidatorsConsAddrsByPrivilege(privilege string) []sdk.ConsAddress
+	GetValidatorsConsAddrsByPrivilege(
+		ctx sdk.Context,
+		privilege string,
+	) []sdk.ConsAddress
 }
