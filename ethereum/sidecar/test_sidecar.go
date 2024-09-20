@@ -2,13 +2,12 @@ package sidecar
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
-	"math/rand"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
@@ -45,23 +44,21 @@ func (ts *TestSidecar) run(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			//nolint:gosec
-			eventsCount := rand.Intn(11) // [0, 10] events
+			eventsCount := 10
 
 			for i := 0; i < eventsCount; i++ {
 				ts.sequenceTip = ts.sequenceTip.Add(sdkmath.OneInt())
 
 				amount := new(big.Int).Mul(
 					//nolint:gosec
-					big.NewInt(rand.Int63n(10)+1),
+					ts.sequenceTip.Mul(sdkmath.NewInt(10)).BigInt(),
 					precision,
 				)
 
-				key, err := ethsecp256k1.GenerateKey()
-				if err != nil {
-					panic(err)
-				}
-
-				recipient := sdk.AccAddress(key.PubKey().Address().Bytes())
+				// Just an arbitrary address for testing purposes.
+				recipient := sdk.AccAddress(
+					common.HexToAddress("0x06EeCc4C2fAC5548a5d09e1905F8Dc21AA01E13A").Bytes(),
+				)
 
 				ts.events = append(
 					ts.events,
