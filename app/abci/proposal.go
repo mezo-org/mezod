@@ -194,8 +194,8 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 //
 // Invariants summary:
 //  1. Accepts the app-level proposal if vote extensions are not enabled.
-//  1. Accepts app-level proposal with an empty transactions vector.
-//  2. Rejects app-level proposal with an injected pseudo-tx that cannot be unmarshaled.
+//  2. Accepts app-level proposal with an empty transactions vector.
+//  3. Rejects app-level proposal with an injected pseudo-tx that cannot be unmarshaled.
 //  4. Rejects app-level proposal with an injected pseudo-tx containing no parts.
 //  5. Accepts app-level proposal only if each part of their injected pseudo-tx
 //     corresponds to a known sub-handler.
