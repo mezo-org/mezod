@@ -1422,6 +1422,14 @@ func (suite *BackendTestSuite) TestHeaderByHash() {
 func (suite *BackendTestSuite) TestEthBlockByNumber() {
 	msgEthereumTx, bz := suite.buildEthereumTx()
 	emptyBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{}, nil, nil)
+	emptyBody := &ethtypes.Body{
+		Transactions: []*ethtypes.Transaction{},
+		Uncles:       []*ethtypes.Header{},
+	}
+	body := &ethtypes.Body{
+		Transactions: []*ethtypes.Transaction{msgEthereumTx.AsTransaction()},
+		Uncles:       []*ethtypes.Header{},
+	}
 
 	testCases := []struct {
 		name         string
@@ -1474,8 +1482,7 @@ func (suite *BackendTestSuite) TestEthBlockByNumber() {
 					ethtypes.Bloom{},
 					sdkmath.NewInt(1).BigInt(),
 				),
-				[]*ethtypes.Transaction{},
-				nil,
+				emptyBody,
 				nil,
 				nil,
 			),
@@ -1501,8 +1508,7 @@ func (suite *BackendTestSuite) TestEthBlockByNumber() {
 					ethtypes.Bloom{},
 					sdkmath.NewInt(1).BigInt(),
 				),
-				[]*ethtypes.Transaction{msgEthereumTx.AsTransaction()},
-				nil,
+				body,
 				nil,
 				trie.NewStackTrie(nil),
 			),
@@ -1535,6 +1541,14 @@ func (suite *BackendTestSuite) TestEthBlockByNumber() {
 func (suite *BackendTestSuite) TestEthBlockFromTendermintBlock() {
 	msgEthereumTx, bz := suite.buildEthereumTx()
 	emptyBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{}, nil, nil)
+	emptyBody := &ethtypes.Body{
+		Transactions: []*ethtypes.Transaction{},
+		Uncles:       []*ethtypes.Header{},
+	}
+	body := &ethtypes.Body{
+		Transactions: []*ethtypes.Transaction{msgEthereumTx.AsTransaction()},
+		Uncles:       []*ethtypes.Header{},
+	}
 
 	testCases := []struct {
 		name         string
@@ -1565,8 +1579,7 @@ func (suite *BackendTestSuite) TestEthBlockFromTendermintBlock() {
 					ethtypes.Bloom{},
 					sdkmath.NewInt(1).BigInt(),
 				),
-				[]*ethtypes.Transaction{},
-				nil,
+				emptyBody,
 				nil,
 				nil,
 			),
@@ -1600,8 +1613,7 @@ func (suite *BackendTestSuite) TestEthBlockFromTendermintBlock() {
 					ethtypes.Bloom{},
 					sdkmath.NewInt(1).BigInt(),
 				),
-				[]*ethtypes.Transaction{msgEthereumTx.AsTransaction()},
-				nil,
+				body,
 				nil,
 				trie.NewStackTrie(nil),
 			),

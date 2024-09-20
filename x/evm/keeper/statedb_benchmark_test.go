@@ -1,7 +1,6 @@
 package keeper_test
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,6 +9,8 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/holiman/uint256"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 )
 
@@ -47,13 +48,13 @@ func BenchmarkAddBalance(b *testing.B) {
 	suite.SetupTestWithT(b)
 	vmdb := suite.StateDB()
 
-	amt := big.NewInt(10)
+	amt := uint256.NewInt(10)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		vmdb.AddBalance(suite.address, amt)
+		vmdb.AddBalance(suite.address, amt, tracing.BalanceChangeUnspecified)
 	}
 }
 
@@ -139,13 +140,13 @@ func BenchmarkSubBalance(b *testing.B) {
 	suite.SetupTestWithT(b)
 	vmdb := suite.StateDB()
 
-	amt := big.NewInt(10)
+	amt := uint256.NewInt(10)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		vmdb.SubBalance(suite.address, amt)
+		vmdb.SubBalance(suite.address, amt, tracing.BalanceChangeUnspecified)
 	}
 }
 
@@ -188,6 +189,6 @@ func BenchmarkSuicide(b *testing.B) {
 		vmdb.CreateAccount(addr)
 		b.StartTimer()
 
-		vmdb.Suicide(addr)
+		vmdb.SelfDestruct(addr)
 	}
 }

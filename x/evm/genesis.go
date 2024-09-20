@@ -18,13 +18,13 @@ package evm
 import (
 	"bytes"
 	"fmt"
-	"math/big"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/holiman/uint256"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/keeper"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -62,7 +62,7 @@ func InitGenesis(
 		if k.IsCustomPrecompile(address) {
 			err = k.SetAccount(ctx, address, statedb.Account{
 				Nonce:    0,
-				Balance:  big.NewInt(0),
+				Balance:  uint256.NewInt(0),
 				CodeHash: codeHash.Bytes(),
 			})
 			if err != nil {
