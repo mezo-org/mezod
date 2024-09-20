@@ -29,6 +29,16 @@ func init() {
 }
 
 func distribute(w http.ResponseWriter, r *http.Request) {
+	// set CORS headers for the preflight request
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Max-Age", "3600")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	// get env args
 	rpcURL := os.Getenv("RPCURL")
 	secret := os.Getenv("SECRET")
@@ -102,9 +112,11 @@ func distribute(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// write response
+	// set CORS header
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// set Content-Type header
 	w.Header().Set("Content-Type", "application/json")
+	// write response
 	err = json.NewEncoder(w).Encode(transfer)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
