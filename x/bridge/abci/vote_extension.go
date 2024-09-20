@@ -72,7 +72,7 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		var sequenceTip math.Int
 		if len(req.Txs) > 0 && len(req.Txs[0]) > 0 {
 			var injectedTx types.InjectedTx
-			if err := injectedTx.Unmarshal(req.Txs[0]); err == nil {
+			if err := injectedTx.Unmarshal(req.Txs[0]); err != nil {
 				// If the transaction vector and the first tx are not empty, the
 				// first transaction must be the injected bridge-specific
 				// pseudo-transaction and unmarshaling must succeed.
