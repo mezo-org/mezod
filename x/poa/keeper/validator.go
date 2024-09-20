@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"bytes"
 	"context"
 	errorsmod "cosmossdk.io/errors"
 	storetypes "cosmossdk.io/store/types"
@@ -8,6 +9,7 @@ import (
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/poa/types"
+	"slices"
 )
 
 // Kick forcibly removes a validator from the validator pool.
@@ -259,6 +261,11 @@ func (k Keeper) GetValidatorsConsAddrsByPrivilege(
 	_ string,
 ) []sdk.ConsAddress {
 	validators := k.GetAllValidators(ctx)
+
+	// Sort to ensure determinism.
+	slices.SortFunc(validators, func(i, j types.Validator) int {
+		return bytes.Compare(i.GetOperator().Bytes(), j.GetOperator().Bytes())
+	})
 
 	mid := len(validators) / 2
 
