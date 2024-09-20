@@ -84,6 +84,10 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestPrepareProposal,
 	) (*cmtabci.ResponsePrepareProposal, error) {
+		// TODO: Consider running sub-handlers concurrently to speed up execution.
+		//
+		// TODO: Consider changing logging to debug level once this code matures.
+
 		if !isVoteExtensionsEnabled(ctx, req.Height) {
 			// Short-circuit if vote extensions are not enabled.
 			return &cmtabci.ResponsePrepareProposal{Txs: req.Txs}, nil
@@ -92,6 +96,12 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		injectedTxParts := make(map[uint32][]byte)
 
 		for part, subHandler := range ph.subHandlers {
+			ph.logger.Info(
+				"running sub-handler to prepare proposal",
+				"height", req.Height,
+				"part", part,
+			)
+
 			// Trigger the PrepareProposal sub-handler for the given part.
 			//
 			// The sub-handler is responsible for:
@@ -113,12 +123,20 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 				continue
 			}
 
-			// Note that len(extractInjectedTx(req, res)) may be 0 and this
-			// is a valid case as the handler may decide to not inject anything.
-			// Such an empty part is still included in the app-level
-			// injected pseudo-transaction. Missing part indicates an error
-			// of the given sub-handler.
-			injectedTxParts[uint32(part)] = extractInjectedTx(req, res)
+			injectedTxPart := extractInjectedTx(req, res)
+
+			ph.logger.Info(
+				"sub-handler prepared proposal",
+				"height", req.Height,
+				"part", part,
+				"part_byte_length", len(injectedTxPart),
+			)
+
+			// Note that len(injectedTxPart) may be 0 and this is a valid case
+			// as the handler may decide to not inject anything. Such an empty
+			// part is still included in the app-level injected pseudo-transaction.
+			// Missing part indicates an error of the given sub-handler.
+			injectedTxParts[uint32(part)] = injectedTxPart
 		}
 
 		if len(injectedTxParts) == 0 {
@@ -143,12 +161,21 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		txs := make([][]byte, 0)
 		txsBytes := int64(0)
 		for _, tx := range draftTxs {
-			txsBytes += int64(len(tx))
-			if txsBytes > req.MaxTxBytes {
+			txLen := int64(len(tx))
+			if txsBytes + txLen > req.MaxTxBytes {
 				break
 			}
 			txs = append(txs, tx)
+			txsBytes += txLen
 		}
+
+		ph.logger.Info(
+			"proposal prepared",
+			"height", req.Height,
+			"injected_tx_byte_length", len(injectedTxBytes),
+			"txs_count", len(txs),
+			"txs_byte_length", txsBytes,
+		)
 
 		return &cmtabci.ResponsePrepareProposal{Txs: txs}, nil
 	}
@@ -194,6 +221,16 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestProcessProposal,
 	) (*cmtabci.ResponseProcessProposal, error) {
+		// TODO: Consider running sub-handlers concurrently to speed up execution.
+
+		from := sdk.ConsAddress(req.ProposerAddress).String()
+
+		ph.logger.Debug(
+			"processing proposal",
+			"height", req.Height,
+			"from", from,
+		)
+
 		if !isVoteExtensionsEnabled(ctx, req.Height) {
 			// Short-circuit if vote extensions are not enabled.
 			return &cmtabci.ResponseProcessProposal{
@@ -205,6 +242,12 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 			// Short-circuit if proposal has no transactions. This case is
 			// possible when the injected transaction was not included in the
 			// proposal due to the maximum allowed block size constraint.
+			ph.logger.Debug(
+				"accepted empty proposal",
+				"height", req.Height,
+				"from", from,
+			)
+
 			return &cmtabci.ResponseProcessProposal{
 				Status: cmtabci.ResponseProcessProposal_ACCEPT,
 			}, nil
@@ -232,6 +275,13 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 				// reject the proposal as something is clearly wrong.
 				return nil, fmt.Errorf("unknown injected tx part: %d", part)
 			}
+
+			ph.logger.Debug(
+				"running sub-handler to process proposal",
+				"height", req.Height,
+				"from", from,
+				"part", part,
+			)
 
 			// The transactions vector passed to the sub-handler must be
 			// modified to contain the sub-handler's pseudo-transaction part
@@ -284,7 +334,20 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 					part,
 				)
 			}
+
+			ph.logger.Debug(
+				"sub-handler verified and accepted proposal",
+				"height", req.Height,
+				"from", from,
+				"part", part,
+			)
 		}
+
+		ph.logger.Debug(
+			"accepted proposal",
+			"height", req.Height,
+			"from", from,
+		)
 
 		return &cmtabci.ResponseProcessProposal{
 			Status: cmtabci.ResponseProcessProposal_ACCEPT,

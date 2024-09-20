@@ -63,6 +63,13 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestPrepareProposal,
 	) (*cmtabci.ResponsePrepareProposal, error) {
+		// TODO: Consider changing logging to debug level once this code matures.
+
+		ph.logger.Info(
+			"bridge is preparing proposal",
+			"height", req.Height,
+		)
+
 		// According to the app-level proposal handler requirements, this
 		// handler must validate signatures of the commit's vote extensions
 		// on their own.
@@ -77,10 +84,18 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 			return nil, fmt.Errorf("failed to validate vote extensions: %w", err)
 		}
 
+		ph.logger.Info(
+			"last commit's vote extensions validated successfully",
+			"height", req.Height,
+		)
+
 		// determineCanonicalEvents determines the sequence of canonical
 		// AssetsLocked events and guarantees that the sequence is strictly
 		// increasing by 1.
-		canonicalEvents, err := ph.determineCanonicalEvents(req.LocalLastCommit)
+		canonicalEvents, err := ph.determineCanonicalEvents(
+			req.LocalLastCommit,
+			req.Height,
+		)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"failed to determine canonical AssetsLocked events: %w",
@@ -91,8 +106,20 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		// If there are no canonical events, we do not inject the pseudo-transaction
 		// and return the proposal txs vector as is.
 		if len(canonicalEvents) == 0 {
+			ph.logger.Info(
+				"canonical AssetsLocked events sequence is empty",
+				"height", req.Height,
+			)
+
 			return &cmtabci.ResponsePrepareProposal{Txs: req.Txs}, nil
 		}
+
+		ph.logger.Info(
+			"canonical AssetsLocked events sequence extracted",
+			"height", req.Height,
+			"events_count", len(canonicalEvents),
+			"events_sequence_start", canonicalEvents[0].Sequence,
+		)
 
 		sequenceTip := ph.keeper.GetAssetsLockedSequenceTip(ctx)
 		// If sequence of canonical events does not start directly after the
@@ -100,8 +127,25 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		// are missing. In this case, we do not inject the pseudo-transaction
 		// and return the proposal txs vector as is.
 		if !canonicalEvents[0].Sequence.Equal(sequenceTip.AddRaw(1)) {
+			ph.logger.Info(
+				"canonical AssetsLocked events sequence does not " +
+					"stick to the current sequence tip",
+				"height", req.Height,
+				"events_count", len(canonicalEvents),
+				"events_sequence_start", canonicalEvents[0].Sequence,
+				"sequence_tip", sequenceTip,
+			)
+
 			return &cmtabci.ResponsePrepareProposal{Txs: req.Txs}, nil
 		}
+
+		ph.logger.Info(
+			"canonical AssetsLocked events sequence sticks to the current sequence tip",
+			"height", req.Height,
+			"events_count", len(canonicalEvents),
+			"events_sequence_start", canonicalEvents[0].Sequence,
+			"sequence_tip", sequenceTip,
+		)
 
 		extendedCommitInfo, err := req.LocalLastCommit.Marshal()
 		if err != nil {
@@ -125,6 +169,12 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		// handler upstream.
 		txs := append([][]byte{injectedTxBytes}, req.Txs...)
 
+		ph.logger.Info(
+			"bridge prepared proposal",
+			"height", req.Height,
+			"injected_tx_byte_length", len(injectedTxBytes),
+		)
+
 		return &cmtabci.ResponsePrepareProposal{Txs: txs}, nil
 	}
 }
@@ -136,6 +186,7 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 // events in a sequence strictly increasing by 1.
 func (ph *ProposalHandler) determineCanonicalEvents(
 	extendedCommitInfo cmtabci.ExtendedCommitInfo,
+	height int64,
 ) (bridgetypes.AssetsLockedEvents, error) {
 	bridgeValsConsAddrs := ph.valStore.GetValidatorsConsAddrsByPrivilege(
 		bridgetypes.ValidatorPrivilege,
@@ -162,6 +213,16 @@ func (ph *ProposalHandler) determineCanonicalEvents(
 
 		voteCounter.registerVoter(valVP, isBridgeVal)
 
+		logInvalidVoteExtension := func(cause string) {
+			ph.logger.Debug(
+				"invalid vote extension while determining " +
+					"canonical AssetsLocked events",
+				"height", height,
+				"from", valConsAddr.String(),
+				"cause", cause,
+			)
+		}
+
 		// The vote extension validators vote on and which is delivered
 		// here is an app-level composite vote extension that contains
 		// multiple vote extension parts. This bridge handler must decompose
@@ -170,7 +231,7 @@ func (ph *ProposalHandler) determineCanonicalEvents(
 		compositeVoteExtension := vote.VoteExtension
 
 		if len(compositeVoteExtension) == 0 {
-			// TODO: Log this event.
+			logInvalidVoteExtension("empty composite vote extension")
 			continue
 		}
 
@@ -178,23 +239,23 @@ func (ph *ProposalHandler) determineCanonicalEvents(
 			compositeVoteExtension,
 		)
 		if err != nil {
-			// TODO: Log this event.
+			logInvalidVoteExtension(fmt.Sprintf("decomposition error: %v", err))
 			continue
 		}
 
 		if len(voteExtensionBytes) == 0 {
-			// TODO: Log this event.
+			logInvalidVoteExtension("empty bridge-specific vote extension")
 			continue
 		}
 
 		var voteExtension types.VoteExtension
 		if err := voteExtension.Unmarshal(voteExtensionBytes); err != nil {
-			// TODO: Log this event.
+			logInvalidVoteExtension(fmt.Sprintf("unmarshaling error: %v", err))
 			continue
 		}
 
 		if len(voteExtension.AssetsLockedEvents) == 0 {
-			// TODO: Log this event.
+			logInvalidVoteExtension("no AssetsLocked events")
 			continue
 		}
 
@@ -204,7 +265,7 @@ func (ph *ProposalHandler) determineCanonicalEvents(
 		// after the minimum of +2/3 had been reached are not verified.
 		// See: https://docs.cometbft.com/v0.38/spec/abci/abci++_methods#prepareproposal
 		if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
-			// TODO: Log this event.
+			logInvalidVoteExtension(fmt.Sprintf("invalid AssetsLocked sequence: %v", err))
 			continue
 		}
 
@@ -252,6 +313,14 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestProcessProposal,
 	) (*cmtabci.ResponseProcessProposal, error) {
+		from := sdk.ConsAddress(req.ProposerAddress).String()
+
+		ph.logger.Debug(
+			"bridge is processing proposal",
+			"height", req.Height,
+			"from", from,
+		)
+
 		if len(req.Txs) == 0 {
 			// The app-level handler always passes a transaction vector
 			// with at least one element (representing the possibly empty
@@ -270,6 +339,12 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 			// byte slice if the bridge-level PrepareProposal handler decided to
 			// not inject the pseudo-transaction. In this case, we do not need to
 			// do anything and return ACCEPT.
+			ph.logger.Debug(
+				"bridge accepted empty proposal",
+				"height", req.Height,
+				"from", from,
+			)
+
 			return &cmtabci.ResponseProcessProposal{
 				Status: cmtabci.ResponseProcessProposal_ACCEPT,
 			}, nil
@@ -324,7 +399,10 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		// Re-create the canonical events using vote extensions from the
 		// injected pseudo-transaction. determineCanonicalEvents guarantees
 		// that the sequence is valid and strictly increasing by 1.
-		recreatedCanonicalEvents, err := ph.determineCanonicalEvents(extendedCommitInfo)
+		recreatedCanonicalEvents, err := ph.determineCanonicalEvents(
+			extendedCommitInfo,
+			req.Height,
+		)
 		if err != nil {
 			return &cmtabci.ResponseProcessProposal{
 				Status: cmtabci.ResponseProcessProposal_REJECT,
@@ -359,6 +437,12 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 					"after the current sequence tip",
 			)
 		}
+
+		ph.logger.Debug(
+			"bridge accepted proposal",
+			"height", req.Height,
+			"from", from,
+		)
 
 		return &cmtabci.ResponseProcessProposal{
 			Status: cmtabci.ResponseProcessProposal_ACCEPT,

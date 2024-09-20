@@ -103,11 +103,11 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestExtendVote,
 	) (*cmtabci.ResponseExtendVote, error) {
-		voteExtensionParts := make(map[uint32][]byte)
-
 		// TODO: Consider running sub-handlers concurrently to speed up execution.
 		//
 		// TODO: Consider changing logging to debug level once this code matures.
+
+		voteExtensionParts := make(map[uint32][]byte)
 
 		// If the transaction vector for this block proposal is not empty, the
 		// first transaction must be the app-level pseudo-transaction injected
@@ -250,6 +250,8 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		ctx sdk.Context,
 		req *cmtabci.RequestVerifyVoteExtension,
 	) (*cmtabci.ResponseVerifyVoteExtension, error) {
+		// TODO: Consider running sub-handlers concurrently to speed up execution.
+
 		from := sdk.ConsAddress(req.ValidatorAddress).String()
 
 		veh.logger.Debug(
