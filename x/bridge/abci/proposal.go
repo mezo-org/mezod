@@ -531,12 +531,13 @@ func (alvc *assetsLockedVoteCounter) canonicalEvents() (
 	[]bridgetypes.AssetsLockedEvent,
 	error,
 ) {
-	// Should never happen but just in case.
-	if alvc.bridgeValsTotalVP <= 0 {
-		return nil, fmt.Errorf("total bridge validators voting power must be positive")
-	}
-	if alvc.nonBridgeValsTotalVP <= 0 {
-		return nil, fmt.Errorf("total non-bridge validators voting power must be positive")
+	if alvc.bridgeValsTotalVP <= 0 || alvc.nonBridgeValsTotalVP <= 0  {
+		// This case means either:
+		// - None of the bridge/non-bridge validators has voted for the block OR
+		// - The bridge/non-bridge validators do not exist in the current validator set.
+		// In both cases, bridging is not possible and, we return an empty
+		// slice of canonical events.
+		return []bridgetypes.AssetsLockedEvent{}, nil
 	}
 
 	requiredBridgeValsVP := ((alvc.bridgeValsTotalVP * 2) / 3) + 1

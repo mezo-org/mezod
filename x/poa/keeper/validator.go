@@ -251,17 +251,20 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validat
 // given privilege. There is no guarantee that the returned validators
 // are currently part of the CometBFT validator set.
 //
-// TODO: Temporary implementation that assumes all validators have all privileges.
-// Change this function once the actual privilege system is implemented.
+// TODO: Temporary implementation that assumes the first half of the validators
+// have the requested privilege. Change this function once the actual privilege
+// system is implemented.
 func (k Keeper) GetValidatorsConsAddrsByPrivilege(
 	ctx sdk.Context,
 	_ string,
 ) []sdk.ConsAddress {
 	validators := k.GetAllValidators(ctx)
 
-	consAddresses := make([]sdk.ConsAddress, len(validators))
-	for i, validator := range validators {
-		consAddresses[i] = validator.GetConsAddress()
+	mid := len(validators) / 2
+
+	consAddresses := make([]sdk.ConsAddress, 0)
+	for _, validator := range validators[:mid] {
+		consAddresses = append(consAddresses, validator.GetConsAddress())
 	}
 
 	return consAddresses
