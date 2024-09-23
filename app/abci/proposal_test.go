@@ -1,11 +1,10 @@
 package abci
 
 import (
+	"cosmossdk.io/log"
 	"fmt"
 	"strings"
 	"testing"
-
-	"cosmossdk.io/log"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
@@ -50,16 +49,6 @@ func (s *ProposalHandlerTestSuite) SetupTest() {
 }
 
 func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
-	txsVector := func(txs ...string) [][]byte {
-		res := make([][]byte, 0)
-
-		for _, tx := range txs {
-			res = append(res, []byte(tx))
-		}
-
-		return res
-	}
-
 	tests := []struct {
 		name               string
 		subHandlersFn      func(*cmtabci.RequestPrepareProposal) map[VoteExtensionPart]IProposalHandler
@@ -452,7 +441,7 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			errContains:        "all sub-handlers failed to prepare proposal",
 		},
 		{
-			name: "max tx bytes exceeded by chain txs",
+			name: "max tx bytes exceeded - chain txs",
 			subHandlersFn: func(
 				req *cmtabci.RequestPrepareProposal,
 			) map[VoteExtensionPart]IProposalHandler {
@@ -485,7 +474,7 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			errContains:      "",
 		},
 		{
-			name: "max tx bytes exceeded by injected pseudo-tx",
+			name: "max tx bytes exceeded - injected pseudo-tx",
 			subHandlersFn: func(
 				req *cmtabci.RequestPrepareProposal,
 			) map[VoteExtensionPart]IProposalHandler {
@@ -514,6 +503,39 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			expectedInjectedTx: nil,
 			expectedChainTxs:   txsVector(),
 			errContains:        "",
+		},
+		{
+			name: "no chain txs in the request",
+			subHandlersFn: func(
+				req *cmtabci.RequestPrepareProposal,
+			) map[VoteExtensionPart]IProposalHandler {
+				subHandler := newMockProposalHandler()
+
+				subHandler.prepareProposalHandler.On(
+					"call",
+					mock.Anything,
+					req,
+				).Return(
+					&cmtabci.ResponsePrepareProposal{
+						Txs: append(
+							[][]byte{[]byte("pseudoTx1")},
+							req.Txs...,
+						),
+					},
+					nil,
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqHeight: 101,
+			reqTxs:    txsVector(),
+			expectedInjectedTx: &types.InjectedTx{
+				Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
+			},
+			expectedChainTxs: txsVector(),
+			errContains:      "",
 		},
 	}
 
@@ -586,6 +608,16 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			)
 		})
 	}
+}
+
+func txsVector(txs ...string) [][]byte {
+	res := make([][]byte, 0)
+
+	for _, tx := range txs {
+		res = append(res, []byte(tx))
+	}
+
+	return res
 }
 
 type mockPrepareProposalHandler struct {
