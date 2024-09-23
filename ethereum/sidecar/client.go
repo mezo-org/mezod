@@ -17,8 +17,8 @@ import (
 // Client connects to the Ethereum sidecar server and queries for the
 // `AssetsLocked` events.
 type Client struct {
-	serverAddress  string
 	requestTimeout time.Duration
+	connection     *grpc.ClientConn
 	logger         log.Logger
 }
 
@@ -26,13 +26,23 @@ func NewClient(
 	serverAddress string,
 	requestTimeout time.Duration,
 	logger log.Logger,
-) *Client {
-	// TODO: Consider adding validation of the connection.
-	return &Client{
-		serverAddress:  serverAddress,
-		requestTimeout: requestTimeout,
-		logger:         logger,
+) (*Client, error) {
+	connection, err := grpc.Dial(
+		serverAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to connect to the Ethereum sidecar server: [%v]",
+			err,
+		)
 	}
+
+	return &Client{
+		requestTimeout: requestTimeout,
+		connection:     connection,
+		logger:         logger,
+	}, nil
 }
 
 // GetAssetsLockedEvents returns confirmed AssetsLockedEvents with
@@ -45,30 +55,11 @@ func (c *Client) GetAssetsLockedEvents(
 	sequenceStart *sdkmath.Int,
 	sequenceEnd *sdkmath.Int,
 ) ([]bridgetypes.AssetsLockedEvent, error) {
-	// Establish connection to the server.
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
 	defer cancel()
 
-	// TODO: Consider adding options for maximum message size.
-	serverConnection, err := grpc.Dial(
-		c.serverAddress,
-		grpc.WithTransportCredentials(
-			insecure.NewCredentials(),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to connect to the Ethereum sidecar server: [%v]",
-			err,
-		)
-	}
-	defer serverConnection.Close()
+	sidecarClient := pb.NewEthereumSidecarClient(c.connection)
 
-	c.logger.Info("successfully dialed the Ethereum sidecar server")
-
-	sidecarClient := pb.NewEthereumSidecarClient(serverConnection)
-
-	// Query the server for the `AssetsLocked` events.
 	request := &pb.AssetsLockedEventsRequest{
 		SequenceStart: *sequenceStart,
 		SequenceEnd:   *sequenceEnd,
@@ -93,4 +84,8 @@ func (c *Client) GetAssetsLockedEvents(
 	//       one greater than the previous one)? The code that uses the client
 	//       already does that.
 	return events, nil
+}
+
+func (c *Client) Close() error {
+	return c.connection.Close()
 }

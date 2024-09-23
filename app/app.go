@@ -593,11 +593,14 @@ func (app *Mezo) setABCIExtensions(
 	ethereumSidecarServerAddress string,
 	ethereumSidecarRequestTimeout time.Duration,
 ) {
-	sidecarClient := ethsidecar.NewClient(
+	sidecarClient, err := ethsidecar.NewClient(
 		ethereumSidecarServerAddress,
 		ethereumSidecarRequestTimeout,
 		app.Logger(),
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	bridgeVoteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
 		app.Logger(),
