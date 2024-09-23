@@ -42,6 +42,7 @@ import (
 	dbm "github.com/cosmos/cosmos-db"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/encoding"
+	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 )
 
 // EthSetup initializes a new MezoApp. A Nop logger is set in MezoApp.
@@ -61,6 +62,7 @@ func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState
 		DefaultNodeHome,
 		5,
 		encoding.MakeConfig(ModuleBasics),
+		ethsidecar.NewClientMock(),
 		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)

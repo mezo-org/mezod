@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/codec/types"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -25,11 +28,15 @@ type Client struct {
 func NewClient(
 	serverAddress string,
 	requestTimeout time.Duration,
+	registry types.InterfaceRegistry,
 	logger log.Logger,
 ) (*Client, error) {
 	connection, err := grpc.Dial(
 		serverAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(
+			grpc.ForceCodec(codec.NewProtoCodec(registry).GRPCCodec()),
+		),
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
