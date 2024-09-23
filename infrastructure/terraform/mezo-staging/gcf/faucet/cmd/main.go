@@ -1,3 +1,4 @@
+// This file is only used when running the faucet locally for testing
 package main
 
 import (
