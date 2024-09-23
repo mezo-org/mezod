@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
@@ -119,6 +120,39 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 				Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
 			},
 			expectedChainTxs: txsVector("tx1", "tx2"),
+			errContains:      "",
+		},
+		{
+			name: "single sub-handler injecting non-empty pseudo-tx as only tx in proposal",
+			subHandlersFn: func(
+				req *cmtabci.RequestPrepareProposal,
+			) map[VoteExtensionPart]IProposalHandler {
+				subHandler := newMockProposalHandler()
+
+				subHandler.prepareProposalHandler.On(
+					"call",
+					mock.Anything,
+					req,
+				).Return(
+					&cmtabci.ResponsePrepareProposal{
+						Txs: append(
+							[][]byte{[]byte("pseudoTx1")},
+							req.Txs...,
+						),
+					},
+					nil,
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqHeight: 101,
+			reqTxs:    txsVector(),
+			expectedInjectedTx: &types.InjectedTx{
+				Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
+			},
+			expectedChainTxs: txsVector(),
 			errContains:      "",
 		},
 		{
@@ -504,39 +538,6 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			expectedChainTxs:   txsVector(),
 			errContains:        "",
 		},
-		{
-			name: "no chain txs in the request",
-			subHandlersFn: func(
-				req *cmtabci.RequestPrepareProposal,
-			) map[VoteExtensionPart]IProposalHandler {
-				subHandler := newMockProposalHandler()
-
-				subHandler.prepareProposalHandler.On(
-					"call",
-					mock.Anything,
-					req,
-				).Return(
-					&cmtabci.ResponsePrepareProposal{
-						Txs: append(
-							[][]byte{[]byte("pseudoTx1")},
-							req.Txs...,
-						),
-					},
-					nil,
-				)
-
-				return map[VoteExtensionPart]IProposalHandler{
-					VoteExtensionPart(1): subHandler,
-				}
-			},
-			reqHeight: 101,
-			reqTxs:    txsVector(),
-			expectedInjectedTx: &types.InjectedTx{
-				Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
-			},
-			expectedChainTxs: txsVector(),
-			errContains:      "",
-		},
 	}
 
 	for _, test := range tests {
@@ -605,6 +606,195 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 				test.expectedChainTxs,
 				actualChainTxs,
 				"expected different chain transactions",
+			)
+		})
+	}
+}
+
+func (s *ProposalHandlerTestSuite) TestProcessProposal() {
+	marshalInjectedTx := func(injectedTx types.InjectedTx) []byte {
+		injectedTxBytes, err := injectedTx.Marshal()
+		s.Require().NoError(err)
+		return injectedTxBytes
+	}
+
+	extractInjectedTxPart := func(
+		injectedTxBytes []byte,
+		part VoteExtensionPart,
+	) []byte {
+		var injectedTx types.InjectedTx
+		err := injectedTx.Unmarshal(injectedTxBytes)
+		s.Require().NoError(err)
+		return injectedTx.Parts[uint32(part)]
+	}
+
+	tests := []struct {
+		name              string
+		subHandlersFn     func() map[VoteExtensionPart]IProposalHandler
+		reqHeight         int64
+		reqTxsFn		  func() [][]byte
+		expectedRes       *cmtabci.ResponseProcessProposal
+		subHandlersCalled map[VoteExtensionPart]bool // true if expected to be called, false otherwise
+		errContains       string
+	}{
+		{
+			name: "vote extensions not enabled",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler { return nil },
+			// Vote extensions become enabled at height 100. However, the proposal
+			// handler looks at the vote extensions from the previous block, so
+			// from the handler's perspective, they are not enabled yet. The proposal
+			// handler becomes fully functional at height 101.
+			reqHeight: 100,
+			reqTxsFn:  func() [][]byte { return txsVector("tx1", "tx2") },
+			expectedRes: &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_ACCEPT,
+			},
+			subHandlersCalled: nil,
+			errContains:       "",
+		},
+		{
+			name: "no txs in the request",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler { return nil },
+			reqHeight: 101,
+			reqTxsFn:  func() [][]byte { return txsVector() },
+			expectedRes: &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_ACCEPT,
+			},
+			subHandlersCalled: nil,
+			errContains:       "",
+		},
+		{
+			name:              "non-unmarshalable injected tx",
+			subHandlersFn:     func() map[VoteExtensionPart]IProposalHandler { return nil },
+			reqHeight:         101,
+			reqTxsFn:          func() [][]byte { return txsVector("corrupted") },
+			expectedRes:       nil,
+			subHandlersCalled: nil,
+			errContains:       "failed to unmarshal injected tx",
+		},
+		{
+			name:              "empty-parts injected tx",
+			subHandlersFn:     func() map[VoteExtensionPart]IProposalHandler { return nil },
+			reqHeight:         101,
+			reqTxsFn:          func() [][]byte {
+				return append(
+					[][]byte{marshalInjectedTx(
+						types.InjectedTx{Parts: map[uint32][]byte{}}),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes:       nil,
+			subHandlersCalled: nil,
+			errContains:       "injected tx has no parts",
+		},
+		{
+			name:              "nil-parts injected tx",
+			subHandlersFn:     func() map[VoteExtensionPart]IProposalHandler { return nil },
+			reqHeight:         101,
+			reqTxsFn:          func() [][]byte {
+				return append(
+					[][]byte{marshalInjectedTx(
+						types.InjectedTx{Parts: nil}),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes:       nil,
+			subHandlersCalled: nil,
+			errContains:       "injected tx has no parts",
+		},
+
+		// TODO: More test cases.
+	}
+
+	for _, test := range tests {
+		s.Run(test.name, func() {
+			s.SetupTest()
+
+			now := time.Now()
+
+			req := &cmtabci.RequestProcessProposal{
+				Txs:                test.reqTxsFn(),
+				ProposedLastCommit: cmtabci.CommitInfo{},
+				Misbehavior:        []cmtabci.Misbehavior{},
+				Hash:               []byte("hash"),
+				Height:             test.reqHeight,
+				Time:               now,
+				NextValidatorsHash: []byte("nextValidatorsHash"),
+				ProposerAddress:    []byte("proposerAddress"),
+			}
+
+			subHandlers := test.subHandlersFn()
+
+			s.handler = &ProposalHandler{
+				logger:      s.logger,
+				subHandlers: subHandlers,
+			}
+
+			res, err := s.handler.ProcessProposalHandler()(s.ctx, req)
+
+			// Make sure sub-handlers calls were as expected.
+			for part, expected := range test.subHandlersCalled {
+				subHandler, ok := subHandlers[part]
+				s.Require().True(ok)
+
+				fn := subHandler.(*mockProposalHandler).processProposalHandler
+
+				if expected {
+					subTxs := req.Txs
+					if len(req.Txs) > 0 {
+						subTxs = append(
+							[][]byte{
+								extractInjectedTxPart(
+									req.Txs[0],
+									part,
+								),
+							}, req.Txs[1:]...,
+						)
+					}
+
+					fn.AssertCalled(
+						s.T(),
+						"call",
+						s.ctx,
+						&cmtabci.RequestProcessProposal{
+							Txs:                subTxs,
+							ProposedLastCommit: cmtabci.CommitInfo{},
+							Misbehavior:        []cmtabci.Misbehavior{},
+							Hash:               []byte("hash"),
+							Height:             test.reqHeight,
+							Time:               now,
+							NextValidatorsHash: []byte("nextValidatorsHash"),
+							ProposerAddress:    []byte("proposerAddress"),
+						},
+					)
+				} else {
+					fn.AssertNotCalled(
+						s.T(),
+						"call",
+						mock.Anything,
+						mock.Anything,
+					)
+				}
+			}
+
+			if len(test.errContains) == 0 {
+				s.Require().NoError(err, "expected no error")
+			} else {
+				// ErrorContains checks if the error is non-nil so no need
+				// for an explicit check here.
+				s.Require().ErrorContains(
+					err,
+					test.errContains,
+					"expected different error message",
+				)
+			}
+
+			s.Require().Equal(
+				test.expectedRes,
+				res,
+				"expected different response",
 			)
 		})
 	}
