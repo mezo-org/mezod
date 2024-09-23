@@ -84,6 +84,12 @@ const (
 	TLSKeyPath  = "tls.key-path"
 )
 
+// Ethereum sidecar flags
+const (
+	EthereumSidecarServerAddress  = "ethereum-sidecar.client.server-address"
+	EthereumSidecarRequestTimeout = "ethereum-sidecar.client.request-timeout"
+)
+
 // AddTxFlags adds common flags for commands to post tx
 func AddTxFlags(cmd *cobra.Command) (*cobra.Command, error) {
 	cmd.PersistentFlags().String(flags.FlagChainID, "", "Specify Chain ID for sending Tx")

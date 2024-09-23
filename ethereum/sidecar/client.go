@@ -17,21 +17,21 @@ import (
 // Client connects to the Ethereum sidecar server and queries for the
 // `AssetsLocked` events.
 type Client struct {
-	serverAddress     string
-	connectionTimeout time.Duration
-	logger            log.Logger
+	serverAddress  string
+	requestTimeout time.Duration
+	logger         log.Logger
 }
 
 func NewClient(
 	serverAddress string,
-	connectionTimeout time.Duration,
+	requestTimeout time.Duration,
 	logger log.Logger,
 ) *Client {
 	// TODO: Consider adding validation of the connection.
 	return &Client{
-		serverAddress:     serverAddress,
-		connectionTimeout: connectionTimeout,
-		logger:            logger,
+		serverAddress:  serverAddress,
+		requestTimeout: requestTimeout,
+		logger:         logger,
 	}
 }
 
@@ -46,7 +46,7 @@ func (c *Client) GetAssetsLockedEvents(
 	sequenceEnd *sdkmath.Int,
 ) ([]bridgetypes.AssetsLockedEvent, error) {
 	// Establish connection to the server.
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.connectionTimeout)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
 	defer cancel()
 
 	// TODO: Consider adding options for maximum message size.

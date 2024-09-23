@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/cosmos/cosmos-sdk/runtime"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
@@ -474,7 +475,10 @@ func NewMezo(
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
 
-	app.setABCIExtensions()
+	app.setABCIExtensions(
+		cast.ToString(appOpts.Get(srvflags.EthereumSidecarServerAddress)),
+		cast.ToDuration(appOpts.Get(srvflags.EthereumSidecarRequestTimeout)),
+	)
 
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
@@ -585,8 +589,15 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 
 // setABCIExtensions sets the ABCI++ extensions on the application.
 // This function assumes the BridgeKeeper is already set in the app.
-func (app *Mezo) setABCIExtensions() {
-	sidecarClient := ethsidecar.RunTestSidecar(context.Background())
+func (app *Mezo) setABCIExtensions(
+	ethereumSidecarServerAddress string,
+	ethereumSidecarRequestTimeout time.Duration,
+) {
+	sidecarClient := ethsidecar.NewClient(
+		ethereumSidecarServerAddress,
+		ethereumSidecarRequestTimeout,
+		app.Logger(),
+	)
 
 	bridgeVoteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
 		app.Logger(),

@@ -84,6 +84,12 @@ const (
 
 	// DefaultMaxOpenConnections represents the amount of open connections (unlimited = 0)
 	DefaultMaxOpenConnections = 0
+
+	// DefaultEthereumSidecarServerAddress is the default address of the Ethereum sidecar server.
+	DefaultEthereumSidecarServerAddress = "127.0.0.1:7500"
+
+	// DefaultEthereumSidecarRequestTimeout is the default timeout for requests to the Ethereum sidecar server.
+	DefaultEthereumSidecarRequestTimeout = 5 * time.Second
 )
 
 var evmTracers = []string{"json", "markdown", "struct", "access_list"}
