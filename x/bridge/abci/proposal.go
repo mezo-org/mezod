@@ -630,4 +630,3 @@ func (alvi *assetsLockedVoteInfo) add(vp int64, isBridgeVal bool) {
 		alvi.nonBridgeValsVP += vp
 	}
 }
-
