@@ -2,8 +2,9 @@ package abci
 
 import (
 	"fmt"
-	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"slices"
+
+	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 
 	"cosmossdk.io/log"
 
