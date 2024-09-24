@@ -87,9 +87,11 @@ func (c *Client) GetAssetsLockedEvents(
 		events[i] = *event
 	}
 
-	// TODO: Should we validate the events (make sure each event has a sequence
-	//       one greater than the previous one)? The code that uses the client
-	//       already does that.
+	// Make sure the events form a sequence strictly increasing by 1.
+	if !bridgetypes.AssetsLockedEvents(events).IsStrictlyIncreasingSequence() {
+		return nil, fmt.Errorf("events do not form a proper sequence")
+	}
+
 	return events, nil
 }
 
