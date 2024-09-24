@@ -14,6 +14,19 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
+// ValidateVoteExtensionsFn is a function for verifying vote extension signatures
+// that may be passed or manually injected into a block proposal from a proposer
+// in PrepareProposal. It returns an error if any signature is invalid or if
+// unexpected vote extensions and/or signatures are found or less than 2/3
+// power is received.
+type ValidateVoteExtensionsFn func(
+	ctx sdk.Context,
+	valStore baseapp.ValidatorStore,
+	height int64,
+	chainID string,
+	extCommit cmtabci.ExtendedCommitInfo,
+) error
+
 // VoteExtensionDecomposer is a function that decomposes a composite app-level
 // vote extension and returns the part that is relevant to the bridge.
 type VoteExtensionDecomposer func(compositeVoteExtensionBytes []byte) (
@@ -24,10 +37,11 @@ type VoteExtensionDecomposer func(compositeVoteExtensionBytes []byte) (
 // ProposalHandler is the bridge-specific handler for the PrepareProposal and
 // ProcessProposal ABCI requests.
 type ProposalHandler struct {
-	logger                  log.Logger
-	valStore                bridgetypes.ValidatorStore
-	voteExtensionDecomposer VoteExtensionDecomposer
-	keeper                  bridgekeeper.Keeper
+	logger                   log.Logger
+	valStore                 bridgetypes.ValidatorStore
+	voteExtensionDecomposer  VoteExtensionDecomposer
+	keeper                   bridgekeeper.Keeper
+	validateVoteExtensionsFn ValidateVoteExtensionsFn
 }
 
 // NewProposalHandler creates a new ProposalHandler instance.
@@ -36,12 +50,14 @@ func NewProposalHandler(
 	valStore bridgetypes.ValidatorStore,
 	voteExtensionDecomposer VoteExtensionDecomposer,
 	keeper bridgekeeper.Keeper,
+	validateVoteExtensionsFn ValidateVoteExtensionsFn,
 ) *ProposalHandler {
 	return &ProposalHandler{
-		logger:                  logger,
-		valStore:                valStore,
-		voteExtensionDecomposer: voteExtensionDecomposer,
-		keeper:                  keeper,
+		logger:                   logger,
+		valStore:                 valStore,
+		voteExtensionDecomposer:  voteExtensionDecomposer,
+		keeper:                   keeper,
+		validateVoteExtensionsFn: validateVoteExtensionsFn,
 	}
 }
 
@@ -75,7 +91,7 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		// According to the app-level proposal handler requirements, this
 		// handler must validate signatures of the commit's vote extensions
 		// on their own.
-		err := baseapp.ValidateVoteExtensions(
+		err := ph.validateVoteExtensionsFn(
 			ctx,
 			ph.valStore,
 			req.Height,
@@ -386,7 +402,7 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		// According to the app-level proposal handler requirements, this
 		// handler must re-validate signatures of the vote extensions
 		// attached by the block proposer on their own.
-		err := baseapp.ValidateVoteExtensions(
+		err := ph.validateVoteExtensionsFn(
 			ctx,
 			ph.valStore,
 			req.Height,
