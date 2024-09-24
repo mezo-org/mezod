@@ -19,6 +19,9 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
+// precision is the number of decimal places in the amount of assets locked.
+var precision = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+
 var (
 	// ErrSequencePointerNil is the error returned when the start or end of the
 	// sequence is nil in the received request.
