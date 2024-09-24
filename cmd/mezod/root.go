@@ -314,7 +314,6 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 		cast.ToString(appOpts.Get(srvflags.EthereumSidecarServerAddress)),
 		cast.ToDuration(appOpts.Get(srvflags.EthereumSidecarRequestTimeout)),
 		a.encCfg.InterfaceRegistry,
-		logger,
 	)
 	if err != nil {
 		panic(err)

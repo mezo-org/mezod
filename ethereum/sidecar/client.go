@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -22,14 +21,12 @@ import (
 type Client struct {
 	requestTimeout time.Duration
 	connection     *grpc.ClientConn
-	logger         log.Logger
 }
 
 func NewClient(
 	serverAddress string,
 	requestTimeout time.Duration,
 	registry types.InterfaceRegistry,
-	logger log.Logger,
 ) (*Client, error) {
 	connection, err := grpc.Dial(
 		serverAddress,
@@ -48,7 +45,6 @@ func NewClient(
 	return &Client{
 		requestTimeout: requestTimeout,
 		connection:     connection,
-		logger:         logger,
 	}, nil
 }
 
@@ -76,11 +72,6 @@ func (c *Client) GetAssetsLockedEvents(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AssetsLocked events [%v]", err)
 	}
-
-	c.logger.Info(
-		"received response from the Ethereum sidecar server",
-		"number of events", len(response.Events),
-	)
 
 	events := make([]bridgetypes.AssetsLockedEvent, len(response.Events))
 	for i, event := range response.Events {
