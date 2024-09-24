@@ -2,6 +2,7 @@ package abci
 
 import (
 	"fmt"
+	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"slices"
 
 	"cosmossdk.io/log"
@@ -218,7 +219,7 @@ func (ph *ProposalHandler) determineCanonicalEvents(
 	// extendedCommitInfo.Votes is actually a list of validators in the
 	// last CometBFT validator set, with voting information regarding
 	// the last block included. That means validators who did not vote
-	// for the last block are not included in this list. Such votes
+	// for the last block are normally included in this list. Such votes
 	// have an appropriate value of the BlockIdFlag set and their
 	// vote extension is empty. This loop must take this into account.
 	for _, vote := range extendedCommitInfo.Votes {
@@ -242,6 +243,12 @@ func (ph *ProposalHandler) determineCanonicalEvents(
 				"from", valConsAddr.String(),
 				"cause", cause,
 			)
+		}
+
+		// Include only commit votes.
+		if vote.BlockIdFlag != cmtproto.BlockIDFlagCommit {
+			logInvalidVoteExtension("non-commit vote extension")
+			continue
 		}
 
 		// The vote extension validators vote on and which is delivered
