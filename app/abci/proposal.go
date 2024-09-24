@@ -323,7 +323,7 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 				// If a sub-handler fails to process its pseudo-transaction part,
 				// reject the whole proposal.
 				return nil, fmt.Errorf(
-					"sub-handler failed to process injexted tx part %v: %w",
+					"sub-handler failed to process injected tx part %v: %w",
 					part,
 					err,
 				)
@@ -332,7 +332,7 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 				// If a sub-handler rejects its pseudo-transaction part,
 				// reject the whole proposal.
 				return nil, fmt.Errorf(
-					"sub-handler rejected injexted tx part %v",
+					"sub-handler rejected injected tx part %v",
 					part,
 				)
 			}

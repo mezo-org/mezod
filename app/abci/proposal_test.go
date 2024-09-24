@@ -1,11 +1,12 @@
 package abci
 
 import (
-	"cosmossdk.io/log"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"cosmossdk.io/log"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
@@ -632,13 +633,13 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 		name              string
 		subHandlersFn     func() map[VoteExtensionPart]IProposalHandler
 		reqHeight         int64
-		reqTxsFn		  func() [][]byte
+		reqTxsFn          func() [][]byte
 		expectedRes       *cmtabci.ResponseProcessProposal
 		subHandlersCalled map[VoteExtensionPart]bool // true if expected to be called, false otherwise
 		errContains       string
 	}{
 		{
-			name: "vote extensions not enabled",
+			name:          "vote extensions not enabled",
 			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler { return nil },
 			// Vote extensions become enabled at height 100. However, the proposal
 			// handler looks at the vote extensions from the previous block, so
@@ -653,10 +654,10 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			errContains:       "",
 		},
 		{
-			name: "no txs in the request",
+			name:          "no txs in the request",
 			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler { return nil },
-			reqHeight: 101,
-			reqTxsFn:  func() [][]byte { return txsVector() },
+			reqHeight:     101,
+			reqTxsFn:      func() [][]byte { return txsVector() },
 			expectedRes: &cmtabci.ResponseProcessProposal{
 				Status: cmtabci.ResponseProcessProposal_ACCEPT,
 			},
@@ -673,13 +674,14 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			errContains:       "failed to unmarshal injected tx",
 		},
 		{
-			name:              "empty-parts injected tx",
-			subHandlersFn:     func() map[VoteExtensionPart]IProposalHandler { return nil },
-			reqHeight:         101,
-			reqTxsFn:          func() [][]byte {
+			name:          "empty-parts injected tx",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler { return nil },
+			reqHeight:     101,
+			reqTxsFn: func() [][]byte {
 				return append(
-					[][]byte{marshalInjectedTx(
-						types.InjectedTx{Parts: map[uint32][]byte{}}),
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{Parts: map[uint32][]byte{}}),
 					},
 					txsVector("tx1", "tx2")...,
 				)
@@ -689,13 +691,14 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			errContains:       "injected tx has no parts",
 		},
 		{
-			name:              "nil-parts injected tx",
-			subHandlersFn:     func() map[VoteExtensionPart]IProposalHandler { return nil },
-			reqHeight:         101,
-			reqTxsFn:          func() [][]byte {
+			name:          "nil-parts injected tx",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler { return nil },
+			reqHeight:     101,
+			reqTxsFn: func() [][]byte {
 				return append(
-					[][]byte{marshalInjectedTx(
-						types.InjectedTx{Parts: nil}),
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{Parts: nil}),
 					},
 					txsVector("tx1", "tx2")...,
 				)
@@ -704,8 +707,401 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			subHandlersCalled: nil,
 			errContains:       "injected tx has no parts",
 		},
+		{
+			name:          "no sub-handlers",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler { return nil },
+			reqHeight:     101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes:       nil,
+			subHandlersCalled: nil,
+			errContains:       "unknown injected tx part",
+		},
+		{
+			name: "single sub-handler - unknown injected tx part",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler {
+				subHandler := newMockProposalHandler()
 
-		// TODO: More test cases.
+				subHandler.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_ACCEPT,
+					}, nil,
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqHeight: 101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{2: []byte("pseudoTx2")},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: nil,
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				VoteExtensionPart(1): false,
+			},
+			errContains: "unknown injected tx part",
+		},
+		{
+			name: "single sub-handler returning error",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler {
+				subHandler := newMockProposalHandler()
+
+				subHandler.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					nil, fmt.Errorf("sub-handler error"),
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqHeight: 101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: nil,
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				VoteExtensionPart(1): true,
+			},
+			errContains: "sub-handler failed to process injected tx part",
+		},
+		{
+			name: "single sub-handler rejecting injected tx part",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler {
+				subHandler := newMockProposalHandler()
+
+				subHandler.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_REJECT,
+					}, nil,
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqHeight: 101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: nil,
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				VoteExtensionPart(1): true,
+			},
+			errContains: "sub-handler rejected injected tx part",
+		},
+		{
+			name: "single sub-handler accepting injected tx part",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler {
+				subHandler := newMockProposalHandler()
+
+				subHandler.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_ACCEPT,
+					}, nil,
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqHeight: 101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_ACCEPT,
+			},
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				VoteExtensionPart(1): true,
+			},
+			errContains: "",
+		},
+		{
+			name: "multiple sub-handlers - unknown injected tx part",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler {
+				subHandler1 := newMockProposalHandler()
+				subHandler2 := newMockProposalHandler()
+
+				subHandler1.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_ACCEPT,
+					}, nil,
+				)
+
+				subHandler2.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_ACCEPT,
+					}, nil,
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler1,
+					VoteExtensionPart(2): subHandler2,
+				}
+			},
+			reqHeight: 101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{3: []byte("pseudoTx3")},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: nil,
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				VoteExtensionPart(1): false,
+				VoteExtensionPart(2): false,
+			},
+			errContains: "unknown injected tx part",
+		},
+		{
+			name: "multiple sub-handlers - one returning error",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler {
+				subHandler1 := newMockProposalHandler()
+				subHandler2 := newMockProposalHandler()
+
+				subHandler1.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_ACCEPT,
+					}, nil,
+				)
+
+				subHandler2.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					nil, fmt.Errorf("sub-handler 2 error"),
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler1,
+					VoteExtensionPart(2): subHandler2,
+				}
+			},
+			reqHeight: 101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{
+									1: []byte("pseudoTx1"),
+									2: []byte("pseudoTx2"),
+								},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: nil,
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				// Sub-handler 2 should be always called but whether
+				// sub-handler 1 is called depends on the order of the
+				// iteration over the map. If sub-handler 2 is called first,
+				// error will be returned before calling sub-handler 1. That
+				// said, we cannot determine whether sub-handler 1 will be
+				// called or not.
+				VoteExtensionPart(2): true,
+			},
+			errContains: "sub-handler failed to process injected tx part",
+		},
+		{
+			name: "multiple sub-handlers - one rejecting injected tx part",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler {
+				subHandler1 := newMockProposalHandler()
+				subHandler2 := newMockProposalHandler()
+
+				subHandler1.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_ACCEPT,
+					}, nil,
+				)
+
+				subHandler2.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_REJECT,
+					}, nil,
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler1,
+					VoteExtensionPart(2): subHandler2,
+				}
+			},
+			reqHeight: 101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{
+									1: []byte("pseudoTx1"),
+									2: []byte("pseudoTx2"),
+								},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: nil,
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				// Sub-handler 2 should be always called but whether
+				// sub-handler 1 is called depends on the order of the
+				// iteration over the map. If sub-handler 2 is called first,
+				// error will be returned before calling sub-handler 1. That
+				// said, we cannot determine whether sub-handler 1 will be
+				// called or not.
+				VoteExtensionPart(2): true,
+			},
+			errContains: "sub-handler rejected injected tx part",
+		},
+		{
+			name: "multiple sub-handlers accepting injected tx parts",
+			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler {
+				subHandler1 := newMockProposalHandler()
+				subHandler2 := newMockProposalHandler()
+
+				subHandler1.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_ACCEPT,
+					}, nil,
+				)
+
+				subHandler2.processProposalHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseProcessProposal{
+						Status: cmtabci.ResponseProcessProposal_ACCEPT,
+					}, nil,
+				)
+
+				return map[VoteExtensionPart]IProposalHandler{
+					VoteExtensionPart(1): subHandler1,
+					VoteExtensionPart(2): subHandler2,
+				}
+			},
+			reqHeight: 101,
+			reqTxsFn: func() [][]byte {
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								Parts: map[uint32][]byte{
+									1: []byte("pseudoTx1"),
+									2: []byte("pseudoTx2"),
+								},
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_ACCEPT,
+			},
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				VoteExtensionPart(1): true,
+				VoteExtensionPart(2): true,
+			},
+			errContains: "",
+		},
 	}
 
 	for _, test := range tests {
