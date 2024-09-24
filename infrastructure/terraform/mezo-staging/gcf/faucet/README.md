@@ -24,9 +24,12 @@ http://127.0.0.1:8080/ADDRESS
 The go bindings were generated using `abigen` (built from geth codebase) by doing the following:
 
 ```
+cd $GOPATH/src/github.com/mezo-org
+git clone https://github.com/mezo-org/go-ethereum.git
+cd go-ethereum
+make abigen
 ./build/bin/abigen \
 --abi $GOPATH/src/github.com/mezo-org/mezod/precompile/btctoken/abi.json \
 --out $GOPATH/src/github.com/mezo-org/mezod/infrastructure/terraform/mezo-staging/gcf/faucet/bindings/btctoken.go \
---pkg faucet \
---type btctoken
+--pkg btctoken
 ```
