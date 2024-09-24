@@ -1,18 +1,35 @@
 import { vars, HardhatUserConfig } from 'hardhat/config'
+import { ethers } from "ethers"
 import '@nomicfoundation/hardhat-toolbox'
 // import precompile tasks
 import './tasks/validatorpool'
 import './tasks/btctoken'
 import './tasks/util'
+import fs from 'fs'
+import path from 'path'
 
-const getPrivKeys = (): string[] => {
+const BUILD_DIR = '../../.localnet/'
+const COUNT = 4
+
+function getPrivKeys(): string[] {
   const strings: string[] = vars.get('MEZO_ACCOUNTS', '').split(',')
   const keys: string[] = []
-  for (let i = 0; i < strings.length; i++) {
-    if (strings[i] !== '') {
-      keys.push(strings[i])
+  if (strings[0] != '') {
+    // Mezo accounts have been set already
+    for (const str of strings) {
+      if (str !== '') {
+        keys.push(str)
+      }
+    }
+  } else {
+    for (let i = 0; i < COUNT; i++) {
+      const filePath = path.resolve(`${BUILD_DIR}node${i}/mezod/key_seed.json`)
+      const seed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+      const pk: string = ethers.Wallet.fromPhrase(seed.secret).privateKey
+      keys.push(pk)
     }
   }
+
   return keys
 }
 
