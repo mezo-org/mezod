@@ -1,5 +1,5 @@
 import { vars, HardhatUserConfig } from 'hardhat/config'
-import { ethers } from "ethers"
+import { ethers } from 'ethers'
 import '@nomicfoundation/hardhat-toolbox'
 // import precompile tasks
 import './tasks/validatorpool'
@@ -11,10 +11,10 @@ import path from 'path'
 const BUILD_DIR = '../../.localnet/'
 const COUNT = 4
 
-function getPrivKeys(): string[] {
+function getPrivKeys (): string[] {
   const strings: string[] = vars.get('MEZO_ACCOUNTS', '').split(',')
   const keys: string[] = []
-  if (strings[0] != '') {
+  if (strings[0] !== '') {
     // Mezo accounts have been set already
     for (const str of strings) {
       if (str !== '') {
