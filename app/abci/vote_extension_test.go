@@ -3,6 +3,7 @@ package abci
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"cosmossdk.io/log"
 
@@ -43,16 +44,22 @@ func (s *VoteExtensionHandlerTestSuite) SetupTest() {
 
 func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 	tests := []struct {
-		name          string
-		subHandlersFn func() map[VoteExtensionPart]IVoteExtensionHandler
-		expectedVE    *types.VoteExtension
-		errContains   string
+		name                   string
+		subHandlersFn          func() map[VoteExtensionPart]IVoteExtensionHandler
+		reqInjectedTx          *types.InjectedTx
+		reqChainTxs            [][]byte
+		expectedSubHandlersTxs map[VoteExtensionPart][][]byte
+		expectedVE             *types.VoteExtension
+		errContains            string
 	}{
 		{
-			name:          "no sub-handlers",
-			subHandlersFn: func() map[VoteExtensionPart]IVoteExtensionHandler { return nil },
-			expectedVE:    nil,
-			errContains:   "all sub-handlers failed to extend vote",
+			name:                   "no sub-handlers",
+			subHandlersFn:          func() map[VoteExtensionPart]IVoteExtensionHandler { return nil },
+			reqInjectedTx:          nil,
+			reqChainTxs:            txsVector(),
+			expectedSubHandlersTxs: nil,
+			expectedVE:             nil,
+			errContains:            "all sub-handlers failed to extend vote",
 		},
 		{
 			name: "single sub-handler returning non-empty part",
@@ -71,6 +78,11 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				return map[VoteExtensionPart]IVoteExtensionHandler{
 					VoteExtensionPart(1): subHandler,
 				}
+			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
 			},
 			expectedVE: &types.VoteExtension{
 				Height: s.requestHeight,
@@ -96,6 +108,11 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					VoteExtensionPart(1): subHandler,
 				}
 			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
+			},
 			expectedVE: &types.VoteExtension{
 				Height: s.requestHeight,
 				Parts:  map[uint32][]byte{1: {}},
@@ -120,6 +137,11 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					VoteExtensionPart(1): subHandler,
 				}
 			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
+			},
 			expectedVE: &types.VoteExtension{
 				Height: s.requestHeight,
 				Parts:  map[uint32][]byte{1: {}},
@@ -143,6 +165,11 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				return map[VoteExtensionPart]IVoteExtensionHandler{
 					VoteExtensionPart(1): subHandler,
 				}
+			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
 			},
 			expectedVE:  nil,
 			errContains: "all sub-handlers failed to extend vote",
@@ -175,6 +202,12 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					VoteExtensionPart(1): subHandler1,
 					VoteExtensionPart(2): subHandler2,
 				}
+			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
+				VoteExtensionPart(2): append([][]byte{nil}, txsVector()...),
 			},
 			expectedVE: &types.VoteExtension{
 				Height: s.requestHeight,
@@ -214,6 +247,12 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					VoteExtensionPart(2): subHandler2,
 				}
 			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
+				VoteExtensionPart(2): append([][]byte{nil}, txsVector()...),
+			},
 			expectedVE: &types.VoteExtension{
 				Height: s.requestHeight,
 				Parts: map[uint32][]byte{
@@ -251,6 +290,12 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					VoteExtensionPart(1): subHandler1,
 					VoteExtensionPart(2): subHandler2,
 				}
+			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
+				VoteExtensionPart(2): append([][]byte{nil}, txsVector()...),
 			},
 			expectedVE: &types.VoteExtension{
 				Height: s.requestHeight,
@@ -290,6 +335,12 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					VoteExtensionPart(2): subHandler2,
 				}
 			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
+				VoteExtensionPart(2): append([][]byte{nil}, txsVector()...),
+			},
 			expectedVE: &types.VoteExtension{
 				Height: s.requestHeight,
 				Parts:  map[uint32][]byte{2: []byte("part2")},
@@ -325,8 +376,76 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					VoteExtensionPart(2): subHandler2,
 				}
 			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector(),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector()...),
+				VoteExtensionPart(2): append([][]byte{nil}, txsVector()...),
+			},
 			expectedVE:  nil,
 			errContains: "all sub-handlers failed to extend vote",
+		},
+		{
+			name: "injected tx present - holding sub-handler part",
+			subHandlersFn: func() map[VoteExtensionPart]IVoteExtensionHandler {
+				subHandler := newMockVoteExtensionHandler()
+
+				subHandler.extendVoteHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseExtendVote{VoteExtension: []byte("part1")},
+					nil,
+				)
+
+				return map[VoteExtensionPart]IVoteExtensionHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqInjectedTx: &types.InjectedTx{
+				Parts: map[uint32][]byte{1: []byte("pseudoTx1")},
+			},
+			reqChainTxs: txsVector("tx1", "tx2"),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{[]byte("pseudoTx1")}, txsVector("tx1", "tx2")...),
+			},
+			expectedVE: &types.VoteExtension{
+				Height: s.requestHeight,
+				Parts:  map[uint32][]byte{1: []byte("part1")},
+			},
+			errContains: "",
+		},
+		{
+			name: "injected tx present - not holding sub-handler part",
+			subHandlersFn: func() map[VoteExtensionPart]IVoteExtensionHandler {
+				subHandler := newMockVoteExtensionHandler()
+
+				subHandler.extendVoteHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseExtendVote{VoteExtension: []byte("part1")},
+					nil,
+				)
+
+				return map[VoteExtensionPart]IVoteExtensionHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqInjectedTx: &types.InjectedTx{
+				Parts: map[uint32][]byte{},
+			},
+			reqChainTxs: txsVector("tx1", "tx2"),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector("tx1", "tx2")...),
+			},
+			expectedVE: &types.VoteExtension{
+				Height: s.requestHeight,
+				Parts:  map[uint32][]byte{1: []byte("part1")},
+			},
+			errContains: "",
 		},
 	}
 
@@ -341,18 +460,44 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				subHandlers: subHandlers,
 			}
 
+			now := time.Now()
+
+			txs := txsVector()
+			if injectedTx := test.reqInjectedTx; injectedTx != nil {
+				injectedTxBytes, err := injectedTx.Marshal()
+				s.Require().NoError(err)
+				txs = append(txs, injectedTxBytes)
+			}
+			txs = append(txs, test.reqChainTxs...)
+
 			req := &cmtabci.RequestExtendVote{
-				Height: s.requestHeight,
+				Hash:               []byte("hash"),
+				Height:             s.requestHeight,
+				Time:               now,
+				Txs:                txs,
+				ProposedLastCommit: cmtabci.CommitInfo{},
+				Misbehavior:        []cmtabci.Misbehavior{},
+				NextValidatorsHash: []byte("nextValidatorsHash"),
+				ProposerAddress:    []byte("proposerAddress"),
 			}
 
 			res, err := s.handler.ExtendVoteHandler()(s.ctx, req)
 
-			for _, subHandler := range subHandlers {
+			for part, subHandler := range subHandlers {
 				subHandler.(*mockVoteExtensionHandler).extendVoteHandler.AssertCalled(
 					s.T(),
 					"call",
 					s.ctx,
-					req,
+					&cmtabci.RequestExtendVote{
+						Hash:               req.Hash,
+						Height:             req.Height,
+						Time:               req.Time,
+						Txs:                test.expectedSubHandlersTxs[part],
+						ProposedLastCommit: req.ProposedLastCommit,
+						Misbehavior:        req.Misbehavior,
+						NextValidatorsHash: req.NextValidatorsHash,
+						ProposerAddress:    req.ProposerAddress,
+					},
 				)
 			}
 

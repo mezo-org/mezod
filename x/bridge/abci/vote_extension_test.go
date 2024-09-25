@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/mezo-org/mezod/cmd/config"
+
 	sdkmath "cosmossdk.io/math"
 	storetypes "cosmossdk.io/store/types"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -38,6 +40,11 @@ type VoteExtensionHandlerTestSuite struct {
 }
 
 func (s *VoteExtensionHandlerTestSuite) SetupTest() {
+	// Set bech32 prefixes to make the recipient address validation in
+	// AssetsLocked events possible (see AssetsLockedEvent.IsValid).
+	cfg := sdk.GetConfig()
+	config.SetBech32Prefixes(cfg)
+
 	s.logger = log.NewNopLogger()
 
 	multiStore := servermock.NewCommitMultiStore()
@@ -65,17 +72,21 @@ func (s *VoteExtensionHandlerTestSuite) SetupTest() {
 }
 
 func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
-	mockEvent := func(sequence int64) bridgetypes.AssetsLockedEvent {
-		return bridgetypes.AssetsLockedEvent{
-			Sequence:  sdkmath.NewInt(sequence),
-			Recipient: "recipient",
-			Amount:    sdkmath.ZeroInt(),
-		}
+	marshalInjectedTx := func(injectedTx types.InjectedTx) []byte {
+		injectedTxBytes, err := injectedTx.Marshal()
+		s.Require().NoError(err)
+		return injectedTxBytes
 	}
+
+	// Default sequence boundaries where there is no injected tx in the proposal
+	// and sequence tip is fetched from state.
+	defaultSequenceStart := sdkmath.NewInt(201)
+	defaultSequenceEnd := sdkmath.NewInt(211)
 
 	tests := []struct {
 		name        string
 		sidecarFn   func() EthereumSidecarClient
+		reqTxs      [][]byte
 		expectedVE  *types.VoteExtension
 		errContains string
 	}{
@@ -86,13 +97,14 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return(nil, fmt.Errorf("sidecar error"))
 
 				return sidecar
 			},
+			reqTxs:      txsVector(),
 			expectedVE:  nil,
 			errContains: "failed to fetch AssetsLocked events from the sidecar",
 		},
@@ -103,13 +115,14 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{}, nil)
 
 				return sidecar
 			},
+			reqTxs: txsVector(),
 			expectedVE: &types.VoteExtension{
 				AssetsLockedEvents: nil,
 			},
@@ -122,13 +135,14 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return(nil, nil)
 
 				return sidecar
 			},
+			reqTxs: txsVector(),
 			expectedVE: &types.VoteExtension{
 				AssetsLockedEvents: nil,
 			},
@@ -141,18 +155,19 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
+					mockEvent(201, recipient1, 1000),
 				}, nil)
 
 				return sidecar
 			},
+			reqTxs: txsVector(),
 			expectedVE: &types.VoteExtension{
 				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
+					mockEvent(201, recipient1, 1000),
 				},
 			},
 			errContains: "",
@@ -164,19 +179,20 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(3),
-					mockEvent(2),
-					mockEvent(1),
+					mockEvent(203, recipient1, 1000),
+					mockEvent(202, recipient1, 1000),
+					mockEvent(201, recipient1, 1000),
 				}, nil)
 
 				return sidecar
 			},
+			reqTxs:      txsVector(),
 			expectedVE:  nil,
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "sidecar returning improper sequence - increasing (non-strictly)",
@@ -185,20 +201,21 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
-					mockEvent(1),
-					mockEvent(2),
-					mockEvent(3),
+					mockEvent(201, recipient1, 1000),
+					mockEvent(201, recipient1, 1000),
+					mockEvent(202, recipient1, 1000),
+					mockEvent(203, recipient1, 1000),
 				}, nil)
 
 				return sidecar
 			},
+			reqTxs:      txsVector(),
 			expectedVE:  nil,
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "sidecar returning improper sequence - decreasing (non-strictly)",
@@ -207,20 +224,21 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(3),
-					mockEvent(3),
-					mockEvent(2),
-					mockEvent(1),
+					mockEvent(203, recipient1, 1000),
+					mockEvent(203, recipient1, 1000),
+					mockEvent(202, recipient1, 1000),
+					mockEvent(201, recipient1, 1000),
 				}, nil)
 
 				return sidecar
 			},
+			reqTxs:      txsVector(),
 			expectedVE:  nil,
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "sidecar returning improper sequence - gap",
@@ -229,19 +247,20 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
-					mockEvent(2),
-					mockEvent(4),
+					mockEvent(201, recipient1, 1000),
+					mockEvent(202, recipient1, 1000),
+					mockEvent(204, recipient1, 1000),
 				}, nil)
 
 				return sidecar
 			},
+			reqTxs:      txsVector(),
 			expectedVE:  nil,
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "sidecar returning improper sequence - duplicate",
@@ -250,20 +269,21 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
-					mockEvent(2),
-					mockEvent(3),
-					mockEvent(1),
+					mockEvent(201, recipient1, 1000),
+					mockEvent(202, recipient1, 1000),
+					mockEvent(203, recipient1, 1000),
+					mockEvent(201, recipient1, 1000),
 				}, nil)
 
 				return sidecar
 			},
+			reqTxs:      txsVector(),
 			expectedVE:  nil,
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "sidecar returning more events than the limit",
@@ -272,26 +292,26 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
-					mockEvent(2),
-					mockEvent(3),
-					mockEvent(4),
-					mockEvent(5),
-					mockEvent(6),
-					mockEvent(7),
-					mockEvent(8),
-					mockEvent(9),
-					mockEvent(10),
-					mockEvent(11),
-					mockEvent(12),
+					mockEvent(201, recipient1, 1000),
+					mockEvent(202, recipient1, 1000),
+					mockEvent(203, recipient1, 1000),
+					mockEvent(204, recipient1, 1000),
+					mockEvent(205, recipient1, 1000),
+					mockEvent(206, recipient1, 1000),
+					mockEvent(207, recipient1, 1000),
+					mockEvent(208, recipient1, 1000),
+					mockEvent(209, recipient1, 1000),
+					mockEvent(210, recipient1, 1000),
+					mockEvent(211, recipient1, 1000),
 				}, nil)
 
 				return sidecar
 			},
+			reqTxs:      txsVector(),
 			expectedVE:  nil,
 			errContains: "number of events exceeds the limit",
 		},
@@ -302,39 +322,143 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 				sidecar.On(
 					"GetAssetsLockedEvents",
-					mock.Anything,
-					mock.Anything,
-					mock.Anything,
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
-					mockEvent(2),
-					mockEvent(3),
-					mockEvent(4),
-					mockEvent(5),
-					mockEvent(6),
-					mockEvent(7),
-					mockEvent(8),
-					mockEvent(9),
-					mockEvent(10),
+					mockEvent(201, recipient1, 1000),
+					mockEvent(202, recipient1, 1000),
+					mockEvent(203, recipient1, 1000),
+					mockEvent(204, recipient1, 1000),
+					mockEvent(205, recipient1, 1000),
+					mockEvent(206, recipient1, 1000),
+					mockEvent(207, recipient1, 1000),
+					mockEvent(208, recipient1, 1000),
+					mockEvent(209, recipient1, 1000),
+					mockEvent(210, recipient1, 1000),
 				}, nil)
 
 				return sidecar
 			},
+			reqTxs: txsVector(),
 			expectedVE: &types.VoteExtension{
 				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-					mockEvent(1),
-					mockEvent(2),
-					mockEvent(3),
-					mockEvent(4),
-					mockEvent(5),
-					mockEvent(6),
-					mockEvent(7),
-					mockEvent(8),
-					mockEvent(9),
-					mockEvent(10),
+					mockEvent(201, recipient1, 1000),
+					mockEvent(202, recipient1, 1000),
+					mockEvent(203, recipient1, 1000),
+					mockEvent(204, recipient1, 1000),
+					mockEvent(205, recipient1, 1000),
+					mockEvent(206, recipient1, 1000),
+					mockEvent(207, recipient1, 1000),
+					mockEvent(208, recipient1, 1000),
+					mockEvent(209, recipient1, 1000),
+					mockEvent(210, recipient1, 1000),
 				},
 			},
 			errContains: "",
+		},
+		{
+			name: "injected tx present - contains non-empty sequence",
+			sidecarFn: func() EthereumSidecarClient {
+				sidecar := newMockEthereumSidecarClient()
+
+				// The sidecar will be called with the sequence boundaries
+				// determined by the injected tx.
+				sequenceStart := sdkmath.NewInt(206)
+				sequenceEnd := sdkmath.NewInt(216)
+
+				sidecar.On(
+					"GetAssetsLockedEvents",
+					s.ctx,
+					&sequenceStart,
+					&sequenceEnd,
+				).Return([]bridgetypes.AssetsLockedEvent{
+					mockEvent(206, recipient1, 1000),
+				}, nil)
+
+				return sidecar
+			},
+			reqTxs: append(
+				[][]byte{
+					marshalInjectedTx(
+						types.InjectedTx{
+							AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+								// The sequence tip from state is 200 but
+								// the injected tx contains events that will
+								// move the sequence tip to 205
+								mockEvent(201, recipient1, 1000),
+								mockEvent(202, recipient1, 1000),
+								mockEvent(203, recipient1, 1000),
+								mockEvent(204, recipient1, 1000),
+								mockEvent(205, recipient1, 1000),
+							},
+							ExtendedCommitInfo: []byte("extendedCommitInfo"),
+						},
+					),
+				}, txsVector("tx1", "tx2")...,
+			),
+			expectedVE: &types.VoteExtension{
+				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+					mockEvent(206, recipient1, 1000),
+				},
+			},
+			errContains: "",
+		},
+		{
+			name: "injected tx present - contains empty sequence",
+			sidecarFn: func() EthereumSidecarClient {
+				return newMockEthereumSidecarClient()
+			},
+			reqTxs: append(
+				[][]byte{
+					marshalInjectedTx(
+						types.InjectedTx{
+							AssetsLockedEvents: nil,
+							ExtendedCommitInfo: []byte("extendedCommitInfo"),
+						},
+					),
+				}, txsVector("tx1", "tx2")...,
+			),
+			expectedVE:  nil,
+			errContains: "no AssetsLocked events in the injected tx",
+		},
+		{
+			name: "injected tx present - empty itself",
+			sidecarFn: func() EthereumSidecarClient {
+				sidecar := newMockEthereumSidecarClient()
+
+				// The injected tx contains no events so the sidecar will be
+				// called with the default sequence boundaries determined by
+				// the sequence tip from state.
+				sidecar.On(
+					"GetAssetsLockedEvents",
+					s.ctx,
+					&defaultSequenceStart,
+					&defaultSequenceEnd,
+				).Return([]bridgetypes.AssetsLockedEvent{
+					mockEvent(201, recipient1, 1000),
+				}, nil)
+
+				return sidecar
+			},
+			reqTxs: append(
+				[][]byte{nil}, txsVector("tx1", "tx2")...,
+			),
+			expectedVE: &types.VoteExtension{
+				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
+					mockEvent(201, recipient1, 1000),
+				},
+			},
+			errContains: "",
+		},
+		{
+			name: "injected tx present - not an actual injected tx",
+			sidecarFn: func() EthereumSidecarClient {
+				return newMockEthereumSidecarClient()
+			},
+			reqTxs:      txsVector("tx1", "tx2"),
+			expectedVE:  nil,
+			errContains: "failed to unmarshal injected tx",
 		},
 	}
 
@@ -352,20 +476,12 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 
 			req := &cmtabci.RequestExtendVote{
 				Height: s.requestHeight,
+				Txs:    test.reqTxs,
 			}
 
 			res, err := s.handler.ExtendVoteHandler()(s.ctx, req)
 
-			sequenceStart := sdkmath.NewInt(201)
-			sequenceEnd := sdkmath.NewInt(211)
-
-			sidecar.(*mockEthereumSidecarClient).AssertCalled(
-				s.T(),
-				"GetAssetsLockedEvents",
-				s.ctx,
-				&sequenceStart,
-				&sequenceEnd,
-			)
+			sidecar.(*mockEthereumSidecarClient).AssertExpectations(s.T())
 
 			if len(test.errContains) == 0 {
 				s.Require().NoError(err, "expected no error")
@@ -400,14 +516,6 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 		veBytes, err := ve.Marshal()
 		s.Require().NoError(err)
 		return veBytes
-	}
-
-	mockEvent := func(sequence int64) bridgetypes.AssetsLockedEvent {
-		return bridgetypes.AssetsLockedEvent{
-			Sequence:  sdkmath.NewInt(sequence),
-			Recipient: "recipient",
-			Amount:    sdkmath.ZeroInt(),
-		}
 	}
 
 	tests := []struct {
@@ -469,7 +577,7 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(1),
+						mockEvent(201, recipient1, 1000),
 					},
 				})
 			},
@@ -483,101 +591,100 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(3),
-						mockEvent(2),
-						mockEvent(1),
+						mockEvent(203, recipient1, 1000),
+						mockEvent(202, recipient1, 1000),
+						mockEvent(201, recipient1, 1000),
 					},
 				})
 			},
 			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
 			},
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "events slice forming improper sequence - increasing (non-strictly)",
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(1),
-						mockEvent(1),
-						mockEvent(2),
-						mockEvent(3),
+						mockEvent(201, recipient1, 1000),
+						mockEvent(201, recipient1, 1000),
+						mockEvent(202, recipient1, 1000),
+						mockEvent(203, recipient1, 1000),
 					},
 				})
 			},
 			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
 			},
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "events slice forming improper sequence - decreasing (non-strictly)",
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(3),
-						mockEvent(3),
-						mockEvent(2),
-						mockEvent(1),
+						mockEvent(203, recipient1, 1000),
+						mockEvent(203, recipient1, 1000),
+						mockEvent(202, recipient1, 1000),
+						mockEvent(201, recipient1, 1000),
 					},
 				})
 			},
 			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
 			},
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "events slice forming improper sequence - gap",
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(1),
-						mockEvent(2),
-						mockEvent(4),
+						mockEvent(201, recipient1, 1000),
+						mockEvent(202, recipient1, 1000),
+						mockEvent(204, recipient1, 1000),
 					},
 				})
 			},
 			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
 			},
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "events slice forming improper sequence - duplicate",
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(1),
-						mockEvent(2),
-						mockEvent(3),
-						mockEvent(1),
+						mockEvent(201, recipient1, 1000),
+						mockEvent(202, recipient1, 1000),
+						mockEvent(203, recipient1, 1000),
+						mockEvent(201, recipient1, 1000),
 					},
 				})
 			},
 			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
 			},
-			errContains: "events do not form a proper sequence",
+			errContains: "events list is not valid",
 		},
 		{
 			name: "events slice exceeding the limit",
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(1),
-						mockEvent(2),
-						mockEvent(3),
-						mockEvent(4),
-						mockEvent(5),
-						mockEvent(6),
-						mockEvent(7),
-						mockEvent(8),
-						mockEvent(9),
-						mockEvent(10),
-						mockEvent(11),
-						mockEvent(12),
+						mockEvent(201, recipient1, 1000),
+						mockEvent(202, recipient1, 1000),
+						mockEvent(203, recipient1, 1000),
+						mockEvent(204, recipient1, 1000),
+						mockEvent(205, recipient1, 1000),
+						mockEvent(206, recipient1, 1000),
+						mockEvent(207, recipient1, 1000),
+						mockEvent(208, recipient1, 1000),
+						mockEvent(209, recipient1, 1000),
+						mockEvent(210, recipient1, 1000),
+						mockEvent(211, recipient1, 1000),
 					},
 				})
 			},
@@ -591,16 +698,16 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(1),
-						mockEvent(2),
-						mockEvent(3),
-						mockEvent(4),
-						mockEvent(5),
-						mockEvent(6),
-						mockEvent(7),
-						mockEvent(8),
-						mockEvent(9),
-						mockEvent(10),
+						mockEvent(201, recipient1, 1000),
+						mockEvent(202, recipient1, 1000),
+						mockEvent(203, recipient1, 1000),
+						mockEvent(204, recipient1, 1000),
+						mockEvent(205, recipient1, 1000),
+						mockEvent(206, recipient1, 1000),
+						mockEvent(207, recipient1, 1000),
+						mockEvent(208, recipient1, 1000),
+						mockEvent(209, recipient1, 1000),
+						mockEvent(210, recipient1, 1000),
 					},
 				})
 			},
