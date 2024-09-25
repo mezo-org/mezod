@@ -241,4 +241,3 @@ func TestAssetsLockedEvents_Equal(t *testing.T) {
 		})
 	}
 }
-
