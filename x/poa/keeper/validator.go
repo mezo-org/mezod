@@ -256,7 +256,7 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validat
 //
 // TODO: Temporary implementation that assumes the first half of the validators
 // have the requested privilege. Change this function once the actual privilege
-// system is implemented.
+// system is implemented. Cover with unit tests once that happens.
 func (k Keeper) GetValidatorsConsAddrsByPrivilege(
 	ctx sdk.Context,
 	_ string,
