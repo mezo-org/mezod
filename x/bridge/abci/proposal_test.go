@@ -87,7 +87,9 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 		{
 			name:                      "invalid vote extensions",
 			valStore:                  newMockValidatorStore(),
-			voteExtensionDecomposerFn: func() *mockVoteExtensionDecomposer { return nil },
+			voteExtensionDecomposerFn: func() *mockVoteExtensionDecomposer {
+				return newMockVoteExtensionDecomposer()
+			},
 			voteExtensionsValidator:   newMockVoteExtensionsValidator(fmt.Errorf("invalid vote extensions")),
 			reqTxs:                    txsVector(),
 			reqVoteExtensionsFn:       func() []cmtabci.ExtendedVoteInfo { return nil },
@@ -378,7 +380,6 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			expectedChainTxs:     txsVector("tx1", "tx2"),
 			errContains:          "",
 		},
-
 		{
 			name:     "no canonical sequence - split brain",
 			valStore: newMockValidatorStore("val1Bridge", "val2Bridge", "val3Bridge", "val4Bridge"),
@@ -920,8 +921,8 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			s.handler = NewProposalHandler(
 				s.logger,
 				valStore,
-				voteExtensionDecomposer.call,
 				s.keeper,
+				voteExtensionDecomposer.call,
 				voteExtensionsValidator.call,
 			)
 

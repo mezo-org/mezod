@@ -624,8 +624,8 @@ func (app *Mezo) bridgeABCIHandlers() (
 	proposalHandler := bridgeabci.NewProposalHandler(
 		app.Logger(),
 		app.PoaKeeper,
-		appabci.VoteExtensionDecomposer(appabci.VoteExtensionPartBridge),
 		app.BridgeKeeper,
+		appabci.VoteExtensionDecomposer(appabci.VoteExtensionPartBridge),
 		baseapp.ValidateVoteExtensions,
 	)
 

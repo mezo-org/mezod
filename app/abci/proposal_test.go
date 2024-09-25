@@ -681,7 +681,8 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 				return append(
 					[][]byte{
 						marshalInjectedTx(
-							types.InjectedTx{Parts: map[uint32][]byte{}}),
+							types.InjectedTx{Parts: map[uint32][]byte{}},
+						),
 					},
 					txsVector("tx1", "tx2")...,
 				)
@@ -698,7 +699,8 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 				return append(
 					[][]byte{
 						marshalInjectedTx(
-							types.InjectedTx{Parts: nil}),
+							types.InjectedTx{Parts: nil},
+						),
 					},
 					txsVector("tx1", "tx2")...,
 				)

@@ -16,12 +16,12 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
-// ValidateVoteExtensionsFn is a function for verifying vote extension signatures
+// VoteExtensionsValidator is a function for verifying vote extension signatures
 // that may be passed or manually injected into a block proposal from a proposer
 // in PrepareProposal. It returns an error if any signature is invalid or if
 // unexpected vote extensions and/or signatures are found or less than 2/3
 // power is received.
-type ValidateVoteExtensionsFn func(
+type VoteExtensionsValidator func(
 	ctx sdk.Context,
 	valStore baseapp.ValidatorStore,
 	height int64,
@@ -36,30 +36,52 @@ type VoteExtensionDecomposer func(compositeVoteExtensionBytes []byte) (
 	err error,
 )
 
+// AssetsLockedExtractor is an interface representing a component whose task
+// is extracting the sequence of canonical AssetsLocked events supported by
+// 2/3+ of the bridge validators and confirmed by 2/3+ of the non-bridge
+// validators from the given extended commit info.
+type AssetsLockedExtractor interface {
+	// CanonicalEvents takes the given extended commit info and determines the
+	// sequence of canonical AssetsLocked events supported by 2/3+ of the bridge
+	// validators and confirmed by 2/3+ of the non-bridge validators. If the
+	// sequence of canonical events cannot be determined, the function returns an
+	// error. Otherwise, it returns the canonical events in a sequence strictly
+	// increasing by 1.
+	CanonicalEvents(
+		ctx sdk.Context,
+		extendedCommitInfo cmtabci.ExtendedCommitInfo,
+		height int64,
+	) (bridgetypes.AssetsLockedEvents, error)
+}
+
 // ProposalHandler is the bridge-specific handler for the PrepareProposal and
 // ProcessProposal ABCI requests.
 type ProposalHandler struct {
-	logger                   log.Logger
-	valStore                 bridgetypes.ValidatorStore
-	voteExtensionDecomposer  VoteExtensionDecomposer
-	keeper                   bridgekeeper.Keeper
-	validateVoteExtensionsFn ValidateVoteExtensionsFn
+	logger                  log.Logger
+	valStore                bridgetypes.ValidatorStore
+	keeper                  bridgekeeper.Keeper
+	voteExtensionsValidator VoteExtensionsValidator
+	assetsLockedExtractor   AssetsLockedExtractor
 }
 
 // NewProposalHandler creates a new ProposalHandler instance.
 func NewProposalHandler(
 	logger log.Logger,
 	valStore bridgetypes.ValidatorStore,
-	voteExtensionDecomposer VoteExtensionDecomposer,
 	keeper bridgekeeper.Keeper,
-	validateVoteExtensionsFn ValidateVoteExtensionsFn,
+	voteExtensionDecomposer VoteExtensionDecomposer,
+	voteExtensionsValidator VoteExtensionsValidator,
 ) *ProposalHandler {
 	return &ProposalHandler{
-		logger:                   logger,
-		valStore:                 valStore,
-		voteExtensionDecomposer:  voteExtensionDecomposer,
-		keeper:                   keeper,
-		validateVoteExtensionsFn: validateVoteExtensionsFn,
+		logger:                  logger,
+		valStore:                valStore,
+		keeper:                  keeper,
+		voteExtensionsValidator: voteExtensionsValidator,
+		assetsLockedExtractor: newAssetsLockedExtractor(
+			logger,
+			valStore,
+			voteExtensionDecomposer,
+		),
 	}
 }
 
@@ -93,7 +115,7 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		// According to the app-level proposal handler requirements, this
 		// handler must validate signatures of the commit's vote extensions
 		// on their own.
-		err := ph.validateVoteExtensionsFn(
+		err := ph.voteExtensionsValidator(
 			ctx,
 			ph.valStore,
 			req.Height,
@@ -109,10 +131,9 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 			"height", req.Height,
 		)
 
-		// determineCanonicalEvents determines the sequence of canonical
-		// AssetsLocked events and guarantees that the sequence is strictly
-		// increasing by 1.
-		canonicalEvents, err := ph.determineCanonicalEvents(
+		// CanonicalEvents determines the sequence of canonical AssetsLocked
+		// events and guarantees that the sequence is strictly increasing by 1.
+		canonicalEvents, err := ph.assetsLockedExtractor.CanonicalEvents(
 			ctx,
 			req.LocalLastCommit,
 			req.Height,
@@ -198,117 +219,6 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 
 		return &cmtabci.ResponsePrepareProposal{Txs: txs}, nil
 	}
-}
-
-// determineCanonicalEvents determines the sequence of canonical AssetsLocked
-// events supported by 2/3+ of the bridge validators and confirmed by 2/3+ of
-// the non-bridge validators. If the sequence of canonical events cannot be
-// determined, the function returns an error. Otherwise, it returns the canonical
-// events in a sequence strictly increasing by 1.
-func (ph *ProposalHandler) determineCanonicalEvents(
-	ctx sdk.Context,
-	extendedCommitInfo cmtabci.ExtendedCommitInfo,
-	height int64,
-) (bridgetypes.AssetsLockedEvents, error) {
-	bridgeValsConsAddrs := ph.valStore.GetValidatorsConsAddrsByPrivilege(
-		ctx,
-		bridgetypes.ValidatorPrivilege,
-	)
-
-	voteCounter := newAssetsLockedVoteCounter()
-
-	// extendedCommitInfo.Votes is actually a list of validators in the
-	// last CometBFT validator set, with voting information regarding
-	// the last block included. That means validators who did not vote
-	// for the last block are normally included in this list. Such votes
-	// have an appropriate value of the BlockIdFlag set and their
-	// vote extension is empty. This loop must take this into account.
-	for _, vote := range extendedCommitInfo.Votes {
-		valConsAddr := sdk.ConsAddress(vote.Validator.Address)
-		valVP := vote.Validator.Power
-
-		isBridgeVal := slices.ContainsFunc(
-			bridgeValsConsAddrs,
-			func(address sdk.ConsAddress) bool {
-				return address.Equals(valConsAddr)
-			},
-		)
-
-		voteCounter.registerVoter(valVP, isBridgeVal)
-
-		logInvalidVoteExtension := func(cause string) {
-			ph.logger.Debug(
-				"invalid vote extension while determining "+
-					"canonical AssetsLocked events",
-				"height", height,
-				"from", valConsAddr.String(),
-				"cause", cause,
-			)
-		}
-
-		// Include only commit votes.
-		if vote.BlockIdFlag != cmtproto.BlockIDFlagCommit {
-			logInvalidVoteExtension("non-commit vote extension")
-			continue
-		}
-
-		// The vote extension validators vote on and which is delivered
-		// here is an app-level composite vote extension that contains
-		// multiple vote extension parts. This bridge handler must decompose
-		// it using the provided VoteExtensionDecomposer and process
-		// just the vote extension part that is relevant to the bridge.
-		compositeVoteExtension := vote.VoteExtension
-
-		if len(compositeVoteExtension) == 0 {
-			logInvalidVoteExtension("empty composite vote extension")
-			continue
-		}
-
-		voteExtensionBytes, err := ph.voteExtensionDecomposer(
-			compositeVoteExtension,
-		)
-		if err != nil {
-			logInvalidVoteExtension(fmt.Sprintf("decomposition error: %v", err))
-			continue
-		}
-
-		if len(voteExtensionBytes) == 0 {
-			logInvalidVoteExtension("empty bridge-specific vote extension")
-			continue
-		}
-
-		var voteExtension types.VoteExtension
-		if err := voteExtension.Unmarshal(voteExtensionBytes); err != nil {
-			logInvalidVoteExtension(fmt.Sprintf("unmarshaling error: %v", err))
-			continue
-		}
-
-		if len(voteExtension.AssetsLockedEvents) == 0 {
-			logInvalidVoteExtension("no AssetsLocked events")
-			continue
-		}
-
-		// ABCI++ specification requires that the proposal phase validates
-		// vote extensions in the same manner as done in VerifyVoteExtension.
-		// This is because extensions of votes included in the commit info
-		// after the minimum of +2/3 had been reached are not verified.
-		// See: https://docs.cometbft.com/v0.38/spec/abci/abci++_methods#prepareproposal
-		if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
-			logInvalidVoteExtension(fmt.Sprintf("invalid AssetsLocked sequence: %v", err))
-			continue
-		}
-
-		// addVote assumes the given event is valid and does not perform
-		// any validation over it. We ensure validity by calling
-		// validateAssetsLockedEvents above.
-		for _, event := range voteExtension.AssetsLockedEvents {
-			voteCounter.addVote(&event, valVP, isBridgeVal)
-		}
-	}
-
-	// canonicalEvents returns the sequence of canonical AssetsLocked events
-	// and guarantees that the sequence is strictly increasing by 1.
-	return voteCounter.canonicalEvents()
 }
 
 // ProcessProposalHandler returns the handler for the ProcessProposal ABCI request.
@@ -410,7 +320,7 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		// According to the app-level proposal handler requirements, this
 		// handler must re-validate signatures of the vote extensions
 		// attached by the block proposer on their own.
-		err := ph.validateVoteExtensionsFn(
+		err := ph.voteExtensionsValidator(
 			ctx,
 			ph.valStore,
 			req.Height,
@@ -421,15 +331,15 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 			return &cmtabci.ResponseProcessProposal{
 					Status: cmtabci.ResponseProcessProposal_REJECT,
 				}, fmt.Errorf(
-					"failed to validate vote extensions from injexted tx: %w",
+					"failed to validate vote extensions from injected tx: %w",
 					err,
 				)
 		}
 
 		// Re-create the canonical events using vote extensions from the
-		// injected pseudo-transaction. determineCanonicalEvents guarantees
+		// injected pseudo-transaction. CanonicalEvents guarantees
 		// that the sequence is valid and strictly increasing by 1.
-		recreatedCanonicalEvents, err := ph.determineCanonicalEvents(
+		recreatedCanonicalEvents, err := ph.assetsLockedExtractor.CanonicalEvents(
 			ctx,
 			extendedCommitInfo,
 			req.Height,
@@ -479,6 +389,135 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 			Status: cmtabci.ResponseProcessProposal_ACCEPT,
 		}, nil
 	}
+}
+
+// assetsLockedExtractor is the default implementation of the
+// AssetsLockedExtractor interface.
+type assetsLockedExtractor struct {
+	logger                  log.Logger
+	valStore                bridgetypes.ValidatorStore
+	voteExtensionDecomposer VoteExtensionDecomposer
+}
+
+// newAssetsLockedExtractor creates a new assetsLockedExtractor instance.
+func newAssetsLockedExtractor(
+	logger log.Logger,
+	valStore bridgetypes.ValidatorStore,
+	voteExtensionDecomposer VoteExtensionDecomposer,
+) *assetsLockedExtractor {
+	return &assetsLockedExtractor{
+		logger:                  logger,
+		valStore:                valStore,
+		voteExtensionDecomposer: voteExtensionDecomposer,
+	}
+}
+
+// CanonicalEvents is the default implementation of the
+// AssetsLockedExtractor.CanonicalEvents method.
+func (ale *assetsLockedExtractor) CanonicalEvents(
+	ctx sdk.Context,
+	extendedCommitInfo cmtabci.ExtendedCommitInfo,
+	height int64,
+) (bridgetypes.AssetsLockedEvents, error) {
+	bridgeValsConsAddrs := ale.valStore.GetValidatorsConsAddrsByPrivilege(
+		ctx,
+		bridgetypes.ValidatorPrivilege,
+	)
+
+	voteCounter := newAssetsLockedVoteCounter()
+
+	// extendedCommitInfo.Votes is actually a list of validators in the
+	// last CometBFT validator set, with voting information regarding
+	// the last block included. That means validators who did not vote
+	// for the last block are normally included in this list. Such votes
+	// have an appropriate value of the BlockIdFlag set and their
+	// vote extension is empty. This loop must take this into account.
+	for _, vote := range extendedCommitInfo.Votes {
+		valConsAddr := sdk.ConsAddress(vote.Validator.Address)
+		valVP := vote.Validator.Power
+
+		isBridgeVal := slices.ContainsFunc(
+			bridgeValsConsAddrs,
+			func(address sdk.ConsAddress) bool {
+				return address.Equals(valConsAddr)
+			},
+		)
+
+		voteCounter.registerVoter(valVP, isBridgeVal)
+
+		logInvalidVoteExtension := func(cause string) {
+			ale.logger.Debug(
+				"invalid vote extension while determining "+
+					"canonical AssetsLocked events",
+				"height", height,
+				"from", valConsAddr.String(),
+				"cause", cause,
+			)
+		}
+
+		// Include only commit votes.
+		if vote.BlockIdFlag != cmtproto.BlockIDFlagCommit {
+			logInvalidVoteExtension("non-commit vote extension")
+			continue
+		}
+
+		// The vote extension validators vote on and which is delivered
+		// here is an app-level composite vote extension that contains
+		// multiple vote extension parts. This bridge handler must decompose
+		// it using the provided VoteExtensionDecomposer and process
+		// just the vote extension part that is relevant to the bridge.
+		compositeVoteExtension := vote.VoteExtension
+
+		if len(compositeVoteExtension) == 0 {
+			logInvalidVoteExtension("empty composite vote extension")
+			continue
+		}
+
+		voteExtensionBytes, err := ale.voteExtensionDecomposer(
+			compositeVoteExtension,
+		)
+		if err != nil {
+			logInvalidVoteExtension(fmt.Sprintf("decomposition error: %v", err))
+			continue
+		}
+
+		if len(voteExtensionBytes) == 0 {
+			logInvalidVoteExtension("empty bridge-specific vote extension")
+			continue
+		}
+
+		var voteExtension types.VoteExtension
+		if err := voteExtension.Unmarshal(voteExtensionBytes); err != nil {
+			logInvalidVoteExtension(fmt.Sprintf("unmarshaling error: %v", err))
+			continue
+		}
+
+		if len(voteExtension.AssetsLockedEvents) == 0 {
+			logInvalidVoteExtension("no AssetsLocked events")
+			continue
+		}
+
+		// ABCI++ specification requires that the proposal phase validates
+		// vote extensions in the same manner as done in VerifyVoteExtension.
+		// This is because extensions of votes included in the commit info
+		// after the minimum of +2/3 had been reached are not verified.
+		// See: https://docs.cometbft.com/v0.38/spec/abci/abci++_methods#prepareproposal
+		if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
+			logInvalidVoteExtension(fmt.Sprintf("invalid AssetsLocked sequence: %v", err))
+			continue
+		}
+
+		// addVote assumes the given event is valid and does not perform
+		// any validation over it. We ensure validity by calling
+		// validateAssetsLockedEvents above.
+		for _, event := range voteExtension.AssetsLockedEvents {
+			voteCounter.addVote(&event, valVP, isBridgeVal)
+		}
+	}
+
+	// canonicalEvents returns the sequence of canonical AssetsLocked events
+	// and guarantees that the sequence is strictly increasing by 1.
+	return voteCounter.canonicalEvents()
 }
 
 // assetsLockedVoteCounter is a helper structure that counts votes for
