@@ -1709,4 +1709,3 @@ func (male *mockAssetsLockedExtractor) CanonicalEvents(
 
 	return nil, args.Error(1)
 }
-
