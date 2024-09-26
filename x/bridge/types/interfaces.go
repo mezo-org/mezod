@@ -5,8 +5,9 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// ValidatorPrivilege is the privilege allowing a validator to participate
-// in the bridge.
+// ValidatorPrivilege represents the privilege of bridge validators that
+// have authority to attest bridging. The non-bridge validators validate
+// what bridge validators attested.
 const ValidatorPrivilege = "bridge"
 
 // ValidatorStore is an interface to the validator store.
