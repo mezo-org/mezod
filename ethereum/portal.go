@@ -10,14 +10,14 @@ import (
 
 // Definitions of contract names.
 const (
-	PortalContractName = "Portal"
+	BitcoinBridgeContractName = "BitcoinBridge"
 )
 
-// PortalChain represents a Mezo portal chain handle.
+// PortalChain represents a Mezo Portal chain handle.
 type PortalChain struct {
 	*baseChain
 
-	portal *contract.Portal
+	bitcoinBridge *contract.BitcoinBridge
 }
 
 // newPortalChain construct a new instance of the Mezo portal Ethereum chain
@@ -26,17 +26,17 @@ func newPortalChain(
 	config ethereum.Config,
 	baseChain *baseChain,
 ) (*PortalChain, error) {
-	portalAddress, err := config.ContractAddress(PortalContractName)
+	bitcoinBridgeAddress, err := config.ContractAddress(BitcoinBridgeContractName)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to resolve %s contract address: [%v]",
-			PortalContractName,
+			BitcoinBridgeContractName,
 			err,
 		)
 	}
 
-	portal, err := contract.NewPortal(
-		portalAddress,
+	bitcoinBridge, err := contract.NewBitcoinBridge(
+		bitcoinBridgeAddress,
 		baseChain.chainID,
 		baseChain.key,
 		baseChain.client,
@@ -53,7 +53,7 @@ func newPortalChain(
 	}
 
 	return &PortalChain{
-		baseChain: baseChain,
-		portal:    portal,
+		baseChain:     baseChain,
+		bitcoinBridge: bitcoinBridge,
 	}, nil
 }
