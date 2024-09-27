@@ -30,6 +30,8 @@ func NewClient(
 ) (*Client, error) {
 	connection, err := grpc.Dial(
 		serverAddress,
+		// TODO: Consider using TLS protocol so that the Mezo node and Ethereum
+		//       sidecar can be run on separate servers.
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(
 			grpc.ForceCodec(codec.NewProtoCodec(registry).GRPCCodec()),
