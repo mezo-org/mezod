@@ -48,6 +48,8 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	// The messages handled by the server contain custom types. Add codecs so
+	// that the messages can be marshaled/unmarshalled.
 	encoding.RegisterCodec(
 		codec.NewProtoCodec(clientCtx.InterfaceRegistry).GRPCCodec(),
 	)
