@@ -7,12 +7,11 @@ COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
 MEZO_BINARY = mezod
-MEZO_DIR = mezo
 BUILDDIR ?= $(CURDIR)/build
 HTTPS_GIT := https://github.com/mezo-org/mezod.git
 DOCKER := $(shell which docker)
-NAMESPACE := tharsishq
-PROJECT := mezo
+NAMESPACE := mezo-org
+PROJECT := mezod
 DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DOCKER_TAG := $(COMMIT_HASH)
