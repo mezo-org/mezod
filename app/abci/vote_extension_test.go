@@ -447,6 +447,35 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 			},
 			errContains: "",
 		},
+		{
+			name: "injected tx not present but regular txs are",
+			subHandlersFn: func() map[VoteExtensionPart]IVoteExtensionHandler {
+				subHandler := newMockVoteExtensionHandler()
+
+				subHandler.extendVoteHandler.On(
+					"call",
+					mock.Anything,
+					mock.Anything,
+				).Return(
+					&cmtabci.ResponseExtendVote{VoteExtension: []byte("part1")},
+					nil,
+				)
+
+				return map[VoteExtensionPart]IVoteExtensionHandler{
+					VoteExtensionPart(1): subHandler,
+				}
+			},
+			reqInjectedTx: nil,
+			reqChainTxs:   txsVector("tx1", "tx2"),
+			expectedSubHandlersTxs: map[VoteExtensionPart][][]byte{
+				VoteExtensionPart(1): append([][]byte{nil}, txsVector("tx1", "tx2")...),
+			},
+			expectedVE: &types.VoteExtension{
+				Height: s.requestHeight,
+				Parts:  map[uint32][]byte{1: []byte("part1")},
+			},
+			errContains: "",
+		},
 	}
 
 	for _, test := range tests {

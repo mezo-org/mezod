@@ -111,24 +111,30 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		voteExtensionParts := make(map[uint32][]byte)
 
 		// If the transaction vector for this block proposal is not empty, the
-		// first transaction must be the app-level pseudo-transaction injected
-		// during PrepareProposal. An empty transaction vector is a valid case
-		// and indicates that no pseudo-transaction was injected, most likely
-		// due to its size exceeding the maximum allowed block size.
+		// first transaction MAY be the app-level pseudo-transaction injected
+		// during PrepareProposal. If the first transaction does not unmarshal
+		// as an injected pseudo-transaction, that means the PrepareProposal
+		// handler did not inject it due to all proposal sub-handlers failing.
+		// In this case, the first transaction is a regular application-specific
+		// transaction. Moreover, an empty transaction vector is also a valid
+		// case and indicates that no pseudo-transaction was injected and there
+		// are no regular application-specific txs in the vector.
 		var injectedTx types.InjectedTx
+		var injectedTxOk bool
 		var regularTxs [][]byte
 		if len(req.Txs) > 0 {
 			if err := injectedTx.Unmarshal(req.Txs[0]); err != nil {
-				// If the transaction vector is not empty, the first
-				// transaction must be the injected pseudo-transaction
-				// and unmarshaling must succeed. If it fails, we cannot
-				// recover, so return an error.
-				return nil, fmt.Errorf("failed to unmarshal injected tx: %w", err)
+				// If the first transaction does not unmarshal as an injected
+				// pseudo-transaction, that means all transactions in the
+				// vector are regular chain transactions.
+				injectedTxOk = false
+				regularTxs = req.Txs
+			} else {
+				// If the first transaction unmarshals as an injected pseudo-transaction,
+				// regular transactions occur after the injected pseudo-transaction.
+				injectedTxOk = true
+				regularTxs = req.Txs[1:]
 			}
-
-			// Regular transactions are all application-specific transactions
-			// that occur after the injected pseudo-transaction.
-			regularTxs = req.Txs[1:]
 		}
 
 		for part, subHandler := range veh.subHandlers {
@@ -143,7 +149,7 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			// may be zero-length, which is a valid case. The sub-handler is
 			// responsible for handling this case.
 			var injectedTxPart []byte
-			if injectedTx.Parts != nil {
+			if injectedTxOk && injectedTx.Parts != nil {
 				injectedTxPart = injectedTx.Parts[uint32(part)]
 			}
 			subTxs := append([][]byte{injectedTxPart}, regularTxs...)
