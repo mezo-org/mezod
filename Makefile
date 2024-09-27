@@ -521,6 +521,14 @@ localnet-bin-clean:
 
 .PHONY: localnet-bin-init localnet-bin-start localnet-bin-clean
 
+###############################################################################
+###                         Local node binary-based                         ###
+###############################################################################
+
+localnode-bin-start:
+	./scripts/localnode-start.sh
+
+.PHONY: localnode-bin-start
 
 ###############################################################################
 ###                                Releasing                                ###
