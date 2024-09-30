@@ -71,8 +71,8 @@ func NewClient(
 // edge of the range.
 func (c *Client) GetAssetsLockedEvents(
 	ctx context.Context,
-	sequenceStart *sdkmath.Int,
-	sequenceEnd *sdkmath.Int,
+	sequenceStart sdkmath.Int,
+	sequenceEnd sdkmath.Int,
 ) ([]bridgetypes.AssetsLockedEvent, error) {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
 	defer cancel()
@@ -80,8 +80,8 @@ func (c *Client) GetAssetsLockedEvents(
 	sidecarClient := pb.NewEthereumSidecarClient(c.connection)
 
 	request := &pb.AssetsLockedEventsRequest{
-		SequenceStart: *sequenceStart,
-		SequenceEnd:   *sequenceEnd,
+		SequenceStart: sequenceStart,
+		SequenceEnd:   sequenceEnd,
 	}
 
 	response, err := sidecarClient.AssetsLockedEvents(ctxWithTimeout, request)
@@ -94,7 +94,7 @@ func (c *Client) GetAssetsLockedEvents(
 		events[i] = *event
 	}
 
-	err = validateAssetsLockedEvents(*sequenceStart, *sequenceEnd, events)
+	err = validateAssetsLockedEvents(sequenceStart, sequenceEnd, events)
 	if err != nil {
 		return nil, err
 	}

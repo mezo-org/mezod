@@ -363,8 +363,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				s.T(),
 				"GetAssetsLockedEvents",
 				s.ctx,
-				&sequenceStart,
-				&sequenceEnd,
+				sequenceStart,
+				sequenceEnd,
 			)
 
 			if len(test.errContains) == 0 {
@@ -661,8 +661,8 @@ func newMockEthereumSidecarClient() *mockEthereumSidecarClient {
 
 func (mesc *mockEthereumSidecarClient) GetAssetsLockedEvents(
 	ctx context.Context,
-	sequenceStart *sdkmath.Int,
-	sequenceEnd *sdkmath.Int,
+	sequenceStart sdkmath.Int,
+	sequenceEnd sdkmath.Int,
 ) ([]bridgetypes.AssetsLockedEvent, error) {
 	args := mesc.Called(ctx, sequenceStart, sequenceEnd)
 

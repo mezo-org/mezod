@@ -17,8 +17,8 @@ func NewClientMock() *ClientMock {
 
 func (cm *ClientMock) GetAssetsLockedEvents(
 	_ context.Context,
-	_ *sdkmath.Int,
-	_ *sdkmath.Int,
+	_ sdkmath.Int,
+	_ sdkmath.Int,
 ) ([]bridgetypes.AssetsLockedEvent, error) {
 	return nil, nil
 }
