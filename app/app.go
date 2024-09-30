@@ -208,6 +208,8 @@ type Mezo struct {
 	configurator module.Configurator
 
 	tpsCounter *tpsCounter
+
+	preBlockHandler *appabci.PreBlockHandler
 }
 
 // NewMezo returns a reference to a new initialized Ethermint application.
@@ -530,9 +532,9 @@ func (app *Mezo) setPostHandler() {
 
 func (app *Mezo) PreBlocker(
 	ctx sdk.Context,
-	_ *abci.RequestFinalizeBlock,
+	req *abci.RequestFinalizeBlock,
 ) (*sdk.ResponsePreBlock, error) {
-	return app.mm.PreBlock(ctx)
+	return app.preBlockHandler.PreBlocker(app.mm)(ctx, req)
 }
 
 func (app *Mezo) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
@@ -604,6 +606,8 @@ func (app *Mezo) setABCIExtensions() {
 		bridgeProposalHandler,
 	)
 	proposalHandler.SetHandlers(app.BaseApp)
+
+	app.preBlockHandler = appabci.NewPreBlockHandler()
 }
 
 // bridgeABCIHandlers returns the bridge ABCI handlers.
