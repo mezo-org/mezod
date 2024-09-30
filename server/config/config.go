@@ -99,9 +99,10 @@ var evmTracers = []string{"json", "markdown", "struct", "access_list"}
 type Config struct {
 	config.Config
 
-	EVM     EVMConfig     `mapstructure:"evm"`
-	JSONRPC JSONRPCConfig `mapstructure:"json-rpc"`
-	TLS     TLSConfig     `mapstructure:"tls"`
+	EVM             EVMConfig             `mapstructure:"evm"`
+	JSONRPC         JSONRPCConfig         `mapstructure:"json-rpc"`
+	TLS             TLSConfig             `mapstructure:"tls"`
+	EthereumSidecar EthereumSidecarConfig `mapstructure:"ethereum-sidecar.client"`
 }
 
 // EVMConfig defines the application configuration values for the EVM.
@@ -163,6 +164,14 @@ type TLSConfig struct {
 	KeyPath string `mapstructure:"key-path"`
 }
 
+// Defines the configuration for the Ethereum sidecar configuration.
+type EthereumSidecarConfig struct {
+	// ServerAddress is the address of the Ethereum sidecar server to connect to.
+	ServerAddress string `mapstructure:"server-address"`
+	// RequestTimeout is the timeout for requests to the Ethereum sidecar server.
+	RequestTimeout time.Duration `mapstructure:"request-timeout"`
+}
+
 // AppConfig helps to override default appConfig template and configs.
 // return "", nil if no custom configuration is required for the application.
 func AppConfig(denom string) (string, interface{}) {
@@ -187,10 +196,11 @@ func AppConfig(denom string) (string, interface{}) {
 	}
 
 	customAppConfig := Config{
-		Config:  *srvCfg,
-		EVM:     *DefaultEVMConfig(),
-		JSONRPC: *DefaultJSONRPCConfig(),
-		TLS:     *DefaultTLSConfig(),
+		Config:          *srvCfg,
+		EVM:             *DefaultEVMConfig(),
+		JSONRPC:         *DefaultJSONRPCConfig(),
+		TLS:             *DefaultTLSConfig(),
+		EthereumSidecar: *DefaultEthereumSidecarConfig(),
 	}
 
 	customAppTemplate := config.DefaultConfigTemplate + DefaultConfigTemplate
@@ -201,10 +211,11 @@ func AppConfig(denom string) (string, interface{}) {
 // DefaultConfig returns server's default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Config:  *config.DefaultConfig(),
-		EVM:     *DefaultEVMConfig(),
-		JSONRPC: *DefaultJSONRPCConfig(),
-		TLS:     *DefaultTLSConfig(),
+		Config:          *config.DefaultConfig(),
+		EVM:             *DefaultEVMConfig(),
+		JSONRPC:         *DefaultJSONRPCConfig(),
+		TLS:             *DefaultTLSConfig(),
+		EthereumSidecar: *DefaultEthereumSidecarConfig(),
 	}
 }
 
@@ -335,6 +346,26 @@ func (c TLSConfig) Validate() error {
 	return nil
 }
 
+// DefaultEthereumSidecarConfig returns the default Ethereum sidecar configuration.
+func DefaultEthereumSidecarConfig() *EthereumSidecarConfig {
+	return &EthereumSidecarConfig{
+		ServerAddress:  DefaultEthereumSidecarServerAddress,
+		RequestTimeout: DefaultEthereumSidecarRequestTimeout,
+	}
+}
+
+func (c EthereumSidecarConfig) Validate() error {
+	if c.ServerAddress == "" {
+		return fmt.Errorf("ethereum sidecar server address cannot be empty")
+	}
+
+	if c.RequestTimeout < 0 {
+		return fmt.Errorf("ethereum sidecar request timeout cannot be negative")
+	}
+
+	return nil
+}
+
 // GetConfig returns a fully parsed Config object.
 func GetConfig(v *viper.Viper) (Config, error) {
 	cfg, err := config.GetConfig(v)
@@ -371,6 +402,10 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			CertificatePath: v.GetString("tls.certificate-path"),
 			KeyPath:         v.GetString("tls.key-path"),
 		},
+		EthereumSidecar: EthereumSidecarConfig{
+			ServerAddress:  v.GetString("ethereum-sidecar.client.server-address"),
+			RequestTimeout: v.GetDuration("ethereum-sidecar.client.request-timeout"),
+		},
 	}, nil
 }
 
@@ -395,6 +430,10 @@ func (c Config) ValidateBasic() error {
 
 	if err := c.TLS.Validate(); err != nil {
 		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid tls config value: %s", err.Error())
+	}
+
+	if err := c.EthereumSidecar.Validate(); err != nil {
+		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid ethereum sidecar config value: %s", err.Error())
 	}
 
 	return c.Config.ValidateBasic()

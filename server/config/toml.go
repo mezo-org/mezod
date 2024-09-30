@@ -106,4 +106,16 @@ certificate-path = "{{ .TLS.CertificatePath }}"
 
 # Key path defines the key.pem file path for the TLS configuration.
 key-path = "{{ .TLS.KeyPath }}"
+
+###############################################################################
+###                     Ethereum Sidecar Configuration                      ###
+###############################################################################
+
+[ethereum-sidecar.client]
+
+# Server address defines the address of the Ethereum sidecar server to connect to.
+server-address = "{{ .EthereumSidecar.ServerAddress }}"
+
+# Request timeout defines the timeout for requests to the Ethereum sidecar server.
+request-timeout = "{{ .EthereumSidecar.RequestTimeout }}"
 `
