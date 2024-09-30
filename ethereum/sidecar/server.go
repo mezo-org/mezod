@@ -43,8 +43,8 @@ type Server struct {
 	// TODO: When we add the real implementation of the server, make sure the
 	//       `AssetsLocked` events returned from the server will pass the
 	//       validation in the Ethereum server client.
-	events      []bridgetypes.AssetsLockedEvent
-	grpcServer  *grpc.Server
+	events     []bridgetypes.AssetsLockedEvent
+	grpcServer *grpc.Server
 
 	logger log.Logger
 }
