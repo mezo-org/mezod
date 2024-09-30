@@ -524,6 +524,10 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 // AssetsLocked events. It is responsible for determining the sequence of
 // canonical AssetsLocked events supported by 2/3+ of the bridge validators
 // and confirmed by 2/3+ of the non-bridge validators.
+//
+// WARNING: The bridgeValsTotalVP and nonBridgeValsTotalVP fields are valid if
+// and only if the registerVoter method has been called based on the result of
+// ExtendedCommitInfo.Votes.
 type assetsLockedVoteCounter struct {
 	// A map of AssetsLocked vote infos indexed by their sequence number.
 	// In case validators have a different view of the world, the given
