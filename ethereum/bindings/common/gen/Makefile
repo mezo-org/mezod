@@ -3,6 +3,7 @@ artifacts_dir := ${root_dir}/tmp/contracts/${npm_package_name}/deployments/${bin
 
 $(info Package              ${npm_package_name})
 $(info Artifacts directory  ${artifacts_dir})
+$(info Required contracts   ${required_contracts})
 
 # Go bindings generated for the solidity contracts.
 contract_files = $(addprefix contract/,$(addsuffix .go,${required_contracts}))

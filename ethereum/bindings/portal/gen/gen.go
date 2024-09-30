@@ -8,9 +8,9 @@ import (
 //go:generate make
 
 var (
-	//go:embed _address/Portal
-	portalAddressFileContent string
+	//go:embed _address/BitcoinBridge
+	bitcoinBridgeAddressFileContent string
 
-	// PortalAddress is a Portal contract's address read from the NPM package.
-	PortalAddress = strings.TrimSpace(portalAddressFileContent)
+	// BitcoinBridgeAddress is a Bitcoin Bridge contract's address read from the NPM package.
+	BitcoinBridgeAddress = strings.TrimSpace(bitcoinBridgeAddressFileContent)
 )

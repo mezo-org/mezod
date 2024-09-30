@@ -521,6 +521,14 @@ localnet-bin-clean:
 
 .PHONY: localnet-bin-init localnet-bin-start localnet-bin-clean
 
+###############################################################################
+###                         Local node binary-based                         ###
+###############################################################################
+
+localnode-bin-start:
+	./scripts/localnode-start.sh
+
+.PHONY: localnode-bin-start
 
 ###############################################################################
 ###                                Releasing                                ###
@@ -622,7 +630,8 @@ create-contracts-json:
 # bindings_environment determines the network type that should be used for contract
 # binding generation. The default value is mainnet.
 ifndef bindings_environment
-override bindings_environment = mainnet
+# TODO: Once we are production ready, this has to be changed to mainnet.
+override bindings_environment = sepolia
 endif
 
 export bindings_environment
