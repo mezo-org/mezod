@@ -37,7 +37,8 @@ func NewPreBlockHandler() *PreBlockHandler {
 // proposal phase and can perform state changes based on these transactions.
 //
 // Dev note: Returning an error from this function will make the FinalizeBlock
-// ABCI request fail. Make sure you know what you are doing before returning an error.
+// ABCI request fail and lead to an unrecoverable consensus failure.
+// Make sure you know what you are doing before returning an error.
 //
 // Invariants summary:
 //  1. Calls only the module manager's PreBlock if vote extensions are not enabled.
@@ -115,8 +116,8 @@ func (pbh *PreBlockHandler) PreBlocker(mm *module.Manager) sdk.PreBlocker {
 			if err != nil {
 				// The vote extension and proposal phases should guarantee the
 				// pre-block stage does not encounter any errors. If it does,
-				// something went really wrong unexpectedly and the error
-				// should bubble up.
+				// something went really wrong unexpectedly. The error should
+				// bubble up and cause an unrecoverable consensus failure.
 				return nil, fmt.Errorf(
 					"pre-blocker for part %v failed: %w",
 					part,
