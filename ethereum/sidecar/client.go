@@ -16,6 +16,20 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
+var (
+	// ErrInvalidEventsSequence is the error returned when the returned sequence
+	// of events is invalid.
+	ErrInvalidEventsSequence = fmt.Errorf(
+		"server returned invalid events sequence",
+	)
+
+	// ErrRequestedBoundariesViolated is the error returned when the sequence of
+	// events returned from the server violate the requested boundaries.
+	ErrRequestedBoundariesViolated = fmt.Errorf(
+		"server returned events sequence violating requested boundaries",
+	)
+)
+
 // Client connects to the Ethereum sidecar server and queries for the
 // `AssetsLocked` events.
 type Client struct {
@@ -80,12 +94,35 @@ func (c *Client) GetAssetsLockedEvents(
 		events[i] = *event
 	}
 
-	// Make sure the events form a sequence strictly increasing by 1.
-	if !bridgetypes.AssetsLockedEvents(events).IsStrictlyIncreasingSequence() {
-		return nil, fmt.Errorf("events do not form a proper sequence")
+	err = validateAssetsLockedEvents(*sequenceStart, *sequenceEnd, events)
+	if err != nil {
+		return nil, err
 	}
 
 	return events, nil
+}
+
+// validateAssetsLockedEvents validates the AssetsLocked events returned from
+// the Ethereum sidecar server.
+func validateAssetsLockedEvents(
+	sequenceStart sdkmath.Int,
+	sequenceEnd sdkmath.Int,
+	events []bridgetypes.AssetsLockedEvent,
+) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	if !bridgetypes.AssetsLockedEvents(events).IsValid() {
+		return ErrInvalidEventsSequence
+	}
+
+	if (!sequenceStart.IsNil() && events[0].Sequence.LT(sequenceStart)) ||
+		(!sequenceEnd.IsNil() && events[len(events)-1].Sequence.GTE(sequenceEnd)) {
+		return ErrRequestedBoundariesViolated
+	}
+
+	return nil
 }
 
 func (c *Client) Close() error {

@@ -1,5 +1,26 @@
 package types
 
+import (
+	sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+// IsValid returns true if the event is valid. An event is considered valid if
+// its sequence number is positive, its recipient address is a valid Bech32
+// account address, and the amount of locked assets is positive.
+func (ale AssetsLockedEvent) IsValid() bool {
+	sequenceValid := !ale.Sequence.IsNil() && ale.Sequence.IsPositive()
+	if !sequenceValid {
+		return false
+	}
+
+	if _, err := sdk.AccAddressFromBech32(ale.Recipient); err != nil {
+		return false
+	}
+
+	amountValid := !ale.Amount.IsNil() && ale.Amount.IsPositive()
+	return amountValid
+}
+
 // AssetsLockedEvents is a slice of AssetsLockedEvent.
 type AssetsLockedEvents []AssetsLockedEvent
 
@@ -17,4 +38,17 @@ func (ale AssetsLockedEvents) IsStrictlyIncreasingSequence() bool {
 	}
 
 	return true
+}
+
+// IsValid returns true if all events in the slice are valid and their sequence
+// numbers form a sequence strictly increasing by 1. See AssetsLockedEvent.IsValid
+// and AssetsLockedEvents.IsStrictlyIncreasingSequence for more details.
+func (ale AssetsLockedEvents) IsValid() bool {
+	for _, event := range ale {
+		if !event.IsValid() {
+			return false
+		}
+	}
+
+	return ale.IsStrictlyIncreasingSequence()
 }
