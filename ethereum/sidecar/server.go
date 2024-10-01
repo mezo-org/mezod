@@ -3,11 +3,12 @@ package sidecar
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"google.golang.org/grpc"
 

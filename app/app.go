@@ -589,8 +589,7 @@ func (app *Mezo) setABCIExtensions(
 	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
 ) {
 	// Create the bridge ABCI handlers.
-	bridgeVoteExtensionHandler, bridgeProposalHandler :=
-		app.bridgeABCIHandlers(ethereumSidecarClient)
+	bridgeVoteExtensionHandler, bridgeProposalHandler := app.bridgeABCIHandlers(ethereumSidecarClient)
 
 	// Create and attach the app-level composite vote extension handler for
 	// ExtendVote and VerifyVoteExtension ABCI requests.
