@@ -96,7 +96,19 @@ func (pbh *PreBlockHandler) PreBlocker(mm *module.Manager) sdk.PreBlocker {
 			}
 		}
 
-		for part, subHandler := range pbh.subHandlers {
+		// Unlike in app-level VoteExtensionHandler and ProposalHandler, we
+		// cannot think about running the pre-block sub-handlers in parallel.
+		// This is because pre-block sub-handlers may change the state and
+		// state changes have to occur sequentially. To avoid race, we guarantee
+		// the sub-handlers are executed in a deterministic order.
+		subHandlerKeys := maps.Keys(pbh.subHandlers)
+		slices.Sort(subHandlerKeys)
+
+		for _, part := range subHandlerKeys {
+			// No need to check if the sub-handler exists. We know it exists
+			// because we iterate over the keys of the sub-handler map.
+			subHandler := pbh.subHandlers[part]
+
 			// Replace the app-level pseudo-transaction with the part-specific
 			// pseudo-transaction. Note that the part-specific pseudo-transaction
 			// may be zero-length, which is a valid case. The sub-handler is
