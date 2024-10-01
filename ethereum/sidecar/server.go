@@ -3,13 +3,12 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
 
-	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	"google.golang.org/grpc"
 
 	"cosmossdk.io/log"
@@ -87,24 +86,20 @@ func (s *Server) observeEvents(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			//nolint:gosec
-			eventsCount := rand.Intn(11) // [0, 10] events
+			eventsCount := 10
 
 			for i := 0; i < eventsCount; i++ {
 				s.sequenceTip = s.sequenceTip.Add(sdkmath.OneInt())
 
 				amount := new(big.Int).Mul(
-					//nolint:gosec
-					big.NewInt(rand.Int63n(10)+1),
+					s.sequenceTip.Mul(sdkmath.NewInt(10)).BigInt(),
 					precision,
 				)
 
-				key, err := ethsecp256k1.GenerateKey()
-				if err != nil {
-					panic(err)
-				}
-
-				recipient := sdk.AccAddress(key.PubKey().Address().Bytes())
+				// Just an arbitrary address for testing purposes.
+				recipient := sdk.AccAddress(
+					common.HexToAddress("0x06EeCc4C2fAC5548a5d09e1905F8Dc21AA01E13A").Bytes(),
+				)
 
 				event := bridgetypes.AssetsLockedEvent{
 					Sequence:  s.sequenceTip,
