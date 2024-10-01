@@ -102,3 +102,13 @@ variable "global_external_ip_addresses" {
     "mezo-staging-blockscout-app-external-ip",
   ]
 }
+
+variable "gcf" {
+  type        = map(string)
+  description = "Cloud functions info"
+
+  default = {
+    archive_bucket_name = "mezo-staging-gcf-archive-bucket"
+    faucet_function_name = "mezo-staging-faucet-function"
+  }
+}

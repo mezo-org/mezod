@@ -1,36 +1,37 @@
-resource "random_id" "default" {
-  byte_length = 8
-}
-
-resource "google_storage_bucket" "default" {
-  name                        = "${random_id.default.hex}-gcf-source-bucket" # Every bucket name must be globally unique
+resource "google_storage_bucket" "gcf_archive" {
+  name                        = var.gcf.archive_bucket_name
   location                    = "US"
   uniform_bucket_level_access = true
+  force_destroy = true
+  versioning {
+    enabled = true
+  }
 }
 
-data "archive_file" "default" {
+data "archive_file" "faucet_function" {
   type        = "zip"
-  output_path = "/tmp/function-source.zip"
   source_dir  = "gcf/faucet/"
-}
-resource "google_storage_bucket_object" "object" {
-  name   = "function-source.zip"
-  bucket = google_storage_bucket.default.name
-  source = data.archive_file.default.output_path # Add path to the zipped function source code
+  output_path = "archive/${var.gcf.faucet_function_name}.zip"
 }
 
-resource "google_cloudfunctions2_function" "default" {
-  name        = "faucet"
+resource "google_storage_bucket_object" "faucet_function" {
+  name   = "${var.gcf.faucet_function_name}.zip"
+  bucket = google_storage_bucket.gcf_archive.name
+  source = data.archive_file.faucet_function.output_path
+}
+
+resource "google_cloudfunctions2_function" "faucet" {
+  name        = var.gcf.faucet_function_name
   location    = var.region.name
   description = "the faucet's distribute function"
 
   build_config {
     runtime     = "go122"
-    entry_point = "distribute" # Set the entry point
+    entry_point = "Distribute"
     source {
       storage_source {
-        bucket = google_storage_bucket.default.name
-        object = google_storage_bucket_object.object.name
+        bucket = google_storage_bucket.gcf_archive.name
+        object = google_storage_bucket_object.faucet_function.name
       }
     }
   }
@@ -39,16 +40,28 @@ resource "google_cloudfunctions2_function" "default" {
     max_instance_count = 1
     available_memory   = "256M"
     timeout_seconds    = 60
+    environment_variables = {
+      RPC_URL     = local.faucet_config.rpc_url
+      PRIVATE_KEY = local.faucet_config.private_key
+    }
   }
 }
 
 resource "google_cloud_run_service_iam_member" "member" {
-  location = google_cloudfunctions2_function.default.location
-  service  = google_cloudfunctions2_function.default.name
+  location = google_cloudfunctions2_function.faucet.location
+  service  = google_cloudfunctions2_function.faucet.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
 output "function_uri" {
-  value = google_cloudfunctions2_function.default.service_config[0].uri
+  value = google_cloudfunctions2_function.faucet.service_config[0].uri
+}
+
+# TODO: Setup yaml-based faucet_config with OnePassword secret management
+locals {
+  faucet_config = {
+    rpc_url = "http://mezo-node-0.test.mezo.org:8545"
+    private_key = ""
+  }
 }
