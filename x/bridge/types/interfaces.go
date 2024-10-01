@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -22,4 +23,15 @@ type ValidatorStore interface {
 		ctx sdk.Context,
 		privilege string,
 	) []sdk.ConsAddress
+}
+
+type BankKeeper interface {
+	MintCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
+
+	SendCoinsFromModuleToAccount(
+		ctx context.Context,
+		senderModule string,
+		recipientAddr sdk.AccAddress,
+		amt sdk.Coins,
+	) error
 }

@@ -162,7 +162,8 @@ var (
 	maccPerms = map[string][]string{
 		authtypes.FeeCollectorName: nil,
 		poatypes.ModuleName:        nil,
-		evmtypes.ModuleName:        {authtypes.Minter, authtypes.Burner}, // used for secure addition and subtraction of balance using module account
+		evmtypes.ModuleName:        {authtypes.Minter, authtypes.Burner},
+		bridgetypes.ModuleName:     {authtypes.Minter, authtypes.Burner},
 	}
 
 	// module accounts that are allowed to receive tokens
@@ -383,7 +384,11 @@ func NewMezo(
 	}
 	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
 
-	app.BridgeKeeper = bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
+	app.BridgeKeeper = bridgekeeper.NewKeeper(
+		appCodec,
+		keys[bridgetypes.StoreKey],
+		app.BankKeeper,
+	)
 
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.

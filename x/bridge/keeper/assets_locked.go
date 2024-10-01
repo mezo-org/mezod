@@ -2,8 +2,10 @@ package keeper
 
 import (
 	"cosmossdk.io/math"
+	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // GetAssetsLockedSequenceTip returns the current sequence tip for the
@@ -28,11 +30,7 @@ func (k Keeper) GetAssetsLockedSequenceTip(ctx sdk.Context) math.Int {
 // SetAssetsLockedSequenceTip sets the current sequence tip for the AssetsLocked
 // events. The tip denotes the sequence number of the last event processed by
 // the x/bridge module.
-//
-//nolint:all
-//
-// TODO: Make it package-private once minting based on AssetsLocked events is implemented.
-func (k Keeper) SetAssetsLockedSequenceTip(
+func (k Keeper) setAssetsLockedSequenceTip(
 	ctx sdk.Context,
 	sequenceTip math.Int,
 ) {
@@ -44,10 +42,64 @@ func (k Keeper) SetAssetsLockedSequenceTip(
 	ctx.KVStore(k.storeKey).Set(types.AssetsLockedSequenceTipKey, bz)
 }
 
-// TODO: Implement the AcceptAssetsLocked method.
+// AcceptAssetsLocked processes the given AssetsLocked events by minting the
+// corresponding amount of coins and sending them to the respective recipients.
+// A must-have precondition for this function is that the sequence number
+// of the first event in the slice is exactly one greater than the current
+// sequence tip held in the state. The function returns an error if this
+// precondition is not met. If the processing is successful, the current
+// sequence tip in the state is updated to the sequence number of the last
+// event in the slice.
 func (k Keeper) AcceptAssetsLocked(
-	_ sdk.Context,
-	_ []types.AssetsLockedEvent,
+	ctx sdk.Context,
+	events []types.AssetsLockedEvent,
 ) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	currentSequenceTip := k.GetAssetsLockedSequenceTip(ctx)
+	expectedSequenceStart := currentSequenceTip.AddRaw(1)
+	if sequenceStart := events[0].Sequence; !expectedSequenceStart.Equal(sequenceStart) {
+		return fmt.Errorf(
+			"unexpected AssetsLocked sequence start; expected %s, got %s",
+			expectedSequenceStart,
+			sequenceStart,
+		)
+	}
+
+	toMint := math.ZeroInt()
+	for _, event := range events {
+		toMint = toMint.Add(event.Amount)
+	}
+
+	err := k.bankKeeper.MintCoins(
+		ctx,
+		types.ModuleName,
+		sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, toMint)),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to mint coins: %w", err)
+	}
+
+	for _, event := range events {
+		recipient, err := sdk.AccAddressFromBech32(event.Recipient)
+		if err != nil {
+			return fmt.Errorf("failed to parse recipient address: %w", err)
+		}
+
+		err = k.bankKeeper.SendCoinsFromModuleToAccount(
+			ctx,
+			types.ModuleName,
+			recipient,
+			sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, event.Amount)),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to send coins: %w", err)
+		}
+	}
+
+	k.setAssetsLockedSequenceTip(ctx, events[len(events)-1].Sequence)
+
 	return nil
 }
