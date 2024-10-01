@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
 
-	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/ethereum/go-ethereum/common"
+
 	"google.golang.org/grpc"
 
 	"cosmossdk.io/log"
@@ -18,6 +18,9 @@ import (
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
+
+// precision is the number of decimal places in the amount of assets locked.
+var precision = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 
 var (
 	// ErrSequencePointerNil is the error returned when the start or end of the
@@ -37,8 +40,11 @@ var (
 type Server struct {
 	sequenceTip sdkmath.Int
 	eventsMutex sync.RWMutex
-	events      []bridgetypes.AssetsLockedEvent
-	grpcServer  *grpc.Server
+	// TODO: When we add the real implementation of the server, make sure the
+	//       `AssetsLocked` events returned from the server will pass the
+	//       validation in the Ethereum server client.
+	events     []bridgetypes.AssetsLockedEvent
+	grpcServer *grpc.Server
 
 	logger log.Logger
 }
@@ -81,24 +87,20 @@ func (s *Server) observeEvents(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			//nolint:gosec
-			eventsCount := rand.Intn(11) // [0, 10] events
+			eventsCount := 10
 
 			for i := 0; i < eventsCount; i++ {
 				s.sequenceTip = s.sequenceTip.Add(sdkmath.OneInt())
 
 				amount := new(big.Int).Mul(
-					//nolint:gosec
-					big.NewInt(rand.Int63n(10)+1),
+					s.sequenceTip.Mul(sdkmath.NewInt(10)).BigInt(),
 					precision,
 				)
 
-				key, err := ethsecp256k1.GenerateKey()
-				if err != nil {
-					panic(err)
-				}
-
-				recipient := sdk.AccAddress(key.PubKey().Address().Bytes())
+				// Just an arbitrary address for testing purposes.
+				recipient := sdk.AccAddress(
+					common.HexToAddress("0x06EeCc4C2fAC5548a5d09e1905F8Dc21AA01E13A").Bytes(),
+				)
 
 				event := bridgetypes.AssetsLockedEvent{
 					Sequence:  s.sequenceTip,

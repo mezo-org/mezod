@@ -101,7 +101,6 @@ import (
 	_ "github.com/mezo-org/mezod/client/docs/statik"
 
 	"github.com/mezo-org/mezod/app/ante"
-	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/x/bridge"
 	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
 	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
@@ -223,6 +222,7 @@ func NewMezo(
 	homePath string,
 	invCheckPeriod uint,
 	encodingConfig simappparams.EncodingConfig,
+	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
 	appOpts servertypes.AppOptions,
 	baseAppOptions ...func(*baseapp.BaseApp),
 ) *Mezo {
@@ -481,7 +481,7 @@ func NewMezo(
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
 
-	app.setABCIExtensions()
+	app.setABCIExtensions(ethereumSidecarClient)
 
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
@@ -592,9 +592,12 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 
 // setABCIExtensions sets the ABCI++ extensions on the application.
 // This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
-func (app *Mezo) setABCIExtensions() {
+func (app *Mezo) setABCIExtensions(
+	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
+) {
 	// Create the bridge ABCI handlers.
-	bridgeVoteExtensionHandler, bridgeProposalHandler, bridgePreBlockHandler := app.bridgeABCIHandlers()
+	bridgeVoteExtensionHandler, bridgeProposalHandler, bridgePreBlockHandler :=
+		app.bridgeABCIHandlers(ethereumSidecarClient)
 
 	// Create and attach the app-level composite vote extension handler for
 	// ExtendVote and VerifyVoteExtension ABCI requests.
@@ -620,17 +623,16 @@ func (app *Mezo) setABCIExtensions() {
 
 // bridgeABCIHandlers returns the bridge ABCI handlers.
 // This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
-func (app *Mezo) bridgeABCIHandlers() (
+func (app *Mezo) bridgeABCIHandlers(
+	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
+) (
 	*bridgeabci.VoteExtensionHandler,
 	*bridgeabci.ProposalHandler,
 	*bridgeabci.PreBlockHandler,
 ) {
-	// TODO: Instantiate a real sidecar client.
-	sidecarClient := ethsidecar.RunTestSidecar(context.Background())
-
 	voteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
 		app.Logger(),
-		sidecarClient,
+		ethereumSidecarClient,
 		app.BridgeKeeper,
 	)
 

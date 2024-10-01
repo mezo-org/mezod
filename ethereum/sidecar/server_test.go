@@ -40,7 +40,7 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 			events: []bridgetypes.AssetsLockedEvent{
 				{
 					Sequence:  sdkmath.NewInt(1),
-					Recipient: "aaa",
+					Recipient: "mezo15s2srmx2rgnwgsrys3xn0hhskrsm0c8yxra9nx",
 					Amount:    sdkmath.NewInt(111),
 				},
 			},
@@ -52,7 +52,7 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 				Events: []*bridgetypes.AssetsLockedEvent{
 					{
 						Sequence:  sdkmath.NewInt(1),
-						Recipient: "aaa",
+						Recipient: "mezo15s2srmx2rgnwgsrys3xn0hhskrsm0c8yxra9nx",
 						Amount:    sdkmath.NewInt(111),
 					},
 				},
@@ -63,7 +63,7 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 			events: []bridgetypes.AssetsLockedEvent{
 				{
 					Sequence:  sdkmath.NewInt(3),
-					Recipient: "ccc",
+					Recipient: "mezo1jmpqlddh3vdrm4vhpwce6aqydrt0c0fvt4rhee",
 					Amount:    sdkmath.NewInt(333),
 				},
 			},
@@ -75,7 +75,7 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 				Events: []*bridgetypes.AssetsLockedEvent{
 					{
 						Sequence:  sdkmath.NewInt(3),
-						Recipient: "ccc",
+						Recipient: "mezo1jmpqlddh3vdrm4vhpwce6aqydrt0c0fvt4rhee",
 						Amount:    sdkmath.NewInt(333),
 					},
 				},
@@ -86,12 +86,12 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 			events: []bridgetypes.AssetsLockedEvent{
 				{
 					Sequence:  sdkmath.NewInt(1),
-					Recipient: "aaa",
+					Recipient: "mezo15s2srmx2rgnwgsrys3xn0hhskrsm0c8yxra9nx",
 					Amount:    sdkmath.NewInt(111),
 				},
 				{
 					Sequence:  sdkmath.NewInt(2),
-					Recipient: "bbb",
+					Recipient: "mezo192zvuft435tr0eqqhw3hktmc0xdx2n8zrh7jvn",
 					Amount:    sdkmath.NewInt(222),
 				},
 			},
@@ -103,12 +103,12 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 				Events: []*bridgetypes.AssetsLockedEvent{
 					{
 						Sequence:  sdkmath.NewInt(1),
-						Recipient: "aaa",
+						Recipient: "mezo15s2srmx2rgnwgsrys3xn0hhskrsm0c8yxra9nx",
 						Amount:    sdkmath.NewInt(111),
 					},
 					{
 						Sequence:  sdkmath.NewInt(2),
-						Recipient: "bbb",
+						Recipient: "mezo192zvuft435tr0eqqhw3hktmc0xdx2n8zrh7jvn",
 						Amount:    sdkmath.NewInt(222),
 					},
 				},
@@ -119,22 +119,22 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 			events: []bridgetypes.AssetsLockedEvent{
 				{
 					Sequence:  sdkmath.NewInt(1),
-					Recipient: "aaa",
+					Recipient: "mezo15s2srmx2rgnwgsrys3xn0hhskrsm0c8yxra9nx",
 					Amount:    sdkmath.NewInt(111),
 				},
 				{
 					Sequence:  sdkmath.NewInt(2),
-					Recipient: "bbb",
+					Recipient: "mezo192zvuft435tr0eqqhw3hktmc0xdx2n8zrh7jvn",
 					Amount:    sdkmath.NewInt(222),
 				},
 				{
 					Sequence:  sdkmath.NewInt(3),
-					Recipient: "ccc",
+					Recipient: "mezo1jmpqlddh3vdrm4vhpwce6aqydrt0c0fvt4rhee",
 					Amount:    sdkmath.NewInt(333),
 				},
 				{
 					Sequence:  sdkmath.NewInt(4),
-					Recipient: "ddd",
+					Recipient: "mezo1rfm3xtgt9avfw7h568fuc27t76fx3m0gkv6qjw",
 					Amount:    sdkmath.NewInt(444),
 				},
 			},
@@ -146,12 +146,12 @@ func TestServer_AssetsLockedEvents(t *testing.T) {
 				Events: []*bridgetypes.AssetsLockedEvent{
 					{
 						Sequence:  sdkmath.NewInt(2),
-						Recipient: "bbb",
+						Recipient: "mezo192zvuft435tr0eqqhw3hktmc0xdx2n8zrh7jvn",
 						Amount:    sdkmath.NewInt(222),
 					},
 					{
 						Sequence:  sdkmath.NewInt(3),
-						Recipient: "ccc",
+						Recipient: "mezo1jmpqlddh3vdrm4vhpwce6aqydrt0c0fvt4rhee",
 						Amount:    sdkmath.NewInt(333),
 					},
 				},

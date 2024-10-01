@@ -25,6 +25,7 @@ import (
 	"github.com/mezo-org/mezod/app"
 	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	"github.com/mezo-org/mezod/encoding"
+	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/testutil"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	mezotypes "github.com/mezo-org/mezod/types"
@@ -168,6 +169,7 @@ func setupChain(localMinGasPricesStr, chainID string) {
 		app.DefaultNodeHome,
 		5,
 		encoding.MakeConfig(app.ModuleBasics),
+		ethsidecar.NewClientMock(),
 		simutils.NewAppOptionsWithFlagHome(app.DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 		baseapp.SetMinGasPrices(localMinGasPricesStr),
