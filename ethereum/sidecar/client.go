@@ -10,7 +10,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec/types"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"cosmossdk.io/log"
@@ -69,29 +68,28 @@ func NewClient(
 	}
 
 	go func() {
-		c.mutex.Lock()
-		defer c.mutex.Unlock()
+		// Test the connection to the Ethereum sidecar server by verifying we
+		// can successfully execute `GetAssetsLockedEvents`.
+		ctxWithTimeout, cancel := context.WithTimeout(
+			context.Background(),
+			requestTimeout,
+		)
+		defer cancel()
 
-		state := c.connection.GetState()
-		if state == connectivity.Idle {
-			ctx, cancelCtx := context.WithTimeout(
-				context.Background(),
-				requestTimeout,
+		_, err := c.GetAssetsLockedEvents(
+			ctxWithTimeout,
+			sdkmath.NewInt(1),
+			sdkmath.NewInt(2),
+		)
+		if err != nil {
+			logger.Error(
+				"ethereum sidecar connection test failed; possible " +
+					"problem with sidecar configuration or connectivity",
 			)
-			defer cancelCtx()
-
-			c.connection.Connect()
-
-			if c.connection.WaitForStateChange(ctx, state) {
-				logger.Info(
-					"ethereum sidecar connection test completed successfully",
-				)
-			} else {
-				logger.Error(
-					"ethereum sidecar connection test failed; possible " +
-						"problem with sidecar configuration or connectivity",
-				)
-			}
+		} else {
+			logger.Info(
+				"ethereum sidecar connection test completed successfully",
+			)
 		}
 	}()
 
