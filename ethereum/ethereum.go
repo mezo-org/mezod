@@ -13,9 +13,15 @@ import (
 	"github.com/keep-network/keep-common/pkg/chain/ethereum"
 	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	"github.com/keep-network/keep-common/pkg/rate"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/contract"
 )
 
 var logger = log.Logger("mezo-ethereum")
+
+// Definitions of contract names.
+const (
+	BitcoinBridgeContractName = "BitcoinBridge"
+)
 
 // baseChain represents a base, non-application-specific chain handle. It
 // provides the implementation of generic features like balance monitor,
@@ -44,15 +50,20 @@ type baseChain struct {
 	transactionMutex *sync.Mutex
 }
 
-// Connect creates Portal Ethereum chain handle.
-// TODO: Test the connectivity with the `Portal` smart contract. Due to the
-//
-//	outdated go-ethereum package it could not be tested so far.
-func ConnectPortal(
+// Chain represents Ethereum chain handle.
+type Chain struct {
+	*baseChain
+
+	bitcoinBridge *contract.BitcoinBridge
+}
+
+// Connect creates Ethereum chain handle.
+// TODO: Test the connectivity with the `Mezo Portal` smart contract(s).
+func Connect(
 	ctx context.Context,
 	config ethereum.Config,
 ) (
-	*PortalChain,
+	*Chain,
 	error,
 ) {
 	client, err := ethclient.Dial(config.URL)
@@ -72,15 +83,15 @@ func ConnectPortal(
 		)
 	}
 
-	portalChain, err := newPortalChain(config, baseChain)
+	chain, err := newChain(config, baseChain)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"could not create portal chain handle: [%v]",
+			"could not create chain handle: [%v]",
 			err,
 		)
 	}
 
-	return portalChain, nil
+	return chain, nil
 }
 
 // newChain construct a new instance of the Ethereum chain handle.
@@ -146,6 +157,43 @@ func newBaseChain(
 		nonceManager:     nonceManager,
 		miningWaiter:     miningWaiter,
 		transactionMutex: transactionMutex,
+	}, nil
+}
+
+// newChain construct a new instance of the Ethereum chain handle.
+func newChain(
+	config ethereum.Config,
+	baseChain *baseChain,
+) (*Chain, error) {
+	bitcoinBridgeAddress, err := config.ContractAddress(BitcoinBridgeContractName)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to resolve %s contract address: [%v]",
+			BitcoinBridgeContractName,
+			err,
+		)
+	}
+
+	bitcoinBridge, err := contract.NewBitcoinBridge(
+		bitcoinBridgeAddress,
+		baseChain.chainID,
+		baseChain.key,
+		baseChain.client,
+		baseChain.nonceManager,
+		baseChain.miningWaiter,
+		baseChain.blockCounter,
+		baseChain.transactionMutex,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to attach to Bitcoin Bridge contract: [%v]",
+			err,
+		)
+	}
+
+	return &Chain{
+		baseChain:     baseChain,
+		bitcoinBridge: bitcoinBridge,
 	}, nil
 }
 

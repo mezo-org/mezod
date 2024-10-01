@@ -7,12 +7,11 @@ COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
 MEZO_BINARY = mezod
-MEZO_DIR = mezo
 BUILDDIR ?= $(CURDIR)/build
 HTTPS_GIT := https://github.com/mezo-org/mezod.git
 DOCKER := $(shell which docker)
-NAMESPACE := tharsishq
-PROJECT := mezo
+NAMESPACE := mezo-org
+PROJECT := mezod
 DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DOCKER_TAG := $(COMMIT_HASH)
@@ -522,6 +521,14 @@ localnet-bin-clean:
 
 .PHONY: localnet-bin-init localnet-bin-start localnet-bin-clean
 
+###############################################################################
+###                         Local node binary-based                         ###
+###############################################################################
+
+localnode-bin-start:
+	./scripts/localnode-start.sh
+
+.PHONY: localnode-bin-start
 
 ###############################################################################
 ###                                Releasing                                ###
@@ -623,7 +630,8 @@ create-contracts-json:
 # bindings_environment determines the network type that should be used for contract
 # binding generation. The default value is mainnet.
 ifndef bindings_environment
-override bindings_environment = mainnet
+# TODO: Once we are production ready, this has to be changed to mainnet.
+override bindings_environment = sepolia
 endif
 
 export bindings_environment
