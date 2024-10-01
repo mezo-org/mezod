@@ -36,16 +36,16 @@ var (
 // Client connects to the Ethereum sidecar server and queries for the
 // `AssetsLocked` events.
 type Client struct {
+	mutex          sync.Mutex
 	requestTimeout time.Duration
 	connection     *grpc.ClientConn
-	mutex          sync.Mutex
 }
 
 func NewClient(
+	logger log.Logger,
 	serverAddress string,
 	requestTimeout time.Duration,
 	registry types.InterfaceRegistry,
-	logger log.Logger,
 ) (*Client, error) {
 	connection, err := grpc.NewClient(
 		serverAddress,
@@ -58,7 +58,7 @@ func NewClient(
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to create grpc connection to Ethereum sidecar server: [%w]",
+			"failed to create grpc client for Ethereum sidecar [%w]",
 			err,
 		)
 	}
