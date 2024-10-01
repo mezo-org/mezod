@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"google.golang.org/grpc/encoding"
+
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/spf13/cobra"
@@ -38,6 +42,17 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 
 	grpcAddress, _ := cmd.Flags().GetString(FlagServerAddress)
 	ethNodeAddress, _ := cmd.Flags().GetString(FlagServerEthereumNodeAddress)
+
+	clientCtx, err := client.GetClientQueryContext(cmd)
+	if err != nil {
+		return err
+	}
+
+	// The messages handled by the server contain custom types. Add codecs so
+	// that the messages can be marshaled/unmarshalled.
+	encoding.RegisterCodec(
+		codec.NewProtoCodec(clientCtx.InterfaceRegistry).GRPCCodec(),
+	)
 
 	ctx := context.Background()
 	sidecar.RunServer(ctx, grpcAddress, ethNodeAddress, logger)

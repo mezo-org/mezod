@@ -46,6 +46,7 @@ import (
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
 	"github.com/mezo-org/mezod/cmd/config"
+	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/utils"
 )
 
@@ -114,6 +115,7 @@ func Setup(
 		DefaultNodeHome,
 		5,
 		encoding.MakeConfig(ModuleBasics),
+		ethsidecar.NewClientMock(),
 		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)
