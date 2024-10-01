@@ -3,14 +3,17 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -35,14 +38,16 @@ var (
 type Client struct {
 	requestTimeout time.Duration
 	connection     *grpc.ClientConn
+	mutex          sync.Mutex
 }
 
 func NewClient(
 	serverAddress string,
 	requestTimeout time.Duration,
 	registry types.InterfaceRegistry,
+	logger log.Logger,
 ) (*Client, error) {
-	connection, err := grpc.Dial(
+	connection, err := grpc.NewClient(
 		serverAddress,
 		// TODO: Consider using TLS protocol so that the Mezo node and Ethereum
 		//       sidecar can be run on separate servers.
@@ -53,15 +58,44 @@ func NewClient(
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to connect to the Ethereum sidecar server: [%v]",
+			"failed to create grpc connection to Ethereum sidecar server: [%w]",
 			err,
 		)
 	}
 
-	return &Client{
+	c := &Client{
 		requestTimeout: requestTimeout,
 		connection:     connection,
-	}, nil
+	}
+
+	go func() {
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+
+		state := c.connection.GetState()
+		if state == connectivity.Idle {
+			ctx, cancelCtx := context.WithTimeout(
+				context.Background(),
+				requestTimeout,
+			)
+			defer cancelCtx()
+
+			c.connection.Connect()
+
+			if c.connection.WaitForStateChange(ctx, state) {
+				logger.Info(
+					"ethereum sidecar connection test completed successfully",
+				)
+			} else {
+				logger.Error(
+					"ethereum sidecar connection test failed; possible " +
+						"problem with sidecar configuration or connectivity",
+				)
+			}
+		}
+	}()
+
+	return c, nil
 }
 
 // GetAssetsLockedEvents returns confirmed AssetsLockedEvents with
@@ -74,6 +108,9 @@ func (c *Client) GetAssetsLockedEvents(
 	sequenceStart sdkmath.Int,
 	sequenceEnd sdkmath.Int,
 ) ([]bridgetypes.AssetsLockedEvent, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
 	defer cancel()
 
@@ -126,5 +163,7 @@ func validateAssetsLockedEvents(
 }
 
 func (c *Client) Close() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	return c.connection.Close()
 }
