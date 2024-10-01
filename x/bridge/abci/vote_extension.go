@@ -115,8 +115,8 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 
 		events, err := veh.sidecarClient.GetAssetsLockedEvents(
 			ctx,
-			&sequenceStart,
-			&sequenceEnd,
+			sequenceStart,
+			sequenceEnd,
 		)
 		if err != nil {
 			// If fetching events fails, we cannot recover, so return an error.

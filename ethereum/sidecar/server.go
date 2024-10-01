@@ -19,6 +19,9 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
+// precision is the number of decimal places in the amount of assets locked.
+var precision = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+
 var (
 	// ErrSequencePointerNil is the error returned when the start or end of the
 	// sequence is nil in the received request.
@@ -37,8 +40,11 @@ var (
 type Server struct {
 	sequenceTip sdkmath.Int
 	eventsMutex sync.RWMutex
-	events      []bridgetypes.AssetsLockedEvent
-	grpcServer  *grpc.Server
+	// TODO: When we add the real implementation of the server, make sure the
+	//       `AssetsLocked` events returned from the server will pass the
+	//       validation in the Ethereum server client.
+	events     []bridgetypes.AssetsLockedEvent
+	grpcServer *grpc.Server
 
 	logger log.Logger
 }

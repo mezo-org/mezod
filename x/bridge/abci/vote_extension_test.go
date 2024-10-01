@@ -768,8 +768,8 @@ func newMockEthereumSidecarClient() *mockEthereumSidecarClient {
 
 func (mesc *mockEthereumSidecarClient) GetAssetsLockedEvents(
 	ctx context.Context,
-	sequenceStart *sdkmath.Int,
-	sequenceEnd *sdkmath.Int,
+	sequenceStart sdkmath.Int,
+	sequenceEnd sdkmath.Int,
 ) ([]bridgetypes.AssetsLockedEvent, error) {
 	args := mesc.Called(ctx, sequenceStart, sequenceEnd)
 
