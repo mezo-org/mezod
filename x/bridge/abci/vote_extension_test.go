@@ -98,8 +98,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return(nil, fmt.Errorf("sidecar error"))
 
 				return sidecar
@@ -116,8 +116,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{}, nil)
 
 				return sidecar
@@ -136,8 +136,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return(nil, nil)
 
 				return sidecar
@@ -156,8 +156,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(201, recipient1, 1000),
 				}, nil)
@@ -180,8 +180,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(203, recipient1, 1000),
 					mockEvent(202, recipient1, 1000),
@@ -202,8 +202,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(201, recipient1, 1000),
 					mockEvent(201, recipient1, 1000),
@@ -225,8 +225,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(203, recipient1, 1000),
 					mockEvent(203, recipient1, 1000),
@@ -248,8 +248,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(201, recipient1, 1000),
 					mockEvent(202, recipient1, 1000),
@@ -270,8 +270,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(201, recipient1, 1000),
 					mockEvent(202, recipient1, 1000),
@@ -293,8 +293,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(201, recipient1, 1000),
 					mockEvent(202, recipient1, 1000),
@@ -323,8 +323,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(201, recipient1, 1000),
 					mockEvent(202, recipient1, 1000),
@@ -370,8 +370,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&sequenceStart,
-					&sequenceEnd,
+					sequenceStart,
+					sequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(206, recipient1, 1000),
 				}, nil)
@@ -433,8 +433,8 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 				sidecar.On(
 					"GetAssetsLockedEvents",
 					s.ctx,
-					&defaultSequenceStart,
-					&defaultSequenceEnd,
+					defaultSequenceStart,
+					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
 					mockEvent(201, recipient1, 1000),
 				}, nil)
