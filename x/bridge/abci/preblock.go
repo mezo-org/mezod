@@ -1,6 +1,7 @@
 package abci
 
 import (
+	"cosmossdk.io/log"
 	"fmt"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
@@ -12,12 +13,17 @@ import (
 // PreBlockHandler is the bridge-specific pre-block handler (part of the
 // FinalizeBlock ABCI request)
 type PreBlockHandler struct {
+	logger       log.Logger
 	bridgeKeeper keeper.Keeper
 }
 
 // NewPreBlockHandler returns a new PreBlockHandler.
-func NewPreBlockHandler(bridgeKeeper keeper.Keeper) *PreBlockHandler {
+func NewPreBlockHandler(
+	logger log.Logger,
+	bridgeKeeper keeper.Keeper,
+) *PreBlockHandler {
 	return &PreBlockHandler{
+		logger:       logger,
 		bridgeKeeper: bridgeKeeper,
 	}
 }
@@ -47,6 +53,13 @@ func (pbh *PreBlockHandler) PreBlocker() sdk.PreBlocker {
 		ctx sdk.Context,
 		req *cmtabci.RequestFinalizeBlock,
 	) (*sdk.ResponsePreBlock, error) {
+		// TODO: Consider changing logging to debug level once this code matures.
+
+		pbh.logger.Info(
+			"bridge is executing pre-block",
+			"height", req.Height,
+		)
+
 		if len(req.Txs) == 0 {
 			// The app-level handler always passes a transaction vector
 			// with at least one element (representing the possibly empty
@@ -63,6 +76,12 @@ func (pbh *PreBlockHandler) PreBlocker() sdk.PreBlocker {
 			// empty byte slice if the bridge-level PrepareProposal handler
 			// decided to not inject the pseudo-transaction. In this case, we
 			// do not need to do anything, and we can short-circuit the processing.
+			pbh.logger.Info(
+				"bridge skipped pre-block processing; " +
+					"no AssetsLocked events sequence in the block",
+				"height", req.Height,
+			)
+
 			return &sdk.ResponsePreBlock{}, nil
 		}
 
@@ -73,17 +92,34 @@ func (pbh *PreBlockHandler) PreBlocker() sdk.PreBlocker {
 			return nil, fmt.Errorf("failed to unmarshal injected tx: %w", err)
 		}
 
+		events := injectedTx.AssetsLockedEvents
+
 		// If the pseudo-transaction is present but holds an empty slice of
 		// AssetsLocked events, we error out as this case is illegal with
 		// the current proposal phase implementation.
-		if len(injectedTx.AssetsLockedEvents) == 0 {
+		if len(events) == 0 {
 			return nil, fmt.Errorf("injected tx does not contain AssetsLocked events")
 		}
 
-		err := pbh.bridgeKeeper.AcceptAssetsLocked(ctx, injectedTx.AssetsLockedEvents)
+		pbh.logger.Info(
+			"AssetsLocked events sequence extracted from block",
+			"height", req.Height,
+			"events_count", len(events),
+			"events_sequence_start", events[0].Sequence,
+		)
+
+		err := pbh.bridgeKeeper.AcceptAssetsLocked(ctx, events)
 		if err != nil {
 			return nil, fmt.Errorf("cannot accept AssetsLocked events: %w", err)
 		}
+
+		sequenceTip := pbh.bridgeKeeper.GetAssetsLockedSequenceTip(ctx)
+
+		pbh.logger.Info(
+			"bridge executed pre-block",
+			"height", req.Height,
+			"sequence_tip", sequenceTip,
+		)
 
 		return &sdk.ResponsePreBlock{}, nil
 	}

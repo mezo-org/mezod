@@ -1,7 +1,10 @@
 package abci
 
 import (
+	"cosmossdk.io/log"
 	"fmt"
+	"golang.org/x/exp/maps"
+	"slices"
 
 	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
 
@@ -22,11 +25,13 @@ type IPreBlockHandler interface {
 // It is designed to be used with multiple sub-handlers, each responsible for a
 // specific part of the pre-block logic.
 type PreBlockHandler struct {
+	logger      log.Logger
 	subHandlers map[VoteExtensionPart]IPreBlockHandler
 }
 
 // NewPreBlockHandler returns a new PreBlockHandler.
 func NewPreBlockHandler(
+	logger log.Logger,
 	bridgeSubHandler *bridgeabci.PreBlockHandler,
 ) *PreBlockHandler {
 	subHandlers := map[VoteExtensionPart]IPreBlockHandler{
@@ -34,6 +39,7 @@ func NewPreBlockHandler(
 	}
 
 	return &PreBlockHandler{
+		logger:      logger,
 		subHandlers: subHandlers,
 	}
 }
@@ -59,6 +65,8 @@ func (pbh *PreBlockHandler) PreBlocker(mm *module.Manager) sdk.PreBlocker {
 		ctx sdk.Context,
 		req *cmtabci.RequestFinalizeBlock,
 	) (*sdk.ResponsePreBlock, error) {
+		// TODO: Consider changing logging to debug level once this code matures.
+
 		res, err := mm.PreBlock(ctx)
 		if err != nil {
 			return nil, err
@@ -105,6 +113,12 @@ func (pbh *PreBlockHandler) PreBlocker(mm *module.Manager) sdk.PreBlocker {
 		slices.Sort(subHandlerKeys)
 
 		for _, part := range subHandlerKeys {
+			pbh.logger.Info(
+				"running sub-handler to execute pre-block",
+				"height", req.Height,
+				"part", part,
+			)
+
 			// No need to check if the sub-handler exists. We know it exists
 			// because we iterate over the keys of the sub-handler map.
 			subHandler := pbh.subHandlers[part]
@@ -146,7 +160,18 @@ func (pbh *PreBlockHandler) PreBlocker(mm *module.Manager) sdk.PreBlocker {
 					err,
 				)
 			}
+
+			pbh.logger.Info(
+				"sub-handler executed pre-block",
+				"height", req.Height,
+				"part", part,
+			)
 		}
+
+		pbh.logger.Info(
+			"pre-block executed",
+			"height", req.Height,
+		)
 
 		return res, nil
 	}

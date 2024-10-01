@@ -612,7 +612,10 @@ func (app *Mezo) setABCIExtensions() {
 	)
 	proposalHandler.SetHandlers(app.BaseApp)
 
-	app.preBlockHandler = appabci.NewPreBlockHandler(bridgePreBlockHandler)
+	app.preBlockHandler = appabci.NewPreBlockHandler(
+		app.Logger(),
+		bridgePreBlockHandler,
+	)
 }
 
 // bridgeABCIHandlers returns the bridge ABCI handlers.
@@ -639,7 +642,10 @@ func (app *Mezo) bridgeABCIHandlers() (
 		baseapp.ValidateVoteExtensions,
 	)
 
-	preBlockHandler := bridgeabci.NewPreBlockHandler(app.BridgeKeeper)
+	preBlockHandler := bridgeabci.NewPreBlockHandler(
+		app.Logger(),
+		app.BridgeKeeper,
+	)
 
 	return voteExtensionHandler, proposalHandler, preBlockHandler
 }
