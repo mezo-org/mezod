@@ -10,7 +10,7 @@ The faucet distributes a portion of test BTC upon request. It has been implement
 The faucet can be run locally with:
 
 ```
-FUNCTION_TARGET=Distribute LOCAL_ONLY=true RPCURL=http://127.0.0.1:8545 SECRET=<PRIVKEY> go run cmd/main.go
+FUNCTION_TARGET=Distribute LOCAL_ONLY=true RPC_URL=http://127.0.0.1:8545 PRIVATE_KEY=<PRIVKEY> go run cmd/main.go
 ```
 
 You can then make requests using your web browser by visiting
