@@ -589,7 +589,7 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 // This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
 func (app *Mezo) setABCIExtensions() {
 	// Create the bridge ABCI handlers.
-	bridgeVoteExtensionHandler, bridgeProposalHandler := app.bridgeABCIHandlers()
+	bridgeVoteExtensionHandler, bridgeProposalHandler, bridgePreBlockHandler := app.bridgeABCIHandlers()
 
 	// Create and attach the app-level composite vote extension handler for
 	// ExtendVote and VerifyVoteExtension ABCI requests.
@@ -607,7 +607,7 @@ func (app *Mezo) setABCIExtensions() {
 	)
 	proposalHandler.SetHandlers(app.BaseApp)
 
-	app.preBlockHandler = appabci.NewPreBlockHandler()
+	app.preBlockHandler = appabci.NewPreBlockHandler(bridgePreBlockHandler)
 }
 
 // bridgeABCIHandlers returns the bridge ABCI handlers.
@@ -615,6 +615,7 @@ func (app *Mezo) setABCIExtensions() {
 func (app *Mezo) bridgeABCIHandlers() (
 	*bridgeabci.VoteExtensionHandler,
 	*bridgeabci.ProposalHandler,
+	*bridgeabci.PreBlockHandler,
 ) {
 	// TODO: Instantiate a real sidecar client.
 	sidecarClient := ethsidecar.RunTestSidecar(context.Background())
@@ -633,7 +634,9 @@ func (app *Mezo) bridgeABCIHandlers() (
 		baseapp.ValidateVoteExtensions,
 	)
 
-	return voteExtensionHandler, proposalHandler
+	preBlockHandler := bridgeabci.NewPreBlockHandler(app.BridgeKeeper)
+
+	return voteExtensionHandler, proposalHandler, preBlockHandler
 }
 
 // LoadHeight loads state at a particular height

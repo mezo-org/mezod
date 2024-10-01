@@ -3,6 +3,8 @@ package abci
 import (
 	"fmt"
 
+	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
+
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
@@ -24,8 +26,16 @@ type PreBlockHandler struct {
 }
 
 // NewPreBlockHandler returns a new PreBlockHandler.
-func NewPreBlockHandler() *PreBlockHandler {
-	return &PreBlockHandler{}
+func NewPreBlockHandler(
+	bridgeSubHandler *bridgeabci.PreBlockHandler,
+) *PreBlockHandler {
+	subHandlers := map[VoteExtensionPart]IPreBlockHandler{
+		VoteExtensionPartBridge: bridgeSubHandler,
+	}
+
+	return &PreBlockHandler{
+		subHandlers: subHandlers,
+	}
 }
 
 // PreBlocker returns the pre-block handler (part of the FinalizeBlock ABCI request).

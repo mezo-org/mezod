@@ -275,8 +275,8 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		if len(req.Txs[0]) == 0 {
 			// As said above, the app-level handler always passes a transaction
 			// vector with at least one element (representing the possibly empty
-			// bridge-specific pseudo-transaction). The first element can be a
-			// byte slice if the bridge-level PrepareProposal handler decided to
+			// bridge-specific pseudo-transaction). The first element can be an
+			// empty byte slice if the bridge-level PrepareProposal handler decided to
 			// not inject the pseudo-transaction. In this case, we do not need to
 			// do anything and return ACCEPT.
 			ph.logger.Debug(

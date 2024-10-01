@@ -43,3 +43,11 @@ func (k Keeper) SetAssetsLockedSequenceTip(
 
 	ctx.KVStore(k.storeKey).Set(types.AssetsLockedSequenceTipKey, bz)
 }
+
+// TODO: Implement the AcceptAssetsLocked method.
+func (k Keeper) AcceptAssetsLocked(
+	_ sdk.Context,
+	_ []types.AssetsLockedEvent,
+) error {
+	return nil
+}
