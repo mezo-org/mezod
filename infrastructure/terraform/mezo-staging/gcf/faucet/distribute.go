@@ -25,10 +25,10 @@ var transferAmount = big.NewInt(10000000000000000)
 const token = "0x7b7c000000000000000000000000000000000000"
 
 func init() {
-	functions.HTTP("Distribute", distribute)
+	functions.HTTP("Distribute", Distribute)
 }
 
-func distribute(w http.ResponseWriter, r *http.Request) {
+func Distribute(w http.ResponseWriter, r *http.Request) {
 	// set CORS headers for the preflight request
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -40,8 +40,8 @@ func distribute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get env args
-	rpcURL := os.Getenv("RPCURL")
-	secret := os.Getenv("SECRET")
+	rpcURL := os.Getenv("RPC_URL")
+	privateKeyStr := os.Getenv("PRIVATE_KEY")
 
 	// make sure we have a valid address
 	address := strings.TrimPrefix(r.URL.Path, "/")
@@ -59,7 +59,7 @@ func distribute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// import `from` using privkey
-	privkey, err := crypto.HexToECDSA(secret)
+	privkey, err := crypto.HexToECDSA(privateKeyStr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
