@@ -4,3 +4,5 @@ terraform.tfstate*
 
 ssl-certificates/*.crt
 ssl-certificates/*.key
+
+configs/*.yaml

@@ -58,10 +58,6 @@ output "function_uri" {
   value = google_cloudfunctions2_function.faucet.service_config[0].uri
 }
 
-# TODO: Setup yaml-based faucet_config with OnePassword secret management
 locals {
-  faucet_config = {
-    rpc_url = "http://mezo-node-0.test.mezo.org:8545"
-    private_key = ""
-  }
+  faucet_config = sensitive(yamldecode(file("./configs/faucet-config.yaml")))
 }
