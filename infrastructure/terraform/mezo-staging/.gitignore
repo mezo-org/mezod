@@ -2,6 +2,8 @@
 .terraform.*
 terraform.tfstate*
 
+archive
+
 ssl-certificates/*.crt
 ssl-certificates/*.key
 

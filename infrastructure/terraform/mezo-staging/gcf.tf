@@ -21,6 +21,8 @@ resource "google_storage_bucket_object" "faucet_function" {
 }
 
 resource "google_cloudfunctions2_function" "faucet" {
+  depends_on = [google_project_service.services]
+
   name        = var.gcf.faucet_function_name
   location    = var.region.name
   description = "the faucet's distribute function"
@@ -47,14 +49,14 @@ resource "google_cloudfunctions2_function" "faucet" {
   }
 }
 
-resource "google_cloud_run_service_iam_member" "member" {
+resource "google_cloud_run_service_iam_member" "all_users-faucet_function_invoker" {
   location = google_cloudfunctions2_function.faucet.location
   service  = google_cloudfunctions2_function.faucet.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
-output "function_uri" {
+output "faucet_function_uri" {
   value = google_cloudfunctions2_function.faucet.service_config[0].uri
 }
 
