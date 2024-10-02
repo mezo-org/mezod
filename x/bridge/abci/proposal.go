@@ -476,8 +476,8 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 		// sub-handler sees all the votes that were issued against the previous
 		// block (this is the extendedCommitInfo.Votes slice). However, those
 		// votes contain information about the behavior of each validator in
-		// the validator set. Possible behavior is that a validator pre-commited
-		// the previous block (i.e. agreed with the proposal), pre-commited
+		// the validator set. Possible behavior is that a validator pre-committed
+		// the previous block (i.e. agreed with the proposal), pre-committed
 		// with `nil` (i.e. did not agree with the proposal), or did not vote on
 		// the block at all. Those three states are represented by enums:
 		// `BlockIDFlagCommit`, `BlockIDFlagNil`, and `BlockIDFlagAbsent`
