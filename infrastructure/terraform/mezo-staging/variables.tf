@@ -9,15 +9,9 @@ variable "services" {
   ]
 }
 
-variable "project_name" {
-  type = string
-  description = "Project name"
-  default = "mezo-staging"
-}
-
 variable "project_id" {
-  type = string
   description = "Project ID"
+  type = string
 }
 
 variable "region" {
