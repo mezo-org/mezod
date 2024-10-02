@@ -43,8 +43,9 @@ resource "google_cloudfunctions2_function" "faucet" {
     available_memory   = "256M"
     timeout_seconds    = 60
     environment_variables = {
-      RPC_URL     = local.faucet_config.rpc_url
-      PRIVATE_KEY = local.faucet_config.private_key
+      LOG_EXECUTION_ID = true
+      RPC_URL          = local.faucet_config.rpc_url
+      PRIVATE_KEY      = local.faucet_config.private_key
     }
   }
 }
