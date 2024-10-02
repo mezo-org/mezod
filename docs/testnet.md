@@ -16,6 +16,7 @@ experimentation. Specific components that form the core of the testnet are:
 | Block explorer app      | https://explorer.test.mezo.org |
 | Block explorer server   | N/A                            |
 | Block explorer database | N/A                            |
+| Faucet                  | https://faucet.test.mezo.org   |
 
 Validator nodes expose the following services:
 
@@ -41,7 +42,7 @@ accessible to the public. Here is an overview of the setup from the ground up.
 
 ### Artifacts
 
-The main artifacts necessary to bootstrap any Mezo chain are:
+The main artifacts necessary to bootstrap a testnet Mezo chain are:
 
 - A global genesis file defining the initial state of the chain
   (most importantly, the initial validator set)
@@ -81,6 +82,7 @@ directory. Most important infrastructure resources managed by Terraform are:
 - NAT gateway
 - GKE cluster
 - Docker image registries (internal and public)
+- Cloud functions
 
 Moreover, Terraform is used to automate the deployment of Helm charts on the
 GKE cluster.
