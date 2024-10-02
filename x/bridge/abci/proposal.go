@@ -445,9 +445,9 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 
 		voteCounter.registerVoter(valVP, isBridgeVal)
 
-		logRejectedVoteExtension := func(cause string) {
+		logIgnoredVoteExtension := func(cause string) {
 			ale.logger.Debug(
-				"rejected vote extension while determining "+
+				"ignored vote extension while determining "+
 					"canonical AssetsLocked events",
 				"height", height,
 				"from", valConsAddr.String(),
@@ -457,7 +457,7 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 
 		// Include only commit votes.
 		if vote.BlockIdFlag != cmtproto.BlockIDFlagCommit {
-			logRejectedVoteExtension("non-commit vote extension")
+			logIgnoredVoteExtension("non-commit vote extension")
 			continue
 		}
 
@@ -469,7 +469,7 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 		compositeVoteExtension := vote.VoteExtension
 
 		if len(compositeVoteExtension) == 0 {
-			logRejectedVoteExtension("empty composite vote extension")
+			logIgnoredVoteExtension("empty composite vote extension")
 			continue
 		}
 
@@ -477,7 +477,7 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 			compositeVoteExtension,
 		)
 		if err != nil {
-			logRejectedVoteExtension(fmt.Sprintf("decomposition error: %v", err))
+			logIgnoredVoteExtension(fmt.Sprintf("decomposition error: %v", err))
 			continue
 		}
 
@@ -485,13 +485,13 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 		// if the bridge-specific vote extension handler does not receive any
 		// events from the sidecar and returns empty bytes as the vote extension.
 		if len(voteExtensionBytes) == 0 {
-			logRejectedVoteExtension("empty bridge-specific vote extension")
+			logIgnoredVoteExtension("empty bridge-specific vote extension")
 			continue
 		}
 
 		var voteExtension types.VoteExtension
 		if err := voteExtension.Unmarshal(voteExtensionBytes); err != nil {
-			logRejectedVoteExtension(fmt.Sprintf("unmarshaling error: %v", err))
+			logIgnoredVoteExtension(fmt.Sprintf("unmarshaling error: %v", err))
 			continue
 		}
 
@@ -504,7 +504,7 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 		// rejected properly, even if the implementation of the bridge-specific
 		// vote extension handler changes in the future.
 		if len(voteExtension.AssetsLockedEvents) == 0 {
-			logRejectedVoteExtension("no AssetsLocked events")
+			logIgnoredVoteExtension("no AssetsLocked events")
 			continue
 		}
 
@@ -514,7 +514,7 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 		// after the minimum of +2/3 had been reached are not verified.
 		// See: https://docs.cometbft.com/v0.38/spec/abci/abci++_methods#prepareproposal
 		if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
-			logRejectedVoteExtension(fmt.Sprintf("invalid AssetsLocked sequence: %v", err))
+			logIgnoredVoteExtension(fmt.Sprintf("invalid AssetsLocked sequence: %v", err))
 			continue
 		}
 
