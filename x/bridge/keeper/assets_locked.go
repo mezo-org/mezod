@@ -101,5 +101,15 @@ func (k Keeper) AcceptAssetsLocked(
 
 	k.setAssetsLockedSequenceTip(ctx, events[len(events)-1].Sequence)
 
+	// TODO: Revisit this in the context of bridging events observability.
+	//  From state's perspective, it's enough to update the sequence tip
+	//  based on processed events to avoid double-bridging. Storing all
+	//  processed events in the state is redundant, increases state management
+	//  complexity, and negatively impacts the blockchain size in the long run.
+	//  A sane alternative is using an opt-in EVM tx indexer (kv_indexer.go)
+	//  to capture processed AssetsLocked events (they are part of the injected
+	//  pseudo-tx and are available in the indexer) and expose them through
+	//  a custom JSON-RPC API namespace (e.g. mezo_assetsLocked).
+
 	return nil
 }
