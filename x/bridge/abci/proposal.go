@@ -432,6 +432,7 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 	// for the last block are normally included in this list. Such votes
 	// have an appropriate value of the BlockIdFlag set and their
 	// vote extension is empty. This loop must take this into account.
+	// See a detailed explanation in the loop below.
 	for _, vote := range extendedCommitInfo.Votes {
 		valConsAddr := sdk.ConsAddress(vote.Validator.Address)
 		valVP := vote.Validator.Power
@@ -455,7 +456,36 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 			)
 		}
 
-		// Include only commit votes.
+		// The simplified process of producing a CometBFT block is as follows:
+		//
+		//  1. The proposer calls `PrepareProposal` and broadcasts the proposal
+		//  2. Other validators receive the proposal and call the `ProcessProposal`
+		//     function. If they accept it, they pre-vote the proposal. If not,
+		//     they pre-vote with `nil`.
+		//  3. All validators wait for pre-votes. Once a validator receives
+		//     2/3+ of non-nil pre-votes for the given proposal it enters the
+		//     vote extension phase and calls `ExtendVote` and then pre-commits
+		//     the block. If they receive `nil` pre-votes from 2/3+ of validators
+		//     it pre-commits with `nil`.
+		//  4. All validators wait for pre-commits. Once a validator receives
+		//     2/3+ of non-nil pre-commits, it finalizes the block
+		//     (i.e. executes the block's transactions) and commits changes
+		//     to the state.
+		//
+		// A validator preparing/processing a block proposal with the `x/bridge`
+		// sub-handler sees all the votes that were issued against the previous
+		// block (this is the extendedCommitInfo.Votes slice). However, those
+		// votes contain information about the behavior of each validator in
+		// the validator set. Possible behavior is that a validator pre-commited
+		// the previous block (i.e. agreed with the proposal), pre-commited
+		// with `nil` (i.e. did not agree with the proposal), or did not vote on
+		// the block at all. Those three states are represented by enums:
+		// `BlockIDFlagCommit`, `BlockIDFlagNil`, and `BlockIDFlagAbsent`
+		// respectively. While processing previous block's vote extensions to
+		// assemble the current block proposal, we need to consider only those
+		// that were part of proper pre-commits. This is what we are doing here.
+		// This guarantees we count the backing voting power behind each event
+		// properly, and we do not include absent/nil votes.
 		if vote.BlockIdFlag != cmtproto.BlockIDFlagCommit {
 			logIgnoredVoteExtension("non-commit vote extension")
 			continue
