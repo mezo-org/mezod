@@ -15,7 +15,7 @@ type EthereumSidecarClient interface {
 	// sequenceStart (included) and sequenceEnd (excluded). To indicate an
 	// unbounded edge of the range, use a zero initialized value (`math.Int{}`)
 	// for sequenceStart or sequenceEnd.
-
+    //
 	// The implementation should ensure that sequence numbers of the returned
 	// events form a sequence strictly increasing by 1. Such a sequence
 	// guarantees that there are no gaps between the sequence numbers of the
