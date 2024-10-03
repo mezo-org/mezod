@@ -1,0 +1,22 @@
+syntax = "proto3";
+package mezo.bridge.v1;
+
+import "gogoproto/gogo.proto";
+import "mezo/bridge/v1/bridge.proto";
+
+option go_package = "github.com/mezo-org/mezod/x/bridge/abci/types";
+
+// InjectedTx defines the bridge-specific pseudo-tx used to inject previous-block
+// vote extensions along with a sequence of canonical AssetsLocked events
+// into the current block proposal.
+message InjectedTx {
+  // assets_locked_events is a list of canonical AssetsLockedEvent forming
+  // a sequence strictly increasing by 1. This list is derived from the
+  // extended_commit_info field.
+  repeated AssetsLockedEvent assets_locked_events = 1 [
+    (gogoproto.nullable) = false
+  ];
+  // extended_commit_info is the extended commit info of the previous block.
+  // It holds the vote extensions that are used to derive the assets_locked_events.
+  bytes extended_commit_info = 2;
+}

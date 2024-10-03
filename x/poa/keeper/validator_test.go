@@ -6,6 +6,8 @@ import (
 	"sort"
 	"testing"
 
+	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
+
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -448,5 +450,43 @@ func TestGetActiveValidators(t *testing.T) {
 			expectedValidators,
 			retrievedValidators,
 		)
+	}
+}
+
+func TestGetPubKeyByConsAddr(t *testing.T) {
+	ctx, poaKeeper := mockContext()
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
+
+	poaKeeper.setValidator(ctx, validator1)
+	poaKeeper.setValidatorByConsAddr(ctx, validator1)
+
+	// Should find the existing validator's key.
+	retrievedPubKey, err := poaKeeper.GetPubKeyByConsAddr(
+		ctx,
+		validator1.GetConsAddress(),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Retrieved key is CometBFT-proto-specific. Convert it to the Cosmos-SDK-specific
+	// type for comparison.
+	retrievedPubKeyAsSdk, err := cryptocdc.FromCmtProtoPublicKey(retrievedPubKey)
+	if err != nil {
+		t.Error(err)
+	}
+	if !cmp.Equal(validator1.GetConsPubKey(), retrievedPubKeyAsSdk) {
+		t.Errorf(
+			"GetPubKeyByConsAddr should find %v, found %v",
+			validator1.GetConsPubKey().String(),
+			retrievedPubKeyAsSdk.String(),
+		)
+	}
+
+	// Should not find a non-existing validator's key.
+	_, err = poaKeeper.GetPubKeyByConsAddr(ctx, validator2.GetConsAddress())
+	if !cmp.Equal(err.Error(), types.ErrNoValidatorFound.Error()) {
+		t.Errorf("GetPubKeyByConsAddr should not find key of non-existing validator")
 	}
 }

@@ -104,11 +104,38 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestExtendVote,
 	) (*cmtabci.ResponseExtendVote, error) {
-		voteExtensionParts := make(map[uint32][]byte)
-
 		// TODO: Consider running sub-handlers concurrently to speed up execution.
 		//
 		// TODO: Consider changing logging to debug level once this code matures.
+
+		voteExtensionParts := make(map[uint32][]byte)
+
+		// If the transaction vector for this block proposal is not empty, the
+		// first transaction MAY be the app-level pseudo-transaction injected
+		// during PrepareProposal. If the first transaction does not unmarshal
+		// as an injected pseudo-transaction, that means the PrepareProposal
+		// handler did not inject it due to all proposal sub-handlers failing.
+		// In this case, the first transaction is a regular application-specific
+		// transaction. Moreover, an empty transaction vector is also a valid
+		// case and indicates that no pseudo-transaction was injected and there
+		// are no regular application-specific txs in the vector.
+		var injectedTx types.InjectedTx
+		var injectedTxOk bool
+		var regularTxs [][]byte
+		if len(req.Txs) > 0 {
+			if err := injectedTx.Unmarshal(req.Txs[0]); err != nil {
+				// If the first transaction does not unmarshal as an injected
+				// pseudo-transaction, that means all transactions in the
+				// vector are regular chain transactions.
+				injectedTxOk = false
+				regularTxs = req.Txs
+			} else {
+				// If the first transaction unmarshals as an injected pseudo-transaction,
+				// regular transactions occur after the injected pseudo-transaction.
+				injectedTxOk = true
+				regularTxs = req.Txs[1:]
+			}
+		}
 
 		for part, subHandler := range veh.subHandlers {
 			veh.logger.Info(
@@ -117,8 +144,27 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 				"part", part,
 			)
 
+			// Replace the app-level pseudo-transaction with the part-specific
+			// pseudo-transaction. Note that the part-specific pseudo-transaction
+			// may be zero-length, which is a valid case. The sub-handler is
+			// responsible for handling this case.
+			var injectedTxPart []byte
+			if injectedTxOk && injectedTx.Parts != nil {
+				injectedTxPart = injectedTx.Parts[uint32(part)]
+			}
+			subTxs := append([][]byte{injectedTxPart}, regularTxs...)
+
 			// Trigger the ExtendVote sub-handler for the given vote extension part.
-			res, err := subHandler.ExtendVoteHandler()(ctx, req)
+			res, err := subHandler.ExtendVoteHandler()(ctx, &cmtabci.RequestExtendVote{
+				Hash:               req.Hash,
+				Height:             req.Height,
+				Time:               req.Time,
+				Txs:                subTxs,
+				ProposedLastCommit: req.ProposedLastCommit,
+				Misbehavior:        req.Misbehavior,
+				NextValidatorsHash: req.NextValidatorsHash,
+				ProposerAddress:    req.ProposerAddress,
+			})
 			if err != nil {
 				// Just log the error and continue execution in case there
 				// are other sub-handlers in the queue. We do not want
@@ -211,6 +257,8 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		ctx sdk.Context,
 		req *cmtabci.RequestVerifyVoteExtension,
 	) (*cmtabci.ResponseVerifyVoteExtension, error) {
+		// TODO: Consider running sub-handlers concurrently to speed up execution.
+
 		from := sdk.ConsAddress(req.ValidatorAddress).String()
 
 		veh.logger.Debug(
@@ -315,5 +363,30 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		return &cmtabci.ResponseVerifyVoteExtension{
 			Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
 		}, nil
+	}
+}
+
+// isVoteExtensionsEnabled returns true if the vote extensions are enabled
+// at the given height.
+func isVoteExtensionsEnabled(ctx sdk.Context, height int64) bool {
+	cp := ctx.ConsensusParams()
+	return cp.Abci != nil &&
+		cp.Abci.VoteExtensionsEnableHeight > 0 &&
+		height > cp.Abci.VoteExtensionsEnableHeight
+}
+
+// VoteExtensionDecomposer returns a function that decomposes a composite
+// app-level vote extension and returns the given part.
+func VoteExtensionDecomposer(part VoteExtensionPart) func([]byte) ([]byte, error) {
+	return func(voteExtensionBytes []byte) ([]byte, error) {
+		var voteExtension types.VoteExtension
+		if err := voteExtension.Unmarshal(voteExtensionBytes); err != nil {
+			return nil, fmt.Errorf(
+				"failed to unmarshal composite vote extension: %w",
+				err,
+			)
+		}
+
+		return voteExtension.Parts[uint32(part)], nil
 	}
 }

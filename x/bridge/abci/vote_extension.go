@@ -56,12 +56,6 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestExtendVote,
 	) (*cmtabci.ResponseExtendVote, error) {
-		// TODO: Fetched events will be finalized in the next block and the
-		//       tip will be updated then. Because of that, we may fetch the same
-		//       set of events twice, in two subsequent blocks. Once the full
-		//       flow is implemented, we will need to check this behavior and
-		//       fix it if necessary.
-		//
 		// TODO: Consider changing logging to debug level once this code matures.
 
 		veh.logger.Info(
@@ -69,7 +63,39 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 			"height", req.Height,
 		)
 
-		sequenceTip := veh.bridgeKeeper.GetAssetsLockedSequenceTip(ctx)
+		// Try to extract the sequence tip from AssetsLocked events that are
+		// included in this block's proposal. Those events are very likely
+		// to be processed upon block finalization, and they will move
+		// ahead the sequence tip in the bridge state. By determining the sequence
+		// tip based on the proposal's events, we can avoid fetching the same
+		// events from the sidecar twice and burning vote extension cycles on them.
+		var sequenceTip math.Int
+		if len(req.Txs) > 0 && len(req.Txs[0]) > 0 {
+			var injectedTx types.InjectedTx
+			if err := injectedTx.Unmarshal(req.Txs[0]); err != nil {
+				// If the transaction vector and the first tx are not empty, the
+				// first transaction must be the injected bridge-specific
+				// pseudo-transaction and unmarshaling must succeed.
+				// If it fails, we cannot recover, so return an error.
+				return nil, fmt.Errorf("failed to unmarshal injected tx: %w", err)
+			}
+
+			events := injectedTx.AssetsLockedEvents
+			if len(events) == 0 {
+				// This should not happen because the proposal phase guarantees
+				// the presence of AssetsLocked events in the injected
+				// bridge-specific pseudo-transaction.
+				return nil, fmt.Errorf("no AssetsLocked events in the injected tx")
+			}
+
+			sequenceTip = events[len(events)-1].Sequence
+		}
+
+		// If the sequence tip is not determined from the proposal, fetch it from
+		// the bridge state.
+		if sequenceTip.IsNil() {
+			sequenceTip = veh.bridgeKeeper.GetAssetsLockedSequenceTip(ctx)
+		}
 
 		veh.logger.Info(
 			"assets locked sequence tip fetched",
@@ -113,15 +139,8 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 		// guarantee that the produced vote extension is accepted by the
 		// VerifyVoteExtension handler.
 
-		if len(events) > AssetsLockedEventsLimit {
-			// Make sure the number of events does not exceed the limit.
-			return nil, fmt.Errorf("number of events exceeds the limit")
-		}
-
-		if !bridgetypes.AssetsLockedEvents(events).IsStrictlyIncreasingSequence() {
-			// Make sure the events form a sequence strictly increasing by 1.
-			// This is important for further processing.
-			return nil, fmt.Errorf("events do not form a proper sequence")
+		if err := validateAssetsLockedEvents(events); err != nil {
+			return nil, err
 		}
 
 		voteExtension := types.VoteExtension{
@@ -146,10 +165,14 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 }
 
 // VerifyVoteExtensionHandler returns the handler for the VerifyVoteExtension
-// ABCI request. It verifies the vote extension by checking that it unmarshals,
-// AssetsLocked events are sorted in natural order (by sequence asc), and that
-// the number of events does not exceed the limit. If the vote extension is
-// valid, it is accepted. Empty vote extensions are accepted by default.
+// ABCI request. It verifies the vote extension by checking that:
+//   - The vote extension unmarshals
+//   - AssetsLocked events are valid (positive sequence number, positive amount,
+//     proper bech32 recipient) and form a sequence strictly increasing by 1
+//   - The number of AssetsLocked events does not exceed the limit
+//
+// If the vote extension is valid, it is accepted. Empty vote extensions are
+// accepted by default.
 //
 // Dev note: In case the vote extension is invalid, we REJECT it explicitly
 // and return an error describing the reason. Due to the limitations of the
@@ -177,7 +200,7 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 		if len(req.VoteExtension) == 0 {
 			// Accept empty bridge-specific vote extensions. This is necessary
 			// given that this handler's ExtendVote produces empty ones when
-			//  the Ethereum sidecar returns no events.
+			// the Ethereum sidecar returns no events.
 			veh.logger.Debug(
 				"bridge accepted empty vote extension",
 				"height", req.Height,
@@ -206,21 +229,10 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			}, fmt.Errorf("failed to unmarshal vote extension: %w", err)
 		}
 
-		if len(voteExtension.AssetsLockedEvents) > AssetsLockedEventsLimit {
-			// Make sure the number of events does not exceed the limit.
+		if err := validateAssetsLockedEvents(voteExtension.AssetsLockedEvents); err != nil {
 			return &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
-			}, fmt.Errorf("number of events exceeds the limit")
-		}
-
-		if !bridgetypes.AssetsLockedEvents(
-			voteExtension.AssetsLockedEvents,
-		).IsStrictlyIncreasingSequence() {
-			// Make sure the events form a sequence strictly increasing by 1.
-			// This is important for further processing.
-			return &cmtabci.ResponseVerifyVoteExtension{
-				Status: cmtabci.ResponseVerifyVoteExtension_REJECT,
-			}, fmt.Errorf("events do not form a proper sequence")
+			}, err
 		}
 
 		veh.logger.Debug(
@@ -233,4 +245,27 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
 		}, nil
 	}
+}
+
+// validateAssetsLockedEvents validates the given list of AssetsLocked events
+// in the context of the bridge vote extension.
+//
+// The given list is considered valid if:
+//   - The number of events does not exceed the AssetsLockedEventsLimit
+//   - All events in the slice are valid (positive sequence number, positive
+//     amount, proper bech32 recipient) and form a sequence strictly increasing
+//     by 1
+//
+// If the validation passes, the function returns nil. Otherwise, it returns
+// an error describing the reason.
+func validateAssetsLockedEvents(events []bridgetypes.AssetsLockedEvent) error {
+	if len(events) > AssetsLockedEventsLimit {
+		return fmt.Errorf("number of events exceeds the limit")
+	}
+
+	if !bridgetypes.AssetsLockedEvents(events).IsValid() {
+		return fmt.Errorf("events list is not valid")
+	}
+
+	return nil
 }
