@@ -26,6 +26,12 @@ func (ale AssetsLockedEvent) IsValid() bool {
 // Equal returns true if this AssetsLockedEvents is equal to the other event.
 // Two events are considered equal if their sequence numbers, recipient addresses,
 // and amounts of locked assets are equal.
+//
+// DEV NOTE: THIS FUNCTION PLAYS A CRUCIAL ROLE IN `assetsLockedExtractor` WHERE
+// WE DETERMINE CANONICAL EVENTS BASED ON VALIDATORS' VOTES. NOTHING PREVENTS A
+// MALICIOUS VALIDATOR FROM VOTING ON AN EVENT WITH THE GIVEN SEQUENCE BUT
+// WITH A DIFFERENT AMOUNT/RECIPIENT. THIS IS WHY WE NEED A WAY TO COMPARE
+// ALL FIELDS OF `AssetsLockedEvent`.
 func (ale AssetsLockedEvent) Equal(other AssetsLockedEvent) bool {
 	return ale.Sequence.Equal(other.Sequence) &&
 		ale.Recipient == other.Recipient &&
