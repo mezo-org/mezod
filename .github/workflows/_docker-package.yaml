@@ -1,0 +1,78 @@
+---
+name: Docker Image
+# The reusable workflow builds and pushes a Docker image to a container registry.
+# There are 2 registry options: Google Artifact Registry and Docker Hub.
+# The worklflow can be triggered by a manual event or by another workflow.
+on:
+  workflow_call:
+    inputs:
+      registry:
+        description: "Address of the container registry"
+        required: true
+        type: string
+    secrets:
+      GCP_WORKLOAD_IDENTITY_PROVIDER:
+        description: "Workload Identity Provider for Google Cloud"
+        required: false
+      GCP_SERVICE_ACCOUNT:
+        description: "Service Account for Google Cloud"
+        required: false
+      DOCKERHUB_USERNAME:
+        description: "Username for Docker Hub registry"
+        required: false
+      DOCKERHUB_TOKEN:
+        description: "Secret for Docker Hub registry"
+        required: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏧 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 📝 Prepare Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.registry }}
+          tags: |
+            type=sha
+            type=semver,pattern={{raw}}
+
+      - name: 🔐 Authenticate to Google Cloud
+        id: gcp_auth
+        if: contains(inputs.registry, 'pkg.dev')
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: 🔐 Login to Google Artifact Registry
+        if: contains(inputs.registry, 'pkg.dev')
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: oauth2accesstoken
+          password: ${{ steps.gcp_auth.outputs.access_token }}
+
+      - name: 🔐 Login to Docker Hub
+        if: contains(inputs.registry, 'docker.io')
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 📦 Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta.outputs.tags }}
