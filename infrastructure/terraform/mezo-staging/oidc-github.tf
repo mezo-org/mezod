@@ -33,22 +33,22 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
 #
 # Service Account for GitHub Actions
 #
-resource "google_service_account" "mezo_staging_gha" {
+resource "google_service_account" "gha" {
   account_id   = var.oidc_github.service_account
   display_name = "GitHub Actions Service Account"
   description  = "Service Account for Github OIDC to push images to Artifact Registry"
 }
 
-resource "google_artifact_registry_repository_iam_member" "mezo_staging_gha" {
+resource "google_artifact_registry_repository_iam_member" "gha_sa-docker_public_writer" {
   repository = google_artifact_registry_repository.docker_public.name
   role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${google_service_account.mezo_staging_gha.email}"
+  member     = "serviceAccount:${google_service_account.gha.email}"
 }
 
 # Attach the Workload Identity Pool (via role) to the Service Accounts
 # that will be used by GitHub Actions.
-resource "google_service_account_iam_member" "mezo_staging_gha" {
-  service_account_id = google_service_account.mezo_staging_gha.email
+resource "google_service_account_iam_member" "gha_sa-github_wi_user" {
+  service_account_id = google_service_account.gha.email
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${var.oidc_github.github_organization}/${var.oidc_github.repository}"
 }
