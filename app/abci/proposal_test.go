@@ -654,15 +654,13 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			errContains:       "",
 		},
 		{
-			name:          "no txs in the request",
-			subHandlersFn: func() map[VoteExtensionPart]IProposalHandler { return nil },
-			reqHeight:     101,
-			reqTxsFn:      func() [][]byte { return txsVector() },
-			expectedRes: &cmtabci.ResponseProcessProposal{
-				Status: cmtabci.ResponseProcessProposal_ACCEPT,
-			},
+			name:              "no txs in the request",
+			subHandlersFn:     func() map[VoteExtensionPart]IProposalHandler { return nil },
+			reqHeight:         101,
+			reqTxsFn:          func() [][]byte { return txsVector() },
+			expectedRes:       nil,
 			subHandlersCalled: nil,
-			errContains:       "",
+			errContains:       "empty proposal",
 		},
 		{
 			name:              "non-unmarshalable injected tx",
