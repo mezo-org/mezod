@@ -46,11 +46,17 @@ type ProposalHandlerTestSuite struct {
 	logger        log.Logger
 	ctx           sdk.Context
 	requestHeight int64
+	bankKeeper    *mockBankKeeper
 	keeper        keeper.Keeper
 	handler       *ProposalHandler
 }
 
 func (s *ProposalHandlerTestSuite) SetupTest() {
+	// Set bech32 prefixes to make the recipient address validation in
+	// AssetsLocked events possible (see AssetsLockedEvent.IsValid).
+	cfg := sdk.GetConfig()
+	config.SetBech32Prefixes(cfg)
+
 	s.logger = log.NewNopLogger()
 
 	multiStore := servermock.NewCommitMultiStore()
@@ -69,12 +75,35 @@ func (s *ProposalHandlerTestSuite) SetupTest() {
 	// Only the first argument is relevant for the mock multi store.
 	multiStore.MountStoreWithDB(storeKey, 0, nil)
 
+	s.bankKeeper = newMockBankKeeper()
+
+	s.bankKeeper.On(
+		"MintCoins",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(nil)
+
+	s.bankKeeper.On(
+		"SendCoinsFromModuleToAccount",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(nil)
+
 	s.keeper = keeper.NewKeeper(
 		codec.NewProtoCodec(codectypes.NewInterfaceRegistry()),
 		storeKey,
+		s.bankKeeper,
 	)
 
-	s.keeper.SetAssetsLockedSequenceTip(s.ctx, sdkmath.NewInt(200))
+	// Accept some initial mock events to move the sequence tip to 200.
+	err := s.keeper.AcceptAssetsLocked(
+		s.ctx,
+		mockEvents(1, 200, recipient1, 1000),
+	)
+	s.Require().NoError(err)
 }
 
 func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
@@ -1546,6 +1575,20 @@ func mockEvent(
 		Recipient: recipient,
 		Amount:    sdkmath.NewInt(amount),
 	}
+}
+
+func mockEvents(
+	sequenceStart, sequenceEnd int64,
+	recipient string,
+	amount int64,
+) []bridgetypes.AssetsLockedEvent {
+	events := make([]bridgetypes.AssetsLockedEvent, 0)
+
+	for i := sequenceStart; i <= sequenceEnd; i++ {
+		events = append(events, mockEvent(i, recipient, amount))
+	}
+
+	return events
 }
 
 func txsVector(txs ...string) [][]byte {

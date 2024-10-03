@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )

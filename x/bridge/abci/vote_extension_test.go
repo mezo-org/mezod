@@ -35,6 +35,7 @@ type VoteExtensionHandlerTestSuite struct {
 	logger        log.Logger
 	ctx           sdk.Context
 	requestHeight int64
+	bankKeeper    *mockBankKeeper
 	keeper        keeper.Keeper
 	handler       *VoteExtensionHandler
 }
@@ -63,12 +64,35 @@ func (s *VoteExtensionHandlerTestSuite) SetupTest() {
 	// Only the first argument is relevant for the mock multi store.
 	multiStore.MountStoreWithDB(storeKey, 0, nil)
 
+	s.bankKeeper = newMockBankKeeper()
+
+	s.bankKeeper.On(
+		"MintCoins",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(nil)
+
+	s.bankKeeper.On(
+		"SendCoinsFromModuleToAccount",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(nil)
+
 	s.keeper = keeper.NewKeeper(
 		codec.NewProtoCodec(codectypes.NewInterfaceRegistry()),
 		storeKey,
+		s.bankKeeper,
 	)
 
-	s.keeper.SetAssetsLockedSequenceTip(s.ctx, sdkmath.NewInt(200))
+	// Accept some initial mock events to move the sequence tip to 200.
+	err := s.keeper.AcceptAssetsLocked(
+		s.ctx,
+		mockEvents(1, 200, recipient1, 1000),
+	)
+	s.Require().NoError(err)
 }
 
 func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
@@ -778,4 +802,31 @@ func (mesc *mockEthereumSidecarClient) GetAssetsLockedEvents(
 	}
 
 	return nil, args.Error(1)
+}
+
+type mockBankKeeper struct {
+	mock.Mock
+}
+
+func newMockBankKeeper() *mockBankKeeper {
+	return &mockBankKeeper{}
+}
+
+func (mbk *mockBankKeeper) MintCoins(
+	ctx context.Context,
+	moduleName string,
+	amt sdk.Coins,
+) error {
+	args := mbk.Called(ctx, moduleName, amt)
+	return args.Error(0)
+}
+
+func (mbk *mockBankKeeper) SendCoinsFromModuleToAccount(
+	ctx context.Context,
+	senderModule string,
+	recipientAddr sdk.AccAddress,
+	amt sdk.Coins,
+) error {
+	args := mbk.Called(ctx, senderModule, recipientAddr, amt)
+	return args.Error(0)
 }

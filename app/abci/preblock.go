@@ -1,10 +1,12 @@
 package abci
 
 import (
-	"cosmossdk.io/log"
 	"fmt"
-	"golang.org/x/exp/maps"
 	"slices"
+
+	"cosmossdk.io/log"
+
+	"golang.org/x/exp/maps"
 
 	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
 

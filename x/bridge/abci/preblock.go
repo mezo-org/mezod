@@ -1,8 +1,9 @@
 package abci
 
 import (
-	"cosmossdk.io/log"
 	"fmt"
+
+	"cosmossdk.io/log"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -77,7 +78,7 @@ func (pbh *PreBlockHandler) PreBlocker() sdk.PreBlocker {
 			// decided to not inject the pseudo-transaction. In this case, we
 			// do not need to do anything, and we can short-circuit the processing.
 			pbh.logger.Info(
-				"bridge skipped pre-block processing; " +
+				"bridge skipped pre-block processing; "+
 					"no AssetsLocked events sequence in the block",
 				"height", req.Height,
 			)

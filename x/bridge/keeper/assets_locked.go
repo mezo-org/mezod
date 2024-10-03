@@ -1,8 +1,10 @@
 package keeper
 
 import (
-	"cosmossdk.io/math"
 	"fmt"
+
+	"cosmossdk.io/math"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
