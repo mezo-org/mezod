@@ -196,7 +196,7 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 //
 // Invariants summary:
 //  1. Accepts the app-level proposal if vote extensions are not enabled.
-//  2. Accepts app-level proposal with an empty transactions vector.
+//  2. Rejects app-level proposal with an empty transactions vector.
 //  3. Rejects app-level proposal with an injected pseudo-tx that cannot be unmarshaled.
 //  4. Rejects app-level proposal with an injected pseudo-tx containing no parts.
 //  5. Accepts app-level proposal only if each part of their injected pseudo-tx
@@ -241,18 +241,28 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		}
 
 		if len(req.Txs) == 0 {
-			// Short-circuit if proposal has no transactions. This case is
-			// possible when the injected transaction was not included in the
-			// proposal due to the maximum allowed block size constraint.
-			ph.logger.Debug(
-				"accepted empty proposal",
-				"height", req.Height,
-				"from", from,
-			)
-
-			return &cmtabci.ResponseProcessProposal{
-				Status: cmtabci.ResponseProcessProposal_ACCEPT,
-			}, nil
+			// The proposal has no transactions. This is possible if one of
+			// the following happens:
+			// - The PrepareProposal function did not inject the app-level pseudo-tx
+			//   as all sub-handlers failed AND there are no regular transactions
+			//   in the proposal.
+			// - The PrepareProposal function produced the app-level pseudo-tx
+			//   but, it exceeded the maximum allowed block size so, an empty
+			//   transactions vector was returned (regular transactions are not
+			//   included in the block in this case, even if they are present).
+			//
+			// If one of the above happens, such a proposal should be rejected
+			// as we cannot accept an erroneous outcome of the PrepareProposal
+			// phase.
+			//
+			// Note that if the app-level pseudo-tx was not injected but there
+			// are regular transactions in the proposal, we will fail in the
+			// next condition where we try to unmarshal the first transaction
+			// as an injected pseudo-tx. A regular transaction will cause
+			// unmarshalling failure and, we will reject the proposal as well.
+			// This is not the most elegant way to handle this case but probably
+			// the only one that is possible here.
+			return nil, fmt.Errorf("empty proposal")
 		}
 
 		var injectedTx types.InjectedTx
