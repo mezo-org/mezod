@@ -3,7 +3,6 @@ package faucet
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"math/big"
 	"net/http"
 	"os"
@@ -23,6 +22,9 @@ var transferAmount = big.NewInt(10000000000000000)
 
 // BTC token precompile address
 const token = "0x7b7c000000000000000000000000000000000000"
+
+// Block explorer path for transactions
+const explorer = "https://explorer.test.mezo.org/tx/"
 
 func init() {
 	functions.HTTP("Distribute", Distribute)
@@ -45,6 +47,10 @@ func Distribute(w http.ResponseWriter, r *http.Request) {
 
 	// make sure we have a valid address
 	address := strings.TrimPrefix(r.URL.Path, "/")
+	if len(address) == 0 {
+		// No address provided. Return instructions.
+
+	}
 	if !common.IsHexAddress(address) {
 		http.Error(w, "invalid address", http.StatusBadRequest)
 		return
@@ -114,10 +120,8 @@ func Distribute(w http.ResponseWriter, r *http.Request) {
 	}
 	// set CORS header
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	// set Content-Type header
-	w.Header().Set("Content-Type", "application/json")
 	// write response
-	err = json.NewEncoder(w).Encode(transfer)
+	_, err = w.Write([]byte(explorer + transfer.Hash().String()))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
