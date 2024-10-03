@@ -21,6 +21,8 @@ resource "google_storage_bucket_object" "faucet_function" {
 }
 
 resource "google_cloudfunctions2_function" "faucet" {
+  depends_on = [google_project_service.services]
+
   name        = var.gcf.faucet_function_name
   location    = var.region.name
   description = "the faucet's distribute function"
@@ -41,27 +43,24 @@ resource "google_cloudfunctions2_function" "faucet" {
     available_memory   = "256M"
     timeout_seconds    = 60
     environment_variables = {
-      RPC_URL     = local.faucet_config.rpc_url
-      PRIVATE_KEY = local.faucet_config.private_key
+      LOG_EXECUTION_ID = true
+      RPC_URL          = local.faucet_config.rpc_url
+      PRIVATE_KEY      = local.faucet_config.private_key
     }
   }
 }
 
-resource "google_cloud_run_service_iam_member" "member" {
+resource "google_cloud_run_service_iam_member" "all_users-faucet_function_invoker" {
   location = google_cloudfunctions2_function.faucet.location
   service  = google_cloudfunctions2_function.faucet.name
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
 
-output "function_uri" {
+output "faucet_function_uri" {
   value = google_cloudfunctions2_function.faucet.service_config[0].uri
 }
 
-# TODO: Setup yaml-based faucet_config with OnePassword secret management
 locals {
-  faucet_config = {
-    rpc_url = "http://mezo-node-0.test.mezo.org:8545"
-    private_key = ""
-  }
+  faucet_config = sensitive(yamldecode(file("./configs/faucet-config.yaml")))
 }

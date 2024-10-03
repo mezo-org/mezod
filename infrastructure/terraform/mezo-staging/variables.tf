@@ -6,6 +6,9 @@ variable "services" {
     "cloudresourcemanager.googleapis.com",
     "compute.googleapis.com",
     "container.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "run.googleapis.com"
   ]
 }
 
@@ -106,5 +109,20 @@ variable "gcf" {
   default = {
     archive_bucket_name = "mezo-staging-gcf-archive-bucket"
     faucet_function_name = "mezo-staging-faucet-function"
+  }
+}
+
+variable "oidc_github" {
+  type = object({
+    github_organization = string
+    service_account     = string
+    repository          = string
+  })
+  description = "Configuration for GitHub OIDC provider"
+
+  default = {
+      github_organization = "mezo-org"
+      service_account = "mezo-staging-gha"
+      repository = "mezod"
   }
 }

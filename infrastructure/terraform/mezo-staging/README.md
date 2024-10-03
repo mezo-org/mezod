@@ -42,9 +42,9 @@ terraform init && terraform apply
 
 To create (or modify) the infrastructure resources, move to the `mezo-staging` root directory
 follow the steps below.
-1. Load SSL certificates from 1password (**this action needs to be done only once**):
+1. Load secrets from 1password (**this action needs to be done only once**):
     ```shell
-    ./load-ssl-certificates.sh
+    ./load-secrets.sh
     ```
 
 2. Initialize Terraform (**this action needs to be done only once**):
@@ -92,7 +92,7 @@ To make it work:
   (e.g. as a pre-shared GCP SSL certificate tied to a global HTTPS load balancer).
   The `mezo-staging` Terraform module can automatically load origin certificates
   from 1password and attach them to appropriate 
-  services (see `./load-ssl-certificates.sh` script)
+  services (see `./load-secrets.sh` script)
   
 A good example of a Cloudflare-proxied service exposed by the `mezo-staging` GCP project
 is the Mezo Blockscout explorer available at `https://explorer.test.mezo.org`.
