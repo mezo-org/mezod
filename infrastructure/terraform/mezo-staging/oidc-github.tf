@@ -48,7 +48,7 @@ resource "google_artifact_registry_repository_iam_member" "gha_sa-docker_public_
 # Attach the Workload Identity Pool (via role) to the Service Accounts
 # that will be used by GitHub Actions.
 resource "google_service_account_iam_member" "gha_sa-github_wi_user" {
-  service_account_id = google_service_account.gha.email
+  service_account_id = google_service_account.gha.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${var.oidc_github.github_organization}/${var.oidc_github.repository}"
 }
