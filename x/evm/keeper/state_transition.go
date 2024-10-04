@@ -79,8 +79,15 @@ func (k *Keeper) NewEVM(
 
 	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
 
-	// Load default EVM precompiles for the recent fork.
-	precompiles := vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())))
+	// Load default EVM precompiles for the recent fork. The `vm.DefaultPrecompiles`
+	// function returns a global map of default precompiles. We need to clone it
+	// before assigning it to the `precompiles` variable to avoid modifying
+	// the global map with custom precompiles. Moreover, multiple goroutines
+	// can call NewEVM concurrently. Each goroutine must work with its own
+	// copy of the global map to avoid the `concurrent map writes` fatal error.
+	precompiles := maps.Clone(
+		vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix()))),
+	)
 	// Add custom precompiles into the mix. Note that if a custom precompile
 	// uses the same address as a default precompile, the custom one will be used.
 	for k, v := range k.customPrecompiles {
