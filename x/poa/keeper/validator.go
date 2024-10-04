@@ -1,8 +1,14 @@
 package keeper
 
 import (
+	"bytes"
+	"context"
+	"slices"
+
 	errorsmod "cosmossdk.io/errors"
 	storetypes "cosmossdk.io/store/types"
+	cmtprotocrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
+	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/poa/types"
 )
@@ -241,4 +247,53 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validat
 	}
 
 	return validators
+}
+
+// GetValidatorsConsAddrsByPrivilege returns the consensus addresses of
+// all validators that are currently present in the store and have the
+// given privilege. There is no guarantee that the returned validators
+// are currently part of the CometBFT validator set.
+//
+// TODO: Temporary implementation that assumes the first half of the validators
+// have the requested privilege. Change this function once the actual privilege
+// system is implemented. Cover with unit tests once that happens.
+func (k Keeper) GetValidatorsConsAddrsByPrivilege(
+	ctx sdk.Context,
+	_ string,
+) []sdk.ConsAddress {
+	validators := k.GetAllValidators(ctx)
+
+	// Sort to ensure determinism.
+	slices.SortFunc(validators, func(i, j types.Validator) int {
+		return bytes.Compare(i.GetOperator().Bytes(), j.GetOperator().Bytes())
+	})
+
+	mid := len(validators) / 2
+
+	consAddresses := make([]sdk.ConsAddress, 0)
+	for _, validator := range validators[:mid] {
+		consAddresses = append(consAddresses, validator.GetConsAddress())
+	}
+
+	return consAddresses
+}
+
+// GetPubKeyByConsAddr gets the public key of a validator by the consensus address.
+func (k Keeper) GetPubKeyByConsAddr(
+	ctx context.Context,
+	cons sdk.ConsAddress,
+) (cmtprotocrypto.PublicKey, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+
+	validator, ok := k.GetValidatorByConsAddr(sdkCtx, cons)
+	if !ok {
+		return cmtprotocrypto.PublicKey{}, types.ErrNoValidatorFound
+	}
+
+	protoPubKey, err := cryptocdc.ToCmtProtoPublicKey(validator.GetConsPubKey())
+	if err != nil {
+		return cmtprotocrypto.PublicKey{}, err
+	}
+
+	return protoPubKey, nil
 }
