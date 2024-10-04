@@ -12,9 +12,14 @@ import (
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/mezo-org/mezod/app/abci/types"
 )
+
+// IModuleManager is an interface representing the module manager.
+type IModuleManager interface {
+	// PreBlock returns the pre-block logic for the module manager.
+	PreBlock(ctx sdk.Context) (*sdk.ResponsePreBlock, error)
+}
 
 // IPreBlockHandler is an interface representing the pre-block handler
 // (part of the FinalizeBlock ABCI request).
@@ -62,7 +67,7 @@ func NewPreBlockHandler(
 //  1. Calls only the module manager's PreBlock if vote extensions are not enabled.
 //  2. Returns error if the module manager's PreBlock call fails.
 //  3. Returns error if any of the sub-handlers fails.
-func (pbh *PreBlockHandler) PreBlocker(mm *module.Manager) sdk.PreBlocker {
+func (pbh *PreBlockHandler) PreBlocker(mm IModuleManager) sdk.PreBlocker {
 	return func(
 		ctx sdk.Context,
 		req *cmtabci.RequestFinalizeBlock,
