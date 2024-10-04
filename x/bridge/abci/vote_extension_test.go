@@ -8,10 +8,6 @@ import (
 	"github.com/mezo-org/mezod/cmd/config"
 
 	sdkmath "cosmossdk.io/math"
-	storetypes "cosmossdk.io/store/types"
-	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 
 	"cosmossdk.io/log"
@@ -35,8 +31,7 @@ type VoteExtensionHandlerTestSuite struct {
 	logger        log.Logger
 	ctx           sdk.Context
 	requestHeight int64
-	bankKeeper    *mockBankKeeper
-	keeper        keeper.Keeper
+	bridgeKeeper  *mockBridgeKeeper
 	handler       *VoteExtensionHandler
 }
 
@@ -48,10 +43,8 @@ func (s *VoteExtensionHandlerTestSuite) SetupTest() {
 
 	s.logger = log.NewNopLogger()
 
-	multiStore := servermock.NewCommitMultiStore()
-
 	s.ctx = sdk.NewContext(
-		multiStore,
+		servermock.NewCommitMultiStore(),
 		tmproto.Header{},
 		false,
 		s.logger,
@@ -59,40 +52,12 @@ func (s *VoteExtensionHandlerTestSuite) SetupTest() {
 
 	s.requestHeight = 100
 
-	storeKey := storetypes.NewKVStoreKey(bridgetypes.StoreKey)
+	s.bridgeKeeper = newMockBridgeKeeper()
 
-	// Only the first argument is relevant for the mock multi store.
-	multiStore.MountStoreWithDB(storeKey, 0, nil)
-
-	s.bankKeeper = newMockBankKeeper()
-
-	s.bankKeeper.On(
-		"MintCoins",
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-	).Return(nil)
-
-	s.bankKeeper.On(
-		"SendCoinsFromModuleToAccount",
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-	).Return(nil)
-
-	s.keeper = keeper.NewKeeper(
-		codec.NewProtoCodec(codectypes.NewInterfaceRegistry()),
-		storeKey,
-		s.bankKeeper,
-	)
-
-	// Accept some initial mock events to move the sequence tip to 200.
-	err := s.keeper.AcceptAssetsLocked(
+	s.bridgeKeeper.On(
+		"GetAssetsLockedSequenceTip",
 		s.ctx,
-		mockEvents(1, 200, recipient1, 1000),
-	)
-	s.Require().NoError(err)
+	).Return(sdkmath.NewInt(200))
 }
 
 func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
@@ -113,6 +78,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		reqTxs      [][]byte
 		expectedVE  *types.VoteExtension
 		errContains string
+
 	}{
 		{
 			name: "sidecar returning error",
@@ -495,7 +461,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 			s.handler = NewVoteExtensionHandler(
 				s.logger,
 				sidecar,
-				s.keeper,
+				s.bridgeKeeper,
 			)
 
 			req := &cmtabci.RequestExtendVote{
@@ -749,7 +715,7 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			s.handler = NewVoteExtensionHandler(
 				s.logger,
 				newMockEthereumSidecarClient(),
-				s.keeper,
+				s.bridgeKeeper,
 			)
 
 			req := &cmtabci.RequestVerifyVoteExtension{
@@ -804,29 +770,23 @@ func (mesc *mockEthereumSidecarClient) GetAssetsLockedEvents(
 	return nil, args.Error(1)
 }
 
-type mockBankKeeper struct {
+type mockBridgeKeeper struct {
 	mock.Mock
 }
 
-func newMockBankKeeper() *mockBankKeeper {
-	return &mockBankKeeper{}
+func newMockBridgeKeeper() *mockBridgeKeeper {
+	return &mockBridgeKeeper{}
 }
 
-func (mbk *mockBankKeeper) MintCoins(
-	ctx context.Context,
-	moduleName string,
-	amt sdk.Coins,
-) error {
-	args := mbk.Called(ctx, moduleName, amt)
-	return args.Error(0)
+func (mbk *mockBridgeKeeper) GetAssetsLockedSequenceTip(ctx sdk.Context) sdkmath.Int {
+	args := mbk.Called(ctx)
+	return args.Get(0).(sdkmath.Int)
 }
 
-func (mbk *mockBankKeeper) SendCoinsFromModuleToAccount(
-	ctx context.Context,
-	senderModule string,
-	recipientAddr sdk.AccAddress,
-	amt sdk.Coins,
+func (mbk *mockBridgeKeeper) AcceptAssetsLocked(
+	ctx sdk.Context,
+	events bridgetypes.AssetsLockedEvents,
 ) error {
-	args := mbk.Called(ctx, senderModule, recipientAddr, amt)
+	args := mbk.Called(ctx, events)
 	return args.Error(0)
 }

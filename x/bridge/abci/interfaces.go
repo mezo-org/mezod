@@ -3,6 +3,8 @@ package abci
 import (
 	"context"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"cosmossdk.io/math"
 	"github.com/mezo-org/mezod/x/bridge/types"
 )
@@ -25,4 +27,10 @@ type EthereumSidecarClient interface {
 		sequenceStart math.Int,
 		sequenceEnd math.Int,
 	) ([]types.AssetsLockedEvent, error)
+}
+
+// BridgeKeeper is an interface to the x/bridge module keeper.
+type BridgeKeeper interface {
+	GetAssetsLockedSequenceTip(ctx sdk.Context) math.Int
+	AcceptAssetsLocked(ctx sdk.Context, events types.AssetsLockedEvents) error
 }

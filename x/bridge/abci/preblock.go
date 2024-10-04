@@ -8,20 +8,19 @@ import (
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
-	"github.com/mezo-org/mezod/x/bridge/keeper"
 )
 
 // PreBlockHandler is the bridge-specific pre-block handler (part of the
 // FinalizeBlock ABCI request)
 type PreBlockHandler struct {
 	logger       log.Logger
-	bridgeKeeper keeper.Keeper
+	bridgeKeeper BridgeKeeper
 }
 
 // NewPreBlockHandler returns a new PreBlockHandler.
 func NewPreBlockHandler(
 	logger log.Logger,
-	bridgeKeeper keeper.Keeper,
+	bridgeKeeper BridgeKeeper,
 ) *PreBlockHandler {
 	return &PreBlockHandler{
 		logger:       logger,

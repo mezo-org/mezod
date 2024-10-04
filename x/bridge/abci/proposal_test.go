@@ -10,18 +10,13 @@ import (
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
-	storetypes "cosmossdk.io/store/types"
-
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/proto/tendermint/crypto"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	servermock "github.com/cosmos/cosmos-sdk/server/mock"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
-	"github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -46,8 +41,7 @@ type ProposalHandlerTestSuite struct {
 	logger        log.Logger
 	ctx           sdk.Context
 	requestHeight int64
-	bankKeeper    *mockBankKeeper
-	keeper        keeper.Keeper
+	bridgeKeeper  *mockBridgeKeeper
 	handler       *ProposalHandler
 }
 
@@ -59,10 +53,8 @@ func (s *ProposalHandlerTestSuite) SetupTest() {
 
 	s.logger = log.NewNopLogger()
 
-	multiStore := servermock.NewCommitMultiStore()
-
 	s.ctx = sdk.NewContext(
-		multiStore,
+		servermock.NewCommitMultiStore(),
 		tmproto.Header{},
 		false,
 		s.logger,
@@ -70,40 +62,12 @@ func (s *ProposalHandlerTestSuite) SetupTest() {
 
 	s.requestHeight = 100
 
-	storeKey := storetypes.NewKVStoreKey(bridgetypes.StoreKey)
+	s.bridgeKeeper = newMockBridgeKeeper()
 
-	// Only the first argument is relevant for the mock multi store.
-	multiStore.MountStoreWithDB(storeKey, 0, nil)
-
-	s.bankKeeper = newMockBankKeeper()
-
-	s.bankKeeper.On(
-		"MintCoins",
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-	).Return(nil)
-
-	s.bankKeeper.On(
-		"SendCoinsFromModuleToAccount",
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-	).Return(nil)
-
-	s.keeper = keeper.NewKeeper(
-		codec.NewProtoCodec(codectypes.NewInterfaceRegistry()),
-		storeKey,
-		s.bankKeeper,
-	)
-
-	// Accept some initial mock events to move the sequence tip to 200.
-	err := s.keeper.AcceptAssetsLocked(
+	s.bridgeKeeper.On(
+		"GetAssetsLockedSequenceTip",
 		s.ctx,
-		mockEvents(1, 200, recipient1, 1000),
-	)
-	s.Require().NoError(err)
+	).Return(sdkmath.NewInt(200))
 }
 
 func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
@@ -259,7 +223,7 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			s.handler = NewProposalHandler(
 				s.logger,
 				valStore,
-				s.keeper,
+				s.bridgeKeeper,
 				// No need for the vote extension decomposer in this test.
 				// The decomposer is used to construct the default assetsLockedExtractor
 				// but, we are overriding it with a test one.
@@ -723,7 +687,7 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			s.handler = NewProposalHandler(
 				s.logger,
 				valStore,
-				s.keeper,
+				s.bridgeKeeper,
 				// No need for the vote extension decomposer in this test.
 				// The decomposer is used to construct the default assetsLockedExtractor
 				// but, we are overriding it with a test one.
@@ -1575,20 +1539,6 @@ func mockEvent(
 		Recipient: recipient,
 		Amount:    sdkmath.NewInt(amount),
 	}
-}
-
-func mockEvents(
-	sequenceStart, sequenceEnd int64,
-	recipient string,
-	amount int64,
-) []bridgetypes.AssetsLockedEvent {
-	events := make([]bridgetypes.AssetsLockedEvent, 0)
-
-	for i := sequenceStart; i <= sequenceEnd; i++ {
-		events = append(events, mockEvent(i, recipient, amount))
-	}
-
-	return events
 }
 
 func txsVector(txs ...string) [][]byte {

@@ -12,7 +12,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
-	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
@@ -59,7 +58,7 @@ type AssetsLockedExtractor interface {
 type ProposalHandler struct {
 	logger                  log.Logger
 	valStore                bridgetypes.ValidatorStore
-	keeper                  bridgekeeper.Keeper
+	keeper                  BridgeKeeper
 	voteExtensionsValidator VoteExtensionsValidator
 	assetsLockedExtractor   AssetsLockedExtractor
 }
@@ -68,7 +67,7 @@ type ProposalHandler struct {
 func NewProposalHandler(
 	logger log.Logger,
 	valStore bridgetypes.ValidatorStore,
-	keeper bridgekeeper.Keeper,
+	keeper BridgeKeeper,
 	voteExtensionDecomposer VoteExtensionDecomposer,
 	voteExtensionsValidator VoteExtensionsValidator,
 ) *ProposalHandler {
