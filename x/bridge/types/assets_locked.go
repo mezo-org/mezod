@@ -1,6 +1,8 @@
 package types
 
 import (
+	"slices"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -19,6 +21,21 @@ func (ale AssetsLockedEvent) IsValid() bool {
 
 	amountValid := !ale.Amount.IsNil() && ale.Amount.IsPositive()
 	return amountValid
+}
+
+// Equal returns true if this AssetsLockedEvents is equal to the other event.
+// Two events are considered equal if their sequence numbers, recipient addresses,
+// and amounts of locked assets are equal.
+//
+// DEV NOTE: THIS FUNCTION PLAYS A CRUCIAL ROLE IN `assetsLockedExtractor` WHERE
+// WE DETERMINE CANONICAL EVENTS BASED ON VALIDATORS' VOTES. NOTHING PREVENTS A
+// MALICIOUS VALIDATOR FROM VOTING ON AN EVENT WITH THE GIVEN SEQUENCE BUT
+// WITH A DIFFERENT AMOUNT/RECIPIENT. THIS IS WHY WE NEED A WAY TO COMPARE
+// ALL FIELDS OF `AssetsLockedEvent`.
+func (ale AssetsLockedEvent) Equal(other AssetsLockedEvent) bool {
+	return ale.Sequence.Equal(other.Sequence) &&
+		ale.Recipient == other.Recipient &&
+		ale.Amount.Equal(other.Amount)
 }
 
 // AssetsLockedEvents is a slice of AssetsLockedEvent.
@@ -51,4 +68,13 @@ func (ale AssetsLockedEvents) IsValid() bool {
 	}
 
 	return ale.IsStrictlyIncreasingSequence()
+}
+
+// Equal returns true if this AssetsLockedEvent slice is equal to the other slice.
+// Two slices are considered equal if they have the same length and all their
+// elements are equal. See AssetsLockedEvent.Equal for more details.
+func (ale AssetsLockedEvents) Equal(other AssetsLockedEvents) bool {
+	return slices.EqualFunc(ale, other, func(a, b AssetsLockedEvent) bool {
+		return a.Equal(b)
+	})
 }
