@@ -40,7 +40,7 @@ jobs:
         with:
           images: ${{ inputs.registry }}
           tags: |
-            type=sha
+            type=sha,prefix=,format=short
             type=semver,pattern={{raw}}
 
       - name: 🔐 Authenticate to Google Cloud
@@ -73,6 +73,6 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=${{ inputs.registry }}:buildcache
+          cache-to: type=registry,ref=${{ inputs.registry }}:buildcache,mode=max
           tags: ${{ steps.meta.outputs.tags }}
