@@ -78,7 +78,6 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 		reqTxs      [][]byte
 		expectedVE  *types.VoteExtension
 		errContains string
-
 	}{
 		{
 			name: "sidecar returning error",

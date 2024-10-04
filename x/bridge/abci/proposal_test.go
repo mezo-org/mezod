@@ -313,12 +313,6 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 		return extCommitInfoBytes
 	}
 
-	marshalInjectedTx := func(injectedTx types.InjectedTx) []byte {
-		injectedTxBytes, err := injectedTx.Marshal()
-		s.Require().NoError(err)
-		return injectedTxBytes
-	}
-
 	tests := []struct {
 		name                    string
 		voteExtensionsValidator *mockVoteExtensionsValidator
@@ -1701,4 +1695,13 @@ func (male *mockAssetsLockedExtractor) CanonicalEvents(
 	}
 
 	return nil, args.Error(1)
+}
+
+func marshalInjectedTx(injectedTx types.InjectedTx) []byte {
+	injectedTxBytes, err := injectedTx.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return injectedTxBytes
 }
