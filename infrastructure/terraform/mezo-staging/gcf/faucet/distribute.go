@@ -3,7 +3,6 @@ package faucet
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"math/big"
 	"net/http"
 	"os"
@@ -24,14 +23,20 @@ var transferAmount = big.NewInt(10000000000000000)
 // BTC token precompile address
 const token = "0x7b7c000000000000000000000000000000000000"
 
+// Block explorer path for transactions
+const explorer = "https://explorer.test.mezo.org/tx/"
+
+// Testnet faucet path for example usage
+const faucet = "https://faucet.test.mezo.org/"
+
 func init() {
 	functions.HTTP("Distribute", Distribute)
 }
 
 func Distribute(w http.ResponseWriter, r *http.Request) {
 	// set CORS headers for the preflight request
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "POST")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Max-Age", "3600")
@@ -45,6 +50,18 @@ func Distribute(w http.ResponseWriter, r *http.Request) {
 
 	// make sure we have a valid address
 	address := strings.TrimPrefix(r.URL.Path, "/")
+	if len(address) == 0 {
+		// No address provided. Return instructions.
+		usage := "Error: no address provided\n\n" +
+			"Example usage:\n\n" +
+			faucet + "<ADDRESS>"
+		// write response
+		_, err := w.Write([]byte(usage))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
 	if !common.IsHexAddress(address) {
 		http.Error(w, "invalid address", http.StatusBadRequest)
 		return
@@ -112,12 +129,9 @@ func Distribute(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// set CORS header
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	// set Content-Type header
-	w.Header().Set("Content-Type", "application/json")
+
 	// write response
-	err = json.NewEncoder(w).Encode(transfer)
+	_, err = w.Write([]byte(explorer + transfer.Hash().String()))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
