@@ -44,20 +44,35 @@ func (k Keeper) setAssetsLockedSequenceTip(
 	ctx.KVStore(k.storeKey).Set(types.AssetsLockedSequenceTipKey, bz)
 }
 
-// AcceptAssetsLocked processes the given AssetsLocked events by minting the
-// corresponding amount of coins and sending them to the respective recipients.
-// A must-have precondition for this function is that the sequence number
-// of the first event in the slice is exactly one greater than the current
-// sequence tip held in the state. The function returns an error if this
-// precondition is not met. If the processing is successful, the current
-// sequence tip in the state is updated to the sequence number of the last
-// event in the slice.
+// AcceptAssetsLocked processes the given AssetsLocked events sequence by minting
+// the corresponding amount of coins for each event and sending them to the
+// recipient address.
+//
+// Requirements:
+//  1. The AssetsLocked sequence must not be empty.
+//  2. The AssetsLocked sequence must be valid (i.e. all events in the slice
+//     pass the AssetsLockedEvent.IsValid test AND sequence numbers of events
+//     form a sequence strictly increasing by 1).
+//  3. The sequence number of the first event in the slice must be exactly one
+//     greater than the current sequence tip held in the state.
+//
+// The function returns an error if any of the requirements is not met.
+// Checking the mentioned requirements is crucial to ensure state consistency
+// regardless of the guarantees provided by the upstream code.
+//
+// If all requirements are met and x/bank interactions are all successful, the
+// current sequence tip in the state is updated to the sequence number of the
+// last event in the slice.
 func (k Keeper) AcceptAssetsLocked(
 	ctx sdk.Context,
-	events []types.AssetsLockedEvent,
+	events types.AssetsLockedEvents,
 ) error {
 	if len(events) == 0 {
-		return nil
+		return fmt.Errorf("empty AssetsLocked sequence")
+	}
+
+	if !events.IsValid() {
+		return fmt.Errorf("invalid AssetsLocked sequence")
 	}
 
 	currentSequenceTip := k.GetAssetsLockedSequenceTip(ctx)

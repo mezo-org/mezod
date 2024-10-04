@@ -95,31 +95,30 @@ func (pbh *PreBlockHandler) PreBlocker() sdk.PreBlocker {
 
 		events := injectedTx.AssetsLockedEvents
 
-		// If the pseudo-transaction is present but holds an empty slice of
-		// AssetsLocked events, we error out as this case is illegal with
-		// the current proposal phase implementation.
-		if len(events) == 0 {
-			return nil, fmt.Errorf("injected tx does not contain AssetsLocked events")
+		eventsSequenceNumbers := make([]string, 0)
+		for _, event := range events {
+			if !event.Sequence.IsNil() {
+				eventsSequenceNumbers = append(eventsSequenceNumbers, event.Sequence.String())
+			}
 		}
 
 		pbh.logger.Info(
 			"AssetsLocked events sequence extracted from block",
 			"height", req.Height,
-			"events_count", len(events),
-			"events_sequence_start", events[0].Sequence,
+			"events_sequence_numbers", eventsSequenceNumbers,
 		)
 
+		// We do not validate the `events` slice as we assume all requirements
+		// of AcceptAssetsLocked were ensured during the proposal phase.
 		err := pbh.bridgeKeeper.AcceptAssetsLocked(ctx, events)
 		if err != nil {
 			return nil, fmt.Errorf("cannot accept AssetsLocked events: %w", err)
 		}
 
-		sequenceTip := pbh.bridgeKeeper.GetAssetsLockedSequenceTip(ctx)
-
 		pbh.logger.Info(
 			"bridge executed pre-block",
 			"height", req.Height,
-			"sequence_tip", sequenceTip,
+			"sequence_tip", pbh.bridgeKeeper.GetAssetsLockedSequenceTip(ctx),
 		)
 
 		return &sdk.ResponsePreBlock{}, nil
