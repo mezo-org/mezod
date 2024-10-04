@@ -18,7 +18,7 @@ jobs:
       contents: read
       id-token: write
     with:
-      registry: "docker.io/mezo/mezod"
+      registry: "us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/mezod"
     secrets:
       GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
@@ -27,7 +27,7 @@ jobs:
     if: ${{ !contains(github.ref_name, 'rc') }}
     uses: ./.github/workflows/_docker-package.yaml
     with:
-      registry: "us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/mezod"
+      registry: "docker.io/mezo/mezod"
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
