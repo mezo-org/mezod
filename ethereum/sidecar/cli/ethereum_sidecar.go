@@ -11,11 +11,14 @@ import (
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/spf13/cobra"
+
+	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 )
 
 func NewEthereumSidecarCmd() *cobra.Command {
 	defaultServerAddress := "0.0.0.0:7500"
 	defaultServerEthereumNodeAddress := "ws://127.0.0.1:8546"
+	defaultServerEthereumNetwork := ethconfig.Sepolia
 
 	cmd := &cobra.Command{
 		Use:   "ethereum-sidecar",
@@ -29,6 +32,7 @@ func NewEthereumSidecarCmd() *cobra.Command {
 		NewFlagSetEthereumSidecar(
 			defaultServerAddress,
 			defaultServerEthereumNodeAddress,
+			defaultServerEthereumNetwork.String(),
 		))
 
 	return cmd
@@ -42,6 +46,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 
 	grpcAddress, _ := cmd.Flags().GetString(FlagServerAddress)
 	ethNodeAddress, _ := cmd.Flags().GetString(FlagServerEthereumNodeAddress)
+	network, _ := cmd.Flags().GetString(FlagServerNetwork)
 
 	clientCtx, err := client.GetClientQueryContext(cmd)
 	if err != nil {
@@ -55,7 +60,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 	)
 
 	ctx := context.Background()
-	sidecar.RunServer(ctx, grpcAddress, ethNodeAddress, logger)
+	sidecar.RunServer(ctx, grpcAddress, ethNodeAddress, network, logger)
 	<-ctx.Done()
 
 	return fmt.Errorf("unexpected context cancellation")

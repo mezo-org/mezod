@@ -4,23 +4,23 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"math/rand"
 	"net"
 	"sync"
-	"time"
 
-	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	"google.golang.org/grpc"
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-)
 
-// precision is the number of decimal places in the amount of assets locked.
-var precision = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	"github.com/ethereum/go-ethereum/common"
+	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
+	ethconnect "github.com/mezo-org/mezod/ethereum"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
+)
 
 var (
 	// ErrSequencePointerNil is the error returned when the start or end of the
@@ -32,6 +32,8 @@ var (
 	ErrSequenceStartNotLower = fmt.Errorf(
 		"sequence start is not lower than sequence end",
 	)
+
+	BitcoinBridgeName = "bitcoinbridge"
 )
 
 // Server observes events emitted by the Mezo `BitcoinBridge` contract on the
@@ -45,8 +47,7 @@ type Server struct {
 	//       validation in the Ethereum server client.
 	events     []bridgetypes.AssetsLockedEvent
 	grpcServer *grpc.Server
-
-	logger log.Logger
+	logger     log.Logger
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -54,7 +55,8 @@ type Server struct {
 func RunServer(
 	ctx context.Context,
 	grpcAddress string,
-	_ string,
+	providerUrl string,
+	ethereumNetwork string,
 	logger log.Logger,
 ) *Server {
 	server := &Server{
@@ -64,76 +66,92 @@ func RunServer(
 		logger:      logger,
 	}
 
-	// Start observing AssetsLocked events.
-	go server.observeEvents(ctx)
+	bitcoinBridgeAddress, err := readBitcoinBridgeAddress()
+	if err != nil {
+		server.logger.Error("Failed to read the BitcoinBridge address: %v", err)
+	}
 
-	// Start the gRPC server.
-	go server.startGRPCServer(
-		ctx,
-		grpcAddress,
-	)
+	// Connect to the Ethereum network
+	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
+		Network:           networkFromString(ethereumNetwork),
+		URL:               providerUrl,
+		ContractAddresses: map[string]string{BitcoinBridgeName: bitcoinBridgeAddress.String()},
+	})
+	if err != nil {
+		server.logger.Error("Failed to connect to the Ethereum network: %v", err)
+	}
+
+	go server.observeEvents(chain, bitcoinBridgeAddress)
+	go server.startGRPCServer(ctx, grpcAddress)
 
 	return server
 }
 
-// observeEvents starts the AssetLocked observing routine. For now it is
-// generating dummy events.
-func (s *Server) observeEvents(ctx context.Context) {
-	// TODO: Replace with the code that actually observes the Ethereum chain.
-	//       Temporarily generate some dummy events.
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			//nolint:gosec
-			eventsCount := rand.Intn(11) // [0, 10] events
-
-			for i := 0; i < eventsCount; i++ {
-				s.sequenceTip = s.sequenceTip.Add(sdkmath.OneInt())
-
-				amount := new(big.Int).Mul(
-					//nolint:gosec
-					big.NewInt(rand.Int63n(10)+1),
-					precision,
-				)
-
-				key, err := ethsecp256k1.GenerateKey()
-				if err != nil {
-					panic(err)
-				}
-
-				recipient := sdk.AccAddress(key.PubKey().Address().Bytes())
-
-				event := bridgetypes.AssetsLockedEvent{
-					Sequence:  s.sequenceTip,
-					Recipient: recipient.String(),
-					Amount:    sdkmath.NewIntFromBigInt(amount),
-				}
-
-				s.eventsMutex.Lock()
-				s.events = append(s.events, event)
-
-				s.logger.Info(
-					"new AssetsLocked event",
-					"sequence", event.Sequence.String(),
-					"recipient", event.Recipient,
-					"amount", event.Amount.String(),
-				)
-
-				// Prune old events. Once the cache reaches 10000 elements,
-				// remove the oldest 100.
-				if len(s.events) > 10000 {
-					s.events = s.events[100:]
-				}
-
-				s.eventsMutex.Unlock()
-			}
-		case <-ctx.Done():
-			return
-		}
+// observeEvents starts the AssetLocked observing routine.
+func (s *Server) observeEvents(chain *ethconnect.BaseChain, bitcoinBridgeAddress common.Address) {
+	// Get the BitcoinBridge contract instance
+	bitcoinBridge, err := initializeBitcoinBridgeContract(chain, bitcoinBridgeAddress)
+	if err != nil {
+		s.logger.Error("Failed to initialize BitcoinBridge contract: %v", err)
 	}
+
+	// TODO: On Sidecar start, fetch events from 2 weeks old finilized blocks and
+	//       store them in cache.
+	fromBlock := big.NewInt(6762000)
+	opts := &bind.FilterOpts{
+		Start: fromBlock.Uint64(),
+		End:   nil, // Set to nil for now to get events from the latest block
+	}
+
+	// TODO: Subscribe to the AssetsLocked event instead of simple polling.
+	events, err := bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
+	if err != nil {
+		s.logger.Error(
+			"failed to filter to Assets Locked events: [%v]",
+			err,
+		)
+	}
+
+	// TODO: Use only those events which blocks were finalized on Ethereum.
+	for events.Next() {
+		event := events.Event
+		s.eventsMutex.Lock()
+		s.events = append(s.events, bridgetypes.AssetsLockedEvent{
+			Sequence:  sdkmath.NewIntFromBigInt(event.SequenceNumber),
+			Recipient: event.Recipient.Hex(),
+			Amount:    sdkmath.NewIntFromBigInt(event.TbtcAmount),
+		})
+		s.eventsMutex.Unlock()
+		s.logger.Info(
+			"new AssetsLocked event",
+			"sequence", event.SequenceNumber.String(),
+			"recipient", event.Recipient.Hex(),
+			"amount", event.TbtcAmount.String(),
+		)
+	}
+
+	// Prune old events. Once the cache reaches 10000 elements,
+	// remove the oldest 100.
+	// TODO: Decide on the actual cleaning based on memory allocation for each event.
+	if len(s.events) > 10000 {
+		s.events = s.events[100:]
+	}
+}
+
+// Construct a new instance of the Ethereum Bitcoin Bridge contract.
+func initializeBitcoinBridgeContract(
+	baseChain *ethconnect.BaseChain,
+	bitcoinBridgeAddress common.Address,
+) (*abi.BitcoinBridge, error) {
+	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, baseChain.Client)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to attach to Bitcoin Bridge contract: [%v]",
+			err,
+		)
+	}
+
+	return bitcoinBridge, nil
 }
 
 // startGRPCServer starts the gRPC server and registers the Ethereum sidecar
