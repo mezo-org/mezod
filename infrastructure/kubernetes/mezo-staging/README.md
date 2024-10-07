@@ -50,7 +50,7 @@ cluster as secrets:
   Custom `generate-mezo-node-keystore.sh` script is used to inject those secrets 
   directly into the Kubernetes cluster.
 
-### Stateful sets and services
+### Stateful sets
 
 Initial Mezo validators were defined as Kubernetes `mezo-node-<index>` stateful sets. 
 They mount the aforementioned config maps and secrets as volumes and map their 
@@ -68,3 +68,13 @@ Use `kubectl` to create the stateful sets (and services) or apply changes:
 ```shell
 kubectl apply -f mezo-node-<index>.yaml
 ```
+
+### Stateless deployments
+
+In addition to the Mezo validators, the `mezo-staging` cluster hosts the following 
+stateless deployments:
+- `ethereum-sidecar`: A sidecar process being the BTC bridge's pillar on Ethereum. 
+  It listens to `AssetsLocked` events emitted by the `BitcoinBridge` contract
+  and exposes them to the Mezo validators via a gRPC API. It uses the same
+  Docker image as the validators but is started with a different CLI command.
+  It is exposed through a ClusterIP service so, only cluster resources can access it.
