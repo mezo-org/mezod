@@ -49,7 +49,7 @@ func (k *Keeper) GetAccount(ctx sdk.Context, addr common.Address) *statedb.Accou
 	balance := k.GetBalance(ctx, addr)
 
 	// Use conversion to bytes rather than uint64 to avoid an overflow error.
-	acct.Balance = uint256.NewInt(0).SetBytes(balance.Bytes())
+	acct.Balance = new(uint256.Int).SetBytes(balance.Bytes())
 
 	return acct
 }
