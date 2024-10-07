@@ -34,6 +34,21 @@ var (
 	)
 
 	BitcoinBridgeName = "bitcoinbridge"
+
+	// Number of blocks to look back for AssetsLocked events in the BitcoinBridge
+	// contract. This is approximately 2 weeks window for 12s block time.
+	EventsLookupInBlocks = new(big.Int).SetInt64(100000)
+
+	// Size of Sequence: 32 bytes
+	// Size of Recipient: 42 bytes
+	// Size of Amount: 32 bytes
+	// Struct overhead and padding: ~16bytes
+	// Total size of one event: 122 bytes (0.12KB)
+	// Assuiming we want to allocate ~64MB for the cache, we can store ~546k events.
+	// For simplicity, let's make 500k events our limit. Even if deposits hit 1000
+	// daily mark, that would give 50 days of cached events which should be more than
+	// enough.
+	CachedEvents = 500000
 )
 
 // Server observes events emitted by the Mezo `BitcoinBridge` contract on the
@@ -48,6 +63,10 @@ type Server struct {
 	events     []bridgetypes.AssetsLockedEvent
 	grpcServer *grpc.Server
 	logger     log.Logger
+}
+
+type Block struct {
+	Number string `json:"number"`
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -81,60 +100,75 @@ func RunServer(
 		server.logger.Error("Failed to connect to the Ethereum network: %v", err)
 	}
 
-	go server.observeEvents(chain, bitcoinBridgeAddress)
+	go server.observeEvents(ctx, chain, bitcoinBridgeAddress)
 	go server.startGRPCServer(ctx, grpcAddress)
 
 	return server
 }
 
 // observeEvents starts the AssetLocked observing routine.
-func (s *Server) observeEvents(chain *ethconnect.BaseChain, bitcoinBridgeAddress common.Address) {
+func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain, bitcoinBridgeAddress common.Address) {
 	// Get the BitcoinBridge contract instance
 	bitcoinBridge, err := initializeBitcoinBridgeContract(chain, bitcoinBridgeAddress)
 	if err != nil {
 		s.logger.Error("Failed to initialize BitcoinBridge contract: %v", err)
 	}
 
-	// TODO: On Sidecar start, fetch events from 2 weeks old finilized blocks and
-	//       store them in cache.
-	fromBlock := big.NewInt(6762000)
-	opts := &bind.FilterOpts{
-		Start: fromBlock.Uint64(),
-		End:   nil, // Set to nil for now to get events from the latest block
-	}
-
-	// TODO: Subscribe to the AssetsLocked event instead of simple polling.
-	events, err := bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
+	var finalizedBlock Block
+	err = chain.RPCClient.CallContext(ctx, &finalizedBlock, "eth_getBlockByNumber", "finalized", false)
 	if err != nil {
-		s.logger.Error(
-			"failed to filter to Assets Locked events: [%v]",
-			err,
-		)
+		s.logger.Error("Failed to get the finalized block: %v", err)
 	}
 
-	// TODO: Use only those events which blocks were finalized on Ethereum.
-	for events.Next() {
-		event := events.Event
-		s.eventsMutex.Lock()
-		s.events = append(s.events, bridgetypes.AssetsLockedEvent{
-			Sequence:  sdkmath.NewIntFromBigInt(event.SequenceNumber),
-			Recipient: event.Recipient.Hex(),
-			Amount:    sdkmath.NewIntFromBigInt(event.TbtcAmount),
-		})
-		s.eventsMutex.Unlock()
-		s.logger.Info(
-			"new AssetsLocked event",
-			"sequence", event.SequenceNumber.String(),
-			"recipient", event.Recipient.Hex(),
-			"amount", event.TbtcAmount.String(),
-		)
+	finalizedBlockInt, ok := new(big.Int).SetString(finalizedBlock.Number[2:], 16)
+	if !ok {
+		s.logger.Error("Failed to convert hexadecimal string")
 	}
 
-	// Prune old events. Once the cache reaches 10000 elements,
-	// remove the oldest 100.
-	// TODO: Decide on the actual cleaning based on memory allocation for each event.
-	if len(s.events) > 10000 {
-		s.events = s.events[100:]
+	fmt.Printf("Hexadecimal: %s\nDecimal: %d\n", finalizedBlock.Number, finalizedBlockInt)
+
+	// Latest finalized block - ~2 weeks of blocks
+	fromBlock := new(big.Int).Sub(finalizedBlockInt, EventsLookupInBlocks).Uint64()
+	endBlock := finalizedBlockInt.Uint64()
+
+	if (s.events == nil) || (len(s.events) == 0) {
+
+		opts := &bind.FilterOpts{
+			Start: fromBlock,
+			End:   &endBlock,
+		}
+		events, err := bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
+		if err != nil {
+			s.logger.Error(
+				"failed to filter to Assets Locked events: [%v]",
+				err,
+			)
+		}
+
+		for events.Next() {
+			event := events.Event
+			s.eventsMutex.Lock()
+			s.events = append(s.events, bridgetypes.AssetsLockedEvent{
+				Sequence:  sdkmath.NewIntFromBigInt(event.SequenceNumber),
+				Recipient: event.Recipient.Hex(),
+				Amount:    sdkmath.NewIntFromBigInt(event.TbtcAmount),
+			})
+			s.eventsMutex.Unlock()
+			s.logger.Info(
+				"new AssetsLocked event",
+				"sequence", event.SequenceNumber.String(),
+				"recipient", event.Recipient.Hex(),
+				"amount", event.TbtcAmount.String(),
+			)
+		}
+	}
+
+	// TODO: Subscribe to the AssetsLocked events and add the new ones to cache.
+
+	// Prune old events. Once the cache reaches `CachedEvents` elements limit,
+	// free 10% of the oldest ones.
+	if len(s.events) > CachedEvents {
+		s.events = s.events[CachedEvents/10:]
 	}
 }
 

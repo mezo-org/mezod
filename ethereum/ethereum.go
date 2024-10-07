@@ -12,6 +12,7 @@ import (
 	"github.com/keep-network/keep-common/pkg/chain/ethereum"
 	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	"github.com/keep-network/keep-common/pkg/rate"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 var logger = log.Logger("mezo-ethereum")
@@ -21,6 +22,7 @@ var logger = log.Logger("mezo-ethereum")
 // block counter and similar.
 type BaseChain struct {
 	Client  ethutil.EthereumClient
+	RPCClient *rpc.Client
 	chainID *big.Int
 
 	blockCounter *ethereum.BlockCounter
@@ -65,6 +67,8 @@ func Connect(
 			err,
 		)
 	}
+
+	baseChain.RPCClient = client.Client()
 
 	return baseChain, nil
 }
