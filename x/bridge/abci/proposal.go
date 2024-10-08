@@ -12,7 +12,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
-	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
@@ -59,7 +58,7 @@ type AssetsLockedExtractor interface {
 type ProposalHandler struct {
 	logger                  log.Logger
 	valStore                bridgetypes.ValidatorStore
-	keeper                  bridgekeeper.Keeper
+	keeper                  BridgeKeeper
 	voteExtensionsValidator VoteExtensionsValidator
 	assetsLockedExtractor   AssetsLockedExtractor
 }
@@ -68,7 +67,7 @@ type ProposalHandler struct {
 func NewProposalHandler(
 	logger log.Logger,
 	valStore bridgetypes.ValidatorStore,
-	keeper bridgekeeper.Keeper,
+	keeper BridgeKeeper,
 	voteExtensionDecomposer VoteExtensionDecomposer,
 	voteExtensionsValidator VoteExtensionsValidator,
 ) *ProposalHandler {
@@ -275,8 +274,8 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 		if len(req.Txs[0]) == 0 {
 			// As said above, the app-level handler always passes a transaction
 			// vector with at least one element (representing the possibly empty
-			// bridge-specific pseudo-transaction). The first element can be a
-			// byte slice if the bridge-level PrepareProposal handler decided to
+			// bridge-specific pseudo-transaction). The first element can be an
+			// empty byte slice if the bridge-level PrepareProposal handler decided to
 			// not inject the pseudo-transaction. In this case, we do not need to
 			// do anything and return ACCEPT.
 			ph.logger.Debug(
