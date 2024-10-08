@@ -19,3 +19,10 @@ func (k Keeper) RemovePrivilege(
 ) error {
 	panic("implement me")
 }
+
+func (k Keeper) GetValidatorsOperatorsByPrivilege(
+	ctx sdk.Context,
+	privilege string,
+) []sdk.ValAddress {
+	panic("implement me")
+}

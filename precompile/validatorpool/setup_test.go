@@ -356,3 +356,10 @@ func (k *FakePoaKeeper) RemovePrivilege(
 ) error {
 	panic("implement me")
 }
+
+func (k *FakePoaKeeper) GetValidatorsOperatorsByPrivilege(
+	ctx sdk.Context,
+	privilege string,
+) []sdk.ValAddress {
+	panic("implement me")
+}

@@ -79,6 +79,12 @@ type PoaKeeper interface {
 		operators []types.ValAddress,
 		privilege string,
 	) error
+	// GetValidatorsOperatorsByPrivilege returns a list of validators with the
+	// specified privilege.
+	GetValidatorsOperatorsByPrivilege(
+		ctx types.Context,
+		privilege string,
+	) []types.ValAddress
 }
 
 // NewPrecompile creates a new validator pool precompile.
@@ -118,5 +124,6 @@ func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 		newApplicationsMethod(pk),
 		newAddPrivilegeMethod(pk),
 		newRemovePrivilegeMethod(pk),
+		newValidatorsByPrivilegeMethod(pk),
 	}
 }

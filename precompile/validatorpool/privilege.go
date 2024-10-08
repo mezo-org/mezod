@@ -203,6 +203,78 @@ func (rpm *RemovePrivilegeMethod) Run(
 	return precompile.MethodOutputs{true}, nil
 }
 
+// ValidatorsByPrivilegeMethodName is the name of the validatorsByPrivilege method.
+// It matches the name of the method in the contract ABI.
+const ValidatorsByPrivilegeMethodName = "validatorsByPrivilege"
+
+// ValidatorsByPrivilegeMethod is the implementation of the validatorsByPrivilege
+// method that returns a list of validators with the specified privilege.
+//
+// The method has the following input arguments:
+// - privilegeId: the privilege to filter by.
+type ValidatorsByPrivilegeMethod struct {
+	keeper PoaKeeper
+}
+
+func newValidatorsByPrivilegeMethod(pk PoaKeeper) *ValidatorsByPrivilegeMethod {
+	return &ValidatorsByPrivilegeMethod{
+		keeper: pk,
+	}
+}
+
+func (vbpm *ValidatorsByPrivilegeMethod) MethodName() string {
+	return ValidatorsByPrivilegeMethodName
+}
+
+func (vbpm *ValidatorsByPrivilegeMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (vbpm *ValidatorsByPrivilegeMethod) RequiredGas(_ []byte) (
+	uint64,
+	bool,
+) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (vbpm *ValidatorsByPrivilegeMethod) Payable() bool {
+	return false
+}
+
+func (vbpm *ValidatorsByPrivilegeMethod) Run(
+	context *precompile.RunContext,
+	inputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
+		return nil, err
+	}
+
+	//nolint:revive,stylecheck
+	privilegeId, ok := inputs[0].(uint8)
+	if !ok {
+		return nil, fmt.Errorf("privilegeId argument must be of type uint8")
+	}
+
+	privilege, ok := privileges[privilegeId]
+	if !ok {
+		return nil, fmt.Errorf("unknown privilege id")
+	}
+
+	operatorsSdk := vbpm.keeper.GetValidatorsOperatorsByPrivilege(
+		context.SdkCtx(),
+		privilege,
+	)
+
+	operators := make([]common.Address, len(operatorsSdk))
+
+	for i, operator := range operatorsSdk {
+		operators[i] = precompile.TypesConverter.Address.FromSDK(types.AccAddress(operator))
+	}
+
+	return precompile.MethodOutputs{operators}, nil
+}
+
 // PrivilegeAddedEventName is the name of the PrivilegeAdded event.
 // It matches the name of the event in the contract ABI.
 const PrivilegeAddedEventName = "PrivilegeAdded"
