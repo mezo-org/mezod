@@ -82,6 +82,9 @@ data:
     [tls]
       certificate-path = ""
       key-path = ""
+    [ethereum-sidecar.client]
+      server-address = "ethereum-sidecar.default.svc.cluster.local:7500"
+      request-timeout = "1s"  
 
   client.toml: |
     chain-id = "mezo_31611-1"
