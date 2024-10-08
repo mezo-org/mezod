@@ -75,7 +75,7 @@ func TestAcceptAssetsLocked(t *testing.T) {
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
 			events: types.AssetsLockedEvents{
 				mockEvent(1, "corrupted", 1), // invalid recipient
-				mockEvent(2, recipient1, 2), // proper event
+				mockEvent(2, recipient1, 2),  // proper event
 			},
 			errContains: "invalid AssetsLocked sequence",
 		},
