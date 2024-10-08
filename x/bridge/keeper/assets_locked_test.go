@@ -65,7 +65,8 @@ func TestAcceptAssetsLocked(t *testing.T) {
 			name:         "events invalid - event with invalid sequence",
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
 			events: types.AssetsLockedEvents{
-				mockEvent(0, recipient1, 1),
+				mockEvent(0, recipient1, 1), // invalid sequence
+				mockEvent(1, recipient2, 2), // proper event
 			},
 			errContains: "invalid AssetsLocked sequence",
 		},
@@ -73,7 +74,8 @@ func TestAcceptAssetsLocked(t *testing.T) {
 			name:         "events invalid - event with invalid recipient",
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
 			events: types.AssetsLockedEvents{
-				mockEvent(1, "corrupted", 1),
+				mockEvent(1, "corrupted", 1), // invalid recipient
+				mockEvent(2, recipient1, 2), // proper event
 			},
 			errContains: "invalid AssetsLocked sequence",
 		},
@@ -81,7 +83,8 @@ func TestAcceptAssetsLocked(t *testing.T) {
 			name:         "events invalid - event with invalid amount",
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
 			events: types.AssetsLockedEvents{
-				mockEvent(1, recipient1, 0),
+				mockEvent(1, recipient1, 0), // invalid amount
+				mockEvent(2, recipient2, 1), // proper event
 			},
 			errContains: "invalid AssetsLocked sequence",
 		},
