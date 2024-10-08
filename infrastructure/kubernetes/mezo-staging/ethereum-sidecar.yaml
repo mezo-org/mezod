@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ethereum-sidecar
+  namespace: default
+  labels:
+    app: mezo
+    type: ethereum-sidecar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mezo
+      type: ethereum-sidecar
+  template:
+    metadata:
+      labels:
+        app: mezo
+        type: ethereum-sidecar
+    spec:
+      containers:
+        - name: ethereum-sidecar
+          image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-internal/mezo-node:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 250m
+              memory: 128Mi
+          ports:
+            - name: server
+              containerPort: 7500
+          command:
+            - mezod
+            - ethereum-sidecar
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ethereum-sidecar
+  namespace: default
+  labels:
+    app: mezo
+    type: ethereum-sidecar
+spec:
+  type: ClusterIP
+  ports:
+    - name: server
+      port: 7500
+      targetPort: server
+  selector:
+    app: mezo
+    type: ethereum-sidecar
