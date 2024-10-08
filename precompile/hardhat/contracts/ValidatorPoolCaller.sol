@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { IValidatorPool, Description } from "../interfaces/IValidatorPool.sol";
+import { IValidatorPool, Description, Privilege } from "../interfaces/IValidatorPool.sol";
 
 contract ValidatorPoolCaller is IValidatorPool {
     address private constant precompile = 0x7B7C000000000000000000000000000000000011;
@@ -55,5 +55,29 @@ contract ValidatorPoolCaller is IValidatorPool {
 
     function validators() external view returns (address[] memory) {
         return IValidatorPool(precompile).validators();
+    }
+
+    function addPrivilege(
+        address[] calldata operators,
+        uint8 privilegeId
+    ) external returns (bool) {
+        return IValidatorPool(precompile).addPrivilege(operators, privilegeId);
+    }
+
+    function removePrivilege(
+        address[] calldata operators,
+        uint8 privilegeId
+    ) external returns (bool) {
+        return IValidatorPool(precompile).removePrivilege(operators, privilegeId);
+    }
+
+    function validatorsByPrivilege(
+        uint8 privilegeId
+    ) external view returns (address[] memory operators) {
+        return IValidatorPool(precompile).validatorsByPrivilege(privilegeId);
+    }
+
+    function privileges() external view returns (Privilege[] memory privileges) {
+        return IValidatorPool(precompile).privileges();
     }
 }
