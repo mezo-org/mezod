@@ -16,6 +16,15 @@ struct Description {
     string details;
 }
 
+/// @title Privilege
+/// @notice Description of a validator's privilege.
+struct Privilege {
+    /// @notice id is the unique identifier of the privilege.
+    uint8 id;
+    /// @notice name is the name of the privilege.
+    string name;
+}
+
 /// @title  IValidatorPool
 /// @notice Interface for the ValidatorPool precompile
 interface IValidatorPool {
@@ -64,6 +73,20 @@ interface IValidatorPool {
      * @param operator The operator address of the validator that left the pool
      */ 
     event ValidatorLeft(address indexed operator);
+
+    /**
+     * @notice Emitted when a privilege is added to a validator.
+     * @param operator The operator address of the validator.
+     * @param privilegeId The privilege added.
+     */
+    event PrivilegeAdded(address indexed operator, uint8 indexed privilegeId);
+
+    /**
+     * @notice Emitted when a privilege is removed from a validator.
+     * @param operator The operator address of the validator.
+     * @param privilegeId The privilege removed.
+     */
+    event PrivilegeRemoved(address indexed operator, uint8 indexed privilegeId);
 
     /** 
      * @notice Returns `true` after updating the contracts owner
@@ -142,4 +165,41 @@ interface IValidatorPool {
      * @notice Returns list of operator addresses of current validators
      */ 
     function validators() external view returns (address[] calldata);
+
+    /**
+     * @notice Adds the given privilege to the specified operators.
+     * @param operators List of operator addresses to add the privilege to.
+     * @param privilegeId The privilege to add.
+     * @dev Must be called by contract owner.
+     */
+    function addPrivilege(
+        address[] calldata operators,
+        uint8 privilegeId
+    ) external returns (bool);
+
+    /**
+     * @notice Removes the given privilege from the specified operators.
+     * @param operators List of operator addresses to remove the privilege from.
+     * @param privilegeId The privilege to add.
+     * @dev Must be called by contract owner.
+     */
+    function removePrivilege(
+        address[] calldata operators,
+        uint8 privilegeId
+    ) external returns (bool);
+
+    /**
+     * @notice Returns a list of validators with the specified privilege.
+     * @param privilegeId The privilege to filter by.
+     * @return operators List of operator addresses of validators with the specified privilege.
+     */
+    function validatorsByPrivilege(
+        uint8 privilegeId
+    ) external view returns (address[] memory operators);
+
+    /**
+     * @notice Returns all privileges available for validators.
+     * @return privileges List of all privileges available for validators.
+     */
+    function privileges() external view returns (Privilege[] memory privileges);
 }
