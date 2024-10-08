@@ -58,7 +58,7 @@ func TestAcceptAssetsLocked(t *testing.T) {
 		{
 			name:         "nil events",
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
-			events:       types.AssetsLockedEvents{},
+			events:       nil,
 			errContains:  "empty AssetsLocked sequence",
 		},
 		{
