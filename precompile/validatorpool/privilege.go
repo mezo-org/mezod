@@ -2,6 +2,7 @@ package validatorpool
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -273,6 +274,64 @@ func (vbpm *ValidatorsByPrivilegeMethod) Run(
 	}
 
 	return precompile.MethodOutputs{operators}, nil
+}
+
+// PrivilegesMethodName is the name of the `privileges` method.
+// It matches the name of the method in the contract ABI.
+const PrivilegesMethodName = "privileges"
+
+// PrivilegesMethod is the implementation of the privileges method that
+// returns all privileges available for validators.
+type PrivilegesMethod struct{}
+
+func newPrivilegesMethod() *PrivilegesMethod {
+	return &PrivilegesMethod{}
+}
+
+func (pm *PrivilegesMethod) MethodName() string {
+	return PrivilegesMethodName
+}
+
+func (pm *PrivilegesMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (pm *PrivilegesMethod) RequiredGas(_ []byte) (
+	uint64,
+	bool,
+) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (pm *PrivilegesMethod) Payable() bool {
+	return false
+}
+
+func (pm *PrivilegesMethod) Run(
+	_ *precompile.RunContext,
+	inputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
+	type privilegeDescriptor struct {
+		id   uint8
+		name string
+	}
+
+	privilegesList := make([]privilegeDescriptor, 0)
+
+	for id, name := range privileges {
+		privilegesList = append(privilegesList, privilegeDescriptor{id, name})
+	}
+
+	slices.SortFunc(privilegesList, func(a, b privilegeDescriptor) int {
+		return int(a.id - b.id)
+	})
+
+	return precompile.MethodOutputs{privilegesList}, nil
 }
 
 // PrivilegeAddedEventName is the name of the PrivilegeAdded event.

@@ -125,5 +125,6 @@ func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 		newAddPrivilegeMethod(pk),
 		newRemovePrivilegeMethod(pk),
 		newValidatorsByPrivilegeMethod(pk),
+		newPrivilegesMethod(),
 	}
 }
