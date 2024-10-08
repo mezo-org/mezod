@@ -347,3 +347,12 @@ func (k *FakePoaKeeper) AddPrivilege(
 ) error {
 	panic("implement me")
 }
+
+func (k *FakePoaKeeper) RemovePrivilege(
+	ctx sdk.Context,
+	sender sdk.AccAddress,
+	operators []sdk.ValAddress,
+	privilege string,
+) error {
+	panic("implement me")
+}

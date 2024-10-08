@@ -72,6 +72,13 @@ type PoaKeeper interface {
 		operators []types.ValAddress,
 		privilege string,
 	) error
+	// RemovePrivilege (onlyOwner) removes a privilege from a set of operators.
+	RemovePrivilege(
+		ctx types.Context,
+		sender types.AccAddress,
+		operators []types.ValAddress,
+		privilege string,
+	) error
 }
 
 // NewPrecompile creates a new validator pool precompile.
@@ -110,5 +117,6 @@ func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 		newApplicationMethod(pk),
 		newApplicationsMethod(pk),
 		newAddPrivilegeMethod(pk),
+		newRemovePrivilegeMethod(pk),
 	}
 }

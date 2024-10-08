@@ -10,3 +10,12 @@ func (k Keeper) AddPrivilege(
 ) error {
 	panic("implement me")
 }
+
+func (k Keeper) RemovePrivilege(
+	ctx sdk.Context,
+	sender sdk.AccAddress,
+	operators []sdk.ValAddress,
+	privilege string,
+) error {
+	panic("implement me")
+}
