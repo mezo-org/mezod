@@ -338,3 +338,12 @@ func (k *FakePoaKeeper) GetValidator(_ sdk.Context, operator sdk.ValAddress) (po
 func (k *FakePoaKeeper) GetAllValidators(sdk.Context) []poatypes.Validator {
 	return maps.Values(k.validators)
 }
+
+func (k *FakePoaKeeper) AddPrivilege(
+	ctx sdk.Context,
+	sender sdk.AccAddress,
+	operators []sdk.ValAddress,
+	privilege string,
+) error {
+	panic("implement me")
+}
