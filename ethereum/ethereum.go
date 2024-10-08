@@ -12,7 +12,6 @@ import (
 	"github.com/keep-network/keep-common/pkg/chain/ethereum"
 	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	"github.com/keep-network/keep-common/pkg/rate"
-	"github.com/ethereum/go-ethereum/rpc"
 )
 
 var logger = log.Logger("mezo-ethereum")
@@ -22,7 +21,6 @@ var logger = log.Logger("mezo-ethereum")
 // block counter and similar.
 type BaseChain struct {
 	Client  ethutil.EthereumClient
-	RPCClient *rpc.Client
 	chainID *big.Int
 
 	blockCounter *ethereum.BlockCounter
@@ -49,11 +47,12 @@ func Connect(
 	config ethereum.Config,
 ) (
 	*BaseChain,
+	*ethclient.Client,
 	error,
 ) {
 	client, err := ethclient.Dial(config.URL)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"error Connecting to Ethereum Server: %s [%v]",
 			config.URL,
 			err,
@@ -62,15 +61,13 @@ func Connect(
 
 	baseChain, err := newBaseChain(ctx, config, client)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"could not create base chain handle: [%v]",
 			err,
 		)
 	}
 
-	baseChain.RPCClient = client.Client()
-
-	return baseChain, nil
+	return baseChain, client, nil
 }
 
 // newChain construct a new instance of the Ethereum chain handle.
