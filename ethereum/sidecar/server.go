@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -21,16 +22,14 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
 
-	"time"
+	"github.com/ethereum/go-ethereum"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 var (
-	// ErrSequencePointerNil is the error returned when the start or end of the
-	// sequence is nil in the received request.
-	ErrSequencePointerNil = fmt.Errorf("sequence start or end is a nil pointer")
-
 	// ErrSequenceStartNotLower is the error returned when the start of
 	// the sequence is not lower than sequence end.
 	ErrSequenceStartNotLower = fmt.Errorf(
@@ -38,11 +37,10 @@ var (
 	)
 
 	BitcoinBridgeName = "bitcoinbridge"
-
 	// Number of blocks to look back for AssetsLocked events in the BitcoinBridge
 	// contract. This is approximately 2 weeks window for 12 sec. block time.
-	SearchedRange = new(big.Int).SetInt64(100000)
 
+	SearchedRange = new(big.Int).SetInt64(100000)
 	// Size of Sequence: 32 bytes
 	// Size of Recipient: 42 bytes
 	// Size of Amount: 32 bytes
@@ -52,8 +50,8 @@ var (
 	// For simplicity, let's make 500k events our limit. Even if deposits hit 1000
 	// daily mark, that would give 50 days of cached events which should be more than
 	// enough.
-	CachedEvents = 500000
 
+	CachedEvents = 500000
 	// Number of blocks that have to pass before an AssetsLocked event can be confirmed
 	// in a finalized block. Ideally a block is produced in every slot which takes
 	// 12 sec. There are 32 slots in Epoch. A block is considered finalized
@@ -91,7 +89,7 @@ type Block struct {
 func RunServer(
 	ctx context.Context,
 	grpcAddress string,
-	providerUrl string,
+	providerURL string,
 	ethereumNetwork string,
 	logger log.Logger,
 ) *Server {
@@ -110,7 +108,7 @@ func RunServer(
 	// Connect to the Ethereum network
 	chain, client, err := ethconnect.Connect(ctx, ethconfig.Config{
 		Network:           networkFromString(ethereumNetwork),
-		URL:               providerUrl,
+		URL:               providerURL,
 		ContractAddresses: map[string]string{BitcoinBridgeName: bitcoinBridgeAddress.String()},
 	})
 	if err != nil {
@@ -137,6 +135,7 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 	}
 
 	var finalized Block
+	// false for only hashes of the txs, true for full tx objects
 	err = client.Client().CallContext(ctx, &finalized, "eth_getBlockByNumber", "finalized", false)
 	if err != nil {
 		s.logger.Error("Failed to get the finalized block: %v", err)
@@ -146,78 +145,8 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 		s.logger.Error("Failed to convert hexadecimal string")
 	}
 
-	// TODO: remove below
-	fmt.Printf("Hexadecimal: %s\nDecimal: %d\n", finalized.Number, finalizedBlock)
-
-	// Fetching AssetsLocked events from the finalized blocks only. The search range
-	// is around 2 weeks of finalized blocks.
-
-	startBlockFinalized := new(big.Int).Sub(finalizedBlock, SearchedRange).Uint64()
-	endBlockFinalized := finalizedBlock.Uint64()
-
-	finalizedOpts := &bind.FilterOpts{
-		Start: startBlockFinalized,
-		End:   &endBlockFinalized,
-	}
-	events, err := bitcoinBridge.FilterAssetsLocked(finalizedOpts, nil, nil)
-	if err != nil {
-		s.logger.Error(
-			"failed to filter to Assets Locked events: [%v]",
-			err,
-		)
-	}
-
-	for events.Next() {
-		event := events.Event
-		s.eventsMutex.Lock()
-		s.events = append(s.events, abi.BitcoinBridgeAssetsLocked{
-			SequenceNumber: event.SequenceNumber,
-			Recipient:      event.Recipient,
-			TbtcAmount:     event.TbtcAmount,
-			Raw:            event.Raw,
-		})
-		s.eventsMutex.Unlock()
-		s.logger.Info(
-			"new finalized AssetsLocked event",
-			"sequence", event.SequenceNumber.String(),
-			"recipient", event.Recipient.Hex(),
-			"amount", event.TbtcAmount.String(),
-		)
-	}
-
-	// Fetching AssetsLocked events from the non finalized blocks only. The search
-	// range is around 13 minutes. This is when a sidecar starts and the event happened
-	// in the non-finalized block
-
-	nonFinalizedOpts := &bind.FilterOpts{
-		Start: endBlockFinalized,
-		End:   &currentBlockNumber,
-	}
-	nonFinalizedEvents, err := bitcoinBridge.FilterAssetsLocked(nonFinalizedOpts, nil, nil)
-	if err != nil {
-		s.logger.Error(
-			"failed to filter non-finalized Assets Locked events: [%v]",
-			err,
-		)
-	}
-
-	for nonFinalizedEvents.Next() {
-		event := nonFinalizedEvents.Event
-		s.eventsMutex.Lock()
-		s.bufferEvents = append(s.bufferEvents, abi.BitcoinBridgeAssetsLocked{
-			SequenceNumber: event.SequenceNumber,
-			Recipient:      event.Recipient,
-			TbtcAmount:     event.TbtcAmount,
-			Raw:            event.Raw,
-		})
-		s.eventsMutex.Unlock()
-		s.logger.Info(
-			"new non-finalized AssetsLocked event",
-			"sequence", event.SequenceNumber.String(),
-			"recipient", event.Recipient.Hex(),
-			"amount", event.TbtcAmount.String(),
-		)
-	}
+	s.fetchFinalizedEvents(bitcoinBridge, finalizedBlock)
+	s.fetchNonFinalizedEvents(bitcoinBridge, finalizedBlock, currentBlockNumber)
 
 	// Channel to receive new AssetsLocked events
 	eventsChan := make(chan *abi.BitcoinBridgeAssetsLocked)
@@ -227,16 +156,91 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 	}
 	defer sub.Unsubscribe()
 
-	ticker := uint64(currentBlockNumber)
+	tickerChan := s.startBlockTicker(currentBlockNumber)
+
+	for {
+		select {
+		case err := <-sub.Err():
+			s.logger.Error("Error while watching assets locked events: %v", err)
+		case event := <-eventsChan:
+			s.eventsMutex.Lock()
+			s.bufferEvents = append(s.bufferEvents, *event)
+			s.eventsMutex.Unlock()
+			s.logger.Info(
+				"New non-finalized AssetsLocked event",
+				"sequence", event.SequenceNumber.String(),
+				"recipient", event.Recipient.Hex(),
+				"amount", event.TbtcAmount.String(),
+			)
+		case currentBlockNumber := <-tickerChan:
+			s.processBufferedEvents(client, currentBlockNumber)
+		}
+	}
+}
+
+func (s *Server) fetchFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, finalizedBlock *big.Int) {
+	startBlock := new(big.Int).Sub(finalizedBlock, SearchedRange).Uint64()
+	endBlock := finalizedBlock.Uint64()
+
+	opts := &bind.FilterOpts{
+		Start: startBlock,
+		End:   &endBlock,
+	}
+	s.fetchEvents(bitcoinBridge, opts, true) // True for finalized events
+}
+
+func (s *Server) fetchNonFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, finalizedBlock *big.Int, currentBlockNumber uint64) {
+	opts := &bind.FilterOpts{
+		Start: finalizedBlock.Uint64(),
+		End:   &currentBlockNumber,
+	}
+	s.fetchEvents(bitcoinBridge, opts, false) // False for non-finalized events
+}
+
+func (s *Server) fetchEvents(bitcoinBridge *abi.BitcoinBridge, opts *bind.FilterOpts, finalized bool) {
+	events, err := bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
+	if err != nil {
+		s.logger.Error("Failed to filter AssetsLocked events: %v", err) // CHANGE: Use Errorf
+		return
+	}
+
+	s.eventsMutex.Lock()
+	defer s.eventsMutex.Unlock()
+
+	for events.Next() {
+		event := events.Event
+		if finalized {
+			s.events = append(s.events, *event)
+			s.logger.Info(
+				"Finalized AssetsLocked event",
+				"sequence", event.SequenceNumber.String(),
+				"recipient", event.Recipient.Hex(),
+				"amount", event.TbtcAmount.String(),
+			)
+		} else {
+			s.bufferEvents = append(s.bufferEvents, *event)
+			s.logger.Info(
+				"Non-finalized AssetsLocked event",
+				"sequence", event.SequenceNumber.String(),
+				"recipient", event.Recipient.Hex(),
+				"amount", event.TbtcAmount.String(),
+			)
+		}
+	}
+}
+
+// TODO: decide if we need to subscribe to the real block numbers. Historically,
+// the block creation time was between 13-15 sec, since Post Merge (PoS) it
+// takes 12 sec per block.
+// Cons for subscribing to the block numbers:
+// - subscription to the block numbers might create unnecessary cost. E.g. by RPC providers
+// - things can go wrong due to e.g. connection issues
+// Pros:
+// - no need to track any upgrades to PoS around average time for blocks creation.
+func (s *Server) startBlockTicker(currentBlockNumber uint64) chan uint64 {
 	tickerChan := make(chan uint64)
-	// TODO: decide if we need to subscribe to the real block numbers. Historically,
-	// the block creation time was between 13-15 sec, since Post Merge (PoS) it
-	// takes 12 sec per block.
-	// Cons for subscribing to the block numbers:
-	// - subscription to the block numbers might create unnecessary cost by RPC providers
-	// - another thing that can go wrong due to e.g. connection issues
-	// Pros:
-	// - no need to track any upgrades to PoS around average time for blocks creation.
+	ticker := currentBlockNumber
+
 	go func() {
 		for {
 			time.Sleep(BlockTime)
@@ -245,41 +249,73 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 		}
 	}()
 
-	for {
-		select {
-		case err := <-sub.Err():
-			s.logger.Error("Error while watching assets locked events: %v", err)
-		case event := <-eventsChan:
-			fmt.Printf("New AssetsLocked event: Recipient %s, Amount %d, Sequence Number %d\n", event.Recipient, event.TbtcAmount, event.SequenceNumber)
-			s.bufferEvents = append(s.bufferEvents, *event)
-		case currentBlockNumber := <-tickerChan:
-			ticker = currentBlockNumber
-			fmt.Println("blck number", ticker)
+	return tickerChan
+}
 
-			var remainingEvents []abi.BitcoinBridgeAssetsLocked
-			for _, event := range s.bufferEvents {
-				fmt.Println("event.Raw.BlockNumber", event.Raw.BlockNumber)
-				if ticker > event.Raw.BlockNumber+uint64(ConfirmationBlocks) {
-					// TODO: confirm that this block number is finalized. If it is indeed
-					// finilized, then append this event to s.events. If not, then
-					// append this event to remainingEvents.
-					s.events = append(s.events, event)
-				} else {
-					remainingEvents = append(remainingEvents, event)
-				}
-			}
-			s.bufferEvents = remainingEvents
-			fmt.Println("s.bufferEvents", len(s.bufferEvents))
-			fmt.Println("s.events", len(s.events))
-			fmt.Println("------")
+func (s *Server) processBufferedEvents(client *ethclient.Client, currentBlockNumber uint64) {
+	s.eventsMutex.Lock()
+	defer s.eventsMutex.Unlock()
 
-			// Prune old events. Once the cache reaches `CachedEvents` limit, free 10% of the oldest events.
-			if len(s.events) > CachedEvents {
-				s.events = s.events[CachedEvents/10:]
+	var remainingEvents []abi.BitcoinBridgeAssetsLocked
+	for _, event := range s.bufferEvents {
+		if currentBlockNumber > event.Raw.BlockNumber+uint64(ConfirmationBlocks) {
+			if isEventInBlock(client, int64(event.Raw.BlockNumber), event) {
+				s.events = append(s.events, event)
+			} else {
+				remainingEvents = append(remainingEvents, event)
 			}
+		} else {
+			remainingEvents = append(remainingEvents, event)
 		}
 	}
+	s.bufferEvents = remainingEvents
+	// TODO: remove logger
+	fmt.Println("number of confirmed events", len(s.events))
+	fmt.Println("number of unconfirmed events", len(s.bufferEvents))
+	fmt.Println("------")
 
+	if len(s.events) > CachedEvents {
+		s.events = s.events[CachedEvents/10:]
+	}
+}
+
+// Fetches events for a given block number from the blockchain.
+func fetchEventsForBlock(client *ethclient.Client, blockNumber int64) ([]types.Log, error) {
+	contractAddress, err := readBitcoinBridgeAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	query := ethereum.FilterQuery{
+		FromBlock: big.NewInt(blockNumber),
+		ToBlock:   big.NewInt(blockNumber),
+		Addresses: []common.Address{contractAddress},
+	}
+
+	logs, err := client.FilterLogs(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	return logs, nil
+}
+
+func isEventInBlock(client *ethclient.Client, blockNumber int64, event abi.BitcoinBridgeAssetsLocked) bool {
+	foundEvents, err := fetchEventsForBlock(client, blockNumber)
+	if err != nil {
+		return false
+	}
+
+	for _, e := range foundEvents {
+		if e.TxHash == event.Raw.TxHash && e.Index == event.Raw.Index {
+			// TODO: remove logger
+			fmt.Println("Event is confirmed in block")
+			return true
+		}
+	}
+	// TODO: remove logger
+	fmt.Println("Event was NOT found in block")
+	return false
 }
 
 // Construct a new instance of the Ethereum Bitcoin Bridge contract.
