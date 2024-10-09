@@ -340,26 +340,26 @@ func (k *FakePoaKeeper) GetAllValidators(sdk.Context) []poatypes.Validator {
 }
 
 func (k *FakePoaKeeper) AddPrivilege(
-	ctx sdk.Context,
-	sender sdk.AccAddress,
-	operators []sdk.ValAddress,
-	privilege string,
+	_ sdk.Context,
+	_ sdk.AccAddress,
+	_ []sdk.ValAddress,
+	_ string,
 ) error {
 	panic("implement me")
 }
 
 func (k *FakePoaKeeper) RemovePrivilege(
-	ctx sdk.Context,
-	sender sdk.AccAddress,
-	operators []sdk.ValAddress,
-	privilege string,
+	_ sdk.Context,
+	_ sdk.AccAddress,
+	_ []sdk.ValAddress,
+	_ string,
 ) error {
 	panic("implement me")
 }
 
 func (k *FakePoaKeeper) GetValidatorsOperatorsByPrivilege(
-	ctx sdk.Context,
-	privilege string,
+	_ sdk.Context,
+	_ string,
 ) []sdk.ValAddress {
 	panic("implement me")
 }

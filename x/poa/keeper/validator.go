@@ -1,9 +1,7 @@
 package keeper
 
 import (
-	"bytes"
 	"context"
-	"slices"
 
 	errorsmod "cosmossdk.io/errors"
 	storetypes "cosmossdk.io/store/types"
@@ -204,6 +202,8 @@ func (k Keeper) removeValidator(ctx sdk.Context, operator sdk.ValAddress) {
 	store.Delete(types.GetValidatorKey(operator))
 	store.Delete(types.GetValidatorByConsAddrKey(cons))
 	store.Delete(types.GetValidatorStateKey(operator))
+
+	// TODO: Cleanup validator privileges.
 }
 
 // GetAllValidators gets the set of all validators registered in the module store.
@@ -247,35 +247,6 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validat
 	}
 
 	return validators
-}
-
-// GetValidatorsConsAddrsByPrivilege returns the consensus addresses of
-// all validators that are currently present in the store and have the
-// given privilege. There is no guarantee that the returned validators
-// are currently part of the CometBFT validator set.
-//
-// TODO: Temporary implementation that assumes the first half of the validators
-// have the requested privilege. Change this function once the actual privilege
-// system is implemented. Cover with unit tests once that happens.
-func (k Keeper) GetValidatorsConsAddrsByPrivilege(
-	ctx sdk.Context,
-	_ string,
-) []sdk.ConsAddress {
-	validators := k.GetAllValidators(ctx)
-
-	// Sort to ensure determinism.
-	slices.SortFunc(validators, func(i, j types.Validator) int {
-		return bytes.Compare(i.GetOperator().Bytes(), j.GetOperator().Bytes())
-	})
-
-	mid := len(validators) / 2
-
-	consAddresses := make([]sdk.ConsAddress, 0)
-	for _, validator := range validators[:mid] {
-		consAddresses = append(consAddresses, validator.GetConsAddress())
-	}
-
-	return consAddresses
 }
 
 // GetPubKeyByConsAddr gets the public key of a validator by the consensus address.
