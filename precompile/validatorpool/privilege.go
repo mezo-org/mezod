@@ -317,8 +317,8 @@ func (pm *PrivilegesMethod) Run(
 	}
 
 	type privilegeDescriptor struct {
-		id   uint8
-		name string
+		Id   uint8
+		Name string
 	}
 
 	privilegesList := make([]privilegeDescriptor, 0)
@@ -328,7 +328,7 @@ func (pm *PrivilegesMethod) Run(
 	}
 
 	slices.SortFunc(privilegesList, func(a, b privilegeDescriptor) int {
-		return int(a.id - b.id)
+		return int(a.Id - b.Id)
 	})
 
 	return precompile.MethodOutputs{privilegesList}, nil
