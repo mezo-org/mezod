@@ -76,7 +76,7 @@ import (
 )
 
 const (
-	EnvPrefix = "MEZO"
+	EnvPrefix = "MEZOD"
 )
 
 // NewRootCmd creates a new root command for mezod. It is called once in the
