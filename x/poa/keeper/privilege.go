@@ -53,7 +53,7 @@ func (k Keeper) AddPrivilege(
 		if !found {
 			return sdkerrors.Wrapf(
 				types.ErrNotValidator,
-				"operator: %s",
+				"operator = %s",
 				operator.String(),
 			)
 		}
@@ -69,7 +69,7 @@ func (k Keeper) AddPrivilege(
 		if existingPrivilege {
 			return sdkerrors.Wrapf(
 				types.ErrExistingPrivilege,
-				"operator: %s, privilege: %s",
+				"operator = %s, privilege = %s",
 				operator.String(),
 				privilege,
 			)
@@ -122,7 +122,7 @@ func (k Keeper) RemovePrivilege(
 		if !found {
 			return sdkerrors.Wrapf(
 				types.ErrNotValidator,
-				"operator: %s",
+				"operator = %s",
 				operator.String(),
 			)
 		}
@@ -138,7 +138,7 @@ func (k Keeper) RemovePrivilege(
 		if index < 0 {
 			return sdkerrors.Wrapf(
 				types.ErrMissingPrivilege,
-				"operator: %s, privilege: %s",
+				"operator = %s, privilege = %s",
 				operator.String(),
 				privilege,
 			)
