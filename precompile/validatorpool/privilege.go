@@ -317,6 +317,7 @@ func (pm *PrivilegesMethod) Run(
 	}
 
 	type privilegeDescriptor struct {
+		//nolint:revive,stylecheck
 		Id   uint8
 		Name string
 	}
