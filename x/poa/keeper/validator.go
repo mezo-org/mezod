@@ -202,8 +202,7 @@ func (k Keeper) removeValidator(ctx sdk.Context, operator sdk.ValAddress) {
 	store.Delete(types.GetValidatorKey(operator))
 	store.Delete(types.GetValidatorByConsAddrKey(cons))
 	store.Delete(types.GetValidatorStateKey(operator))
-
-	// TODO: Cleanup validator privileges.
+	k.removeAllPrivileges(ctx, cons)
 }
 
 // GetAllValidators gets the set of all validators registered in the module store.

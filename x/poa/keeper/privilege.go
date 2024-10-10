@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 
+	storetypes "cosmossdk.io/store/types"
+
 	sdkerrors "cosmossdk.io/errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -229,4 +231,58 @@ func (k Keeper) GetValidatorsConsAddrsByPrivilege(
 	}
 
 	return consAddrs
+}
+
+// getAllPrivileges returns all distinct privileges that are currently present
+// in the store.
+func (k Keeper) getAllPrivileges(ctx sdk.Context) []string {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(
+		store,
+		types.ValidatorsByPrivilegeKeyPrefix,
+	)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	privileges := make([]string, 0)
+	for ; iterator.Valid(); iterator.Next() {
+		privileges = append(privileges, string(iterator.Key()))
+	}
+
+	return privileges
+}
+
+// removeAllPrivileges removes all privileges from a validator.
+func (k Keeper) removeAllPrivileges(
+	ctx sdk.Context,
+	validatorConsAddr sdk.ConsAddress,
+) {
+	privileges := k.getAllPrivileges(ctx)
+
+	for _, privilege := range privileges {
+		consAddrs := k.GetValidatorsConsAddrsByPrivilege(ctx, privilege)
+		if len(consAddrs) == 0 {
+			// The privilege does not have any validators, we can skip.
+			continue
+		}
+
+		index := slices.IndexFunc(
+			consAddrs,
+			func(consAddr sdk.ConsAddress) bool {
+				return consAddr.Equals(validatorConsAddr)
+			},
+		)
+		if index < 0 {
+			// The validator does not have the given privilege, we can skip.
+			continue
+		}
+
+		// Remove the consensus address from the slice preserving order.
+		consAddrs = append(consAddrs[:index], consAddrs[index+1:]...)
+
+		// Update the store.
+		k.setValidatorsConsAddrsByPrivilege(ctx, privilege, consAddrs)
+	}
 }
