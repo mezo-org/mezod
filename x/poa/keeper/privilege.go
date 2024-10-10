@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -185,6 +186,16 @@ func (k Keeper) setValidatorsConsAddrsByPrivilege(
 	privilege string,
 	consAddrs []sdk.ConsAddress,
 ) {
+	// Ensure predictable ordering of the consensus addresses.
+	slices.SortFunc(consAddrs, func(a, b sdk.ConsAddress) int {
+		return bytes.Compare(a.Bytes(), b.Bytes())
+	})
+
+	// Ensure that there are no duplicates.
+	consAddrs = slices.CompactFunc(consAddrs, func(a, b sdk.ConsAddress) bool {
+		return a.Equals(b)
+	})
+
 	consAddrsBytes, err := json.Marshal(consAddrs)
 	if err != nil {
 		// Should always be able to marshal the value.
