@@ -8,25 +8,19 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
-	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
-
-	"github.com/ethereum/go-ethereum"
-
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/ethereum/go-ethereum/ethclient"
+	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -69,8 +63,9 @@ var (
 // Ethereum chain. It enables retrieval of information on the assets locked by
 // the contract. It is intended to be run as a separate process.
 type Server struct {
-	sequenceTip sdkmath.Int
-	eventsMutex sync.RWMutex
+	sequenceTip       sdkmath.Int
+	eventsMutex       sync.RWMutex
+	bufferEventsMutex sync.RWMutex
 	// TODO: When we add the real implementation of the server, make sure the
 	//       `AssetsLocked` events returned from the server will pass the
 	//       validation in the Ethereum server client.
@@ -121,9 +116,19 @@ func RunServer(
 	return server
 }
 
-// observeEvents starts the AssetLocked observing routine.
+// observeEvents continuously monitors Ethereum blockchain events related to a
+// BitcoinBridge contract. It processes both finalized and non-finalized events,
+// and manages buffered events. This function runs indefinitely and should be
+// invoked in a dedicated goroutine.
+//
+// This function performs the following operations:
+//   - Initializes the BitcoinBridge contract instance using the provided chain and address.
+//   - Fetches events for both finalized and non-finalized blocks.
+//   - Starts monitoring for new `AssetsLocked` events and receives them via a channel.
+//   - Logs each new non-finalized `AssetsLocked` event, buffering them for potential future processing.
+//   - Starts a ticker to periodically check the current block number and processes buffered events when necessary.
 func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain, client *ethclient.Client, bitcoinBridgeAddress common.Address) {
-	// Get the BitcoinBridge contract instance
+	// Initialize the BitcoinBridge contract instance
 	bitcoinBridge, err := initializeBitcoinBridgeContract(chain, bitcoinBridgeAddress)
 	if err != nil {
 		s.logger.Error("Failed to initialize BitcoinBridge contract: %v", err)
@@ -135,7 +140,6 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 	}
 
 	var finalized Block
-	// false for only hashes of the txs, true for full tx objects
 	err = client.Client().CallContext(ctx, &finalized, "eth_getBlockByNumber", "finalized", false)
 	if err != nil {
 		s.logger.Error("Failed to get the finalized block: %v", err)
@@ -145,27 +149,38 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 		s.logger.Error("Failed to convert hexadecimal string")
 	}
 
+	// Fetch events for both finalized and non-finalized blocks
 	s.fetchFinalizedEvents(bitcoinBridge, finalizedBlock)
 	s.fetchNonFinalizedEvents(bitcoinBridge, finalizedBlock, currentBlockNumber)
 
-	// Channel to receive new AssetsLocked events
+	// Start monitoring for new AssetsLocked events
 	eventsChan := make(chan *abi.BitcoinBridgeAssetsLocked)
 	sub, err := bitcoinBridge.WatchAssetsLocked(&bind.WatchOpts{Context: ctx}, eventsChan, nil, nil)
 	if err != nil {
 		s.logger.Error("Failed to start watching assets locked events: %v", err)
+		return
 	}
-	defer sub.Unsubscribe()
+	defer func() {
+		sub.Unsubscribe()
+		close(eventsChan)
+	}()
 
-	tickerChan := s.startBlockTicker(currentBlockNumber)
+	// Start a ticker to periodically check the current block number
+	tickerChan := startBlockTicker(currentBlockNumber)
+	defer close(tickerChan)
 
 	for {
 		select {
+		case <-ctx.Done(): // Handle context cancellation
+			s.logger.Info("Stopping event observation due to context cancellation")
+			return
 		case err := <-sub.Err():
 			s.logger.Error("Error while watching assets locked events: %v", err)
 		case event := <-eventsChan:
-			s.eventsMutex.Lock()
+			// Log each new non-finalized AssetsLocked event
+			s.bufferEventsMutex.Lock()
 			s.bufferEvents = append(s.bufferEvents, *event)
-			s.eventsMutex.Unlock()
+			s.bufferEventsMutex.Unlock()
 			s.logger.Info(
 				"New non-finalized AssetsLocked event",
 				"sequence", event.SequenceNumber.String(),
@@ -173,11 +188,14 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 				"amount", event.TbtcAmount.String(),
 			)
 		case currentBlockNumber := <-tickerChan:
+			// Process buffered events when necessary
 			s.processBufferedEvents(client, currentBlockNumber)
 		}
 	}
 }
 
+// fecthFinalizedEvents fetches the finalized AssetsLocked events from the
+// Ethereum network.
 func (s *Server) fetchFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, finalizedBlock *big.Int) {
 	startBlock := new(big.Int).Sub(finalizedBlock, SearchedRange).Uint64()
 	endBlock := finalizedBlock.Uint64()
@@ -189,6 +207,8 @@ func (s *Server) fetchFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, finalize
 	s.fetchEvents(bitcoinBridge, opts, true) // True for finalized events
 }
 
+// fetchNonFinalizedEvents fetches the non-finalized AssetsLocked events from
+// the Ethereum network.
 func (s *Server) fetchNonFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, finalizedBlock *big.Int, currentBlockNumber uint64) {
 	opts := &bind.FilterOpts{
 		Start: finalizedBlock.Uint64(),
@@ -197,20 +217,23 @@ func (s *Server) fetchNonFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, final
 	s.fetchEvents(bitcoinBridge, opts, false) // False for non-finalized events
 }
 
+// fetchEvents retrieves and processes AssetsLocked events from a BitcoinBridge
+// contract. It differentiates between finalized and non-finalized events.
+// Finalized events are appended to a persistent store, while non-finalized events
+// are buffered for further processing.
 func (s *Server) fetchEvents(bitcoinBridge *abi.BitcoinBridge, opts *bind.FilterOpts, finalized bool) {
 	events, err := bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
 	if err != nil {
-		s.logger.Error("Failed to filter AssetsLocked events: %v", err) // CHANGE: Use Errorf
+		s.logger.Error("Failed to filter AssetsLocked events: %v", err)
 		return
 	}
-
-	s.eventsMutex.Lock()
-	defer s.eventsMutex.Unlock()
 
 	for events.Next() {
 		event := events.Event
 		if finalized {
+			s.eventsMutex.Lock()
 			s.events = append(s.events, *event)
+			s.eventsMutex.Unlock()
 			s.logger.Info(
 				"Finalized AssetsLocked event",
 				"sequence", event.SequenceNumber.String(),
@@ -218,7 +241,9 @@ func (s *Server) fetchEvents(bitcoinBridge *abi.BitcoinBridge, opts *bind.Filter
 				"amount", event.TbtcAmount.String(),
 			)
 		} else {
+			s.bufferEventsMutex.Lock()
 			s.bufferEvents = append(s.bufferEvents, *event)
+			s.bufferEventsMutex.Unlock()
 			s.logger.Info(
 				"Non-finalized AssetsLocked event",
 				"sequence", event.SequenceNumber.String(),
@@ -229,29 +254,12 @@ func (s *Server) fetchEvents(bitcoinBridge *abi.BitcoinBridge, opts *bind.Filter
 	}
 }
 
-// TODO: decide if we need to subscribe to the real block numbers. Historically,
-// the block creation time was between 13-15 sec, since Post Merge (PoS) it
-// takes 12 sec per block.
-// Cons for subscribing to the block numbers:
-// - subscription to the block numbers might create unnecessary cost. E.g. by RPC providers
-// - things can go wrong due to e.g. connection issues
-// Pros:
-// - no need to track any upgrades to PoS around average time for blocks creation.
-func (s *Server) startBlockTicker(currentBlockNumber uint64) chan uint64 {
-	tickerChan := make(chan uint64)
-	ticker := currentBlockNumber
-
-	go func() {
-		for {
-			time.Sleep(BlockTime)
-			ticker++
-			tickerChan <- ticker
-		}
-	}()
-
-	return tickerChan
-}
-
+// processBufferedEvents processes and confirms buffered Ethereum events related to
+// BitcoinBridgeAssetsLocked. It checks if each buffered event is confirmed by
+// verifying it against the Ethereum blockchain after a certain number of confirmation
+// blocks. Confirmed events are moved to the server's main event list, while unconfirmed
+// events remain in the buffer. The function also trims the main event list if it
+// exceeds a set cache size, ensuring efficient memory usage and event processing.
 func (s *Server) processBufferedEvents(client *ethclient.Client, currentBlockNumber uint64) {
 	s.eventsMutex.Lock()
 	defer s.eventsMutex.Unlock()
@@ -260,7 +268,9 @@ func (s *Server) processBufferedEvents(client *ethclient.Client, currentBlockNum
 	for _, event := range s.bufferEvents {
 		if currentBlockNumber > event.Raw.BlockNumber+uint64(ConfirmationBlocks) {
 			if isEventInBlock(client, int64(event.Raw.BlockNumber), event) {
+				s.eventsMutex.Lock()
 				s.events = append(s.events, event)
+				s.eventsMutex.Unlock()
 			} else {
 				remainingEvents = append(remainingEvents, event)
 			}
@@ -268,70 +278,15 @@ func (s *Server) processBufferedEvents(client *ethclient.Client, currentBlockNum
 			remainingEvents = append(remainingEvents, event)
 		}
 	}
+	s.bufferEventsMutex.Lock()
 	s.bufferEvents = remainingEvents
-	// TODO: remove logger
-	fmt.Println("number of confirmed events", len(s.events))
-	fmt.Println("number of unconfirmed events", len(s.bufferEvents))
-	fmt.Println("------")
+	s.bufferEventsMutex.Unlock()
 
 	if len(s.events) > CachedEvents {
+		s.eventsMutex.Lock()
 		s.events = s.events[CachedEvents/10:]
+		s.eventsMutex.Unlock()
 	}
-}
-
-// Fetches events for a given block number from the blockchain.
-func fetchEventsForBlock(client *ethclient.Client, blockNumber int64) ([]types.Log, error) {
-	contractAddress, err := readBitcoinBridgeAddress()
-	if err != nil {
-		return nil, err
-	}
-
-	query := ethereum.FilterQuery{
-		FromBlock: big.NewInt(blockNumber),
-		ToBlock:   big.NewInt(blockNumber),
-		Addresses: []common.Address{contractAddress},
-	}
-
-	logs, err := client.FilterLogs(context.Background(), query)
-	if err != nil {
-		return nil, err
-	}
-
-	return logs, nil
-}
-
-func isEventInBlock(client *ethclient.Client, blockNumber int64, event abi.BitcoinBridgeAssetsLocked) bool {
-	foundEvents, err := fetchEventsForBlock(client, blockNumber)
-	if err != nil {
-		return false
-	}
-
-	for _, e := range foundEvents {
-		if e.TxHash == event.Raw.TxHash && e.Index == event.Raw.Index {
-			// TODO: remove logger
-			fmt.Println("Event is confirmed in block")
-			return true
-		}
-	}
-	// TODO: remove logger
-	fmt.Println("Event was NOT found in block")
-	return false
-}
-
-// Construct a new instance of the Ethereum Bitcoin Bridge contract.
-func initializeBitcoinBridgeContract(
-	baseChain *ethconnect.BaseChain,
-	bitcoinBridgeAddress common.Address,
-) (*abi.BitcoinBridge, error) {
-	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, baseChain.Client)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to attach to Bitcoin Bridge contract: [%v]",
-			err,
-		)
-	}
-
-	return bitcoinBridge, nil
 }
 
 // startGRPCServer starts the gRPC server and registers the Ethereum sidecar
@@ -401,4 +356,81 @@ func (s *Server) AssetsLockedEvents(
 	return &pb.AssetsLockedEventsResponse{
 		Events: filteredEvents,
 	}, nil
+}
+
+// TODO: decide if we need to subscribe to the real block numbers. Historically,
+// the block creation time was between 13-15 sec, since Post Merge (PoS) it
+// takes 12 sec per block.
+// Cons for subscribing to the block numbers:
+// - subscription to the block numbers might create unnecessary cost. E.g. by RPC providers
+// - things can go wrong due to e.g. connection issues
+// Pros:
+// - no need to track any upgrades to PoS around average time for blocks creation.
+func startBlockTicker(currentBlockNumber uint64) chan uint64 {
+	tickerChan := make(chan uint64)
+	ticker := currentBlockNumber
+
+	go func() {
+		for {
+			time.Sleep(BlockTime)
+			ticker++
+			tickerChan <- ticker
+		}
+	}()
+
+	return tickerChan
+}
+
+// Fetches blockchain events for a given block number from the Ethereum network.
+func fetchEventsForBlock(client *ethclient.Client, blockNumber int64) ([]types.Log, error) {
+	contractAddress, err := readBitcoinBridgeAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	query := ethereum.FilterQuery{
+		FromBlock: big.NewInt(blockNumber),
+		ToBlock:   big.NewInt(blockNumber),
+		Addresses: []common.Address{contractAddress},
+	}
+
+	logs, err := client.FilterLogs(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+
+	return logs, nil
+}
+
+// Determines if a specific BitcoinBridgeAssetsLocked event is present in a specified block.
+// This function checks the presence of the event based on transaction hash and index in the
+// logs retrieved for the specified block.
+func isEventInBlock(client *ethclient.Client, blockNumber int64, event abi.BitcoinBridgeAssetsLocked) bool {
+	foundEvents, err := fetchEventsForBlock(client, blockNumber)
+	if err != nil {
+		return false
+	}
+
+	for _, e := range foundEvents {
+		if e.TxHash == event.Raw.TxHash && e.Index == event.Raw.Index {
+			return true
+		}
+	}
+	return false
+}
+
+// Construct a new instance of the Ethereum Bitcoin Bridge contract.
+func initializeBitcoinBridgeContract(
+	baseChain *ethconnect.BaseChain,
+	bitcoinBridgeAddress common.Address,
+) (*abi.BitcoinBridge, error) {
+	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, baseChain.Client)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to attach to Bitcoin Bridge contract: [%v]",
+			err,
+		)
+	}
+
+	return bitcoinBridge, nil
 }
