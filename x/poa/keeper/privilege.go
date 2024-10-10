@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 
 	storetypes "cosmossdk.io/store/types"
 
@@ -248,7 +249,11 @@ func (k Keeper) getAllPrivileges(ctx sdk.Context) []string {
 
 	privileges := make([]string, 0)
 	for ; iterator.Valid(); iterator.Next() {
-		privileges = append(privileges, string(iterator.Key()))
+		privilege := strings.TrimPrefix(
+			string(iterator.Key()),
+			string(types.ValidatorsByPrivilegeKeyPrefix),
+		)
+		privileges = append(privileges, privilege)
 	}
 
 	return privileges
