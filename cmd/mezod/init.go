@@ -140,7 +140,8 @@ func InitCmd(mbm module.BasicManager, defaultNodeHome string) *cobra.Command {
 			overwrite, _ := cmd.Flags().GetBool(genutilcli.FlagOverwrite)
 
 			if !overwrite && tmos.FileExists(genFile) {
-				return fmt.Errorf("genesis.json file already exists: %v", genFile)
+				fmt.Fprintf(os.Stderr, "genesis.json file already exists: %v\n", genFile)
+				return nil
 			}
 
 			appState, err := json.MarshalIndent(mbm.DefaultGenesis(cdc), "", " ")

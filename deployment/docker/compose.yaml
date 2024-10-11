@@ -1,0 +1,143 @@
+---
+x-volumes: &volumes
+  volumes:
+    - type: bind
+      source: ./tmp/storage
+      target: ${MEZOD_HOME}
+
+services:
+  #
+  # SECTION: management
+  #
+  cli:
+    container_name: cli
+    image: busybox
+    platform: linux/amd64
+    deploy:
+      # Make sure that the service won't run for "docker compose up".
+      # It is intended to be run manually.
+      replicas: 0
+    command:
+      - sh
+      - -c
+      - |
+        sleep 1 && echo "cli" && echo "cli: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /data/storage.txt
+    <<: *volumes
+    networks:
+      - mezo
+
+  #
+  # SECTION: initialization
+  #
+  init:
+    container_name: init
+    image: mezod
+    platform: linux/amd64
+    command:
+      - mezod
+      - init
+      - ${MEZOD_MONIKER}
+      - --chain-id=${MEZOD_CHAIN_ID}
+      - --home=${MEZOD_HOME}
+      - --keyring-backend=${MEZOD_KEYRING_BACKEND}
+    <<: *volumes
+    restart: on-failure:3
+    networks:
+      - mezo
+
+  # Download genesis.json as long as it is not provided by the "init" service.
+  genesis:
+    container_name: genesis
+    image: mikefarah/yq
+    platform: linux/amd64
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        wget --output-document=/tmp/genesis.raw ${SETUP_GENESIS_URL}
+        yq '.data["genesis.json"]' /tmp/genesis.raw > ${MEZOD_HOME}/config/genesis.json
+        echo "Genesis file downloaded!"
+    <<: *volumes
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  #
+  # SECTION: runtime
+  #
+  ethereum-sidecar:
+    container_name: ethereum-sidecar
+    image: mezod
+    platform: linux/amd64
+    command:
+      - mezod
+      - ethereum-sidecar
+      - --log_format=${MEZOD_LOG_FORMAT}
+      - --ethereum-sidecar.server.ethereum-node-address=${MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS}
+    # restart: always
+    deploy:
+      resources:
+        reservations: # TODO: verify on Linux
+          cpus: '1'
+          memory: 100M
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      genesis:
+        condition: service_completed_successfully
+    expose:
+      - 7500
+    networks:
+      - mezo
+    cap_drop:
+      - ALL
+
+  mezod:
+    container_name: mezod
+    image: mezod
+    platform: linux/amd64
+    command:
+      - mezod
+      - start
+      - --log_format=${MEZOD_LOG_FORMAT}
+      - --chain-id=${MEZOD_CHAIN_ID}
+      - --home=${MEZOD_HOME}
+      - --keyring-backend=${MEZOD_KEYRING_BACKEND}
+      - --moniker=${MEZOD_MONIKER}
+      - --p2p.seeds=${MEZOD_P2P_SEEDS}
+      - --ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS}
+    <<: *volumes
+    # restart: always
+    deploy:
+      resources:
+        reservations: # TODO: verify on Linux
+          cpus: '1'
+          memory: 100M
+    ports:
+      - 26656:26656
+      - 26657:26657
+      - 1317:1317
+      - 9090:9090
+      - 8545:8545
+      - 8546:8546
+    networks:
+      - mezo
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      genesis:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "cat", "${MEZOD_HOME}/config/genesis.json"]
+      interval: 5s
+      timeout: 1s
+      retries: 3
+      start_period: 1s
+      start_interval: 1s
+    cap_drop:
+      - ALL
+
+networks:
+  mezo:
+    driver: bridge
+
+
