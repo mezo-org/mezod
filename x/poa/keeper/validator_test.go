@@ -6,6 +6,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -354,9 +356,32 @@ func TestRemoveValidator(t *testing.T) {
 	validator1, _ := mockValidator()
 	validator2, _ := mockValidator()
 
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
+	poaKeeper.setOwner(ctx, owner)
+
 	// Set validators
 	poaKeeper.createValidator(ctx, validator1)
 	poaKeeper.createValidator(ctx, validator2)
+
+	// Add privilege1 to validator1 and validator2.
+	err := poaKeeper.AddPrivilege(
+		ctx,
+		owner,
+		[]sdk.ValAddress{validator1.GetOperator(), validator2.GetOperator()},
+		"privilege1",
+	)
+	require.NoError(t, err)
+
+	// Add privilege2 to validator1 and validator2.
+	err = poaKeeper.AddPrivilege(
+		ctx,
+		owner,
+		[]sdk.ValAddress{validator1.GetOperator(), validator2.GetOperator()},
+		"privilege2",
+	)
+	require.NoError(t, err)
 
 	poaKeeper.removeValidator(ctx, validator1.GetOperator())
 
@@ -387,6 +412,19 @@ func TestRemoveValidator(t *testing.T) {
 			foundState,
 		)
 	}
+
+	// The removed validator should be removed from both privilege sets.
+	// The non-removed validator should still be in both privilege sets.
+	require.Equal(
+		t,
+		[]sdk.ConsAddress{validator2.GetConsAddress()},
+		poaKeeper.GetValidatorsConsAddrsByPrivilege(ctx, "privilege1"),
+	)
+	require.Equal(
+		t,
+		[]sdk.ConsAddress{validator2.GetConsAddress()},
+		poaKeeper.GetValidatorsConsAddrsByPrivilege(ctx, "privilege2"),
+	)
 }
 
 func TestGetAllValidators(t *testing.T) {
