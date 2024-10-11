@@ -119,3 +119,18 @@ install, and manage Kubernetes applications. Helm charts are located in the
 As mentioned in the [Infrastructure](#infrastructure) section, Terraform is used
 to automate the deployment of Helm charts on the GKE cluster. This makes
 the process easier as there is no need to deal with Helm directly.
+
+## Ethereum Sidecar
+
+The sidecar is a component of the Mezo node, running as a separate process
+responsible for interacting with the Ethereum network. It plays a key role in
+the bridging architecture, monitoring the Ethereum network for `AssetsLocked`
+events emitted by the `BitcoinBridge` contract when assets are deposited.
+
+Once the blocks containing these `AssetsLocked` events are finalized, they are cached
+for further processing by the Mezo node. Due to Ethereum’s block finality mechanics,
+the sidecar is bound by the same constraints. As a result, it takes approximately
+13 to 14 minutes for a new event to be finalized and stored in the “finalized” cache
+for the Mezo node to process.
+
+More details can be found in the following [RFC](https://github.com/thesis/mezo/blob/main/docs/rfc/rfc-2.md#ethereum-sidecar)
