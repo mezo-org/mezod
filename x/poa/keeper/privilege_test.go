@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAddPrivilege(t *testing.T) {
-	privilege := "testPrivilege"
+const privilege = "testPrivilege"
 
+func TestAddPrivilege(t *testing.T) {
 	helper, _ := mockValidator()
 	owner := sdk.AccAddress(helper.GetOperator())
 
@@ -262,8 +262,6 @@ func TestAddPrivilege(t *testing.T) {
 }
 
 func TestRemovePrivilege(t *testing.T) {
-	privilege := "testPrivilege"
-
 	helper, _ := mockValidator()
 	owner := sdk.AccAddress(helper.GetOperator())
 
@@ -401,9 +399,9 @@ func TestRemovePrivilege(t *testing.T) {
 			errContains: "",
 		},
 		{
-			name: "happy path - some privileges left",
+			name:      "happy path - some privileges left",
 			prepareFn: nil,
-			sender: owner,
+			sender:    owner,
 			operators: []sdk.ValAddress{
 				validator2.GetOperator(),
 			},
@@ -497,4 +495,112 @@ func TestRemovePrivilege(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetValidatorsOperatorsByPrivilege(t *testing.T) {
+	ctx, poaKeeper := mockContext()
+
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
+	validator3, _ := mockValidator()
+
+	poaKeeper.setOwner(ctx, owner)
+
+	poaKeeper.setValidator(ctx, validator1)
+	poaKeeper.setValidator(ctx, validator2)
+	poaKeeper.setValidator(ctx, validator3)
+
+	poaKeeper.setValidatorByConsAddr(ctx, validator1)
+	poaKeeper.setValidatorByConsAddr(ctx, validator2)
+	poaKeeper.setValidatorByConsAddr(ctx, validator3)
+
+	err := poaKeeper.AddPrivilege(
+		ctx,
+		owner,
+		[]sdk.ValAddress{
+			validator1.GetOperator(),
+			validator2.GetOperator(),
+			validator3.GetOperator(),
+		},
+		privilege,
+	)
+	require.NoError(t, err, "expected no error")
+
+	expectedValidators := []types.Validator{validator1, validator2, validator3}
+
+	// The privilege's set consists of consensus addresses
+	// sorted in ascending order lexicographically. Sort the
+	// validators slice to match the expected order during comparison.
+	slices.SortFunc(expectedValidators, func(a, b types.Validator) int {
+		return bytes.Compare(a.GetConsAddress(), b.GetConsAddress())
+	})
+
+	expectedOperators := make([]sdk.ValAddress, len(expectedValidators))
+	for i, validator := range expectedValidators {
+		expectedOperators[i] = validator.GetOperator()
+	}
+
+	require.Equal(
+		t,
+		expectedOperators,
+		poaKeeper.GetValidatorsOperatorsByPrivilege(ctx, privilege),
+		"expected operators mismatch",
+	)
+}
+
+func TestGetValidatorsConsAddrsByPrivilege(t *testing.T) {
+	ctx, poaKeeper := mockContext()
+
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
+	validator1, _ := mockValidator()
+	validator2, _ := mockValidator()
+	validator3, _ := mockValidator()
+
+	poaKeeper.setOwner(ctx, owner)
+
+	poaKeeper.setValidator(ctx, validator1)
+	poaKeeper.setValidator(ctx, validator2)
+	poaKeeper.setValidator(ctx, validator3)
+
+	poaKeeper.setValidatorByConsAddr(ctx, validator1)
+	poaKeeper.setValidatorByConsAddr(ctx, validator2)
+	poaKeeper.setValidatorByConsAddr(ctx, validator3)
+
+	err := poaKeeper.AddPrivilege(
+		ctx,
+		owner,
+		[]sdk.ValAddress{
+			validator1.GetOperator(),
+			validator2.GetOperator(),
+			validator3.GetOperator(),
+		},
+		privilege,
+	)
+	require.NoError(t, err, "expected no error")
+
+	expectedValidators := []types.Validator{validator1, validator2, validator3}
+
+	// The privilege's set consists of consensus addresses
+	// sorted in ascending order lexicographically. Sort the
+	// validators slice to match the expected order during comparison.
+	slices.SortFunc(expectedValidators, func(a, b types.Validator) int {
+		return bytes.Compare(a.GetConsAddress(), b.GetConsAddress())
+	})
+
+	expectedConsAddrs := make([]sdk.ConsAddress, len(expectedValidators))
+	for i, validator := range expectedValidators {
+		expectedConsAddrs[i] = validator.GetConsAddress()
+	}
+
+	require.Equal(
+		t,
+		expectedConsAddrs,
+		poaKeeper.GetValidatorsConsAddrsByPrivilege(ctx, privilege),
+		"expected consensus addresses mismatch",
+	)
 }
