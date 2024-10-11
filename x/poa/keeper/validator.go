@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"slices"
 
 	errorsmod "cosmossdk.io/errors"
 	storetypes "cosmossdk.io/store/types"
@@ -250,6 +251,11 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) (validators []types.Validat
 }
 
 // GetPubKeyByConsAddr gets the public key of a validator by the consensus address.
+// If the validator is no longer in the validator set, the function will search
+// for the public key in the last 10 historical info entries. This function tries
+// to maximize the chance of finding the public key as it is used within the
+// function that validates the vote extensions. If vote extensions cannot be
+// validated, due to missing public keys, the consensus will halt.
 func (k Keeper) GetPubKeyByConsAddr(
 	ctx context.Context,
 	cons sdk.ConsAddress,
@@ -258,7 +264,51 @@ func (k Keeper) GetPubKeyByConsAddr(
 
 	validator, ok := k.GetValidatorByConsAddr(sdkCtx, cons)
 	if !ok {
-		return cmtprotocrypto.PublicKey{}, types.ErrNoValidatorFound
+		// Validator not found in the x/poa state, fall back to historical info.
+		// It's enough to search for the validator in the last 10 blocks.
+		// If we enter this path, it means that the validator was just removed
+		// from the validator set so recent historical info should still contain
+		// the information about the validator. At the same time, it would be
+		// not enough to look only at the previous block's historical info.
+		// As per https://docs.cometbft.com/v0.38/spec/abci/abci++_methods#finalizeblock,
+		// update of the validator set triggered at block H, takes effect at block H+2.
+		// Therefore, a validator removed from x/poa state at block H,
+		// still participates in the consensus at block H+1, and their
+		// vote extension is validated at block H+2. To cover all the corner
+		// cases without diving into the details of the consensus algorithm,
+		// we simply look at the last 10 blocks.
+		for i := int64(1); i <= 10; i++ {
+			height := sdkCtx.BlockHeight() - i
+			if height < 1 {
+				// No sense to search for historical info of blocks < 1
+				// as they surely don't exist.
+				break
+			}
+
+			hi, exists := k.GetHistoricalInfo(sdkCtx, height)
+			if !exists {
+				// If the given block's historical info does not exist,
+				// it means that it was pruned, and we should stop searching
+				// as older historical info entries will not be there as well.
+				break
+			}
+
+			index := slices.IndexFunc(hi.Valset, func(v types.Validator) bool {
+				return v.GetConsAddress().Equals(cons)
+			})
+			if index >= 0 {
+				// Validator found in the historical info. We can stop searching.
+				validator, ok = hi.Valset[index], true
+				break
+			}
+
+			// Continue searching in the older historical info entries until the loop ends.
+		}
+
+		if !ok {
+			// Validator not found in x/poa state nor in historical info.
+			return cmtprotocrypto.PublicKey{}, types.ErrNoValidatorFound
+		}
 	}
 
 	protoPubKey, err := cryptocdc.ToCmtProtoPublicKey(validator.GetConsPubKey())
