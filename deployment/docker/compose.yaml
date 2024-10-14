@@ -53,7 +53,8 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        wget --output-document=/tmp/genesis.raw ${SETUP_GENESIS_URL}
+        echo >${MEZOD_HOME}/config/genesis.json
+        wget --output-document=/tmp/genesis.raw ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
         yq '.data["genesis.json"]' /tmp/genesis.raw > ${MEZOD_HOME}/config/genesis.json
         echo "Genesis file downloaded!"
     <<: *volumes
@@ -113,12 +114,12 @@ services:
           cpus: '1'
           memory: 100M
     ports:
-      - 26656:26656
-      - 26657:26657
-      - 1317:1317
-      - 9090:9090
-      - 8545:8545
-      - 8546:8546
+      - 26656:26656 # p2p
+      - 26657:26657 # rpc
+      - 1317:1317   # api
+      - 9090:9090   # grpc
+      - 8545:8545   # json-rpc
+      - 8546:8546   # json-rpc-ws
     networks:
       - mezo
     depends_on:
@@ -133,6 +134,27 @@ services:
       retries: 3
       start_period: 1s
       start_interval: 1s
+    cap_drop:
+      - ALL
+
+  connect-sidecar:
+    container_name: connect-sidecar
+    image: ghcr.io/skip-mev/connect-sidecar:v2.1.1
+    # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
+    platform: linux/amd64
+    entrypoint: []
+    command:
+      - connect
+      - --log-disable-file-rotation
+      - --port=${CONNECT_SIDECAR_PORT}
+      # - --metrics-enabled
+      # - --metrics-prometheus-address=${CONNECT_SIDECAR_METRICS_PROMETHEUS_ADDRESS}
+      - --market-map-endpoint=mezod:9090
+    depends_on:
+      mezod:
+        condition: service_healthy
+    networks:
+      - mezo
     cap_drop:
       - ALL
 

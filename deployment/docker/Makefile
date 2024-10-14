@@ -2,7 +2,7 @@ NETWORK ?= testnet
 DOCKER_COMPOSE_CMD := docker compose --env-file $(NETWORK).env
 cmd ?= ps
 
-.PHONY: clean build init help start stop logs raw
+.PHONY: clean build init help start stop logs raw setup
 
 clean: ## Clean up
 	rm -rf tmp/storage
@@ -10,12 +10,14 @@ clean: ## Clean up
 build: ## Build Docker image
 	docker build --platform linux/amd64 -t mezod ../../
 
-setup: ## Setup configuration
+setup: ## Setup local environment
 	mkdir -p tmp/storage
-	$(DOCKER_COMPOSE_CMD) run --rm init
-	$(DOCKER_COMPOSE_CMD) run --rm genesis
 
-start: ## Start node
+start-one: setup ## Run single service
+	@test $(args) || (echo "Usage: make start-one args=<service>" && exit 1)
+	$(DOCKER_COMPOSE_CMD) run --rm $(args)
+
+start: setup ## Start node
 	$(DOCKER_COMPOSE_CMD) up --detach
 
 stop: ## Stop node

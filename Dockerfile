@@ -1,4 +1,7 @@
-FROM golang:1.22.6-bullseye AS build-env
+#
+# Build the image
+#
+FROM golang:1.22.6-bullseye AS build
 
 WORKDIR /go/src/github.com/mezo-org/mezod
 
@@ -9,13 +12,14 @@ COPY . .
 
 RUN make build
 
-FROM golang:1.22.6-bullseye
+#
+# Runtime image
+#
+FROM alpine:3.20.3
 
-RUN apt-get update -y && \
-    apt-get install ca-certificates jq -y
+# Install glibc compatibility for alpine
+RUN apk add --no-cache gcompat
 
-WORKDIR /root
-
-COPY --from=build-env /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
+COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 
 CMD ["mezod"]
