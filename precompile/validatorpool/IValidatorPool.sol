@@ -199,7 +199,7 @@ interface IValidatorPool {
 
     /**
      * @notice Returns all privileges available for validators.
-     * @return privileges List of all privileges available for validators.
+     * @return List of all privileges available for validators.
      */
-    function privileges() external view returns (Privilege[] memory privileges);
+    function privileges() external view returns (Privilege[] memory);
 }

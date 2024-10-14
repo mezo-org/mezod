@@ -77,7 +77,7 @@ contract ValidatorPoolCaller is IValidatorPool {
         return IValidatorPool(precompile).validatorsByPrivilege(privilegeId);
     }
 
-    function privileges() external view returns (Privilege[] memory privileges) {
+    function privileges() external view returns (Privilege[] memory) {
         return IValidatorPool(precompile).privileges();
     }
 }

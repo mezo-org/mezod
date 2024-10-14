@@ -374,7 +374,7 @@
                     }
                 ],
                 "internalType": "struct Privilege[]",
-                "name": "privileges",
+                "name": "",
                 "type": "tuple[]"
             }
         ],
