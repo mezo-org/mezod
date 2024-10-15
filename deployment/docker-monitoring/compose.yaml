@@ -1,0 +1,117 @@
+x-logging:
+  &default-logging
+  driver: "json-file"
+  options:
+    max-size: "1m"
+    max-file: "1"
+    tag: "{{.Name}}"
+
+services:
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.54.1
+    platform: linux/amd64
+    restart: always
+    expose:
+      - 9090
+    # Changing user to root to be able to access docker.sock
+    # https://github.com/prometheus/prometheus/issues/8185
+    user: root
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    volumes:
+      - ./configs/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - ./configs/prometheus-alerts.yaml:/etc/prometheus/alerts.yaml
+      - ./tmp/prometheus:/prometheus
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging: *default-logging
+
+  alertmanager:
+    container_name: alertmanager
+    image: prom/alertmanager:v0.27.0
+    restart: always
+    volumes:
+      - ./configs/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml
+    expose:
+      - 9093
+    logging: *default-logging
+
+  loki:
+    container_name: loki
+    image: grafana/loki:3.2.0
+    restart: always
+    command:
+      - "-config.file=/etc/loki/loki.yaml"
+    volumes:
+      - ./configs/loki.yaml:/etc/loki/loki.yaml
+    expose:
+      - 3100
+    logging: *default-logging
+
+  promtail:
+    container_name: promtail
+    image: grafana/promtail:3.2.0
+    platform: linux/amd64
+    restart: always
+    command:
+      - "-config.file=/etc/promtail/promtail.yaml"
+    volumes:
+      - ./configs/promtail.yaml:/etc/promtail/promtail.yaml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging: *default-logging
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:11.2.2
+    platform: linux/amd64
+    restart: always
+    expose:
+      - 3000
+    environment:
+      - GF_SERVER_DOMAIN=${DOMAIN}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_FEATURE_TOGGLES_ENABLE=lokiLogsDataplane
+      - GF_INSTALL_PLUGINS=https://storage.googleapis.com/integration-artifacts/grafana-lokiexplore-app/grafana-lokiexplore-app-latest.zip;grafana-lokiexplore-app
+    volumes:
+      - ./tmp/grafana:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning
+    logging: *default-logging
+
+  caddy:
+    container_name: caddy
+    image: caddy:2.8.4-alpine
+    platform: linux/amd64
+    restart: always
+    command:
+      - caddy
+      - reverse-proxy
+      - --access-log
+      - --internal-certs # Use internal certificates
+      - "--from"
+      - "${HTTP_PREFIX}://${DOMAIN}"
+      - "--to"
+      - "grafana:3000"
+    ports:
+      - 80:80
+      - 443:443
+    logging: *default-logging
+    labels:
+      promtail.scrape: "true"
+
+  # Test app
+  example-app:
+    container_name: example-app
+    image: quay.io/brancz/prometheus-example-app:v0.3.0
+    platform: linux/amd64
+    restart: always
+    expose:
+      - 8080
+    logging: *default-logging
+    labels:
+      promtail.scrape: "true"
+      prometheus.scrape: "true"
+      prometheus.port: "8080"
+      prometheus.path: "/metrics"

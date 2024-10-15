@@ -1,0 +1,40 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: [promtail.scrape=true]
+    relabel_configs:
+      - source_labels: [__meta_docker_container_id]
+        target_label: container_id
+      - source_labels: [__meta_docker_container_name]
+        target_label: container_name
+      - source_labels: [__meta_docker_container_log_stream]
+        target_label: logstream
+      - regex: __meta_docker_container_label_promtail_(.+)
+        action: labelmap
+        replacement: $1
+
+    # Detect timestamp and log level from JSON logs of containers
+    pipeline_stages:
+      - cri: {}
+      - multiline:
+          firstline: ^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2},\d{3}
+          max_wait_time: 3s
+      - json:
+          expressions:
+            message: message
+            level: level
+            output: message
