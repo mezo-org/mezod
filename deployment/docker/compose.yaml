@@ -2,8 +2,11 @@
 x-volumes: &volumes
   volumes:
     - type: bind
-      source: ./tmp/storage
+      source: ./tmp/mezod
       target: ${MEZOD_HOME}
+    - type: bind
+      source: ./tmp/keyring
+      target: ${MEZOD_KEYRING_DIR}
 
 services:
   #
@@ -27,10 +30,31 @@ services:
       - mezo
 
   #
-  # SECTION: initialization
+  # PHASE: initialization
   #
-  init:
-    container_name: init
+  init-keyring:
+    container_name: init-keyring
+    image: ${DOCKER_IMAGE_DEBUG}
+    platform: linux/amd64
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "Prepare keyring..."
+        (echo $KEYRING_SEED; echo $KEYRING_PASSWORD; echo $KEYRING_PASSWORD) \
+          | mezod keys add \
+            ${KEYRING_KEY_NAME} \
+            --home=${MEZOD_HOME} \
+            --keyring-backend=${MEZOD_KEYRING_BACKEND} \
+            --keyring-dir=${MEZOD_KEYRING_DIR} \
+            --recover
+        echo "Keyring prepared!"
+    <<: *volumes
+    restart: on-failure:2
+    networks:
+      - mezo
+
+  init-config:
+    container_name: init-config
     image: mezod
     platform: linux/amd64
     command:
@@ -40,12 +64,16 @@ services:
       - --chain-id=${MEZOD_CHAIN_ID}
       - --home=${MEZOD_HOME}
       - --keyring-backend=${MEZOD_KEYRING_BACKEND}
+      # - --keyring-dir=${MEZOD_KEYRING_DIR}
     <<: *volumes
-    restart: on-failure:3
+    restart: on-failure:2
+    depends_on:
+      init-keyring:
+        condition: service_completed_successfully
     networks:
       - mezo
 
-  # Download genesis.json as long as it is not provided by the "init" service.
+  # Download genesis.json as long as it is not provided by the "init-config" service.
   genesis:
     container_name: genesis
     image: mikefarah/yq
@@ -54,16 +82,16 @@ services:
     command:
       - |
         echo >${MEZOD_HOME}/config/genesis.json
-        wget --output-document=/tmp/genesis.raw ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
-        yq '.data["genesis.json"]' /tmp/genesis.raw > ${MEZOD_HOME}/config/genesis.json
+        wget --output-document=/tmp/genesis.yaml ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
+        yq '.data["genesis.json"]' /tmp/genesis.yaml > ${MEZOD_HOME}/config/genesis.json
         echo "Genesis file downloaded!"
     <<: *volumes
     depends_on:
-      init:
+      init-config:
         condition: service_completed_successfully
 
   #
-  # SECTION: runtime
+  # PHASE: runtime
   #
   ethereum-sidecar:
     container_name: ethereum-sidecar
@@ -81,9 +109,7 @@ services:
           cpus: '1'
           memory: 100M
     depends_on:
-      init:
-        condition: service_completed_successfully
-      genesis:
+      init-config:
         condition: service_completed_successfully
     expose:
       - 7500
@@ -103,6 +129,7 @@ services:
       - --chain-id=${MEZOD_CHAIN_ID}
       - --home=${MEZOD_HOME}
       - --keyring-backend=${MEZOD_KEYRING_BACKEND}
+      # - --keyring-dir=${MEZOD_KEYRING_DIR}
       - --moniker=${MEZOD_MONIKER}
       - --p2p.seeds=${MEZOD_P2P_SEEDS}
       - --ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS}
@@ -123,9 +150,7 @@ services:
     networks:
       - mezo
     depends_on:
-      init:
-        condition: service_completed_successfully
-      genesis:
+      init-config:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "cat", "${MEZOD_HOME}/config/genesis.json"]

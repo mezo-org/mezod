@@ -2,16 +2,23 @@ NETWORK ?= testnet
 DOCKER_COMPOSE_CMD := docker compose --env-file $(NETWORK).env
 cmd ?= ps
 
+include $(NETWORK).env
+
 .PHONY: clean build init help start stop logs raw setup
 
 clean: ## Clean up
-	rm -rf tmp/storage
+	rm -rf tmp/mezod
+	rm -rf tmp/keyring
 
-build: ## Build Docker image
-	docker build --platform linux/amd64 -t mezod ../../
+build-prod: ## Build production Docker image
+	docker build --platform linux/amd64 --tag $(DOCKER_IMAGE_PRODUCTION) --target production ../../
+
+build-debug: ## Build debug Docker image
+	docker build --platform linux/amd64 --tag $(DOCKER_IMAGE_DEBUG) --target debug ../../
 
 setup: ## Setup local environment
-	mkdir -p tmp/storage
+	mkdir -p tmp/mezod
+	mkdir -p tmp/keyring
 
 start-one: setup ## Run single service
 	@test $(args) || (echo "Usage: make start-one args=<service>" && exit 1)
@@ -29,7 +36,7 @@ logs: ## Show logs
 raw: ## Wrapper for Docker Compose
 	$(DOCKER_COMPOSE_CMD) $(args)
 
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\t\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+help: ## Display help menu
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "\t\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .DEFAULT_GOAL := help
