@@ -1,6 +1,5 @@
 NETWORK ?= testnet
 DOCKER_COMPOSE_CMD := docker compose --env-file $(NETWORK).env
-cmd ?= ps
 
 include $(NETWORK).env
 
