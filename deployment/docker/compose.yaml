@@ -4,27 +4,25 @@ x-volumes: &volumes
     - type: bind
       source: ./tmp/mezod
       target: ${MEZOD_HOME}
-    - type: bind
-      source: ./tmp/keyring
-      target: ${MEZOD_KEYRING_DIR}
+    # Commented, as long as the keyring-dir flag is not supported by the "mezod start" command.
+    # - type: bind
+    #   source: ./tmp/keyring
+    #   target: ${MEZOD_KEYRING_DIR}
 
 services:
   #
-  # SECTION: management
+  # SECTION: operations
   #
   cli:
     container_name: cli
-    image: busybox
+    image: ${DOCKER_IMAGE_DEBUG}
     platform: linux/amd64
     deploy:
       # Make sure that the service won't run for "docker compose up".
       # It is intended to be run manually.
       replicas: 0
-    command:
-      - sh
-      - -c
-      - |
-        sleep 1 && echo "cli" && echo "cli: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> /data/storage.txt
+    entrypoint: ["sh"]
+    working_dir: ${MEZOD_HOME}
     <<: *volumes
     networks:
       - mezo
@@ -55,7 +53,7 @@ services:
 
   init-config:
     container_name: init-config
-    image: mezod
+    image: ${DOCKER_IMAGE_PRODUCTION}
     platform: linux/amd64
     command:
       - mezod
@@ -95,21 +93,21 @@ services:
   #
   ethereum-sidecar:
     container_name: ethereum-sidecar
-    image: mezod
+    image: ${DOCKER_IMAGE_PRODUCTION}
     platform: linux/amd64
     command:
       - mezod
       - ethereum-sidecar
       - --log_format=${MEZOD_LOG_FORMAT}
       - --ethereum-sidecar.server.ethereum-node-address=${MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS}
-    # restart: always
+    restart: always
     deploy:
       resources:
         reservations: # TODO: verify on Linux
           cpus: '1'
           memory: 100M
     depends_on:
-      init-config:
+      genesis:
         condition: service_completed_successfully
     expose:
       - 7500
@@ -118,9 +116,30 @@ services:
     cap_drop:
       - ALL
 
+  connect-sidecar:
+    container_name: connect-sidecar
+    image: ghcr.io/skip-mev/connect-sidecar:v2.1.1
+    # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
+    platform: linux/amd64
+    entrypoint: []
+    command:
+      - connect
+      - --log-disable-file-rotation
+      - --port=${CONNECT_SIDECAR_PORT}
+      # - --metrics-enabled
+      # - --metrics-prometheus-address=${CONNECT_SIDECAR_METRICS_PROMETHEUS_ADDRESS}
+      - --market-map-endpoint=mezod:9090
+    depends_on:
+      genesis:
+        condition: service_completed_successfully
+    networks:
+      - mezo
+    cap_drop:
+      - ALL
+
   mezod:
     container_name: mezod
-    image: mezod
+    image: ${DOCKER_IMAGE_PRODUCTION}
     platform: linux/amd64
     command:
       - mezod
@@ -150,8 +169,12 @@ services:
     networks:
       - mezo
     depends_on:
-      init-config:
+      genesis:
         condition: service_completed_successfully
+      ethereum-sidecar:
+        condition: service_started
+      connect-sidecar:
+        condition: service_started
     healthcheck:
       test: ["CMD", "cat", "${MEZOD_HOME}/config/genesis.json"]
       interval: 5s
@@ -162,29 +185,6 @@ services:
     cap_drop:
       - ALL
 
-  connect-sidecar:
-    container_name: connect-sidecar
-    image: ghcr.io/skip-mev/connect-sidecar:v2.1.1
-    # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
-    platform: linux/amd64
-    entrypoint: []
-    command:
-      - connect
-      - --log-disable-file-rotation
-      - --port=${CONNECT_SIDECAR_PORT}
-      # - --metrics-enabled
-      # - --metrics-prometheus-address=${CONNECT_SIDECAR_METRICS_PROMETHEUS_ADDRESS}
-      - --market-map-endpoint=mezod:9090
-    depends_on:
-      mezod:
-        condition: service_healthy
-    networks:
-      - mezo
-    cap_drop:
-      - ALL
-
 networks:
   mezo:
     driver: bridge
-
-

@@ -8,7 +8,7 @@ include $(NETWORK).env
 
 clean: ## Clean up
 	rm -rf tmp/mezod
-	rm -rf tmp/keyring
+	# rm -rf tmp/keyring
 
 build-prod: ## Build production Docker image
 	docker build --platform linux/amd64 --tag $(DOCKER_IMAGE_PRODUCTION) --target production ../../
@@ -18,7 +18,7 @@ build-debug: ## Build debug Docker image
 
 setup: ## Setup local environment
 	mkdir -p tmp/mezod
-	mkdir -p tmp/keyring
+	# mkdir -p tmp/keyring
 
 start-one: setup ## Run single service
 	@test $(args) || (echo "Usage: make start-one args=<service>" && exit 1)
@@ -35,6 +35,9 @@ logs: ## Show logs
 
 raw: ## Wrapper for Docker Compose
 	$(DOCKER_COMPOSE_CMD) $(args)
+
+cli: ## Run management container
+	$(DOCKER_COMPOSE_CMD) run --rm --interactive cli
 
 help: ## Display help menu
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "\t\033[36m%-30s\033[0m %s\n", $$1, $$2}'
