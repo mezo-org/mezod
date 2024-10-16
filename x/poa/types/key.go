@@ -24,9 +24,10 @@ var (
 	ApplicationKeyPrefix           = []byte{0x30} // prefix for each key to a validator application
 	ApplicationByConsAddrKeyPrefix = []byte{0x31} // prefix for each key to a validator application index, by consensus address
 
-	ValidatorKeyPrefix           = []byte{0x40} // prefix for each key to a validator
-	ValidatorByConsAddrKeyPrefix = []byte{0x41} // prefix for each key to a validator index, by consensus address
-	ValidatorStateKeyPrefix      = []byte{0x42} // prefix for each key to a validator state
+	ValidatorKeyPrefix             = []byte{0x40} // prefix for each key to a validator
+	ValidatorByConsAddrKeyPrefix   = []byte{0x41} // prefix for each key to a validator index, by consensus address
+	ValidatorStateKeyPrefix        = []byte{0x42} // prefix for each key to a validator state
+	ValidatorsByPrivilegeKeyPrefix = []byte{0x43} // prefix for each key to a validators sub-set, by privilege
 
 	HistoricalInfoKeyPrefix = []byte{0x50} // prefix for each key to a historical info
 )
@@ -54,6 +55,14 @@ func GetValidatorByConsAddrKey(cons sdk.ConsAddress) []byte {
 // GetValidatorStateKey gets the key for the validator state by operator address.
 func GetValidatorStateKey(operator sdk.ValAddress) []byte {
 	return append(ValidatorStateKeyPrefix, operator.Bytes()...)
+}
+
+// GetValidatorsByPrivilegeKey gets the key for a validators sub-set having the given privilege.
+// A value is a set of consensus addresses of validators that have the given privilege.
+// We use the consensus address not the operator address because consensus-address-based
+// lookups occur more frequently than operator-address-based lookups.
+func GetValidatorsByPrivilegeKey(privilege string) []byte {
+	return append(ValidatorsByPrivilegeKeyPrefix, []byte(privilege)...)
 }
 
 // GetHistoricalInfoKey gets the key for a historical info by height.

@@ -15,4 +15,6 @@ var (
 	ErrWrongValidatorState             = errorsmod.Register(ModuleName, 8, "wrong validator state")
 	ErrOnlyOneValidator                = errorsmod.Register(ModuleName, 9, "there is only one validator in the validator set")
 	ErrOwnershipTransferNotInitialized = errorsmod.Register(ModuleName, 10, "pool ownership transfer not initialized")
+	ErrExistingPrivilege               = errorsmod.Register(ModuleName, 11, "privilege already granted to the validator")
+	ErrMissingPrivilege                = errorsmod.Register(ModuleName, 12, "privilege not granted to the validator")
 )
