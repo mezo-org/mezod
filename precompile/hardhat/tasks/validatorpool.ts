@@ -119,3 +119,44 @@ task('validatorPool:approveApplication', 'Approves a pending validator applicati
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })
+
+task('validatorPool:addPrivilege', 'Adds the given privilege to the specified operators')
+  .addParam('signer', 'The signer address (msg.sender)')
+  .addParam('operators', 'List of operator addresses to add the privilege to (comma separated)')
+  .addParam('privilegeId', 'The privilege to add')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const operators = taskArguments.operators.split(",")
+    const pending = await validatorPool.addPrivilege(operators, taskArguments.privilegeId)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('validatorPool:removePrivilege', 'Removes the given privilege from the specified operators')
+  .addParam('signer', 'The signer address (msg.sender)')
+  .addParam('operators', 'List of operator addresses to remove the privilege from (comma separated)')
+  .addParam('privilegeId', 'The privilege to add')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const operators = taskArguments.operators.split(",")
+    const pending = await validatorPool.removePrivilege(operators, taskArguments.privilegeId)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('validatorPool:validatorsByPrivilege', 'Returns a list of validators with the specified privilege')
+  .addParam('privilegeId', 'The privilege to filter by')
+  .setAction(async (taskArguments, hre) => {
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const validators = await validatorPool.validatorsByPrivilege(taskArguments.privilegeId)
+    console.log(validators)
+  })
+
+task('validatorPool:privileges', 'Returns all privileges available for validators')
+  .setAction(async (taskArguments, hre) => {
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const privileges = await validatorPool.privileges()
+    console.log(privileges)
+  })
