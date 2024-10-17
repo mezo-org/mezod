@@ -121,6 +121,10 @@ build: clean
 build-linux:
 	GOOS=linux GOARCH=amd64 LEDGER_ENABLED=false $(MAKE) build
 
+# Set empty BUILD_ARGS for install. By default, BUILD_ARGS contain the -o
+# flag that is not supported by go install.
+install: BUILD_ARGS=
+
 $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 	go $@ $(BUILD_FLAGS) $(BUILD_ARGS) ./...
 
