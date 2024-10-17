@@ -15,7 +15,7 @@ const (
 func NewFlagSetEthereumSidecar(
 	defaultServerAddress,
 	defaultServerEthereumNodeAddress,
-	defualtServerNetwork string,
+	defaultServerNetwork string,
 ) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
@@ -37,10 +37,11 @@ func NewFlagSetEthereumSidecar(
 	)
 	fs.String(
 		FlagServerNetwork,
-		defualtServerNetwork,
+		defaultServerNetwork,
 		fmt.Sprintf(
-			"The sidecar server Ethereum network (e.g. %s)",
-			defualtServerNetwork,
+			"The sidecar server Ethereum network. "+
+				"Possible values: mainnet | sepolia | developer "+
+				"If not set, sepolia is used by default",
 		),
 	)
 

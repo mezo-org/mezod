@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ipfs/go-log"
@@ -16,29 +15,18 @@ import (
 
 var logger = log.Logger("mezo-ethereum")
 
-// baseChain represents a base, non-application-specific chain handle. It
+// BaseChain represents a base, non-application-specific chain handle. It
 // provides the implementation of generic features like balance monitor,
 // block counter and similar.
 type BaseChain struct {
-	Client  ethutil.EthereumClient
-	chainID *big.Int
+	client           ethutil.EthereumClient
+	chainID          *big.Int
+	blockCounter     *ethereum.BlockCounter
+	finalizedBlockFn func(ctx context.Context) (*big.Int, error)
+}
 
-	blockCounter *ethereum.BlockCounter
-	miningWaiter *ethutil.MiningWaiter
-
-	// transactionMutex allows interested parties to forcibly serialize
-	// transaction submission.
-	//
-	// When transactions are submitted, they require a valid nonce. The nonce is
-	// equal to the count of transactions the account has submitted so far, and
-	// for a transaction to be accepted it should be monotonically greater than
-	// any previous submitted transaction. To do this, transaction submission
-	// asks the Ethereum client it is connected to for the next pending nonce,
-	// and uses that value for the transaction. Unfortunately, if multiple
-	// transactions are submitted in short order, they may all get the same
-	// nonce. Serializing submission ensures that each nonce is requested after
-	// a previous transaction has been submitted.
-	transactionMutex *sync.Mutex
+type Block struct {
+	Number string `json:"number"`
 }
 
 // Connect creates Ethereum chain handle.
@@ -47,12 +35,11 @@ func Connect(
 	config ethereum.Config,
 ) (
 	*BaseChain,
-	*ethclient.Client,
 	error,
 ) {
 	client, err := ethclient.Dial(config.URL)
 	if err != nil {
-		return nil, nil, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"error Connecting to Ethereum Server: %s [%v]",
 			config.URL,
 			err,
@@ -61,13 +48,13 @@ func Connect(
 
 	baseChain, err := newBaseChain(ctx, config, client)
 	if err != nil {
-		return nil, nil, fmt.Errorf(
+		return nil, fmt.Errorf(
 			"could not create base chain handle: [%v]",
 			err,
 		)
 	}
 
-	return baseChain, client, nil
+	return baseChain, nil
 }
 
 // newChain construct a new instance of the Ethereum chain handle.
@@ -106,17 +93,44 @@ func newBaseChain(
 		)
 	}
 
-	miningWaiter := ethutil.NewMiningWaiter(clientWithAddons, config)
+	finalizedBlockFn := func(ctx context.Context) (*big.Int, error) {
+		var finalized Block
+		err = client.Client().CallContext(ctx, &finalized, "eth_getBlockByNumber", "finalized", false)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to get the finalized block: %v",
+				err,
+			)
+		}
+		finalizedBlock, ok := new(big.Int).SetString(finalized.Number[2:], 16) // hex to decimal
+		if !ok {
+			return nil, fmt.Errorf(
+				"failed to convert finalized block number to integer: %v",
+				err,
+			)
+		}
 
-	transactionMutex := &sync.Mutex{}
+		return finalizedBlock, nil
+	}
 
 	return &BaseChain{
-		Client:           clientWithAddons,
+		client:           clientWithAddons,
 		chainID:          chainID,
 		blockCounter:     blockCounter,
-		miningWaiter:     miningWaiter,
-		transactionMutex: transactionMutex,
+		finalizedBlockFn: finalizedBlockFn,
 	}, nil
+}
+
+func (bc *BaseChain) BlockCounter() *ethereum.BlockCounter {
+	return bc.blockCounter
+}
+
+func (bc *BaseChain) FinalizedBlock(ctx context.Context) (*big.Int, error) {
+	return bc.finalizedBlockFn(ctx)
+}
+
+func (bc *BaseChain) Client() ethutil.EthereumClient {
+	return bc.client
 }
 
 // wrapClientAddons wraps the client instance with add-ons like logging, rate
