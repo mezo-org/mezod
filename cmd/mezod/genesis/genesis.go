@@ -10,6 +10,7 @@ func NewCmd() *cobra.Command {
 
 	cmd.AddCommand(
 		NewAddAccountCmd(),
+		NewMigrateCmd(),
 	)
 
 	return cmd

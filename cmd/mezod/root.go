@@ -139,7 +139,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		mezoclient.ValidateChainID(
 			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
 		),
-		MigrateGenesisCmd(),
 		poacli.NewGenValCmd(app.DefaultNodeHome),
 		poacli.NewCollectGenValsCmd(app.DefaultNodeHome),
 		escli.NewEthereumSidecarCmd(),
