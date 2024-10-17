@@ -124,7 +124,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	mezod genesis collect-genvals --home "$HOMEDIR"
 
 	# Run this to ensure everything worked and that the genesis file is setup correctly
-	mezod validate-genesis --home "$HOMEDIR"
+	mezod genesis validate --home "$HOMEDIR"
 
 	if [[ $1 == "pending" ]]; then
 		echo "pending mode is on, please wait for the first block committed."

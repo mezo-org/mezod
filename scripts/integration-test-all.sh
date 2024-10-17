@@ -74,7 +74,7 @@ init_func() {
     --keyring-backend test --home "$DATA_DIR$i"
     "$PWD"/build/mezod gentx "$KEY$i" 1000000000000000000stake --chain-id $CHAINID --keyring-backend test --home "$DATA_DIR$i"
     "$PWD"/build/mezod collect-gentxs --home "$DATA_DIR$i"
-    "$PWD"/build/mezod validate-genesis --home "$DATA_DIR$i"
+    "$PWD"/build/mezod genesis validate --home "$DATA_DIR$i"
 
     if [[ $MODE == "pending" ]]; then
       ls $DATA_DIR$i

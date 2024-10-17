@@ -119,7 +119,7 @@ POA_OWNER=${NODE_ADDRESSES[0]}
 jq '.app_state["poa"]["owner"]="'"$POA_OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 # Validate the global genesis file and move it to the root directory.
-./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
+./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR genesis validate &> /dev/null
 mv $GENESIS $HOMEDIR/genesis.json
 GENESIS=$HOMEDIR/genesis.json # Reassign the GENESIS variable to the new location.
 

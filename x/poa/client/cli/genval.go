@@ -28,10 +28,10 @@ func NewGenValCmd() *cobra.Command {
 	defaultIP, _ := server.ExternalIP()
 
 	cmd := &cobra.Command{
-		Use:   "genval [key_name]",
-		Short: "Generate data for a new validator",
+		Use:     "genval [key_name]",
+		Short:   "Generate data for a new validator",
 		Example: "genval my-key",
-		Args:  cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serverCtx := server.GetServerContextFromCmd(cmd)
 			clientCtx, err := client.GetClientTxContext(cmd)

@@ -56,8 +56,6 @@ import (
 	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
-	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
-
 	mezoclient "github.com/mezo-org/mezod/client"
 	"github.com/mezo-org/mezod/client/debug"
 	"github.com/mezo-org/mezod/encoding"
@@ -138,7 +136,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
 		),
 		escli.NewEthereumSidecarCmd(),
-		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		NewTestnetCmd(app.ModuleBasics),
 		debug.Cmd(),
