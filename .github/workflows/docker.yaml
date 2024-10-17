@@ -1,0 +1,33 @@
+---
+name: Release Docker Image
+# The workflow builds and pushes a Docker image to a container registry.
+# The workflow is triggered by a push event with a specific tag pattern.
+# Release candidate tags are pushed to Google Artifact Registry.
+# Release tags are pushed to Docker Hub.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]-+rc[0-9]+' # release candidate
+      - 'v[0-9]+.[0-9]+.[0-9]+' # release
+
+jobs:
+  google:
+    if: contains(github.ref_name, 'rc')
+    uses: ./.github/workflows/_docker-package.yaml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      registry: "us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/mezod"
+    secrets:
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+  dockerhub:
+    if: ${{ !contains(github.ref_name, 'rc') }}
+    uses: ./.github/workflows/_docker-package.yaml
+    with:
+      registry: "docker.io/mezo/mezod"
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

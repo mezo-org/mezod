@@ -17,6 +17,8 @@ package keeper
 
 import (
 	"math/big"
+	"slices"
+	"strings"
 
 	sdkmath "cosmossdk.io/math"
 
@@ -434,5 +436,9 @@ func (k Keeper) CustomPrecompileGenesisAccounts() []types.GenesisAccount {
 			Storage: types.Storage{},
 		})
 	}
+	// Sort to ensure the returned slice is ordered the same with every call.
+	slices.SortStableFunc(accounts, func(a, b types.GenesisAccount) int {
+		return strings.Compare(strings.ToLower(a.Address), strings.ToLower(b.Address))
+	})
 	return accounts
 }

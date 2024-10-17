@@ -1,6 +1,7 @@
 package validatorpool_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -127,6 +128,14 @@ func (s *PrecompileTestSuite) SetupTest() {
 		s.account3.Validator,
 	)
 
+	err = s.keeper.AddPrivilege(
+		s.ctx,
+		s.account1.SdkAddr,
+		[]sdk.ValAddress{sdk.ValAddress(s.account4.SdkAddr)},
+		"bridge",
+	)
+	s.Require().NoError(err)
+
 	// init app
 	s.app = app.Setup(false, nil)
 	header := testutil.NewHeader(
@@ -193,6 +202,7 @@ type FakePoaKeeper struct {
 	candidateOwner sdk.AccAddress
 	applications   map[string]poatypes.Application
 	validators     map[string]poatypes.Validator
+	privileges     map[string][]sdk.ValAddress
 }
 
 func NewFakePoaKeeper(
@@ -211,6 +221,7 @@ func NewFakePoaKeeper(
 		candidateOwner: candidateOwner,
 		applications:   applications,
 		validators:     validators,
+		privileges:     make(map[string][]sdk.ValAddress),
 	}
 }
 
@@ -337,4 +348,75 @@ func (k *FakePoaKeeper) GetValidator(_ sdk.Context, operator sdk.ValAddress) (po
 
 func (k *FakePoaKeeper) GetAllValidators(sdk.Context) []poatypes.Validator {
 	return maps.Values(k.validators)
+}
+
+func (k *FakePoaKeeper) AddPrivilege(
+	_ sdk.Context,
+	sender sdk.AccAddress,
+	operators []sdk.ValAddress,
+	privilege string,
+) error {
+	if sender.Empty() {
+		return errorsmod.Wrap(
+			sdkerrors.ErrInvalidAddress,
+			"sender address is empty",
+		)
+	}
+
+	if !sender.Equals(k.owner) {
+		return errorsmod.Wrap(
+			sdkerrors.ErrUnauthorized,
+			"sender is not owner",
+		)
+	}
+
+	k.privileges[privilege] = operators
+
+	return nil
+}
+
+func (k *FakePoaKeeper) RemovePrivilege(
+	_ sdk.Context,
+	sender sdk.AccAddress,
+	operators []sdk.ValAddress,
+	privilege string,
+) error {
+	if sender.Empty() {
+		return errorsmod.Wrap(
+			sdkerrors.ErrInvalidAddress,
+			"sender address is empty",
+		)
+	}
+
+	if !sender.Equals(k.owner) {
+		return errorsmod.Wrap(
+			sdkerrors.ErrUnauthorized,
+			"sender is not owner",
+		)
+	}
+
+	existing := k.privileges[privilege]
+
+	for _, operator := range operators {
+		index := slices.IndexFunc(
+			existing,
+			func(o sdk.ValAddress) bool {
+				return o.Equals(operator)
+			},
+		)
+		if index >= 0 {
+			existing = append(existing[:index], existing[index+1:]...)
+		}
+	}
+
+	k.privileges[privilege] = existing
+
+	return nil
+}
+
+func (k *FakePoaKeeper) GetValidatorsOperatorsByPrivilege(
+	_ sdk.Context,
+	privilege string,
+) []sdk.ValAddress {
+	return k.privileges[privilege]
 }
