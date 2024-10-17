@@ -14,26 +14,31 @@ services:
     restart: always
     expose:
       - 9090
-    # Changing user to root to be able to access docker.sock
+    # Changing user to root to access docker.sock
     # https://github.com/prometheus/prometheus/issues/8185
     user: root
     command:
       - "--config.file=/etc/prometheus/prometheus.yaml"
       - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=30d"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME}"
     volumes:
-      - ./configs/prometheus.yaml:/etc/prometheus/prometheus.yaml
-      - ./configs/prometheus-alerts.yaml:/etc/prometheus/alerts.yaml
-      - ./tmp/prometheus:/prometheus
+      - ./configs/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - ./configs/prometheus/alerts.yaml:/etc/prometheus/alerts.yaml
+      - ${STORAGE}/prometheus:/prometheus
       - /var/run/docker.sock:/var/run/docker.sock:ro
     logging: *default-logging
 
   alertmanager:
     container_name: alertmanager
     image: prom/alertmanager:v0.27.0
+    platform: linux/amd64
     restart: always
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yaml"
+      - "--storage.path=/alertmanager"
     volumes:
       - ./configs/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml
+      - ${STORAGE}/alertmanager:/alertmanager
     expose:
       - 9093
     logging: *default-logging
@@ -41,11 +46,14 @@ services:
   loki:
     container_name: loki
     image: grafana/loki:3.2.0
+    platform: linux/amd64
     restart: always
     command:
       - "-config.file=/etc/loki/loki.yaml"
     volumes:
-      - ./configs/loki.yaml:/etc/loki/loki.yaml
+      - ./configs/loki/loki.yaml:/etc/loki/loki.yaml
+      - ./configs/loki/alerts.yaml:/loki/rules/alerts.yaml
+      - ${STORAGE}/loki:/loki
     expose:
       - 3100
     logging: *default-logging
@@ -76,7 +84,7 @@ services:
       - GF_FEATURE_TOGGLES_ENABLE=lokiLogsDataplane
       - GF_INSTALL_PLUGINS=https://storage.googleapis.com/integration-artifacts/grafana-lokiexplore-app/grafana-lokiexplore-app-latest.zip;grafana-lokiexplore-app
     volumes:
-      - ./tmp/grafana:/var/lib/grafana
+      - ${STORAGE}/grafana:/var/lib/grafana
       - ./configs/grafana/provisioning:/etc/grafana/provisioning
     logging: *default-logging
 
@@ -101,7 +109,9 @@ services:
     labels:
       promtail.scrape: "true"
 
+  #
   # Test app
+  #
   example-app:
     container_name: example-app
     image: quay.io/brancz/prometheus-example-app:v0.3.0

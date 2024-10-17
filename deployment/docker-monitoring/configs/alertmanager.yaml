@@ -1,14 +1,21 @@
+#
+# Docs:
+# https://prometheus.io/docs/alerting/latest/configuration/
+#
 global:
   resolve_timeout: 5m
 
 route:
-  receiver: 'default'
+  receiver: "discord" # discord | pagerduty
 
+# Check out the documentation for the full list of options
+# https://prometheus.io/docs/alerting/latest/configuration/#general-receiver-related-settings
 receivers:
-  - name: 'default'
-    email_configs:
-      - to: 'your-email@example.com'
-        from: 'alertmanager@example.com'
-        smarthost: 'smtp.example.com:587'
-        auth_username: 'alertmanager@example.com'
-        auth_password: 'yourpassword'
+  - name: discord
+    discord_configs:
+      - send_resolved: true
+        webhook_url: "https://discord.com/api/webhooks/..."
+  - name: pagerduty
+    pagerduty_configs:
+      - send_resolved: true
+        routing_key: "..."

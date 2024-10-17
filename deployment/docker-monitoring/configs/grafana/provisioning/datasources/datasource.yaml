@@ -13,3 +13,9 @@ datasources:
     version: 1
     editable: false
     isDefault: false
+  - name: Alertmanager
+    type: alertmanager
+    access: proxy
+    url: "http://alertmanager:9093/"
+    jsonData:
+      implementation: prometheus

@@ -1,0 +1,13 @@
+groups:
+  - name: Containers
+    rules:
+      - alert: NoRunningContainers
+        expr: up{container_name!=""} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No running containers detected on the host."
+          description: |
+            No running containers are detected on the host.
+            All containers are reported as down for the last 2 minutes.

@@ -1,0 +1,13 @@
+groups:
+  - name: Containers
+    rules:
+      - alert: CriticalErrorInContainer
+        expr: |
+          count_over_time({container_name=~".+"} |= `critical`[1m])
+        for: 1s
+        labels:
+            severity: critical
+        annotations:
+            summary: "Critical error in container."
+            description: |
+              {{ $value }} critical errors in container {{ $labels.container_name }} detected since 1 minute.
