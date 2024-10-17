@@ -202,15 +202,15 @@ func (s *Server) fetchFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, startBlo
 		return
 	}
 
+	var bufferedEvents []bridgetypes.AssetsLockedEvent
+
 	for events.Next() {
 		event := bridgetypes.AssetsLockedEvent{
 			Sequence:  sdkmath.NewIntFromBigInt(events.Event.SequenceNumber),
 			Recipient: sdk.AccAddress(events.Event.Recipient.Bytes()).String(),
 			Amount:    sdkmath.NewIntFromBigInt(events.Event.TbtcAmount),
 		}
-		s.eventsMutex.Lock()
-		s.events = append(s.events, event)
-		s.eventsMutex.Unlock()
+		bufferedEvents = append(bufferedEvents, event)
 		s.logger.Info(
 			"finalized AssetsLocked event",
 			"sequence", event.Sequence.String(),
@@ -218,11 +218,15 @@ func (s *Server) fetchFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, startBlo
 			"amount", event.Amount.String(),
 		)
 	}
-
-	if !bridgetypes.AssetsLockedEvents(s.events).IsValid() {
+	
+	if !bridgetypes.AssetsLockedEvents(bufferedEvents).IsValid() {
 		s.logger.Error("invalid AssetsLocked events")
 		return
 	}
+
+	s.eventsMutex.Lock()
+	s.events = append(s.events, bufferedEvents...)
+	s.eventsMutex.Unlock()
 }
 
 // startGRPCServer starts the gRPC server and registers the Ethereum sidecar
