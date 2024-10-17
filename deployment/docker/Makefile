@@ -24,7 +24,7 @@ start-one: setup ## Run single service
 	$(DOCKER_COMPOSE_CMD) run --rm $(args)
 
 start: setup ## Start node
-	$(DOCKER_COMPOSE_CMD) up --detach
+	$(DOCKER_COMPOSE_CMD) up --detach --force-recreate
 
 stop: ## Stop node
 	$(DOCKER_COMPOSE_CMD) down

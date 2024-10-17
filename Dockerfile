@@ -31,6 +31,9 @@ FROM gcr.io/distroless/base-nossl:ab72257043915c56b78b53d91a8e0d11d31c4699 AS pr
 
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 
+# Required to pass passhrase using pipe
+COPY --from=debug /busybox/sh /usr/bin/sh
+
 # For simple health check
 COPY --from=debug /busybox/cat /usr/bin/cat
 

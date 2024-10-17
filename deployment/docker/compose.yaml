@@ -38,7 +38,7 @@ services:
     command:
       - |
         echo "Prepare keyring..."
-        (echo $KEYRING_SEED; echo $KEYRING_PASSWORD; echo $KEYRING_PASSWORD) \
+        (echo ${KEYRING_SEED}; echo ${KEYRING_PASSWORD}; echo ${KEYRING_PASSWORD}) \
           | mezod keys add \
             ${KEYRING_KEY_NAME} \
             --home=${MEZOD_HOME} \
@@ -70,6 +70,22 @@ services:
         condition: service_completed_successfully
     networks:
       - mezo
+
+  # adjust-config:
+  #   container_name: adjust-config
+  #   image: ${DOCKER_IMAGE_DEBUG}
+  #   platform: linux/amd64
+  #   entrypoint: ["sh", "-c"]
+  #   <<: *volumes
+  #   command:
+  #     - |
+  #       echo "Adjusting configuration..."
+  #       sed -i 's/metrics-address = "127.0.0.1:6065"/metrics-address = "0.0.0.0:6065"/g' ${MEZOD_HOME}/config/app.toml
+  #   depends_on:
+  #     init-config:
+  #       condition: service_completed_successfully
+  #   networks:
+  #     - mezo
 
   # Download genesis.json as long as it is not provided by the "init-config" service.
   genesis:
@@ -141,17 +157,25 @@ services:
     container_name: mezod
     image: ${DOCKER_IMAGE_PRODUCTION}
     platform: linux/amd64
+    entrypoint: ["sh", "-c"]
     command:
-      - mezod
-      - start
-      - --log_format=${MEZOD_LOG_FORMAT}
-      - --chain-id=${MEZOD_CHAIN_ID}
-      - --home=${MEZOD_HOME}
-      - --keyring-backend=${MEZOD_KEYRING_BACKEND}
-      # - --keyring-dir=${MEZOD_KEYRING_DIR}
-      - --moniker=${MEZOD_MONIKER}
-      - --p2p.seeds=${MEZOD_P2P_SEEDS}
-      - --ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS}
+      - |
+        (echo ${KEYRING_PASSWORD}; echo ${KEYRING_PASSWORD}) \
+          | mezod start \
+            --log_format=${MEZOD_LOG_FORMAT} \
+            --chain-id=${MEZOD_CHAIN_ID} \
+            --home=${MEZOD_HOME} \
+            --keyring-backend=${MEZOD_KEYRING_BACKEND} \
+            --moniker=${MEZOD_MONIKER} \
+            --p2p.seeds=${MEZOD_P2P_SEEDS} \
+            --ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS} \
+            --api.enable \
+            --grpc.enable \
+            --grpc-web.enable \
+            --json-rpc.enable \
+            --json-rpc.api eth,txpool,personal,net,debug,web3 \
+            --metrics \
+            --json-rpc.metrics-address="0.0.0.0:6065"
     <<: *volumes
     # restart: always
     deploy:
@@ -166,6 +190,7 @@ services:
       - 9090:9090   # grpc
       - 8545:8545   # json-rpc
       - 8546:8546   # json-rpc-ws
+      - 6065:6065   # metrics
     networks:
       - mezo
     depends_on:

@@ -7,3 +7,7 @@ deployment
 .github
 infrastructure
 networks
+Dockerfile
+**/tmp/
+.gitignore
+.git/
