@@ -56,7 +56,7 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # Generate validator data for the node using the genval command.
   # This step is skipped for mezo-faucet as this node is not a validator.
   if [ "$NODE_NAME" != "mezo-faucet" ]; then
-    yes $KEYRING_PASSWORD | ./build/mezod --home=$NODE_HOMEDIR genval $NODE_KEY_NAME --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
+    yes $KEYRING_PASSWORD | ./build/mezod --home=$NODE_HOMEDIR genesis genval $NODE_KEY_NAME --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
 
     NODE_GENVAL=$(find $NODE_HOMEDIR/config/genval -mindepth 1 -print -quit)
     NODE_MEMOS+=($(jq -r '.memo' $NODE_GENVAL))
@@ -104,7 +104,7 @@ for i in "${!NODE_NAMES[@]}"; do
 done
 
 # Aggregate all genval files into the global genesis file.
-./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR collect-genvals &> /dev/null
+./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR genesis collect-genvals &> /dev/null
 rm -rf $GLOBAL_GENESIS_HOMEDIR/config/genval
 
 GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/genesis.json

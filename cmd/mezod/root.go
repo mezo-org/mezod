@@ -71,10 +71,8 @@ import (
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
-	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
-	poacli "github.com/mezo-org/mezod/x/poa/client/cli"
-
 	rosettacmd "github.com/cosmos/rosetta/cmd"
+	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
 )
 
 const (
@@ -139,8 +137,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		mezoclient.ValidateChainID(
 			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
 		),
-		poacli.NewGenValCmd(app.DefaultNodeHome),
-		poacli.NewCollectGenValsCmd(app.DefaultNodeHome),
 		escli.NewEthereumSidecarCmd(),
 		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
 		tmcli.NewCompletionCmd(rootCmd, true),

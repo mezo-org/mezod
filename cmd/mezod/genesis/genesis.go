@@ -1,6 +1,9 @@
 package genesis
 
-import "github.com/spf13/cobra"
+import (
+	poacli "github.com/mezo-org/mezod/x/poa/client/cli"
+	"github.com/spf13/cobra"
+)
 
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -11,6 +14,8 @@ func NewCmd() *cobra.Command {
 	cmd.AddCommand(
 		NewAddAccountCmd(),
 		NewMigrateCmd(),
+		poacli.NewGenValCmd(),
+		poacli.NewCollectGenValsCmd(),
 	)
 
 	return cmd

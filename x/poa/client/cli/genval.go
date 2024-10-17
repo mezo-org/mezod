@@ -24,12 +24,13 @@ import (
 )
 
 // NewGenValCmd creates the Cobra command to generate a new validator.
-func NewGenValCmd(defaultHome string) *cobra.Command {
+func NewGenValCmd() *cobra.Command {
 	defaultIP, _ := server.ExternalIP()
 
 	cmd := &cobra.Command{
 		Use:   "genval [key_name]",
 		Short: "Generate data for a new validator",
+		Example: "genval my-key",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serverCtx := server.GetServerContextFromCmd(cmd)
@@ -107,13 +108,13 @@ func NewGenValCmd(defaultHome string) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().AddFlagSet(NewFlagSetGenVal(defaultHome, defaultIP, "26656"))
+	cmd.Flags().AddFlagSet(NewFlagSetGenVal(defaultIP, "26656"))
 
 	return cmd
 }
 
 // NewCollectGenValsCmd creates the Cobra command to collect generated validators.
-func NewCollectGenValsCmd(defaultHome string) *cobra.Command {
+func NewCollectGenValsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "collect-genvals",
 		Short: "Collect generated validators and output a genesis.json file",
@@ -211,7 +212,7 @@ func NewCollectGenValsCmd(defaultHome string) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().AddFlagSet(NewFlagSetCollectGenVals(defaultHome))
+	cmd.Flags().AddFlagSet(NewFlagSetCollectGenVals())
 
 	return cmd
 }
