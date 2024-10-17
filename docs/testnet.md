@@ -133,4 +133,4 @@ the sidecar is bound by the same constraints. As a result, it takes approximatel
 13 to 14 minutes for a new event to be finalized and stored in the “finalized” cache
 for the Mezo node to process.
 
-More details can be found in the following [RFC](https://github.com/thesis/mezo/blob/main/docs/rfc/rfc-2.md)
+More details can be found in the following [RFC](../docs/rfc/rfc-2.md#ethereum-sidecar)
