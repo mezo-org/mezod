@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mezo-org/mezod/cmd/mezod/genesis"
+
 	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/client/config"
@@ -133,6 +135,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 
 	a := appCreator{encodingConfig}
 	rootCmd.AddCommand(
+		genesis.NewCmd(),
 		mezoclient.ValidateChainID(
 			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
 		),
@@ -141,7 +144,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		poacli.NewCollectGenValsCmd(app.DefaultNodeHome),
 		escli.NewEthereumSidecarCmd(),
 		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
-		AddGenesisAccountCmd(app.DefaultNodeHome),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		NewTestnetCmd(app.ModuleBasics),
 		debug.Cmd(),

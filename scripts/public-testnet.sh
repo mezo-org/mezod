@@ -81,7 +81,7 @@ GLOBAL_GENESIS_HOMEDIR=${NODE_HOMEDIRS[0]}
 
 for i in "${!NODE_NAMES[@]}"; do
   # Node's account balance must be added to the global genesis file explicitly.
-  ./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
+  ./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR genesis add-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
 
   # Execute the rest for all nodes but the first.
   if [[ "$i" == '0' ]]; then
