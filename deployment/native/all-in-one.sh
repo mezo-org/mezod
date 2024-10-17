@@ -10,6 +10,9 @@
 
 set -euxo pipefail
 
+. testnet.env
+. .env
+
 echo "MEZOD_HOME: $MEZOD_HOME"
 echo "MEZOD_MONIKER: $MEZOD_MONIKER"
 echo "MEZOD_KEYRING_BACKEND: $MEZOD_KEYRING_BACKEND"
@@ -26,7 +29,6 @@ echo "MEZOD_GO_VERSION: $MEZOD_GO_VERSION"
 echo "MEZOD_ARCH: $MEZOD_ARCH"
 echo "MEZOD_VERSION: $MEZOD_VERSION"
 
-CLEANUP="false"
 
 test_exit() {
     echo "test exit"
@@ -150,7 +152,7 @@ install_mezo() {
 }
 
 install_skip() {
-    SKIP_EXEC_PATH=$MEZOD_HOME/bin/skip
+    SKIP_EXEC_PATH=$MEZOD_HOME/bin/skip/connect
 
     sudo mkdir -p $SKIP_EXEC_PATH
     curl -sSL https://raw.githubusercontent.com/skip-mev/connect/main/scripts/install.sh | sudo bash
@@ -169,91 +171,27 @@ install_validator() {
     GENESIS=$MEZOD_HOME/config/genesis.json
     TMP_GENESIS=$MEZOD_HOME/config/tmp_genesis.json
 
-    # validate dependencies are installed
-    command -v jq >/dev/null 2>&1 || {
-        echo >&2 "jq not installed. More info: https://stedolan.github.io/jq/download/"
-        exit 1
-    }
 
-    # Reinstall daemon
-    # cd $MEZO_PATH && make install
+    echo "Prepare keyring..."
+    (echo $MEZOD_KEYRING_SEED; echo $MEZOD_KEYRING_PASSWORD; echo $MEZOD_KEYRING_PASSWORD) \
+        | sudo ${MEZO_EXEC} keys add ${MEZOD_KEYRING_KEY_NAME} \
+        --home=${MEZOD_HOME} \
+        --keyring-backend=${MEZOD_KEYRING_BACKEND} \
+        --keyring-dir=${MEZOD_KEYRING_DIR} \
+        --recover
+    
+    sudo ${MEZO_EXEC} init $MEZOD_MONIKER \
+        --chain-id=${MEZOD_CHAIN_ID} \
+        --home=${MEZOD_HOME} \
+        --keyring-backend=${MEZOD_KEYRING_BACKEND} \
+        # --keyring-dir=${MEZOD_KEYRING_DIR}
 
-    # Set client config
-    sudo ${MEZO_EXEC} config set client chain-id $MEZOD_CHAIN_ID --home "$MEZOD_HOME"
-    sudo ${MEZO_EXEC} config set client keyring-backend $KEYRING --home "$HOMEDIR"
 
-    # If keys exist they should be deleted
-    sudo ${MEZO_EXEC} keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR"
-
-    # Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
-    sudo ${MEZO_EXEC} init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR"
-
-    # Set the PoA owner.
-    OWNER=$(sudo ${MEZO_EXEC} keys show "${KEY}" --address --bech acc --keyring-backend $KEYRING --home "$HOMEDIR")
-    jq '.app_state["poa"]["owner"]="'"$OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-
-    # Change parameter token denominations to abtc
-    jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-    jq '.app_state["evm"]["params"]["evm_denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-
-    if [[ $PENDING_MODE == "pending" ]]; then
-        if [[ "$OS_TYPE" == "Darwin"* ]]; then
-            sed -i '' 's/timeout_propose = "3s"/timeout_propose = "30s"/g' "$CONFIG"
-            sed -i '' 's/timeout_propose_delta = "500ms"/timeout_propose_delta = "5s"/g' "$CONFIG"
-            sed -i '' 's/timeout_prevote = "1s"/timeout_prevote = "10s"/g' "$CONFIG"
-            sed -i '' 's/timeout_prevote_delta = "500ms"/timeout_prevote_delta = "5s"/g' "$CONFIG"
-            sed -i '' 's/timeout_precommit = "1s"/timeout_precommit = "10s"/g' "$CONFIG"
-            sed -i '' 's/timeout_precommit_delta = "500ms"/timeout_precommit_delta = "5s"/g' "$CONFIG"
-            sed -i '' 's/timeout_commit = "5s"/timeout_commit = "150s"/g' "$CONFIG"
-            sed -i '' 's/timeout_broadcast_tx_commit = "10s"/timeout_broadcast_tx_commit = "150s"/g' "$CONFIG"
-        else
-            sed -i 's/timeout_propose = "3s"/timeout_propose = "30s"/g' "$CONFIG"
-            sed -i 's/timeout_propose_delta = "500ms"/timeout_propose_delta = "5s"/g' "$CONFIG"
-            sed -i 's/timeout_prevote = "1s"/timeout_prevote = "10s"/g' "$CONFIG"
-            sed -i 's/timeout_prevote_delta = "500ms"/timeout_prevote_delta = "5s"/g' "$CONFIG"
-            sed -i 's/timeout_precommit = "1s"/timeout_precommit = "10s"/g' "$CONFIG"
-            sed -i 's/timeout_precommit_delta = "500ms"/timeout_precommit_delta = "5s"/g' "$CONFIG"
-            sed -i 's/timeout_commit = "5s"/timeout_commit = "150s"/g' "$CONFIG"
-            sed -i 's/timeout_broadcast_tx_commit = "10s"/timeout_broadcast_tx_commit = "150s"/g' "$CONFIG"
-        fi
-    fi
-
-    # enable prometheus metrics
-    if [[ "$OS_TYPE" == "Darwin"* ]]; then
-        sed -i '' 's/prometheus = false/prometheus = true/' "$CONFIG"
-        sed -i '' 's/prometheus-retention-time = 0/prometheus-retention-time  = 1000000000000/g' "$APP_TOML"
-        sed -i '' 's/enabled = false/enabled = true/g' "$APP_TOML"
-    else
-        sed -i 's/prometheus = false/prometheus = true/' "$CONFIG"
-        sed -i 's/prometheus-retention-time  = "0"/prometheus-retention-time  = "1000000000000"/g' "$APP_TOML"
-        sed -i 's/enabled = false/enabled = true/g' "$APP_TOML"
-    fi
-
-    # set custom pruning settings
-    sed -i.bak 's/pruning = "default"/pruning = "custom"/g' "$APP_TOML"
-    sed -i.bak 's/pruning-keep-recent = "0"/pruning-keep-recent = "2"/g' "$APP_TOML"
-    sed -i.bak 's/pruning-interval = "0"/pruning-interval = "10"/g' "$APP_TOML"
-
-    # Allocate genesis accounts (cosmos formatted addresses)
-    mezod add-genesis-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
-
-    # bc is required to add these big numbers
-    total_supply="100000000000000000000000000"
-    jq -r --arg total_supply "$total_supply" '.app_state["bank"]["supply"][0]["amount"]=$total_supply' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
-
-    # Generate the validator.
-    mezod genval "${KEY}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
-
-    # Collect generated validators.
-    mezod collect-genvals --home "$HOMEDIR"
-
-    # Run this to ensure everything worked and that the genesis file is setup correctly
-    mezod validate-genesis --home "$HOMEDIR"
-
-    if [[ "$PENDING_MODE" == "pending" ]]; then
-        echo "pending mode is on, please wait for the first block committed."
-    fi
-
+    echo "" | sudo tee ${MEZOD_HOME}/config/genesis.json
+    wget --output-document=/tmp/genesis.yaml ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
+    echo $(yq '.data["genesis.json"]' /tmp/genesis.yaml | sed -e 's/\\n/\n/g' -e 's/\\"/"/g' -e '1s/^"//' -e '$s/"$//' | jq) | sudo tee ${MEZOD_HOME}/config/genesis.json
+    echo "Genesis file downloaded!"
+    
     # Start the node (remove the --pruning=nothing flag if historical queries are not needed) TODO: move this to systemd
     # mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --home "$HOMEDIR"
 }
@@ -266,7 +204,6 @@ After=network.target
 
 [Service]
 ExecStart=${SKIP_EXEC_PATH} --market-map-endpoint=\"127.0.0.1:8545\"
-WorkingDirectory=${HOME}
 StandardOutput=journal
 StandardError=journal
 User=root
@@ -284,7 +221,6 @@ After=network.target
 
 [Service]
 ExecStart=${MEZO_EXEC} ethereum-sidecar
-WorkingDirectory=$HOME
 StandardOutput=journal
 StandardError=journal
 User=root
@@ -301,8 +237,7 @@ Description=Mezo Service
 After=network.target
 
 [Service]
-ExecStart=${MEZO_EXEC} start --log_level $MEZOD_LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --home "$HOMEDIR"
-WorkingDirectory=$HOME
+ExecStart=${MEZO_EXEC} start --log_format=${MEZOD_LOG_FORMAT} --chain-id=${MEZOD_CHAIN_ID} --home=${MEZOD_HOME} --keyring-backend=${MEZOD_KEYRING_BACKEND} --moniker=${MEZOD_MONIKER} --p2p.seeds=${MEZOD_P2P_SEEDS} --ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS}
 StandardOutput=journal
 StandardError=journal
 User=root
@@ -320,13 +255,13 @@ systemd_restart() {
 }
 
 cleanup() {
-    sudo systemctl stop mezo.service
-    sudo systemctl stop ethereum-sidecar.service
-    sudo systemctl stop skip-sidecar.service
+    sudo systemctl stop mezo.service || echo 'mezo stopped'
+    sudo systemctl stop ethereum-sidecar.service || echo 'ethereum sidecar stopped'
+    sudo systemctl stop skip-sidecar.service || echo 'skip sidecar stopped'
 
-    sudo systemctl disable mezo.service
-    sudo systemctl disable ethereum-sidecar.service
-    sudo systemctl disable skip-sidecar.service
+    sudo systemctl disable mezo.service || echo 'mezo sidecar already disabled'
+    sudo systemctl disable ethereum-sidecar.service || echo 'ethereum already disabled'
+    sudo systemctl disable skip-sidecar.service || echo 'skip sidecar already disabled'
     
     sudo rm -f /etc/systemd/system/mezo.service
     sudo rm -f /etc/systemd/system/ethereum-sidecar.service
@@ -337,13 +272,14 @@ cleanup() {
     echo -n "Do you want to remove go? (yY/nN)"
     read -r delete_go
 
-    WHICHGO=$GO_HOMEDIR
+    WHICHGO=${MEZOD_HOME}/go-${MEZOD_GO_VERSION}
 
     if [[ "$delete_go" == "y" || "$delete_go" == "Y" ]]; then
         echo "removing go..."
         sudo rm -rf $WHICHGO
     fi
 
+    sudo rm -rf ${MEZOD_HOME}
 }
 
 if [[ "$CLEANUP" == "true" ]]; then
