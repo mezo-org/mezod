@@ -14,23 +14,20 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
 
-package main
+package genesis
 
 import (
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	tmjson "github.com/cometbft/cometbft/libs/json"
 	tmtypes "github.com/cometbft/cometbft/types"
-
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/version"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
+	"github.com/spf13/cobra"
 
 	"github.com/mezo-org/mezod/utils"
 )
@@ -40,8 +37,8 @@ const FlagGenesisTime = "genesis-time"
 
 var migrationMap = genutiltypes.MigrationMap{}
 
-// GetMigrationCallback returns a MigrationCallback for a given version.
-func GetMigrationCallback(version, chainID string) genutiltypes.MigrationCallback {
+// getMigrationCallback returns a MigrationCallback for a given version.
+func getMigrationCallback(version, chainID string) genutiltypes.MigrationCallback {
 	if !utils.IsMainnet(chainID) {
 		version = fmt.Sprintf("%s%s", "t", version)
 	}
@@ -49,17 +46,16 @@ func GetMigrationCallback(version, chainID string) genutiltypes.MigrationCallbac
 	return migrationMap[version]
 }
 
-// MigrateGenesisCmd returns a command to execute genesis state migration.
-func MigrateGenesisCmd() *cobra.Command {
+const MigrateCmdExample = "migrate v3 /path/to/genesis.json --chain-id=mezo_31612-2 --genesis-time=2022-04-01T17:00:00Z"
+
+// NewMigrateCmd returns a command to execute genesis state migration.
+func NewMigrateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "migrate TARGET_VERSION GENESIS_FILE",
-		Short: "Migrate genesis to a specified target version",
-		Long:  "Migrate the source genesis into the target version and print to STDOUT.",
-		Example: fmt.Sprintf(
-			"%s migrate v3 /path/to/genesis.json --chain-id=mezo_31612-2 --genesis-time=2022-04-01T17:00:00Z",
-			version.AppName,
-		),
-		Args: cobra.ExactArgs(2),
+		Use:     "migrate TARGET_VERSION GENESIS_FILE",
+		Short:   "Migrate genesis to a specified target version",
+		Long:    "Migrate the source genesis into the target version and print to STDOUT.",
+		Example: MigrateCmdExample,
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := client.GetClientContextFromCmd(cmd)
 
@@ -81,7 +77,7 @@ func MigrateGenesisCmd() *cobra.Command {
 				genDoc.ChainID = chainID
 			}
 
-			migrationFn := GetMigrationCallback(target, chainID)
+			migrationFn := getMigrationCallback(target, chainID)
 			if migrationFn == nil {
 				return fmt.Errorf("unknown migration function for version: %s", target)
 			}
@@ -124,8 +120,8 @@ func MigrateGenesisCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String(FlagGenesisTime, "", "override genesis time")
-	cmd.Flags().String(flags.FlagChainID, "", "override genesis chain-id")
+	cmd.Flags().String(FlagGenesisTime, "", "Override genesis time")
+	cmd.Flags().String(flags.FlagChainID, "", "Override genesis chain-id")
 
 	return cmd
 }

@@ -69,12 +69,12 @@ arr=()
 init_func() {
     "$PWD"/build/mezod keys add $KEY"$i" --keyring-backend test --home "$DATA_DIR$i" --no-backup --key-type "eth_secp256k1"
     "$PWD"/build/mezod init $MONIKER --chain-id $CHAINID --home "$DATA_DIR$i"
-    "$PWD"/build/mezod add-genesis-account \
+    "$PWD"/build/mezod genesis add-account \
     "$("$PWD"/build/mezod keys show "$KEY$i" --keyring-backend test -a --home "$DATA_DIR$i")" 1000000000000000000abtc,1000000000000000000stake \
     --keyring-backend test --home "$DATA_DIR$i"
     "$PWD"/build/mezod gentx "$KEY$i" 1000000000000000000stake --chain-id $CHAINID --keyring-backend test --home "$DATA_DIR$i"
     "$PWD"/build/mezod collect-gentxs --home "$DATA_DIR$i"
-    "$PWD"/build/mezod validate-genesis --home "$DATA_DIR$i"
+    "$PWD"/build/mezod genesis validate --home "$DATA_DIR$i"
 
     if [[ $MODE == "pending" ]]; then
       ls $DATA_DIR$i

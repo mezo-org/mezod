@@ -110,7 +110,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# Allocate genesis accounts (cosmos formatted addresses)
 	for KEY in "${KEYS[@]}"; do
-		mezod add-genesis-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
+		mezod genesis add-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
 	done
 
 	# bc is required to add these big numbers
@@ -118,13 +118,13 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	jq -r --arg total_supply "$total_supply" '.app_state["bank"]["supply"][0]["amount"]=$total_supply' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Generate the validator.
-	mezod genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
+	mezod genesis genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
 
 	# Collect generated validators.
-	mezod collect-genvals --home "$HOMEDIR"
+	mezod genesis collect-genvals --home "$HOMEDIR"
 
 	# Run this to ensure everything worked and that the genesis file is setup correctly
-	mezod validate-genesis --home "$HOMEDIR"
+	mezod genesis validate --home "$HOMEDIR"
 
 	if [[ $1 == "pending" ]]; then
 		echo "pending mode is on, please wait for the first block committed."
