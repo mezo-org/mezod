@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mezo-org/mezod/cmd/mezod/genesis"
+
 	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/client/config"
@@ -54,8 +56,6 @@ import (
 	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
-	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
-
 	mezoclient "github.com/mezo-org/mezod/client"
 	"github.com/mezo-org/mezod/client/debug"
 	"github.com/mezo-org/mezod/encoding"
@@ -69,10 +69,8 @@ import (
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
-	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
-	poacli "github.com/mezo-org/mezod/x/poa/client/cli"
-
 	rosettacmd "github.com/cosmos/rosetta/cmd"
+	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
 )
 
 const (
@@ -133,15 +131,11 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 
 	a := appCreator{encodingConfig}
 	rootCmd.AddCommand(
+		genesis.NewCmd(),
 		mezoclient.ValidateChainID(
 			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
 		),
-		MigrateGenesisCmd(),
-		poacli.NewGenValCmd(app.DefaultNodeHome),
-		poacli.NewCollectGenValsCmd(app.DefaultNodeHome),
 		escli.NewEthereumSidecarCmd(),
-		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
-		AddGenesisAccountCmd(app.DefaultNodeHome),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		NewTestnetCmd(app.ModuleBasics),
 		debug.Cmd(),
