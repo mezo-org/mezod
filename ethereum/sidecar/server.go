@@ -218,7 +218,7 @@ func (s *Server) fetchFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, startBlo
 			"amount", event.Amount.String(),
 		)
 	}
-	
+
 	if !bridgetypes.AssetsLockedEvents(bufferedEvents).IsValid() {
 		s.logger.Error("invalid AssetsLocked events")
 		return
