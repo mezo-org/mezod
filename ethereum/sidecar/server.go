@@ -48,6 +48,7 @@ var (
 	cachedEvents = 500000
 
 	// lastFinalizedBlock is the number of the last finalized block.
+	// TODO: place inside the Server struct and protect with a mutex.
 	lastFinalizedBlock = new(big.Int)
 )
 
@@ -83,6 +84,7 @@ func RunServer(
 	bitcoinBridgeAddress, err := readBitcoinBridgeAddress()
 	if err != nil {
 		server.logger.Error("failed to read the BitcoinBridge address: %v", err)
+		return nil
 	}
 
 	// Connect to the Ethereum network
@@ -93,6 +95,7 @@ func RunServer(
 	})
 	if err != nil {
 		server.logger.Error("failed to connect to the Ethereum network: %v", err)
+		return nil
 	}
 
 	go server.observeEvents(ctx, chain, bitcoinBridgeAddress)
@@ -154,9 +157,6 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 // finalized events within a specified block range and managing memory usage
 // for cached events.
 func (s *Server) processEvents(ctx context.Context, chain *ethconnect.BaseChain, bitcoinBridge *abi.BitcoinBridge) error {
-	s.eventsMutex.Lock()
-	defer s.eventsMutex.Unlock()
-
 	currentFinalizedBlock, err := chain.FinalizedBlock(ctx)
 	if err != nil {
 		return err
@@ -170,7 +170,8 @@ func (s *Server) processEvents(ctx context.Context, chain *ethconnect.BaseChain,
 		// lastFinalizedBlock = 100
 		// currentFinalizedBlock = 132
 		// fetching events in the following range [101, 132]
-		s.fetchFinalizedEvents(bitcoinBridge, lastFinalizedBlock.Uint64()+1, currentFinalizedBlock.Uint64())
+		exclusiveLastFinalizedBlock := lastFinalizedBlock.Uint64()+1
+		s.fetchFinalizedEvents(bitcoinBridge, exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
 		lastFinalizedBlock = currentFinalizedBlock
 	}
 
