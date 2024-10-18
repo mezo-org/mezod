@@ -1,0 +1,5 @@
+e16bad251a8640a899d7b582474821944c260efc@mezo-node-0.test.mezo.org:26656
+7fabea710b19ce334afabc256d1a8e4b2bd0a7b0@mezo-node-1.test.mezo.org:26656
+3e30aee594b1edc8667a6dd09fd4311721b54709@mezo-node-2.test.mezo.org:26656
+d12198ca4ac9dce50d30761f37a3d8e6e47968f3@mezo-node-3.test.mezo.org:26656
+d4a80aec8f465f154978cc9573056963648f9ab0@mezo-node-4.test.mezo.org:26656
