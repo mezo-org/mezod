@@ -67,7 +67,7 @@ update_system() {
 }
 
 install_tools() {
-    sudo apt install wget git ufw make gcc jq bc -y
+    sudo apt install wget git ufw make gcc jq bc yq -y
 }
 
 open_ports() {
@@ -152,15 +152,21 @@ install_mezo() {
 }
 
 install_skip() {
-    SKIP_EXEC_PATH=$MEZOD_HOME/bin/skip/connect
 
-    sudo mkdir -p $SKIP_EXEC_PATH
     curl -sSL https://raw.githubusercontent.com/skip-mev/connect/main/scripts/install.sh | sudo bash
 
-    SKIP_TMP=$(which connect)
+    CONNECT_TMP=$(which connect)
+    CONNECT_VERSION=$(${CONNECT_TMP} version)
+    
+    CONNECT_EXEC_PATH=$MEZOD_HOME/bin/skip-${CONNECT_VERSION}
+    CONNECT_EXEC=$CONNECT_EXEC_PATH/connect
 
-    sudo mv $SKIP_TMP $SKIP_EXEC_PATH
-    echo "Skip binary installed with path: ${SKIP_EXEC_PATH}"
+    
+    sudo mkdir -p $CONNECT_EXEC_PATH
+
+    sudo mv $CONNECT_TMP $CONNECT_EXEC_PATH
+    echo "Skip binary installed with path: ${CONNECT_EXEC_PATH}"
+    # test_exit
 }
 
 install_validator() {
@@ -188,7 +194,7 @@ install_validator() {
 
 
     echo "" | sudo tee ${MEZOD_HOME}/config/genesis.json
-    wget --output-document=/tmp/genesis.yaml ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
+    wget --header="Authorization: token ${GITHUB_TOKEN}" --output-document=/tmp/genesis.yaml ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
     echo $(yq '.data["genesis.json"]' /tmp/genesis.yaml | sed -e 's/\\n/\n/g' -e 's/\\"/"/g' -e '1s/^"//' -e '$s/"$//' | jq) | sudo tee ${MEZOD_HOME}/config/genesis.json
     echo "Genesis file downloaded!"
     
@@ -199,17 +205,17 @@ install_validator() {
 setup_systemd_skip(){
     echo "
 [Unit]
-Description=Skip Sidecar Service
+Description=Connect Sidecar Service
 After=network.target
 
 [Service]
-ExecStart=${SKIP_EXEC_PATH} --market-map-endpoint=\"127.0.0.1:8545\"
+ExecStart=${CONNECT_EXEC} --market-map-endpoint=\"127.0.0.1:8545\"
 StandardOutput=journal
 StandardError=journal
 User=root
 
 [Install]
-WantedBy=multi-user.target" | sudo tee /etc/systemd/system/skip-sidecar.service
+WantedBy=multi-user.target" | sudo tee /etc/systemd/system/connect-sidecar.service
 
 }
 
@@ -251,21 +257,21 @@ systemd_restart() {
     sudo systemctl daemon-reload
     sudo systemctl start mezo
     sudo systemctl start ethereum-sidecar
-    sudo systemctl start skip-sidecar
+    sudo systemctl start connect-sidecar
 }
 
 cleanup() {
     sudo systemctl stop mezo.service || echo 'mezo stopped'
     sudo systemctl stop ethereum-sidecar.service || echo 'ethereum sidecar stopped'
-    sudo systemctl stop skip-sidecar.service || echo 'skip sidecar stopped'
+    sudo systemctl stop connect-sidecar.service || echo 'skip sidecar stopped'
 
     sudo systemctl disable mezo.service || echo 'mezo sidecar already disabled'
     sudo systemctl disable ethereum-sidecar.service || echo 'ethereum already disabled'
-    sudo systemctl disable skip-sidecar.service || echo 'skip sidecar already disabled'
+    sudo systemctl disable connect-sidecar.service || echo 'skip sidecar already disabled'
     
     sudo rm -f /etc/systemd/system/mezo.service
     sudo rm -f /etc/systemd/system/ethereum-sidecar.service
-    sudo rm -f /etc/systemd/system/skip-sidecar.service
+    sudo rm -f /etc/systemd/system/connect-sidecar.service
 
     sudo systemctl daemon-reload
 
