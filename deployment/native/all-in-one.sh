@@ -3,15 +3,22 @@
 ### For now it's created for debian-based systems
 ### Script handles:
 ### 1. Installing required packages using apt package manager
-### 2. Installing golang in the specified MEZOD_GO_
+### 2. Installing golang in the specified home directory
 ### 3. Building and installing mezod binary from the source
-### 4. Installing skip sidecar
+### 4. Installing connect sidecar
 ### 5. Deploying mezo validator stack as systemd services
 
-set -euxo pipefail
+set -euo pipefail
 
 . testnet.env
 . .env
+
+if [[ "$1" == "health" ]]; then
+    sudo systemctl status --no-pager mezo || echo "issues with mezo"
+    sudo systemctl status --no-pager ethereum-sidecar || echo "issues with ethereum sidecar"
+    sudo systemctl status --no-pager connect-sidecar || echo "issues with connect sidecar"
+    exit 0
+fi
 
 echo "MEZOD_HOME: $MEZOD_HOME"
 echo "MEZOD_MONIKER: $MEZOD_MONIKER"
@@ -28,39 +35,6 @@ echo "SETUP_GENESIS_URL: $SETUP_GENESIS_URL"
 echo "MEZOD_GO_VERSION: $MEZOD_GO_VERSION"
 echo "MEZOD_ARCH: $MEZOD_ARCH"
 echo "MEZOD_VERSION: $MEZOD_VERSION"
-
-
-test_exit() {
-    echo "test exit"
-    exit 0
-}
-
-detect_os() {
-
-    OS_TYPE=$(uname)
-    ARCH=$(uname -p)
-
-    if [[ "$OS_TYPE" == "Linux" ]]; then
-        echo "This is a Linux operating system."
-    elif [[ "$OS_TYPE" == "Darwin" ]]; then
-        echo "This is macOS."
-    elif [[ "$OS_TYPE" == "FreeBSD" ]]; then
-        echo "This is FreeBSD."
-        echo "For now, FreeBSD is not supported by mezo, exiting"
-        exit 0
-    else
-        echo "Unknown operating system: $OS_TYPE"
-    fi
-
-    if [[ "$ARCH" == "x86_64" ]]; then
-        ARCH="amd64"
-    fi
-    if [[ "$ARCH" == "aarch64" ]]; then
-        ARCH="arm64"
-        echo "For now, arm64 is not supported by mezo, exiting"
-        exit 0
-    fi
-}
 
 update_system() {
     sudo apt update -y && sudo apt upgrade -y
@@ -83,12 +57,12 @@ install_go() {
     sudo mkdir -p ${MEZOD_DOWNLOADS}
     sudo mkdir -p ${GO_HOMEDIR}
 
-    if [ ! -f "${MEZOD_DOWNLOADS}/go${MEZOD_GO_VERSION}.linux-amd64.tar.gz" ]; then
+    if [ ! -f "${MEZOD_DOWNLOADS}/go${MEZOD_GO_VERSION}.linux-${MEZOD_ARCH}.tar.gz" ]; then
         echo "Download Go binary"
-        sudo wget https://go.dev/dl/go${MEZOD_GO_VERSION}.linux-amd64.tar.gz -P ${MEZOD_DOWNLOADS}
+        sudo wget https://go.dev/dl/go${MEZOD_GO_VERSION}.linux-${MEZOD_ARCH}.tar.gz -P ${MEZOD_DOWNLOADS}
 
         echo "Extract Go binary to the mezod directory"
-        sudo tar -C ${GO_HOMEDIR} -xzf ${MEZOD_DOWNLOADS}/go${MEZOD_GO_VERSION}.linux-amd64.tar.gz
+        sudo tar -C ${GO_HOMEDIR} -xzf ${MEZOD_DOWNLOADS}/go${MEZOD_GO_VERSION}.linux-${MEZOD_ARCH}.tar.gz
     fi
 
     # echo Change ownership of the Go directory
@@ -124,21 +98,23 @@ install_mezo() {
     echo "Downloading mezod package to temporary dir"
     # gh release download ${MEZOD_VERSION} -D ${MEZOD_TMP} --skip-existing
     # sudo wget -P ${MEZOD_DOWNLOADS} https://github.com/mezo-org/mezod/releases/download/v0.1.0/mezod.tar.gz
-    url=$(curl --silent \
+    url=$(curl --silent "https://api.github.com/repos/mezo-org/mezod/releases" \
         --header "Authorization: token ${GITHUB_TOKEN}" \
-        "https://api.github.com/repos/mezo-org/mezod/releases" | jq --arg MEZOD_VERSION "$MEZOD_VERSION" '.[] | select(.name == $MEZOD_VERSION) | .assets[] | select(.name == "mezod-amd64.tar.gz") | .url' | tr -d '"')
+        | jq --arg MEZOD_VERSION "$MEZOD_VERSION" --arg MEZOD_ARCH "$MEZOD_ARCH" '.[] | select(.name == $MEZOD_VERSION) | .assets[] | select(.name == ("mezod-" + $MEZOD_ARCH + ".tar.gz")) | .url' | tr -d '"')
+
+    echo DOWNLOAD URL: $url
 
     curl \
         --silent \
         --location \
         --header "Authorization: token ${GITHUB_TOKEN}" \
         --header "Accept: application/octet-stream" \
-        --output /tmp/mezod $url
+        --output /tmp/mezod-${MEZOD_ARCH}.tar.gz $url
 
     # echo "Unpacking the build ${MEZOD_VERSION}"
-    # sudo tar -xvf /tmp/mezod-amd64.tar.gz -C ${MEZOD_DESTINATION}
+    sudo tar -xvf /tmp/mezod-${MEZOD_ARCH}.tar.gz -C ${MEZOD_DESTINATION}
 
-    sudo mv /tmp/mezod ${MEZOD_DESTINATION}
+    # sudo mv /tmp/mezod ${MEZOD_DESTINATION}
 
     sudo chown root:root ${MEZO_EXEC}
     sudo chmod +x ${MEZO_EXEC}
@@ -166,7 +142,6 @@ install_skip() {
 
     sudo mv $CONNECT_TMP $CONNECT_EXEC_PATH
     echo "Skip binary installed with path: ${CONNECT_EXEC_PATH}"
-    # test_exit
 }
 
 install_validator() {
@@ -293,8 +268,6 @@ if [[ "$CLEANUP" == "true" ]]; then
     exit 0
 fi
 
-# not using detect_os, setting architecture to amd64
-# detect_os
 
 update_system
 install_tools
