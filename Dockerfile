@@ -1,5 +1,5 @@
 #
-# Build the image
+# Build layer
 #
 FROM golang:1.22.8-bullseye AS build
 
@@ -12,17 +12,15 @@ COPY . .
 
 RUN make build
 
-# Busybox image as source for shell binary
+# Busybox layer as source of shell binary
 FROM busybox:stable AS shell
 
 #
-# Production image
+# Production layer
 #
 # Refs.:
 # https://github.com/GoogleContainerTools/distroless/blob/main/base/README.md
-# The images is tagged using the commit hash from 2024-09-24
-# Debug image contains shell which is used in Docker Compose
-FROM gcr.io/distroless/base-nossl:ab72257043915c56b78b53d91a8e0d11d31c4699 AS production
+FROM gcr.io/distroless/base-nossl:nonroot AS production
 
 COPY --from=shell /bin/sh /bin/sh
 
