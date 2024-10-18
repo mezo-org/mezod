@@ -9,11 +9,8 @@ clean: ## Clean up
 	rm -rf tmp/mezod
 	# rm -rf tmp/keyring
 
-build-prod: ## Build production Docker image
-	docker build --platform linux/amd64 --tag $(DOCKER_IMAGE_PRODUCTION) --target production ../../
-
-build-debug: ## Build debug Docker image
-	docker build --platform linux/amd64 --tag $(DOCKER_IMAGE_DEBUG) --target debug ../../
+build: ## Build Docker image
+	docker build --platform linux/amd64 --tag $(DOCKER_IMAGE) ../../
 
 setup: ## Setup local environment
 	mkdir -p tmp/mezod

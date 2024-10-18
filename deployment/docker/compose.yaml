@@ -15,7 +15,7 @@ services:
   #
   cli:
     container_name: cli
-    image: ${DOCKER_IMAGE_DEBUG}
+    image: ${DOCKER_IMAGE}
     platform: linux/amd64
     deploy:
       # Make sure that the service won't run for "docker compose up".
@@ -32,7 +32,7 @@ services:
   #
   init-keyring:
     container_name: init-keyring
-    image: ${DOCKER_IMAGE_DEBUG}
+    image: ${DOCKER_IMAGE}
     platform: linux/amd64
     entrypoint: ["sh", "-c"]
     command:
@@ -53,7 +53,7 @@ services:
 
   init-config:
     container_name: init-config
-    image: ${DOCKER_IMAGE_PRODUCTION}
+    image: ${DOCKER_IMAGE}
     platform: linux/amd64
     command:
       - mezod
@@ -73,7 +73,7 @@ services:
 
   # adjust-config:
   #   container_name: adjust-config
-  #   image: ${DOCKER_IMAGE_DEBUG}
+  #   image: ${DOCKER_IMAGE}
   #   platform: linux/amd64
   #   entrypoint: ["sh", "-c"]
   #   <<: *volumes
@@ -109,7 +109,7 @@ services:
   #
   ethereum-sidecar:
     container_name: ethereum-sidecar
-    image: ${DOCKER_IMAGE_PRODUCTION}
+    image: ${DOCKER_IMAGE}
     platform: linux/amd64
     command:
       - mezod
@@ -155,7 +155,7 @@ services:
 
   mezod:
     container_name: mezod
-    image: ${DOCKER_IMAGE_PRODUCTION}
+    image: ${DOCKER_IMAGE}
     platform: linux/amd64
     entrypoint: ["sh", "-c"]
     command:
