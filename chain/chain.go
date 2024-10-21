@@ -21,15 +21,19 @@ const (
 	seedsFile   = "seeds.txt"
 )
 
-// Artifacts represents the chain artifacts like genesis file and seeds.
-type Artifacts struct {
+// Config represents the chain config like genesis file and seeds.
+type Config struct {
 	Genesis *genutiltypes.AppGenesis
 	Seeds   []string
 }
 
-// LoadArtifacts loads the chain artifacts for the given chain ID.
-// It returns true if the chain artifacts are found, false otherwise.
-func LoadArtifacts(chainID string) (*Artifacts, bool, error) {
+func (c Config) Exists() bool {
+	return c.Genesis != nil && len(c.Seeds) > 0
+}
+
+// LoadConfig loads the predefined config for the given chain ID.
+// It returns true if the config was found, false otherwise.
+func LoadConfig(chainID string) (Config, error) {
 	var baseDir string
 
 	//nolint:gocritic
@@ -40,7 +44,7 @@ func LoadArtifacts(chainID string) (*Artifacts, bool, error) {
 	} else if utils.IsTestnet(chainID) {
 		baseDir = testnetPath
 	} else {
-		return nil, false, fmt.Errorf("chain-id %s is not supported", chainID)
+		return Config{}, fmt.Errorf("chain-id %s is not supported", chainID)
 	}
 
 	chainDir := fmt.Sprintf("%s/%s", baseDir, chainID)
@@ -48,7 +52,7 @@ func LoadArtifacts(chainID string) (*Artifacts, bool, error) {
 	_, err := fs.ReadDir(chainDir)
 	if err != nil {
 		// If there is an error here, it means the chain directory does not exist.
-		return nil, false, nil
+		return Config{}, nil
 	}
 
 	filePath := func(file string) string {
@@ -57,19 +61,19 @@ func LoadArtifacts(chainID string) (*Artifacts, bool, error) {
 
 	genesisBytes, err := fs.ReadFile(filePath(genesisFile))
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to read genesis file: %w", err)
+		return Config{}, fmt.Errorf("failed to read genesis file: %w", err)
 	}
 
 	genesis, err := genutiltypes.AppGenesisFromReader(
 		bufio.NewReader(bytes.NewReader(genesisBytes)),
 	)
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to parse genesis file: %w", err)
+		return Config{}, fmt.Errorf("failed to parse genesis file: %w", err)
 	}
 
 	seedsBytes, err := fs.ReadFile(filePath(seedsFile))
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to read seeds file: %w", err)
+		return Config{}, fmt.Errorf("failed to read seeds file: %w", err)
 	}
 
 	var seeds []string
@@ -79,12 +83,12 @@ func LoadArtifacts(chainID string) (*Artifacts, bool, error) {
 	}
 
 	if err := seedsScanner.Err(); err != nil {
-		return nil, false, fmt.Errorf("failed to parse seeds file: %w", err)
+		return Config{}, fmt.Errorf("failed to parse seeds file: %w", err)
 	}
 
-	return &Artifacts{
+	return Config{
 		Genesis: genesis,
 		Seeds:   seeds,
-	}, true, nil
+	}, nil
 }
 

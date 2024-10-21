@@ -49,6 +49,8 @@ import (
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 )
 
+const flagIgnorePredefined = "ignore-predefined"
+
 type printInfo struct {
 	Moniker    string          `json:"moniker" yaml:"moniker"`
 	ChainID    string          `json:"chain_id" yaml:"chain_id"`
@@ -94,9 +96,13 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 				return fmt.Errorf("invalid chain-id format: %s", chainID)
 			}
 
-			artifacts, artifactsExist, err := chain.LoadArtifacts(chainID)
-			if err != nil {
-				return fmt.Errorf("failed to load chain artifacts: %w", err)
+			var predefinedChainConfig chain.Config
+			if ignorePredefined, _ := cmd.Flags().GetBool(flagIgnorePredefined); !ignorePredefined {
+				var err error
+				predefinedChainConfig, err = chain.LoadConfig(chainID)
+				if err != nil {
+					return fmt.Errorf("failed to load predefined config for chain: %w", err)
+				}
 			}
 
 			clientCtx := client.GetClientContextFromCmd(cmd)
@@ -112,8 +118,8 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 
 			// Set default seeds
 			var seeds []string
-			if artifactsExist {
-				seeds = artifacts.Seeds
+			if predefinedChainConfig.Exists() {
+				seeds = predefinedChainConfig.Seeds
 			}
 			config.P2P.Seeds = strings.Join(seeds, ",")
 
@@ -154,8 +160,8 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 			}
 
 			var appGenesis *genutiltypes.AppGenesis
-			if artifactsExist {
-				appGenesis = artifacts.Genesis
+			if predefinedChainConfig.Exists() {
+				appGenesis = predefinedChainConfig.Genesis
 			} else {
 				appState, err := json.MarshalIndent(
 					mbm.DefaultGenesis(cdc),
@@ -224,16 +230,21 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().Bool(
+		flagIgnorePredefined,
+		false,
+		"Ignore predefined config for the chain and initialize a fresh genesis file",
+	)
 	cmd.Flags().BoolP(
 		genutilcli.FlagOverwrite,
 		"o",
 		false,
-		"Overwrite the genesis.json file",
+		"Overwrite the genesis file already existing in the home directory",
 	)
 	cmd.Flags().Bool(
 		genutilcli.FlagRecover,
 		false,
-		"Provide seed phrase to recover existing key instead of creating",
+		"Provide seed to recover validator private key instead of creating",
 	)
 
 	return cmd
