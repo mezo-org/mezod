@@ -117,34 +117,19 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 				}
 			}
 
-			clientCtx := client.GetClientContextFromCmd(cmd)
-			cdc := clientCtx.Codec
-
-			serverCtx := server.GetServerContextFromCmd(cmd)
-			config := serverCtx.Config
-			config.SetRoot(clientCtx.HomeDir)
-
-			// Set peers in and out to an 8:1 ratio to prevent choking
-			config.P2P.MaxNumInboundPeers = 240
-			config.P2P.MaxNumOutboundPeers = 30
-
-			// Set default seeds
 			var seeds []string
 			if predefinedChainConfig.Exists() {
 				seeds = predefinedChainConfig.Seeds
 			}
-			config.P2P.Seeds = strings.Join(seeds, ",")
 
-			config.Mempool.Size = 10000
-			config.StateSync.TrustPeriod = 112 * time.Hour
+			clientCtx := client.GetClientContextFromCmd(cmd)
+			serverCtx := server.GetServerContextFromCmd(cmd)
 
-			config.SetRoot(clientCtx.HomeDir)
+			config := buildCometConfig(clientCtx, serverCtx, args[0], seeds)
 
-			// Get bip39 mnemonic
 			var mnemonic string
-
-			recoverKey, _ := cmd.Flags().GetBool(genutilcli.FlagRecover)
-			if recoverKey {
+			recoverMode, _ := cmd.Flags().GetBool(genutilcli.FlagRecover)
+			if recoverMode {
 				inBuf := bufio.NewReader(cmd.InOrStdin())
 				value, err := input.GetString("Enter your bip39 mnemonic", inBuf)
 				if err != nil {
@@ -162,8 +147,6 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 				return err
 			}
 
-			config.Moniker = args[0]
-
 			genFile := config.GenesisFile()
 			overwrite, _ := cmd.Flags().GetBool(genutilcli.FlagOverwrite)
 
@@ -176,7 +159,7 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 				appGenesis = predefinedChainConfig.Genesis
 			} else {
 				appState, err := json.MarshalIndent(
-					mbm.DefaultGenesis(cdc),
+					mbm.DefaultGenesis(clientCtx.Codec),
 					"",
 					" ",
 				)
@@ -187,33 +170,13 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 					)
 				}
 
-				appGenesis = &genutiltypes.AppGenesis{}
-				if _, err := os.Stat(genFile); err != nil {
-					if !os.IsNotExist(err) {
-						return err
-					}
-				} else {
-					appGenesis, err = genutiltypes.AppGenesisFromFile(genFile)
-					if err != nil {
-						return errors.Wrap(
-							err,
-							"Failed to read genesis doc from file",
-						)
-					}
-				}
+				appGenesis = genutiltypes.NewAppGenesisWithVersion(chainID, appState)
 
-				appGenesis.ChainID = chainID
-
-				appGenesis.Consensus = &genutiltypes.ConsensusGenesis{
-					Validators: nil,
-					Params:     tmtypes.DefaultConsensusParams(),
-				}
+				appGenesis.Consensus.Params = tmtypes.DefaultConsensusParams()
 				// Set the block gas limit to 10M.
 				appGenesis.Consensus.Params.Block.MaxGas = 10_000_000
 				// Enable vote extensions from block 1.
 				appGenesis.Consensus.Params.ABCI.VoteExtensionsEnableHeight = 1
-
-				appGenesis.AppState = appState
 			}
 
 			if err := genutil.ExportGenesisFile(
@@ -223,13 +186,6 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 				return errors.Wrap(err, "Failed to export gensis file")
 			}
 
-			toPrint := newPrintInfo(
-				config.Moniker,
-				chainID,
-				nodeID,
-				appGenesis.GenesisTime.String(),
-			)
-
 			cfg.WriteConfigFile(
 				filepath.Join(
 					config.RootDir,
@@ -237,7 +193,15 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 					"config.toml",
 				), config,
 			)
-			return displayInfo(toPrint)
+
+			return displayInfo(
+				newPrintInfo(
+					config.Moniker,
+					chainID,
+					nodeID,
+					appGenesis.GenesisTime.String(),
+				),
+			)
 		},
 	}
 
@@ -259,4 +223,27 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 	)
 
 	return cmd
+}
+
+func buildCometConfig(
+	clientCtx client.Context,
+	serverCtx *server.Context,
+	moniker string,
+	seeds []string,
+) *cfg.Config {
+	config := serverCtx.Config
+
+	config.SetRoot(clientCtx.HomeDir)
+
+	config.Moniker = moniker
+
+	// Set peers in and out to an 8:1 ratio to prevent choking
+	config.P2P.MaxNumInboundPeers = 240
+	config.P2P.MaxNumOutboundPeers = 30
+	config.P2P.Seeds = strings.Join(seeds, ",")
+
+	config.Mempool.Size = 10000
+	config.StateSync.TrustPeriod = 112 * time.Hour
+
+	return config
 }
