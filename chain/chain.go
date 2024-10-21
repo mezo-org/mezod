@@ -91,4 +91,3 @@ func LoadConfig(chainID string) (Config, error) {
 		Seeds:   seeds,
 	}, nil
 }
-

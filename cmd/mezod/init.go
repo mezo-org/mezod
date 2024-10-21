@@ -80,8 +80,7 @@ func displayInfo(info printInfo) error {
 	return nil
 }
 
-const InitCmdLong =
-	`Initialize the node's home directory with required files. ` +
+const InitCmdLong = `Initialize the node's home directory with required files. ` +
 	`Specifically, this command initializes the following: ` + "\n" +
 	`- The genesis file for the chain (genesis.json). ` + "\n" +
 	`  By default, this file is taken from a predefined chain config, if such a config exists for the given chain id. ` + "\n" +
