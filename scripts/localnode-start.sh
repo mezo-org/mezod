@@ -60,7 +60,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	done
 
 	# Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
-	mezod init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR"
+	mezod init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR" --ignore-predefined
 
 	# Set the PoA owner.
 	OWNER=$(mezod keys show "${KEYS[0]}" --address --bech acc --keyring-backend $KEYRING --home "$HOMEDIR")
