@@ -52,20 +52,18 @@ import (
 const flagIgnorePredefined = "ignore-predefined"
 
 type printInfo struct {
-	Moniker    string          `json:"moniker" yaml:"moniker"`
-	ChainID    string          `json:"chain_id" yaml:"chain_id"`
-	NodeID     string          `json:"node_id" yaml:"node_id"`
-	GenTxsDir  string          `json:"gentxs_dir" yaml:"gentxs_dir"`
-	AppMessage json.RawMessage `json:"app_message" yaml:"app_message"`
+	Moniker     string `json:"moniker" yaml:"moniker"`
+	ChainID     string `json:"chain_id" yaml:"chain_id"`
+	NodeID      string `json:"node_id" yaml:"node_id"`
+	GenesisTime string `json:"genesis_time" yaml:"genesis_time"`
 }
 
-func newPrintInfo(moniker, chainID, nodeID, genTxsDir string, appMessage json.RawMessage) printInfo {
+func newPrintInfo(moniker, chainID, nodeID, genesisTime string) printInfo {
 	return printInfo{
-		Moniker:    moniker,
-		ChainID:    chainID,
-		NodeID:     nodeID,
-		GenTxsDir:  genTxsDir,
-		AppMessage: appMessage,
+		Moniker:     moniker,
+		ChainID:     chainID,
+		NodeID:      nodeID,
+		GenesisTime: genesisTime,
 	}
 }
 
@@ -82,13 +80,27 @@ func displayInfo(info printInfo) error {
 	return nil
 }
 
+const InitCmdLong =
+	`Initialize the node's home directory with required files. ` +
+	`Specifically, this command initializes the following: ` + "\n" +
+	`- The genesis file for the chain (genesis.json). ` + "\n" +
+	`  By default, this file is taken from a predefined chain config, if such a config exists for the given chain id. ` + "\n" +
+	`  Otherwise, a default genesis file will be generated. ` + "\n" +
+	`  To ignore an existing predefined chain config and always generate a default genesis file, use the --ignore-predefined flag. ` + "\n" +
+	`  If the genesis file already exists in the home directory, this command will fail. ` + "\n" +
+	`  To overwrite an existing genesis file, use the --overwrite flag. ` + "\n" +
+	`- Configuration files (app.toml, client.toml, config.toml) ` + "\n" +
+	`- Validator key (priv_validator_key.json). ` + "\n" +
+	`  To recover an existing key from a seed phrase, use the --recover flag. ` + "\n" +
+	`- Node peer-to-peer key (node_key.json)`
+
 // NewInitCmd returns a command that initializes all files needed for Tendermint
 // and the respective application.
 func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init MONIKER",
-		Short: "Initialize private validator, p2p, genesis, and application configuration files",
-		Long:  `Initialize validator's and node's configuration files.`,
+		Short: "Initialize the node's home directory with required files",
+		Long:  InitCmdLong,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chainID, _ := cmd.Flags().GetString(flags.FlagChainID)
@@ -215,8 +227,7 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 				config.Moniker,
 				chainID,
 				nodeID,
-				"",
-				appGenesis.AppState,
+				appGenesis.GenesisTime.String(),
 			)
 
 			cfg.WriteConfigFile(
@@ -244,7 +255,7 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 	cmd.Flags().Bool(
 		genutilcli.FlagRecover,
 		false,
-		"Provide seed to recover validator private key instead of creating",
+		"Provide seed to recover validator key instead of creating",
 	)
 
 	return cmd
