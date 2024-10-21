@@ -13,7 +13,7 @@ set -euo pipefail
 . testnet.env
 . .env
 
-if [[ "$1" == "health" ]]; then
+if [[ "$HEALTHCHECK" == "true" ]]; then
     sudo systemctl status --no-pager mezo || echo "issues with mezo"
     sudo systemctl status --no-pager ethereum-sidecar || echo "issues with ethereum sidecar"
     sudo systemctl status --no-pager connect-sidecar || echo "issues with connect sidecar"
