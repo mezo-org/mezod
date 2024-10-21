@@ -46,20 +46,18 @@ var (
 	// daily mark, that would give 50 days of cached events which should be more than
 	// enough.
 	cachedEvents = 500000
-
-	// lastFinalizedBlock is the number of the last finalized block.
-	// TODO: place inside the Server struct and protect with a mutex.
-	lastFinalizedBlock = new(big.Int)
 )
 
 // Server observes events emitted by the Mezo `BitcoinBridge` contract on the
 // Ethereum chain. It enables retrieval of information on the assets locked by
 // the contract. It is intended to be run as a separate process.
 type Server struct {
-	eventsMutex sync.RWMutex
-	events      []bridgetypes.AssetsLockedEvent
-	grpcServer  *grpc.Server
-	logger      log.Logger
+	eventsMutex             sync.RWMutex
+	events                  []bridgetypes.AssetsLockedEvent
+	grpcServer              *grpc.Server
+	logger                  log.Logger
+	lastFinalizedBlock      *big.Int
+	lastFinalizedBlockMutex sync.RWMutex
 }
 
 type Block struct {
@@ -76,9 +74,10 @@ func RunServer(
 	logger log.Logger,
 ) *Server {
 	server := &Server{
-		events:     make([]bridgetypes.AssetsLockedEvent, 0),
-		grpcServer: grpc.NewServer(),
-		logger:     logger,
+		events:             make([]bridgetypes.AssetsLockedEvent, 0),
+		grpcServer:         grpc.NewServer(),
+		logger:             logger,
+		lastFinalizedBlock: new(big.Int),
 	}
 
 	bitcoinBridgeAddress, err := readBitcoinBridgeAddress()
@@ -131,7 +130,9 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 	startBlock := new(big.Int).Sub(finalizedBlock, searchedRange).Uint64()
 	s.fetchFinalizedEvents(bitcoinBridge, startBlock, finalizedBlock.Uint64())
 
-	lastFinalizedBlock = finalizedBlock
+	s.lastFinalizedBlockMutex.Lock()
+	s.lastFinalizedBlock = finalizedBlock
+	s.lastFinalizedBlockMutex.Unlock()
 
 	// Start a ticker to periodically check the current block number
 	tickerChan := chain.BlockCounter().WatchBlocks(ctx)
@@ -162,7 +163,7 @@ func (s *Server) processEvents(ctx context.Context, chain *ethconnect.BaseChain,
 		return err
 	}
 
-	if currentFinalizedBlock.Cmp(lastFinalizedBlock) > 0 {
+	if currentFinalizedBlock.Cmp(s.lastFinalizedBlock) > 0 {
 		// Specified range in FilterOps is inclusive.
 		// 1 is added to the lastFinalizedBlock to make the range exclusive at
 		// the beginning of the range.
@@ -170,9 +171,11 @@ func (s *Server) processEvents(ctx context.Context, chain *ethconnect.BaseChain,
 		// lastFinalizedBlock = 100
 		// currentFinalizedBlock = 132
 		// fetching events in the following range [101, 132]
-		exclusiveLastFinalizedBlock := lastFinalizedBlock.Uint64()+1
+		exclusiveLastFinalizedBlock := s.lastFinalizedBlock.Uint64() + 1
 		s.fetchFinalizedEvents(bitcoinBridge, exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
-		lastFinalizedBlock = currentFinalizedBlock
+		s.lastFinalizedBlockMutex.Lock()
+		s.lastFinalizedBlock = currentFinalizedBlock
+		s.lastFinalizedBlockMutex.Unlock()
 	}
 
 	// Free up memory up to the length that exceeds the cache size.
