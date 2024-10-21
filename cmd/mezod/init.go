@@ -25,13 +25,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mezo-org/mezod/chain"
+
+	"github.com/mezo-org/mezod/types"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	cfg "github.com/cometbft/cometbft/config"
-	"github.com/cometbft/cometbft/libs/cli"
 	tmos "github.com/cometbft/cometbft/libs/os"
-	tmrand "github.com/cometbft/cometbft/libs/rand"
 	tmtypes "github.com/cometbft/cometbft/types"
 
 	"github.com/cosmos/go-bip39"
@@ -44,7 +46,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
-	"github.com/cosmos/cosmos-sdk/x/genutil/types"
+	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
 )
 
 type printInfo struct {
@@ -78,15 +80,25 @@ func displayInfo(info printInfo) error {
 	return nil
 }
 
-// InitCmd returns a command that initializes all files needed for Tendermint
+// NewInitCmd returns a command that initializes all files needed for Tendermint
 // and the respective application.
-func InitCmd(mbm module.BasicManager, defaultNodeHome string) *cobra.Command {
+func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init MONIKER",
 		Short: "Initialize private validator, p2p, genesis, and application configuration files",
-		Long:  `Initialize validators's and node's configuration files.`,
+		Long:  `Initialize validator's and node's configuration files.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			chainID, _ := cmd.Flags().GetString(flags.FlagChainID)
+			if !types.IsValidChainID(chainID) {
+				return fmt.Errorf("invalid chain-id format: %s", chainID)
+			}
+
+			artifacts, artifactsExist, err := chain.LoadArtifacts(chainID)
+			if err != nil {
+				return fmt.Errorf("failed to load chain artifacts: %w", err)
+			}
+
 			clientCtx := client.GetClientContextFromCmd(cmd)
 			cdc := clientCtx.Codec
 
@@ -99,18 +111,16 @@ func InitCmd(mbm module.BasicManager, defaultNodeHome string) *cobra.Command {
 			config.P2P.MaxNumOutboundPeers = 30
 
 			// Set default seeds
-			seeds := []string{}
+			var seeds []string
+			if artifactsExist {
+				seeds = artifacts.Seeds
+			}
 			config.P2P.Seeds = strings.Join(seeds, ",")
 
 			config.Mempool.Size = 10000
 			config.StateSync.TrustPeriod = 112 * time.Hour
 
 			config.SetRoot(clientCtx.HomeDir)
-
-			chainID, _ := cmd.Flags().GetString(flags.FlagChainID)
-			if chainID == "" {
-				chainID = fmt.Sprintf("mezo_31611-%v", tmrand.Str(6))
-			}
 
 			// Get bip39 mnemonic
 			var mnemonic string
@@ -143,51 +153,88 @@ func InitCmd(mbm module.BasicManager, defaultNodeHome string) *cobra.Command {
 				return fmt.Errorf("genesis.json file already exists: %v", genFile)
 			}
 
-			appState, err := json.MarshalIndent(mbm.DefaultGenesis(cdc), "", " ")
-			if err != nil {
-				return errors.Wrap(err, "Failed to marshall default genesis state")
-			}
-
-			appGenesis := &types.AppGenesis{}
-			if _, err := os.Stat(genFile); err != nil {
-				if !os.IsNotExist(err) {
-					return err
-				}
+			var appGenesis *genutiltypes.AppGenesis
+			if artifactsExist {
+				appGenesis = artifacts.Genesis
 			} else {
-				appGenesis, err = types.AppGenesisFromFile(genFile)
+				appState, err := json.MarshalIndent(
+					mbm.DefaultGenesis(cdc),
+					"",
+					" ",
+				)
 				if err != nil {
-					return errors.Wrap(err, "Failed to read genesis doc from file")
+					return errors.Wrap(
+						err,
+						"Failed to marshall default genesis state",
+					)
 				}
+
+				appGenesis = &genutiltypes.AppGenesis{}
+				if _, err := os.Stat(genFile); err != nil {
+					if !os.IsNotExist(err) {
+						return err
+					}
+				} else {
+					appGenesis, err = genutiltypes.AppGenesisFromFile(genFile)
+					if err != nil {
+						return errors.Wrap(
+							err,
+							"Failed to read genesis doc from file",
+						)
+					}
+				}
+
+				appGenesis.ChainID = chainID
+
+				appGenesis.Consensus = &genutiltypes.ConsensusGenesis{
+					Validators: nil,
+					Params:     tmtypes.DefaultConsensusParams(),
+				}
+				// Set the block gas limit to 10M.
+				appGenesis.Consensus.Params.Block.MaxGas = 10_000_000
+				// Enable vote extensions from block 1.
+				appGenesis.Consensus.Params.ABCI.VoteExtensionsEnableHeight = 1
+
+				appGenesis.AppState = appState
 			}
 
-			appGenesis.ChainID = chainID
-
-			appGenesis.Consensus = &types.ConsensusGenesis{
-				Validators: nil,
-				Params:     tmtypes.DefaultConsensusParams(),
-			}
-			// Set the block gas limit to 10M.
-			appGenesis.Consensus.Params.Block.MaxGas = 10_000_000
-			// Enable vote extensions from block 1.
-			appGenesis.Consensus.Params.ABCI.VoteExtensionsEnableHeight = 1
-
-			appGenesis.AppState = appState
-
-			if err := genutil.ExportGenesisFile(appGenesis, genFile); err != nil {
+			if err := genutil.ExportGenesisFile(
+				appGenesis,
+				genFile,
+			); err != nil {
 				return errors.Wrap(err, "Failed to export gensis file")
 			}
 
-			toPrint := newPrintInfo(config.Moniker, chainID, nodeID, "", appState)
+			toPrint := newPrintInfo(
+				config.Moniker,
+				chainID,
+				nodeID,
+				"",
+				appGenesis.AppState,
+			)
 
-			cfg.WriteConfigFile(filepath.Join(config.RootDir, "config", "config.toml"), config)
+			cfg.WriteConfigFile(
+				filepath.Join(
+					config.RootDir,
+					"config",
+					"config.toml",
+				), config,
+			)
 			return displayInfo(toPrint)
 		},
 	}
 
-	cmd.Flags().String(cli.HomeFlag, defaultNodeHome, "node's home directory")
-	cmd.Flags().BoolP(genutilcli.FlagOverwrite, "o", false, "overwrite the genesis.json file")
-	cmd.Flags().Bool(genutilcli.FlagRecover, false, "provide seed phrase to recover existing key instead of creating")
-	cmd.Flags().String(flags.FlagChainID, "", "genesis file chain-id, if left blank will be randomly created")
+	cmd.Flags().BoolP(
+		genutilcli.FlagOverwrite,
+		"o",
+		false,
+		"Overwrite the genesis.json file",
+	)
+	cmd.Flags().Bool(
+		genutilcli.FlagRecover,
+		false,
+		"Provide seed phrase to recover existing key instead of creating",
+	)
 
 	return cmd
 }
