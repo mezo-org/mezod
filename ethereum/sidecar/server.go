@@ -18,6 +18,7 @@ import (
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"google.golang.org/grpc"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen"
 )
 
 var (
@@ -80,24 +81,18 @@ func RunServer(
 		lastFinalizedBlock: new(big.Int),
 	}
 
-	bitcoinBridgeAddress, err := readBitcoinBridgeAddress()
-	if err != nil {
-		server.logger.Error("failed to read the BitcoinBridge address: %v", err)
-		return nil
-	}
-
 	// Connect to the Ethereum network
 	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
 		Network:           networkFromString(ethereumNetwork),
 		URL:               providerURL,
-		ContractAddresses: map[string]string{bitcoinBridgeName: bitcoinBridgeAddress.String()},
+		ContractAddresses: map[string]string{bitcoinBridgeName: gen.BitcoinBridgeAddress},
 	})
 	if err != nil {
 		server.logger.Error("failed to connect to the Ethereum network: %v", err)
 		return nil
 	}
 
-	go server.observeEvents(ctx, chain, bitcoinBridgeAddress)
+	go server.observeEvents(ctx, chain, common.HexToAddress(gen.BitcoinBridgeAddress))
 	go server.startGRPCServer(ctx, grpcAddress)
 
 	return server
