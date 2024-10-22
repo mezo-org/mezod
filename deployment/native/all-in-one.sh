@@ -1,6 +1,6 @@
 #!/bin/bash
 ### This is a deployment script for mezo validator stack
-### For now it's created for debian-based systems
+### For now it's created for debian-based systems and amd64 architecture (x86_64)
 ### Script handles:
 ### 1. Installing required packages using apt package manager
 ### 2. Installing golang in the specified home directory
@@ -9,32 +9,6 @@
 ### 5. Deploying mezo validator stack as systemd services
 
 set -euo pipefail
-
-. testnet.env
-. .env
-
-if [[ "$HEALTHCHECK" == "true" ]]; then
-    sudo systemctl status --no-pager mezo || echo "issues with mezo"
-    sudo systemctl status --no-pager ethereum-sidecar || echo "issues with ethereum sidecar"
-    sudo systemctl status --no-pager connect-sidecar || echo "issues with connect sidecar"
-    exit 0
-fi
-
-echo "MEZOD_HOME: $MEZOD_HOME"
-echo "MEZOD_MONIKER: $MEZOD_MONIKER"
-echo "MEZOD_KEYRING_BACKEND: $MEZOD_KEYRING_BACKEND"
-echo "MEZOD_P2P_SEEDS: $MEZOD_P2P_SEEDS"
-echo "MEZOD_CHAIN_ID: $MEZOD_CHAIN_ID"
-echo "MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS: $MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS"
-echo "MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS: $MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS"
-echo "MEZOD_LOG_FORMAT: $MEZOD_LOG_FORMAT"
-echo "MEZOD_KEY_NAME: $MEZOD_KEY_NAME"
-
-echo "SETUP_GENESIS_URL: $SETUP_GENESIS_URL"
-
-echo "MEZOD_GO_VERSION: $MEZOD_GO_VERSION"
-echo "MEZOD_ARCH: $MEZOD_ARCH"
-echo "MEZOD_VERSION: $MEZOD_VERSION"
 
 update_system() {
     sudo apt update -y && sudo apt upgrade -y
@@ -47,6 +21,8 @@ install_tools() {
 open_ports() {
     sudo ufw --force enable
     sudo ufw allow 26656,26657,1317,9090,8545,8546/tcp
+    # allow ssh connections:
+    sudo ufw allow 22/tcp
 }
 
 install_go() {
@@ -64,9 +40,6 @@ install_go() {
         echo "Extract Go binary to the mezod directory"
         sudo tar -C ${GO_HOMEDIR} -xzf ${MEZOD_DOWNLOADS}/go${MEZOD_GO_VERSION}.linux-${MEZOD_ARCH}.tar.gz
     fi
-
-    # echo Change ownership of the Go directory
-    # sudo chown -R $(whoami) $HOME/go
 
     echo "Export Go paths temporarily for the script's runtime"
 
@@ -123,8 +96,6 @@ install_mezo() {
 
     sudo $MEZO_EXEC --help
 
-    # echo "Removing temporary repo"
-    # sudo rm -rf ${MEZOD_TMP}
 }
 
 install_skip() {
@@ -137,10 +108,11 @@ install_skip() {
     CONNECT_EXEC_PATH=$MEZOD_HOME/bin/skip-${CONNECT_VERSION}
     CONNECT_EXEC=$CONNECT_EXEC_PATH/connect
 
-    
     sudo mkdir -p $CONNECT_EXEC_PATH
 
     sudo mv $CONNECT_TMP $CONNECT_EXEC_PATH
+    sudo rm -rf $CONNECT_TMP
+
     echo "Skip binary installed with path: ${CONNECT_EXEC_PATH}"
 }
 
@@ -161,12 +133,10 @@ install_validator() {
         --keyring-dir=${MEZOD_KEYRING_DIR} \
         --recover
     
-    sudo ${MEZO_EXEC} init $MEZOD_MONIKER \
-        --chain-id=${MEZOD_CHAIN_ID} \
-        --home=${MEZOD_HOME} \
-        --keyring-backend=${MEZOD_KEYRING_BACKEND} \
-        # --keyring-dir=${MEZOD_KEYRING_DIR}
-
+    sudo ${MEZO_EXEC} init $MEZOD_MONIKER -o \
+        --chain-id ${MEZOD_CHAIN_ID} \
+        --home ${MEZOD_HOME} \
+        --keyring-backend ${MEZOD_KEYRING_BACKEND}
 
     echo "" | sudo tee ${MEZOD_HOME}/config/genesis.json
     wget --header="Authorization: token ${GITHUB_TOKEN}" --output-document=/tmp/genesis.yaml ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
@@ -263,10 +233,67 @@ cleanup() {
     sudo rm -rf ${MEZOD_HOME}
 }
 
-if [[ "$CLEANUP" == "true" ]]; then
-    cleanup
-    exit 0
-fi
+usage() {
+  echo -e "\nUsage: $0\n\n" \
+    "[-c/--cleanup] - clean up the installation\n\n" \
+    "[--health] - check health of mezo systemd services\n\n" \
+    "[--show-variables] - output variables read from env files\n"
+#   echo -e "\nRequired command line arguments:\n"
+}
+
+healthcheck() {
+    sudo systemctl status --no-pager mezo || echo "issues with mezo"
+    sudo systemctl status --no-pager ethereum-sidecar || echo "issues with ethereum sidecar"
+    sudo systemctl status --no-pager connect-sidecar || echo "issues with connect sidecar"
+}
+
+show_variables() {
+    echo "MEZOD_HOME: $MEZOD_HOME"
+    echo "MEZOD_MONIKER: $MEZOD_MONIKER"
+    echo "MEZOD_KEYRING_BACKEND: $MEZOD_KEYRING_BACKEND"
+    echo "MEZOD_P2P_SEEDS: $MEZOD_P2P_SEEDS"
+    echo "MEZOD_CHAIN_ID: $MEZOD_CHAIN_ID"
+    echo "MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS: $MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS"
+    echo "MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS: $MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS"
+    echo "MEZOD_LOG_FORMAT: $MEZOD_LOG_FORMAT"
+    echo "MEZOD_KEY_NAME: $MEZOD_KEY_NAME"
+
+    echo "SETUP_GENESIS_URL: $SETUP_GENESIS_URL"
+
+    echo "MEZOD_GO_VERSION: $MEZOD_GO_VERSION"
+    echo "MEZOD_ARCH: $MEZOD_ARCH"
+    echo "MEZOD_VERSION: $MEZOD_VERSION"
+}
+
+echo "Reading configuration from environment files"
+. testnet.env
+. .env
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --health)
+            healthcheck
+            exit 0
+            ;;
+        -s|--show-variables)
+            show_variables
+            shift
+            ;;      
+        -c|--cleanup)
+            cleanup
+            exit 0
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
 
 
 update_system
