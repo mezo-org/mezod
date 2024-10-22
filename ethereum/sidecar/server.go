@@ -163,7 +163,11 @@ func (s *Server) processEvents(ctx context.Context) error {
 		return err
 	}
 
-	if currentFinalizedBlock.Cmp(s.lastFinalizedBlock) > 0 {
+	s.lastFinalizedBlockMutex.RLock()
+	shouldFetchEvents := currentFinalizedBlock.Cmp(s.lastFinalizedBlock)
+	s.lastFinalizedBlockMutex.RUnlock()
+
+	if shouldFetchEvents > 0 {
 		// Specified range in FilterOps is inclusive.
 		// 1 is added to the lastFinalizedBlock to make the range exclusive at
 		// the beginning of the range.
