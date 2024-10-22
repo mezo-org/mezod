@@ -171,3 +171,17 @@ func wrapClientAddons(
 
 	return loggingClient
 }
+
+// NetworkFromString converts a string to an ethereum.Network.
+func NetworkFromString(networkStr string) ethereum.Network {
+	switch networkStr {
+	case ethereum.Mainnet.String():
+		return ethereum.Mainnet
+	case ethereum.Sepolia.String():
+		return ethereum.Sepolia
+	case ethereum.Developer.String():
+		return ethereum.Developer
+	default:
+		return ethereum.Unknown
+	}
+}

@@ -14,11 +14,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"google.golang.org/grpc"
-	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen"
 )
 
 var (
@@ -83,7 +83,7 @@ func RunServer(
 
 	// Connect to the Ethereum network
 	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
-		Network:           networkFromString(ethereumNetwork),
+		Network:           ethconnect.NetworkFromString(ethereumNetwork),
 		URL:               providerURL,
 		ContractAddresses: map[string]string{bitcoinBridgeName: gen.BitcoinBridgeAddress},
 	})
