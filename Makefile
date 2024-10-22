@@ -172,8 +172,7 @@ distclean: clean tools-clean
 clean:
 	rm -rf \
     $(BUILDDIR)/ \
-    artifacts/ \
-    tmp-swagger-gen/
+    artifacts/
 
 all: build
 
@@ -273,16 +272,6 @@ vulncheck: $(BUILDDIR)/
 ###                              Documentation                              ###
 ###############################################################################
 
-update-swagger-docs: statik
-	$(BINDIR)/statik -src=client/docs/swagger-ui -dest=client/docs -f -m
-	@if [ -n "$(git status --porcelain)" ]; then \
-        echo "\033[91mSwagger docs are out of sync!!!\033[0m";\
-        exit 1;\
-    else \
-        echo "\033[92mSwagger docs are in sync\033[0m";\
-    fi
-.PHONY: update-swagger-docs
-
 godocs:
 	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/mezo-org/mezod"
 	godoc -http=:6060
@@ -377,12 +366,6 @@ proto-gen:
 	@echo "Generating Protobuf files"
 	$(protoImage) sh ./scripts/protocgen.sh
 
-proto-swagger-gen:
-	@echo "Downloading Protobuf dependencies"
-	@make proto-download-deps
-	@echo "Generating Protobuf Swagger"
-	$(protoImage) sh ./scripts/protoc-swagger-gen.sh
-
 proto-format:
 	@echo "Formatting Protobuf files"
 	$(protoImage) find ./ -name *.proto -exec clang-format -i {} \;
@@ -395,55 +378,7 @@ proto-check-breaking:
 	@echo "Checking Protobuf files for breaking changes"
 	$(protoImage) buf breaking --against $(HTTPS_GIT) #branch=main
 
-SWAGGER_DIR=./swagger-proto
-THIRD_PARTY_DIR=$(SWAGGER_DIR)/third_party
-
-proto-download-deps:
-	mkdir -p "$(THIRD_PARTY_DIR)/cosmos_tmp" && \
-	cd "$(THIRD_PARTY_DIR)/cosmos_tmp" && \
-	git init && \
-	git remote add origin "https://github.com/cosmos/cosmos-sdk.git" && \
-	git config core.sparseCheckout true && \
-	printf "proto\nthird_party\n" > .git/info/sparse-checkout && \
-	git pull origin main && \
-	rm -f ./proto/buf.* && \
-	mv ./proto/* ..
-	rm -rf "$(THIRD_PARTY_DIR)/cosmos_tmp"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/ibc_tmp" && \
-	cd "$(THIRD_PARTY_DIR)/ibc_tmp" && \
-	git init && \
-	git remote add origin "https://github.com/cosmos/ibc-go.git" && \
-	git config core.sparseCheckout true && \
-	printf "proto\n" > .git/info/sparse-checkout && \
-	git pull origin main && \
-	rm -f ./proto/buf.* && \
-	mv ./proto/* ..
-	rm -rf "$(THIRD_PARTY_DIR)/ibc_tmp"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/cosmos_proto_tmp" && \
-	cd "$(THIRD_PARTY_DIR)/cosmos_proto_tmp" && \
-	git init && \
-	git remote add origin "https://github.com/cosmos/cosmos-proto.git" && \
-	git config core.sparseCheckout true && \
-	printf "proto\n" > .git/info/sparse-checkout && \
-	git pull origin main && \
-	rm -f ./proto/buf.* && \
-	mv ./proto/* ..
-	rm -rf "$(THIRD_PARTY_DIR)/cosmos_proto_tmp"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/gogoproto" && \
-	curl -SSL https://raw.githubusercontent.com/cosmos/gogoproto/main/gogoproto/gogo.proto > "$(THIRD_PARTY_DIR)/gogoproto/gogo.proto"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/google/api" && \
-	curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/annotations.proto > "$(THIRD_PARTY_DIR)/google/api/annotations.proto"
-	curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/http.proto > "$(THIRD_PARTY_DIR)/google/api/http.proto"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/cosmos/ics23/v1" && \
-	curl -sSL https://raw.githubusercontent.com/cosmos/ics23/master/proto/cosmos/ics23/v1/proofs.proto > "$(THIRD_PARTY_DIR)/cosmos/ics23/v1/proofs.proto"
-
-
-.PHONY: proto-all proto-gen proto-format proto-lint proto-check-breaking proto-swagger-gen
+.PHONY: proto-all proto-gen proto-format proto-lint proto-check-breaking
 
 ###############################################################################
 ###                          Localnet docker                                ###
