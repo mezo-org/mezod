@@ -8,12 +8,12 @@ to join. There are two options: `testnet` and `mainnet`. For both networks,
 we will use `NETWORK.env` file. Replace `NETWORK` with the desired network.
 
 > [!NOTE]
-> Run `make` to see the list of available commands.
-
+> Run `make` (without arguments) to see the list of available commands.
 
 ### 1. Adjust configuration file
 
 Adjust the configuration file `NETWORK.env`:
+
 - `NETWORK` - network name (`testnet` or `mainnet`)
 - `KEYRING_KEY_NAME` - keyring key name
 - `KEYRING_MNEMONIC` - keyring mnemonic
@@ -32,7 +32,7 @@ make init
 
 ```shell
 make cli
-$ mezod genesis genval "${MEZOD_MONIKER}" --keyring-backend="${KEYRING}" --chain-id="${CHAINID}" --home="${HOMEDIR}"
+$ mezod genesis genval "${MEZOD_MONIKER}" --keyring-backend="${MEZOD_KEYRING_BACKEND}" --chain-id="${MEZOD_CHAIN_ID}" --home="${MEZOD_HOME}"
 ```
 
 ### 4. Submit joining request
