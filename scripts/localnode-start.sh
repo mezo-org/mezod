@@ -3,7 +3,7 @@
 KEYS[0]="dev0"
 KEYS[1]="dev1"
 KEYS[2]="dev2"
-CHAINID="mezo_31611-1"
+CHAINID="mezo_31611-10"
 MONIKER="localnode"
 # Remember to change to other types of keyring like 'file' in-case exposing to outside world,
 # otherwise your balance will be wiped quickly
@@ -60,7 +60,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	done
 
 	# Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
-	mezod init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR"
+	mezod init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR" --ignore-predefined
 
 	# Set the PoA owner.
 	OWNER=$(mezod keys show "${KEYS[0]}" --address --bech acc --keyring-backend $KEYRING --home "$HOMEDIR")

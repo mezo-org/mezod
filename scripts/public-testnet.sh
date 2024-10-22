@@ -49,7 +49,7 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # Worth noting that recover mode does not refer to the network key which is always
   # generated anew. However, the network key is not critical and can be replaced
   # without any consequences.
-  yes "$MNEMONIC" | ./build/mezod --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover &> /dev/null
+  yes "$MNEMONIC" | ./build/mezod --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover --ignore-predefined &> /dev/null
 
   echo "[$NODE_NAME] init action done"
 

@@ -324,13 +324,7 @@ test-import:
 	--blockchain blockchain
 	rm -rf tests/importer/tmp
 
-test-rpc:
-	./scripts/integration-test-all.sh -t "rpc" -q 1 -z 1 -s 2 -m "rpc" -r "true"
-
-test-rpc-pending:
-	./scripts/integration-test-all.sh -t "pending" -q 1 -z 1 -s 2 -m "pending" -r "true"
-
-.PHONY: run-tests test test-all test-import test-rpc $(TEST_TARGETS)
+.PHONY: run-tests test test-all test-import $(TEST_TARGETS)
 
 benchmark:
 	@go test -mod=readonly -bench=. $(PACKAGES_NOSIMULATION)
