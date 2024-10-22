@@ -59,7 +59,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
 	mezoclient "github.com/mezo-org/mezod/client"
-	"github.com/mezo-org/mezod/client/debug"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
 	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
@@ -139,7 +138,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		escli.NewEthereumSidecarCmd(),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		NewTestnetCmd(app.ModuleBasics),
-		debug.Cmd(),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
 		poa.NewCmd(),
