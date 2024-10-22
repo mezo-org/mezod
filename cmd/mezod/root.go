@@ -57,7 +57,6 @@ import (
 	sdkserver "github.com/cosmos/cosmos-sdk/server"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
 	"github.com/mezo-org/mezod/encoding"
@@ -146,6 +145,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
 		keys.NewCmd(),
+		queryCommand(),
 	)
 
 	mezoserver.AddCommands(
@@ -155,11 +155,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		addModuleInitFlags,
 	)
 
-	rootCmd.AddCommand(
-		sdkserver.StatusCommand(),
-		queryCommand(),
-		txCommand(),
-	)
 	rootCmd, err := srvflags.AddTxFlags(rootCmd)
 	if err != nil {
 		panic(err)
@@ -185,38 +180,8 @@ func queryCommand() *cobra.Command {
 	cmd.AddCommand(
 		rpc.ValidatorCommand(),
 		sdkserver.QueryBlockCmd(),
-		authcmd.QueryTxsByEventsCmd(),
-		authcmd.QueryTxCmd(),
+		sdkserver.StatusCommand(),
 	)
-
-	app.ModuleBasics.AddQueryCommands(cmd)
-	cmd.PersistentFlags().String(flags.FlagChainID, "", "The network chain ID")
-
-	return cmd
-}
-
-func txCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:                        "tx",
-		Short:                      "Transactions subcommands",
-		DisableFlagParsing:         true,
-		SuggestionsMinimumDistance: 2,
-		RunE:                       client.ValidateCmd,
-	}
-
-	cmd.AddCommand(
-		authcmd.GetSignCommand(),
-		authcmd.GetSignBatchCommand(),
-		authcmd.GetMultiSignCommand(),
-		authcmd.GetMultiSignBatchCmd(),
-		authcmd.GetValidateSignaturesCommand(),
-		authcmd.GetBroadcastCommand(),
-		authcmd.GetEncodeCommand(),
-		authcmd.GetDecodeCommand(),
-	)
-
-	app.ModuleBasics.AddTxCommands(cmd)
-	cmd.PersistentFlags().String(flags.FlagChainID, "", "The network chain ID")
 
 	return cmd
 }
