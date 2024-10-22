@@ -70,7 +70,6 @@ import (
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
-	rosettacmd "github.com/cosmos/rosetta/cmd"
 	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
 )
 
@@ -160,14 +159,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	if err != nil {
 		panic(err)
 	}
-
-	// add rosetta
-	rootCmd.AddCommand(
-		rosettacmd.RosettaCommand(
-			encodingConfig.InterfaceRegistry,
-			encodingConfig.Codec,
-		),
-	)
 
 	return rootCmd, encodingConfig
 }
