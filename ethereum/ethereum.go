@@ -25,7 +25,7 @@ type BaseChain struct {
 	finalizedBlockFn func(ctx context.Context) (*big.Int, error)
 }
 
-type Block struct {
+type block struct {
 	Number string `json:"number"`
 }
 
@@ -94,7 +94,7 @@ func newBaseChain(
 	}
 
 	finalizedBlockFn := func(ctx context.Context) (*big.Int, error) {
-		var finalized Block
+		var finalized block
 		err = client.Client().CallContext(ctx, &finalized, "eth_getBlockByNumber", "finalized", false)
 		if err != nil {
 			return nil, fmt.Errorf(
