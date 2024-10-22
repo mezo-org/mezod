@@ -20,7 +20,7 @@ install_tools() {
 
 open_ports() {
     sudo ufw --force enable
-    sudo ufw allow 26656,26657,1317,9090,8545,8546/tcp
+    sudo ufw allow 26656,26657,1317,9090,8545,8546,6065/tcp
     # allow ssh connections:
     sudo ufw allow 22/tcp
 }
@@ -116,7 +116,7 @@ install_skip() {
     echo "Skip binary installed with path: ${CONNECT_EXEC_PATH}"
 }
 
-install_validator() {
+init_mezo_config() {
 
     # Path variables
     CONFIG=$MEZOD_HOME/config/config.toml
@@ -137,14 +137,6 @@ install_validator() {
         --chain-id ${MEZOD_CHAIN_ID} \
         --home ${MEZOD_HOME} \
         --keyring-backend ${MEZOD_KEYRING_BACKEND}
-
-    echo "" | sudo tee ${MEZOD_HOME}/config/genesis.json
-    wget --header="Authorization: token ${GITHUB_TOKEN}" --output-document=/tmp/genesis.yaml ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
-    echo $(yq '.data["genesis.json"]' /tmp/genesis.yaml | sed -e 's/\\n/\n/g' -e 's/\\"/"/g' -e '1s/^"//' -e '$s/"$//' | jq) | sudo tee ${MEZOD_HOME}/config/genesis.json
-    echo "Genesis file downloaded!"
-    
-    # Start the node (remove the --pruning=nothing flag if historical queries are not needed) TODO: move this to systemd
-    # mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --home "$HOMEDIR"
 }
 
 setup_systemd_skip(){
@@ -154,7 +146,7 @@ Description=Connect Sidecar Service
 After=network.target
 
 [Service]
-ExecStart=${CONNECT_EXEC} --market-map-endpoint=\"127.0.0.1:8545\"
+ExecStart=${CONNECT_EXEC} --log-disable-file-rotation --port=${CONNECT_SIDECAR_PORT} --market-map-endpoint=\"127.0.0.1:9090\"
 StandardOutput=journal
 StandardError=journal
 User=root
@@ -171,7 +163,7 @@ Description=Ethereum Sidecar Service
 After=network.target
 
 [Service]
-ExecStart=${MEZO_EXEC} ethereum-sidecar
+ExecStart=${MEZO_EXEC} ethereum-sidecar --log_format=${MEZOD_LOG_FORMAT} --ethereum-sidecar.server.ethereum-node-address=${MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS}
 StandardOutput=journal
 StandardError=journal
 User=root
@@ -188,7 +180,7 @@ Description=Mezo Service
 After=network.target
 
 [Service]
-ExecStart=${MEZO_EXEC} start --log_format=${MEZOD_LOG_FORMAT} --chain-id=${MEZOD_CHAIN_ID} --home=${MEZOD_HOME} --keyring-backend=${MEZOD_KEYRING_BACKEND} --moniker=${MEZOD_MONIKER} --p2p.seeds=${MEZOD_P2P_SEEDS} --ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS}
+ExecStart=${MEZO_EXEC} start --log_format=${MEZOD_LOG_FORMAT} --chain-id=${MEZOD_CHAIN_ID} --home=${MEZOD_HOME} --keyring-backend=${MEZOD_KEYRING_BACKEND} --moniker=${MEZOD_MONIKER} --p2p.seeds=${MEZOD_P2P_SEEDS} --ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS} --api.enable --grpc.enable --json-rpc.enable --json-rpc.api eth,txpool,personal,net,debug,web3 --metrics --json-rpc.metrics-address="0.0.0.0:6065"
 StandardOutput=journal
 StandardError=journal
 User=root
@@ -237,7 +229,7 @@ usage() {
   echo -e "\nUsage: $0\n\n" \
     "[-c/--cleanup] - clean up the installation\n\n" \
     "[--health] - check health of mezo systemd services\n\n" \
-    "[--show-variables] - output variables read from env files\n"
+    "[-s/--show-variables] - output variables read from env files\n"
 #   echo -e "\nRequired command line arguments:\n"
 }
 
@@ -302,7 +294,7 @@ open_ports
 install_go
 install_mezo
 install_skip
-install_validator
+init_mezo_config
 setup_systemd_skip
 setup_systemd_sidecar
 setup_systemd_mezo
