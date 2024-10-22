@@ -36,7 +36,7 @@ var (
 	// block time.
 	searchedRange = new(big.Int).SetInt64(100000)
 
-	// cachedEvents is a number of events to keep in the cache.
+	// cachedEventsLimit is a number of events to keep in the cache.
 	// Size of Sequence: 32 bytes
 	// Size of Recipient: 42 bytes
 	// Size of Amount: 32 bytes
@@ -46,7 +46,7 @@ var (
 	// For simplicity, let's make 500k events our limit. Even if deposits hit 1000
 	// daily mark, that would give 50 days of cached events which should be more than
 	// enough.
-	cachedEvents = 500000
+	cachedEventsLimit = 500000
 )
 
 // Server observes events emitted by the Mezo `BitcoinBridge` contract on the
@@ -183,9 +183,9 @@ func (s *Server) processEvents(ctx context.Context) error {
 	}
 
 	// Free up memory up to the length that exceeds the cache size.
-	if len(s.events) > cachedEvents {
+	if len(s.events) > cachedEventsLimit {
 		s.eventsMutex.Lock()
-		trim := len(s.events) - cachedEvents
+		trim := len(s.events) - cachedEventsLimit
 		s.events = s.events[trim:]
 		s.eventsMutex.Unlock()
 	}
