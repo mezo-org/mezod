@@ -211,7 +211,6 @@ which accepts a path for the resulting pprof file.
 	cmd.Flags().Int32(srvflags.JSONRPCBlockRangeCap, config.DefaultBlockRangeCap, "Sets the max block range allowed for `eth_getLogs` query")
 	cmd.Flags().Int(srvflags.JSONRPCMaxOpenConnections, config.DefaultMaxOpenConnections, "Sets the maximum number of simultaneous connections for the server listener") //nolint:lll
 	cmd.Flags().Bool(srvflags.JSONRPCEnableIndexer, false, "Enable the custom tx indexer for json-rpc")
-	cmd.Flags().String(srvflags.JSONRPCMetricsAddress, config.DefaultJSONRPCMetricsAddress, "the JSON-RPC metrics server address to listen on")
 	cmd.Flags().Bool(srvflags.JSONRPCEnableMetrics, false, "Define if EVM rpc metrics server should be enabled")
 	cmd.Flags().String(srvflags.JSONRPCMetricsAddress, config.DefaultJSONRPCMetricsAddress, "the JSON-RPC metrics server address to listen on")
 

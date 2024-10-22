@@ -150,8 +150,7 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 			overwrite, _ := cmd.Flags().GetBool(genutilcli.FlagOverwrite)
 
 			if !overwrite && tmos.FileExists(genFile) {
-				fmt.Fprintf(os.Stderr, "genesis.json file already exists: %v\n", genFile)
-				return nil
+				return fmt.Errorf("genesis.json file already exists: %v", genFile)
 			}
 
 			var appGenesis *genutiltypes.AppGenesis

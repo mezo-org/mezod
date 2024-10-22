@@ -4,113 +4,51 @@ x-volumes: &volumes
     - type: bind
       source: ./tmp/mezod
       target: ${MEZOD_HOME}
-    # Commented, as long as the keyring-dir flag is not supported by the "mezod start" command.
-    # - type: bind
-    #   source: ./tmp/keyring
-    #   target: ${MEZOD_KEYRING_DIR}
+
+x-envfile: &envfile
+  env_file:
+    - ${NETWORK}.env
+
+x-network: &network
+  networks:
+    - mezo
+
+x-platform: &platform
+  platform: linux/amd64
+
 
 services:
   #
   # SECTION: operations
   #
   cli:
+    <<: [*platform, *envfile, *volumes, *network]
     container_name: cli
     image: ${DOCKER_IMAGE}
-    platform: linux/amd64
     deploy:
       # Make sure that the service won't run for "docker compose up".
       # It is intended to be run manually.
       replicas: 0
-    entrypoint: ["sh"]
+    entrypoint: ["/busybox/sh"]
     working_dir: ${MEZOD_HOME}
-    <<: *volumes
-    networks:
-      - mezo
 
   #
   # PHASE: initialization
   #
-  init-keyring:
-    container_name: init-keyring
+  init:
+    <<: [*platform, *envfile, *volumes, *network]
+    container_name: init
     image: ${DOCKER_IMAGE}
-    platform: linux/amd64
-    entrypoint: ["sh", "-c"]
-    command:
-      - |
-        echo "Prepare keyring..."
-        (echo ${KEYRING_SEED}; echo ${KEYRING_PASSWORD}; echo ${KEYRING_PASSWORD}) \
-          | mezod keys add \
-            ${KEYRING_KEY_NAME} \
-            --home=${MEZOD_HOME} \
-            --keyring-backend=${MEZOD_KEYRING_BACKEND} \
-            --keyring-dir=${MEZOD_KEYRING_DIR} \
-            --recover
-        echo "Keyring prepared!"
-    <<: *volumes
+    command: ["/init.sh"]
     restart: on-failure:2
-    networks:
-      - mezo
-
-  init-config:
-    container_name: init-config
-    image: ${DOCKER_IMAGE}
-    platform: linux/amd64
-    command:
-      - mezod
-      - init
-      - ${MEZOD_MONIKER}
-      - --chain-id=${MEZOD_CHAIN_ID}
-      - --home=${MEZOD_HOME}
-      - --keyring-backend=${MEZOD_KEYRING_BACKEND}
-      # - --keyring-dir=${MEZOD_KEYRING_DIR}
-    <<: *volumes
-    restart: on-failure:2
-    depends_on:
-      init-keyring:
-        condition: service_completed_successfully
-    networks:
-      - mezo
-
-  # adjust-config:
-  #   container_name: adjust-config
-  #   image: ${DOCKER_IMAGE}
-  #   platform: linux/amd64
-  #   entrypoint: ["sh", "-c"]
-  #   <<: *volumes
-  #   command:
-  #     - |
-  #       echo "Adjusting configuration..."
-  #       sed -i 's/metrics-address = "127.0.0.1:6065"/metrics-address = "0.0.0.0:6065"/g' ${MEZOD_HOME}/config/app.toml
-  #   depends_on:
-  #     init-config:
-  #       condition: service_completed_successfully
-  #   networks:
-  #     - mezo
-
-  # Download genesis.json as long as it is not provided by the "init-config" service.
-  genesis:
-    container_name: genesis
-    image: mikefarah/yq
-    platform: linux/amd64
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        echo >${MEZOD_HOME}/config/genesis.json
-        wget --output-document=/tmp/genesis.yaml ${SETUP_GENESIS_URL} || { echo "Genesis file not found!"; exit 1; }
-        yq '.data["genesis.json"]' /tmp/genesis.yaml > ${MEZOD_HOME}/config/genesis.json
-        echo "Genesis file downloaded!"
-    <<: *volumes
-    depends_on:
-      init-config:
-        condition: service_completed_successfully
 
   #
   # PHASE: runtime
   #
   ethereum-sidecar:
+    <<: [*platform, *network]
     container_name: ethereum-sidecar
     image: ${DOCKER_IMAGE}
-    platform: linux/amd64
     command:
       - mezod
       - ethereum-sidecar
@@ -119,24 +57,22 @@ services:
     restart: always
     deploy:
       resources:
-        reservations: # TODO: verify on Linux
+        reservations:  # TODO: verify on Linux
           cpus: '1'
           memory: 100M
     depends_on:
-      genesis:
+      init:
         condition: service_completed_successfully
     expose:
       - 7500
-    networks:
-      - mezo
     cap_drop:
       - ALL
 
   connect-sidecar:
+    # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
+    <<: [*platform, *network]
     container_name: connect-sidecar
     image: ghcr.io/skip-mev/connect-sidecar:v2.1.1
-    # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
-    platform: linux/amd64
     entrypoint: []
     command:
       - connect
@@ -146,55 +82,32 @@ services:
       # - --metrics-prometheus-address=${CONNECT_SIDECAR_METRICS_PROMETHEUS_ADDRESS}
       - --market-map-endpoint=mezod:9090
     depends_on:
-      genesis:
+      init:
         condition: service_completed_successfully
-    networks:
-      - mezo
     cap_drop:
       - ALL
 
   mezod:
+    <<: [*platform, *envfile, *volumes, *network]
     container_name: mezod
     image: ${DOCKER_IMAGE}
-    platform: linux/amd64
-    entrypoint: ["sh", "-c"]
-    command:
-      - |
-        (echo ${KEYRING_PASSWORD}; echo ${KEYRING_PASSWORD}) \
-          | mezod start \
-            --log_format=${MEZOD_LOG_FORMAT} \
-            --chain-id=${MEZOD_CHAIN_ID} \
-            --home=${MEZOD_HOME} \
-            --keyring-backend=${MEZOD_KEYRING_BACKEND} \
-            --moniker=${MEZOD_MONIKER} \
-            --p2p.seeds=${MEZOD_P2P_SEEDS} \
-            --ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS} \
-            --api.enable \
-            --grpc.enable \
-            --grpc-web.enable \
-            --json-rpc.enable \
-            --json-rpc.api eth,txpool,personal,net,debug,web3 \
-            --metrics \
-            --json-rpc.metrics-address="0.0.0.0:6065"
-    <<: *volumes
+    command: ["/start.sh"]
     # restart: always
     deploy:
       resources:
-        reservations: # TODO: verify on Linux
+        reservations:  # TODO: verify on Linux
           cpus: '1'
           memory: 100M
     ports:
-      - 26656:26656 # p2p
-      - 26657:26657 # rpc
-      - 1317:1317   # api
-      - 9090:9090   # grpc
-      - 8545:8545   # json-rpc
-      - 8546:8546   # json-rpc-ws
-      - 6065:6065   # metrics
-    networks:
-      - mezo
+      - 26656:26656  # p2p
+      - 26657:26657  # rpc
+      - 1317:1317    # api
+      - 9090:9090    # grpc
+      - 8545:8545    # json-rpc
+      - 8546:8546    # json-rpc-ws
+      - 6065:6065    # metrics
     depends_on:
-      genesis:
+      init:
         condition: service_completed_successfully
       ethereum-sidecar:
         condition: service_started

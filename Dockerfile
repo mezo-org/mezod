@@ -8,8 +8,10 @@ WORKDIR /go/src/github.com/mezo-org/mezod
 RUN apt-get update -y && \
     apt-get install git -y
 
-COPY . .
+COPY go.mod .
+RUN go mod download
 
+COPY . .
 RUN make build
 
 #
@@ -25,8 +27,9 @@ FROM busybox:stable AS shell
 #
 FROM gcr.io/distroless/base-nossl:nonroot AS production
 
-COPY --from=shell /bin/sh /bin/sh
-
+COPY --from=shell /bin/sh /busybox/sh
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
+COPY --from=build /go/src/github.com/mezo-org/mezod/deployment/docker/init.sh /init.sh
+COPY --from=build /go/src/github.com/mezo-org/mezod/deployment/docker/start.sh /start.sh
 
 CMD ["mezod"]

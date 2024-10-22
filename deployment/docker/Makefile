@@ -7,18 +7,15 @@ include $(NETWORK).env
 
 clean: ## Clean up
 	rm -rf tmp/mezod
-	# rm -rf tmp/keyring
 
 build: ## Build Docker image
 	docker build --platform linux/amd64 --tag $(DOCKER_IMAGE) ../../
 
 setup: ## Setup local environment
 	mkdir -p tmp/mezod
-	# mkdir -p tmp/keyring
 
-start-one: setup ## Run single service
-	@test $(args) || (echo "Usage: make start-one args=<service>" && exit 1)
-	$(DOCKER_COMPOSE_CMD) run --rm $(args)
+init: setup ## Run init container
+	$(DOCKER_COMPOSE_CMD) run --rm --interactive init
 
 start: setup ## Start node
 	$(DOCKER_COMPOSE_CMD) up --detach --force-recreate
