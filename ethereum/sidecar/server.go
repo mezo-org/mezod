@@ -128,7 +128,10 @@ func (s *Server) observeEvents(ctx context.Context) {
 
 	// Fetch AssetsLocked events two weeks back from the finalized block
 	startBlock := new(big.Int).Sub(finalizedBlock, searchedRange).Uint64()
-	s.fetchFinalizedEvents(startBlock, finalizedBlock.Uint64())
+	err = s.fetchFinalizedEvents(startBlock, finalizedBlock.Uint64())
+	if err != nil {
+		panic(fmt.Sprintf("failed to fetch historical events: %v", err))
+	}
 
 	s.lastFinalizedBlockMutex.Lock()
 	s.lastFinalizedBlock = finalizedBlock
@@ -147,7 +150,7 @@ func (s *Server) observeEvents(ctx context.Context) {
 			// finalized block.
 			err := s.processEvents(ctx)
 			if err != nil {
-				s.logger.Error("failed to process events: %v", err)
+				s.logger.Error("failed to monitor newly emitted events: %v", err)
 				return
 			}
 		}
@@ -176,7 +179,10 @@ func (s *Server) processEvents(ctx context.Context) error {
 		// currentFinalizedBlock = 132
 		// fetching events in the following range [101, 132]
 		exclusiveLastFinalizedBlock := s.lastFinalizedBlock.Uint64() + 1
-		s.fetchFinalizedEvents(exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
+		err := s.fetchFinalizedEvents(exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
+		if err != nil {
+			return err
+		}
 		s.lastFinalizedBlockMutex.Lock()
 		s.lastFinalizedBlock = currentFinalizedBlock
 		s.lastFinalizedBlockMutex.Unlock()
@@ -198,7 +204,7 @@ func (s *Server) processEvents(ctx context.Context) error {
 // provided BitcoinBridge contract to filter these events. Each event is
 // transformed into an `AssetsLockedEvent` type compatible with the bridgetypes
 // package and added to the server's event list with mutex protection.
-func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) {
+func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error {
 	opts := &bind.FilterOpts{
 		Start: startBlock,
 		End:   &endBlock,
@@ -206,8 +212,7 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) {
 
 	events, err := s.bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
 	if err != nil {
-		s.logger.Error("failed to filter AssetsLocked events: %v", err)
-		return
+		return fmt.Errorf("failed to filter AssetsLocked events: %v", err)
 	}
 
 	var bufferedEvents []bridgetypes.AssetsLockedEvent
@@ -228,13 +233,14 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) {
 	}
 
 	if !bridgetypes.AssetsLockedEvents(bufferedEvents).IsValid() {
-		s.logger.Error("invalid AssetsLocked events")
-		return
+		return fmt.Errorf("invalid AssetsLocked events: %v", err)
 	}
 
 	s.eventsMutex.Lock()
 	s.events = append(s.events, bufferedEvents...)
 	s.eventsMutex.Unlock()
+
+	return nil
 }
 
 // startGRPCServer starts the gRPC server and registers the Ethereum sidecar
