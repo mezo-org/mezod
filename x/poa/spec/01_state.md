@@ -86,6 +86,7 @@ the required lookups for validator-set updates.
 - `Validator`: `0x40 | sdk.ValAddress -> types.Validator`
 - `ValidatorByConsAddr`: `0x41 | sdk.ConsAddress -> sdk.ValAddress`
 - `ValidatorState`: `0x42 | sdk.ValAddress -> types.ValidatorState`
+- `ValidatorsByPrivilege`: `0x43 | string -> []sdk.ConsAddress`
 
 `Validator` is the primary index - it ensures that each operator can have only one
 associated validator, where the public key of that validator can change in the
@@ -97,6 +98,11 @@ uses (like automatic kick for misbehaving).
 `ValidatorState` holds the state of a validator. The validator can have 3
 states: joining, active or leaving. This state allows the End Blocker to know
 how to update the Tendermint consensus validator state.
+
+`ValidatorsByPrivilege` holds the information about validators' privileges.
+The key is a string that represents the privilege name. The value is a set
+of consensus addresses corresponding to validators that have the privilege.
+Consensus addresses are ordered lexicographically, in ascending order.
 
 ### Types
 

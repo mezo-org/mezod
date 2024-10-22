@@ -11,7 +11,6 @@ import (
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
-	"github.com/mezo-org/mezod/x/bridge/keeper"
 )
 
 // AssetsLockedEventsLimit is the maximum number of AssetsLocked events to
@@ -23,14 +22,14 @@ const AssetsLockedEventsLimit = 10
 type VoteExtensionHandler struct {
 	logger        log.Logger
 	sidecarClient EthereumSidecarClient
-	bridgeKeeper  keeper.Keeper
+	bridgeKeeper  BridgeKeeper
 }
 
 // NewVoteExtensionHandler creates a new VoteExtensionHandler instance.
 func NewVoteExtensionHandler(
 	logger log.Logger,
 	sidecarClient EthereumSidecarClient,
-	bridgeKeeper keeper.Keeper,
+	bridgeKeeper BridgeKeeper,
 ) *VoteExtensionHandler {
 	return &VoteExtensionHandler{
 		logger:        logger,

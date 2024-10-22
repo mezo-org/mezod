@@ -70,6 +70,7 @@ const (
 	// https://github.com/ethereum/go-ethereum/blob/master/metrics/metrics.go#L35-L55
 	JSONRPCMetricsAddress           = "json-rpc.metrics-address"
 	JSONRPCEnableMetrics            = "metrics"
+	JSONRPCMetricsAddress           = "json-rpc.metrics-address"
 	JSONRPCFixRevertGasRefundHeight = "json-rpc.fix-revert-gas-refund-height"
 )
 

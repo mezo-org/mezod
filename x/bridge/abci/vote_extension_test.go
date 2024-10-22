@@ -8,10 +8,6 @@ import (
 	"github.com/mezo-org/mezod/cmd/config"
 
 	sdkmath "cosmossdk.io/math"
-	storetypes "cosmossdk.io/store/types"
-	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 
 	"cosmossdk.io/log"
@@ -35,7 +31,7 @@ type VoteExtensionHandlerTestSuite struct {
 	logger        log.Logger
 	ctx           sdk.Context
 	requestHeight int64
-	keeper        keeper.Keeper
+	bridgeKeeper  *mockBridgeKeeper
 	handler       *VoteExtensionHandler
 }
 
@@ -47,10 +43,8 @@ func (s *VoteExtensionHandlerTestSuite) SetupTest() {
 
 	s.logger = log.NewNopLogger()
 
-	multiStore := servermock.NewCommitMultiStore()
-
 	s.ctx = sdk.NewContext(
-		multiStore,
+		servermock.NewCommitMultiStore(),
 		tmproto.Header{},
 		false,
 		s.logger,
@@ -58,17 +52,12 @@ func (s *VoteExtensionHandlerTestSuite) SetupTest() {
 
 	s.requestHeight = 100
 
-	storeKey := storetypes.NewKVStoreKey(bridgetypes.StoreKey)
+	s.bridgeKeeper = newMockBridgeKeeper()
 
-	// Only the first argument is relevant for the mock multi store.
-	multiStore.MountStoreWithDB(storeKey, 0, nil)
-
-	s.keeper = keeper.NewKeeper(
-		codec.NewProtoCodec(codectypes.NewInterfaceRegistry()),
-		storeKey,
-	)
-
-	s.keeper.SetAssetsLockedSequenceTip(s.ctx, sdkmath.NewInt(200))
+	s.bridgeKeeper.On(
+		"GetAssetsLockedSequenceTip",
+		s.ctx,
+	).Return(sdkmath.NewInt(200))
 }
 
 func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
@@ -471,7 +460,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 			s.handler = NewVoteExtensionHandler(
 				s.logger,
 				sidecar,
-				s.keeper,
+				s.bridgeKeeper,
 			)
 
 			req := &cmtabci.RequestExtendVote{
@@ -725,7 +714,7 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			s.handler = NewVoteExtensionHandler(
 				s.logger,
 				newMockEthereumSidecarClient(),
-				s.keeper,
+				s.bridgeKeeper,
 			)
 
 			req := &cmtabci.RequestVerifyVoteExtension{
@@ -778,4 +767,25 @@ func (mesc *mockEthereumSidecarClient) GetAssetsLockedEvents(
 	}
 
 	return nil, args.Error(1)
+}
+
+type mockBridgeKeeper struct {
+	mock.Mock
+}
+
+func newMockBridgeKeeper() *mockBridgeKeeper {
+	return &mockBridgeKeeper{}
+}
+
+func (mbk *mockBridgeKeeper) GetAssetsLockedSequenceTip(ctx sdk.Context) sdkmath.Int {
+	args := mbk.Called(ctx)
+	return args.Get(0).(sdkmath.Int)
+}
+
+func (mbk *mockBridgeKeeper) AcceptAssetsLocked(
+	ctx sdk.Context,
+	events bridgetypes.AssetsLockedEvents,
+) error {
+	args := mbk.Called(ctx, events)
+	return args.Error(0)
 }

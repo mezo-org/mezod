@@ -10,18 +10,13 @@ import (
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
-	storetypes "cosmossdk.io/store/types"
-
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/proto/tendermint/crypto"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	servermock "github.com/cosmos/cosmos-sdk/server/mock"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/abci/types"
-	"github.com/mezo-org/mezod/x/bridge/keeper"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -46,17 +41,20 @@ type ProposalHandlerTestSuite struct {
 	logger        log.Logger
 	ctx           sdk.Context
 	requestHeight int64
-	keeper        keeper.Keeper
+	bridgeKeeper  *mockBridgeKeeper
 	handler       *ProposalHandler
 }
 
 func (s *ProposalHandlerTestSuite) SetupTest() {
+	// Set bech32 prefixes to make the recipient address validation in
+	// AssetsLocked events possible (see AssetsLockedEvent.IsValid).
+	cfg := sdk.GetConfig()
+	config.SetBech32Prefixes(cfg)
+
 	s.logger = log.NewNopLogger()
 
-	multiStore := servermock.NewCommitMultiStore()
-
 	s.ctx = sdk.NewContext(
-		multiStore,
+		servermock.NewCommitMultiStore(),
 		tmproto.Header{},
 		false,
 		s.logger,
@@ -64,17 +62,12 @@ func (s *ProposalHandlerTestSuite) SetupTest() {
 
 	s.requestHeight = 100
 
-	storeKey := storetypes.NewKVStoreKey(bridgetypes.StoreKey)
+	s.bridgeKeeper = newMockBridgeKeeper()
 
-	// Only the first argument is relevant for the mock multi store.
-	multiStore.MountStoreWithDB(storeKey, 0, nil)
-
-	s.keeper = keeper.NewKeeper(
-		codec.NewProtoCodec(codectypes.NewInterfaceRegistry()),
-		storeKey,
-	)
-
-	s.keeper.SetAssetsLockedSequenceTip(s.ctx, sdkmath.NewInt(200))
+	s.bridgeKeeper.On(
+		"GetAssetsLockedSequenceTip",
+		s.ctx,
+	).Return(sdkmath.NewInt(200))
 }
 
 func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
@@ -230,7 +223,7 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			s.handler = NewProposalHandler(
 				s.logger,
 				valStore,
-				s.keeper,
+				s.bridgeKeeper,
 				// No need for the vote extension decomposer in this test.
 				// The decomposer is used to construct the default assetsLockedExtractor
 				// but, we are overriding it with a test one.
@@ -318,12 +311,6 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 		extCommitInfoBytes, err := extCommitInfo.Marshal()
 		s.Require().NoError(err)
 		return extCommitInfoBytes
-	}
-
-	marshalInjectedTx := func(injectedTx types.InjectedTx) []byte {
-		injectedTxBytes, err := injectedTx.Marshal()
-		s.Require().NoError(err)
-		return injectedTxBytes
 	}
 
 	tests := []struct {
@@ -694,7 +681,7 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			s.handler = NewProposalHandler(
 				s.logger,
 				valStore,
-				s.keeper,
+				s.bridgeKeeper,
 				// No need for the vote extension decomposer in this test.
 				// The decomposer is used to construct the default assetsLockedExtractor
 				// but, we are overriding it with a test one.
@@ -1708,4 +1695,13 @@ func (male *mockAssetsLockedExtractor) CanonicalEvents(
 	}
 
 	return nil, args.Error(1)
+}
+
+func marshalInjectedTx(injectedTx types.InjectedTx) []byte {
+	injectedTxBytes, err := injectedTx.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return injectedTxBytes
 }

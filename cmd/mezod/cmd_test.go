@@ -23,7 +23,7 @@ func TestInitCmd(t *testing.T) {
 		fmt.Sprintf("--%s=%s", flags.FlagChainID, utils.TestnetChainID+"-1"),
 	})
 
-	err := svrcmd.Execute(rootCmd, "mezod", app.DefaultNodeHome)
+	err := svrcmd.Execute(rootCmd, mezod.EnvPrefix, app.DefaultNodeHome)
 	require.NoError(t, err)
 }
 
@@ -37,6 +37,6 @@ func TestAddKeyLedgerCmd(t *testing.T) {
 	})
 
 	require.Panics(t, func() {
-		_ = svrcmd.Execute(rootCmd, "MEZOD", app.DefaultNodeHome)
+		_ = svrcmd.Execute(rootCmd, mezod.EnvPrefix, app.DefaultNodeHome)
 	})
 }

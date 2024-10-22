@@ -161,7 +161,8 @@ var (
 	maccPerms = map[string][]string{
 		authtypes.FeeCollectorName: nil,
 		poatypes.ModuleName:        nil,
-		evmtypes.ModuleName:        {authtypes.Minter, authtypes.Burner}, // used for secure addition and subtraction of balance using module account
+		evmtypes.ModuleName:        {authtypes.Minter, authtypes.Burner},
+		bridgetypes.ModuleName:     {authtypes.Minter, authtypes.Burner},
 	}
 
 	// module accounts that are allowed to receive tokens
@@ -207,6 +208,8 @@ type Mezo struct {
 	configurator module.Configurator
 
 	tpsCounter *tpsCounter
+
+	preBlockHandler *appabci.PreBlockHandler
 }
 
 // NewMezo returns a reference to a new initialized Ethermint application.
@@ -381,7 +384,11 @@ func NewMezo(
 	}
 	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
 
-	app.BridgeKeeper = bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
+	app.BridgeKeeper = bridgekeeper.NewKeeper(
+		appCodec,
+		keys[bridgetypes.StoreKey],
+		app.BankKeeper,
+	)
 
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.
@@ -530,9 +537,9 @@ func (app *Mezo) setPostHandler() {
 
 func (app *Mezo) PreBlocker(
 	ctx sdk.Context,
-	_ *abci.RequestFinalizeBlock,
+	req *abci.RequestFinalizeBlock,
 ) (*sdk.ResponsePreBlock, error) {
-	return app.mm.PreBlock(ctx)
+	return app.preBlockHandler.PreBlocker(app.mm)(ctx, req)
 }
 
 func (app *Mezo) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
@@ -589,7 +596,7 @@ func (app *Mezo) setABCIExtensions(
 	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
 ) {
 	// Create the bridge ABCI handlers.
-	bridgeVoteExtensionHandler, bridgeProposalHandler := app.bridgeABCIHandlers(ethereumSidecarClient)
+	bridgeVoteExtensionHandler, bridgeProposalHandler, bridgePreBlockHandler := app.bridgeABCIHandlers(ethereumSidecarClient)
 
 	// Create and attach the app-level composite vote extension handler for
 	// ExtendVote and VerifyVoteExtension ABCI requests.
@@ -606,6 +613,11 @@ func (app *Mezo) setABCIExtensions(
 		bridgeProposalHandler,
 	)
 	proposalHandler.SetHandlers(app.BaseApp)
+
+	app.preBlockHandler = appabci.NewPreBlockHandler(
+		app.Logger(),
+		bridgePreBlockHandler,
+	)
 }
 
 // bridgeABCIHandlers returns the bridge ABCI handlers.
@@ -615,6 +627,7 @@ func (app *Mezo) bridgeABCIHandlers(
 ) (
 	*bridgeabci.VoteExtensionHandler,
 	*bridgeabci.ProposalHandler,
+	*bridgeabci.PreBlockHandler,
 ) {
 	voteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
 		app.Logger(),
@@ -630,7 +643,12 @@ func (app *Mezo) bridgeABCIHandlers(
 		baseapp.ValidateVoteExtensions,
 	)
 
-	return voteExtensionHandler, proposalHandler
+	preBlockHandler := bridgeabci.NewPreBlockHandler(
+		app.Logger(),
+		app.BridgeKeeper,
+	)
+
+	return voteExtensionHandler, proposalHandler, preBlockHandler
 }
 
 // LoadHeight loads state at a particular height

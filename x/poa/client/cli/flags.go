@@ -26,16 +26,14 @@ func addValidatorDescriptionFlags(fs *flag.FlagSet) *flag.FlagSet {
 	return fs
 }
 
-func NewFlagSetGenVal(defaultHome, defaultIP, defaultP2PPort string) *flag.FlagSet {
+func NewFlagSetGenVal(defaultIP, defaultP2PPort string) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
-	fs.String(flags.FlagHome, defaultHome, "The application home directory")
 	fs.String(
 		flags.FlagOutputDocument,
 		"",
 		"Write the generated validator to the given file instead of the default location",
 	)
-	fs.String(flags.FlagChainID, "", "The network chain ID")
 
 	fs.String(FlagIP, defaultIP, "The node's public IP")
 	fs.String(FlagP2PPort, defaultP2PPort, "The node's P2P port")
@@ -45,10 +43,9 @@ func NewFlagSetGenVal(defaultHome, defaultIP, defaultP2PPort string) *flag.FlagS
 	return fs
 }
 
-func NewFlagSetCollectGenVals(defaultHome string) *flag.FlagSet {
+func NewFlagSetCollectGenVals() *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
-	fs.String(flags.FlagHome, defaultHome, "The application home directory")
 	fs.String(FlagGenValDir, "", "Override default \"genval\" directory")
 
 	return fs
