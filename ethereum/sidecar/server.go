@@ -64,10 +64,6 @@ type Server struct {
 	lastFinalizedBlock      *big.Int
 }
 
-type Block struct {
-	Number string `json:"number"`
-}
-
 // RunServer initializes the server, starts the event observing routine and
 // starts the gRPC server.
 func RunServer(
