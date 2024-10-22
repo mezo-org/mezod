@@ -102,7 +102,17 @@ func newBaseChain(
 				err,
 			)
 		}
-		finalizedBlock, ok := new(big.Int).SetString(finalized.Number[2:], 16) // hex to decimal
+		var hexNumber string
+		// Check if finalized.Number starts with "0x"
+		if len(finalized.Number) >= 2 && finalized.Number[:2] == "0x" {
+			// Trim "0x"
+			hexNumber = finalized.Number[2:]
+		} else {
+			// Use the whole string if it doesn't start with "0x"
+			hexNumber = finalized.Number
+		}
+
+		finalizedBlock, ok := new(big.Int).SetString(hexNumber, 16) // hex to decimal
 		if !ok {
 			return nil, fmt.Errorf(
 				"failed to convert finalized block number to integer: %v",
