@@ -62,6 +62,10 @@ type Server struct {
 
 	lastFinalizedBlockMutex sync.RWMutex
 	lastFinalizedBlock      *big.Int
+
+	bitcoinBridge *abi.BitcoinBridge
+
+	chain *ethconnect.BaseChain
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -80,8 +84,10 @@ func RunServer(
 		lastFinalizedBlock: new(big.Int),
 	}
 
+	var err error
+
 	// Connect to the Ethereum network
-	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
+	server.chain, err = ethconnect.Connect(ctx, ethconfig.Config{
 		Network:           ethconnect.NetworkFromString(ethereumNetwork),
 		URL:               providerURL,
 		ContractAddresses: map[string]string{bitcoinBridgeName: gen.BitcoinBridgeAddress},
@@ -91,7 +97,14 @@ func RunServer(
 		return nil
 	}
 
-	go server.observeEvents(ctx, chain, common.HexToAddress(gen.BitcoinBridgeAddress))
+	// Initialize the BitcoinBridge contract instance
+	server.bitcoinBridge, err = server.initializeBitcoinBridgeContract(common.HexToAddress(gen.BitcoinBridgeAddress))
+	if err != nil {
+		server.logger.Error("failed to initialize BitcoinBridge contract: %v", err)
+		return nil
+	}
+
+	go server.observeEvents(ctx)
 	go server.startGRPCServer(ctx, grpcAddress)
 
 	return server
@@ -106,15 +119,8 @@ func RunServer(
 //   - Sets up a ticker channel to continuously monitor new finalized blocks.
 //   - On each new block notification from the ticker channel, calls `processEvents` to handle new events
 //     since the last finalized block.
-func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain, bitcoinBridgeAddress common.Address) {
-	// Initialize the BitcoinBridge contract instance
-	bitcoinBridge, err := initializeBitcoinBridgeContract(chain, bitcoinBridgeAddress)
-	if err != nil {
-		s.logger.Error("failed to initialize BitcoinBridge contract: %v", err)
-		return
-	}
-
-	finalizedBlock, err := chain.FinalizedBlock(ctx)
+func (s *Server) observeEvents(ctx context.Context) {
+	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
 		s.logger.Error("failed to get the finalized block: %v", err)
 		return
@@ -122,14 +128,14 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 
 	// Fetch AssetsLocked events two weeks back from the finalized block
 	startBlock := new(big.Int).Sub(finalizedBlock, searchedRange).Uint64()
-	s.fetchFinalizedEvents(bitcoinBridge, startBlock, finalizedBlock.Uint64())
+	s.fetchFinalizedEvents(startBlock, finalizedBlock.Uint64())
 
 	s.lastFinalizedBlockMutex.Lock()
 	s.lastFinalizedBlock = finalizedBlock
 	s.lastFinalizedBlockMutex.Unlock()
 
 	// Start a ticker to periodically check the current block number
-	tickerChan := chain.BlockCounter().WatchBlocks(ctx)
+	tickerChan := s.chain.BlockCounter().WatchBlocks(ctx)
 
 	for {
 		select {
@@ -139,7 +145,7 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 		case <-tickerChan:
 			// On each tick check if the current finalized block is greater than the last
 			// finalized block.
-			err := s.processEvents(ctx, chain, bitcoinBridge)
+			err := s.processEvents(ctx)
 			if err != nil {
 				s.logger.Error("failed to process events: %v", err)
 				return
@@ -151,8 +157,8 @@ func (s *Server) observeEvents(ctx context.Context, chain *ethconnect.BaseChain,
 // processEvents processes events from Ethereum by fetching the AssetsLocked
 // finalized events within a specified block range and managing memory usage
 // for cached events.
-func (s *Server) processEvents(ctx context.Context, chain *ethconnect.BaseChain, bitcoinBridge *abi.BitcoinBridge) error {
-	currentFinalizedBlock, err := chain.FinalizedBlock(ctx)
+func (s *Server) processEvents(ctx context.Context) error {
+	currentFinalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return err
 	}
@@ -166,7 +172,7 @@ func (s *Server) processEvents(ctx context.Context, chain *ethconnect.BaseChain,
 		// currentFinalizedBlock = 132
 		// fetching events in the following range [101, 132]
 		exclusiveLastFinalizedBlock := s.lastFinalizedBlock.Uint64() + 1
-		s.fetchFinalizedEvents(bitcoinBridge, exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
+		s.fetchFinalizedEvents(exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
 		s.lastFinalizedBlockMutex.Lock()
 		s.lastFinalizedBlock = currentFinalizedBlock
 		s.lastFinalizedBlockMutex.Unlock()
@@ -188,13 +194,13 @@ func (s *Server) processEvents(ctx context.Context, chain *ethconnect.BaseChain,
 // provided BitcoinBridge contract to filter these events. Each event is
 // transformed into an `AssetsLockedEvent` type compatible with the bridgetypes
 // package and added to the server's event list with mutex protection.
-func (s *Server) fetchFinalizedEvents(bitcoinBridge *abi.BitcoinBridge, startBlock uint64, endBlock uint64) {
+func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) {
 	opts := &bind.FilterOpts{
 		Start: startBlock,
 		End:   &endBlock,
 	}
 
-	events, err := bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
+	events, err := s.bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
 	if err != nil {
 		s.logger.Error("failed to filter AssetsLocked events: %v", err)
 		return
@@ -259,6 +265,21 @@ func (s *Server) startGRPCServer(
 	s.logger.Info("gRPC server stopped")
 }
 
+// Construct a new instance of the Ethereum Bitcoin Bridge contract.
+func (s *Server) initializeBitcoinBridgeContract(
+	bitcoinBridgeAddress common.Address,
+) (*abi.BitcoinBridge, error) {
+	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, s.chain.Client())
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to attach to Bitcoin Bridge contract: [%v]",
+			err,
+		)
+	}
+
+	return bitcoinBridge, nil
+}
+
 // AssetsLockedEvents returns a list of AssetsLocked events based on the
 // passed request. It is executed by the gRPC server.
 func (s *Server) AssetsLockedEvents(
@@ -294,20 +315,4 @@ func (s *Server) AssetsLockedEvents(
 	return &pb.AssetsLockedEventsResponse{
 		Events: filteredEvents,
 	}, nil
-}
-
-// Construct a new instance of the Ethereum Bitcoin Bridge contract.
-func initializeBitcoinBridgeContract(
-	baseChain *ethconnect.BaseChain,
-	bitcoinBridgeAddress common.Address,
-) (*abi.BitcoinBridge, error) {
-	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, baseChain.Client())
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to attach to Bitcoin Bridge contract: [%v]",
-			err,
-		)
-	}
-
-	return bitcoinBridge, nil
 }
