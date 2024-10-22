@@ -1,4 +1,7 @@
-FROM golang:1.22.6-bullseye AS build-env
+#
+# Build layer
+#
+FROM golang:1.22.8-bullseye AS build
 
 WORKDIR /go/src/github.com/mezo-org/mezod
 
@@ -9,15 +12,21 @@ COPY . .
 
 RUN make build
 
-FROM golang:1.22.6-bullseye
+#
+# Busybox layer as source of shell binary
+#
+FROM busybox:stable AS shell
 
-RUN apt-get update -y && \
-    apt-get install ca-certificates jq -y
+#
+# Production layer
+#
+# Refs.:
+# https://github.com/GoogleContainerTools/distroless/blob/main/base/README.md
+#
+FROM gcr.io/distroless/base-nossl:nonroot AS production
 
-WORKDIR /root
+COPY --from=shell /bin/sh /bin/sh
 
-COPY --from=build-env /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
-
-EXPOSE 26656 26657 1317 9090 8545 8546
+COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 
 CMD ["mezod"]

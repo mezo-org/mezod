@@ -167,7 +167,7 @@ func (m *TransferOwnershipMethod) Run(context *precompile.RunContext, inputs pre
 // of the event in the contract ABI.
 const OwnershipTransferStartedEventName = "OwnershipTransferStarted"
 
-// oOwnershipTransferStartedEvent is the implementation of the OwnershipTransferStarted event that contains
+// OwnershipTransferStartedEvent is the implementation of the OwnershipTransferStarted event that contains
 // the following arguments:
 // - previousOwner (indexed): is the EVM address of the current (soon to be previous) owner,
 // - newOwner (indexed): is the EVM address of the new owner
