@@ -449,25 +449,25 @@ proto-download-deps:
 ###                          Localnet docker                                ###
 ###############################################################################
 
-# Build image for a local testnet
+# Build image for a localnet
 localnet-docker-build:
 	@$(MAKE) -C networks/local
 
-# Start a 4-node testnet locally
+# Start a 4-node localnet
 localnet-docker-start: localnet-docker-stop
-	@if ! [ -f build/node0/$(MEZO_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/mezo:Z mezo-org/mezod "./mezod testnet init-files --v 4 -o /mezo --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
+	@if ! [ -f build/node0/$(MEZO_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/mezo:Z mezo-org/mezod "./mezod localnet init-files --v 4 -o /mezo --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
 	docker-compose up -d
 
-# Stop testnet
+# Stop localnet
 localnet-docker-stop:
 	docker-compose down
 
-# Clean testnet
+# Clean localnet
 localnet-docker-clean:
 	docker-compose down
 	rm -rf build/*
 
- # Reset testnet
+ # Reset localnet
 localnet-docker-unsafe-reset:
 	docker-compose down
 ifeq ($(OS),Windows_NT)
@@ -482,7 +482,7 @@ else
 	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node3/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
 endif
 
-# Clean testnet
+# Clean localnet
 localnet-docker-show-logstream:
 	docker-compose logs --tail=1000 -f
 
@@ -502,7 +502,7 @@ localnet-bin-init:
 	fi
 	@if ! [ -d $(LOCALNET_DIR) ]; then \
 		echo "Initializing localnet configuration..."; \
-		./build/mezod testnet init-files \
+		./build/mezod localnet init-files \
 		--v 4 \
 		--output-dir $(LOCALNET_DIR) \
 		--home $(LOCALNET_DIR) \

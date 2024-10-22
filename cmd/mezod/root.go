@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mezo-org/mezod/cmd/mezod/localnet"
+
 	"github.com/mezo-org/mezod/cmd/mezod/genesis"
 
 	storetypes "cosmossdk.io/store/types"
@@ -37,8 +39,8 @@ import (
 
 	"cosmossdk.io/log"
 	confixcmd "cosmossdk.io/tools/confix/cmd"
-	tmcfg "github.com/cometbft/cometbft/config"
-	tmcli "github.com/cometbft/cometbft/libs/cli"
+	cometcfg "github.com/cometbft/cometbft/config"
+	cometcli "github.com/cometbft/cometbft/libs/cli"
 	dbm "github.com/cosmos/cosmos-db"
 
 	"cosmossdk.io/simapp/params"
@@ -120,9 +122,14 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 
 			// override the app and tendermint configuration
 			customAppTemplate, customAppConfig := initAppConfig()
-			customTMConfig := initTendermintConfig()
+			customCometConfig := initCometConfig()
 
-			return sdkserver.InterceptConfigsPreRunHandler(cmd, customAppTemplate, customAppConfig, customTMConfig)
+			return sdkserver.InterceptConfigsPreRunHandler(
+				cmd,
+				customAppTemplate,
+				customAppConfig,
+				customCometConfig,
+			)
 		},
 	}
 
@@ -134,8 +141,8 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		genesis.NewCmd(),
 		NewInitCmd(app.ModuleBasics),
 		escli.NewEthereumSidecarCmd(),
-		tmcli.NewCompletionCmd(rootCmd, true),
-		NewTestnetCmd(app.ModuleBasics),
+		cometcli.NewCompletionCmd(rootCmd, true),
+		localnet.NewCmd(app.ModuleBasics),
 		debug.Cmd(),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
@@ -371,10 +378,10 @@ func (a appCreator) appExport(
 	return mezoApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
 }
 
-// initTendermintConfig helps to override default Tendermint Config values.
-// return tmcfg.DefaultConfig if no custom configuration is required for the application.
-func initTendermintConfig() *tmcfg.Config {
-	cfg := tmcfg.DefaultConfig()
+// initCometConfig helps to override default CometBFT config values.
+// return DefaultConfig if no custom configuration is required for the application.
+func initCometConfig() *cometcfg.Config {
+	cfg := cometcfg.DefaultConfig()
 	cfg.Consensus.TimeoutCommit = time.Second * 3
 	// to put a higher strain on node memory, use these values:
 	// cfg.P2P.MaxNumInboundPeers = 100
