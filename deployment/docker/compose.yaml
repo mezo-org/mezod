@@ -55,11 +55,6 @@ services:
       - --log_format=${MEZOD_LOG_FORMAT}
       - --ethereum-sidecar.server.ethereum-node-address=${MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS}
     restart: always
-    deploy:
-      resources:
-        reservations:  # TODO: verify on Linux
-          cpus: '1'
-          memory: 100M
     depends_on:
       init:
         condition: service_completed_successfully
@@ -81,6 +76,7 @@ services:
       # - --metrics-enabled
       # - --metrics-prometheus-address=${CONNECT_SIDECAR_METRICS_PROMETHEUS_ADDRESS}
       - --market-map-endpoint=mezod:9090
+    restart: always
     depends_on:
       init:
         condition: service_completed_successfully
@@ -92,12 +88,7 @@ services:
     container_name: mezod
     image: ${DOCKER_IMAGE}
     command: ["/start.sh"]
-    # restart: always
-    deploy:
-      resources:
-        reservations:  # TODO: verify on Linux
-          cpus: '1'
-          memory: 100M
+    restart: always
     ports:
       - 26656:26656  # p2p
       - 26657:26657  # rpc
@@ -114,7 +105,7 @@ services:
       connect-sidecar:
         condition: service_started
     healthcheck:
-      test: ["CMD", "cat", "${MEZOD_HOME}/config/genesis.json"]
+      test: ["CMD", "echo", "${MEZOD_HOME}/config/genesis.json"]
       interval: 5s
       timeout: 1s
       retries: 3
