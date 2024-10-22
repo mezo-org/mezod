@@ -13,7 +13,8 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
-package client
+
+package keys
 
 import (
 	"bufio"
@@ -32,8 +33,8 @@ import (
 	"github.com/mezo-org/mezod/crypto/hd"
 )
 
-// UnsafeExportEthKeyCommand exports a key with the given name as a private key in hex format.
-func UnsafeExportEthKeyCommand() *cobra.Command {
+// NewUnsafeExportCmd exports a key with the given name as a private key in hex format.
+func NewUnsafeExportCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unsafe-export-eth-key [name]",
 		Short: "**UNSAFE** Export an Ethereum private key",

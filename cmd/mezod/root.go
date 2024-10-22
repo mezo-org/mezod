@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mezo-org/mezod/cmd/mezod/keys"
+
 	"github.com/mezo-org/mezod/cmd/mezod/localnet"
 
 	"github.com/mezo-org/mezod/cmd/mezod/genesis"
@@ -58,7 +60,6 @@ import (
 	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
-	mezoclient "github.com/mezo-org/mezod/client"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
 	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
@@ -135,6 +136,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	cfg.Seal()
 
 	a := appCreator{encodingConfig}
+
 	rootCmd.AddCommand(
 		genesis.NewCmd(),
 		NewInitCmd(app.ModuleBasics),
@@ -143,6 +145,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		localnet.NewCmd(app.ModuleBasics),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
+		keys.NewCmd(),
 	)
 
 	mezoserver.AddCommands(
@@ -152,12 +155,10 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		addModuleInitFlags,
 	)
 
-	// add keybase, auxiliary RPC, query, and tx child commands
 	rootCmd.AddCommand(
 		sdkserver.StatusCommand(),
 		queryCommand(),
 		txCommand(),
-		mezoclient.KeyCommands(app.DefaultNodeHome),
 	)
 	rootCmd, err := srvflags.AddTxFlags(rootCmd)
 	if err != nil {
