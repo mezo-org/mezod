@@ -53,12 +53,15 @@ var (
 // Ethereum chain. It enables retrieval of information on the assets locked by
 // the contract. It is intended to be run as a separate process.
 type Server struct {
-	eventsMutex             sync.RWMutex
-	events                  []bridgetypes.AssetsLockedEvent
-	grpcServer              *grpc.Server
-	logger                  log.Logger
-	lastFinalizedBlock      *big.Int
+	logger log.Logger
+
+	grpcServer *grpc.Server
+
+	eventsMutex sync.RWMutex
+	events      []bridgetypes.AssetsLockedEvent
+
 	lastFinalizedBlockMutex sync.RWMutex
+	lastFinalizedBlock      *big.Int
 }
 
 type Block struct {
