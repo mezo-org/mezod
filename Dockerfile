@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7-labs
+
 #
 # Build layer
 #
@@ -8,10 +10,15 @@ WORKDIR /go/src/github.com/mezo-org/mezod
 RUN apt-get update -y && \
     apt-get install git -y
 
-COPY go.mod .
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+COPY Makefile .
+COPY --parents ./**/*.txt ./
+COPY --parents ./**/.keep ./
+COPY --parents ./**/*.json ./
+COPY --parents ./**/*.go ./
+COPY --parents ethereum/bindings/portal/gen/_address/BitcoinBridge ./
 RUN make build
 
 #
@@ -29,7 +36,7 @@ FROM gcr.io/distroless/base-nossl:nonroot AS production
 
 COPY --from=shell /bin/sh /busybox/sh
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
-COPY --from=build /go/src/github.com/mezo-org/mezod/deployment/docker/init.sh /init.sh
-COPY --from=build /go/src/github.com/mezo-org/mezod/deployment/docker/start.sh /start.sh
+COPY deployment/docker/init.sh /init.sh
+COPY deployment/docker/start.sh /start.sh
 
 CMD ["mezod"]

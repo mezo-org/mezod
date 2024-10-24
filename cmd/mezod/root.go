@@ -139,6 +139,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		debug.Cmd(),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
+		
 	)
 
 	mezoserver.AddCommands(

@@ -194,6 +194,7 @@ which accepts a path for the resulting pprof file.
 	cmd.Flags().String(srvflags.GRPCWebAddress, "localhost:9091", "The gRPC-Web server address to listen on")
 
 	cmd.Flags().Bool(srvflags.RPCEnable, false, "Defines if Cosmos-sdk REST server should be enabled")
+	cmd.Flags().String(srvflags.RPCAddress, serverconfig.DefaultAPIAddress, "the REST server address to listen on")
 	cmd.Flags().Bool(srvflags.EnabledUnsafeCors, false, "Defines if CORS should be enabled (unsafe - use it at your own risk)")
 
 	cmd.Flags().Bool(srvflags.JSONRPCEnable, true, "Define if the JSON-RPC server should be enabled")

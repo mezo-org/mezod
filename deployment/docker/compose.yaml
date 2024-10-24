@@ -9,10 +9,6 @@ x-envfile: &envfile
   env_file:
     - ${NETWORK}.env
 
-x-network: &network
-  networks:
-    - mezo
-
 x-platform: &platform
   platform: linux/amd64
 
@@ -22,7 +18,7 @@ services:
   # SECTION: operations
   #
   cli:
-    <<: [*platform, *envfile, *volumes, *network]
+    <<: [*platform, *envfile, *volumes]
     container_name: cli
     image: ${DOCKER_IMAGE}
     deploy:
@@ -31,22 +27,28 @@ services:
       replicas: 0
     entrypoint: ["/busybox/sh"]
     working_dir: ${MEZOD_HOME}
+    networks:
+      mezo:
+        ipv4_address: 10.55.0.2
 
   #
   # PHASE: initialization
   #
   init:
-    <<: [*platform, *envfile, *volumes, *network]
+    <<: [*platform, *envfile, *volumes]
     container_name: init
     image: ${DOCKER_IMAGE}
     command: ["/init.sh"]
     restart: on-failure:2
+    networks:
+      mezo:
+        ipv4_address: 10.55.0.3
 
   #
   # PHASE: runtime
   #
   ethereum-sidecar:
-    <<: [*platform, *network]
+    <<: [*platform]
     container_name: ethereum-sidecar
     image: ${DOCKER_IMAGE}
     command:
@@ -62,10 +64,13 @@ services:
       - 7500
     cap_drop:
       - ALL
+    networks:
+      mezo:
+        ipv4_address: 10.55.0.4
 
   connect-sidecar:
     # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
-    <<: [*platform, *network]
+    <<: [*platform]
     container_name: connect-sidecar
     image: ghcr.io/skip-mev/connect-sidecar:v2.1.1
     entrypoint: []
@@ -82,9 +87,12 @@ services:
         condition: service_completed_successfully
     cap_drop:
       - ALL
+    networks:
+      mezo:
+        ipv4_address: 10.55.0.5
 
   mezod:
-    <<: [*platform, *envfile, *volumes, *network]
+    <<: [*platform, *envfile, *volumes]
     container_name: mezod
     image: ${DOCKER_IMAGE}
     command: ["/start.sh"]
@@ -113,7 +121,14 @@ services:
       start_interval: 1s
     cap_drop:
       - ALL
+    networks:
+      mezo:
+        ipv4_address: 10.55.0.6
 
 networks:
   mezo:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 10.55.0.0/16
+          gateway: 10.55.0.1

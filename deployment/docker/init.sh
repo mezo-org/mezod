@@ -5,13 +5,50 @@
 #
 
 set -o errexit # Exit on error
-set -o nounset # Exit on use of an undefined variable
+
+gen_mnemonic() {
+  # Check if the environment variable is set
+  if [ -n "$KEYRING_MNEMONIC" ]; then
+    echo "Using KEYRING_MNEMONIC from the environment"
+    echo "$KEYRING_MNEMONIC"
+  else
+    mnemonic_file="$1"
+    # Ask the user to generate a new mnemonic
+    printf "Do you want to generate a new mnemonic? [y/N] "
+    read -r response
+    case "$response" in
+      [yY])
+        echo "Generating a new mnemonic..."
+        m=$(mezod keys mnemonic)
+        echo "$m" > "$mnemonic_file"
+        printf "\n%s\n%s\n\n" "Generated mnemonic (make backup!):" "$m"
+        printf "Press any key to continue..."
+        read -r _
+        ;;
+      *)
+        # Ask the user to enter the mnemonic
+        printf "Enter the mnemonic: "
+        read -r mnemonic
+        echo "$mnemonic" > "$mnemonic_file"
+        ;;
+    esac
+  fi
+}
 
 prepare_keyring() {
+  test -f ${MEZOD_HOME}/keyring-file/keyhash && {
+    echo "Keyring already prepared!"
+    return
+  }
+
+  mnemonic_file="/tmp/mnemonic.txt"
+  gen_mnemonic "${mnemonic_file}"
+  read -r keyring_mnemonic < "${mnemonic_file}"
+
   echo "Prepare keyring..."
-  (echo ${KEYRING_MNEMONIC}; echo ${KEYRING_PASSWORD}; echo ${KEYRING_PASSWORD}) \
+  (echo ${keyring_mnemonic}; echo ${KEYRING_PASSWORD}; echo ${KEYRING_PASSWORD}) \
     | mezod keys add \
-      ${KEYRING_KEY_NAME} \
+      ${KEYRING_NAME} \
       --home=${MEZOD_HOME} \
       --keyring-backend=${MEZOD_KEYRING_BACKEND} \
       --recover

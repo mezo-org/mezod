@@ -39,7 +39,7 @@ NETWORK=testnet make init
 
 ```shell
 NETWORK=testnet make cli
-$ mezod genesis genval "${MEZOD_MONIKER}" --keyring-backend="${MEZOD_KEYRING_BACKEND}" --chain-id="${MEZOD_CHAIN_ID}" --home="${MEZOD_HOME}"
+$ echo "${KEYRING_PASSWORD}" | mezod genesis genval "${MEZOD_MONIKER}" --keyring-backend="${MEZOD_KEYRING_BACKEND}" --chain-id="${MEZOD_CHAIN_ID}" --home="${MEZOD_HOME}"
 ```
 
 ### 4. Submit joining request

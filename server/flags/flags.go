@@ -45,6 +45,7 @@ const (
 // Cosmos API flags
 const (
 	RPCEnable         = "api.enable"
+	RPCAddress        = "api.address"
 	EnabledUnsafeCors = "api.enabled-unsafe-cors"
 )
 
