@@ -28,12 +28,12 @@ import (
 const SetTOMLCmdLong = `Set a specific part of toml configuration. You should specify path of the config file to be edited, ` +
 	`section for the attribute, attribute name and desired value`
 
-const SetTOMLCmdExample = "toml set section.dupa 1234 --file=/var/mezod/(config.toml/app.toml/client.toml)"
+const SetTOMLCmdExample = "toml set -v section.test=1234 --file=/var/mezod/(config.toml/app.toml/client.toml)"
 
 const GetTOMLCmdLong = `Get a specific part of toml configuration. You should specify path of the config file to be edited, ` +
 	`section for the attribute and an attribute name.`
 
-const GetTOMLCmdExample = "toml get section.dupa --file=/var/mezod/(config.toml/app.toml/client.toml)"
+const GetTOMLCmdExample = "toml get -v section.test=1234 --file=/var/mezod/(config.toml/app.toml/client.toml)"
 
 // TOML_SECTION.TOML_ATTRIBUTE VALUE --path=<CONFIG_FILE_PATH>
 func NewSetTOML() *cobra.Command {
