@@ -72,6 +72,7 @@ type Server struct {
 // starts the gRPC server.
 func RunServer(
 	ctx context.Context,
+	cancel context.CancelFunc,
 	grpcAddress string,
 	providerURL string,
 	ethereumNetwork string,
@@ -104,8 +105,28 @@ func RunServer(
 		return nil
 	}
 
-	go server.observeEvents(ctx)
-	go server.startGRPCServer(ctx, grpcAddress)
+	errChan := make(chan error, 2)
+
+	go func() {
+		if err := server.observeEvents(ctx); err != nil {
+			errChan <- err
+		}
+	}()
+	go func() {
+		if err := server.startGRPCServer(ctx, grpcAddress); err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Wait for an error from either goroutine
+	err = <-errChan
+	server.logger.Error("Error encountered: %v. Shutting down application.", err)
+
+	// Signal goroutines to stop
+	cancel()
+
+	// Exit the application
+	server.logger.Error("Sidecar stopped.")
 
 	return server
 }
@@ -119,18 +140,19 @@ func RunServer(
 //   - Sets up a ticker channel to continuously monitor new finalized blocks.
 //   - On each new block notification from the ticker channel, calls `processEvents` to handle new events
 //     since the last finalized block.
-func (s *Server) observeEvents(ctx context.Context) {
+func (s *Server) observeEvents(ctx context.Context) error {
 	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
-		s.logger.Error("failed to get the finalized block: %v", err)
-		return
+		s.logger.Error("failed to get the finalized block")
+		return err
 	}
 
 	// Fetch AssetsLocked events two weeks back from the finalized block
 	startBlock := new(big.Int).Sub(finalizedBlock, searchedRange).Uint64()
 	err = s.fetchFinalizedEvents(startBlock, finalizedBlock.Uint64())
 	if err != nil {
-		panic(fmt.Sprintf("failed to fetch historical events: %v", err))
+		s.logger.Error("failed to fetch historical events")
+		return err
 	}
 
 	s.lastFinalizedBlockMutex.Lock()
@@ -144,7 +166,7 @@ func (s *Server) observeEvents(ctx context.Context) {
 		select {
 		case <-ctx.Done(): // Handle context cancellation
 			s.logger.Info("stopping event observation due to context cancellation")
-			return
+			return nil
 		case <-tickerChan:
 			// On each tick check if the current finalized block is greater than the last
 			// finalized block.
@@ -211,7 +233,8 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 
 	events, err := s.bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
 	if err != nil {
-		return fmt.Errorf("failed to filter AssetsLocked events: %v", err)
+		s.logger.Error("failed to filter AssetsLocked events")
+		return err
 	}
 
 	var bufferedEvents []bridgetypes.AssetsLockedEvent
@@ -232,7 +255,8 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 	}
 
 	if !bridgetypes.AssetsLockedEvents(bufferedEvents).IsValid() {
-		return fmt.Errorf("invalid AssetsLocked events: %v", err)
+		s.logger.Error("invalid AssetsLocked events")
+		return err
 	}
 
 	s.eventsMutex.Lock()
@@ -247,10 +271,11 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 func (s *Server) startGRPCServer(
 	ctx context.Context,
 	address string,
-) {
+) error {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		panic(fmt.Sprintf("failed to listen: [%v]", err))
+		s.logger.Error("failed to listen")
+		return err
 	}
 
 	pb.RegisterEthereumSidecarServer(s.grpcServer, s)
@@ -260,11 +285,10 @@ func (s *Server) startGRPCServer(
 		"address", address,
 	)
 
-	go func() {
-		if err := s.grpcServer.Serve(listener); err != nil {
-			panic(fmt.Sprintf("gRPC server failure: [%v]", err))
-		}
-	}()
+	if err := s.grpcServer.Serve(listener); err != nil {
+		s.logger.Error("gRPC server failure")
+		return err
+	}
 
 	<-ctx.Done()
 
@@ -272,6 +296,7 @@ func (s *Server) startGRPCServer(
 	s.grpcServer.GracefulStop()
 
 	s.logger.Info("gRPC server stopped")
+	return nil
 }
 
 // Construct a new instance of the Ethereum Bitcoin Bridge contract.
@@ -280,10 +305,8 @@ func (s *Server) initializeBitcoinBridgeContract(
 ) (*abi.BitcoinBridge, error) {
 	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, s.chain.Client())
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to attach to Bitcoin Bridge contract: [%v]",
-			err,
-		)
+		s.logger.Error("failed to attach to Bitcoin Bridge contract")
+		return nil, err
 	}
 
 	return bitcoinBridge, nil

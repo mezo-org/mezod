@@ -59,8 +59,8 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		codec.NewProtoCodec(clientCtx.InterfaceRegistry).GRPCCodec(),
 	)
 
-	ctx := context.Background()
-	sidecar.RunServer(ctx, grpcAddress, ethNodeAddress, network, logger)
+	ctx, cancel := context.WithCancel(context.Background())
+	sidecar.RunServer(ctx, cancel, grpcAddress, ethNodeAddress, network, logger)
 	<-ctx.Done()
 
 	return fmt.Errorf("unexpected context cancellation")
