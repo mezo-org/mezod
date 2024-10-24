@@ -151,7 +151,6 @@ func (s *Server) observeEvents(ctx context.Context) {
 			err := s.processEvents(ctx)
 			if err != nil {
 				s.logger.Error("failed to monitor newly emitted events: %v", err)
-				return
 			}
 		}
 	}
