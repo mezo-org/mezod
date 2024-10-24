@@ -18,8 +18,10 @@ package toml
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -44,15 +46,10 @@ func NewSetTOML() *cobra.Command {
 		Example: SetTOMLCmdExample,
 		// Args:    cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// fmt.Println("args:", args)
 
-			// file, _ := cmd.Flags().GetString("file")
-			// values, _ := cmd.Flags().GetString("values")
+			configFile, _ := cmd.Flags().GetString("file")
 
-			// fmt.Println(values)
-			// fmt.Println(file)
-
-			// return nil
+			fmt.Println("file to edit: ", configFile)
 
 			keyValuePairs := make(map[string]string)
 			for _, val := range tomlValues {
@@ -68,9 +65,22 @@ func NewSetTOML() *cobra.Command {
 			}
 
 			// Output the key-value pairs
-			fmt.Println("Parsed key-value pairs:")
 			for key, value := range keyValuePairs {
 				fmt.Printf("  %s = %s\n", key, value)
+			}
+
+			// Read the TOML file
+			tomlFile, err := os.ReadFile(configFile)
+			if err != nil {
+				fmt.Println("Error reading TOML file:", err)
+				return err
+			}
+
+			// Unmarshal the TOML data into a map[string]interface{}
+			var config map[string]interface{}
+			if err := toml.Unmarshal(tomlFile, &config); err != nil {
+				fmt.Println("Error parsing TOML file:", err)
+				return err
 			}
 
 			return nil
