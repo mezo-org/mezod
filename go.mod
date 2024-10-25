@@ -25,6 +25,7 @@ require (
 	github.com/cosmos/gogoproto v1.5.0
 	github.com/cosmos/rosetta v0.50.8
 	github.com/cpuguy83/go-md2man/v2 v2.0.3
+	github.com/creachadair/tomledit v0.0.24
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/go-kit/log v0.2.1
@@ -121,7 +122,6 @@ require (
 	github.com/crate-crypto/go-ipa v0.0.0-20240223125850-b1e8a79f509c // indirect
 	github.com/crate-crypto/go-kzg-4844 v1.0.0 // indirect
 	github.com/creachadair/atomicfile v0.3.1 // indirect
-	github.com/creachadair/tomledit v0.0.24 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
