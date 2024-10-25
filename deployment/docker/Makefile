@@ -40,6 +40,10 @@ cli: ## Run shell in management container
 cmd: ## Run command in management container
 	$(DOCKER_COMPOSE_CMD) run --rm --interactive --entrypoint="/busybox/sh -c" cli "$(args)"
 
+.PHONY: backup-run
+backup-run: ## Run backup
+	$(DOCKER_COMPOSE_CMD) run --rm --interactive backup
+
 .PHONY: help
 help: ## Display help menu
 	@echo "Usage: make [target]"

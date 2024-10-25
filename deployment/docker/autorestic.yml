@@ -1,0 +1,14 @@
+version: 2
+
+locations:
+  mezo:
+    from: /data
+    to: local_dir
+    options:
+      forget:
+        keep-last: 3
+
+backends:
+  local:
+    type: local
+    path: /backup
