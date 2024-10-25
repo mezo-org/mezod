@@ -171,10 +171,12 @@ func (s *Server) observeEvents(ctx context.Context) error {
 		case <-tickerChan:
 			// On each tick check if the current finalized block is greater than the last
 			// finalized block.
+			// TODO: add a simple counter to retry in case a connection issue occurs
 			err := s.processEvents(ctx)
 			if err != nil {
 				s.logger.Error("failed to monitor newly emitted events: %v", err)
 			}
+			// return from here in case of a an issue
 		}
 	}
 }
