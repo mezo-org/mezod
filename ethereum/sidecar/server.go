@@ -254,6 +254,11 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		)
 	}
 
+	// Make sure the events are sorted in ascending order by the sequence number
+	sort.Slice(bufferedEvents, func(i, j int) bool {
+		return bufferedEvents[i].Sequence.LT(bufferedEvents[j].Sequence)
+	})
+
 	if !bridgetypes.AssetsLockedEvents(bufferedEvents).IsValid() {
 		s.logger.Error("invalid AssetsLocked events")
 		return err
