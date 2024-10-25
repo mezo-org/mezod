@@ -5,7 +5,7 @@ include $(NETWORK).env
 
 .PHONY: clean
 clean: ## Clean up
-	rm -rf tmp/mezod
+	@rm -rf tmp/mezod
 
 .PHONY: build
 build: ## Build Docker image
@@ -13,16 +13,16 @@ build: ## Build Docker image
 
 .PHONY: setup
 setup: # (no help) Setup local environment
-	mkdir -p tmp/mezod
-	chmod 777 tmp/mezod
+	@mkdir -p tmp/mezod
+	@chmod 777 tmp/mezod
 
 .PHONY: init
 init: setup ## Run init container
-	$(DOCKER_COMPOSE_CMD) run --rm --interactive init
+	@$(DOCKER_COMPOSE_CMD) run --rm --interactive init
 
 .PHONY: start
 start: init ## Start node
-	$(DOCKER_COMPOSE_CMD) up --detach --force-recreate
+	@$(DOCKER_COMPOSE_CMD) up --detach --force-recreate
 
 .PHONY: stop
 stop: ## Stop node
@@ -31,10 +31,6 @@ stop: ## Stop node
 .PHONY: logs
 logs: ## Show logs
 	$(DOCKER_COMPOSE_CMD) logs --tail 50 --follow $(args)
-
-.PHONY: raw
-raw: ## Wrapper for Docker Compose
-	$(DOCKER_COMPOSE_CMD) $(args)
 
 .PHONY: cli
 cli: ## Run shell in management container
@@ -46,6 +42,7 @@ cmd: ## Run command in management container
 
 .PHONY: help
 help: ## Display help menu
+	@echo "Usage: make [target]"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "\t\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .DEFAULT_GOAL := help
