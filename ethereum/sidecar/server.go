@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"sort"
 	"sync"
 
 	"cosmossdk.io/log"
