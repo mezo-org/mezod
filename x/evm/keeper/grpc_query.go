@@ -20,9 +20,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 
 	storetypes "cosmossdk.io/store/types"
 
@@ -588,9 +589,10 @@ func (k *Keeper) traceTx(
 ) (*interface{}, uint, error) {
 	// Assemble the structured logger or the JavaScript tracer
 	var (
-		tracer  *tracers.Tracer
-		err     error
-		timeout = defaultTraceTimeout
+		tracer    *tracers.Tracer
+		overrides *ethparams.ChainConfig
+		err       error
+		timeout   = defaultTraceTimeout
 	)
 	msg, err := core.TransactionToMessage(tx, signer, cfg.BaseFee)
 	if err != nil {
@@ -601,14 +603,18 @@ func (k *Keeper) traceTx(
 		traceConfig = &types.TraceConfig{}
 	}
 
+	if traceConfig.Overrides != nil {
+		overrides = traceConfig.Overrides.EthereumConfig(cfg.ChainConfig.ChainID)
+	}
+
 	l := logger.NewStructLogger(&logger.Config{
 		EnableMemory:     traceConfig.EnableMemory,
 		DisableStack:     traceConfig.DisableStack,
 		DisableStorage:   traceConfig.DisableStorage,
 		EnableReturnData: traceConfig.EnableReturnData,
 		Debug:            traceConfig.Debug,
-		Limit: 			  int(traceConfig.Limit),
-		Overrides:        nil,
+		Limit:            int(traceConfig.Limit),
+		Overrides:        overrides,
 	})
 	tracer = &tracers.Tracer{
 		Hooks:     l.Hooks(),
