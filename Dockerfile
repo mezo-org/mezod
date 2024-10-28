@@ -34,7 +34,8 @@ FROM busybox:stable AS shell
 #
 FROM gcr.io/distroless/base-nossl:nonroot AS production
 
-COPY --from=shell /bin/sh /busybox/sh
+COPY --from=shell /bin/sh /bin/sh
+COPY --from=shell /bin/sed /bin/sed
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 COPY deployment/docker/init.sh /init.sh
 COPY deployment/docker/start.sh /start.sh

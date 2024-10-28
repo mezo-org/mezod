@@ -2,7 +2,7 @@
 x-volumes: &volumes
   volumes:
     - type: bind
-      source: ${MOUNTED_DIR}
+      source: ${LOCAL_BIND_PATH}
       target: ${MEZOD_HOME}
 
 x-envfile: &envfile
@@ -30,27 +30,6 @@ services:
     networks:
       mezo:
         ipv4_address: 10.55.0.2
-
-  backup:
-    <<: [*platform, *envfile]
-    container_name: backup
-    image: cupcakearmy/autorestic:1.8.3
-    command:
-      - autorestic
-      - --config=/autorestic.yml
-    volumes:
-      - type: bind
-        source: ./autorestic.yml
-        target: /autorestic.yml
-      # Source directory for the backup
-      - type: bind
-        source: ${MOUNTED_DIR}
-        target: /data
-      # Target directory for the backup
-      - type: bind
-        source: ${AUTORESTIC_BACKUP_TARGET}
-        target: /backup
-    restart: on-failure:2
 
   #
   # PHASE: initialization

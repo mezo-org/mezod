@@ -1,20 +1,31 @@
 NETWORK ?= testnet
 DOCKER_COMPOSE_CMD := docker compose --env-file $(NETWORK).env
+DOCKER_COMPOSE_BACKUP_CMD := docker compose --env-file $(NETWORK).env --file compose.backup.yaml
 
 include $(NETWORK).env
 
+
+################################################################################
+# Management
+################################################################################
+
 .PHONY: clean
 clean: ## Clean up
-	@rm -rf tmp/mezod
+	@rm -rf $(MOUNTED_DIR)
 
 .PHONY: build
 build: ## Build Docker image
 	docker build --platform linux/amd64 --tag $(DOCKER_IMAGE) ../../
 
+
+################################################################################
+# Runtime
+################################################################################
+
 .PHONY: setup
 setup: # (no help) Setup local environment
-	@mkdir -p tmp/mezod
-	@chmod 777 tmp/mezod
+	@mkdir -p $(MOUNTED_DIR)
+	@chmod 777 $(MOUNTED_DIR)
 
 .PHONY: init
 init: setup ## Run init container
@@ -40,9 +51,29 @@ cli: ## Run shell in management container
 cmd: ## Run command in management container
 	$(DOCKER_COMPOSE_CMD) run --rm --interactive --entrypoint="/busybox/sh -c" cli "$(args)"
 
-.PHONY: backup-run
-backup-run: ## Run backup
-	$(DOCKER_COMPOSE_CMD) run --rm --interactive backup
+
+################################################################################
+# Backup
+################################################################################
+
+.PHONY: backup-create
+backup-create: ## Create a backup
+	@mkdir -p ./tmp/backup
+	$(DOCKER_COMPOSE_BACKUP_CMD) run --rm --interactive backup-create
+
+.PHONY: backup-list
+backup-list: ## List backups
+	$(DOCKER_COMPOSE_BACKUP_CMD) run --rm --interactive backup-list
+
+.PHONY: backup-restore
+backup-restore: ## Restore a backup
+	@mkdir -p ./tmp/backup-restore
+	$(DOCKER_COMPOSE_BACKUP_CMD) run --rm --interactive backup-restore
+
+
+################################################################################
+# Help menu
+################################################################################
 
 .PHONY: help
 help: ## Display help menu

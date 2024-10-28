@@ -1,0 +1,64 @@
+---
+x-deploy: &deploy
+  deploy:
+    # Make sure that the service won't run for "docker compose up".
+    # It is intended to be run manually.
+    replicas: 0
+
+x-environment: &environment
+  environment:
+    - RESTIC_REPOSITORY=/backup
+    - RESTIC_PASSWORD=eikie3sohweiy6ohmeilaeS7
+
+x-image: &image
+  image: restic/restic:0.17.1
+
+x-platform: &platform
+  platform: linux/amd64
+
+x-entrypoint: &entrypoint
+  entrypoint: ["/bin/sh", "-c"]
+
+x-volumes: &volumes
+  volumes:
+    # Source directory for the backup
+    - type: bind
+      source: ./tmp/mezod
+      target: /data
+    # Target directory for the backup
+    - type: bind
+      source: ./tmp/backup
+      target: /backup
+    # Restore directory
+    - type: bind
+      source: ./tmp/backup-restore
+      target: /restore
+
+# Required due to https://github.com/restic/restic/issues/4380
+x-hostname: &hostname
+  hostname: backup
+
+services:
+  backup-create:
+    <<: [*image, *platform, *hostname, *entrypoint, *deploy, *environment, *volumes]
+    container_name: backup-create
+    command:
+      - |
+        echo "--- Init ---"
+        restic init --verbose || { echo "Repository already initialized"; }
+        echo "--- Backup ---"
+        restic backup /data --verbose
+        echo "--- Forget ---"
+        restic forget --keep-last 5 --prune
+
+  backup-list:
+    <<: [*image, *platform, *hostname, *entrypoint, *deploy, *environment, *volumes]
+    container_name: backup-list
+    command:
+      - restic snapshots
+
+  backup-restore:
+    <<: [*image, *platform, *hostname, *entrypoint, *deploy, *environment, *volumes]
+    container_name: backup-restore
+    command:
+      - restic restore latest --target /restore

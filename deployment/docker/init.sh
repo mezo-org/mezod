@@ -1,4 +1,4 @@
-#!/busybox/sh
+#!/bin/sh
 
 #
 # This script initializes the Mezod node configuration and keyring.
@@ -70,9 +70,26 @@ validate_genesis() {
   echo "Genesis validated!"
 }
 
-#
-# Main
-#
-prepare_keyring
-init_configuration
-validate_genesis
+customize_configuration() {
+  client_config_file="${MEZOD_HOME}/config/client.toml"
+  app_config_file="${MEZOD_HOME}/config/app.toml"
+  config_file="${MEZOD_HOME}/config/config.toml"
+
+  echo "Customize configuration..."
+
+  # client.toml
+
+  # config.toml
+
+  # app.toml
+
+  echo "Configuration customized!"
+}
+
+main() {
+  prepare_keyring
+  init_configuration
+  validate_genesis
+}
+
+main
