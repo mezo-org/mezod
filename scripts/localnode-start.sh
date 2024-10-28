@@ -3,7 +3,7 @@
 KEYS[0]="dev0"
 KEYS[1]="dev1"
 KEYS[2]="dev2"
-CHAINID="mezo_31611-1"
+CHAINID="mezo_31611-10"
 MONIKER="localnode"
 # Remember to change to other types of keyring like 'file' in-case exposing to outside world,
 # otherwise your balance will be wiped quickly
@@ -60,7 +60,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	done
 
 	# Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
-	mezod init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR"
+	mezod init $MONIKER -o --chain-id $CHAINID --home "$HOMEDIR" --ignore-predefined
 
 	# Set the PoA owner.
 	OWNER=$(mezod keys show "${KEYS[0]}" --address --bech acc --keyring-backend $KEYRING --home "$HOMEDIR")
@@ -110,7 +110,7 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# Allocate genesis accounts (cosmos formatted addresses)
 	for KEY in "${KEYS[@]}"; do
-		mezod add-genesis-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
+		mezod genesis add-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
 	done
 
 	# bc is required to add these big numbers
@@ -118,13 +118,13 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	jq -r --arg total_supply "$total_supply" '.app_state["bank"]["supply"][0]["amount"]=$total_supply' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Generate the validator.
-	mezod genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
+	mezod genesis genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
 
 	# Collect generated validators.
-	mezod collect-genvals --home "$HOMEDIR"
+	mezod genesis collect-genvals --home "$HOMEDIR"
 
 	# Run this to ensure everything worked and that the genesis file is setup correctly
-	mezod validate-genesis --home "$HOMEDIR"
+	mezod genesis validate --home "$HOMEDIR"
 
 	if [[ $1 == "pending" ]]; then
 		echo "pending mode is on, please wait for the first block committed."

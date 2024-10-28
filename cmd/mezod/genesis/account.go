@@ -14,15 +14,12 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
 
-package main
+package genesis
 
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
@@ -33,24 +30,28 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
-
+	"github.com/ethereum/go-ethereum/common"
+	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 	"github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
-
-	mezokr "github.com/mezo-org/mezod/crypto/keyring"
+	"github.com/spf13/cobra"
 )
 
-// AddGenesisAccountCmd returns add-genesis-account cobra Command.
-func AddGenesisAccountCmd(defaultNodeHome string) *cobra.Command {
+const AddAccountCmdLong = `Add a genesis account to genesis.json. The provided account must specify ` +
+	`the account address or key name and a list of initial coins. If a key ` +
+	`name is given, the address will be looked up in the local keyring. ` +
+	`The list of initial tokens must contain valid denominations.`
+
+const AddAccountCmdExample = "add-account mezo1qnmzwu4vx66gzvku37eflad3c0twp86psv5gtc 100000000000000000000000000abtc"
+
+// NewAddAccountCmd returns add-account cobra Command.
+func NewAddAccountCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add-genesis-account ADDRESS_OR_KEY_NAME COIN...",
-		Short: "Add a genesis account to genesis.json",
-		Long: `Add a genesis account to genesis.json. The provided account must specify
-the account address or key name and a list of initial coins. If a key name is given,
-the address will be looked up in the local Keybase. The list of initial tokens must
-contain valid denominations. Accounts may optionally be supplied with vesting parameters.
-`,
-		Args: cobra.ExactArgs(2),
+		Use:     "add-account ADDRESS_OR_KEY_NAME COIN...",
+		Short:   "Add a genesis account to genesis.json",
+		Long:    AddAccountCmdLong,
+		Example: AddAccountCmdExample,
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := client.GetClientContextFromCmd(cmd)
 
@@ -84,12 +85,12 @@ contain valid denominations. Accounts may optionally be supplied with vesting pa
 
 				info, err := kr.Key(args[0])
 				if err != nil {
-					return fmt.Errorf("failed to get address from Keyring: %w", err)
+					return fmt.Errorf("failed to get address from keyring: %w", err)
 				}
 
 				addr, err = info.GetAddress()
 				if err != nil {
-					return fmt.Errorf("failed to get address from Keyring: %w", err)
+					return fmt.Errorf("failed to get address from keyring: %w", err)
 				}
 			}
 
@@ -166,10 +167,6 @@ contain valid denominations. Accounts may optionally be supplied with vesting pa
 			return genutil.ExportGenesisFile(genDoc, genFile)
 		},
 	}
-
-	cmd.Flags().String(flags.FlagHome, defaultNodeHome, "The application home directory")
-	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "Select keyring's backend (os|file|kwallet|pass|test)")
-	flags.AddQueryFlagsToCmd(cmd)
 
 	return cmd
 }

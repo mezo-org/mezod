@@ -115,9 +115,15 @@ endif
 
 BUILD_TARGETS := build install
 
-build: BUILD_ARGS=-o $(BUILDDIR)/
+build: clean
+  BUILD_ARGS=-o $(BUILDDIR)/
+
 build-linux:
 	GOOS=linux GOARCH=amd64 LEDGER_ENABLED=false $(MAKE) build
+
+# Set empty BUILD_ARGS for install. By default, BUILD_ARGS contain the -o
+# flag that is not supported by go install.
+install: BUILD_ARGS=
 
 $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 	go $@ $(BUILD_FLAGS) $(BUILD_ARGS) ./...
@@ -318,13 +324,7 @@ test-import:
 	--blockchain blockchain
 	rm -rf tests/importer/tmp
 
-test-rpc:
-	./scripts/integration-test-all.sh -t "rpc" -q 1 -z 1 -s 2 -m "rpc" -r "true"
-
-test-rpc-pending:
-	./scripts/integration-test-all.sh -t "pending" -q 1 -z 1 -s 2 -m "pending" -r "true"
-
-.PHONY: run-tests test test-all test-import test-rpc $(TEST_TARGETS)
+.PHONY: run-tests test test-all test-import $(TEST_TARGETS)
 
 benchmark:
 	@go test -mod=readonly -bench=. $(PACKAGES_NOSIMULATION)
