@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"math/big"
 	"time"
 
@@ -259,7 +260,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
 	// pass false to not commit StateDB
-	res, err := k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(ctx, WrapMessage(msg), nil, false, cfg, txConfig)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -392,7 +393,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		}
 
 		// pass false to not commit StateDB
-		rsp, err = k.ApplyMessageWithConfig(tmpCtx, msg, nil, false, cfg, txConfig)
+		rsp, err = k.ApplyMessageWithConfig(tmpCtx, WrapMessage(msg), nil, false, cfg, txConfig)
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
@@ -476,7 +477,7 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		rsp, err := k.ApplyMessageWithConfig(ctx, *msg, tracer, true, cfg, txConfig)
+		rsp, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, ethTx), tracer, true, cfg, txConfig)
 		if err != nil {
 			continue
 		}
@@ -600,15 +601,32 @@ func (k *Keeper) traceTx(
 		traceConfig = &types.TraceConfig{}
 	}
 
+	l := logger.NewStructLogger(&logger.Config{
+		EnableMemory:     traceConfig.EnableMemory,
+		DisableStack:     traceConfig.DisableStack,
+		DisableStorage:   traceConfig.DisableStorage,
+		EnableReturnData: traceConfig.EnableReturnData,
+		Debug:            traceConfig.Debug,
+		Limit: 			  int(traceConfig.Limit),
+		Overrides:        nil,
+	})
+	tracer = &tracers.Tracer{
+		Hooks:     l.Hooks(),
+		GetResult: l.GetResult,
+		Stop:      l.Stop,
+	}
+
 	tCtx := &tracers.Context{
 		BlockHash: txConfig.BlockHash,
 		TxIndex:   int(txConfig.TxIndex),
 		TxHash:    txConfig.TxHash,
 	}
 
-	tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig)
-	if err != nil {
-		return nil, 0, status.Error(codes.Internal, err.Error())
+	if len(traceConfig.Tracer) != 0 {
+		tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig)
+		if err != nil {
+			return nil, 0, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	// Define a meaningful timeout of a single transaction trace
@@ -629,7 +647,7 @@ func (k *Keeper) traceTx(
 		}
 	}()
 
-	res, err := k.ApplyMessageWithConfig(ctx, *msg, tracer, commitMessage, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, tx), tracer, commitMessage, cfg, txConfig)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())
 	}
