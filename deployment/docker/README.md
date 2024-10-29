@@ -52,15 +52,20 @@ sequenceDiagram
 ```shell
 cp testnet.env.example testnet.env
 ```
+
 2. Edit the `testnet.env` file:
+
 * `NETWORK` - the network you want to join (`testnet` or `mainnet`)
 * `DOCKER_IMAGE` - the latest version of mezod image
 * `LOCAL_BIND_PATH` - the path to the local directory where the data will be stored
 * `KEYRING_PASSWORD` - the password for the keyring. It is used to encrypt the key.
-Generate a new password using the following command:
-```shell
-$ openssl rand -hex 32
-```
+
+  Generate a new password using the following command:
+
+  ```shell
+  openssl rand -hex 32
+  ```
+
 * `MEZOD_MONIKER` - the name of the validator
 * `MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS` - the address of the Ethereum node
 

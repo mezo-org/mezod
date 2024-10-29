@@ -31,6 +31,7 @@ FROM golang:1.22.8-bullseye AS build-tomledit
 
 WORKDIR /go/src/github.com/creachadair/
 
+# hadolint ignore=DL3003
 RUN git clone https://github.com/creachadair/tomledit.git \
     && cd tomledit/cmd/tomledit \
     && go build -o /usr/bin/tomledit
