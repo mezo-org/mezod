@@ -262,6 +262,19 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		return bufferedEvents[i].Sequence.LT(bufferedEvents[j].Sequence)
 	})
 
+	s.eventsMutex.RLock()
+	isEventsListEmpty := len(s.events) == 0
+	s.eventsMutex.RUnlock()
+	// Make sure there are no gaps between events and bufferedEvents lists
+	if !isEventsListEmpty && len(bufferedEvents) > 0 {
+		lastEvent := s.events[len(s.events)-1]
+		firstEvent := bufferedEvents[0]
+		if !lastEvent.Sequence.Add(sdkmath.NewInt(1)).Equal(firstEvent.Sequence) {
+			s.logger.Error("sequence gap between events")
+			return err
+		}
+	}
+
 	if !bridgetypes.AssetsLockedEvents(bufferedEvents).IsValid() {
 		s.logger.Error("invalid AssetsLocked events")
 		return err
