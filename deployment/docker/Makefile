@@ -11,7 +11,7 @@ include $(NETWORK).env
 
 .PHONY: clean
 clean: ## Clean up
-	@rm -rf $(MOUNTED_DIR)
+	@rm -rf $(LOCAL_BIND_PATH)
 
 .PHONY: build
 build: ## Build Docker image
@@ -24,8 +24,8 @@ build: ## Build Docker image
 
 .PHONY: setup
 setup: # (no help) Setup local environment
-	@mkdir -p $(MOUNTED_DIR)
-	@chmod 777 $(MOUNTED_DIR)
+	@mkdir -p $(LOCAL_BIND_PATH)
+	@chmod 777 $(LOCAL_BIND_PATH)
 
 .PHONY: init
 init: setup ## Run init container

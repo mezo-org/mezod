@@ -7,8 +7,8 @@ FROM golang:1.22.8-bullseye AS build
 
 WORKDIR /go/src/github.com/mezo-org/mezod
 
-RUN apt-get update -y && \
-    apt-get install git -y
+# RUN apt-get update -y && \
+#     apt-get install git -y
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -20,6 +20,17 @@ COPY --parents ./**/*.json ./
 COPY --parents ./**/*.go ./
 COPY --parents ethereum/bindings/portal/gen/_address/BitcoinBridge ./
 RUN make build
+
+#
+# Layer for building tomledit
+#
+FROM golang:1.22.8-bullseye AS build-tomledit
+
+WORKDIR /go/src/github.com/creachadair/
+
+RUN git clone https://github.com/creachadair/tomledit.git \
+    && cd tomledit/cmd/tomledit \
+    && go build -o /usr/bin/tomledit
 
 #
 # Busybox layer as source of shell binary
@@ -34,8 +45,8 @@ FROM busybox:stable AS shell
 #
 FROM gcr.io/distroless/base-nossl:nonroot AS production
 
-COPY --from=shell /bin/sh /bin/sh
-COPY --from=shell /bin/sed /bin/sed
+COPY --from=shell /bin/sh /bin/cat /bin/test /bin/
+COPY --from=build-tomledit /usr/bin/tomledit /usr/bin/tomledit
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 COPY deployment/docker/init.sh /init.sh
 COPY deployment/docker/start.sh /start.sh

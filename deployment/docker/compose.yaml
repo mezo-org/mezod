@@ -54,7 +54,7 @@ services:
     command:
       - mezod
       - ethereum-sidecar
-      - --log_format=${MEZOD_LOG_FORMAT}
+      - --log_format=json
       - --ethereum-sidecar.server.ethereum-node-address=${MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS}
     restart: always
     depends_on:
@@ -77,10 +77,12 @@ services:
     command:
       - connect
       - --log-disable-file-rotation
-      - --port=${CONNECT_SIDECAR_PORT}
+      - --port=8080
       # - --metrics-enabled
-      # - --metrics-prometheus-address=${CONNECT_SIDECAR_METRICS_PROMETHEUS_ADDRESS}
+      # - --metrics-prometheus-address=8002
       - --market-map-endpoint=mezod:9090
+    expose:
+      - 8080
     restart: always
     depends_on:
       init:
@@ -104,7 +106,8 @@ services:
       - 9090:9090    # grpc
       - 8545:8545    # json-rpc
       - 8546:8546    # json-rpc-ws
-      - 6065:6065    # metrics
+      - 6065:6065    # metrics of EVM (app.toml)
+      - 26660:26660  # metrics of cometbft (config.toml)
     depends_on:
       init:
         condition: service_completed_successfully
@@ -113,7 +116,7 @@ services:
       connect-sidecar:
         condition: service_started
     healthcheck:
-      test: ["CMD", "echo", "${MEZOD_HOME}/config/genesis.json"]
+      test: ["CMD", "cat", "${MEZOD_HOME}/config/genesis.json"]
       interval: 5s
       timeout: 1s
       retries: 3
