@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"google.golang.org/grpc/encoding"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -60,5 +58,5 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 
 	sidecar.RunServer(grpcAddress, ethNodeAddress, network, logger)
 
-	return fmt.Errorf("unexpected context cancellation")
+	return nil
 }
