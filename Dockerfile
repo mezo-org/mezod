@@ -7,9 +7,6 @@ FROM golang:1.22.8-bullseye AS build
 
 WORKDIR /go/src/github.com/mezo-org/mezod
 
-# RUN apt-get update -y && \
-#     apt-get install git -y
-
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -33,9 +30,9 @@ RUN git clone https://github.com/creachadair/tomledit.git \
     && go build -o /usr/bin/tomledit
 
 #
-# Busybox layer as source of shell binary
+# Busybox layer as source of shell commands
 #
-FROM busybox:stable AS shell
+FROM busybox:stable AS busybox
 
 #
 # Production layer
@@ -45,7 +42,7 @@ FROM busybox:stable AS shell
 #
 FROM gcr.io/distroless/base-nossl:nonroot AS production
 
-COPY --from=shell /bin/sh /bin/cat /bin/test /bin/
+COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/
 COPY --from=build-tomledit /usr/bin/tomledit /usr/bin/tomledit
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 COPY deployment/docker/init.sh /init.sh
