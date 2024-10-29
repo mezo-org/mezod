@@ -345,7 +345,7 @@ func (s *Server) AssetsLockedEvents(
 	}
 
 	// The sequence start and end must be positive.
-	if start.LTE(sdkmath.ZeroInt()) || end.LTE(sdkmath.ZeroInt()) {
+	if (!start.IsNil() && !start.IsPositive()) || (!end.IsNil() && !end.IsPositive()) {
 		return nil, fmt.Errorf("invalid non positive sequence range")
 	}
 
