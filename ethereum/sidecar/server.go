@@ -358,7 +358,7 @@ func (s *Server) AssetsLockedEvents(
 	// Filter events that fit into the requested range.
 	filteredEvents := []*bridgetypes.AssetsLockedEvent{}
 	for _, event := range s.events {
-		if (start.IsNil() || event.Sequence.BigInt().Cmp(start.BigInt()) >= 0) && (end.IsNil() || event.Sequence.BigInt().Cmp(end.BigInt()) < 0) {
+		if (start.IsNil() || event.Sequence.GTE(start)) && (end.IsNil() || event.Sequence.LT(end)) {
 			filteredEvents = append(filteredEvents, &bridgetypes.AssetsLockedEvent{
 				Sequence:  event.Sequence,
 				Recipient: event.Recipient,
