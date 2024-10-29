@@ -23,12 +23,6 @@ import (
 )
 
 var (
-	// errSequenceStartNotLower is the error returned when the start of
-	// the sequence is not lower than sequence end.
-	errSequenceStartNotLower = fmt.Errorf(
-		"sequence start is not lower than sequence end",
-	)
-
 	// bitcoinBridgeName is the name of the BitcoinBridge contract.
 	bitcoinBridgeName = "BitcoinBridge"
 
@@ -89,7 +83,7 @@ func RunServer(
 	var err error
 
 	if gen.BitcoinBridgeAddress == "" {
-    panic("BitcoinBridgeAddress is empty")
+		panic("BitcoinBridgeAddress is empty")
 	}
 
 	// Connect to the Ethereum network
@@ -352,7 +346,12 @@ func (s *Server) AssetsLockedEvents(
 	// The sequence start must be lower than the sequence end if both values are
 	// non-nil.
 	if !start.IsNil() && !end.IsNil() && start.GTE(end) {
-		return nil, errSequenceStartNotLower
+		return nil, fmt.Errorf("sequence start is not lower than sequence end")
+	}
+
+	// The sequence start and end must be positive.
+	if start.LTE(sdkmath.ZeroInt()) || end.LTE(sdkmath.ZeroInt()) {
+		return nil, fmt.Errorf("invalid non positive sequence range")
 	}
 
 	// Filter events that fit into the requested range.
