@@ -88,6 +88,10 @@ func RunServer(
 
 	var err error
 
+	if gen.BitcoinBridgeAddress == "" {
+    panic("BitcoinBridgeAddress is empty")
+	}
+
 	// Connect to the Ethereum network
 	server.chain, err = ethconnect.Connect(ctx, ethconfig.Config{
 		Network:           ethconnect.NetworkFromString(ethereumNetwork),
@@ -95,15 +99,13 @@ func RunServer(
 		ContractAddresses: map[string]string{bitcoinBridgeName: gen.BitcoinBridgeAddress},
 	})
 	if err != nil {
-		server.logger.Error("failed to connect to the Ethereum network: %v", err)
-		return nil
+		panic(fmt.Sprintf("failed to connect to the Ethereum network: %v", err))
 	}
 
 	// Initialize the BitcoinBridge contract instance
 	server.bitcoinBridge, err = server.initializeBitcoinBridgeContract(common.HexToAddress(gen.BitcoinBridgeAddress))
 	if err != nil {
-		server.logger.Error("failed to initialize BitcoinBridge contract: %v", err)
-		return nil
+		panic(fmt.Sprintf("failed to initialize BitcoinBridge contract: %v", err))
 	}
 
 	errChan := make(chan error, 2)
