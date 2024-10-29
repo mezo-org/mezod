@@ -67,19 +67,19 @@ type Server struct {
 // RunServer initializes the server, starts the event observing routine and
 // starts the gRPC server.
 func RunServer(
-	ctx context.Context,
-	cancel context.CancelFunc,
 	grpcAddress string,
 	providerURL string,
 	ethereumNetwork string,
 	logger log.Logger,
-) *Server {
-	var err error
-
+) {
 	if gen.BitcoinBridgeAddress == "" {
 		panic("BitcoinBridgeAddress is empty")
 	}
 
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
+
+	var err error
 	// Connect to the Ethereum network
 	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
 		Network:           ethconnect.NetworkFromString(ethereumNetwork),
@@ -105,30 +105,29 @@ func RunServer(
 		chain:              chain,
 	}
 
-	errChan := make(chan error, 2)
+	go func() {
+		defer cancelCtx()
+		err := server.observeEvents(ctx)
+		if err != nil {
+			server.logger.Error("event observation routine failed.", "err", err)
+		}
 
-	go func() {
-		if err := server.observeEvents(ctx); err != nil {
-			errChan <- err
-		}
-	}()
-	go func() {
-		if err := server.startGRPCServer(ctx, grpcAddress); err != nil {
-			errChan <- err
-		}
+		server.logger.Info("event observation routine stopped")
 	}()
 
-	// Wait for an error from either goroutine
-	err = <-errChan
-	server.logger.Error("Error encountered: %v. Shutting down application.", err)
+	go func() {
+		defer cancelCtx()
+		err := server.startGRPCServer(ctx, grpcAddress)
+		if err != nil {
+			server.logger.Error("gRPC server routine failed", "err", err)
+		}
 
-	// Signal goroutines to stop
-	cancel()
+		server.logger.Info("gRPC server routine stopped")
+	}()
 
-	// Exit the application
+	<-ctx.Done()
+
 	server.logger.Error("Sidecar stopped.")
-
-	return server
 }
 
 // observeEvents monitors and processes events from the BitcoinBridge smart contract.
@@ -309,17 +308,23 @@ func (s *Server) startGRPCServer(
 		"address", address,
 	)
 
-	if err := s.grpcServer.Serve(listener); err != nil {
-		return fmt.Errorf("gRPC server failure: [%w]", err)
+	defer s.grpcServer.GracefulStop()
+
+	errChan := make(chan error)
+
+	go func() {
+		err := s.grpcServer.Serve(listener)
+		if err != nil {
+			errChan <- err
+		}
+	}()
+
+	select {
+	case err := <-errChan:
+		return fmt.Errorf("serve failed: [%w]", err)
+	case <-ctx.Done():
+		return nil
 	}
-
-	<-ctx.Done()
-
-	s.logger.Info("shutting down gRPC server...")
-	s.grpcServer.GracefulStop()
-
-	s.logger.Info("gRPC server stopped")
-	return nil
 }
 
 // AssetsLockedEvents returns a list of AssetsLocked events based on the

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"google.golang.org/grpc/encoding"
@@ -59,9 +58,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		codec.NewProtoCodec(clientCtx.InterfaceRegistry).GRPCCodec(),
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	sidecar.RunServer(ctx, cancel, grpcAddress, ethNodeAddress, network, logger)
-	<-ctx.Done()
+	sidecar.RunServer(grpcAddress, ethNodeAddress, network, logger)
 
 	return fmt.Errorf("unexpected context cancellation")
 }
