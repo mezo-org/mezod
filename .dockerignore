@@ -3,3 +3,15 @@
 .public-testnet
 
 build
+deployment
+!deployment/docker/init.sh
+!deployment/docker/start.sh
+.github
+infrastructure
+networks
+Dockerfile
+**/tmp/
+.gitignore
+.git/
+docs/
+scripts/
