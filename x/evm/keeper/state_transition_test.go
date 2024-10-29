@@ -673,7 +673,7 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 			txConfig = suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{})
 
 			tc.malleate()
-			res, err := suite.app.EvmKeeper.ApplyMessageWithConfig(suite.ctx, msg, nil, true, config, txConfig)
+			res, err := suite.app.EvmKeeper.ApplyMessageWithConfig(suite.ctx, keeper.WrapMessage(msg), nil, true, config, txConfig)
 
 			if tc.expErr {
 				suite.Require().Error(err)

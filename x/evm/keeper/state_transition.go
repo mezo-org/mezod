@@ -204,7 +204,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	}
 
 	// pass true to commit the StateDB
-	res, err := k.ApplyMessageWithConfig(tmpCtx, *msg, nil, true, cfg, txConfig)
+	res, err := k.ApplyMessageWithConfig(tmpCtx, WrapMessageWithSource(*msg, tx), nil, true, cfg, txConfig)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "failed to apply ethereum core message")
 	}
@@ -296,7 +296,7 @@ func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer *tracers
 	}
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
-	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig)
+	return k.ApplyMessageWithConfig(ctx, WrapMessage(msg), tracer, commit, cfg, txConfig)
 }
 
 // ApplyMessageWithConfig computes the new state by applying the given message against the existing state.
@@ -339,15 +339,18 @@ func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer *tracers
 // If commit is true, the `StateDB` will be committed, otherwise discarded.
 func (k *Keeper) ApplyMessageWithConfig(
 	ctx sdk.Context,
-	msg core.Message,
+	wrapper MessageWrapper,
 	tracer *tracers.Tracer,
 	commit bool,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
 ) (*types.MsgEthereumTxResponse, error) {
+	msg := wrapper.Unwrap()
+
 	var (
-		ret   []byte // return bytes from evm execution
-		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
+		ret     []byte // return bytes from evm execution
+		vmErr   error  // vm errors do not effect consensus and are therefore not assigned to err
+		gasUsed uint64
 	)
 
 	// return error if contract creation or call are disabled through governance
@@ -391,6 +394,26 @@ func (k *Keeper) ApplyMessageWithConfig(
 		return nil, errorsmod.Wrap(core.ErrIntrinsicGas, "apply message")
 	}
 	leftoverGas -= intrinsicGas
+
+	if t := vmCfg.Tracer; t != nil && t.OnTxStart != nil {
+		if sourceTx, ok := wrapper.GetSourceTx(); ok {
+			t.OnTxStart(evm.GetVMContext(), sourceTx, msg.From)
+
+			if t.OnTxEnd != nil {
+				defer func() {
+					// Create an impromptu receipt with only GasUsed being set.
+					// Only this field is used by all existing implementations
+					// of OnTxEnd but beware, future implementations may need
+					// more so, this code may become subject of a bigger refactoring.
+					receipt := &ethtypes.Receipt{
+						GasUsed: gasUsed,
+					}
+
+					t.OnTxEnd(receipt, vmErr)
+				}()
+			}
+		}
+	}
 
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
@@ -454,7 +477,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 		return nil, errorsmod.Wrapf(types.ErrGasOverflow, "message gas limit < leftover gas (%d < %d)", msg.GasLimit, leftoverGas)
 	}
 
-	gasUsed := sdkmath.LegacyMaxDec(minimumGasUsed, sdkmath.LegacyNewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
+	gasUsed = sdkmath.LegacyMaxDec(minimumGasUsed, sdkmath.LegacyNewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
 
 	// reset leftoverGas, to be used by the tracer
 	leftoverGas = msg.GasLimit - gasUsed
@@ -466,4 +489,40 @@ func (k *Keeper) ApplyMessageWithConfig(
 		Logs:    types.NewLogsFromEth(stateDB.Logs()),
 		Hash:    txConfig.TxHash.Hex(),
 	}, nil
+}
+
+// MessageWrapper is an auxiliary structure holding the msg with its
+// (optional) source transaction.
+type MessageWrapper struct {
+	// msg the actual message to be executed.
+	msg core.Message
+	// sourceTx is an optional field holding the transaction the msg was
+	// generated from.
+	sourceTx *ethtypes.Transaction
+}
+
+// WrapMessage creates a MessageWrapper from the given message, without
+// the source transaction.
+func WrapMessage(msg core.Message) MessageWrapper {
+	return MessageWrapper{msg: msg, sourceTx: nil}
+}
+
+// WrapMessageWithSource creates a MessageWrapper from the given message, with
+// the source transaction.
+func WrapMessageWithSource(
+	msg core.Message,
+	sourceTx *ethtypes.Transaction,
+) MessageWrapper {
+	return MessageWrapper{msg: msg, sourceTx: sourceTx}
+}
+
+// Unwrap gets the underlying core.Message.
+func (mw MessageWrapper) Unwrap() core.Message {
+	return mw.msg
+}
+
+// GetSourceTx gets the source transaction and a boolean flag indicating
+// its presence.
+func (mw MessageWrapper) GetSourceTx() (*ethtypes.Transaction, bool) {
+	return mw.sourceTx, mw.sourceTx != nil
 }
