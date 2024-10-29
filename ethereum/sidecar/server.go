@@ -144,8 +144,13 @@ func (s *Server) observeEvents(ctx context.Context) error {
 		return err
 	}
 
-	// Fetch AssetsLocked events two weeks back from the finalized block
-	startBlock := new(big.Int).Sub(finalizedBlock, searchedRange).Uint64()
+	var startBlock uint64
+	if searchedRange.Cmp(finalizedBlock) <= 0 {
+		// Fetch AssetsLocked events two weeks back from the finalized block
+		startBlock = new(big.Int).Sub(finalizedBlock, searchedRange).Uint64()
+	} else {
+		startBlock = 0
+	}
 	err = s.fetchFinalizedEvents(startBlock, finalizedBlock.Uint64())
 	if err != nil {
 		s.logger.Error("failed to fetch historical events")
