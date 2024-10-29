@@ -132,9 +132,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	a := appCreator{encodingConfig}
 	rootCmd.AddCommand(
 		genesis.NewCmd(),
-		mezoclient.ValidateChainID(
-			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
-		),
+		NewInitCmd(app.ModuleBasics),
 		escli.NewEthereumSidecarCmd(),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		NewTestnetCmd(app.ModuleBasics),
