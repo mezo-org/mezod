@@ -143,8 +143,7 @@ func RunServer(
 func (s *Server) observeEvents(ctx context.Context) error {
 	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
-		s.logger.Error("failed to get the finalized block")
-		return err
+		return fmt.Errorf("failed to get the finalized block: [%w]", err)
 	}
 
 	var startBlock uint64
@@ -156,8 +155,7 @@ func (s *Server) observeEvents(ctx context.Context) error {
 	}
 	err = s.fetchFinalizedEvents(startBlock, finalizedBlock.Uint64())
 	if err != nil {
-		s.logger.Error("failed to fetch historical events")
-		return err
+		return fmt.Errorf("failed to fetch historical events: [%w]", err)
 	}
 
 	s.lastFinalizedBlockMutex.Lock()
@@ -175,12 +173,14 @@ func (s *Server) observeEvents(ctx context.Context) error {
 		case <-tickerChan:
 			// On each tick check if the current finalized block is greater than the last
 			// finalized block.
-			// TODO: add a simple counter to retry in case a connection issue occurs
+			// TODO: Add a basic counter to manage validation issues that may occur
+			//			 when processing events. This counter should allow a few retry
+			//			 attempts to handle temporary connection issues, but should halt
+			//			 the sidecar if an error arises specifically with event processing.”
 			err := s.processEvents(ctx)
 			if err != nil {
-				s.logger.Error("failed to monitor newly emitted events: %v", err)
+				s.logger.Error("failed to monitor newly emitted events", "err", err)
 			}
-			// return from here in case of a an issue
 		}
 	}
 }
@@ -191,7 +191,7 @@ func (s *Server) observeEvents(ctx context.Context) error {
 func (s *Server) processEvents(ctx context.Context) error {
 	currentFinalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get finalized block: [%w]", err)
 	}
 
 	s.lastFinalizedBlockMutex.RLock()
@@ -209,7 +209,7 @@ func (s *Server) processEvents(ctx context.Context) error {
 		exclusiveLastFinalizedBlock := s.lastFinalizedBlock.Uint64() + 1
 		err := s.fetchFinalizedEvents(exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot fetch finalized events: [%w]", err)
 		}
 		s.lastFinalizedBlockMutex.Lock()
 		s.lastFinalizedBlock = currentFinalizedBlock
@@ -240,8 +240,7 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 
 	events, err := s.bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
 	if err != nil {
-		s.logger.Error("failed to filter AssetsLocked events")
-		return err
+		return fmt.Errorf("failed to filter AssetsLocked events [%w]", err)
 	}
 
 	var bufferedEvents []bridgetypes.AssetsLockedEvent
@@ -261,6 +260,11 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		)
 	}
 
+	if len(bufferedEvents) == 0 {
+		s.logger.Info("no new events to process")
+		return nil
+	}
+
 	// Make sure the events are sorted in ascending order by the sequence number
 	sort.Slice(bufferedEvents, func(i, j int) bool {
 		return bufferedEvents[i].Sequence.LT(bufferedEvents[j].Sequence)
@@ -274,14 +278,12 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		lastEvent := s.events[len(s.events)-1]
 		firstEvent := bufferedEvents[0]
 		if !lastEvent.Sequence.Add(sdkmath.NewInt(1)).Equal(firstEvent.Sequence) {
-			s.logger.Error("sequence gap between events")
-			return err
+			return fmt.Errorf("sequence gap between events: [%w]", err)
 		}
 	}
 
 	if !bridgetypes.AssetsLockedEvents(bufferedEvents).IsValid() {
-		s.logger.Error("invalid AssetsLocked events")
-		return err
+		return fmt.Errorf("invalid AssetsLocked events: [%w]", err)
 	}
 
 	s.eventsMutex.Lock()
@@ -299,8 +301,7 @@ func (s *Server) startGRPCServer(
 ) error {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		s.logger.Error("failed to listen")
-		return err
+		return fmt.Errorf("failed to listen: [%w]", err)
 	}
 
 	pb.RegisterEthereumSidecarServer(s.grpcServer, s)
@@ -311,8 +312,7 @@ func (s *Server) startGRPCServer(
 	)
 
 	if err := s.grpcServer.Serve(listener); err != nil {
-		s.logger.Error("gRPC server failure")
-		return err
+		return fmt.Errorf("gRPC server failure: [%w]", err)
 	}
 
 	<-ctx.Done()
