@@ -270,11 +270,11 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		return bufferedEvents[i].Sequence.LT(bufferedEvents[j].Sequence)
 	})
 
-	s.eventsMutex.RLock()
-	isEventsListEmpty := len(s.events) == 0
-	s.eventsMutex.RUnlock()
+	s.eventsMutex.Lock()
+	defer s.eventsMutex.Unlock()
+
 	// Make sure there are no gaps between events and bufferedEvents lists
-	if !isEventsListEmpty && len(bufferedEvents) > 0 {
+	if len(s.events) > 0 && len(bufferedEvents) > 0 {
 		lastEvent := s.events[len(s.events)-1]
 		firstEvent := bufferedEvents[0]
 		if !lastEvent.Sequence.Add(sdkmath.NewInt(1)).Equal(firstEvent.Sequence) {
@@ -286,9 +286,7 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		return fmt.Errorf("invalid AssetsLocked events: [%w]", err)
 	}
 
-	s.eventsMutex.Lock()
 	s.events = append(s.events, bufferedEvents...)
-	s.eventsMutex.Unlock()
 
 	return nil
 }
