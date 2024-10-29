@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
+	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
@@ -73,13 +74,6 @@ func RunServer(
 	ethereumNetwork string,
 	logger log.Logger,
 ) *Server {
-	server := &Server{
-		events:             make([]bridgetypes.AssetsLockedEvent, 0),
-		grpcServer:         grpc.NewServer(),
-		logger:             logger,
-		lastFinalizedBlock: new(big.Int),
-	}
-
 	var err error
 
 	if gen.BitcoinBridgeAddress == "" {
@@ -87,7 +81,7 @@ func RunServer(
 	}
 
 	// Connect to the Ethereum network
-	server.chain, err = ethconnect.Connect(ctx, ethconfig.Config{
+	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
 		Network:           ethconnect.NetworkFromString(ethereumNetwork),
 		URL:               providerURL,
 		ContractAddresses: map[string]string{bitcoinBridgeName: gen.BitcoinBridgeAddress},
@@ -97,9 +91,18 @@ func RunServer(
 	}
 
 	// Initialize the BitcoinBridge contract instance
-	server.bitcoinBridge, err = server.initializeBitcoinBridgeContract(common.HexToAddress(gen.BitcoinBridgeAddress))
+	bitcoinBridge, err := initializeBitcoinBridgeContract(common.HexToAddress(gen.BitcoinBridgeAddress), chain.Client())
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize BitcoinBridge contract: %v", err))
+	}
+
+	server := &Server{
+		logger:             logger,
+		grpcServer:         grpc.NewServer(),
+		events:             make([]bridgetypes.AssetsLockedEvent, 0),
+		lastFinalizedBlock: new(big.Int),
+		bitcoinBridge:      bitcoinBridge,
+		chain:              chain,
 	}
 
 	errChan := make(chan error, 2)
@@ -321,19 +324,6 @@ func (s *Server) startGRPCServer(
 	return nil
 }
 
-// Construct a new instance of the Ethereum Bitcoin Bridge contract.
-func (s *Server) initializeBitcoinBridgeContract(
-	bitcoinBridgeAddress common.Address,
-) (*abi.BitcoinBridge, error) {
-	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, s.chain.Client())
-	if err != nil {
-		s.logger.Error("failed to attach to Bitcoin Bridge contract")
-		return nil, err
-	}
-
-	return bitcoinBridge, nil
-}
-
 // AssetsLockedEvents returns a list of AssetsLocked events based on the
 // passed request. It is executed by the gRPC server.
 func (s *Server) AssetsLockedEvents(
@@ -374,4 +364,17 @@ func (s *Server) AssetsLockedEvents(
 	return &pb.AssetsLockedEventsResponse{
 		Events: filteredEvents,
 	}, nil
+}
+
+// Construct a new instance of the Ethereum Bitcoin Bridge contract.
+func initializeBitcoinBridgeContract(
+	bitcoinBridgeAddress common.Address,
+	client ethutil.EthereumClient,
+) (*abi.BitcoinBridge, error) {
+	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to Bitcoin Bridge contract. %v", err)
+	}
+
+	return bitcoinBridge, nil
 }
