@@ -69,7 +69,6 @@ cp testnet.env.example testnet.env
 * `MEZOD_MONIKER` - the name of the validator
 * `MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS` - the address of the Ethereum node
 
-
 ### 2. Initialize the configuration
 
 ```shell
