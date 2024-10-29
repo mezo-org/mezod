@@ -110,10 +110,6 @@ customize_configuration() {
 }
 
 main() {
-  # Load predefined variables
-  # shellcheck disable=SC1091
-  . /vars.sh
-
   prepare_keyring
   init_configuration
   validate_genesis

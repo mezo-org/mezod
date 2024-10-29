@@ -4,8 +4,7 @@
 
 build
 deployment
-!deployment/docker/init.sh
-!deployment/docker/start.sh
+!deployment/docker/*.sh
 .github
 infrastructure
 networks

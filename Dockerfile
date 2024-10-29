@@ -52,7 +52,6 @@ FROM gcr.io/distroless/base-nossl AS production
 COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/
 COPY --from=build-tomledit /usr/bin/tomledit /usr/bin/tomledit
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
-COPY deployment/docker/vars.sh /vars.sh
 COPY deployment/docker/init.sh /init.sh
 COPY deployment/docker/start.sh /start.sh
 

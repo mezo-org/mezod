@@ -75,7 +75,7 @@ make init
 
 ```shell
 make cli
-$ echo "${KEYRING_PASSWORD}" | mezod genesis genval "${MEZOD_MONIKER}" --keyring-backend="file" --chain-id="${MEZOD_CHAIN_ID}" --home="${MEZOD_HOME}"
+$ echo "${KEYRING_PASSWORD}" | mezod genesis genval "${KEYRING_NAME}" --keyring-backend="file" --chain-id="${MEZOD_CHAIN_ID}" --home="${MEZOD_HOME}" --ip="${PUBLIC_IP}"
 ```
 
 ### 4. Submit joining request
