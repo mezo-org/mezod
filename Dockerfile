@@ -6,9 +6,15 @@ FROM golang:1.22.8-bullseye AS build
 WORKDIR /go/src/github.com/mezo-org/mezod
 
 RUN apt-get update -y && \
-    apt-get install git -y
+    apt-get install git jq -y
+
+RUN curl -sL https://deb.nodesource.com/setup_18.x | bash && \
+    apt-get update -y && \
+    apt-get install -y nodejs
 
 COPY . .
+
+RUN make bindings
 
 RUN make build
 
