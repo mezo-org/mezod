@@ -29,7 +29,8 @@ FROM busybox:stable AS shell
 # Refs.:
 # https://github.com/GoogleContainerTools/distroless/blob/main/base/README.md
 #
-FROM gcr.io/distroless/base-nossl:nonroot AS production
+# TODO: Replace with gcr.io/distroless/base-nossl:nonroot once k8s manifests are configured accordingly.
+FROM gcr.io/distroless/base-nossl AS production
 
 COPY --from=shell /bin/sh /bin/sh
 
