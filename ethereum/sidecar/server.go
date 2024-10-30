@@ -73,7 +73,10 @@ func RunServer(
 	logger log.Logger,
 ) {
 	if gen.BitcoinBridgeAddress == "" {
-		panic("BitcoinBridgeAddress is empty")
+		panic(
+			"cannot get address of the BitcoinBridge contract on Ethereum; " +
+				"make sure you run 'make bindings' before building the binary",
+		)
 	}
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
@@ -109,7 +112,7 @@ func RunServer(
 		defer cancelCtx()
 		err := server.observeEvents(ctx)
 		if err != nil {
-			server.logger.Error("event observation routine failed.", "err", err)
+			server.logger.Error("event observation routine failed", "err", err)
 		}
 
 		server.logger.Info("event observation routine stopped")
@@ -127,7 +130,7 @@ func RunServer(
 
 	<-ctx.Done()
 
-	server.logger.Error("Sidecar stopped.")
+	server.logger.Error("sidecar stopped")
 }
 
 // observeEvents monitors and processes events from the BitcoinBridge smart contract.

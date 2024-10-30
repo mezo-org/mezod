@@ -29,9 +29,17 @@ spec:
           ports:
             - name: server
               containerPort: 7500
+          env:
+            - name: ETHEREUM_NODE_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: ethereum-sidecar-config
+                  key: ethereum-node-address
           command:
             - mezod
             - ethereum-sidecar
+            - --ethereum-sidecar.server.ethereum-node-address
+            - $(ETHEREUM_NODE_ADDRESS)
 
 ---
 apiVersion: v1

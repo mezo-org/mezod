@@ -106,8 +106,8 @@ spec:
               mountPath: /mnt/.mezod/keyring-file/mezo-node-0-key.info
               subPath: mezo-node-0-key.info
             - name: mezo-node-keystore
-              mountPath: /mnt/.mezod/keyring-file/4df1393b85334cf4614ef37b4f1b99cfc93510ef.address
-              subPath: 4df1393b85334cf4614ef37b4f1b99cfc93510ef.address
+              mountPath: /mnt/.mezod/keyring-file/0504d82efb7db7a8c05e8df8cea575d8c9f48bb2.address
+              subPath: 0504d82efb7db7a8c05e8df8cea575d8c9f48bb2.address
           command:
             - mezod
             - start

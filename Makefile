@@ -656,7 +656,16 @@ get_npm_packages:
 	$(foreach pkg,$(npm_packages),$(call get_npm_package,$(pkg)))
 
 generate:
+	# go generate needs some go.sum dependencies that are not actually used
+    # in the codebase and are pruned by go mod tidy. As a workaround, we
+    # temporarily set GOFLAGS=-mod=mod to let go generate fetch necessary
+    # dependencies.
+	go env -w GOFLAGS=-mod=mod
 	go generate ./...
+	# Reset GOFLAGS to its original value and run go mod tidy to remove
+	# unnecessary dependencies fetched by go generate.
+	go env -u GOFLAGS
+	go mod tidy
 
 bindings: get_npm_packages generate
 	$(info Bindings generated)
