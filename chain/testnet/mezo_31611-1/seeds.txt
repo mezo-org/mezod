@@ -1,5 +1,5 @@
-e16bad251a8640a899d7b582474821944c260efc@mezo-node-0.test.mezo.org:26656
-7fabea710b19ce334afabc256d1a8e4b2bd0a7b0@mezo-node-1.test.mezo.org:26656
-3e30aee594b1edc8667a6dd09fd4311721b54709@mezo-node-2.test.mezo.org:26656
-d12198ca4ac9dce50d30761f37a3d8e6e47968f3@mezo-node-3.test.mezo.org:26656
-d4a80aec8f465f154978cc9573056963648f9ab0@mezo-node-4.test.mezo.org:26656
+2d4e0216da0d1ec18655d9588df21319025efab0@mezo-node-0.test.mezo.org:26656
+eedead51f768b908e6ae068e5a8cda6236774010@mezo-node-1.test.mezo.org:26656
+84805b6cb9c86673c1f1685f08f0276ea02ce814@mezo-node-2.test.mezo.org:26656
+deb793b789da8ff3e995f77fa47a7a50e0b2ea97@mezo-node-3.test.mezo.org:26656
+8b041c159d6b981db56ffb9a3c1fda468f51407b@mezo-node-4.test.mezo.org:26656

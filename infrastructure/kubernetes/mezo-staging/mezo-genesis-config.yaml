@@ -7,9 +7,9 @@ data:
   # The file below was generated using the `scripts/public-testnet.sh` script.
   genesis.json: |
     {
-      "app_name": "",
-      "app_version": "",
-      "genesis_time": "2024-09-26T12:54:57.939497Z",
+      "app_name": "mezod",
+      "app_version": "0.1.0-106-g559f1366",
+      "genesis_time": "2024-10-30T10:44:18.472565Z",
       "chain_id": "mezo_31611-1",
       "initial_height": 1,
       "app_hash": null,
@@ -26,7 +26,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1fhcnjwu9xdx0gc2w7da57xueelyn2y80k5p80z",
+                "address": "mezo1q5zdsthm0km63sz73huvaft4mrylfzajukudua",
                 "pub_key": null,
                 "account_number": "0",
                 "sequence": "0"
@@ -36,7 +36,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1xayrwahvfx7gnmm3gum8dnpckallfaxz0c48xz",
+                "address": "mezo1ypzya5vquc6jetzlc63adw84tnxx5y244pn8v7",
                 "pub_key": null,
                 "account_number": "1",
                 "sequence": "0"
@@ -46,7 +46,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1xxxd837suk7krpmpajx85fa4frtkq6j8cccuv3",
+                "address": "mezo17vjeke3qfaedlyy6aupxtx092p9kamwlarv2v2",
                 "pub_key": null,
                 "account_number": "2",
                 "sequence": "0"
@@ -56,7 +56,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1w7pgk0rhka5gfjj69kjlrw8sup5ssw7pk0jl6d",
+                "address": "mezo109j08xzlr6j70avt82jymm8zme6x34gmg648lk",
                 "pub_key": null,
                 "account_number": "3",
                 "sequence": "0"
@@ -66,7 +66,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo1x3gpwva2ugw0yrykeyg8plph3ulws8ks4nz7gm",
+                "address": "mezo1d5kzn3l8cgrd67s094ru0x4c9rn9gmtuwewrt4",
                 "pub_key": null,
                 "account_number": "4",
                 "sequence": "0"
@@ -76,7 +76,7 @@ data:
             {
               "@type": "/ethermint.types.v1.EthAccount",
               "base_account": {
-                "address": "mezo12mvkyhtj7addwtqk5dnva6lyyxz6wns5v0u30r",
+                "address": "mezo1c25395t7phawylshaux08wh4hmr9nfh2gpm9ac",
                 "pub_key": null,
                 "account_number": "5",
                 "sequence": "0"
@@ -95,7 +95,7 @@ data:
           },
           "balances": [
             {
-              "address": "mezo1xxxd837suk7krpmpajx85fa4frtkq6j8cccuv3",
+              "address": "mezo1q5zdsthm0km63sz73huvaft4mrylfzajukudua",
               "coins": [
                 {
                   "denom": "abtc",
@@ -104,7 +104,7 @@ data:
               ]
             },
             {
-              "address": "mezo1x3gpwva2ugw0yrykeyg8plph3ulws8ks4nz7gm",
+              "address": "mezo1ypzya5vquc6jetzlc63adw84tnxx5y244pn8v7",
               "coins": [
                 {
                   "denom": "abtc",
@@ -113,7 +113,7 @@ data:
               ]
             },
             {
-              "address": "mezo1xayrwahvfx7gnmm3gum8dnpckallfaxz0c48xz",
+              "address": "mezo1d5kzn3l8cgrd67s094ru0x4c9rn9gmtuwewrt4",
               "coins": [
                 {
                   "denom": "abtc",
@@ -122,7 +122,7 @@ data:
               ]
             },
             {
-              "address": "mezo1fhcnjwu9xdx0gc2w7da57xueelyn2y80k5p80z",
+              "address": "mezo109j08xzlr6j70avt82jymm8zme6x34gmg648lk",
               "coins": [
                 {
                   "denom": "abtc",
@@ -131,7 +131,7 @@ data:
               ]
             },
             {
-              "address": "mezo12mvkyhtj7addwtqk5dnva6lyyxz6wns5v0u30r",
+              "address": "mezo1c25395t7phawylshaux08wh4hmr9nfh2gpm9ac",
               "coins": [
                 {
                   "denom": "abtc",
@@ -140,7 +140,7 @@ data:
               ]
             },
             {
-              "address": "mezo1w7pgk0rhka5gfjj69kjlrw8sup5ssw7pk0jl6d",
+              "address": "mezo17vjeke3qfaedlyy6aupxtx092p9kamwlarv2v2",
               "coins": [
                 {
                   "denom": "abtc",
@@ -214,11 +214,22 @@ data:
           "params": {
             "max_validators": 150
           },
-          "owner": "mezo1fhcnjwu9xdx0gc2w7da57xueelyn2y80k5p80z",
+          "owner": "mezo1q5zdsthm0km63sz73huvaft4mrylfzajukudua",
           "validators": [
             {
-              "operator_bech32": "mezovaloper1xxxd837suk7krpmpajx85fa4frtkq6j8trx7ad",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqtdewkqafg20v6ezg68hwlm9numme7quewppl48rn5dawcf8y77xq9vp9vx",
+              "operator_bech32": "mezovaloper1q5zdsthm0km63sz73huvaft4mrylfzaj0dz0dp",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepq7njspfx0ht03jpcnpy57ahfj8pztv0v27hrxkkutr7vlvrxsq5rqecwaxg",
+              "description": {
+                "moniker": "mezo-node-0",
+                "identity": "",
+                "website": "",
+                "security_contact": "",
+                "details": ""
+              }
+            },
+            {
+              "operator_bech32": "mezovaloper17vjeke3qfaedlyy6aupxtx092p9kamwlwcjgak",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepqcdrxsujzp2na8s8dmlpz5s6vr34rdeg8qyrajs2ncpfdcf5g2d9swn72qk",
               "description": {
                 "moniker": "mezo-node-2",
                 "identity": "",
@@ -228,30 +239,8 @@ data:
               }
             },
             {
-              "operator_bech32": "mezovaloper1xayrwahvfx7gnmm3gum8dnpckallfaxzurt9h7",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqlnw42eg9f0xnmu3w8pq8rhae5njjl5sxw0gsjt4qxcerpxp85ldsdjzzfe",
-              "description": {
-                "moniker": "mezo-node-1",
-                "identity": "",
-                "website": "",
-                "security_contact": "",
-                "details": ""
-              }
-            },
-            {
-              "operator_bech32": "mezovaloper1w7pgk0rhka5gfjj69kjlrw8sup5ssw7p95vat3",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqpndsxkw0eyqju85rwzj5fffmuafl259ey9a6cq3lfsrltnumkx3q8l5u0v",
-              "description": {
-                "moniker": "mezo-node-3",
-                "identity": "",
-                "website": "",
-                "security_contact": "",
-                "details": ""
-              }
-            },
-            {
-              "operator_bech32": "mezovaloper1x3gpwva2ugw0yrykeyg8plph3ulws8ksxguue8",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqwtgk62p8uyjgkp93f33hlulvlcl2n6hyj858mss2g809gls64rss685g8t",
+              "operator_bech32": "mezovaloper1d5kzn3l8cgrd67s094ru0x4c9rn9gmtuazsp6f",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepqkgckfjyv5fxc0vaqkm4fdzgpjnqeulz84ccdd5se4a43mjnr9waq229pe0",
               "description": {
                 "moniker": "mezo-node-4",
                 "identity": "",
@@ -261,10 +250,21 @@ data:
               }
             },
             {
-              "operator_bech32": "mezovaloper1fhcnjwu9xdx0gc2w7da57xueelyn2y8090l977",
-              "cons_pub_key_bech32": "mezovalconspub1zcjduepqar2rs72lch29dcvx0ztk56ph5xj2hn7rexts9tnaj5qt260h6kaqsgk8vc",
+              "operator_bech32": "mezovaloper109j08xzlr6j70avt82jymm8zme6x34gmmpt9w2",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepqn5gt5tku74ryn4y5t27txjfeuydkdp86kgr2pzm4cxdenv9ff6ps6cs9th",
               "description": {
-                "moniker": "mezo-node-0",
+                "moniker": "mezo-node-3",
+                "identity": "",
+                "website": "",
+                "security_contact": "",
+                "details": ""
+              }
+            },
+            {
+              "operator_bech32": "mezovaloper1ypzya5vquc6jetzlc63adw84tnxx5y24x6d9az",
+              "cons_pub_key_bech32": "mezovalconspub1zcjduepqnedheuffjdcg3prgjd8dmmwxeg434rpwmyf9j8utjr3xxuahqduq60gka9",
+              "description": {
+                "moniker": "mezo-node-1",
                 "identity": "",
                 "website": "",
                 "security_contact": "",
