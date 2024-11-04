@@ -85,11 +85,11 @@ customize_configuration() {
   # client.toml
   tomledit --path "$client_config_file" set "chain-id" "\"${MEZOD_CHAIN_ID}\""
   tomledit --path "$client_config_file" set "keyring-backend" "\"file\""
-  tomledit --path "$client_config_file" set "node" "\"tcp://0.0.0.0:26657\""
 
   # config.toml
   tomledit --path "$config_file" set "moniker" "\"${MEZOD_MONIKER}\""
   tomledit --path "$config_file" set "p2p.laddr" "\"tcp://0.0.0.0:26656\""
+  tomledit --path "$config_file" set "rpc.laddr" "\"tcp://0.0.0.0:26657\""
   tomledit --path "$config_file" set "instrumentation.prometheus" "true"
   tomledit --path "$config_file" set "instrumentation.prometheus_listen_addr" "\"0.0.0.0:26660\""
 

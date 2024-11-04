@@ -7,6 +7,9 @@ FROM golang:1.22.8-bullseye AS build
 
 WORKDIR /go/src/github.com/mezo-org/mezod
 
+RUN apt-get update -y && \
+    apt-get install jq -y
+
 RUN curl -sL https://deb.nodesource.com/setup_18.x | bash && \
     apt-get update -y && \
     apt-get install -y nodejs
@@ -14,7 +17,7 @@ RUN curl -sL https://deb.nodesource.com/setup_18.x | bash && \
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY Makefile .
+COPY --parents ./**/Makefile ./
 COPY --parents ./**/*.txt ./
 COPY --parents ./**/.keep ./
 COPY --parents ./**/*.json ./
@@ -44,13 +47,9 @@ FROM busybox:stable AS busybox
 #
 # Production layer
 #
-# Refs.:
-# https://github.com/GoogleContainerTools/distroless/blob/main/base/README.md
-#
-# TODO: Replace with gcr.io/distroless/base-nossl:nonroot once k8s manifests are configured accordingly.
-FROM gcr.io/distroless/base-nossl AS production
+FROM gcr.io/distroless/base-nossl:nonroot AS production
 
-COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/
+COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/stty /bin/ls /bin/
 COPY --from=build-tomledit /usr/bin/tomledit /usr/bin/tomledit
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 COPY deployment/docker/init.sh /init.sh
