@@ -28,7 +28,6 @@ cmd: ## Run command in management container (e.g., make cmd args="ls -la")
 .PHONY: setup
 setup: # (no help) Setup local environment
 	@mkdir -p $(LOCAL_BIND_PATH)
-	@chmod 777 $(LOCAL_BIND_PATH)
 
 .PHONY: init
 init: setup ## Run init container
