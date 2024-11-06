@@ -32,7 +32,6 @@ install_mezo() {
     sudo mkdir -p ${MEZOD_DESTINATION}
     
     echo "Downloading mezod package to temporary dir"
-    # gh release download ${MEZOD_VERSION} -D ${MEZOD_TMP} --skip-existing
     # sudo wget -P ${MEZOD_DOWNLOADS} https://github.com/mezo-org/mezod/releases/download/v0.1.0/mezod.tar.gz
     url=$(curl --silent "https://api.github.com/repos/mezo-org/mezod/releases" \
         --header "Authorization: token ${GITHUB_TOKEN}" \
@@ -323,6 +322,8 @@ main() {
 
 setenvs() {
     echo "Reading configuration from environment files"
+    # shellcheck disable=SC1091
+    # shellcheck disable=SC1090
     . ${ENVIRONMENT_FILE}
     . .env
 }
