@@ -325,6 +325,8 @@ setenvs() {
     # shellcheck disable=SC1091
     # shellcheck disable=SC1090
     . ${ENVIRONMENT_FILE}
+    # shellcheck disable=SC1091
+    # shellcheck disable=SC1090
     . .env
 }
 
