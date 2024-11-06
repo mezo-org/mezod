@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mezo Faucet</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+<div class="container">
+    <img src="./logo.svg" alt="Logo" class="logo">
+
+    <form action="/api" method="POST">
+        <input type="text" name="address" placeholder="0x..." required>
+        <button type="submit">Request BTC</button>
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAAAzXpfFhqmyZoELn"></div>
+    </form>
+</div>
+</body>
+</html>
+

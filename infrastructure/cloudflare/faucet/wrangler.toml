@@ -1,0 +1,8 @@
+name = "mezo-faucet"
+main = "./src/index.ts"
+compatibility_date = "2022-10-10"
+dev.port = 8000
+node_compat = true
+logpush = true
+
+assets = { directory = "./assets/", binding = "ASSETS", not_found_handling = "single-page-application" }
