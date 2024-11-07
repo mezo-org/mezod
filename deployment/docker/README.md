@@ -98,3 +98,35 @@ TBD
 ```shell
 ./v-kit.sh start
 ```
+
+## Operations
+
+### Stop the validator
+
+```shell
+./v-kit.sh stop
+```
+
+### Start (or restart) the validator
+
+```shell
+./v-kit.sh start
+```
+
+### Edit the configuration manually
+
+Keep in mind that some parts of the configuration are managed by the [entrypoint.sh](./entrypoint.sh) script
+within the container. These parts will be overwritten when the container is started.
+
+```shell
+./v-kit.sh shell
+# use vim or nano
+vim path/to/config
+```
+
+### Check node status
+
+```shell
+./v-kit.sh shell
+mezod --home="${MEZOD_HOME}" --node "tcp://mezod:26657" status | jq .
+```

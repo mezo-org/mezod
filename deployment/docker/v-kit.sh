@@ -61,6 +61,10 @@ build() { ## Build the image
   docker build --platform linux/amd64 --tag ${DOCKER_IMAGE} ../../
 }
 
+shell() { ## Start a shell session
+  ${DOCKER_COMPOSE_CMD} run --rm --interactive cli /bin/bash
+}
+
 clean() { # (no help) Remove all data
   _run_cli_cmd_oneshoot <<EOF
 set -x
