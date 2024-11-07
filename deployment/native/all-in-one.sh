@@ -23,43 +23,54 @@ open_ports() {
     # allow ssh connections:
     ufw allow 22/tcp
 }
-
 install_mezo() {
-
     MEZOD_DESTINATION=$MEZOD_HOME/bin/mezod-${MEZOD_VERSION}
     MEZO_EXEC=$MEZOD_DESTINATION/mezod
 
     mkdir -p ${MEZOD_DESTINATION}
-    
+    mkdir -p ./tmp
+
     echo "Downloading mezod package to temporary dir"
+    
     url=$(curl --silent "https://api.github.com/repos/mezo-org/mezod/releases" \
         --header "Authorization: token ${GITHUB_TOKEN}" \
-        | jq --arg MEZOD_VERSION "$MEZOD_VERSION" --arg MEZOD_ARCH "$MEZOD_ARCH" '.[] | select(.name == $MEZOD_VERSION) | .assets[] | select(.name == ("mezod-" + $MEZOD_ARCH + ".tar.gz")) | .url' | tr -d '"')
+        | jq --arg MEZOD_VERSION "$MEZOD_VERSION" --arg MEZOD_ARCH "$MEZOD_ARCH" \
+              '.[] | select(.name == $MEZOD_VERSION) | .assets[] | select(.name == ("mezod-" + $MEZOD_ARCH + ".tar.gz")) | .url' \
+        | tr -d '"')
 
-    echo DOWNLOAD URL: $url
+    if [ -z "$url" ]; then
+        echo "Error: URL is empty. Exiting."
+        exit 1
+    fi
 
-    curl \
-        --silent \
-        --location \
-        --header "Authorization: token ${GITHUB_TOKEN}" \
+    echo "Download URL: $url"
+
+    curl --verbose --silent --location --header "Authorization: token ${GITHUB_TOKEN}" \
         --header "Accept: application/octet-stream" \
-        --output /tmp/mezod-${MEZOD_ARCH}.tar.gz $url
+        --output ./tmp/mezod-${MEZOD_ARCH}.tar.gz $url
+
+    if [ $? -ne 0 ]; then
+        echo "Error: curl command failed during download."
+        exit 1
+    fi
+
+    if [ ! -f ./tmp/mezod-${MEZOD_ARCH}.tar.gz ]; then
+        echo "Error: Downloaded file does not exist."
+        exit 1
+    fi
 
     echo "Unpacking the binary build ${MEZOD_VERSION}"
-    tar -xvf /tmp/mezod-${MEZOD_ARCH}.tar.gz -C ${MEZOD_DESTINATION}
+    tar -xvf ./tmp/mezod-${MEZOD_ARCH}.tar.gz -C ${MEZOD_DESTINATION}
 
     chown root:root ${MEZO_EXEC}
     chmod +x ${MEZO_EXEC}
 
     echo "Mezo binary installed with path: ${MEZO_EXEC}"
-
-    #$MEZO_EXEC --help
-
 }
 
 install_skip() {
 
-    curl -sSL https://raw.githubusercontent.com/skip-mev/connect/main/scripts/install.sh |  bash
+    curl -ksSL https://raw.githubusercontent.com/skip-mev/connect/main/scripts/install.sh | bash
 
     CONNECT_TMP=$(which connect)
     CONNECT_VERSION=$(${CONNECT_TMP} version)
@@ -108,7 +119,7 @@ prepare_keyring() {
     return
   }
 
-  mnemonic_file="/tmp/mnemonic.txt"
+  mnemonic_file="./tmp/mnemonic.txt"
   gen_mnemonic "${mnemonic_file}"
   read -r keyring_mnemonic < "${mnemonic_file}"
 
@@ -276,6 +287,10 @@ cleanup() {
     rm -rf ${MEZOD_HOME}
 }
 
+backup() {
+    echo "backup"
+}
+
 usage() {
     echo -e "This is a Mezo Validator Kit Native installation script."
     echo -e "Script handles installation of the validator software as native binaries managed by systemd services.\n"
@@ -361,6 +376,7 @@ healthcheck_flag=false
 run_flag=false
 show_variables_flag=false
 cleanup_flag=false
+backup_flag=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -382,6 +398,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -c|--cleanup)
             cleanup_flag=true
+            shift
+            ;;
+        -b|--backup)
+            backup_flag=true
             shift
             ;;
         -h|--help)
@@ -411,6 +431,12 @@ fi
 if [[ "$show_variables_flag" == true ]]; then
     setenvs
     show_variables
+fi
+
+if [[ "$backup_flag" == true ]]; then
+    setenvs
+    backup
+    exit 0
 fi
 
 if [[ "$cleanup_flag" == true ]]; then
