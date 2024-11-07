@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/mezo-org/mezod/cmd/mezod/genesis"
+	"github.com/mezo-org/mezod/cmd/mezod/toml"
 
 	storetypes "cosmossdk.io/store/types"
 
@@ -132,6 +133,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	a := appCreator{encodingConfig}
 	rootCmd.AddCommand(
 		genesis.NewCmd(),
+		toml.NewCmd(),
 		NewInitCmd(app.ModuleBasics),
 		escli.NewEthereumSidecarCmd(),
 		tmcli.NewCompletionCmd(rootCmd, true),
