@@ -12,10 +12,10 @@ x-envfile: &envfile
 x-platform: &platform
   platform: linux/amd64
 
-# Enable logging to journald
+# Enable logging to journald by default
 x-logging: &logging
   logging:
-    driver: journald
+    driver: ${DOCKER_LOG_DRIVER:-journald}
 
 x-user: &user
   user: "65532:65532" # nonroot user used in distroless image

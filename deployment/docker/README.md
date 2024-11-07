@@ -57,6 +57,12 @@ cp testnet.env.example testnet.env
 * `NETWORK` - the network you want to join (`testnet` or `mainnet`)
 * `DOCKER_IMAGE` - the latest version of mezod image
 * `LOCAL_BIND_PATH` - the path to the local directory where the data will be stored
+  Make sure that the directory is created.
+
+  ```shell
+  mkdir -p /path/to/local/data
+  ```
+
 * `KEYRING_PASSWORD` - the password for the keyring. It is used to encrypt the key.
 
   Generate a new password using the following command:

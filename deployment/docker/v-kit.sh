@@ -68,7 +68,7 @@ shell() { ## Start a shell session
 clean() { # (no help) Remove all data
   _run_cli_cmd_oneshoot <<EOF
 set -x
-rm -rf "${MEZOD_HOME}/*"
+rm -rf ${MEZOD_HOME}/*
 EOF
 }
 
@@ -76,6 +76,7 @@ reset() { # (no help) Reset state
   _run_cli_cmd_oneshoot <<EOF
 set -x
 rm -rf "${MEZOD_HOME}"/data/*.db
+rm -rf "${MEZOD_HOME}"/data/snapshots
 rm -rf "${MEZOD_HOME}"/config/addrbook.json
 rm -rf "${MEZOD_HOME}"/config/write-file-atomic-*
 EOF
@@ -99,7 +100,7 @@ init-config() { ## Initialize configuration
 }
 
 init-genval() { ## Generate validator key
-  _run_cli_cmd_oneshoot <<'EOF'
+  _run_cli_cmd_oneshoot <<EOF
 echo "${KEYRING_PASSWORD}" | mezod genesis genval "${KEYRING_NAME}" --keyring-backend="file" --chain-id="${MEZOD_CHAIN_ID}" --home="${MEZOD_HOME}" --ip="${PUBLIC_IP}"
 EOF
 }
