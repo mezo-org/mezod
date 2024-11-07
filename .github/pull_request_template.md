@@ -1,8 +1,19 @@
 <!-- 
-Pin the issue this PR references to. Use 'Closes' instead of 'Refs' if this PR 
-should close the issue when merged.
+Pin the issue this PR 'References' to. 
+
+You can use both GitHub and Linear issues. If an issue exists in both 
+systems, always prefer the GitHub issue as it lives closer to the pull request.
+
+For GitHub, use the issue number (e.g. #100) or the full issue URL 
+(e.g. https://github.com/<organization>/<repository>/issues/100).
+
+For Linear, use the issue ID (e.g. ENG-100) or the full issue URL
+(e.g. https://linear.app/<workspace>/issue/ENG-123/<title>).
+
+Use 'Closes' instead of 'References' if this PR should close the issue when 
+merged.
 -->
-Refs: #<issue_number>
+References: <!-- Put GitHub/Linear issue here -->
 
 <!--
 Add 'Depends on' if this PR depends on another PR. Remember about setting this 
