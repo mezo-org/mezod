@@ -14,7 +14,7 @@ update_system() {
 }
 
 install_tools() {
-    sudo apt install wget git ufw make gcc jq bc yq -y
+    sudo apt install ufw jq curl gcc build-essential wget make gawk bison -y
 }
 
 open_ports() {
@@ -32,7 +32,6 @@ install_mezo() {
     sudo mkdir -p ${MEZOD_DESTINATION}
     
     echo "Downloading mezod package to temporary dir"
-    # sudo wget -P ${MEZOD_DOWNLOADS} https://github.com/mezo-org/mezod/releases/download/v0.1.0/mezod.tar.gz
     url=$(curl --silent "https://api.github.com/repos/mezo-org/mezod/releases" \
         --header "Authorization: token ${GITHUB_TOKEN}" \
         | jq --arg MEZOD_VERSION "$MEZOD_VERSION" --arg MEZOD_ARCH "$MEZOD_ARCH" '.[] | select(.name == $MEZOD_VERSION) | .assets[] | select(.name == ("mezod-" + $MEZOD_ARCH + ".tar.gz")) | .url' | tr -d '"')
@@ -46,17 +45,15 @@ install_mezo() {
         --header "Accept: application/octet-stream" \
         --output /tmp/mezod-${MEZOD_ARCH}.tar.gz $url
 
-    # echo "Unpacking the build ${MEZOD_VERSION}"
+    echo "Unpacking the binary build ${MEZOD_VERSION}"
     sudo tar -xvf /tmp/mezod-${MEZOD_ARCH}.tar.gz -C ${MEZOD_DESTINATION}
-
-    # sudo mv /tmp/mezod ${MEZOD_DESTINATION}
 
     sudo chown root:root ${MEZO_EXEC}
     sudo chmod +x ${MEZO_EXEC}
 
     echo "Mezo binary installed with path: ${MEZO_EXEC}"
 
-    sudo $MEZO_EXEC --help
+    # sudo $MEZO_EXEC --help
 
 }
 
@@ -169,7 +166,15 @@ configure_mezo() {
         -v rpc.laddr="tcp://0.0.0.0:26657" \
         -v instrumentation.prometheus=true \
         -v instrumentation.prometheus_listen_addr="0.0.0.0:26660" \
-        -v p2p.external_address="${MEZOD_PUBLIC_IP}:26656"
+        -v p2p.external_address="${MEZOD_PUBLIC_IP}:26656" \
+        -v consensus.timeout_propose="30s" \
+        -v consensus.timeout_propose_delta="5s" \
+        -v consensus.timeout_prevote="10s" \
+        -v consensus.timeout_prevote_delta="5s" \
+        -v consensus.timeout_precommit="5s" \
+        -v consensus.timeout_precommit_delta="5s" \
+        -v consensus.timeout_commit="150s" \
+        -v rpc.timeout_broadcast_tx_commit="150s"
 
     sudo ${MEZO_EXEC} toml set \
         ${app_config_file} \
@@ -272,11 +277,23 @@ cleanup() {
 }
 
 usage() {
-  echo -e "\nUsage: $0\n\n" \
-    "[-c/--cleanup] - clean up the installation\n\n" \
-    "[--health] - check health of mezo systemd services\n\n" \
-    "[-s/--show-variables] - output variables read from env files\n"
-#   echo -e "\nRequired command line arguments:\n"
+    echo -e "This is a Mezo Validator Kit Native installation script."
+    echo -e "Script handles installation of the validator software as native binaries managed by systemd services.\n"
+    echo -e "Steps executed during installation:"
+    echo -e "1. Update system (apt package manager)"
+    echo -e "2. Install tools required for script (ufw jq curl)"
+    echo -e "3. Open firewall ports (ufw)"
+    echo -e "4. Install mezo binary"
+    echo -e "5. Install connect-sidecar binary"
+    echo -e "6. Configure Mezo - keyring, configuration files"
+    echo -e "7. Setup systemd services for Mezo\n"
+
+    echo -e "Usage: $0\n" \
+    "\t[-c/--cleanup]\n\t\tclean up the installation\n\n" \
+    "\t[--health]\n\t\tcheck health of mezo systemd services\n\n" \
+    "\t[-s/--show-variables]\n\t\toutput variables read from env files\n\n" \
+    "\t[-e/--envfile]\n\t\tset file with environment variables for setup script\n\n" \
+    "\t[-h/--help]\n\t\tshow this prompt\n" 
 }
 
 healthcheck() {
@@ -294,8 +311,6 @@ show_variables() {
     echo "MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS: $MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS"
     echo "MEZOD_LOG_FORMAT: $MEZOD_LOG_FORMAT"
     echo "MEZOD_KEY_NAME: $MEZOD_KEY_NAME"
-
-    echo "SETUP_GENESIS_URL: $SETUP_GENESIS_URL"
 
     echo "MEZOD_ARCH: $MEZOD_ARCH"
     echo "MEZOD_VERSION: $MEZOD_VERSION"
@@ -316,8 +331,6 @@ main() {
     setup_systemd_sidecar
     setup_systemd_mezo
     systemd_restart
-    # optionally encrypt temporary env variable
-    # encrypt_env
 }
 
 setenvs() {
@@ -325,18 +338,6 @@ setenvs() {
     # shellcheck disable=SC1091
     # shellcheck disable=SC1090
     . ${ENVIRONMENT_FILE}
-    # shellcheck disable=SC1091
-    # shellcheck disable=SC1090
-    . .env
-}
-
-encrypt_env() {
-    sudo openssl enc -aes-256-cbc -salt -in ${MEZOD_HOME}/startup/env -out ${MEZOD_HOME}/startup/env.enc -k ${MEZOD_KEYRING_PASSWORD}
-    sudo rm -f ${MEZOD_HOME}/startup/env
-}
-
-decrypt_env() {
-    sudo openssl enc -aes-256-cbc -d -in ${MEZOD_HOME}/startup/env.enc -out ${MEZOD_HOME}/startup/env.dec -k ${MEZOD_KEYRING_PASSWORD}
 }
 
 # default env file name - can be changed through -e/--envfile option
@@ -362,11 +363,6 @@ while [[ $# -gt 0 ]]; do
         -c|--cleanup)
             setenvs
             cleanup
-            exit 0
-            ;;
-        -d|--decrypt-env)
-            setenvs
-            decrypt_env
             exit 0
             ;;
         -h|--help)
