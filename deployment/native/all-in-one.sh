@@ -288,9 +288,9 @@ usage() {
     echo -e "6. Configure Mezo - keyring, configuration files"
     echo -e "7. Setup systemd services for Mezo\n"
 
-    echo -e "Usage: $0\n" \
+    echo -e "Usage: $0\n\n" \
     "\t[-r/--run]\n\t\trun the installation\n\n" \
-    "\t[-c/--cleanup]\n\t\tclean up the installation\n\n" \
+    "\t[-c/--cleanup]\n\t\tclean up the installation\n\t\tWARNING: this option removes whole Mezo directory (${MEZOD_HOME}) INCLUDING PRIVATE KEYS\n\n" \
     "\t[--health]\n\t\tcheck health of mezo systemd services\n\n" \
     "\t[-s/--show-variables]\n\t\toutput variables read from env files\n\n" \
     "\t[-e/--envfile]\n\t\tset file with environment variables for setup script\n\n" \
@@ -385,6 +385,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -h|--help)
+            setenvs
             usage
             exit 0
             ;;
