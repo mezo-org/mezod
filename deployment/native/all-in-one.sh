@@ -7,21 +7,21 @@
 ### 3. Installing connect sidecar
 ### 4. Deploying mezo validator stack as systemd services
 
-set -euo pipefail
+set -eo pipefail
 
 update_system() {
-    sudo apt update -y && sudo apt upgrade -y
+    apt update -y &&  apt upgrade -y
 }
 
 install_tools() {
-    sudo apt install ufw jq curl -y
+    apt install ufw jq curl -y
 }
 
 open_ports() {
-    sudo ufw --force enable
-    sudo ufw allow 26660,26656,26657,1317,9090,8545,8546,6065/tcp
+    ufw --force enable
+    ufw allow 26660,26656,26657,1317,9090,8545,8546,6065/tcp
     # allow ssh connections:
-    sudo ufw allow 22/tcp
+    ufw allow 22/tcp
 }
 
 install_mezo() {
@@ -29,7 +29,7 @@ install_mezo() {
     MEZOD_DESTINATION=$MEZOD_HOME/bin/mezod-${MEZOD_VERSION}
     MEZO_EXEC=$MEZOD_DESTINATION/mezod
 
-    sudo mkdir -p ${MEZOD_DESTINATION}
+    mkdir -p ${MEZOD_DESTINATION}
     
     echo "Downloading mezod package to temporary dir"
     url=$(curl --silent "https://api.github.com/repos/mezo-org/mezod/releases" \
@@ -46,20 +46,20 @@ install_mezo() {
         --output /tmp/mezod-${MEZOD_ARCH}.tar.gz $url
 
     echo "Unpacking the binary build ${MEZOD_VERSION}"
-    sudo tar -xvf /tmp/mezod-${MEZOD_ARCH}.tar.gz -C ${MEZOD_DESTINATION}
+    tar -xvf /tmp/mezod-${MEZOD_ARCH}.tar.gz -C ${MEZOD_DESTINATION}
 
-    sudo chown root:root ${MEZO_EXEC}
-    sudo chmod +x ${MEZO_EXEC}
+    chown root:root ${MEZO_EXEC}
+    chmod +x ${MEZO_EXEC}
 
     echo "Mezo binary installed with path: ${MEZO_EXEC}"
 
-    # sudo $MEZO_EXEC --help
+    #$MEZO_EXEC --help
 
 }
 
 install_skip() {
 
-    curl -sSL https://raw.githubusercontent.com/skip-mev/connect/main/scripts/install.sh | sudo bash
+    curl -sSL https://raw.githubusercontent.com/skip-mev/connect/main/scripts/install.sh |  bash
 
     CONNECT_TMP=$(which connect)
     CONNECT_VERSION=$(${CONNECT_TMP} version)
@@ -67,10 +67,10 @@ install_skip() {
     CONNECT_EXEC_PATH=$MEZOD_HOME/bin/skip-${CONNECT_VERSION}
     CONNECT_EXEC=$CONNECT_EXEC_PATH/connect
 
-    sudo mkdir -p $CONNECT_EXEC_PATH
+    mkdir -p $CONNECT_EXEC_PATH
 
-    sudo mv $CONNECT_TMP $CONNECT_EXEC_PATH
-    sudo rm -rf $CONNECT_TMP
+    mv $CONNECT_TMP $CONNECT_EXEC_PATH
+    rm -rf $CONNECT_TMP
 
     echo "Skip binary installed with path: ${CONNECT_EXEC_PATH}"
 }
@@ -103,7 +103,7 @@ gen_mnemonic() {
 }
 
 prepare_keyring() {
-  sudo test -f "${MEZOD_HOME}/keyring-file/keyhash" && {
+   test -f "${MEZOD_HOME}/keyring-file/keyhash" && {
     echo "Keyring already prepared!"
     return
   }
@@ -114,7 +114,7 @@ prepare_keyring() {
 
   echo "Prepare keyring..."
   (echo "${keyring_mnemonic}"; echo "${MEZOD_KEYRING_PASSWORD}"; echo "${MEZOD_KEYRING_PASSWORD}") \
-    | sudo ${MEZO_EXEC} keys add \
+    | ${MEZO_EXEC} keys add \
       "${MEZOD_KEYRING_NAME}" \
       --home="${MEZOD_HOME}" \
       --keyring-backend="file" \
@@ -127,7 +127,7 @@ init_mezo_config() {
     prepare_keyring
     
     echo "Initialize configuration..."
-    sudo ${MEZO_EXEC} \
+    ${MEZO_EXEC} \
         init \
         "${MEZOD_MONIKER}" \
         --chain-id="${MEZOD_CHAIN_ID}" \
@@ -145,21 +145,21 @@ configure_mezo() {
 
     echo "Backup original configuration..."
     echo "Backup ${client_config_file} to ${client_config_file}.bak"
-    test -f "${client_config_file}.bak" || sudo cat "$client_config_file" | sudo tee "${client_config_file}.bak" > /dev/null
+    test -f "${client_config_file}.bak" ||  cat "$client_config_file" | tee "${client_config_file}.bak" > /dev/null
     echo "Backup ${app_config_file} to ${app_config_file}.bak"
-    test -f "${app_config_file}.bak" || sudo cat "$app_config_file" | sudo tee "${app_config_file}.bak" > /dev/null
+    test -f "${app_config_file}.bak" ||  cat "$app_config_file" | tee "${app_config_file}.bak" > /dev/null
     echo "Backup ${config_file} to ${config_file}.bak"
-    test -f "${config_file}.bak" || sudo cat "$config_file" | sudo tee "${config_file}.bak" > /dev/null
+    test -f "${config_file}.bak" ||  cat "$config_file" | tee "${config_file}.bak" > /dev/null
 
     echo "Customize configuration..."
 
-    sudo ${MEZO_EXEC} toml set \
+    ${MEZO_EXEC} toml set \
         ${client_config_file} \
         -v chain-id="${MEZOD_CHAIN_ID}" \
         -v keyring-backend="file" \
         -v node="tcp://0.0.0.0:26657"
 
-    sudo ${MEZO_EXEC} toml set \
+    ${MEZO_EXEC} toml set \
         ${config_file} \
         -v moniker="${MEZOD_MONIKER}" \
         -v p2p.laddr="tcp://0.0.0.0:26656" \
@@ -176,7 +176,7 @@ configure_mezo() {
         -v consensus.timeout_commit="150s" \
         -v rpc.timeout_broadcast_tx_commit="150s"
 
-    sudo ${MEZO_EXEC} toml set \
+    ${MEZO_EXEC} toml set \
         ${app_config_file} \
         -v ethereum-sidecar.client.server-address="0.0.0.0:7500" \
         -v api.enable=true \
@@ -208,7 +208,7 @@ StandardError=journal
 User=root
 
 [Install]
-WantedBy=multi-user.target" | sudo tee /etc/systemd/system/connect-sidecar.service
+WantedBy=multi-user.target" | tee /etc/systemd/system/connect-sidecar.service
 
 }
 
@@ -227,7 +227,7 @@ StandardError=journal
 User=root
 
 [Install]
-WantedBy=multi-user.target" | sudo tee /etc/systemd/system/ethereum-sidecar.service
+WantedBy=multi-user.target" | tee /etc/systemd/system/ethereum-sidecar.service
 
 }
 
@@ -247,33 +247,33 @@ StandardError=journal
 User=root
 
 [Install]
-WantedBy=multi-user.target" | sudo tee /etc/systemd/system/mezo.service
+WantedBy=multi-user.target" | tee /etc/systemd/system/mezo.service
 
 }
 
 systemd_restart() {
-    sudo systemctl daemon-reload
-    sudo systemctl start mezo
-    sudo systemctl start ethereum-sidecar
-    sudo systemctl start connect-sidecar
+    systemctl daemon-reload
+    systemctl start mezo
+    systemctl start ethereum-sidecar
+    systemctl start connect-sidecar
 }
 
 cleanup() {
-    sudo systemctl stop mezo.service || echo 'mezo stopped'
-    sudo systemctl stop ethereum-sidecar.service || echo 'ethereum sidecar stopped'
-    sudo systemctl stop connect-sidecar.service || echo 'skip sidecar stopped'
+    systemctl stop mezo.service || echo 'mezo stopped'
+    systemctl stop ethereum-sidecar.service || echo 'ethereum sidecar stopped'
+    systemctl stop connect-sidecar.service || echo 'skip sidecar stopped'
 
-    sudo systemctl disable mezo.service || echo 'mezo sidecar already disabled'
-    sudo systemctl disable ethereum-sidecar.service || echo 'ethereum already disabled'
-    sudo systemctl disable connect-sidecar.service || echo 'skip sidecar already disabled'
-    
-    sudo rm -f /etc/systemd/system/mezo.service
-    sudo rm -f /etc/systemd/system/ethereum-sidecar.service
-    sudo rm -f /etc/systemd/system/connect-sidecar.service
+    systemctl disable mezo.service || echo 'mezo sidecar already disabled'
+    systemctl disable ethereum-sidecar.service || echo 'ethereum already disabled'
+    systemctl disable connect-sidecar.service || echo 'skip sidecar already disabled'
 
-    sudo systemctl daemon-reload
+    rm -f /etc/systemd/system/mezo.service
+    rm -f /etc/systemd/system/ethereum-sidecar.service
+    rm -f /etc/systemd/system/connect-sidecar.service
 
-    sudo rm -rf ${MEZOD_HOME}
+    systemctl daemon-reload
+
+    rm -rf ${MEZOD_HOME}
 }
 
 usage() {
@@ -289,6 +289,7 @@ usage() {
     echo -e "7. Setup systemd services for Mezo\n"
 
     echo -e "Usage: $0\n" \
+    "\t[-r/--run]\n\t\trun the installation\n\n" \
     "\t[-c/--cleanup]\n\t\tclean up the installation\n\n" \
     "\t[--health]\n\t\tcheck health of mezo systemd services\n\n" \
     "\t[-s/--show-variables]\n\t\toutput variables read from env files\n\n" \
@@ -297,15 +298,14 @@ usage() {
 }
 
 healthcheck() {
-    sudo systemctl status --no-pager mezo || echo "issues with mezo"
-    sudo systemctl status --no-pager ethereum-sidecar || echo "issues with ethereum sidecar"
-    sudo systemctl status --no-pager connect-sidecar || echo "issues with connect sidecar"
+    systemctl status --no-pager mezo || echo "issues with mezo"
+    systemctl status --no-pager ethereum-sidecar || echo "issues with ethereum sidecar"
+    systemctl status --no-pager connect-sidecar || echo "issues with connect sidecar"
 }
 
 show_variables() {
     echo "MEZOD_HOME: $MEZOD_HOME"
     echo "MEZOD_MONIKER: $MEZOD_MONIKER"
-    echo "MEZOD_P2P_SEEDS: $MEZOD_P2P_SEEDS"
     echo "MEZOD_CHAIN_ID: $MEZOD_CHAIN_ID"
     echo "MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS: $MEZOD_ETHEREUM_SIDECAR_CLIENT_SERVER_ADDRESS"
     echo "MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS: $MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS"
@@ -342,28 +342,32 @@ setenvs() {
 
 # default env file name - can be changed through -e/--envfile option
 ENVIRONMENT_FILE="testnet.env"
+healthcheck_flag=false
+run_flag=false
+show_variables_flag=false
+cleanup_flag=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --health)
-            healthcheck
-            exit 0
+            healthcheck_flag=true
+            shift
+            ;;
+        -r|--run)
+            run_flag=true
             shift
             ;;
         -s|--show-variables)
-            setenvs
-            show_variables
+            show_variables_flag=true
             shift
             ;;
         -e|--envfile)
             ENVIRONMENT_FILE="$2"
-            shift
-            shift
-            ;;      
+            shift 2
+            ;;
         -c|--cleanup)
-            setenvs
-            cleanup
-            exit 0
+            cleanup_flag=true
+            shift
             ;;
         -h|--help)
             usage
@@ -377,5 +381,29 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-setenvs
-main
+if [ $(id -u) -ne 0 ]; then
+    echo "This script requires root privileges"
+    exit 1
+fi
+
+# Execute actions based on flags
+if [[ "$healthcheck_flag" == true ]]; then
+    healthcheck
+    exit 0
+fi
+
+if [[ "$show_variables_flag" == true ]]; then
+    setenvs
+    show_variables
+fi
+
+if [[ "$cleanup_flag" == true ]]; then
+    setenvs
+    cleanup
+    exit 0
+fi
+
+if [[ "$run_flag" == true ]]; then
+    setenvs
+    main
+fi
