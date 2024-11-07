@@ -1,16 +1,14 @@
 #!/bin/bash
 
-# This script deploys the faucet as a Cloudflare Worker using Wrangler.
-# There are several steps in the deployment process:
-# 1. The script reads the faucet's secrets from the dedicated 1Password vault
-#    and puts them into the Worker environment. Make sure you are authenticated
-#    with 1Password CLI before running this script and have access to the vault.
-#    Consult the 1password CLI help to see how to authenticate. At the time of
-#    writing, the command is `eval $(op signin)`.
-# 2. The script deploys the Worker using Wrangler. It uses the staging environment
-#    by default. You can change it by modifying the `wrangler` alias.
-
+# Exit immediately if a command exits with a non-zero status.
+set -e
+# Enable aliases to be expanded as commands.
 shopt -s expand_aliases
+
+# Check if the user is authenticated with 1Password CLI. If not, the script will
+# fail due to the `set -e` directive.
+printf "checking 1Password CLI authentication\n\n"
+op whoami
 
 alias wrangler='npx wrangler --env staging'
 
