@@ -9,6 +9,7 @@ type Env = {
   MEZO_FAUCET_PRIVATE_KEY: string
   TURNSTILE_SITE_KEY: string
   TURNSTILE_SECRET_KEY: string
+  AMOUNT_BTC: string
 }
 
 const sendBTC = async (request: Request, env: Env) => {
@@ -40,12 +41,14 @@ const sendBTC = async (request: Request, env: Env) => {
       ethers.getDefaultProvider(env.MEZO_API_URL)
     )
 
+    const amountBTC = env.AMOUNT_BTC
+
     const transaction = await wallet.sendTransaction({
       to: targetAddress,
-      value: ethers.parseEther("0.001")
+      value: ethers.parseEther(amountBTC),
     });
 
-    return html(successHTML(transaction.hash))
+    return html(successHTML(transaction.hash, amountBTC))
   } catch (error) {
     return html(errorHTML(`Unexpected error: ${error}`))
   }

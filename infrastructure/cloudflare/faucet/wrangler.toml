@@ -8,6 +8,7 @@ logpush = true
 # Development
 [vars]
 MEZO_API_URL = "http://localhost:8545"
+AMOUNT_BTC = "0.001"
 
 # Staging
 [env.staging]
@@ -15,3 +16,4 @@ route = { pattern = "faucet.test.mezo.org", custom_domain = true }
 
 [env.staging.vars]
 MEZO_API_URL = "http://mezo-node-0.test.mezo.org:8545"
+AMOUNT_BTC = "0.001"

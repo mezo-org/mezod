@@ -91,7 +91,7 @@ export const errorHTML = (error: string) => `
   </html>
 `
 
-export const successHTML = (txHash: string) => `
+export const successHTML = (txHash: string, amountBTC: string) => `
   <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -106,7 +106,7 @@ export const successHTML = (txHash: string) => `
   <div class="container">
       <img src="data:image/svg+xml;base64,${logoSVGBase64}" alt="Logo" class="logo">
       
-      <h1 style="color: green">BTC sent!</h1>  
+      <h1 style="color: green">${amountBTC} BTC sent!</h1>  
       <p><b>Transaction: </b><a href="https://explorer.test.mezo.org/tx/${txHash}">${txHash}</a></p>
   </div>
   </body>
