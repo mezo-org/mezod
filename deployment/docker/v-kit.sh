@@ -57,6 +57,10 @@ _run_cli_cmd_oneshoot() {
 ################################################################################
 # Development and Operations
 ################################################################################
+build() { ## Build the image
+  docker build --platform linux/amd64 --tag ${DOCKER_IMAGE} ../../
+}
+
 clean() { # (no help) Remove all data
   _run_cli_cmd_oneshoot <<EOF
 set -x
@@ -112,6 +116,10 @@ logs() { ## Show logs
 }
 
 journal() { ## Show journalctl logs
+  if [ $# -eq 0 ]; then
+    echo "Error: Container name is required!"
+    exit 1
+  fi
   journalctl CONTAINER_NAME="$1" -f
 }
 

@@ -85,42 +85,49 @@ customize_configuration() {
   #
   # FILE: client.toml
   #
-  tomledit --path "$client_config_file" set "chain-id" "\"${MEZOD_CHAIN_ID}\""
-  tomledit --path "$client_config_file" set "keyring-backend" "\"file\""
+  mezod toml set "$client_config_file" \
+    -v chain-id="${MEZOD_CHAIN_ID}" \
+    -v keyring-backend="file"
 
   #
   # FILE: config.toml
   #
-  tomledit --path "$config_file" set "moniker" "\"${MEZOD_MONIKER}\""
-  tomledit --path "$config_file" set "p2p.laddr" "\"tcp://0.0.0.0:26656\""
-  tomledit --path "$config_file" set "p2p.external_address" "\"${PUBLIC_IP}:26656\""
-  tomledit --path "$config_file" set "rpc.laddr" "\"tcp://0.0.0.0:26657\""
-  tomledit --path "$config_file" set "instrumentation.prometheus" "true"
-  tomledit --path "$config_file" set "instrumentation.prometheus_listen_addr" "\"0.0.0.0:26660\""
+  mezod toml set "$config_file" \
+    -v moniker="${MEZOD_MONIKER}" \
+    -v p2p.laddr="tcp://0.0.0.0:26656" \
+    -v p2p.external_address="${PUBLIC_IP}:26656" \
+    -v rpc.laddr="tcp://0.0.0.0:26657" \
+    -v instrumentation.prometheus="true" \
+    -v instrumentation.prometheus_listen_addr="0.0.0.0:26660"
+
+
   # Increase timeouts
-  tomledit --path "$config_file" set "consensus.timeout_propose" '"30s"'
-  tomledit --path "$config_file" set "consensus.timeout_propose_delta" '"5s"'
-  tomledit --path "$config_file" set "consensus.timeout_prevote" '"10s"'
-  tomledit --path "$config_file" set "consensus.timeout_prevote_delta" '"5s"'
-  tomledit --path "$config_file" set "consensus.timeout_precommit" '"5s"'
-  tomledit --path "$config_file" set "consensus.timeout_precommit_delta" '"5s"'
-  tomledit --path "$config_file" set "consensus.timeout_commit" '"150s"'
-  tomledit --path "$config_file" set "rpc.timeout_broadcast_tx_commit" '"150s"'
+  mezod toml set "$config_file" \
+    -v consensus.timeout_propose="30s" \
+    -v consensus.timeout_propose_delta="5s" \
+    -v consensus.timeout_prevote="10s" \
+    -v consensus.timeout_prevote_delta="5s" \
+    -v consensus.timeout_precommit="5s" \
+    -v consensus.timeout_precommit_delta="5s" \
+    -v consensus.timeout_commit="150s" \
+    -v rpc.timeout_broadcast_tx_commit="150s"
 
   #
   # FILE: app.toml
   #
-  tomledit --path "$app_config_file" set "ethereum-sidecar.client.server-address" "\"ethereum-sidecar:7500\""
-  tomledit --path "$app_config_file" set "api.enable" "true"
-  tomledit --path "$app_config_file" set "api.address" "\"tcp://0.0.0.0:1317\""
-  tomledit --path "$app_config_file" set "grpc.enable" "true"
-  tomledit --path "$app_config_file" set "grpc.address" "\"0.0.0.0:9090\""
-  tomledit --path "$app_config_file" set "grpc-web.enable" "true"
-  tomledit --path "$app_config_file" set "json-rpc.enable" "true"
-  tomledit --path "$app_config_file" set "json-rpc.address" "\"0.0.0.0:8545\""
-  tomledit --path "$app_config_file" set "json-rpc.api" "\"eth,txpool,personal,net,debug,web3\""
-  tomledit --path "$app_config_file" set "json-rpc.ws-address" "\"0.0.0.0:8546\""
-  tomledit --path "$app_config_file" set "json-rpc.metrics-address" "\"10.55.0.6:6065\""
+  mezod toml set "$app_config_file" \
+    -v ethereum-sidecar.client.server-address="ethereum-sidecar:7500" \
+    -v api.enable="true" \
+    -v api.address="tcp://0.0.0.0:1317" \
+    -v grpc.enable="true" \
+    -v grpc.address="0.0.0.0:9090" \
+    -v grpc-web.enable="true" \
+    -v json-rpc.enable="true" \
+    -v json-rpc.address="0.0.0.0:8545" \
+    -v json-rpc.api="eth,txpool,personal,net,debug,web3" \
+    -v json-rpc.ws-address="0.0.0.0:8546" \
+    -v json-rpc.metrics-address="10.55.0.6:6065"
+
 
   echo "Configuration customized!"
 }

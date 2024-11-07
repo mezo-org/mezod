@@ -28,18 +28,6 @@ RUN make bindings
 RUN make build
 
 #
-# Layer for building tomledit
-#
-FROM golang:1.22.8-bullseye AS build-tomledit
-
-WORKDIR /go/src/github.com/creachadair/
-
-# hadolint ignore=DL3003
-RUN git clone https://github.com/creachadair/tomledit.git \
-    && cd tomledit/cmd/tomledit \
-    && go build -o /usr/bin/tomledit
-
-#
 # Busybox layer as source of shell commands
 #
 FROM busybox:stable AS busybox
@@ -50,7 +38,6 @@ FROM busybox:stable AS busybox
 FROM gcr.io/distroless/base-nossl:nonroot AS production
 
 COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/stty /bin/ls /bin/
-COPY --from=build-tomledit /usr/bin/tomledit /usr/bin/tomledit
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 COPY deployment/docker/entrypoint.sh /entrypoint.sh
 
