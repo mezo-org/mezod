@@ -5,4 +5,13 @@ dev.port = 8000
 node_compat = true
 logpush = true
 
-assets = { directory = "./assets/", binding = "ASSETS", not_found_handling = "single-page-application" }
+# Development
+[vars]
+MEZO_API_URL = "http://localhost:8545"
+
+# Staging
+[env.staging]
+route = { pattern = "faucet.test.mezo.org", custom_domain = true }
+
+[env.staging.vars]
+MEZO_API_URL = "http://mezo-node-0.test.mezo.org:8545"

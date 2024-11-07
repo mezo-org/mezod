@@ -1,0 +1,7 @@
+# Use `mezod keys unsafe-export-eth-key` to get the private key from a localnet account.
+MEZO_FAUCET_PRIVATE_KEY=
+
+# Turnstile keys used here are test ones that always pass.
+# See: https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+TURNSTILE_SITE_KEY=3x00000000000000000000FF
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
