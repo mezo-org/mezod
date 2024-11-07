@@ -14,7 +14,7 @@ update_system() {
 }
 
 install_tools() {
-    sudo apt install ufw jq curl gcc build-essential wget make gawk bison -y
+    sudo apt install ufw jq curl -y
 }
 
 open_ports() {
