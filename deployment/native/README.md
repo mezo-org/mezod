@@ -5,8 +5,8 @@ This document describes how Mezo Validator Kit for native binaries works and how
     - Ubuntu 24 LTS and higher (x86_64 arch)
     - Debian 13 Trixie and higher (x86_64 arch)
 
-    > [!IMPORTANT]
-    > If you are planning to install on older system versions or other distributions, it's not guaranteed it will work.
+> [!IMPORTANT]
+> If you are planning to install on older system versions or other distributions, it's not guaranteed it will work.
 
 2. Before setup, make sure you have `all-in-one.sh` and `testnet.env` on your machine.
 3. Make sure to you can run the setup script as `root` or using `sudo`.
@@ -56,8 +56,14 @@ Usage: ./all-in-one.sh
 ```
 
 To run full validator setup, run:
+
+with sudo:
 ```
-./all-in-one --run
+$ sudo ./all-in-one --run
+```
+or as root:
+```
+# ./all-in-one --run
 ```
 
 > [!IMPORTANT]
