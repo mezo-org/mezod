@@ -82,18 +82,34 @@ customize_configuration() {
 
   echo "Customize configuration..."
 
-  # client.toml
+  #
+  # FILE: client.toml
+  #
   tomledit --path "$client_config_file" set "chain-id" "\"${MEZOD_CHAIN_ID}\""
   tomledit --path "$client_config_file" set "keyring-backend" "\"file\""
 
-  # config.toml
+  #
+  # FILE: config.toml
+  #
   tomledit --path "$config_file" set "moniker" "\"${MEZOD_MONIKER}\""
   tomledit --path "$config_file" set "p2p.laddr" "\"tcp://0.0.0.0:26656\""
+  tomledit --path "$config_file" set "p2p.external_address" "\"${PUBLIC_IP}:26656\""
   tomledit --path "$config_file" set "rpc.laddr" "\"tcp://0.0.0.0:26657\""
   tomledit --path "$config_file" set "instrumentation.prometheus" "true"
   tomledit --path "$config_file" set "instrumentation.prometheus_listen_addr" "\"0.0.0.0:26660\""
+  # Increase timeouts
+  tomledit --path "$config_file" set "consensus.timeout_propose" '"30s"'
+  tomledit --path "$config_file" set "consensus.timeout_propose_delta" '"5s"'
+  tomledit --path "$config_file" set "consensus.timeout_prevote" '"10s"'
+  tomledit --path "$config_file" set "consensus.timeout_prevote_delta" '"5s"'
+  tomledit --path "$config_file" set "consensus.timeout_precommit" '"5s"'
+  tomledit --path "$config_file" set "consensus.timeout_precommit_delta" '"5s"'
+  tomledit --path "$config_file" set "consensus.timeout_commit" '"150s"'
+  tomledit --path "$config_file" set "rpc.timeout_broadcast_tx_commit" '"150s"'
 
-  # app.toml
+  #
+  # FILE: app.toml
+  #
   tomledit --path "$app_config_file" set "ethereum-sidecar.client.server-address" "\"ethereum-sidecar:7500\""
   tomledit --path "$app_config_file" set "api.enable" "true"
   tomledit --path "$app_config_file" set "api.address" "\"tcp://0.0.0.0:1317\""
@@ -109,11 +125,50 @@ customize_configuration() {
   echo "Configuration customized!"
 }
 
-main() {
-  prepare_keyring
-  init_configuration
-  validate_genesis
-  customize_configuration
+get_validator_info() {
+  validator_addr_bech="$(echo "${KEYRING_PASSWORD}" | mezod --home="${MEZOD_HOME}" keys show "${KEYRING_NAME}" --address)"
+  validator_addr="$(mezod --home="${MEZOD_HOME}" keys parse "${validator_addr_bech}" | grep bytes | awk '{print "0x"$2}')"
+  echo "Validator address: ${validator_addr}"
+
+  validator_id="$(cat "${MEZOD_HOME}"/config/genval/genval-*.json | jq -r '.memo' | awk -F'@' '{print $1}')"
+  echo "Validator ID: ${validator_id}"
+
+  validator_consensus_addr_bech="$(cat "${MEZOD_HOME}"/config/genval/genval-*.json | jq -r '.validator.cons_pub_key_bech32')"
+  validator_consensus_addr="$(mezod --home="${MEZOD_HOME}" keys parse "${validator_consensus_addr_bech}" | grep bytes | awk '{printf "%s", $2}' | tail -c 64 | awk '{print "0x"$1}')"
+  echo "Validator consensus address: ${validator_consensus_addr}"
+
+  validator_network_addr="$(jq -r '.address' "${MEZOD_HOME}"/config/priv_validator_key.json | awk '{print "0x"$1}')"
+  echo "Validator network address: ${validator_network_addr}"
 }
 
-main
+#
+# MAIN
+#
+if [ -z "$1" ]; then
+  echo "No command provided!"
+  exit 1
+fi
+
+case "$1" in
+  keyring)
+    prepare_keyring
+    exit 0
+    ;;
+  info)
+    get_validator_info
+    exit 0
+    ;;
+  config)
+    init_configuration
+    validate_genesis
+    customize_configuration
+    exit 0
+    ;;
+  *)
+    init_configuration
+    validate_genesis
+    customize_configuration
+    # Run the mezod node
+    exec "$@"
+    ;;
+esac

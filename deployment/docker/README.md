@@ -8,39 +8,38 @@ to join. There are two options: `testnet` and `mainnet`. The following
 instruction will use `testnet` as an example.
 
 > [!NOTE]
-> Run `make` (without arguments) to see the list of available commands.
+> Run `./v-kit.sh` (without arguments) to see the list of available commands.
 
 #### Configuration and runtime flow
 
 ```mermaid
 sequenceDiagram
   participant testnet.env
-  participant Makefile
+  participant v-kit.sh
   box Docker Compose
     participant compose.yaml
-    participant init as Service 'init'
     participant cli as Service 'cli'
-    participant mezod as Service 'mezod' with sidecars
+    participant mezod as Service 'mezod'
+    participant mezod-and-sidecars as Service 'mezod' with sidecars
   end
 
   Note over testnet.env: (USER) Adjust the configuration
-  Makefile -->> testnet.env: load
+  v-kit.sh -->> testnet.env: load
 
   critical One-time setup
-    Makefile ->> compose.yaml: make init
-    compose.yaml -->> init: run
-    init -->> init: Load predefined variables (vars.sh)<br/>Generate mnemonic (optional)<br/>Prepare keyring<br/>Initialize the configuration
-    Makefile ->> compose.yaml: make cli
-    compose.yaml -->> cli: run
-    Note over cli: (USER) Generate validator data
-    Note over cli: (USER) Submit joining request (external)
+    v-kit.sh ->> compose.yaml: v-kit.sh init-keyring
+    compose.yaml -->> mezod: keyring
+    v-kit.sh ->> compose.yaml: v-kit.sh init-config
+    compose.yaml -->> mezod: config
+    v-kit.sh ->> compose.yaml: v-kit.sh init-genval
+    compose.yaml -->> cli: genval
   end
 
   loop Runtime
-    Makefile ->> compose.yaml: make start
-    compose.yaml -->> mezod: run
-    Makefile ->> compose.yaml: make stop
-    compose.yaml -->> mezod: stop
+    v-kit.sh ->> compose.yaml: v-kit.sh start
+    compose.yaml -->> mezod-and-sidecars: run
+    v-kit.sh ->> compose.yaml: v-kit.sh stop
+    compose.yaml -->> mezod-and-sidecars: stop
     Note over compose.yaml: (USER) Update the configuration
   end
 ```
@@ -70,25 +69,32 @@ cp testnet.env.example testnet.env
 * `MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS` - the address of the Ethereum node
 * `PUBLIC_IP` - the public IP address of the validator
 
-### 2. Initialize the configuration
+### 2. Initialization
+
+#### Keyring
 
 ```shell
-make init
+./v-kit.sh init-keyring
 ```
 
-### 3. Generate validator data
+#### Configuration
 
 ```shell
-make cli
-$ echo "${KEYRING_PASSWORD}" | mezod genesis genval "${KEYRING_NAME}" --keyring-backend="file" --chain-id="${MEZOD_CHAIN_ID}" --home="${MEZOD_HOME}" --ip="${PUBLIC_IP}"
+./v-kit.sh init-config
 ```
 
-### 4. Submit joining request
+#### Validator data
+
+```shell
+./v-kit.sh init-genval
+```
+
+### 3. Submit joining request
 
 TBD
 
 ### 5. Run the validator
 
 ```shell
-make start
+./v-kit.sh start
 ```

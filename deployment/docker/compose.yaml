@@ -12,54 +12,45 @@ x-envfile: &envfile
 x-platform: &platform
   platform: linux/amd64
 
+# Enable logging to journald
+x-logging: &logging
+  logging:
+    driver: journald
+
+x-user: &user
+  user: "65532:65532" # nonroot user used in distroless image
 
 services:
   #
-  # SECTION: operations
+  # Operations
   #
   cli:
-    <<: [*platform, *envfile, *volumes]
+    <<: [*platform, *envfile, *volumes, *logging, *user]
     container_name: cli
-    image: ${DOCKER_IMAGE}
+    image: local/mezod-cli # Use v-kit.sh to build the image
     deploy:
       # Make sure that the service won't run for "docker compose up".
       # It is intended to be run manually.
       replicas: 0
-    entrypoint: ["/bin/sh"]
     working_dir: ${MEZOD_HOME}
     networks:
       mezo:
         ipv4_address: 10.55.0.2
 
   #
-  # PHASE: initialization
-  #
-  init:
-    <<: [*platform, *envfile, *volumes]
-    container_name: init
-    image: ${DOCKER_IMAGE}
-    command: ["/init.sh"]
-    restart: on-failure:2
-    networks:
-      mezo:
-        ipv4_address: 10.55.0.3
-
-  #
   # PHASE: runtime
   #
   ethereum-sidecar:
-    <<: [*platform]
+    <<: [*platform, *logging, *user]
     container_name: ethereum-sidecar
     image: ${DOCKER_IMAGE}
+    entrypoint: [] # Disable the default entrypoint
     command:
       - mezod
       - ethereum-sidecar
       - --log_format=json
       - --ethereum-sidecar.server.ethereum-node-address=${MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS}
     restart: always
-    depends_on:
-      init:
-        condition: service_completed_successfully
     expose:
       - 7500
     cap_drop:
@@ -70,7 +61,7 @@ services:
 
   connect-sidecar:
     # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
-    <<: [*platform]
+    <<: [*platform, *logging]
     container_name: connect-sidecar
     image: ghcr.io/skip-mev/connect-sidecar:v2.1.1
     entrypoint: []
@@ -84,9 +75,6 @@ services:
     expose:
       - 8080
     restart: always
-    depends_on:
-      init:
-        condition: service_completed_successfully
     cap_drop:
       - ALL
     networks:
@@ -94,10 +82,17 @@ services:
         ipv4_address: 10.55.0.5
 
   mezod:
-    <<: [*platform, *envfile, *volumes]
+    <<: [*platform, *envfile, *volumes, *logging, *user]
     container_name: mezod
     image: ${DOCKER_IMAGE}
-    command: ["/start.sh"]
+    command:
+      - mezod
+      - start
+      - --home=${MEZOD_HOME}
+      - --metrics
+      - --log_format=${MEZOD_LOG_FORMAT}
+      - --log_level=${MEZOD_LOG_LEVEL}
+      - --log_no_color
     restart: always
     ports:
       - 26656:26656  # p2p
@@ -109,19 +104,10 @@ services:
       - 6065:6065    # metrics of EVM (app.toml)
       - 26660:26660  # metrics of cometbft (config.toml)
     depends_on:
-      init:
-        condition: service_completed_successfully
       ethereum-sidecar:
         condition: service_started
       connect-sidecar:
         condition: service_started
-    healthcheck:
-      test: ["CMD", "cat", "${MEZOD_HOME}/config/genesis.json"]
-      interval: 5s
-      timeout: 1s
-      retries: 3
-      start_period: 1s
-      start_interval: 1s
     cap_drop:
       - ALL
     networks:

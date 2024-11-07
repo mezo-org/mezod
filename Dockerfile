@@ -52,7 +52,8 @@ FROM gcr.io/distroless/base-nossl:nonroot AS production
 COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/stty /bin/ls /bin/
 COPY --from=build-tomledit /usr/bin/tomledit /usr/bin/tomledit
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
-COPY deployment/docker/init.sh /init.sh
-COPY deployment/docker/start.sh /start.sh
+COPY deployment/docker/entrypoint.sh /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]
 
 CMD ["mezod"]
