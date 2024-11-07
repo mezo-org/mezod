@@ -38,9 +38,12 @@ Usage: ./all-in-one.sh
         [-r/--run]
                 run the installation
 
+        [-b/--backup]
+                backup mezo home dir to /var/mezod-backups
+
         [-c/--cleanup]
                 clean up the installation
-                (WARNING: this option removes whole Mezo directory INCLUDING PRIVATE KEYS)
+                WARNING: this option removes whole Mezo directory (/var/mezod) INCLUDING PRIVATE KEYS
 
         [--health]
                 check health of mezo systemd services
