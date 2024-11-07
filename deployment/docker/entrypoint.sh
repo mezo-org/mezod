@@ -172,6 +172,7 @@ case "$1" in
     exit 0
     ;;
   *)
+    prepare_keyring
     init_configuration
     validate_genesis
     customize_configuration
