@@ -288,7 +288,21 @@ cleanup() {
 }
 
 backup() {
-    echo "backup"
+    if [ ! -d "$MEZOD_HOME" ]; then
+        echo "Error: Directory $MEZOD_HOME does not exist."
+        exit 1
+    fi
+    
+    BACKUP_DIRNAME=$(dirname "$MEZOD_HOME")
+    BACKUP_FOLDER=$(basename "$MEZOD_HOME")
+
+    echo $BACKUP_DIRNAME
+    echo $BACKUP_FOLDER
+
+    mkdir -p "$MEZOD_HOME-backups"
+
+    echo "$MEZOD_HOME-backups/mezo_backup_$(date +%Y%m%d).tar.gz"
+    tar -czvf "$MEZOD_HOME-backups/mezo_backup_$(date +%Y%m%d).tar.gz" -C "$BACKUP_DIRNAME" "$BACKUP_FOLDER"
 }
 
 usage() {
