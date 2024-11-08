@@ -37,7 +37,9 @@ FROM busybox:stable AS busybox
 #
 FROM gcr.io/distroless/base-nossl:nonroot AS production
 
-COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/stty /bin/ls /bin/
+ADD --chmod=755 https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 /bin/jq
+
+COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/stty /bin/ls /bin/grep /bin/awk /bin/tail /bin/
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 COPY deployment/docker/entrypoint.sh /entrypoint.sh
 

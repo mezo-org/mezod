@@ -80,53 +80,65 @@ customize_configuration() {
   test -f "${app_config_file}.bak" || cat "$app_config_file" > "${app_config_file}.bak"
   test -f "${config_file}.bak" || cat "$config_file" > "${config_file}.bak"
 
-  echo "Customize configuration..."
+  echo "Set configuration defaults..."
 
   #
   # FILE: client.toml
   #
   mezod toml set "$client_config_file" \
-    -v chain-id="${MEZOD_CHAIN_ID}" \
-    -v keyring-backend="file"
+    -v "chain-id=${MEZOD_CHAIN_ID}" \
+    -v "keyring-backend=file"
+
+  # Check if MEZOD_CUSTOM_CONF_CLIENT_TOML file exist
+  if [ -f "$MEZOD_CUSTOM_CONF_CLIENT_TOML" ]; then
+    echo "External customizations for client.toml..."
+    while IFS= read -r line; do
+      mezod toml set $client_config_file -v $line
+    done < "$MEZOD_CUSTOM_CONF_CLIENT_TOML"
+  fi
 
   #
   # FILE: config.toml
   #
   mezod toml set "$config_file" \
-    -v moniker="${MEZOD_MONIKER}" \
-    -v p2p.laddr="tcp://0.0.0.0:26656" \
-    -v p2p.external_address="${PUBLIC_IP}:26656" \
-    -v rpc.laddr="tcp://0.0.0.0:26657" \
-    -v instrumentation.prometheus="true" \
-    -v instrumentation.prometheus_listen_addr="0.0.0.0:26660"
+    -v "moniker=${MEZOD_MONIKER}" \
+    -v "p2p.laddr=tcp://0.0.0.0:26656" \
+    -v "p2p.external_address=${PUBLIC_IP}:26656" \
+    -v "rpc.laddr=tcp://0.0.0.0:26657" \
+    -v "instrumentation.prometheus=true" \
+    -v "instrumentation.prometheus_listen_addr=0.0.0.0:26660"
 
-
-  # Increase timeouts
-  mezod toml set "$config_file" \
-    -v consensus.timeout_propose="30s" \
-    -v consensus.timeout_propose_delta="5s" \
-    -v consensus.timeout_prevote="10s" \
-    -v consensus.timeout_prevote_delta="5s" \
-    -v consensus.timeout_precommit="5s" \
-    -v consensus.timeout_precommit_delta="5s" \
-    -v consensus.timeout_commit="150s" \
-    -v rpc.timeout_broadcast_tx_commit="150s"
+  # Check if MEZOD_CUSTOM_CONF_CONFIG_TOML file exist
+  if [ -f "$MEZOD_CUSTOM_CONF_CONFIG_TOML" ]; then
+    echo "External customizations for config.toml..."
+    while IFS= read -r line; do
+      mezod toml set $config_file -v $line
+    done < "$MEZOD_CUSTOM_CONF_CONFIG_TOML"
+  fi
 
   #
   # FILE: app.toml
   #
   mezod toml set "$app_config_file" \
-    -v ethereum-sidecar.client.server-address="ethereum-sidecar:7500" \
-    -v api.enable="true" \
-    -v api.address="tcp://0.0.0.0:1317" \
-    -v grpc.enable="true" \
-    -v grpc.address="0.0.0.0:9090" \
-    -v grpc-web.enable="true" \
-    -v json-rpc.enable="true" \
-    -v json-rpc.address="0.0.0.0:8545" \
-    -v json-rpc.api="eth,txpool,personal,net,debug,web3" \
-    -v json-rpc.ws-address="0.0.0.0:8546" \
-    -v json-rpc.metrics-address="0.0.0.0:6065"
+    -v "ethereum-sidecar.client.server-address=ethereum-sidecar:7500" \
+    -v "api.enable=true" \
+    -v "api.address=tcp://0.0.0.0:1317" \
+    -v "grpc.enable=true" \
+    -v "grpc.address=0.0.0.0:9090" \
+    -v "grpc-web.enable=true" \
+    -v "json-rpc.enable=true" \
+    -v "json-rpc.address=0.0.0.0:8545" \
+    -v "json-rpc.api=eth,txpool,personal,net,debug,web3" \
+    -v "json-rpc.ws-address=0.0.0.0:8546" \
+    -v "json-rpc.metrics-address=0.0.0.0:6065"
+
+  # Check if MEZOD_CUSTOM_CONF_APP_TOML file exist
+  if [ -f "$MEZOD_CUSTOM_CONF_APP_TOML" ]; then
+    echo "External customizations for app.toml..."
+    while IFS= read -r line; do
+      mezod toml set $app_config_file -v $line
+    done < "$MEZOD_CUSTOM_CONF_APP_TOML"
+  fi
 
 
   echo "Configuration customized!"
@@ -176,6 +188,7 @@ case "$1" in
     init_configuration
     validate_genesis
     customize_configuration
+    get_validator_info
     # Run the mezod node
     exec "$@"
     ;;
