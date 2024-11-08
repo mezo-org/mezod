@@ -34,14 +34,14 @@ const sendBTC = async (request: Request, env: Env) => {
     return html(errorHTML("Captcha verification failed"))
   }
 
+  if (!ethers.isAddress(targetAddress)) {
+    return html(errorHTML("Invalid target address. Try to use a proper 20-byte hexadecimal address prefixed with 0x."))
+  }
+
   const rl = await rateLimit(env, ip)
   if (!rl.success) {
     const leftMinutes = Math.ceil(rl.left! / 60)
     return html(errorHTML(`Rate limit exceeded. Try again after ${leftMinutes} min.`))
-  }
-
-  if (!ethers.isAddress(targetAddress)) {
-    return html(errorHTML("Invalid target address. Try to use a proper 20-byte hexadecimal address prefixed with 0x."))
   }
 
   try {
