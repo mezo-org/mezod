@@ -6,6 +6,11 @@
 
 set -o errexit # Exit on error
 
+# Global variables
+CLIENT_CONFIG_FILE="${MEZOD_HOME}/config/client.toml"
+APP_CONFIG_FILE="${MEZOD_HOME}/config/app.toml"
+CONFIG_FILE="${MEZOD_HOME}/config/config.toml"
+
 gen_mnemonic() {
   mnemonic_file="$1"
   # Check if the environment variable is set
@@ -54,6 +59,11 @@ prepare_keyring() {
 
 init_configuration() {
   echo "Initialize configuration..."
+  echo "Cleaning up existing configuration..."
+  test -f "$CLIENT_CONFIG_FILE" && rm -fv "$CLIENT_CONFIG_FILE"
+  test -f "$APP_CONFIG_FILE" && rm -fv "$APP_CONFIG_FILE"
+  test -f "$CONFIG_FILE" && rm -fv "$CONFIG_FILE"
+
   mezod \
     init \
     "${MEZOD_MONIKER}" \
@@ -71,21 +81,17 @@ validate_genesis() {
 }
 
 customize_configuration() {
-  client_config_file="${MEZOD_HOME}/config/client.toml"
-  app_config_file="${MEZOD_HOME}/config/app.toml"
-  config_file="${MEZOD_HOME}/config/config.toml"
-
   echo "Backup original configuration..."
-  test -f "${client_config_file}.bak" || cat "$client_config_file" > "${client_config_file}.bak"
-  test -f "${app_config_file}.bak" || cat "$app_config_file" > "${app_config_file}.bak"
-  test -f "${config_file}.bak" || cat "$config_file" > "${config_file}.bak"
+  test -f "${CLIENT_CONFIG_FILE}.bak" || cat "$CLIENT_CONFIG_FILE" > "${CLIENT_CONFIG_FILE}.bak"
+  test -f "${APP_CONFIG_FILE}.bak" || cat "$APP_CONFIG_FILE" > "${APP_CONFIG_FILE}.bak"
+  test -f "${CONFIG_FILE}.bak" || cat "$CONFIG_FILE" > "${CONFIG_FILE}.bak"
 
   echo "Set configuration defaults..."
 
   #
   # FILE: client.toml
   #
-  mezod toml set "$client_config_file" \
+  mezod toml set "$CLIENT_CONFIG_FILE" \
     -v "chain-id=${MEZOD_CHAIN_ID}" \
     -v "keyring-backend=file"
 
@@ -93,14 +99,14 @@ customize_configuration() {
   if [ -f "$MEZOD_CUSTOM_CONF_CLIENT_TOML" ]; then
     echo "External customizations for client.toml..."
     while IFS= read -r line; do
-      mezod toml set $client_config_file -v $line
+      mezod toml set $CLIENT_CONFIG_FILE -v $line
     done < "$MEZOD_CUSTOM_CONF_CLIENT_TOML"
   fi
 
   #
   # FILE: config.toml
   #
-  mezod toml set "$config_file" \
+  mezod toml set "$CONFIG_FILE" \
     -v "moniker=${MEZOD_MONIKER}" \
     -v "p2p.laddr=tcp://0.0.0.0:26656" \
     -v "p2p.external_address=${PUBLIC_IP}:26656" \
@@ -112,14 +118,14 @@ customize_configuration() {
   if [ -f "$MEZOD_CUSTOM_CONF_CONFIG_TOML" ]; then
     echo "External customizations for config.toml..."
     while IFS= read -r line; do
-      mezod toml set $config_file -v $line
+      mezod toml set $CONFIG_FILE -v $line
     done < "$MEZOD_CUSTOM_CONF_CONFIG_TOML"
   fi
 
   #
   # FILE: app.toml
   #
-  mezod toml set "$app_config_file" \
+  mezod toml set "$APP_CONFIG_FILE" \
     -v "ethereum-sidecar.client.server-address=ethereum-sidecar:7500" \
     -v "api.enable=true" \
     -v "api.address=tcp://0.0.0.0:1317" \
@@ -136,7 +142,7 @@ customize_configuration() {
   if [ -f "$MEZOD_CUSTOM_CONF_APP_TOML" ]; then
     echo "External customizations for app.toml..."
     while IFS= read -r line; do
-      mezod toml set $app_config_file -v $line
+      mezod toml set $APP_CONFIG_FILE -v $line
     done < "$MEZOD_CUSTOM_CONF_APP_TOML"
   fi
 
