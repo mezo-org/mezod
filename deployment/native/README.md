@@ -74,3 +74,38 @@ or as root:
 > ```
 > ./all-in-one.sh --run --envfile <your_custom_envfile>
 > ```
+
+## Other options
+### Backup mezo home directory
+Backup creates a new folder using the name of mezo home dir prefixed by `-backups` (example: `/var/mezod-backups` when home dir is `/var/mezod`). After that it zips the whole home dir to the created folder.
+```
+./all-in-one.sh -b
+```
+
+```
+./all-in-one.sh --backup
+```
+### Clean up the mezo installation
+> [!WARNING]
+> This option removes whole Mezo directory (/var/mezod) INCLUDING PRIVATE KEYS. It's highly recommended to backup the home dir before cleanup.
+```
+./all-in-one.sh -c
+```
+
+```
+./all-in-one.sh --cleanup
+```
+
+### Check health of mezo systemd services
+```
+./all-in-one.sh --health
+```
+### Verbose printing with variables
+This option views all env variables read by the script and activates shell flag that prints all executed commands and their results (`set -x`).
+```
+./all-in-one.sh -s
+```
+
+```
+./all-in-one.sh --show-variables
+```
