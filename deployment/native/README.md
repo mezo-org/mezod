@@ -9,6 +9,7 @@ This document describes:
 ## Prerequisites
 
 Native binaries installation is tested on the following operating systems:
+
 - Ubuntu 24 LTS and higher (x86_64 arch)
 - Debian 13 Trixie and higher (x86_64 arch)
 
@@ -122,7 +123,7 @@ After that it zips the whole home dir to the created folder.
 ### Clean up the mezo installation
 
 > [!WARNING]
-> This option removes whole Mezo directory (/var/mezod) INCLUDING PRIVATE KEYS. 
+> This option removes whole Mezo directory (/var/mezod) INCLUDING PRIVATE KEYS.
 > It's highly recommended to backup the home dir before cleanup.
 
 ```bash
