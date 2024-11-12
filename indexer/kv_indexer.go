@@ -30,7 +30,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 
+	apptypes "github.com/mezo-org/mezod/app/abci/types"
 	mezotypes "github.com/mezo-org/mezod/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/abci/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -40,6 +42,11 @@ const (
 
 	// TxIndexKeyLength is the length of tx-index key
 	TxIndexKeyLength = 1 + 8 + 8
+
+	// AssetsLockedDiscriminator is the discriminator indicating that the
+	// `ExtraData` field of the `TxResult` contains information on `AssetsLocked`
+	// events.
+	AssetsLockedDiscriminator = 1
 )
 
 var _ mezotypes.EVMTxIndexer = &KVIndexer{}
@@ -70,6 +77,46 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 	// record index of valid eth tx during the iteration
 	var ethTxIndex int32
 	for txIndex, tx := range block.Txs {
+		// The first transaction in a block is always a pseudo-transaction
+		// containing information on assets bridged to Mezo. It requires a
+		// special handling.
+		if txIndex == 0 {
+			txHash := common.BytesToHash(tx.Hash())
+
+			assetsLockedEvents := kv.GetSerializedAssetsLockedEvents(
+				kv.clientCtx.Codec,
+				tx,
+			)
+
+			if len(assetsLockedEvents) == 0 {
+				continue
+			}
+
+			extraData := append(
+				[]byte{AssetsLockedDiscriminator},
+				assetsLockedEvents...,
+			)
+
+			txResult := mezotypes.TxResult{
+				Height:     height,
+				TxIndex:    0,
+				MsgIndex:   0,
+				EthTxIndex: 0,
+				ExtraData:  extraData,
+			}
+
+			if err := savePseudoTxResult(
+				kv.clientCtx.Codec,
+				batch,
+				txHash,
+				&txResult,
+			); err != nil {
+				return errorsmod.Wrapf(err, "IndexBlock %d", height)
+			}
+
+			continue
+		}
+
 		result := txResults[txIndex]
 		if !rpctypes.TxSuccessOrExceedsBlockGasLimit(result) {
 			continue
@@ -133,6 +180,52 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 		return errorsmod.Wrapf(err, "IndexBlock %d, write batch", block.Height)
 	}
 	return nil
+}
+
+// GetSerializedAssetsLockedEvents returns serialized AssetsLocked events in the
+// same order as they were stored in the block's pseudo-transaction.
+// GetSerializedAssetsLockedEvents returns serialized AssetsLocked events using the provided codec.
+func (kv *KVIndexer) GetSerializedAssetsLockedEvents(
+	codec codec.BinaryCodec,
+	tx tmtypes.Tx,
+) []byte {
+	var blockTx apptypes.InjectedTx
+
+	err := blockTx.Unmarshal(tx)
+	if err != nil {
+		kv.logger.Error(
+			"Failed to unmarshal pseudo-transaction",
+			"err",
+			err,
+		)
+		return []byte{}
+	}
+
+	parts := blockTx.GetParts()
+	if len(parts) != 1 {
+		kv.logger.Error("Wrong number of parts in pseudo-transaction")
+		return []byte{}
+	}
+
+	var bridgeTx bridgetypes.InjectedTx
+
+	err = bridgeTx.Unmarshal(parts[1])
+	if err != nil {
+		kv.logger.Error(
+			"Failed to unmarshal bridging info from pseudo-transaction",
+			"err",
+			err,
+		)
+		return []byte{}
+	}
+
+	var serializedEvents []byte
+	for _, event := range bridgeTx.AssetsLockedEvents {
+		eventBytes := codec.MustMarshal(&event)
+		serializedEvents = append(serializedEvents, eventBytes...)
+	}
+
+	return serializedEvents
 }
 
 // LastIndexedBlock returns the latest indexed block number, returns -1 if db is empty
@@ -222,6 +315,16 @@ func isEthTx(tx sdk.Tx) bool {
 		return false
 	}
 	return true
+}
+
+// savePseudoTxResult indexes the pseudo-transaction txResult into kv db batch.
+// The transaction is only indexed by its hash.
+func savePseudoTxResult(codec codec.Codec, batch dbm.Batch, txHash common.Hash, txResult *mezotypes.TxResult) error {
+	bz := codec.MustMarshal(txResult)
+	if err := batch.Set(TxHashKey(txHash), bz); err != nil {
+		return errorsmod.Wrap(err, "set tx-hash key")
+	}
+	return nil
 }
 
 // saveTxResult index the txResult into the kv db batch
