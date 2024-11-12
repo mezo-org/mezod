@@ -14,6 +14,8 @@ type Env = {
   AMOUNT_BTC: string
   RATE_LIMITER: any
   REQUEST_DELAY_SECONDS: number
+  PUBLIC_ACCESS: string
+  PUBLIC_ACCESS_REDIRECT: string
 }
 
 const publicSend = async (request: Request, env: Env) => {
@@ -122,6 +124,10 @@ router
 
 export default {
   async fetch(request: Request, env: Env, _: ExecutionContext) {
+    if (env.PUBLIC_ACCESS !== "true") {
+      return Response.redirect(env.PUBLIC_ACCESS_REDIRECT, 302)
+    }
+
     return router.fetch(request, env)
   },
 }
