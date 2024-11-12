@@ -380,8 +380,6 @@ main() {
 
 setenvs() {
     echo "Reading configuration from environment files"
-    # shellcheck disable=SC1091
-    # shellcheck disable=SC1090
     . ${ENVIRONMENT_FILE}
 }
 
