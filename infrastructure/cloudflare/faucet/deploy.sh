@@ -7,10 +7,13 @@ shopt -s expand_aliases
 
 # Check if the user is authenticated with 1Password CLI. If not, the script will
 # fail due to the `set -e` directive.
-printf "checking 1Password CLI authentication\n\n"
+printf "\nchecking 1Password CLI authentication\n\n"
 op whoami
 
 alias wrangler='npx wrangler --env staging'
+
+printf "\nchecking Wrangler authentication\n\n"
+wrangler whoami && wrangler versions list
 
 # Step 1: Read secrets from 1Password and put them into the Worker environment.
 op read "op://Mezo DevOps/faucet_private_key/notes" | wrangler secret put MEZO_FAUCET_PRIVATE_KEY

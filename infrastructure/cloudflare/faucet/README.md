@@ -53,4 +53,6 @@ There are several steps in the deployment process:
    Consult the 1password CLI help to see how to authenticate. At the time of 
    writing, the command is `eval $(op signin)`.
 2. The script deploys the Worker using Wrangler. It uses the staging environment
-   by default.
+   by default. If you are not authenticated with Wrangler, you will be prompted
+   to do so. In case of troubles, you can use `wrangler login` to authenticate,
+   manually.
