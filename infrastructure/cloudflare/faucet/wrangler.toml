@@ -1,0 +1,30 @@
+name = "mezo-faucet"
+main = "./src/index.ts"
+compatibility_date = "2022-10-10"
+dev.port = 8000
+node_compat = true
+logpush = true
+
+# Development
+
+# For development, KV id must be set but can have any value.
+kv_namespaces = [
+    { binding = "RATE_LIMITER", id = "not-applicable" }
+]
+
+[vars]
+MEZO_API_URL = "http://localhost:8545"
+AMOUNT_BTC = "0.001"
+REQUEST_DELAY_SECONDS = "120"
+
+# Staging
+[env.staging]
+route = { pattern = "faucet.test.mezo.org", custom_domain = true }
+kv_namespaces = [
+    { binding = "RATE_LIMITER", id = "b5f59dc1cbc843c183186405f266e552" }
+]
+
+[env.staging.vars]
+MEZO_API_URL = "http://mezo-node-0.test.mezo.org:8545"
+AMOUNT_BTC = "0.001"
+REQUEST_DELAY_SECONDS = "86400" # 24 hours
