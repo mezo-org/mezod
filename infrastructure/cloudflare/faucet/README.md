@@ -3,6 +3,13 @@
 This module contains the implementation of the Mezo Testnet Faucet.
 The faucet is written and deployed as a Cloudflare Worker.
 
+### Prerequisites
+
+Initially, you need to install the dependencies by running
+```shell
+npm install
+```
+
 ### Development
 
 To work on the faucet locally, you need to set up a Mezo localnet first.
@@ -39,20 +46,23 @@ are hot-reloaded by Wrangler.
 
 ### Deployment
 
-To deploy the faucet to the target environment, run
-```shell
-npm run deploy
-```
-
-This script deploys the faucet as a Cloudflare Worker using Wrangler.
+A custom deployment script deploys the faucet as a Cloudflare Worker using 
+Wrangler. The script is located in the `deploy.sh` file and is aliased by the
+`npm run deploy` command.
 
 There are several steps in the deployment process:
 1. The script reads the faucet's secrets from the dedicated 1Password vault
    and puts them into the Worker environment. Make sure you are authenticated
    with 1Password CLI before running this script and have access to the vault.
-   Consult the 1password CLI help to see how to authenticate. At the time of 
+   Consult the 1password CLI help to see how to authenticate. At the time of
    writing, the command is `eval $(op signin)`.
 2. The script deploys the Worker using Wrangler. It uses the staging environment
    by default. If you are not authenticated with Wrangler, you will be prompted
    to do so. In case of troubles, you can use `wrangler login` to authenticate,
    manually.
+
+To deploy the faucet to the target environment, run:
+```shell
+npm run deploy
+```
+
