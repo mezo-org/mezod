@@ -1,8 +1,10 @@
 import { AutoRouter, cors, html, IRequest } from "itty-router"
 import { ethers } from "ethers"
 import { indexHTML, errorHTML, successHTML } from "#/assets"
+import { WorkerEntrypoint } from "cloudflare:workers";
 
 const cfVerifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+const invalidTargetAddressError = "Invalid target address. Try to use a proper 20-byte hexadecimal address prefixed with 0x."
 
 type Env = {
   MEZO_API_URL: string
@@ -14,7 +16,7 @@ type Env = {
   REQUEST_DELAY_SECONDS: number
 }
 
-const sendBTC = async (request: Request, env: Env) => {
+const publicSend = async (request: Request, env: Env) => {
   const requestForm = await request.formData()
   const targetAddress = requestForm.get("address") as string
   const ip = request.headers.get('cf-connecting-ip') as string
@@ -34,8 +36,11 @@ const sendBTC = async (request: Request, env: Env) => {
     return html(errorHTML("Captcha verification failed"))
   }
 
+  // Early check the target address validity. Despite internalSendBTC checks it
+  // again, we don't want to waste rate limit on invalid addresses that may be
+  // wrong by mistake.
   if (!ethers.isAddress(targetAddress)) {
-    return html(errorHTML("Invalid target address. Try to use a proper 20-byte hexadecimal address prefixed with 0x."))
+    return html(errorHTML(invalidTargetAddressError))
   }
 
   const rl = await rateLimit(env, ip)
@@ -45,22 +50,41 @@ const sendBTC = async (request: Request, env: Env) => {
   }
 
   try {
-    const wallet = new ethers.Wallet(
-      env.MEZO_FAUCET_PRIVATE_KEY,
-      ethers.getDefaultProvider(env.MEZO_API_URL)
-    )
-
     const amountBTC = env.AMOUNT_BTC
-
-    const transaction = await wallet.sendTransaction({
-      to: targetAddress,
-      value: ethers.parseEther(amountBTC),
-    })
-
-    return html(successHTML(transaction.hash, amountBTC))
+    const transactionHash = await internalSend(env, targetAddress, amountBTC)
+    return html(successHTML(transactionHash, amountBTC))
   } catch (error) {
     return html(errorHTML(`Unexpected error: ${error}`))
   }
+}
+
+async function internalSend(
+  env: Env,
+  targetAddress: string,
+  amountBTC: string
+): Promise<string> {
+  if (!ethers.isAddress(targetAddress)) {
+    throw Error(invalidTargetAddressError)
+  }
+
+  let parsedAmountBTC: bigint
+  try {
+    parsedAmountBTC = ethers.parseEther(amountBTC)
+  } catch (error) {
+    throw Error(`Invalid BTC amount: ${error}`)
+  }
+
+  const wallet = new ethers.Wallet(
+    env.MEZO_FAUCET_PRIVATE_KEY,
+    ethers.getDefaultProvider(env.MEZO_API_URL)
+  )
+
+  const transaction = await wallet.sendTransaction({
+    to: targetAddress,
+    value: parsedAmountBTC,
+  })
+
+  return transaction.hash
 }
 
 async function rateLimit(env: Env, ip: string): Promise<{
@@ -93,11 +117,28 @@ const router = AutoRouter({
 })
 
 router
-  .post("/", sendBTC)
+  .post("/", publicSend)
   .all("*", (_: IRequest, env: Env) => html(indexHTML(env.TURNSTILE_SITE_KEY)))
 
 export default {
   async fetch(request: Request, env: Env, _: ExecutionContext) {
     return router.fetch(request, env)
   },
+}
+
+export class InternalEntrypoint extends WorkerEntrypoint {
+  async send(targetAddress: string, amountBTC: string): Promise<InternalSendResponse> {
+    try {
+      const transactionHash = await internalSend(this.env as Env, targetAddress, amountBTC)
+      return { success: true, transactionHash }
+    } catch (error) {
+      return { success: false, errorMsg: `${error}` }
+    }
+  }
+}
+
+export type InternalSendResponse = {
+  success: boolean
+  transactionHash?: string
+  errorMsg?: string
 }
