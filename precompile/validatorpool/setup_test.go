@@ -116,7 +116,7 @@ func NewKey(withValidator bool) Key {
 
 // returns a random string of length l
 func randomString(l int) string {
-	var characters = []rune("ABCDEF0123456789")
+	characters := []rune("ABCDEF0123456789")
 	var sb strings.Builder
 
 	for i := 0; i < l; i++ {
