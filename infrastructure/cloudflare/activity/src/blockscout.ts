@@ -6,6 +6,7 @@ export type AddressItem = {
 export type ContractItem = {
   address: string
   deployer: string
+  txCount: number
 }
 
 export class BlockScoutAPI {
@@ -43,6 +44,20 @@ export class BlockScoutAPI {
       })
   }
 
+  async txCount(address: string): Promise<number> {
+    type Item = {
+      transactions_count: string
+    }
+
+    const item = await this.#call(`addresses/${address}/counters`) as Item
+
+    if (item.transactions_count.length === 0) {
+      return 0
+    }
+
+    return parseInt(item.transactions_count)
+  }
+
   async contracts(): Promise<ContractItem[]> {
     type Item = {
       status: string
@@ -57,15 +72,22 @@ export class BlockScoutAPI {
     const responseJSON = await this.#call("transactions?type=contract_creation") as { items: Item[] }
     const items = responseJSON.items
 
-    return items
+    const contracts = items
       .filter((item: Item) => {
         return item.status === "ok"
       })
-      .map((item: Item): ContractItem => {
+      .map(async (item: Item): Promise<ContractItem> => {
+        const contractAddress = item.created_contract.hash
+
+        const txCount = await this.txCount(contractAddress)
+
         return {
-          address: item.created_contract.hash,
+          address: contractAddress,
           deployer: item.from.hash,
+          txCount,
         }
       })
+
+    return Promise.all(contracts)
   }
 }

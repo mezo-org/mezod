@@ -24,11 +24,18 @@ async function fetchActivity(env: Env): Promise<ActivityItem[]> {
 
 
   return addresses.map((item) => {
+    const contracts = accountToContracts[item.address] || [];
+
+    const deployedContractsTxCount = contracts.reduce(
+      (acc, contract) => acc + contract.txCount,
+      0
+    )
+
     return {
       address: item.address,
       txCount: item.txCount,
-      deployedContracts: accountToContracts[item.address]?.length || 0,
-      deployedContractsTxCount: 0,
+      deployedContracts: contracts.length,
+      deployedContractsTxCount: deployedContractsTxCount,
     }
   })
 }
