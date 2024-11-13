@@ -1,0 +1,19 @@
+{
+  "name": "mezo-faucet",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "./deploy.sh",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "@types/node": "^22.9.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "ethers": "^6.0.0",
+    "itty-router": "^5.0.0"
+  }
+}

@@ -6,10 +6,9 @@ config:
     id: 31611
     name: Mezo
     shortname: Mezo
-    # TODO: Not sure about currency values. Revisit later.
     currency:
-      name: aBTC
-      symbol: aBTC
+      name: Bitcoin
+      symbol: BTC
       decimals: 18
   account:
     enabled: false # This is false by default but disable it explicitly. As long as this feature is disable, Redis is not needed.
@@ -40,8 +39,9 @@ blockscout:
     SECRET_KEY_BASE: K4rV3pnwzqGMRZNbyWKryw6Co4qcvm9LvZhUpuf4qftDTsZMjzz4pzgVPZcUXMtf # Just an arbitrary 64-char string
     POOL_SIZE: 80 # Increased from the default value of 50 based on the original Blockscout Docker Compose config
     ECTO_USE_SSL: false # Switched off based on the original Blockscout Docker Compose config
-    CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,paris,shanghai,cancun,default
-    CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,paris,shanghai,cancun,default
+    CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
+    CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
+    INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
   extraEnv:
     - name: POSTGRES_PASSWORD
       valueFrom:
@@ -68,6 +68,7 @@ frontend:
     NEXT_PUBLIC_APP_PROTOCOL: https
     NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL: wss
     NEXT_PUBLIC_API_SPEC_URL: https://raw.githubusercontent.com/blockscout/blockscout-api-v2-swagger/main/swagger.yaml
+    NEXT_PUBLIC_AD_BANNER_PROVIDER: none # Disable ads
 
 stats:
   enabled: false # This won't be needed for now.

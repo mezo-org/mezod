@@ -102,16 +102,6 @@ variable "global_external_ip_addresses" {
   ]
 }
 
-variable "gcf" {
-  type        = map(string)
-  description = "Cloud functions info"
-
-  default = {
-    archive_bucket_name = "mezo-staging-gcf-archive-bucket"
-    faucet_function_name = "mezo-staging-faucet-function"
-  }
-}
-
 variable "oidc_github" {
   type = object({
     github_organization = string
