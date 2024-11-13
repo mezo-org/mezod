@@ -14,7 +14,7 @@ up to the London fork. For more information about London fork please see
 
 ## Ethereum JSON-RPC endpoints
 
-### web3_clientVersion
+#### web3_clientVersion
 
 - **Description**: Returns the current client version.
 - **Parameters**: None.
@@ -24,7 +24,7 @@ up to the London fork. For more information about London fork please see
 curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### web3_sha3
+#### web3_sha3
 
 - **Description**: Returns Keccak-256 of the given data.
 - **Parameters**:
@@ -35,7 +35,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],
 curl -X POST --data '{"jsonrpc":"2.0","method":"web3_sha3","params":["0x68656c6c6f20776f726c64"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### net_version
+#### net_version
 
 - **Description**: Returns the current network ID.
 - **Parameters**: None.
@@ -45,7 +45,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"web3_sha3","params":["0x68656c6c
 curl -X POST --data '{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### net_listening
+#### net_listening
 
 - **Description**: Returns `true` if the client is actively listening for network connections.
 - **Parameters**: None.
@@ -55,7 +55,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}
 curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### net_peerCount
+#### net_peerCount
 
 - **Description**: Returns the number of peers currently connected to the client.
 - **Parameters**: None.
@@ -65,7 +65,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":
 curl -X POST --data '{"jsonrpc":"2.0","method":"net_peerCount","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_protocolVersion
+#### eth_protocolVersion
 
 - **Description**: Returns the current Ethereum protocol version.
 - **Parameters**: None.
@@ -75,7 +75,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"net_peerCount","params":[],"id":
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_protocolVersion","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_syncing
+#### eth_syncing
 
 - **Description**: Returns an object with data about the sync status or `false` if not syncing.
 - **Parameters**: None.
@@ -86,7 +86,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_protocolVersion","params":[]
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_coinbase
+#### eth_coinbase
 
 - **Description**: Returns the client’s coinbase address (mining beneficiary).
 This address is where any mining rewards will be sent if the node is mining.
@@ -97,7 +97,7 @@ This address is where any mining rewards will be sent if the node is mining.
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_chainId
+#### eth_chainId
 
 - **Description**: Returns the client’s chian ID.
 - **Parameters**: None.
@@ -107,7 +107,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_gasPrice
+#### eth_gasPrice
 
 - **Description**: Returns the current price per gas in wei.
 - **Parameters**: None.
@@ -117,7 +117,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_accounts
+#### eth_accounts
 
 - **Description**: Returns a list of addresses owned by the client.
 - **Parameters**: None.
@@ -127,7 +127,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":1
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_blockNumber
+#### eth_blockNumber
 
 - **Description**: Returns the number of the most recent block.
 - **Parameters**: None.
@@ -137,7 +137,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getBalance
+#### eth_getBalance
 
 - **Description**: Returns the balance of the account of given address.
 - **Parameters**:
@@ -149,7 +149,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getStorageAt
+#### eth_getStorageAt
 
 - **Description**: Returns the value from a storage position at a given address.
 - **Parameters**:
@@ -162,7 +162,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x050
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","0x0","latest"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getTransactionCount
+#### eth_getTransactionCount
 
 - **Description**: Returns the number of transactions sent from an address.
 - **Parameters**:
@@ -174,7 +174,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["0x0
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionCount","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getBlockTransactionCountByHash
+#### eth_getBlockTransactionCountByHash
 
 - **Description**: Returns the number of transactions in a block from a block
 matching the given block hash.
@@ -186,7 +186,7 @@ matching the given block hash.
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByHash","params":["0x41175c10b68dd0bfa27f2533a23979445a5d643427e0ffd1870d11806f31b291"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getBlockTransactionCountByNumber
+#### eth_getBlockTransactionCountByNumber
 
 - **Description**: Returns the number of transactions in a block matching the given block number.
 - **Parameters**:
@@ -197,7 +197,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByHa
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByNumber","params":["0x1"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getCode
+#### eth_getCode
 
 - **Description**: Returns the code (compiled bytecode of a smart contract) at a given address.
 - **Parameters**:
@@ -210,7 +210,7 @@ it indicates the address is likely an externally owned account rather than a con
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_sign
+#### eth_sign
 
 - **Description**: Signs data with a given address, resulting in a signature. The address to sign with must be unlocked.
 - **Parameters**:
@@ -222,7 +222,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x0504d8
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sign","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","0xdeadbeef"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_sendTransaction
+#### eth_sendTransaction
 
 - **Description**: Creates and sends a new transaction.
 - **Parameters**:
@@ -244,7 +244,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sign","params":["0x0504d82ef
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{see above}],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_sendRawTransaction
+#### eth_sendRawTransaction
 
 - **Description**: Creates new message call transaction or a contract creation for signed transactions.
 - **Parameters**:
@@ -255,21 +255,21 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_call
+#### eth_call
 
 - **Description**: Executes a new message call immediately without creating a
 transaction on the blockchain. Often used for executing read-only smart contract
 functions.
 - **Parameters**:
     - `Object` - The transaction call object
-      from: DATA, 20 Bytes - (optional) The address the transaction is sent from.
-      to: DATA, 20 Bytes - The address the transaction is directed to.
-      gas: QUANTITY - (optional) Integer of the gas provided for the transaction
+      - from: DATA, 20 Bytes - (optional) The address the transaction is sent from.
+      - to: DATA, 20 Bytes - The address the transaction is directed to.
+      - gas: QUANTITY - (optional) Integer of the gas provided for the transaction
       execution. eth_call consumes zero gas, but this parameter may be needed by
       some executions.
-      gasPrice: QUANTITY - (optional) Integer of the gasPrice used for each paid gas
-      value: QUANTITY - (optional) Integer of the value sent with this transaction
-      input: DATA - (optional) Hash of the method signature and encoded parameters.
+      - gasPrice: QUANTITY - (optional) Integer of the gasPrice used for each paid gas
+      - value: QUANTITY - (optional) Integer of the value sent with this transaction
+      - input: DATA - (optional) Hash of the method signature and encoded parameters.
       For details see Ethereum Contract ABI in the Solidity documentation(opens in
       a new tab).
     - `String` (optional) - Block number.
@@ -279,7 +279,7 @@ functions.
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}],"id":1}'
 ```
 
-### eth_estimateGas
+#### eth_estimateGas
 
 - **Description**: Estimates the gas necessary to execute a transaction.
 - **Parameters**:
@@ -293,7 +293,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}]
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{see above}],"id":1}'
 ```
 
-### eth_getBlockByHash
+#### eth_getBlockByHash
 
 - **Description**: Returns information about a block by hash.
 - **Parameters**:
@@ -305,7 +305,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{see 
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0x8d80d1a8ac12c5e57c17c580afbb4c03987649934b60ce04ec89fcd336e3a186", true],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getBlockByNumber
+#### eth_getBlockByNumber
 
 - **Description**: Returns information about a block by number.
 - **Parameters**:
@@ -317,7 +317,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x1b4", true],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getTransactionByHash
+#### eth_getTransactionByHash
 
 - **Description**: Returns the information about a transaction requested by transaction hash.
 - **Parameters**:
@@ -328,7 +328,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":[
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getTransactionByBlockHashAndIndex
+#### eth_getTransactionByBlockHashAndIndex
 
 - **Description**: Returns information about a transaction by block hash and transaction index position.
 - **Parameters**:
@@ -340,7 +340,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","param
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockHashAndIndex","params":["0x8d80d1a8ac12c5e57c17c580afbb4c03987649934b60ce04ec89fcd336e3a186", "0x0"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getTransactionByBlockNumberAndIndex
+#### eth_getTransactionByBlockNumberAndIndex
 
 - **Description**: Returns information about a transaction by block number and transaction index position.
 - **Parameters**:
@@ -352,7 +352,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockHashAnd
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockNumberAndIndex","params":["0x1b4", "0x0"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getTransactionReceipt
+#### eth_getTransactionReceipt
 
 - **Description**: Returns the receipt of a transaction by transaction hash.
 - **Parameters**:
@@ -363,7 +363,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockNumberA
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0x1758f2ad26d448ecdcc2f225432c520bc77c03194536e76f6776f8c5dabce9a9"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getLogs
+#### eth_getLogs
 
 - **Description**: Returns an array of logs matching the filter options.
 - **Parameters**:
@@ -385,7 +385,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","para
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock": "0x1", "toBlock": "0x2"}],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_newFilter
+#### eth_newFilter
 
 - **Description**: Create new filter using topics of some kind.
 - **Parameters**:
@@ -396,7 +396,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlo
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newFilter","params":[{"fromBlock": "0x1", "toBlock": "0x2"}],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_newBlockFilter
+#### eth_newBlockFilter
 
 - **Description**: Creates a filter in the node to notify when a new block arrives.
 - **Parameters**: None.
@@ -406,7 +406,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newFilter","params":[{"fromB
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newBlockFilter","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_newPendingTransactionFilter
+#### eth_newPendingTransactionFilter
 
 - **Description**: Creates a filter in the node to notify when new pending transactions arrive.
 - **Parameters**: None.
@@ -416,7 +416,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newBlockFilter","params":[],
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newPendingTransactionFilter","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_uninstallFilter
+#### eth_uninstallFilter
 
 - **Description**: Uninstalls a filter with the given ID.
 - **Parameters**:
@@ -427,7 +427,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newPendingTransactionFilter"
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_uninstallFilter","params":["0x1"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getFilterChanges
+#### eth_getFilterChanges
 
 - **Description**: Checks for changes to a filter since the last call.
 - **Parameters**:
@@ -438,7 +438,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_uninstallFilter","params":["
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x1"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getFilterLogs
+#### eth_getFilterLogs
 
 - **Description**: Returns an array of all logs for a given filter ID, containing all past logs matching the filter.
 - **Parameters**:
@@ -449,7 +449,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterChanges","params":[
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterLogs","params":["0x1"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-### eth_getProof
+#### eth_getProof
 
 - **Description**: Returns the account and storage values of a specified account, including the Merkle proof.
 - **Parameters**:
@@ -462,14 +462,94 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterLogs","params":["0x
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getProof","params":["0x1234567890123456789012345678901234567890",["0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000001"],`"latest"`],"id":1}' -H "Content-type:application/json" http://mezo-node-0.test.mezo.org:8545
 ```
 
-## Due to the nature of PoA consensus, the following methods are not applicable and might revert or return empty results
+## Not supported methods
 
-### eth_getUncleCountByBlockHash
-### eth_getUncleCountByBlockNumber
-### eth_getUncleByBlockHashAndIndex
-### eth_getUncleByBlockNumberAndIndex
-### eth_getWork
-### eth_submitWork
-### eth_submitHashrate
-### eth_hashrate
-### eth_mining
+Due to the nature of PoA consensus, the following methods might revert or return empty results.
+
+#### eth_getUncleCountByBlockHash
+
+#### eth_getUncleCountByBlockNumber
+
+#### eth_getUncleByBlockHashAndIndex
+
+#### eth_getUncleByBlockNumberAndIndex
+
+#### eth_getWork
+
+#### eth_submitWork
+
+#### eth_submitHashrate
+
+#### eth_hashrate
+
+#### eth_mining
+
+## Debug namespace
+
+#### debug_traceTransaction
+
+- **Description**: Replays a transaction, returning the detailed execution trace.
+- **Parameters**:
+    - `String` - Transaction hash of the transaction to trace.
+    - `Object` (optional) - Options to configure tracing properties like disabling memory or stack capturing for less
+      verbose output.
+- **Returns**: `Object` - Detailed information about the transaction execution, such as step-by-step state changes.
+
+```bash
+curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "method": "debug_traceTransaction", "params": ["0x14bd9cd554b725129a6c86f916490f52060644dc9627414bf9c62e1889130bf1", {"disableMemory": true, "disableStorage": false, "disableStack": false}], "id": 1}' http://mezo-node-0.test.mezo.org:8545
+```
+
+#### debug_traceBlockByNumber
+
+- **Description**: Replays all transactions in a block and returns detailed execution traces for each transaction.
+- **Parameters**:
+    - `String` - Block number (in hexadecimal) for the block to be traced.
+    - `Object` (optional) - Options to control the verbosity of the trace, similar to individual transaction tracing.
+- **Returns**: `Array` - An array of execution traces, each corresponding to a transaction within the block, detailing
+step-by-step state changes.
+
+```bash
+curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "method": "debug_traceBlockByNumber", "params": ["0x29C7C", {"tracer": "callTracer"}], "id": 1}'  http://mezo-node-0.test.mezo.org:8545
+```
+
+## TxPool Methods
+
+#### txpool_content
+
+- **Description**: Returns detailed information about all transactions currently in the transaction pool.
+- **Parameters**: None.
+- **Returns**: `Object` - An object categorized by pending and queued transactions, including sender addresses and
+detailed transaction data.
+
+```bash
+curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_content","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+```
+
+#### txpool_inspect
+
+- **Description**: Similar to `txpool_content`, but returns a more human-readable summary of the transactions in the
+transaction pool.
+- **Parameters**: None.
+- **Returns**: `Object` - An object categorized by pending and queued transactions, showing a simplified listing of
+transactions with sender addresses and brief details.
+
+```bash
+curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_inspect","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+```
+
+#### txpool_status
+
+- **Description**: Returns the status of the transaction pool, including the number of pending and queued transactions.
+- **Parameters**: None.
+- **Returns**: `Object` - An object with keys for `pending` and `queued`, indicating the total number of transactions in
+each state.
+
+```bash
+curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_status","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+```
+
+## personal namespace
+
+`personal` namespace is exposed, however it has been
+[deprecated](https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-personal).
+It will be removed in the future releases and any usage is discouraged.
