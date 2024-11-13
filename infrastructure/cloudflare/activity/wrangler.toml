@@ -1,0 +1,17 @@
+name = "mezo-activity"
+main = "./src/index.ts"
+compatibility_date = "2024-09-02"
+dev.port = 8001
+node_compat = true
+logpush = true
+
+# Development
+
+[vars]
+BLOCKSCOUT_API_URL = "https://api.explorer.test.mezo.org/api/v2"
+
+# Staging
+[env.staging]
+
+[env.staging.vars]
+BLOCKSCOUT_API_URL = "https://api.explorer.test.mezo.org/api/v2"
