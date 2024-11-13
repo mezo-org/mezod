@@ -1,5 +1,5 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
-import { BlockScoutAPI } from "#/blockscout";
+import { BlockScoutAPI, ContractItem } from "#/blockscout";
 
 type Env = {
   BLOCKSCOUT_API_URL: string
@@ -9,12 +9,25 @@ async function fetchActivity(env: Env): Promise<ActivityItem[]> {
   const bsAPI = new BlockScoutAPI(env.BLOCKSCOUT_API_URL);
 
   const addresses = await bsAPI.addresses()
+  const contracts = await bsAPI.contracts();
 
-  return addresses.map((address) => {
+  const accountToContracts = contracts.reduce(
+    (acc, contract) => {
+      if (!acc[contract.deployer]) {
+        acc[contract.deployer] = [];
+      }
+      acc[contract.deployer].push(contract);
+      return acc;
+    },
+    {} as Record<string, ContractItem[]>
+  )
+
+
+  return addresses.map((item) => {
     return {
-      address: address.address,
-      txCount: address.txCount,
-      deployedContracts: 0,
+      address: item.address,
+      txCount: item.txCount,
+      deployedContracts: accountToContracts[item.address]?.length || 0,
       deployedContractsTxCount: 0,
     }
   })
