@@ -6,6 +6,11 @@ This document describes:
 - how Mezo Validator Kit for native binaries works,
 - deployment process for the validator.
 
+> [!NOTE]
+> For now, transactions for entering the testnet/mainnet (aka submitting validator application) 
+> are out of scope for this script. Feature will be supported as soon as Mezo team implements
+> it into the Mezo binary.
+
 ## Prerequisites
 
 Native binaries installation is tested on the following operating systems:
@@ -108,7 +113,7 @@ or as root:
 
 ### Backup mezo home directory
 
-Backup creates a new folder using the name of mezo home dir prefixed by `-backups`
+Backup creates a new folder using the name of mezo home dir suffixed by `-backups`
 (example: `/var/mezod-backups` when home dir is `/var/mezod`).
 After that it zips the whole home dir to the created folder.
 

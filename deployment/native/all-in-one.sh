@@ -204,7 +204,6 @@ configure_mezo() {
 }
 
 setup_systemd_skip(){
-
     echo "
 [Unit]
 Description=Connect Sidecar Service
@@ -243,7 +242,6 @@ WantedBy=multi-user.target" | tee /etc/systemd/system/ethereum-sidecar.service
 }
 
 setup_systemd_mezo(){
-
     echo "
 [Unit]
 Description=Mezo Service
@@ -263,25 +261,37 @@ WantedBy=multi-user.target" | tee /etc/systemd/system/mezo.service
 }
 
 systemd_restart() {
+    echo "Reloading systemd daemon"
     systemctl daemon-reload
+    echo "Starting systemd services"
     systemctl start mezo
     systemctl start ethereum-sidecar
     systemctl start connect-sidecar
 }
 
 cleanup() {
+    echo "Stopping mezo.service"
     systemctl stop mezo.service || echo 'mezo stopped'
+    echo "Stopping ethereum-sidecar.service"
     systemctl stop ethereum-sidecar.service || echo 'ethereum sidecar stopped'
+    echo "Stopping connect-sidecar.service"
     systemctl stop connect-sidecar.service || echo 'skip sidecar stopped'
 
+    echo "Disabling systemd unit mezo.service"
     systemctl disable mezo.service || echo 'mezo sidecar already disabled'
+    echo "Disabling systemd unit ethereum-sidecar.service"
     systemctl disable ethereum-sidecar.service || echo 'ethereum already disabled'
+    echo "Disabling systemd unit connect-sidecar.service"
     systemctl disable connect-sidecar.service || echo 'skip sidecar already disabled'
 
+    echo "Removing systemd file /etc/systemd/system/mezo.service"
     rm -f /etc/systemd/system/mezo.service
+    echo "Removing systemd file /etc/systemd/system/ethereum-sidecar.service"
     rm -f /etc/systemd/system/ethereum-sidecar.service
+    echo "Removing systemd file /etc/systemd/system/connect-sidecar.service"
     rm -f /etc/systemd/system/connect-sidecar.service
 
+    echo "Reloading systemd daemon"
     systemctl daemon-reload
 
     rm -rf ${MEZOD_HOME}
@@ -296,12 +306,10 @@ backup() {
     BACKUP_DIRNAME=$(dirname "$MEZOD_HOME")
     BACKUP_FOLDER=$(basename "$MEZOD_HOME")
 
-    echo $BACKUP_DIRNAME
-    echo $BACKUP_FOLDER
-
+    echo "Trying to create directory for backups"
     mkdir -p "$MEZOD_HOME-backups"
 
-    echo "$MEZOD_HOME-backups/mezo_backup_$(date +%Y%m%d).tar.gz"
+    echo "Creating a backup of $MEZOD_HOME to $MEZOD_HOME-backups/mezo_backup_$(date +%Y%m%d).tar.gz"
     tar -czvf "$MEZOD_HOME-backups/mezo_backup_$(date +%Y%m%d).tar.gz" -C "$BACKUP_DIRNAME" "$BACKUP_FOLDER"
 }
 
