@@ -81,11 +81,8 @@ func NewKey(withValidator bool) Key {
 	if err != nil {
 		panic(err)
 	}
+
 	sdkAddr := sdk.AccAddress(addr.Bytes())
-	if withValidator {
-
-	}
-
 	validator := poatypes.Validator{}
 	description := validatorpool.Description{}
 
@@ -123,7 +120,7 @@ func randomString(l int) string {
 	var sb strings.Builder
 
 	for i := 0; i < l; i++ {
-		randomIndex := rand.Intn(len(characters))
+		randomIndex := rand.Intn(len(characters)) //nolint:all
 		randomChar := characters[randomIndex]
 		sb.WriteRune(randomChar)
 	}
@@ -141,7 +138,7 @@ func (s *PrecompileTestSuite) SetupTest() {
 	s.account2 = NewKey(true)  // applicant account
 	s.account3 = NewKey(true)  // validator account
 	s.account4 = NewKey(true)  // candidateOwner account
-	s.account5 = NewKey(false) // invalid validator applicant (description exceeds character limit)
+	s.account5 = NewKey(false) // invalid validator applicant (description exceeds character)
 
 	// set a description on account 5 that exceeds the character limit
 	s.account5.Description.Moniker = randomString(101)
