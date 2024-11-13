@@ -1,12 +1,32 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
+import { BlockScoutAPI } from "#/blockscout";
 
 type Env = {
   BLOCKSCOUT_API_URL: string
 }
 
+async function fetchActivity(env: Env): Promise<ActivityItem[]> {
+  const bsAPI = new BlockScoutAPI(env.BLOCKSCOUT_API_URL);
+
+  const addresses = await bsAPI.addresses()
+
+  return addresses.map((address) => {
+    return {
+      address: address.address,
+      txCount: address.txCount,
+      deployedContracts: 0,
+      deployedContractsTxCount: 0,
+    }
+  })
+}
+
 export default {
   async fetch(request: Request, env: Env, _: ExecutionContext) {
-    return Response.json({ message: "Hello, world!" })
+    // TODO: Return for testing purposes. Return a 404 ultimately as we want to rely on internal RPC only.
+    return Response.json({
+      success: true,
+      activity: await fetchActivity(env),
+    })
   },
 }
 
