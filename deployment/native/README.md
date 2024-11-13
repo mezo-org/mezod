@@ -7,7 +7,7 @@ This document describes:
 - deployment process for the validator.
 
 > [!NOTE]
-> For now, transactions for entering the testnet/mainnet (aka submitting validator application) 
+> For now, transactions for entering the testnet/mainnet (aka submitting validator application)
 > are out of scope for this script. Feature will be supported as soon as Mezo team implements
 > it into the Mezo binary.
 
