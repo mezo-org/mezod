@@ -79,14 +79,17 @@ func NewKey() Key {
 	if err != nil {
 		panic(err)
 	}
+
 	// Create a validator description
+	descID := addr.String()[0:8]
 	desc := validatorpool.Description{
-		Moniker:         "moniker-" + addr.String(),
-		Identity:        "identity-" + addr.String(),
-		Website:         "website-" + addr.String(),
-		SecurityContact: "securityContact-" + addr.String(),
-		Details:         "details-" + addr.String(),
+		Moniker:         "moniker-" + descID,
+		Identity:        "identity-" + descID,
+		Website:         "website-" + descID,
+		SecurityContact: "securityContact-" + descID,
+		Details:         "details-" + descID,
 	}
+
 	// Create a validator
 	sdkAddr := sdk.AccAddress(addr.Bytes())
 	validator, err := poatypes.NewValidator(sdk.ValAddress(sdkAddr), consPubKey, poatypes.Description(desc))
