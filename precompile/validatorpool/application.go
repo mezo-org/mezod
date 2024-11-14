@@ -3,6 +3,7 @@ package validatorpool
 import (
 	"fmt"
 
+	store "cosmossdk.io/store/types"
 	"github.com/cometbft/cometbft/crypto/ed25519"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/types"
@@ -10,6 +11,9 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
+
+// SubmitApplicationGasMultiplier is used to increase the default gas requirements
+const SubmitApplicationGasMultiplier uint64 = 4
 
 // SubmitApplicationMethodName is the name of the submitApplication method. It matches the name
 // of the method in the contract ABI.
@@ -39,9 +43,16 @@ func (m *SubmitApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *SubmitApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
-	// Fallback to the default gas calculation.
-	return 0, false
+func (m *SubmitApplicationMethod) RequiredGas(methodInputArgs []byte) (uint64, bool) {
+	// Get default gas costs
+	gasConfig := store.KVGasConfig()
+	costFlat, costPerByte := gasConfig.WriteCostFlat, gasConfig.WriteCostPerByte
+	// Calculate default gas requirements
+	methodInputArgsByteLength := uint64(len(methodInputArgs))
+	gas := costFlat + (costPerByte * methodInputArgsByteLength)
+	// Increase by a factor of SubmitApplicationGasMultiplier
+	gas *= SubmitApplicationGasMultiplier
+	return gas, true
 }
 
 func (m *SubmitApplicationMethod) Payable() bool {
