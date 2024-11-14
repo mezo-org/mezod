@@ -1,30 +1,42 @@
-import { WorkerEntrypoint } from "cloudflare:workers";
-import { BlockScoutAPI, ContractItem } from "#/blockscout";
+import { WorkerEntrypoint } from "cloudflare:workers"
+import { BlockScoutAPI, ContractItem } from "#/blockscout"
 
 type Env = {
   BLOCKSCOUT_API_URL: string
+  FAUCET_ADDRESS: string
 }
 
 async function fetchActivity(env: Env): Promise<ActivityItem[]> {
-  const bsAPI = new BlockScoutAPI(env.BLOCKSCOUT_API_URL);
+  const bsAPI = new BlockScoutAPI(env.BLOCKSCOUT_API_URL)
 
   const addresses = await bsAPI.addresses()
-  const contracts = await bsAPI.contracts();
+  const contracts = await bsAPI.contracts()
+  const txsFromFaucet = await bsAPI.txsFromAddress(env.FAUCET_ADDRESS)
 
-  const accountToContracts = contracts.reduce(
+  const addressToContracts = contracts.reduce(
     (acc, contract) => {
       if (!acc[contract.deployer]) {
-        acc[contract.deployer] = [];
+        acc[contract.deployer] = []
       }
-      acc[contract.deployer].push(contract);
-      return acc;
+      acc[contract.deployer].push(contract)
+      return acc
     },
     {} as Record<string, ContractItem[]>
   )
 
+  const addressToClaimedBTC = txsFromFaucet.reduce(
+    (acc, tx) => {
+      if (!acc[tx.to]) {
+        acc[tx.to] = BigInt(0)
+      }
+      acc[tx.to] += BigInt(tx.value)
+      return acc
+    },
+    {} as Record<string, bigint>
+  )
 
   return addresses.map((item) => {
-    const contracts = accountToContracts[item.address] || [];
+    const contracts = addressToContracts[item.address] || []
 
     const deployedContractsTxCount = contracts.reduce(
       (acc, contract) => acc + contract.txCount,
@@ -36,6 +48,7 @@ async function fetchActivity(env: Env): Promise<ActivityItem[]> {
       txCount: item.txCount,
       deployedContracts: contracts.length,
       deployedContractsTxCount: deployedContractsTxCount,
+      claimedBTC: addressToClaimedBTC[item.address]?.toString() || "0"
     }
   })
 }
@@ -61,18 +74,21 @@ export class InternalEntrypoint extends WorkerEntrypoint {
           txCount: 10,
           deployedContracts: 5,
           deployedContractsTxCount: 100,
+          claimedBTC: "1000000000000000000"
         },
         {
           address: "0x7964f3985F1eA5E7f58b3aa44deCe2de7468d51B",
           txCount: 1,
           deployedContracts: 0,
           deployedContractsTxCount: 0,
+          claimedBTC: "1000000000000000000"
         },
         {
           address: "0x9e0F855D302C633cF78F721A5c0A419D38EE949A",
           txCount: 500,
           deployedContracts: 20,
           deployedContractsTxCount: 3000,
+          claimedBTC: "1000000000000000000"
         }
       ]
 
@@ -94,4 +110,5 @@ export type ActivityItem = {
   txCount: number,
   deployedContracts: number,
   deployedContractsTxCount: number
+  claimedBTC: string // 1e18 precision
 }

@@ -9,9 +9,11 @@ logpush = true
 
 [vars]
 BLOCKSCOUT_API_URL = "https://api.explorer.test.mezo.org/api/v2"
+FAUCET_ADDRESS = "0xc2a912D17e0DfAe27e17ef0cF3baF5beC659A6EA"
 
 # Staging
 [env.staging]
 
 [env.staging.vars]
 BLOCKSCOUT_API_URL = "https://api.explorer.test.mezo.org/api/v2"
+FAUCET_ADDRESS = "0xc2a912D17e0DfAe27e17ef0cF3baF5beC659A6EA"
