@@ -43,10 +43,10 @@ const (
 	// TxIndexKeyLength is the length of tx-index key
 	TxIndexKeyLength = 1 + 8 + 8
 
-	// AssetsLockedDiscriminator is the discriminator indicating that the
-	// `ExtraData` field of the `TxResult` contains information on `AssetsLocked`
-	// events.
-	AssetsLockedDiscriminator = 1
+	// BridgingInfoDiscriminator is the discriminator indicating that the
+	// `ExtraData` field of the `TxResult` contains bridging information
+	// (serialized `AssetsLocked` events).
+	BridgingInfoDiscriminator = 1
 )
 
 var _ mezotypes.EVMTxIndexer = &KVIndexer{}
@@ -93,15 +93,12 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 			}
 
 			extraData := append(
-				[]byte{AssetsLockedDiscriminator},
+				[]byte{BridgingInfoDiscriminator},
 				assetsLockedEvents...,
 			)
 
 			txResult := mezotypes.TxResult{
 				Height:     height,
-				TxIndex:    0,
-				MsgIndex:   0,
-				EthTxIndex: 0,
 				ExtraData:  extraData,
 			}
 

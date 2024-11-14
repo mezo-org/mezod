@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/mezo-org/mezod/indexer"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -48,6 +49,22 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 	block, err := b.TendermintBlockByNumber(rpctypes.BlockNumber(res.Height))
 	if err != nil {
 		return nil, err
+	}
+
+	// Special case for pseudo-transactions containing bridging information.
+	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+		blockHash := common.BytesToHash(block.BlockID.Hash.Bytes())
+		blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(res.Height)))
+		to := common.HexToAddress("0x7b7C000000000000000000000000000000000012")
+		chainID := (*hexutil.Big)(b.chainID)
+
+		return &rpctypes.RPCTransaction{
+			BlockHash: &blockHash,
+			BlockNumber: blockNumber,
+			Hash: txHash,
+			To: &to,
+			ChainID: chainID,
+		}, nil
 	}
 
 	tx, err := b.clientCtx.TxConfig.TxDecoder()(block.Block.Txs[res.TxIndex])
