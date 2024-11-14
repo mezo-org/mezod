@@ -7,13 +7,32 @@ logpush = true
 
 # Development
 
+# For development, DB id must be set but can have any value.
+[[d1_databases]]
+binding = "DB"
+database_name = "mezo-activity"
+database_id = "not-applicable"
+
 [vars]
 BLOCKSCOUT_API_URL = "https://api.explorer.test.mezo.org/api/v2"
 FAUCET_ADDRESS = "0xc2a912D17e0DfAe27e17ef0cF3baF5beC659A6EA"
+UPDATE_BATCH_SIZE = "1000"
+
+[triggers]
+crons = ["*/5 * * * *"]
 
 # Staging
 [env.staging]
 
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "mezo-activity-staging"
+database_id = "bd37df56-6bb3-40b4-8b34-837a0e2000e4"
+
 [env.staging.vars]
 BLOCKSCOUT_API_URL = "https://api.explorer.test.mezo.org/api/v2"
 FAUCET_ADDRESS = "0xc2a912D17e0DfAe27e17ef0cF3baF5beC659A6EA"
+UPDATE_BATCH_SIZE = "1000"
+
+[env.staging.triggers]
+crons = ["*/5 * * * *"]

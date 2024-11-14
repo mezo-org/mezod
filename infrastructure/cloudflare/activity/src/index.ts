@@ -4,6 +4,37 @@ import { BlockScoutAPI, ContractItem } from "#/blockscout"
 type Env = {
   BLOCKSCOUT_API_URL: string
   FAUCET_ADDRESS: string
+  DB: D1Database
+  UPDATE_BATCH_SIZE: string
+}
+
+async function updateActivity(env: Env) {
+  const activity = await fetchActivity(env)
+
+  const stmts = activity.map((item) => {
+    return env.DB
+      .prepare(`INSERT OR REPLACE INTO activity (address, tx_count, deployed_contracts, deployed_contracts_tx_count, claimed_btc) VALUES (?1, ?2, ?3, ?4, ?5)`)
+      .bind(item.address, item.txCount, item.deployedContracts, item.deployedContractsTxCount, item.claimedBTC)
+  })
+
+  const batchSize = parseInt(env.UPDATE_BATCH_SIZE);
+  const batches = [];
+
+  for (let i = 0; i < stmts.length; i += batchSize) {
+    const batch = stmts.slice(i, i + batchSize);
+    batches.push(batch);
+  }
+
+  await Promise.all(
+    batches.map(async (batch) => {
+      await env.DB.batch(batch)
+    })
+  )
+}
+
+async function getActivity(env: Env): Promise<ActivityItem[]> {
+  const { results } = await env.DB.prepare("SELECT * FROM activity").all<ActivityItem>()
+  return results
 }
 
 async function fetchActivity(env: Env): Promise<ActivityItem[]> {
@@ -60,8 +91,11 @@ export default {
     // TODO: Return for testing purposes. Return a 404 ultimately as we want to rely on internal RPC only.
     return Response.json({
       success: true,
-      activity: await fetchActivity(env),
+      activity: await getActivity(env),
     })
+  },
+  async scheduled(_: unknown, env: Env) {
+    await updateActivity(env)
   },
 }
 

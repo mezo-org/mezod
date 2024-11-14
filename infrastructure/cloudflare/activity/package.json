@@ -3,8 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "deploy": "./deploy.sh",
-    "dev": "wrangler dev"
+    "deploy": "wrangler deploy --env staging",
+    "dev": "wrangler dev",
+    "migrations:staging:list": "wrangler d1 migrations list mezo-activity-staging --env staging",
+    "migrations:staging:apply": "wrangler d1 migrations apply mezo-activity-staging --env staging",
+    "migrations:local:list": "wrangler d1 migrations list mezo-activity --local",
+    "migrations:local:apply": "wrangler d1 migrations apply mezo-activity --local"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
