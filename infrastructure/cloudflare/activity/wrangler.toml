@@ -23,6 +23,7 @@ crons = ["*/5 * * * *"]
 
 # Staging
 [env.staging]
+workers_dev = false
 
 [[env.staging.d1_databases]]
 binding = "DB"

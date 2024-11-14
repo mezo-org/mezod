@@ -88,11 +88,7 @@ async function fetchActivity(env: Env): Promise<ActivityItem[]> {
 
 export default {
   async fetch(request: Request, env: Env, _: ExecutionContext) {
-    // TODO: Return for testing purposes. Return a 404 ultimately as we want to rely on internal RPC only.
-    return Response.json({
-      success: true,
-      activity: await getActivity(env),
-    })
+    return new Response("This worker does not expose a public REST API", { status: 404 })
   },
   async scheduled(_: unknown, env: Env) {
     await updateActivity(env)
@@ -102,33 +98,8 @@ export default {
 export class InternalEntrypoint extends WorkerEntrypoint {
   async get(): Promise<InternalGetResponse> {
     try {
-      // TODO: Implement the logic for fetching activity data.
-
-      const mockData: ActivityItem[] = [
-        {
-          address: "0x6d2C29C7E7C206dd7A0F2D47C79Ab828E6546d7C",
-          txCount: 10,
-          deployedContracts: 5,
-          deployedContractsTxCount: 100,
-          claimedBTC: "1000000000000000000"
-        },
-        {
-          address: "0x7964f3985F1eA5E7f58b3aa44deCe2de7468d51B",
-          txCount: 1,
-          deployedContracts: 0,
-          deployedContractsTxCount: 0,
-          claimedBTC: "1000000000000000000"
-        },
-        {
-          address: "0x9e0F855D302C633cF78F721A5c0A419D38EE949A",
-          txCount: 500,
-          deployedContracts: 20,
-          deployedContractsTxCount: 3000,
-          claimedBTC: "1000000000000000000"
-        }
-      ]
-
-      return { success: true, activity: mockData }
+      const activity = await getActivity(this.env as Env)
+      return { success: true, activity: activity }
     } catch (error) {
       return { success: false, errorMsg: `${error}` }
     }
