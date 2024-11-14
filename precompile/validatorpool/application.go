@@ -397,3 +397,80 @@ func (m *ApplicationMethod) Run(context *precompile.RunContext, inputs precompil
 
 	return precompile.MethodOutputs{consPubKey, val.Description}, nil
 }
+
+// CleanupApplicationsMethodName is the name of the cleanupApplications method. It matches the name
+// of the method in the contract ABI.
+const CleanupApplicationsMethodName = "cleanupApplications"
+
+// CleanupApplicationsMethod is the implementation of the cleanupApplications method that removes
+// all applications
+
+// The method has no arguments
+type CleanupApplicationsMethod struct {
+	keeper PoaKeeper
+}
+
+func newCleanupApplicationsMethod(pk PoaKeeper) *CleanupApplicationsMethod {
+	return &CleanupApplicationsMethod{
+		keeper: pk,
+	}
+}
+
+func (m *CleanupApplicationsMethod) MethodName() string {
+	return SubmitApplicationMethodName
+}
+
+func (m *CleanupApplicationsMethod) MethodType() precompile.MethodType {
+	return precompile.Write
+}
+
+func (m *CleanupApplicationsMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (m *CleanupApplicationsMethod) Payable() bool {
+	return false
+}
+
+func (m *CleanupApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+	// check method inputs
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
+	err := m.keeper.CleanupApplications(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// emit event
+	err = context.EventEmitter().Emit(NewApplicationsCleanedEvent())
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit ApplicationsCleaned event: [%w]", err)
+	}
+
+	return precompile.MethodOutputs{true}, nil
+}
+
+// ApplicationsCleanedName is the name of the ApplicationsCleaned event. It matches the name
+// of the event in the contract ABI.
+const ApplicationsCleanedEventName = "ApplicationsCleaned"
+
+// ApplicationsCleanedEvent is the implementation of the ApplicationsCleaned event
+type ApplicationsCleanedEvent struct{}
+
+func NewApplicationsCleanedEvent() *ApplicationsCleanedEvent {
+	return &ApplicationsCleanedEvent{}
+}
+
+func (e *ApplicationsCleanedEvent) EventName() string {
+	return ApplicationsCleanedEventName
+}
+
+func (e *ApplicationsCleanedEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{}
+}

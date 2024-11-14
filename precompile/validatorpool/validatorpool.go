@@ -48,6 +48,8 @@ type PoaKeeper interface {
 	// ApproveApplication (onlyOwner) approves a pending application and
 	// promotes the applications candidate to validator
 	ApproveApplication(types.Context, types.AccAddress, types.ValAddress) error
+	// CleanupApplications (onlyOwner) removes all pending applications
+	CleanupApplications(types.Context, types.AccAddress) error
 	// GetValidator returns the validator for a operator address
 	GetValidator(types.Context, types.ValAddress) (poatypes.Validator, bool)
 	// GetAllValidators returns all validators (in all states)
@@ -112,6 +114,7 @@ func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 	return []precompile.Method{
 		newSubmitApplicationMethod(pk),
 		newApproveApplicationMethod(pk),
+		newCleanupApplicationsMethod(pk),
 		newKickMethod(pk),
 		newLeaveMethod(pk),
 		newOwnerMethod(pk),
