@@ -417,7 +417,7 @@ func newCleanupApplicationsMethod(pk PoaKeeper) *CleanupApplicationsMethod {
 }
 
 func (m *CleanupApplicationsMethod) MethodName() string {
-	return SubmitApplicationMethodName
+	return CleanupApplicationsMethodName
 }
 
 func (m *CleanupApplicationsMethod) MethodType() precompile.MethodType {

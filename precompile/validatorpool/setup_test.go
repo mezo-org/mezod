@@ -332,7 +332,14 @@ func (k *FakePoaKeeper) ApproveApplication(ctx sdk.Context, sender sdk.AccAddres
 	return nil
 }
 
-func (k *FakePoaKeeper) CleanupApplications(ctx sdk.Context, owner sdk.AccAddress) error {
+func (k *FakePoaKeeper) CleanupApplications(ctx sdk.Context, sender sdk.AccAddress) error {
+	if !sender.Equals(k.owner) {
+		return errorsmod.Wrap(
+			sdkerrors.ErrUnauthorized,
+			"sender is not owner",
+		)
+	}
+
 	k.applications = make(map[string]poatypes.Application)
 	return nil
 }
