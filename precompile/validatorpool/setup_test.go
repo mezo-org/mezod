@@ -1,7 +1,9 @@
 package validatorpool_test
 
 import (
+	"math/rand"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,12 +68,12 @@ type PrecompileTestSuite struct {
 	keeper *FakePoaKeeper
 	ctx    sdk.Context
 
-	account1, account2, account3, account4 Key
+	account1, account2, account3, account4, account5 Key
 
 	validatorpoolPrecompile *precompile.Contract
 }
 
-func NewKey() Key {
+func NewKey(withValidator bool) Key {
 	addr, privKey := utiltx.NewAddrKey()
 	// Generate a consPubKey
 	tmpk := ed25519.GenPrivKey().PubKey()
@@ -79,19 +81,27 @@ func NewKey() Key {
 	if err != nil {
 		panic(err)
 	}
-	// Create a validator description
-	desc := validatorpool.Description{
-		Moniker:         "moniker-" + addr.String(),
-		Identity:        "identity-" + addr.String(),
-		Website:         "website-" + addr.String(),
-		SecurityContact: "securityContact-" + addr.String(),
-		Details:         "details-" + addr.String(),
-	}
-	// Create a validator
+
 	sdkAddr := sdk.AccAddress(addr.Bytes())
-	validator, err := poatypes.NewValidator(sdk.ValAddress(sdkAddr), consPubKey, poatypes.Description(desc))
-	if err != nil {
-		panic(err)
+	validator := poatypes.Validator{}
+	description := validatorpool.Description{}
+
+	if withValidator {
+		// Create a validator description
+		descID := addr.String()[0:8]
+		description = validatorpool.Description{
+			Moniker:         "moniker-" + descID,
+			Identity:        "identity-" + descID,
+			Website:         "website-" + descID,
+			SecurityContact: "securityContact-" + descID,
+			Details:         "details-" + descID,
+		}
+
+		// Create a validator
+		validator, err = poatypes.NewValidator(sdk.ValAddress(sdkAddr), consPubKey, poatypes.Description(description))
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return Key{
@@ -100,8 +110,22 @@ func NewKey() Key {
 		Priv:        privKey,
 		Validator:   validator,
 		ConsPubKey:  consPubKey,
-		Description: desc,
+		Description: description,
 	}
+}
+
+// returns a random string of length l
+func randomString(l int) string {
+	characters := []rune("ABCDEF0123456789")
+	var sb strings.Builder
+
+	for i := 0; i < l; i++ {
+		randomIndex := rand.Intn(len(characters)) //nolint:all
+		randomChar := characters[randomIndex]
+		sb.WriteRune(randomChar)
+	}
+
+	return sb.String()
 }
 
 func TestPrecompileTestSuite(t *testing.T) {
@@ -110,10 +134,14 @@ func TestPrecompileTestSuite(t *testing.T) {
 
 func (s *PrecompileTestSuite) SetupTest() {
 	// accounts
-	s.account1 = NewKey() // owner account
-	s.account2 = NewKey() // applicant account
-	s.account3 = NewKey() // validator account
-	s.account4 = NewKey() // candidateOwner account
+	s.account1 = NewKey(true)  // owner account
+	s.account2 = NewKey(true)  // applicant account
+	s.account3 = NewKey(true)  // validator account
+	s.account4 = NewKey(true)  // candidateOwner account
+	s.account5 = NewKey(false) // invalid validator applicant (description exceeds character)
+
+	// set a description on account 5 that exceeds the character limit
+	s.account5.Description.Moniker = randomString(101)
 
 	// consensus key
 	privCons, err := ethsecp256k1.GenerateKey()

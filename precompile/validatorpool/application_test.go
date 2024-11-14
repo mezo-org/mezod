@@ -62,6 +62,19 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 				s.Require().Equal(description.Moniker, s.account1.Description.Moniker, "expected moniker to match")
 			},
 		},
+		{
+			name: "description exceeds character limit",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account5.ConsPubKeyBytes32(),
+					s.account5.Description,
+				}
+			},
+			as:          s.account5.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: poatypes.ErrInvalidValidator.Error(),
+		},
 	}
 
 	s.RunMethodTestCases(testcases, "submitApplication")
