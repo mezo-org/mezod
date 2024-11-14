@@ -126,7 +126,7 @@ customize_configuration() {
   # FILE: app.toml
   #
   mezod toml set "$APP_CONFIG_FILE" \
-    -v "ethereum-sidecar.client.server-address=ethereum-sidecar:7500" \
+    -v "ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_SERVER:-ethereum-sidecar:7500}" \
     -v "api.enable=true" \
     -v "api.address=tcp://0.0.0.0:1317" \
     -v "grpc.enable=true" \

@@ -34,8 +34,7 @@ services:
       replicas: 0
     working_dir: ${MEZOD_HOME}
     networks:
-      mezo:
-        ipv4_address: 10.55.0.2
+      - mezo
 
   #
   # PHASE: runtime
@@ -56,8 +55,7 @@ services:
     cap_drop:
       - ALL
     networks:
-      mezo:
-        ipv4_address: 10.55.0.4
+      - mezo
 
   connect-sidecar:
     # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
@@ -69,8 +67,6 @@ services:
       - connect
       - --log-disable-file-rotation
       - --port=8080
-      # - --metrics-enabled
-      # - --metrics-prometheus-address=8002
       - --market-map-endpoint=mezod:9090
     expose:
       - 8080
@@ -78,8 +74,7 @@ services:
     cap_drop:
       - ALL
     networks:
-      mezo:
-        ipv4_address: 10.55.0.5
+      - mezo
 
   mezod:
     <<: [*platform, *envfile, *volumes, *logging, *user]
@@ -111,13 +106,8 @@ services:
     cap_drop:
       - ALL
     networks:
-      mezo:
-        ipv4_address: 10.55.0.6
+      - mezo
 
 networks:
   mezo:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 10.55.0.0/16
-          gateway: 10.55.0.1
