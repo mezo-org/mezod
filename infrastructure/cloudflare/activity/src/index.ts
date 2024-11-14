@@ -35,22 +35,24 @@ async function fetchActivity(env: Env): Promise<ActivityItem[]> {
     {} as Record<string, bigint>
   )
 
-  return addresses.map((item) => {
-    const contracts = addressToContracts[item.address] || []
+  return addresses
+    .filter((item) => item.address !== env.FAUCET_ADDRESS) // Filter out the faucet address.
+    .map((item) => {
+      const contracts = addressToContracts[item.address] || []
 
-    const deployedContractsTxCount = contracts.reduce(
-      (acc, contract) => acc + contract.txCount,
-      0
-    )
+      const deployedContractsTxCount = contracts.reduce(
+        (acc, contract) => acc + contract.txCount,
+        0
+      )
 
-    return {
-      address: item.address,
-      txCount: item.txCount,
-      deployedContracts: contracts.length,
-      deployedContractsTxCount: deployedContractsTxCount,
-      claimedBTC: addressToClaimedBTC[item.address]?.toString() || "0"
-    }
-  })
+      return {
+        address: item.address,
+        txCount: item.txCount,
+        deployedContracts: contracts.length,
+        deployedContractsTxCount: deployedContractsTxCount,
+        claimedBTC: addressToClaimedBTC[item.address]?.toString() || "0"
+      }
+    })
 }
 
 export default {
