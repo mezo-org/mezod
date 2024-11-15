@@ -44,5 +44,5 @@ npm run migrations:staging:list
 
 Once done, you can deploy the component to the staging environment by running:
 ```shell
-npm run deploy
+npm run deploy:staging
 ```

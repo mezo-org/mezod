@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "deploy": "wrangler deploy --env staging",
+    "deploy:staging": "wrangler deploy --env staging",
     "dev": "wrangler dev",
     "migrations:staging:list": "wrangler d1 migrations list mezo-activity-staging --env staging --remote",
     "migrations:staging:apply": "wrangler d1 migrations apply mezo-activity-staging --env staging --remote",
