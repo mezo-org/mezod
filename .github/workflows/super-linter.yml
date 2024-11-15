@@ -34,5 +34,6 @@ jobs:
           VALIDATE_GO: false
           VALIDATE_GITLEAKS: false
           VALIDATE_TYPESCRIPT_STANDARD: false
+          VALIDATE_TERRAFORM_TERRASCAN: false
           DEFAULT_BRANCH: "main"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
