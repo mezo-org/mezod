@@ -52,7 +52,7 @@ export class BlockScoutAPI {
         next_page_params: NextPageParams
       }
 
-      const batch = responseJSON.items
+      const addressesPage = responseJSON.items
         .filter((item: Item) => {
           const hasTxs = item.tx_count.length > 0 && item.tx_count !== "0"
           return hasTxs && !item.is_contract
@@ -64,7 +64,7 @@ export class BlockScoutAPI {
           }
         })
 
-      addresses.push(...batch)
+      addresses.push(...addressesPage)
 
       if (!responseJSON.next_page_params) {
         break
@@ -135,25 +135,52 @@ export class BlockScoutAPI {
       }
     }
 
-    const responseJSON = await this.#call("transactions?type=contract_creation") as { items: Item[] }
-    const items = responseJSON.items
+    type NextPageParams = {
+      block_number: number,
+      index: number,
+      items_count: number
+    }
 
-    const contracts = items
-      .filter((item: Item) => {
-        return item.status === "ok"
-      })
-      .map(async (item: Item): Promise<ContractItem> => {
-        const contractAddress = item.created_contract.hash
+    const contracts: ContractItem[] = []
 
-        const txCount = await this.txCount(contractAddress)
+    let queryString: string = ""
+    for (let i = 0 ; ; i++) {
+      console.log(`fetch contract creation txs page number: ${i + 1}`)
 
-        return {
-          address: contractAddress,
-          deployer: item.from.hash,
-          txCount,
-        }
-      })
+      const responseJSON = await this.#call(`transactions?type=contract_creation${queryString}`) as {
+        items: Item[]
+        next_page_params: NextPageParams
+      }
 
-    return Promise.all(contracts)
+      const contractsPage = responseJSON.items
+        .filter((item: Item) => {
+          return item.status === "ok"
+        })
+        .map(async (item: Item): Promise<ContractItem> => {
+          const contractAddress = item.created_contract.hash
+
+          const txCount = await this.txCount(contractAddress)
+
+          return {
+            address: contractAddress,
+            deployer: item.from.hash,
+            txCount,
+          }
+        })
+
+      contracts.push(...await Promise.all(contractsPage))
+
+      if (!responseJSON.next_page_params) {
+        break
+      }
+
+      const {block_number, index, items_count} = responseJSON.next_page_params
+
+      queryString = `&block_number=${block_number}&` +
+        `index=${index}&` +
+        `items_count=${items_count}`
+    }
+
+    return contracts
   }
 }
