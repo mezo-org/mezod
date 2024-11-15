@@ -45,6 +45,7 @@ async function getActivity(env: Env): Promise<ActivityItem[]> {
 async function fetchActivity(env: Env): Promise<ActivityItem[]> {
   const bsAPI = new BlockScoutAPI(env.BLOCKSCOUT_API_URL)
 
+  // TODO: We may want to process addresses in batches if number of addresses is large.
   const addresses = await bsAPI.addresses()
   const contracts = await bsAPI.contracts()
   const txsFromFaucet = await bsAPI.txsFromAddress(env.FAUCET_ADDRESS)
