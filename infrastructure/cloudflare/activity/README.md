@@ -30,6 +30,9 @@ npm run dev
 The component will be available at `http://localhost:8001`. Code changes
 are hot-reloaded by Wrangler.
 
+You can also hit `http://localhost:8001/__scheduled?cron=*+*+*+*+*` to
+manually trigger the cron job that populates the database with activity data.
+
 ### Deployment
 
 First, apply database migrations on the staging environment by running:
