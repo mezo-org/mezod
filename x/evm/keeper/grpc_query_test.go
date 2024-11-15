@@ -12,9 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
-	ethlogger "github.com/ethereum/go-ethereum/eth/tracers/logger"
 	ethparams "github.com/ethereum/go-ethereum/params"
 
+	ethlogger "github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"github.com/mezo-org/mezod/server/config"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -579,7 +579,7 @@ func (suite *KeeperTestSuite) TestEstimateGas() {
 				}
 			},
 			true,
-			1186778,
+			1187108,
 			false,
 		},
 		// estimate gas of an erc20 transfer, the exact gas number is checked with geth
@@ -656,7 +656,7 @@ func (suite *KeeperTestSuite) TestEstimateGas() {
 				}
 			},
 			true,
-			1186778,
+			1187108,
 			true,
 		},
 		{
@@ -1099,7 +1099,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 				}
 			},
 			expPass:       true,
-			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = tracer not found\"}]",
+			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = ReferenceError: invalid_tracer is not defined at \\u003ceval\\u003e:1:2(0)\"}]",
 		},
 		{
 			msg: "invalid chain id",
@@ -1109,7 +1109,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 				chainID = &tmp
 			},
 			expPass:       true,
-			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = invalid chain id for signer\"}]",
+			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = invalid chain id for signer: have 31611 want 1\"}]",
 		},
 	}
 

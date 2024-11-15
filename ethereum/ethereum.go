@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sync"
+	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ipfs/go-log"
 
@@ -17,42 +16,26 @@ import (
 
 var logger = log.Logger("mezo-ethereum")
 
-// baseChain represents a base, non-application-specific chain handle. It
+// BaseChain represents a base, non-application-specific chain handle. It
 // provides the implementation of generic features like balance monitor,
 // block counter and similar.
-type baseChain struct {
-	key     *keystore.Key
-	client  ethutil.EthereumClient
-	chainID *big.Int
-
-	blockCounter *ethereum.BlockCounter
-	nonceManager *ethereum.NonceManager
-	miningWaiter *ethutil.MiningWaiter
-
-	// transactionMutex allows interested parties to forcibly serialize
-	// transaction submission.
-	//
-	// When transactions are submitted, they require a valid nonce. The nonce is
-	// equal to the count of transactions the account has submitted so far, and
-	// for a transaction to be accepted it should be monotonically greater than
-	// any previous submitted transaction. To do this, transaction submission
-	// asks the Ethereum client it is connected to for the next pending nonce,
-	// and uses that value for the transaction. Unfortunately, if multiple
-	// transactions are submitted in short order, they may all get the same
-	// nonce. Serializing submission ensures that each nonce is requested after
-	// a previous transaction has been submitted.
-	transactionMutex *sync.Mutex
+type BaseChain struct {
+	client           ethutil.EthereumClient
+	chainID          *big.Int
+	blockCounter     *ethereum.BlockCounter
+	finalizedBlockFn func(ctx context.Context) (*big.Int, error)
 }
 
-// Connect creates Portal Ethereum chain handle.
-// TODO: Test the connectivity with the `Portal` smart contract. Due to the
-//
-//	outdated go-ethereum package it could not be tested so far.
-func ConnectPortal(
+type block struct {
+	Number string `json:"number"`
+}
+
+// Connect creates Ethereum chain handle.
+func Connect(
 	ctx context.Context,
 	config ethereum.Config,
 ) (
-	*PortalChain,
+	*BaseChain,
 	error,
 ) {
 	client, err := ethclient.Dial(config.URL)
@@ -72,15 +55,7 @@ func ConnectPortal(
 		)
 	}
 
-	portalChain, err := newPortalChain(config, baseChain)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"could not create portal chain handle: [%v]",
-			err,
-		)
-	}
-
-	return portalChain, nil
+	return baseChain, nil
 }
 
 // newChain construct a new instance of the Ethereum chain handle.
@@ -88,7 +63,7 @@ func newBaseChain(
 	ctx context.Context,
 	config ethereum.Config,
 	client *ethclient.Client,
-) (*baseChain, error) {
+) (*BaseChain, error) {
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -109,16 +84,6 @@ func newBaseChain(
 		)
 	}
 
-	// TODO: Validators interact with Ethereum in read-only mode. Therefore,
-	//       they should not be required to have an Ethereum key.
-	key, err := decryptKey(config)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to decrypt Ethereum key: [%v]",
-			err,
-		)
-	}
-
 	clientWithAddons := wrapClientAddons(config, client)
 
 	blockCounter, err := ethutil.NewBlockCounter(clientWithAddons)
@@ -129,24 +94,46 @@ func newBaseChain(
 		)
 	}
 
-	nonceManager := ethutil.NewNonceManager(
-		clientWithAddons,
-		key.Address,
-	)
+	finalizedBlockFn := func(ctx context.Context) (*big.Int, error) {
+		var finalized block
+		err = client.Client().CallContext(ctx, &finalized, "eth_getBlockByNumber", "finalized", false)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to get the finalized block: %v",
+				err,
+			)
+		}
 
-	miningWaiter := ethutil.NewMiningWaiter(clientWithAddons, config)
+		hexNumber := strings.TrimPrefix(finalized.Number, "0x")
+		finalizedBlock, ok := new(big.Int).SetString(hexNumber, 16) // hex to decimal
+		if !ok {
+			return nil, fmt.Errorf(
+				"failed to convert finalized block number to integer: %v",
+				err,
+			)
+		}
 
-	transactionMutex := &sync.Mutex{}
+		return finalizedBlock, nil
+	}
 
-	return &baseChain{
-		key:              key,
+	return &BaseChain{
 		client:           clientWithAddons,
 		chainID:          chainID,
 		blockCounter:     blockCounter,
-		nonceManager:     nonceManager,
-		miningWaiter:     miningWaiter,
-		transactionMutex: transactionMutex,
+		finalizedBlockFn: finalizedBlockFn,
 	}, nil
+}
+
+func (bc *BaseChain) BlockCounter() *ethereum.BlockCounter {
+	return bc.blockCounter
+}
+
+func (bc *BaseChain) FinalizedBlock(ctx context.Context) (*big.Int, error) {
+	return bc.finalizedBlockFn(ctx)
+}
+
+func (bc *BaseChain) Client() ethutil.EthereumClient {
+	return bc.client
 }
 
 // wrapClientAddons wraps the client instance with add-ons like logging, rate
@@ -178,10 +165,16 @@ func wrapClientAddons(
 	return loggingClient
 }
 
-// decryptKey decrypts the chain key pointed by the config.
-func decryptKey(config ethereum.Config) (*keystore.Key, error) {
-	return ethutil.DecryptKeyFile(
-		config.Account.KeyFile,
-		config.Account.KeyFilePassword,
-	)
+// NetworkFromString converts a string to an ethereum.Network.
+func NetworkFromString(networkStr string) ethereum.Network {
+	switch networkStr {
+	case ethereum.Mainnet.String():
+		return ethereum.Mainnet
+	case ethereum.Sepolia.String():
+		return ethereum.Sepolia
+	case ethereum.Developer.String():
+		return ethereum.Developer
+	default:
+		return ethereum.Unknown
+	}
 }

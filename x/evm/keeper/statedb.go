@@ -27,6 +27,7 @@ import (
 	"cosmossdk.io/store/prefix"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -45,7 +46,11 @@ func (k *Keeper) GetAccount(ctx sdk.Context, addr common.Address) *statedb.Accou
 		return nil
 	}
 
-	acct.Balance = k.GetBalance(ctx, addr)
+	balance := k.GetBalance(ctx, addr)
+
+	// Use conversion to bytes rather than uint64 to avoid an overflow error.
+	acct.Balance = new(uint256.Int).SetBytes(balance.Bytes())
+
 	return acct
 }
 
@@ -155,7 +160,7 @@ func (k *Keeper) SetAccount(ctx sdk.Context, addr common.Address, account stated
 
 	k.accountKeeper.SetAccount(ctx, acct)
 
-	if err := k.SetBalance(ctx, addr, account.Balance); err != nil {
+	if err := k.SetBalance(ctx, addr, account.Balance.ToBig()); err != nil {
 		return err
 	}
 

@@ -6,16 +6,15 @@ variable "services" {
     "cloudresourcemanager.googleapis.com",
     "compute.googleapis.com",
     "container.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "run.googleapis.com"
   ]
-}
-
-variable "project_name" {
-  description = "Project name"
-  default = "mezo-staging"
 }
 
 variable "project_id" {
   description = "Project ID"
+  type = string
 }
 
 variable "region" {
@@ -100,5 +99,21 @@ variable "global_external_ip_addresses" {
   default = [
     "mezo-staging-blockscout-api-external-ip",
     "mezo-staging-blockscout-app-external-ip",
+    "mezo-staging-rpc-external-ip",
   ]
+}
+
+variable "oidc_github" {
+  type = object({
+    github_organization = string
+    service_account     = string
+    repository          = string
+  })
+  description = "Configuration for GitHub OIDC provider"
+
+  default = {
+      github_organization = "mezo-org"
+      service_account = "mezo-staging-gha"
+      repository = "mezod"
+  }
 }

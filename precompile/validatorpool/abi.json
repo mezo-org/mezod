@@ -109,6 +109,44 @@
                 "internalType": "address",
                 "name": "operator",
                 "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint8",
+                "name": "privilegeId",
+                "type": "uint8"
+            }
+        ],
+        "name": "PrivilegeAdded",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "operator",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "uint8",
+                "name": "privilegeId",
+                "type": "uint8"
+            }
+        ],
+        "name": "PrivilegeRemoved",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "operator",
+                "type": "address"
             }
         ],
         "name": "ValidatorJoined",
@@ -143,6 +181,30 @@
     {
         "inputs": [],
         "name": "acceptOwnership",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "operators",
+                "type": "address[]"
+            },
+            {
+                "internalType": "uint8",
+                "name": "privilegeId",
+                "type": "uint8"
+            }
+        ],
+        "name": "addPrivilege",
         "outputs": [
             {
                 "internalType": "bool",
@@ -295,6 +357,55 @@
         "type": "function"
     },
     {
+        "inputs": [],
+        "name": "privileges",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint8",
+                        "name": "id",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "name",
+                        "type": "string"
+                    }
+                ],
+                "internalType": "struct Privilege[]",
+                "name": "",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "operators",
+                "type": "address[]"
+            },
+            {
+                "internalType": "uint8",
+                "name": "privilegeId",
+                "type": "uint8"
+            }
+        ],
+        "name": "removePrivilege",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
         "inputs": [
             {
                 "internalType": "bytes32",
@@ -422,6 +533,25 @@
             {
                 "internalType": "address[]",
                 "name": "",
+                "type": "address[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint8",
+                "name": "privilegeId",
+                "type": "uint8"
+            }
+        ],
+        "name": "validatorsByPrivilege",
+        "outputs": [
+            {
+                "internalType": "address[]",
+                "name": "operators",
                 "type": "address[]"
             }
         ],

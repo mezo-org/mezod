@@ -113,7 +113,6 @@ import (
 	_ "github.com/mezo-org/mezod/client/docs/statik"
 
 	"github.com/mezo-org/mezod/app/ante"
-	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/x/bridge"
 	bridgeabci "github.com/mezo-org/mezod/x/bridge/abci"
 	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
@@ -178,7 +177,8 @@ var (
 	maccPerms = map[string][]string{
 		authtypes.FeeCollectorName: nil,
 		poatypes.ModuleName:        nil,
-		evmtypes.ModuleName:        {authtypes.Minter, authtypes.Burner}, // used for secure addition and subtraction of balance using module account
+		evmtypes.ModuleName:        {authtypes.Minter, authtypes.Burner},
+		bridgetypes.ModuleName:     {authtypes.Minter, authtypes.Burner},
 	}
 
 	// module accounts that are allowed to receive tokens
@@ -231,6 +231,8 @@ type Mezo struct {
 	oracleClient      oracleclient.OracleClient
 	oracleMetrics     servicemetrics.Metrics
 	connectPreBlocker *connectpreblocker.PreBlockHandler
+
+	preBlockHandler *appabci.PreBlockHandler
 }
 
 // NewMezo returns a reference to a new initialized Ethermint application.
@@ -243,6 +245,7 @@ func NewMezo(
 	homePath string,
 	invCheckPeriod uint,
 	encodingConfig simappparams.EncodingConfig,
+	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
 	appOpts servertypes.AppOptions,
 	baseAppOptions ...func(*baseapp.BaseApp),
 ) *Mezo {
@@ -406,7 +409,11 @@ func NewMezo(
 	}
 	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
 
-	app.BridgeKeeper = bridgekeeper.NewKeeper(appCodec, keys[bridgetypes.StoreKey])
+	app.BridgeKeeper = bridgekeeper.NewKeeper(
+		appCodec,
+		keys[bridgetypes.StoreKey],
+		app.BankKeeper,
+	)
 
 	app.MarketMapKeeper = *marketmapkeeper.NewKeeper(
 		runtime.NewKVStoreService(keys[marketmaptypes.StoreKey]),
@@ -542,7 +549,7 @@ func NewMezo(
 		panic(fmt.Sprintf("failed to initialize oracle client and metrics: %s", err))
 	}
 	// Connect ABCI initialization requires the oracle client/metrics to be setup first.
-	app.setABCIExtensions()
+	app.setABCIExtensions(ethereumSidecarClient)
 
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
@@ -600,7 +607,9 @@ func (app *Mezo) PreBlocker(
 	ctx sdk.Context,
 	req *abci.RequestFinalizeBlock,
 ) (*sdk.ResponsePreBlock, error) {
-	return app.connectPreBlocker.WrappedPreBlocker(app.mm)(ctx, req)
+	// TODO eric
+	// return app.connectPreBlocker.WrappedPreBlocker(app.mm)(ctx, req)
+	return app.preBlockHandler.PreBlocker(app.mm)(ctx, req)
 }
 
 func (app *Mezo) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
@@ -653,9 +662,11 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 
 // setABCIExtensions sets the ABCI++ extensions on the application.
 // This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
-func (app *Mezo) setABCIExtensions() {
+func (app *Mezo) setABCIExtensions(
+	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
+) {
 	// Create the bridge ABCI handlers.
-	bridgeVoteExtensionHandler, bridgeProposalHandler := app.bridgeABCIHandlers()
+	bridgeVoteExtensionHandler, bridgeProposalHandler, bridgePreBlockHandler := app.bridgeABCIHandlers(ethereumSidecarClient)
 
 	// Create the Connect ABCI handlers.
 	connectVEHandler, connectProposalHandler, connectPreBlocker := app.connectABCIHandlers()
@@ -673,37 +684,48 @@ func (app *Mezo) setABCIExtensions() {
 	// PrepareProposal and ProcessProposal ABCI requests.
 	proposalHandler := appabci.NewProposalHandler(
 		app.Logger(),
-		app.PoaKeeper,
 		bridgeProposalHandler,
 		connectProposalHandler,
 	)
 	proposalHandler.SetHandlers(app.BaseApp)
 
 	app.connectPreBlocker = connectPreBlocker
+	// TODO eric
+	app.preBlockHandler = appabci.NewPreBlockHandler(
+		app.Logger(),
+		bridgePreBlockHandler,
+	)
 }
 
 // bridgeABCIHandlers returns the bridge ABCI handlers.
 // This function assumes the BridgeKeeper and PoaKeeper are already set in the app.
-func (app *Mezo) bridgeABCIHandlers() (
+func (app *Mezo) bridgeABCIHandlers(
+	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
+) (
 	*bridgeabci.VoteExtensionHandler,
 	*bridgeabci.ProposalHandler,
+	*bridgeabci.PreBlockHandler,
 ) {
-	// TODO: Instantiate a real sidecar client.
-	sidecarClient := ethsidecar.RunTestSidecar(context.Background())
-
 	voteExtensionHandler := bridgeabci.NewVoteExtensionHandler(
 		app.Logger(),
-		sidecarClient,
+		ethereumSidecarClient,
 		app.BridgeKeeper,
 	)
 
 	proposalHandler := bridgeabci.NewProposalHandler(
 		app.Logger(),
 		app.PoaKeeper,
+		app.BridgeKeeper,
 		appabci.VoteExtensionDecomposer(appabci.VoteExtensionPartBridge),
+		baseapp.ValidateVoteExtensions,
 	)
 
-	return voteExtensionHandler, proposalHandler
+	preBlockHandler := bridgeabci.NewPreBlockHandler(
+		app.Logger(),
+		app.BridgeKeeper,
+	)
+
+	return voteExtensionHandler, proposalHandler, preBlockHandler
 }
 
 // LoadHeight loads state at a particular height

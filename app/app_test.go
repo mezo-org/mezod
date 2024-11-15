@@ -27,6 +27,7 @@ import (
 	dbm "github.com/cosmos/cosmos-db"
 
 	"github.com/mezo-org/mezod/encoding"
+	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/utils"
 )
 
@@ -58,6 +59,7 @@ func TestMezoExport(t *testing.T) {
 		DefaultNodeHome,
 		0,
 		encoding.MakeConfig(ModuleBasics),
+		ethsidecar.NewClientMock(),
 		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)
@@ -99,6 +101,7 @@ func TestMezoExport(t *testing.T) {
 		DefaultNodeHome,
 		0,
 		encoding.MakeConfig(ModuleBasics),
+		ethsidecar.NewClientMock(),
 		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)

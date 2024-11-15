@@ -17,11 +17,12 @@ package statedb
 
 import (
 	"bytes"
-	"math/big"
+	"maps"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/holiman/uint256"
 )
 
 var emptyCodeHash = crypto.Keccak256(nil)
@@ -30,14 +31,14 @@ var emptyCodeHash = crypto.Keccak256(nil)
 // These objects are stored in the storage of auth module.
 type Account struct {
 	Nonce    uint64
-	Balance  *big.Int
+	Balance  *uint256.Int
 	CodeHash []byte
 }
 
 // NewEmptyAccount returns an empty account.
 func NewEmptyAccount() *Account {
 	return &Account{
-		Balance:  new(big.Int),
+		Balance:  new(uint256.Int),
 		CodeHash: emptyCodeHash,
 	}
 }
@@ -62,6 +63,10 @@ func (s Storage) SortedKeys() []common.Hash {
 	return keys
 }
 
+func (s Storage) Copy() Storage {
+	return maps.Clone(s)
+}
+
 // stateObject is the state of an acount
 type stateObject struct {
 	db *StateDB
@@ -75,15 +80,24 @@ type stateObject struct {
 
 	address common.Address
 
-	// flags
-	dirtyCode bool
-	suicided  bool
+	// Cache flags.
+	dirtyCode bool // true if the code was updated
+
+	// Flag whether the account was marked as self-destructed. The self-destructed
+	// account is still accessible in the scope of same transaction.
+	selfDestructed bool
+	// This is an EIP-6780 flag indicating whether the object is eligible for
+	// self-destruct according to EIP-6780. The flag could be set either when
+	// the contract is just created within the current transaction, or when the
+	// object was previously existent and is being deployed as a contract within
+	// the current transaction.
+	newContract bool
 }
 
 // newObject creates a state object.
 func newObject(db *StateDB, address common.Address, account Account) *stateObject {
 	if account.Balance == nil {
-		account.Balance = new(big.Int)
+		account.Balance = new(uint256.Int)
 	}
 	if account.CodeHash == nil {
 		account.CodeHash = emptyCodeHash
@@ -102,38 +116,38 @@ func (s *stateObject) empty() bool {
 	return s.account.Nonce == 0 && s.account.Balance.Sign() == 0 && bytes.Equal(s.account.CodeHash, emptyCodeHash)
 }
 
-func (s *stateObject) markSuicided() {
-	s.suicided = true
+func (s *stateObject) markSelfdestructed() {
+	s.selfDestructed = true
 }
 
 // AddBalance adds amount to s's balance.
 // It is used to add funds to the destination account of a transfer.
-func (s *stateObject) AddBalance(amount *big.Int) {
+func (s *stateObject) AddBalance(amount *uint256.Int) {
 	if amount.Sign() == 0 {
 		return
 	}
-	s.SetBalance(new(big.Int).Add(s.Balance(), amount))
+	s.SetBalance(new(uint256.Int).Add(s.Balance(), amount))
 }
 
 // SubBalance removes amount from s's balance.
 // It is used to remove funds from the origin account of a transfer.
-func (s *stateObject) SubBalance(amount *big.Int) {
+func (s *stateObject) SubBalance(amount *uint256.Int) {
 	if amount.Sign() == 0 {
 		return
 	}
-	s.SetBalance(new(big.Int).Sub(s.Balance(), amount))
+	s.SetBalance(new(uint256.Int).Sub(s.Balance(), amount))
 }
 
 // SetBalance update account balance.
-func (s *stateObject) SetBalance(amount *big.Int) {
+func (s *stateObject) SetBalance(amount *uint256.Int) {
 	s.db.journal.append(balanceChange{
 		account: &s.address,
-		prev:    new(big.Int).Set(s.account.Balance),
+		prev:    new(uint256.Int).Set(s.account.Balance),
 	})
 	s.setBalance(amount)
 }
 
-func (s *stateObject) setBalance(amount *big.Int) {
+func (s *stateObject) setBalance(amount *uint256.Int) {
 	s.account.Balance = amount
 }
 
@@ -201,7 +215,7 @@ func (s *stateObject) CodeHash() []byte {
 }
 
 // Balance returns the balance of account
-func (s *stateObject) Balance() *big.Int {
+func (s *stateObject) Balance() *uint256.Int {
 	return s.account.Balance
 }
 

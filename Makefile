@@ -7,12 +7,11 @@ COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
 MEZO_BINARY = mezod
-MEZO_DIR = mezo
 BUILDDIR ?= $(CURDIR)/build
 HTTPS_GIT := https://github.com/mezo-org/mezod.git
 DOCKER := $(shell which docker)
-NAMESPACE := tharsishq
-PROJECT := mezo
+NAMESPACE := mezo-org
+PROJECT := mezod
 DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DOCKER_TAG := $(COMMIT_HASH)
@@ -116,9 +115,15 @@ endif
 
 BUILD_TARGETS := build install
 
-build: BUILD_ARGS=-o $(BUILDDIR)/
+build: clean
+  BUILD_ARGS=-o $(BUILDDIR)/
+
 build-linux:
 	GOOS=linux GOARCH=amd64 LEDGER_ENABLED=false $(MAKE) build
+
+# Set empty BUILD_ARGS for install. By default, BUILD_ARGS contain the -o
+# flag that is not supported by go install.
+install: BUILD_ARGS=
 
 $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 	go $@ $(BUILD_FLAGS) $(BUILD_ARGS) ./...
@@ -319,13 +324,7 @@ test-import:
 	--blockchain blockchain
 	rm -rf tests/importer/tmp
 
-test-rpc:
-	./scripts/integration-test-all.sh -t "rpc" -q 1 -z 1 -s 2 -m "rpc" -r "true"
-
-test-rpc-pending:
-	./scripts/integration-test-all.sh -t "pending" -q 1 -z 1 -s 2 -m "pending" -r "true"
-
-.PHONY: run-tests test test-all test-import test-rpc $(TEST_TARGETS)
+.PHONY: run-tests test test-all test-import $(TEST_TARGETS)
 
 benchmark:
 	@go test -mod=readonly -bench=. $(PACKAGES_NOSIMULATION)
@@ -522,6 +521,14 @@ localnet-bin-clean:
 
 .PHONY: localnet-bin-init localnet-bin-start localnet-bin-clean
 
+###############################################################################
+###                         Local node binary-based                         ###
+###############################################################################
+
+localnode-bin-start:
+	./scripts/localnode-start.sh
+
+.PHONY: localnode-bin-start
 
 ###############################################################################
 ###                                Releasing                                ###
@@ -623,7 +630,8 @@ create-contracts-json:
 # bindings_environment determines the network type that should be used for contract
 # binding generation. The default value is mainnet.
 ifndef bindings_environment
-override bindings_environment = mainnet
+# TODO: Once we are production ready, this has to be changed to mainnet.
+override bindings_environment = sepolia
 endif
 
 export bindings_environment
@@ -648,7 +656,16 @@ get_npm_packages:
 	$(foreach pkg,$(npm_packages),$(call get_npm_package,$(pkg)))
 
 generate:
+	# go generate needs some go.sum dependencies that are not actually used
+    # in the codebase and are pruned by go mod tidy. As a workaround, we
+    # temporarily set GOFLAGS=-mod=mod to let go generate fetch necessary
+    # dependencies.
+	go env -w GOFLAGS=-mod=mod
 	go generate ./...
+	# Reset GOFLAGS to its original value and run go mod tidy to remove
+	# unnecessary dependencies fetched by go generate.
+	go env -u GOFLAGS
+	go mod tidy
 
 bindings: get_npm_packages generate
 	$(info Bindings generated)

@@ -14,7 +14,14 @@ terraform {
       source = "hashicorp/helm"
       version = "2.13.2"
     }
+
+    archive = {
+      source = "hashicorp/archive"
+      version = "2.6.0"
+    }
   }
+
+  required_version = "~> 1.9.6"
 }
 
 # Service Usage API must be enabled manually to use this resource:

@@ -4,9 +4,9 @@
 
 ### Single instance
 
-To start a single client instance locally please use the `local_node.sh` script.
-The script will compile the client, perform genesis, and start a local client
-instance.
+To start a single client instance locally please use the `make localnode-bin-start`
+command. The script will compile the client, perform genesis, and start a local
+client instance.
 
 ### Multiple client instances using docker
 

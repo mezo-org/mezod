@@ -6,16 +6,18 @@ The Mezo testnet is a network of nodes running the Mezo client software,
 assisted by several auxiliary services. This network is used for testing and
 experimentation. Specific components that form the core of the testnet are:
 
-| Component               | Public address                 |
-|-------------------------|--------------------------------|
-| Validator 0             | mezo-node-0.test.mezo.org      |
-| Validator 1             | mezo-node-1.test.mezo.org      |
-| Validator 2             | mezo-node-2.test.mezo.org      |
-| Validator 3             | mezo-node-3.test.mezo.org      |
-| Validator 4             | mezo-node-4.test.mezo.org      |
-| Block explorer app      | https://explorer.test.mezo.org |
-| Block explorer server   | N/A                            |
-| Block explorer database | N/A                            |
+| Component               | Public address                                                      |
+|-------------------------|---------------------------------------------------------------------|
+| Validator 0             | mezo-node-0.test.mezo.org                                           |
+| Validator 1             | mezo-node-1.test.mezo.org                                           |
+| Validator 2             | mezo-node-2.test.mezo.org                                           |
+| Validator 3             | mezo-node-3.test.mezo.org                                           |
+| Validator 4             | mezo-node-4.test.mezo.org                                           |
+| Block explorer app      | https://explorer.test.mezo.org                                      |
+| Block explorer server   | N/A                                                                 |
+| Block explorer database | N/A                                                                 |
+| Faucet                  | https://faucet.test.mezo.org                                        |
+| JSON-RPC server         | <!-- markdown-link-check-disable-line --> https://rpc.test.mezo.org |
 
 Validator nodes expose the following services:
 
@@ -41,7 +43,7 @@ accessible to the public. Here is an overview of the setup from the ground up.
 
 ### Artifacts
 
-The main artifacts necessary to bootstrap any Mezo chain are:
+The main artifacts necessary to bootstrap a testnet Mezo chain are:
 
 - A global genesis file defining the initial state of the chain
   (most importantly, the initial validator set)
@@ -81,6 +83,7 @@ directory. Most important infrastructure resources managed by Terraform are:
 - NAT gateway
 - GKE cluster
 - Docker image registries (internal and public)
+- Cloud functions
 
 Moreover, Terraform is used to automate the deployment of Helm charts on the
 GKE cluster.
@@ -117,3 +120,18 @@ install, and manage Kubernetes applications. Helm charts are located in the
 As mentioned in the [Infrastructure](#infrastructure) section, Terraform is used
 to automate the deployment of Helm charts on the GKE cluster. This makes
 the process easier as there is no need to deal with Helm directly.
+
+## Ethereum Sidecar
+
+The sidecar is a component of the Mezo node, running as a separate process
+responsible for interacting with the Ethereum network. It plays a key role in
+the bridging architecture, monitoring the Ethereum network for `AssetsLocked`
+events emitted by the `BitcoinBridge` contract when assets are deposited.
+
+Once the blocks containing these `AssetsLocked` events are finalized, they are cached
+for further processing by the Mezo node. Due to Ethereum’s block finality mechanics,
+the sidecar is bound by the same constraints. As a result, it takes approximately
+13 to 14 minutes for a new event to be finalized and stored in the “finalized” cache
+for the Mezo node to process.
+
+More details can be found in the following [RFC](../docs/rfc/rfc-2.md#ethereum-sidecar)

@@ -69,6 +69,7 @@ const (
 	// Set to `metrics` which is hardcoded flag from go-ethereum.
 	// https://github.com/ethereum/go-ethereum/blob/master/metrics/metrics.go#L35-L55
 	JSONRPCEnableMetrics            = "metrics"
+	JSONRPCMetricsAddress           = "json-rpc.metrics-address"
 	JSONRPCFixRevertGasRefundHeight = "json-rpc.fix-revert-gas-refund-height"
 )
 
@@ -82,6 +83,12 @@ const (
 const (
 	TLSCertPath = "tls.certificate-path"
 	TLSKeyPath  = "tls.key-path"
+)
+
+// Ethereum sidecar flags
+const (
+	EthereumSidecarServerAddress  = "ethereum-sidecar.client.server-address"
+	EthereumSidecarRequestTimeout = "ethereum-sidecar.client.request-timeout"
 )
 
 // AddTxFlags adds common flags for commands to post tx

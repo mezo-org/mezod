@@ -18,11 +18,6 @@ var filesystem embed.FS
 // used to avoid potential collisions with EVM native precompiles.
 const EvmAddress = "0x7b7c000000000000000000000000000000000011"
 
-// EvmByteCode is the EVM bytecode of the validatorpool precompile. This code is
-// returned by eth_getCode and ensures the precompile address is detected as a
-// smart contract by external services. note: It should NOT contain a 0x prefix
-const EvmByteCode = "7b7c000000000000000000000000000000000011"
-
 // Description is the validator description structure that contains information
 // about the validator.
 //
@@ -46,7 +41,7 @@ type Description = struct {
 type PoaKeeper interface {
 	// GetApplication returns the application for a operator
 	GetApplication(types.Context, types.ValAddress) (poatypes.Application, bool)
-	// GetApplications returns all applications
+	// GetAllApplications returns all applications
 	GetAllApplications(types.Context) []poatypes.Application
 	// SubmitApplication submits a new application to the validator pool
 	SubmitApplication(types.Context, types.AccAddress, poatypes.Validator) error
@@ -70,6 +65,26 @@ type PoaKeeper interface {
 	TransferOwnership(types.Context, types.AccAddress, types.AccAddress) error
 	// AcceptOwnership accepts a pending ownership transfer
 	AcceptOwnership(types.Context, types.AccAddress) error
+	// AddPrivilege (onlyOwner) adds a privilege to a set of operators.
+	AddPrivilege(
+		ctx types.Context,
+		sender types.AccAddress,
+		operators []types.ValAddress,
+		privilege string,
+	) error
+	// RemovePrivilege (onlyOwner) removes a privilege from a set of operators.
+	RemovePrivilege(
+		ctx types.Context,
+		sender types.AccAddress,
+		operators []types.ValAddress,
+		privilege string,
+	) error
+	// GetValidatorsOperatorsByPrivilege returns a list of validators with the
+	// specified privilege.
+	GetValidatorsOperatorsByPrivilege(
+		ctx types.Context,
+		privilege string,
+	) []types.ValAddress
 }
 
 // NewPrecompile creates a new validator pool precompile.
@@ -107,5 +122,9 @@ func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
 		newValidatorsMethod(pk),
 		newApplicationMethod(pk),
 		newApplicationsMethod(pk),
+		newAddPrivilegeMethod(pk),
+		newRemovePrivilegeMethod(pk),
+		newValidatorsByPrivilegeMethod(pk),
+		newPrivilegesMethod(),
 	}
 }

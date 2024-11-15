@@ -82,6 +82,9 @@ data:
     [tls]
       certificate-path = ""
       key-path = ""
+    [ethereum-sidecar.client]
+      server-address = "ethereum-sidecar.default.svc.cluster.local:7500"
+      request-timeout = "1s"  
 
   client.toml: |
     chain-id = "mezo_31611-1"
@@ -94,7 +97,6 @@ data:
     version = "0.38.9"
     proxy_app = "tcp://0.0.0.0:26658"
     moniker = ""
-    fast_sync = true
     db_backend = "goleveldb"
     db_dir = "data"
     log_level = "info"
@@ -131,7 +133,7 @@ data:
       laddr = "tcp://0.0.0.0:26656"
       external_address = ""
       seeds = ""
-      persistent_peers = "e12010891c8e866caebf0a2af011396ed573485b@mezo-node-0.test.mezo.org:26656,c4b71ef1b07ec1a8bf157256974e11b5c065cd0d@mezo-node-1.test.mezo.org:26656,25440691ae65ebb8547817ee0a22eba75d56dfc7@mezo-node-2.test.mezo.org:26656,863e2707098d989aa1af814a6e2347f204e3a8a9@mezo-node-3.test.mezo.org:26656,aff788a263b957249765b8bb252e2bf6ba58a48d@mezo-node-4.test.mezo.org:26656"    
+      persistent_peers = "2d4e0216da0d1ec18655d9588df21319025efab0@mezo-node-0.test.mezo.org:26656,eedead51f768b908e6ae068e5a8cda6236774010@mezo-node-1.test.mezo.org:26656,84805b6cb9c86673c1f1685f08f0276ea02ce814@mezo-node-2.test.mezo.org:26656,deb793b789da8ff3e995f77fa47a7a50e0b2ea97@mezo-node-3.test.mezo.org:26656,8b041c159d6b981db56ffb9a3c1fda468f51407b@mezo-node-4.test.mezo.org:26656"    
       addr_book_file = "config/addrbook.json"
       addr_book_strict = true
       max_num_inbound_peers = 240

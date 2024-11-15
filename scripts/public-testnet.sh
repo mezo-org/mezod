@@ -49,14 +49,14 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   # Worth noting that recover mode does not refer to the network key which is always
   # generated anew. However, the network key is not critical and can be replaced
   # without any consequences.
-  yes "$MNEMONIC" | ./build/mezod --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover &> /dev/null
+  yes "$MNEMONIC" | ./build/mezod --home=$NODE_HOMEDIR init $NODE_NAME --chain-id=$CHAIN_ID --recover --ignore-predefined &> /dev/null
 
   echo "[$NODE_NAME] init action done"
 
   # Generate validator data for the node using the genval command.
   # This step is skipped for mezo-faucet as this node is not a validator.
   if [ "$NODE_NAME" != "mezo-faucet" ]; then
-    yes $KEYRING_PASSWORD | ./build/mezod --home=$NODE_HOMEDIR genval $NODE_KEY_NAME --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
+    yes $KEYRING_PASSWORD | ./build/mezod --home=$NODE_HOMEDIR genesis genval $NODE_KEY_NAME --ip="$NODE_NAME.$NODE_DOMAIN" &> /dev/null
 
     NODE_GENVAL=$(find $NODE_HOMEDIR/config/genval -mindepth 1 -print -quit)
     NODE_MEMOS+=($(jq -r '.memo' $NODE_GENVAL))
@@ -81,7 +81,7 @@ GLOBAL_GENESIS_HOMEDIR=${NODE_HOMEDIRS[0]}
 
 for i in "${!NODE_NAMES[@]}"; do
   # Node's account balance must be added to the global genesis file explicitly.
-  ./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR add-genesis-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
+  ./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR genesis add-account ${NODE_ADDRESSES[$i]} $LIQUID_AMOUNT &> /dev/null
 
   # Execute the rest for all nodes but the first.
   if [[ "$i" == '0' ]]; then
@@ -104,7 +104,7 @@ for i in "${!NODE_NAMES[@]}"; do
 done
 
 # Aggregate all genval files into the global genesis file.
-./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR collect-genvals &> /dev/null
+./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR genesis collect-genvals &> /dev/null
 rm -rf $GLOBAL_GENESIS_HOMEDIR/config/genval
 
 GENESIS=$GLOBAL_GENESIS_HOMEDIR/config/genesis.json
@@ -119,7 +119,7 @@ POA_OWNER=${NODE_ADDRESSES[0]}
 jq '.app_state["poa"]["owner"]="'"$POA_OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 # Validate the global genesis file and move it to the root directory.
-./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR validate-genesis &> /dev/null
+./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR genesis validate &> /dev/null
 mv $GENESIS $HOMEDIR/genesis.json
 GENESIS=$HOMEDIR/genesis.json # Reassign the GENESIS variable to the new location.
 
@@ -165,6 +165,10 @@ for NODE_NAME in "${NODE_NAMES[@]}"; do
   sed -i.bak 's/proxy_app = "tcp:\/\/127.0.0.1:26658"/proxy_app = "tcp:\/\/0.0.0.0:26658"/g' "$NODE_CONFIG_TOML"
   sed -i.bak 's/laddr = "tcp:\/\/127.0.0.1:26657"/laddr = "tcp:\/\/0.0.0.0:26657"/g' "$NODE_CONFIG_TOML"
   sed -i.bak 's/pprof_laddr = "localhost:6060"/pprof_laddr = "0.0.0.0:6060"/g' "$NODE_CONFIG_TOML"
+
+  # Set address of the internal Ethereum sidecar server.
+  sed -i.bak 's/server-address = "127.0.0.1:7500"/server-address = "ethereum-sidecar.default.svc.cluster.local:7500"/g' "$NODE_APP_TOML"
+  sed -i.bak 's/request-timeout = "5s"/request-timeout = "1s"/g' "$NODE_APP_TOML"
 
   # Remove all backup files created by sed.
   rm $NODE_CONFIGDIR/*.bak

@@ -24,6 +24,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mezo-org/mezod/cmd/mezod/genesis"
+	"github.com/mezo-org/mezod/cmd/mezod/toml"
+
 	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/client/config"
@@ -54,12 +57,11 @@ import (
 	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
-	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
-
 	mezoclient "github.com/mezo-org/mezod/client"
 	"github.com/mezo-org/mezod/client/debug"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
+	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	mezoserver "github.com/mezo-org/mezod/server"
 	servercfg "github.com/mezo-org/mezod/server/config"
 	srvflags "github.com/mezo-org/mezod/server/flags"
@@ -68,13 +70,12 @@ import (
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
-	poacli "github.com/mezo-org/mezod/x/poa/client/cli"
-
 	rosettacmd "github.com/cosmos/rosetta/cmd"
+	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
 )
 
 const (
-	EnvPrefix = "MEZO"
+	EnvPrefix = "MEZOD"
 )
 
 // NewRootCmd creates a new root command for mezod. It is called once in the
@@ -131,14 +132,10 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 
 	a := appCreator{encodingConfig}
 	rootCmd.AddCommand(
-		mezoclient.ValidateChainID(
-			InitCmd(app.ModuleBasics, app.DefaultNodeHome),
-		),
-		MigrateGenesisCmd(),
-		poacli.NewGenValCmd(app.DefaultNodeHome),
-		poacli.NewCollectGenValsCmd(app.DefaultNodeHome),
-		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
-		AddGenesisAccountCmd(app.DefaultNodeHome),
+		genesis.NewCmd(),
+		toml.NewCmd(),
+		NewInitCmd(app.ModuleBasics),
+		escli.NewEthereumSidecarCmd(),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		NewTestnetCmd(app.ModuleBasics),
 		debug.Cmd(),
@@ -307,6 +304,16 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 		chainID = clientConfig.ChainID
 	}
 
+	ethereumSidecarClient, err := ethsidecar.NewClient(
+		logger,
+		cast.ToString(appOpts.Get(srvflags.EthereumSidecarServerAddress)),
+		cast.ToDuration(appOpts.Get(srvflags.EthereumSidecarRequestTimeout)),
+		a.encCfg.InterfaceRegistry,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	mezoApp := app.NewMezo(
 		logger,
 		db,
@@ -316,6 +323,7 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 		home,
 		cast.ToUint(appOpts.Get(sdkserver.FlagInvCheckPeriod)),
 		a.encCfg,
+		ethereumSidecarClient,
 		appOpts,
 		baseapp.SetPruning(pruningOpts),
 		baseapp.SetMinGasPrices(cast.ToString(appOpts.Get(sdkserver.FlagMinGasPrices))),
@@ -353,13 +361,13 @@ func (a appCreator) appExport(
 	}
 
 	if height != -1 {
-		mezoApp = app.NewMezo(logger, db, traceStore, false, map[int64]bool{}, "", uint(1), a.encCfg, appOpts)
+		mezoApp = app.NewMezo(logger, db, traceStore, false, map[int64]bool{}, "", uint(1), a.encCfg, ethsidecar.NewClientMock(), appOpts)
 
 		if err := mezoApp.LoadHeight(height); err != nil {
 			return servertypes.ExportedApp{}, err
 		}
 	} else {
-		mezoApp = app.NewMezo(logger, db, traceStore, true, map[int64]bool{}, "", uint(1), a.encCfg, appOpts)
+		mezoApp = app.NewMezo(logger, db, traceStore, true, map[int64]bool{}, "", uint(1), a.encCfg, ethsidecar.NewClientMock(), appOpts)
 	}
 
 	return mezoApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)

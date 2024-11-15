@@ -2,8 +2,10 @@ package abci
 
 import (
 	"bytes"
-	"cosmossdk.io/log"
 	"fmt"
+
+	"cosmossdk.io/log"
+
 	cmtabci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -27,14 +29,12 @@ type IProposalHandler interface {
 // results of the sub-handlers into a single proposal.
 type ProposalHandler struct {
 	logger      log.Logger
-	valStore    baseapp.ValidatorStore
 	subHandlers map[VoteExtensionPart]IProposalHandler
 }
 
 // NewProposalHandler creates a new ProposalHandler instance.
 func NewProposalHandler(
 	logger log.Logger,
-	valStore baseapp.ValidatorStore,
 	bridgeSubHandler *bridgeabci.ProposalHandler,
 	connectSubHandler *connectproposals.ProposalHandler,
 ) *ProposalHandler {
@@ -45,7 +45,6 @@ func NewProposalHandler(
 
 	return &ProposalHandler{
 		logger:      logger,
-		valStore:    valStore,
 		subHandlers: subHandlers,
 	}
 }
@@ -90,16 +89,9 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		ctx sdk.Context,
 		req *cmtabci.RequestPrepareProposal,
 	) (*cmtabci.ResponsePrepareProposal, error) {
-		err := baseapp.ValidateVoteExtensions(
-			ctx,
-			ph.valStore,
-			req.Height,
-			ctx.ChainID(),
-			req.LocalLastCommit,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to validate vote extensions: %w", err)
-		}
+		// TODO: Consider running sub-handlers concurrently to speed up execution.
+		//
+		// TODO: Consider changing logging to debug level once this code matures.
 
 		if !isVoteExtensionsEnabled(ctx, req.Height) {
 			// Short-circuit if vote extensions are not enabled.
@@ -109,9 +101,16 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		injectedTxParts := make(map[uint32][]byte)
 
 		for part, subHandler := range ph.subHandlers {
+			ph.logger.Info(
+				"running sub-handler to prepare proposal",
+				"height", req.Height,
+				"part", part,
+			)
+
 			// Trigger the PrepareProposal sub-handler for the given part.
 			//
 			// The sub-handler is responsible for:
+			// - Validating the signatures of the commit's vote extensions (using baseapp.ValidateVoteExtensions)
 			// - Extracting its respective parts from the commit's vote extensions
 			// - Validating whether the extracted parts are valid according to the sub-handler's rules
 			// - Making sure valid parts are backed by the super-majority of the validators
@@ -129,12 +128,20 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 				continue
 			}
 
-			// Note that len(extractInjectedTx(req, res)) may be 0 and this
-			// is a valid case as the handler may decide to not inject anything.
-			// Such an empty part is still included in the app-level
-			// injected pseudo-transaction. Missing part indicates an error
-			// of the given sub-handler.
-			injectedTxParts[uint32(part)] = extractInjectedTx(req, res)
+			injectedTxPart := extractInjectedTx(req, res)
+
+			ph.logger.Info(
+				"sub-handler prepared proposal",
+				"height", req.Height,
+				"part", part,
+				"part_byte_length", len(injectedTxPart),
+			)
+
+			// Note that len(injectedTxPart) may be 0 and this is a valid case
+			// as the handler may decide to not inject anything. Such an empty
+			// part is still included in the app-level injected pseudo-transaction.
+			// Missing part indicates an error of the given sub-handler.
+			injectedTxParts[uint32(part)] = injectedTxPart
 		}
 
 		if len(injectedTxParts) == 0 {
@@ -159,24 +166,207 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 		txs := make([][]byte, 0)
 		txsBytes := int64(0)
 		for _, tx := range draftTxs {
-			txsBytes += int64(len(tx))
-			if txsBytes > req.MaxTxBytes {
+			txLen := int64(len(tx))
+			if txsBytes+txLen > req.MaxTxBytes {
 				break
 			}
 			txs = append(txs, tx)
+			txsBytes += txLen
 		}
+
+		ph.logger.Info(
+			"proposal prepared",
+			"height", req.Height,
+			"injected_tx_byte_length", len(injectedTxBytes),
+			"txs_count", len(txs),
+			"txs_byte_length", txsBytes,
+		)
 
 		return &cmtabci.ResponsePrepareProposal{Txs: txs}, nil
 	}
 }
 
+// ProcessProposalHandler returns the handler for the ProcessProposal ABCI request.
+// It decomposes the app-level pseudo-tx injected during the PrepareProposal phase
+// into part-specific pseudo-txs and triggers the corresponding ProcessProposal
+// sub-handler for each part.
+//
+// Dev note: It is fine to return a nil response and an error from this
+// function in case of failure. Cosmos SDK will log the error and REJECT
+// the app-level proposal. Rejecting the proposal is a serious event and has
+// liveness implications for the CometBFT engine. Make sure you know what you
+// are doing before returning an error from this function.
+//
+// Invariants summary:
+//  1. Accepts the app-level proposal if vote extensions are not enabled.
+//  2. Rejects app-level proposal with an empty transactions vector.
+//  3. Rejects app-level proposal with an injected pseudo-tx that cannot be unmarshaled.
+//  4. Rejects app-level proposal with an injected pseudo-tx containing no parts.
+//  5. Accepts app-level proposal only if each part of their injected pseudo-tx
+//     corresponds to a known sub-handler.
+//  6. Accepts app-level proposal only if each part of their injected pseudo-tx
+//     is accepted by the corresponding sub-handler.
+//
+// TODO: Currently, this function either ACCEPT the proposal or return
+// an error - it does not REJECT anything explicitly. This is fine as
+// Cosmos SDK handles the error gracefully by logging it on the error
+// level and rejecting the proposal. This is fine for now, but we
+// may consider a more granular approach and start distinguish between
+// a case when the validation completes successfully but the proposal
+// is invalid and a case when the validation fails (sub-handlers can
+// distinguish between these cases by returning either REJECT + error
+// holding the reason or nil + error, respectively). Having this distinction
+// could allow us to log rejections on warn level and leave log errors
+// for actual errors. The main motivation here is validator experience.
+// Error logs should ideally lead to action items for the given validator
+// while rejection warnings should stay informative and highlight potential
+// misbehavior of other validators.
 func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 	return func(
 		ctx sdk.Context,
 		req *cmtabci.RequestProcessProposal,
 	) (*cmtabci.ResponseProcessProposal, error) {
-		// TODO: Implement the ProcessProposalHandler.
-		return nil, nil
+		// TODO: Consider running sub-handlers concurrently to speed up execution.
+
+		from := sdk.ConsAddress(req.ProposerAddress).String()
+
+		ph.logger.Debug(
+			"processing proposal",
+			"height", req.Height,
+			"from", from,
+		)
+
+		if !isVoteExtensionsEnabled(ctx, req.Height) {
+			// Short-circuit if vote extensions are not enabled.
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_ACCEPT,
+			}, nil
+		}
+
+		if len(req.Txs) == 0 {
+			// The proposal has no transactions. This is possible if one of
+			// the following happens:
+			// - The PrepareProposal function did not inject the app-level pseudo-tx
+			//   as all sub-handlers failed AND there are no regular transactions
+			//   in the proposal.
+			// - The PrepareProposal function produced the app-level pseudo-tx
+			//   but, it exceeded the maximum allowed block size so, an empty
+			//   transactions vector was returned (regular transactions are not
+			//   included in the block in this case, even if they are present).
+			//
+			// If one of the above happens, such a proposal should be rejected
+			// as we cannot accept an erroneous outcome of the PrepareProposal
+			// phase.
+			//
+			// Note that if the app-level pseudo-tx was not injected but there
+			// are regular transactions in the proposal, we will fail in the
+			// next condition where we try to unmarshal the first transaction
+			// as an injected pseudo-tx. A regular transaction will cause
+			// unmarshalling failure and, we will reject the proposal as well.
+			// This is not the most elegant way to handle this case but probably
+			// the only one that is possible here.
+			return nil, fmt.Errorf("empty proposal")
+		}
+
+		var injectedTx types.InjectedTx
+		if err := injectedTx.Unmarshal(req.Txs[0]); err != nil {
+			// If unmarshaling fails, we cannot recover, so return an error.
+			return nil, fmt.Errorf("failed to unmarshal injected tx: %w", err)
+		}
+
+		if len(injectedTx.Parts) == 0 {
+			// Reject pseudo-transactions with no parts. This is done in order
+			// to ensure parity with the PrepareProposalHandler, which always
+			// produces a pseudo-transaction with at least one part.
+			return nil, fmt.Errorf("injected tx has no parts")
+		}
+
+		for partUint, partBytes := range injectedTx.Parts {
+			part := VoteExtensionPart(partUint)
+
+			subHandler, ok := ph.subHandlers[part]
+			if !ok {
+				// Make sure the pseudo-transaction part is recognized. If not,
+				// reject the proposal as something is clearly wrong.
+				return nil, fmt.Errorf("unknown injected tx part: %d", part)
+			}
+
+			ph.logger.Debug(
+				"running sub-handler to process proposal",
+				"height", req.Height,
+				"from", from,
+				"part", part,
+			)
+
+			// The transactions vector passed to the sub-handler must be
+			// modified to contain the sub-handler's pseudo-transaction part
+			// at the beginning. We cannot pass the whole app-level
+			// pseudo-transaction which is originally at the beginning of the
+			// transactions vector as the sub-handler won't be able to
+			// unmarshal it. Note that it's safe to do req.Txs[1:] as the
+			// req.Txs slice is guaranteed to have at least one element
+			// at this point (see the `len(injectedTx.Parts) == 0` check above).
+			subTxs := append([][]byte{partBytes}, req.Txs[1:]...)
+
+			// Trigger the ProcessProposal sub-handler for the given part.
+			//
+			// The sub-handler is responsible for re-executing the same
+			// logic as in the PrepareProposal phase in order to make sure the
+			// proposed pseudo-transaction part is actually valid and the
+			// block proposer behaves correctly. Please note that an important
+			// part of this logic is re-validating the signatures of the
+			// vote extensions used to build the pseudo-transaction part
+			// (using baseapp.ValidateVoteExtension). The block proposer should
+			// always include those vote extensions in the pseudo-transaction
+			// part to enable the aforementioned signature validation.
+			res, err := subHandler.ProcessProposalHandler()(
+				ctx,
+				&cmtabci.RequestProcessProposal{
+					Txs:                subTxs,
+					ProposedLastCommit: req.ProposedLastCommit,
+					Misbehavior:        req.Misbehavior,
+					Hash:               req.Hash,
+					Height:             req.Height,
+					Time:               req.Time,
+					NextValidatorsHash: req.NextValidatorsHash,
+					ProposerAddress:    req.ProposerAddress,
+				},
+			)
+			if err != nil {
+				// If a sub-handler fails to process its pseudo-transaction part,
+				// reject the whole proposal.
+				return nil, fmt.Errorf(
+					"sub-handler failed to process injected tx part %v: %w",
+					part,
+					err,
+				)
+			}
+			if res.Status != cmtabci.ResponseProcessProposal_ACCEPT {
+				// If a sub-handler rejects its pseudo-transaction part,
+				// reject the whole proposal.
+				return nil, fmt.Errorf(
+					"sub-handler rejected injected tx part %v",
+					part,
+				)
+			}
+
+			ph.logger.Debug(
+				"sub-handler verified and accepted proposal",
+				"height", req.Height,
+				"from", from,
+				"part", part,
+			)
+		}
+
+		ph.logger.Debug(
+			"accepted proposal",
+			"height", req.Height,
+			"from", from,
+		)
+
+		return &cmtabci.ResponseProcessProposal{
+			Status: cmtabci.ResponseProcessProposal_ACCEPT,
+		}, nil
 	}
 }
 

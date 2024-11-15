@@ -12,6 +12,7 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 )
 
 func (suite *KeeperTestSuite) TestWithChainID() {
@@ -149,7 +150,7 @@ func (suite *KeeperTestSuite) TestGetAccountStorage() {
 
 func (suite *KeeperTestSuite) TestGetAccountOrEmpty() {
 	empty := statedb.Account{
-		Balance:  new(big.Int),
+		Balance:  new(uint256.Int),
 		CodeHash: evmtypes.EmptyCodeHash,
 	}
 
@@ -183,4 +184,11 @@ func (suite *KeeperTestSuite) TestGetAccountOrEmpty() {
 			}
 		})
 	}
+}
+
+func (suite *KeeperTestSuite) TestCustomPrecompileGenesisAccounts() {
+	accounts := suite.app.EvmKeeper.CustomPrecompileGenesisAccounts()
+	suite.Require().Equal(len(accounts), 2)
+	suite.Require().Equal(accounts[0].Address, "0x7b7C000000000000000000000000000000000000")
+	suite.Require().Equal(accounts[1].Address, "0x7B7C000000000000000000000000000000000011")
 }

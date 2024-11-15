@@ -3,10 +3,9 @@ package mezo.abci.v1;
 
 option go_package = "github.com/mezo-org/mezod/app/abci/types";
 
-
 // InjectedTx defines the pseudo-tx used to inject previous-block vote
 // extensions into the current block proposal.
 message InjectedTx {
   // parts is a map of tx parts (sub-txs), keyed by unique ID.
-  map<uint32, bytes> parts = 2;
+  map<uint32, bytes> parts = 1;
 }

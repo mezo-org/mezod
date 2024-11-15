@@ -6,6 +6,12 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+
+	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
+
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -350,9 +356,32 @@ func TestRemoveValidator(t *testing.T) {
 	validator1, _ := mockValidator()
 	validator2, _ := mockValidator()
 
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
+	poaKeeper.setOwner(ctx, owner)
+
 	// Set validators
 	poaKeeper.createValidator(ctx, validator1)
 	poaKeeper.createValidator(ctx, validator2)
+
+	// Add privilege1 to validator1 and validator2.
+	err := poaKeeper.AddPrivilege(
+		ctx,
+		owner,
+		[]sdk.ValAddress{validator1.GetOperator(), validator2.GetOperator()},
+		"privilege1",
+	)
+	require.NoError(t, err)
+
+	// Add privilege2 to validator1 and validator2.
+	err = poaKeeper.AddPrivilege(
+		ctx,
+		owner,
+		[]sdk.ValAddress{validator1.GetOperator(), validator2.GetOperator()},
+		"privilege2",
+	)
+	require.NoError(t, err)
 
 	poaKeeper.removeValidator(ctx, validator1.GetOperator())
 
@@ -383,6 +412,19 @@ func TestRemoveValidator(t *testing.T) {
 			foundState,
 		)
 	}
+
+	// The removed validator should be removed from both privilege sets.
+	// The non-removed validator should still be in both privilege sets.
+	require.Equal(
+		t,
+		[]sdk.ConsAddress{validator2.GetConsAddress()},
+		poaKeeper.GetValidatorsConsAddrsByPrivilege(ctx, "privilege1"),
+	)
+	require.Equal(
+		t,
+		[]sdk.ConsAddress{validator2.GetConsAddress()},
+		poaKeeper.GetValidatorsConsAddrsByPrivilege(ctx, "privilege2"),
+	)
 }
 
 func TestGetAllValidators(t *testing.T) {
@@ -448,5 +490,151 @@ func TestGetActiveValidators(t *testing.T) {
 			expectedValidators,
 			retrievedValidators,
 		)
+	}
+}
+
+func TestGetPubKeyByConsAddr(t *testing.T) {
+	validator, _ := mockValidator()
+	otherValidator, _ := mockValidator()
+
+	tests := []struct {
+		name           string
+		blockHeight    int64
+		prepareFn      func(sdk.Context, Keeper)
+		expectedPubKey cryptotypes.PubKey
+		expectedErr    error
+	}{
+		{
+			name:        "validator in store",
+			blockHeight: 100,
+			prepareFn: func(ctx sdk.Context, k Keeper) {
+				k.setValidator(ctx, validator)
+				k.setValidatorByConsAddr(ctx, validator)
+			},
+			expectedPubKey: validator.GetConsPubKey(),
+			expectedErr:    nil,
+		},
+		{
+			name:        "validator not in store - present in historical info",
+			blockHeight: 100,
+			prepareFn: func(ctx sdk.Context, k Keeper) {
+				k.SetHistoricalInfo(ctx, 99, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 98, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 97, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 96, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 95, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 94, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 93, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 92, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 91, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				// Validator exists in the last historical info being part of the search range.
+				k.SetHistoricalInfo(ctx, 90, &types.HistoricalInfo{Valset: []types.Validator{otherValidator, validator}})
+				k.SetHistoricalInfo(ctx, 89, &types.HistoricalInfo{Valset: []types.Validator{otherValidator, validator}})
+			},
+			expectedPubKey: validator.GetConsPubKey(),
+			expectedErr:    nil,
+		},
+		{
+			name:        "validator not in store - not present in historical info",
+			blockHeight: 100,
+			prepareFn: func(ctx sdk.Context, k Keeper) {
+				k.SetHistoricalInfo(ctx, 99, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 98, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 97, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 96, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 95, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 94, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 93, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 92, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 91, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 90, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				// Validator exists in the last historical info that is just beyond the search range.
+				k.SetHistoricalInfo(ctx, 89, &types.HistoricalInfo{Valset: []types.Validator{otherValidator, validator}})
+			},
+			expectedPubKey: nil,
+			expectedErr:    types.ErrNoValidatorFound,
+		},
+		{
+			name:        "validator not in store - not present in limited historical info",
+			blockHeight: 100,
+			prepareFn: func(ctx sdk.Context, k Keeper) {
+				// Simulate historical info pruning. The count of existing
+				// historical info to check is lesser than the size of the
+				// search range.
+				k.SetHistoricalInfo(ctx, 99, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 98, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 97, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 96, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 95, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+			},
+			expectedPubKey: nil,
+			expectedErr:    types.ErrNoValidatorFound,
+		},
+		{
+			name: "validator not in store - not present in initial historical info",
+			// Simulate the beginning of the chain. The current block
+			// of the chain is lesser than the size of the search range.
+			blockHeight: 3,
+			prepareFn: func(ctx sdk.Context, k Keeper) {
+				k.SetHistoricalInfo(ctx, 2, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+				k.SetHistoricalInfo(ctx, 1, &types.HistoricalInfo{Valset: []types.Validator{otherValidator}})
+			},
+			expectedPubKey: nil,
+			expectedErr:    types.ErrNoValidatorFound,
+		},
+		{
+			name:           "validator not in store - no historical info",
+			blockHeight:    100,
+			prepareFn:      func(_ sdk.Context, _ Keeper) {},
+			expectedPubKey: nil,
+			expectedErr:    types.ErrNoValidatorFound,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, poaKeeper := mockContext()
+
+			ctx = ctx.WithBlockHeight(test.blockHeight)
+
+			test.prepareFn(ctx, poaKeeper)
+
+			pubKey, err := poaKeeper.GetPubKeyByConsAddr(
+				ctx,
+				validator.GetConsAddress(),
+			)
+
+			if !reflect.DeepEqual(test.expectedErr, err) {
+				t.Errorf(
+					"unexpected error:\n"+
+						"expected: %v\n"+
+						"actual:   %v",
+					test.expectedErr,
+					err,
+				)
+			}
+
+			var pubKeySdk cryptotypes.PubKey
+
+			if err == nil {
+				// Retrieved key is CometBFT-proto-specific. Convert it to the
+				// Cosmos-SDK-specific type for comparison.
+				var convErr error
+				pubKeySdk, convErr = cryptocdc.FromCmtProtoPublicKey(pubKey)
+				if convErr != nil {
+					t.Error(convErr)
+				}
+			}
+
+			if !cmp.Equal(test.expectedPubKey, pubKeySdk) {
+				t.Errorf(
+					"unexpected public key:\n"+
+						"expected: %v\n"+
+						"actual:   %v",
+					test.expectedPubKey,
+					pubKeySdk,
+				)
+			}
+		})
 	}
 }
