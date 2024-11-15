@@ -87,7 +87,7 @@ export class BlockScoutAPI {
 
     const item = await this.#call(`addresses/${address}/counters`) as Item
 
-    if (item.transactions_count.length === 0) {
+    if (!item.transactions_count || item.transactions_count.length === 0) {
       return 0
     }
 
@@ -107,21 +107,50 @@ export class BlockScoutAPI {
       value: string
     }
 
-    const responseJSON = await this.#call(`addresses/${address}/transactions?filter=from`) as { items: Item[] }
-    const items = responseJSON.items
+    type NextPageParams = {
+      block_number: number,
+      index: number,
+      items_count: number
+    }
 
-    return items
-      .filter((item: Item) => {
-        return item.status === "ok"
-      })
-      .map((item: Item): TxItem => {
-        return {
-          hash: item.hash,
-          from: item.from.hash,
-          to: item.to.hash,
-          value: item.value,
-        }
-      })
+    const txs: TxItem[] = []
+
+    let queryString: string = ""
+    for (let i = 0 ; ; i++) {
+      console.log(`fetch txs from address ${address} page number: ${i + 1}`)
+
+      const responseJSON = await this.#call(`addresses/${address}/transactions?filter=from${queryString}`) as {
+        items: Item[]
+        next_page_params: NextPageParams
+      }
+
+      const txsPage = responseJSON.items
+        .filter((item: Item) => {
+          return item.status === "ok"
+        })
+        .map((item: Item): TxItem => {
+          return {
+            hash: item.hash,
+            from: item.from.hash,
+            to: item.to.hash,
+            value: item.value,
+          }
+        })
+
+      txs.push(...txsPage)
+
+      if (!responseJSON.next_page_params) {
+        break
+      }
+
+      const {block_number, index, items_count} = responseJSON.next_page_params
+
+      queryString = `&block_number=${block_number}&` +
+        `index=${index}&` +
+        `items_count=${items_count}`
+    }
+
+    return txs
   }
 
   async contracts(): Promise<ContractItem[]> {
