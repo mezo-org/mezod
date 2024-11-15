@@ -607,8 +607,6 @@ func (app *Mezo) PreBlocker(
 	ctx sdk.Context,
 	req *abci.RequestFinalizeBlock,
 ) (*sdk.ResponsePreBlock, error) {
-	// TODO eric
-	// return app.connectPreBlocker.WrappedPreBlocker(app.mm)(ctx, req)
 	return app.preBlockHandler.PreBlocker(app.mm)(ctx, req)
 }
 
@@ -689,11 +687,10 @@ func (app *Mezo) setABCIExtensions(
 	)
 	proposalHandler.SetHandlers(app.BaseApp)
 
-	app.connectPreBlocker = connectPreBlocker
-	// TODO eric
 	app.preBlockHandler = appabci.NewPreBlockHandler(
 		app.Logger(),
 		bridgePreBlockHandler,
+		connectPreBlocker,
 	)
 }
 
