@@ -23,8 +23,8 @@ import (
 
 // connectABCIHandlers returns the Connect ABCI handlers.
 func (app *Mezo) connectABCIHandlers() (
-	*connectve.VoteExtensionHandler, *connectproposals.ProposalHandler, *connectpreblocker.PreBlockHandler) {
-
+	*connectve.VoteExtensionHandler, *connectproposals.ProposalHandler, *connectpreblocker.PreBlockHandler,
+) {
 	veCodec := compression.NewCompressionVoteExtensionCodec(
 		compression.NewDefaultVoteExtensionCodec(),
 		compression.NewZLibCompressor(),

@@ -18,9 +18,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	oracleconfig "github.com/skip-mev/connect/v2/oracle/config"
 	"path"
 	"time"
+
+	oracleconfig "github.com/skip-mev/connect/v2/oracle/config"
 
 	"github.com/spf13/viper"
 

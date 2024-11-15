@@ -1,11 +1,13 @@
 package keeper
 
 import (
-	"cosmossdk.io/math"
 	"errors"
+	"testing"
+
+	"cosmossdk.io/math"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/mezo-org/mezod/x/poa/types"
-	"testing"
 )
 
 func TestValidatorByConsAddr(t *testing.T) {

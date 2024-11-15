@@ -2,6 +2,7 @@ package abci
 
 import (
 	"fmt"
+
 	connectve "github.com/skip-mev/connect/v2/abci/ve"
 
 	"cosmossdk.io/log"
@@ -61,7 +62,6 @@ func NewVoteExtensionHandler(
 	logger log.Logger,
 	bridgeSubHandler *bridgeabci.VoteExtensionHandler,
 	connectVEHandler *connectve.VoteExtensionHandler,
-
 ) *VoteExtensionHandler {
 	subHandlers := map[VoteExtensionPart]IVoteExtensionHandler{
 		VoteExtensionPartBridge:  bridgeSubHandler,
