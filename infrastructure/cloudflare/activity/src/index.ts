@@ -9,6 +9,11 @@ type Env = {
 }
 
 async function updateActivity(env: Env) {
+  // TODO: The update approach taken here is quite naive and may bite us
+  //       when there is a lot of data. Potential issues are too many
+  //       concurrent DB connections, slow processing time, or memory issues.
+  //       Consider a more sophisticated approach for the next iteration.
+
   const activity = await fetchActivity(env)
 
   const stmts = activity.map((item) => {
