@@ -332,7 +332,7 @@ func (k *FakePoaKeeper) ApproveApplication(ctx sdk.Context, sender sdk.AccAddres
 	return nil
 }
 
-func (k *FakePoaKeeper) CleanupApplications(ctx sdk.Context, sender sdk.AccAddress) error {
+func (k *FakePoaKeeper) CleanupApplications(_ sdk.Context, sender sdk.AccAddress) error {
 	if !sender.Equals(k.owner) {
 		return errorsmod.Wrap(
 			sdkerrors.ErrUnauthorized,
