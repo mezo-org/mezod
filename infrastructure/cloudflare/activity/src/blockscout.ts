@@ -35,20 +35,49 @@ export class BlockScoutAPI {
       is_contract: boolean
     }
 
-    const responseJSON = await this.#call("addresses") as { items: Item[] }
-    const items = responseJSON.items
+    type NextPageParams = {
+      fetched_coin_balance: string,
+      hash: string,
+      items_count: number
+    }
 
-    return items
-      .filter((item: Item) => {
-        const hasTxs = item.tx_count.length > 0 && item.tx_count !== "0"
-        return hasTxs && !item.is_contract
-      })
-      .map((item: Item): AddressItem => {
-        return {
-          address: item.hash,
-          txCount: parseInt(item.tx_count),
-        }
-      })
+    const addresses: AddressItem[] = []
+
+    let queryString: string = ""
+    for (let i = 0 ; ; i++) {
+      console.log(`fetch addresses page number: ${i+1}`)
+
+      const responseJSON = await this.#call(`addresses${queryString}`) as {
+        items: Item[]
+        next_page_params: NextPageParams
+      }
+
+      const batch = responseJSON.items
+        .filter((item: Item) => {
+          const hasTxs = item.tx_count.length > 0 && item.tx_count !== "0"
+          return hasTxs && !item.is_contract
+        })
+        .map((item: Item): AddressItem => {
+          return {
+            address: item.hash,
+            txCount: parseInt(item.tx_count),
+          }
+        })
+
+      addresses.push(...batch)
+
+      if (!responseJSON.next_page_params) {
+        break
+      }
+
+      const {fetched_coin_balance, hash, items_count} = responseJSON.next_page_params
+
+      queryString = `?fetched_coin_balance=${fetched_coin_balance}&` +
+        `hash=${hash}&` +
+        `items_count=${items_count}`
+    }
+
+    return addresses
   }
 
   async txCount(address: string): Promise<number> {
