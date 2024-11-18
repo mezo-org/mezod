@@ -98,8 +98,8 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 			)
 
 			txResult := mezotypes.TxResult{
-				Height:     height,
-				ExtraData:  extraData,
+				Height:    height,
+				ExtraData: extraData,
 			}
 
 			if err := savePseudoTxResult(

@@ -1,0 +1,32 @@
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "sequenceNumber",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tbtcAmount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Bridge.AssetsLocked[]",
+        "name": "events",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "bridge",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

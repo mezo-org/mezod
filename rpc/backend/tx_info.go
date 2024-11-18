@@ -31,8 +31,10 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/indexer"
+	"github.com/mezo-org/mezod/precompile/bridge"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
 )
@@ -55,15 +57,60 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
 		blockHash := common.BytesToHash(block.BlockID.Hash.Bytes())
 		blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(res.Height)))
-		to := common.HexToAddress("0x7b7C000000000000000000000000000000000012")
+		to := common.HexToAddress(bridge.EvmAddress)
 		chainID := (*hexutil.Big)(b.chainID)
 
+		// Skip the discriminator byte.
+		serializedEvents := res.ExtraData[1:]
+
+		// The length of a single serialized event.
+		serializedEventLength := 72
+
+		if len(serializedEvents)%serializedEventLength != 0 {
+			return nil, fmt.Errorf("improper length of serialized events")
+		}
+
+		var events []bridge.AssetsLockedEvent
+
+		for i := 0; i < len(serializedEvents); i += serializedEventLength {
+			serializedEvent := serializedEvents[i : i+serializedEventLength]
+
+			var event bridgetypes.AssetsLockedEvent
+
+			err := b.clientCtx.Codec.Unmarshal(serializedEvent, &event)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal event: [%w]", err)
+			}
+
+			accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to convert Mezo address to account address: [%w]",
+					err,
+				)
+			}
+
+			recipient := common.BytesToAddress(accAddress)
+
+			events = append(events, bridge.AssetsLockedEvent{
+				SequenceNumber: event.Sequence.BigInt(),
+				Recipient:      recipient,
+				TBTCAmount:     event.Amount.BigInt(),
+			})
+		}
+
+		input, err := bridge.PrepareInput(events)
+		if err != nil {
+			return nil, fmt.Errorf("failed to prepare input: [%w]", err)
+		}
+
 		return &rpctypes.RPCTransaction{
-			BlockHash: &blockHash,
+			BlockHash:   &blockHash,
 			BlockNumber: blockNumber,
-			Hash: txHash,
-			To: &to,
-			ChainID: chainID,
+			Hash:        txHash,
+			Input:       input,
+			To:          &to,
+			ChainID:     chainID,
 		}, nil
 	}
 
