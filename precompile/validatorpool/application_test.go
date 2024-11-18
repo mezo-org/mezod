@@ -195,6 +195,67 @@ func (s *PrecompileTestSuite) TestEmitApplicationApprovedEvent() {
 	}
 }
 
+func (s *PrecompileTestSuite) TestCleanupApplications() {
+	testcases := []TestCase{
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1,
+				}
+			},
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "keeper returns error",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "sender is not owner",
+		},
+		{
+			name: "valid cleanup",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				// Check the keeper was updated
+				applications := s.keeper.GetAllApplications(s.ctx)
+				s.Require().Len(applications, 0, "expected 0 applications")
+			},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "cleanupApplications")
+}
+
+func (s *PrecompileTestSuite) TestEmitApplicationsCleanedEvent() {
+	testcases := []struct {
+		name     string
+		operator common.Address
+	}{
+		{
+			name:     "pass",
+			operator: s.account1.EvmAddr,
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		s.Run(tc.name, func() {
+			e := validatorpool.NewApplicationsCleanedEvent()
+			args := e.Arguments()
+			s.Require().Len(args, 0)
+		})
+	}
+}
+
 func (s *PrecompileTestSuite) TestEmitValidatorJoinedEvent() {
 	testcases := []struct {
 		name     string
