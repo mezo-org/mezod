@@ -6,3 +6,6 @@ MEZO_FAUCET_PRIVATE_KEY=
 # See: https://developers.cloudflare.com/turnstile/troubleshooting/testing/
 TURNSTILE_SITE_KEY=3x00000000000000000000FF
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+
+# API key necessary to access the internal endpoints.
+API_KEY=0000-0000-0000-0000
