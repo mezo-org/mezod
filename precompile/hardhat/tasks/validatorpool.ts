@@ -54,6 +54,16 @@ task('validatorPool:leave', 'Removes the signers validator from the pool')
     console.log(confirmed.hash)
   })
 
+task('validatorPool:cleanupApplications', 'Removes all pending applications (owner)')
+  .addParam('signer', 'The signer address (msg.sender)')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const validatorPool = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await validatorPool.cleanupApplications()
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
 task('validatorPool:kick', 'Kicks a validator from the pool')
   .addParam('signer', 'The signer address (msg.sender)')
   .addParam('operator', 'The operator address of the validator to be kicked')

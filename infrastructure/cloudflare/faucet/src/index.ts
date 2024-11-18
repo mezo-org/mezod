@@ -1,4 +1,4 @@
-import { AutoRouter, cors, html, IRequest } from "itty-router"
+import { AutoRouter, cors, error, html, IRequest, status, json } from "itty-router"
 import { ethers } from "ethers"
 import { indexHTML, errorHTML, successHTML } from "#/assets"
 import { WorkerEntrypoint } from "cloudflare:workers";
@@ -16,6 +16,7 @@ type Env = {
   REQUEST_DELAY_SECONDS: number
   PUBLIC_ACCESS: string
   PUBLIC_ACCESS_REDIRECT: string
+  API_KEY: string
 }
 
 const publicSend = async (request: Request, env: Env) => {
@@ -111,6 +112,8 @@ async function rateLimit(env: Env, ip: string): Promise<{
   return { success: true }
 }
 
+const isPublic = (env: Env) => env.PUBLIC_ACCESS === "true"
+
 const { preflight, corsify } = cors()
 
 const router = AutoRouter({
@@ -119,15 +122,40 @@ const router = AutoRouter({
 })
 
 router
-  .post("/", publicSend)
-  .all("*", (_: IRequest, env: Env) => html(indexHTML(env.TURNSTILE_SITE_KEY)))
+  .post("/", (request: IRequest, env: Env) =>
+    isPublic(env) ?
+      publicSend(request, env) :
+      error(403, "Forbidden")
+  )
+  .post("/internal", async (request: Request, env: Env) => {
+    const authorization = request.headers.get("Authorization") as string
+    if (!authorization || !authorization.startsWith("Basic ")) {
+      return error(401, "Unauthorized")
+    }
+
+    const apiKey = authorization.replace("Basic ", "");
+    if (apiKey !== env.API_KEY) {
+      return error(403, "Forbidden")
+    }
+
+    const requestBody: { targetAddress: string; amountBTC: string } = await request.json()
+    const { targetAddress, amountBTC } = requestBody
+
+    try {
+      const transactionHash = await internalSend(env, targetAddress, amountBTC)
+      return json({ success: true, transactionHash })
+    } catch (error) {
+      return json({ success: false, errorMsg: `${error}` })
+    }
+  })
+  .all("*", (request: IRequest, env: Env) =>
+    isPublic(env) ?
+      html(indexHTML(env.TURNSTILE_SITE_KEY)) :
+      status(302, {headers: {Location: env.PUBLIC_ACCESS_REDIRECT}})
+  )
 
 export default {
   async fetch(request: Request, env: Env, _: ExecutionContext) {
-    if (env.PUBLIC_ACCESS !== "true") {
-      return Response.redirect(env.PUBLIC_ACCESS_REDIRECT, 302)
-    }
-
     return router.fetch(request, env)
   },
 }

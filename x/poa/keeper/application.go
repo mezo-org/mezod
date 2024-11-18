@@ -200,3 +200,22 @@ func (k Keeper) GetAllApplications(ctx sdk.Context) (applications []types.Applic
 
 	return applications
 }
+
+func (k Keeper) CleanupApplications(ctx sdk.Context, sender sdk.AccAddress) error {
+	if err := k.checkOwner(ctx, sender); err != nil {
+		return err
+	}
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(store, types.ApplicationKeyPrefix)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	for ; iterator.Valid(); iterator.Next() {
+		application := types.MustUnmarshalApplication(k.cdc, iterator.Value())
+		k.removeApplication(ctx, application.GetValidator().GetOperator())
+	}
+
+	return nil
+}
