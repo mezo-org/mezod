@@ -84,8 +84,6 @@ import (
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
-	// Connect imports
-	connectpreblocker "github.com/skip-mev/connect/v2/abci/preblock/oracle"
 	oracleclient "github.com/skip-mev/connect/v2/service/clients/oracle"
 	servicemetrics "github.com/skip-mev/connect/v2/service/metrics"
 	"github.com/skip-mev/connect/v2/x/marketmap"
@@ -228,9 +226,8 @@ type Mezo struct {
 	tpsCounter *tpsCounter
 
 	// Connect client
-	oracleClient      oracleclient.OracleClient
-	oracleMetrics     servicemetrics.Metrics
-	connectPreBlocker *connectpreblocker.PreBlockHandler
+	oracleClient  oracleclient.OracleClient
+	oracleMetrics servicemetrics.Metrics
 
 	preBlockHandler *appabci.PreBlockHandler
 }
