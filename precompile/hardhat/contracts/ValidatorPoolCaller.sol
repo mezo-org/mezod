@@ -26,6 +26,10 @@ contract ValidatorPoolCaller is IValidatorPool {
         return IValidatorPool(precompile).candidateOwner();
     }
 
+    function cleanupApplications() external returns (bool) {
+        return IValidatorPool(precompile).cleanupApplications();
+    }
+
     function kick(address operator) external returns (bool) {
         return IValidatorPool(precompile).kick(operator);
     }
