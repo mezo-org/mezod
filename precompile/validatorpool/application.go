@@ -45,11 +45,11 @@ func (m *SubmitApplicationMethod) MethodType() precompile.MethodType {
 
 func (m *SubmitApplicationMethod) RequiredGas(methodInputArgs []byte) (uint64, bool) {
 	// Get default gas costs
-	gasConfig := store.KVGasConfig()
-	costFlat, costPerByte := gasConfig.WriteCostFlat, gasConfig.WriteCostPerByte
-	// Calculate default gas requirements
-	methodInputArgsByteLength := uint64(len(methodInputArgs))
-	gas := costFlat + (costPerByte * methodInputArgsByteLength)
+	gas := precompile.DefaultRequiredGas(
+		store.KVGasConfig(),
+		precompile.Write,
+		methodInputArgs,
+	)
 	// Increase by a factor of SubmitApplicationGasMultiplier
 	gas *= SubmitApplicationGasMultiplier
 	return gas, true
