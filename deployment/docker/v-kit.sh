@@ -100,9 +100,7 @@ init-config() { ## Initialize configuration
 }
 
 init-genval() { ## Generate validator key
-  _run_cli_cmd_oneshoot <<EOF
-echo "${KEYRING_PASSWORD}" | mezod genesis genval "${KEYRING_NAME}" --keyring-backend="file" --chain-id="${MEZOD_CHAIN_ID}" --home="${MEZOD_HOME}" --ip="${PUBLIC_IP}"
-EOF
+  ${DOCKER_COMPOSE_CMD} run --no-deps --rm --interactive mezod genval
 }
 
 ################################################################################

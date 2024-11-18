@@ -37,9 +37,9 @@ gen_mnemonic() {
   fi
 }
 
-prepare_keyring() {
+init_keyring() {
   test -f "${MEZOD_HOME}/keyring-file/keyhash" && {
-    echo "Keyring already prepared!"
+    echo "Keyring already exists!"
     return
   }
 
@@ -150,6 +150,24 @@ customize_configuration() {
   echo "Configuration customized!"
 }
 
+init_genval() {
+  test -f "${MEZOD_HOME}"/config/genval/genval-*.json && {
+    echo "Genval already exists!"
+    return
+  }
+
+  echo "Prepare genval..."
+  echo "${KEYRING_PASSWORD}" \
+    | mezod genesis genval \
+      "${KEYRING_NAME}" \
+      --keyring-backend="file" \
+      --chain-id="${MEZOD_CHAIN_ID}" \
+      --home="${MEZOD_HOME}" \
+      --ip="${PUBLIC_IP}"
+
+  echo "Genval prepared!"
+}
+
 get_validator_info() {
   validator_addr_bech="$(echo "${KEYRING_PASSWORD}" | mezod --home="${MEZOD_HOME}" keys show "${KEYRING_NAME}" --address)"
   validator_addr="$(mezod --home="${MEZOD_HOME}" keys parse "${validator_addr_bech}" | grep bytes | awk '{print "0x"$2}')"
@@ -176,7 +194,11 @@ fi
 
 case "$1" in
   keyring)
-    prepare_keyring
+    init_keyring
+    exit 0
+    ;;
+  genval)
+    init_genval
     exit 0
     ;;
   info)
@@ -190,10 +212,11 @@ case "$1" in
     exit 0
     ;;
   *)
-    prepare_keyring
+    init_keyring
     init_configuration
     validate_genesis
     customize_configuration
+    init_genval
     get_validator_info
     # Run the mezod node
     exec "$@"
