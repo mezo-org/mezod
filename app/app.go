@@ -517,15 +517,12 @@ func NewMezo(
 
 	// initialize the BaseApp with markets in state.
 	app.SetInitChainer(func(ctx sdk.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
-		// set vote extension height. (must be greater than 1).
-		req.ConsensusParams.Abci.VoteExtensionsEnableHeight = 2
-
 		// initialize module state
 		app.OracleKeeper.InitGenesis(ctx, *oracletypes.DefaultGenesisState())
 		app.MarketMapKeeper.InitGenesis(ctx, *marketmaptypes.DefaultGenesisState())
 
 		// initialize markets
-		err := app.setupMarkets(ctx)
+		err = app.setupMarkets(ctx)
 		if err != nil {
 			return nil, err
 		}

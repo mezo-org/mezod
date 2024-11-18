@@ -30,7 +30,7 @@ func (k Keeper) TotalBondedTokens(ctx context.Context) (math.Int, error) {
 	for _, val := range k.GetAllValidators(sdk.UnwrapSDKContext(sdkCtx)) {
 		valState, found := k.GetValidatorState(sdkCtx, val.GetOperator())
 		if found && (valState == types.ValidatorStateActive || valState == types.ValidatorStateLeaving) {
-			total += 1
+			total++
 		}
 	}
 	return math.NewInt(total), nil

@@ -75,7 +75,7 @@ func (v ValidatorCompat) GetBondedTokens() math.Int {
 }
 
 // GetConsensusPower is not implemented
-func (v ValidatorCompat) GetConsensusPower(m math.Int) int64 {
+func (v ValidatorCompat) GetConsensusPower(_ math.Int) int64 {
 	panic("not implemented")
 }
 
@@ -95,26 +95,26 @@ func (v ValidatorCompat) GetDelegatorShares() math.LegacyDec {
 }
 
 // TokensFromShares is not implemented
-func (v ValidatorCompat) TokensFromShares(dec math.LegacyDec) math.LegacyDec {
+func (v ValidatorCompat) TokensFromShares(_ math.LegacyDec) math.LegacyDec {
 	panic("not implemented")
 }
 
 // TokensFromSharesTruncated is not implemented
-func (v ValidatorCompat) TokensFromSharesTruncated(dec math.LegacyDec) math.LegacyDec {
+func (v ValidatorCompat) TokensFromSharesTruncated(_ math.LegacyDec) math.LegacyDec {
 	panic("not implemented")
 }
 
 // TokensFromSharesRoundUp is not implemented
-func (v ValidatorCompat) TokensFromSharesRoundUp(dec math.LegacyDec) math.LegacyDec {
+func (v ValidatorCompat) TokensFromSharesRoundUp(_ math.LegacyDec) math.LegacyDec {
 	panic("not implemented")
 }
 
 // SharesFromTokens is not implemented
-func (v ValidatorCompat) SharesFromTokens(amt math.Int) (math.LegacyDec, error) {
+func (v ValidatorCompat) SharesFromTokens(_ math.Int) (math.LegacyDec, error) {
 	panic("not implemented")
 }
 
 // SharesFromTokensTruncated is not implemented
-func (v ValidatorCompat) SharesFromTokensTruncated(amt math.Int) (math.LegacyDec, error) {
+func (v ValidatorCompat) SharesFromTokensTruncated(_ math.Int) (math.LegacyDec, error) {
 	panic("not implemented")
 }
