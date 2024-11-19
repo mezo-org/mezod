@@ -64,10 +64,7 @@ Deployment script has the following options:
 ```text
 Usage: ./all-in-one.sh
 
-        [-r/--run]
-                run the installation
-
-        [-b/--backup]
+       [-b/--backup]
                 backup mezo home dir to /var/mezod-backups
 
         [-c/--cleanup]

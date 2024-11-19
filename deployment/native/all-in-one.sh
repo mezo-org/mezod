@@ -345,7 +345,6 @@ usage() {
     echo -e "7. Setup systemd services for Mezo\n"
 
     echo -e "Usage: $0\n\n" \
-    "\t[-r/--run]\n\t\trun the installation\n\n" \
     "\t[-b/--backup]\n\t\tbackup mezo home dir to ${MEZOD_HOME}-backups\n\n" \
     "\t[-c/--cleanup]\n\t\tclean up the installation\n\t\tWARNING: this option removes whole Mezo directory (${MEZOD_HOME}) INCLUDING PRIVATE KEYS\n\n" \
     "\t[--health]\n\t\tcheck health of mezo systemd services\n\n" \
