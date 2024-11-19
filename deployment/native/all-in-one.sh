@@ -93,14 +93,14 @@ gen_mnemonic() {
     echo "$MEZOD_KEYRING_MNEMONIC" > "$mnemonic_file"
   else
     # Ask the user to generate a new mnemonic
-    printf "Do you want to generate a new mnemonic? [y/N]: "; read -r response
+    printf "Do you want to generate a new mnemonic? [y/N]: "; read -r response < /dev/tty
     case "$response" in
       [yY])
         echo "Generating a new mnemonic..."
         m=$(${MEZO_EXEC} keys mnemonic)
         echo "$m" > "$mnemonic_file"
         printf "\n%s\n%s\n\n" "Generated mnemonic (make backup!):" "$m"
-        echo "Press any key to continue..."; read -r _
+        echo "Press any key to continue..."; read -r _ < /dev/tty
         ;;
       *)
         # Ask the user to enter the mnemonic
@@ -549,11 +549,6 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-if [ -n "$ENV_FILE_OVERRIDE" ]; then
-    ENVIRONMENT_FILE="$ENV_FILE_OVERRIDE"
-    echo "Environment file overriden with: $ENVIRONMENT_FILE"
-fi
 
 if [ $(id -u) -ne 0 ]; then
     echo "This script requires root privileges"
