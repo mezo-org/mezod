@@ -341,13 +341,19 @@ usage() {
     echo -e "5. Install connect-sidecar binary"
     echo -e "6. Configure Mezo - keyring, configuration files"
     echo -e "7. Setup systemd services for Mezo\n"
+    echo -e "8. Send an submitApplication transaction through mezod binary (TODO)\n"
 
     echo -e "Usage: $0\n\n" \
+    "\t[stop <opt>]\n\t\tstop chosen mezo service (opts: mezo | ethereum-sidecar | connect-sidecar)\n\n" \
+    "\t[start <opt>]\n\t\tstart chosen mezo service (opts: mezo | ethereum-sidecar | connect-sidecar)\n\n" \
+    "\t[restart <opt>]\n\t\trestart chosen mezo service (opts: mezo | ethereum-sidecar | connect-sidecar)\n\n" \
+    "\t[logs <opt>]\n\t\tshow logs for  chosen mezo service (opts: mezo|ethereum-sidecar|connect-sidecar)\n\n" \
     "\t[-b/--backup]\n\t\tbackup mezo home dir to ${MEZOD_HOME}-backups\n\n" \
     "\t[-c/--cleanup]\n\t\tclean up the installation\n\t\tWARNING: this option removes whole Mezo directory (${MEZOD_HOME}) INCLUDING PRIVATE KEYS\n\n" \
     "\t[--health]\n\t\tcheck health of mezo systemd services\n\n" \
     "\t[-s/--show-variables]\n\t\toutput variables read from env files\n\n" \
-    "\t[-e/--envfile]\n\t\tset file with environment variables for setup script\n\n" \
+    "\t[-v/--validator-info]\n\t\tshow validator info\n\n" \
+    "\t[-e/--envfile <arg>]\n\t\tset file with environment variables for setup script\n\n" \
     "\t[-h/--help]\n\t\tshow this prompt\n" 
 }
 
@@ -383,12 +389,14 @@ show_variables() {
     echo "MEZOD_PUBLIC_IP $MEZOD_PUBLIC_IP"
 
     ### Github ###
-    echo "GITHUB_TOKEN $GITHUB_TOKEN"
+    echo "MEZOD_DOWNLOAD_LINK $MEZOD_DOWNLOAD_LINK"
 
     set -x
 }
 
 show_validator_info() {
+    # below makes my eyes twitch
+    # (but it works)
     raw_operator_address=$(echo ${MEZOD_KEYRING_PASSWORD} | "${MEZO_EXEC}" --home="${MEZOD_HOME}" keys show "${MEZOD_KEYRING_NAME}" --address)
     raw_conspubkey=$(cat "${MEZOD_HOME}"/config/genval/genval-*.json | jq -r '.validator.cons_pub_key_bech32')
 
@@ -433,6 +441,52 @@ setenvs() {
 
 }
 
+validate_opt() {
+    if [[ "$1" == "" ]]; then
+        echo "Error: No service provided" >&2
+        exit 1
+    fi
+
+    services=("mezo" "ethereum-sidecar" "connect-sidecar")
+    for s in ${services[@]}; do
+        if [[ "$1" == "$s" ]]; then
+            echo "$s"
+            return
+        fi
+    done
+
+    echo "Error: No such service \"$1\"" >&2
+    exit 1
+}
+
+start_service() {
+    service=$(validate_opt "$1") || exit 1
+    echo "Starting service $service"
+    systemctl start "$service"
+    exit 0
+}
+
+stop_service() {
+    service=$(validate_opt "$1") || exit 1
+    echo "Stopping service $service"
+    systemctl stop "$service"    
+    exit 0
+}
+
+restart_service() {
+    service=$(validate_opt "$1") || exit 1
+    echo "Restarting service $service"
+    systemctl restart "$service"
+    exit 0
+}
+
+show_logs() {
+    service=$(validate_opt "$1") || exit 1
+    echo "Showing logs for $service"
+    journalctl -u "$service"
+    exit 0
+}
+
 # default env file name - can be changed through -e/--envfile option
 ENVIRONMENT_FILE="testnet.env"
 healthcheck_flag=false
@@ -443,6 +497,22 @@ validator_info=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        start)
+        start_service "$2"
+        exit 0
+        ;;
+        stop)
+        stop_service "$2"
+        exit 0
+        ;;
+        restart)
+        restart_service "$2"
+        exit 0
+        ;;
+        logs)
+        show_logs "$2"
+        exit 0
+        ;;
         --health)
             healthcheck_flag=true
             shift
@@ -479,6 +549,11 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [ -n "$ENV_FILE_OVERRIDE" ]; then
+    ENVIRONMENT_FILE="$ENV_FILE_OVERRIDE"
+    echo "Environment file overriden with: $ENVIRONMENT_FILE"
+fi
 
 if [ $(id -u) -ne 0 ]; then
     echo "This script requires root privileges"

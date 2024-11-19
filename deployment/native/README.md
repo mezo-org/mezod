@@ -1,4 +1,4 @@
-# Mezo Validator Kit - Native binaries
+# Native binaries
 
 This document describes:
 
@@ -64,13 +64,24 @@ Deployment script has the following options:
 ```text
 Usage: ./all-in-one.sh
 
-       [-b/--backup]
+        [stop <opt>]
+                stop chosen mezo service (opts: mezo|ethereum-sidecar|connect-sidecar)
+
+        [start <opt>]
+                start chosen mezo service (opts: mezo|ethereum-sidecar|connect-sidecar)
+
+        [restart <opt>]
+                restart chosen mezo service (opts: mezo|ethereum-sidecar|connect-sidecar)
+
+        [logs <opt>]
+                show logs for  chosen mezo service (opts: mezo|ethereum-sidecar|connect-sidecar)
+
+        [-b/--backup]
                 backup mezo home dir to /var/mezod-backups
 
         [-c/--cleanup]
                 clean up the installation
-                WARNING: this option removes whole Mezo directory (/var/mezod) 
-                INCLUDING PRIVATE KEYS
+                WARNING: this option removes whole Mezo directory (/var/mezod) INCLUDING PRIVATE KEYS
 
         [--health]
                 check health of mezo systemd services
@@ -78,7 +89,10 @@ Usage: ./all-in-one.sh
         [-s/--show-variables]
                 output variables read from env files
 
-        [-e/--envfile]
+        [-v/--validator-info]
+                show validator info
+
+        [-e/--envfile <arg>]
                 set file with environment variables for setup script
 
         [-h/--help]
@@ -153,4 +167,18 @@ all executed commands and their results (`set -x`).
 
 ```bash
 ./all-in-one.sh --show-variables
+```
+
+### Start/Stop/Status/Logs
+
+You can perform basic administrative actions using the script:
+
+```bash
+./all-in-one.sh <start/stop/status/logs> <service>
+```
+
+Example:
+
+```bash
+./all-in-one.sh logs mezo
 ```
