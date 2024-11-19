@@ -218,7 +218,9 @@ func (kv *KVIndexer) GetSerializedAssetsLockedEvents(
 
 	var serializedEvents []byte
 	for _, event := range bridgeTx.AssetsLockedEvents {
-		eventBytes := codec.MustMarshal(&event)
+		// Since the length of serialized events varies, marshal the events
+		// length-prefixed.
+		eventBytes := codec.MustMarshalLengthPrefixed(&event)
 		serializedEvents = append(serializedEvents, eventBytes...)
 	}
 

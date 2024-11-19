@@ -16,6 +16,7 @@
 package backend
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math"
 	"math/big"
@@ -63,20 +64,27 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 		// Skip the discriminator byte.
 		serializedEvents := res.ExtraData[1:]
 
-		// The length of a single serialized event.
-		serializedEventLength := 72
-
-		if len(serializedEvents)%serializedEventLength != 0 {
-			return nil, fmt.Errorf("improper length of serialized events")
-		}
-
 		var events []bridge.AssetsLockedEvent
 
-		for i := 0; i < len(serializedEvents); i += serializedEventLength {
-			serializedEvent := serializedEvents[i : i+serializedEventLength]
+		for len(serializedEvents) > 0 {
+			// The events are serialized with a length prefix. Read the prefix
+			// first to know the length of the serialized event.
+			length, bytesRead := binary.Uvarint(serializedEvents)
+			if bytesRead <= 0 {
+				return nil, fmt.Errorf("failed to decode length prefix")
+			}
+
+			// Check if there is enough data for the serialized event.
+			if len(serializedEvents) < int(length)+bytesRead {
+				return nil, fmt.Errorf("serialized events data corrupted")
+			}
+
+			// Extract the serialized event.
+			serializedEvent := serializedEvents[bytesRead:bytesRead+int(length)]
 
 			var event bridgetypes.AssetsLockedEvent
 
+			// Unmarshal the serialized event.
 			err := b.clientCtx.Codec.Unmarshal(serializedEvent, &event)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal event: [%w]", err)
@@ -97,6 +105,9 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 				Recipient:      recipient,
 				TBTCAmount:     event.Amount.BigInt(),
 			})
+
+			// Advance to the next event.
+			serializedEvents = serializedEvents[bytesRead+int(length):]
 		}
 
 		input, err := bridge.PrepareInput(events)
