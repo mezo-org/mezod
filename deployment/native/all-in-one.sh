@@ -52,9 +52,6 @@ download_binary() {
 }
 
 install_mezo() {
-    MEZOD_DESTINATION=$MEZOD_HOME/bin/mezod-${MEZOD_VERSION}
-    MEZO_EXEC=$MEZOD_DESTINATION/mezod
-
     mkdir -p ${MEZOD_DESTINATION}
     mkdir -p ./tmp
 
@@ -205,21 +202,22 @@ configure_mezo() {
 }
 
 init_genval() {
-  test -f "${MEZOD_HOME}"/config/genval/genval-*.json && {
-    echo "Genval already exists!"
-    return
-  }
+    test -f "${MEZOD_HOME}"/config/genval/genval-*.json && {
+        echo "Genval already exists!"
+        return
+    }
 
-  echo "Prepare genval..."
-  echo "${MEZOD_KEYRING_PASSWORD}" \
-    | ${MEZO_EXEC} genesis genval \
-      "${MEZOD_KEYRING_NAME}" \
-      --keyring-backend="file" \
-      --chain-id="${MEZOD_CHAIN_ID}" \
-      --home="${MEZOD_HOME}" \
-      --ip="${MEZOD_PUBLIC_IP}"
+    echo "Prepare genval..."
+    echo "${MEZOD_KEYRING_PASSWORD}" \
+        | ${MEZO_EXEC} genesis genval \
+        "${MEZOD_KEYRING_NAME}" \
+        --keyring-backend="file" \
+        --chain-id="${MEZOD_CHAIN_ID}" \
+        --home="${MEZOD_HOME}" \
+        --ip="${MEZOD_PUBLIC_IP}"
 
-  echo "Genval prepared!"
+
+    echo "Genval prepared!"
 }
 
 setup_systemd_skip(){
@@ -390,6 +388,26 @@ show_variables() {
     set -x
 }
 
+show_validator_info() {
+    raw_operator_address=$(echo ${MEZOD_KEYRING_PASSWORD} | "${MEZO_EXEC}" --home="${MEZOD_HOME}" keys show "${MEZOD_KEYRING_NAME}" --address)
+    raw_conspubkey=$(cat "${MEZOD_HOME}"/config/genval/genval-*.json | jq -r '.validator.cons_pub_key_bech32')
+
+    validator_id="$(cat "${MEZOD_HOME}"/config/genval/genval-*.json | jq -r '.memo' | awk -F'@' '{print $1}')"
+
+    parsed_raw_conspubkey=$(${MEZO_EXEC} --home=${MEZOD_HOME} keys parse ${raw_conspubkey} | grep bytes | awk '{printf "%s", $2}' | tail -c 64)
+
+    operator_address="$(${MEZO_EXEC} --home="${MEZOD_HOME}" keys parse "${raw_operator_address}" | grep bytes | awk '{print "0x"$2}' | tr '[:upper:]' '[:lower:]')"
+    conspubkey=$(echo -n $parsed_raw_conspubkey | tr '[:upper:]' '[:lower:]' | xargs -I {} echo 0x{})
+
+    validator_network_addr="$(jq -r '.address' "${MEZOD_HOME}"/config/priv_validator_key.json | tr '[:upper:]' '[:lower:]' | awk '{print "0x"$1}')"
+
+    echo "Your validator addresses info:"
+    echo "Validator address: ${operator_address}"
+    echo "Validator ID: ${validator_id}"
+    echo "Validator consensus address: ${conspubkey}"
+    echo "Validator network address: ${validator_network_addr}"
+}
+
 main() {
     update_system
     install_tools
@@ -403,11 +421,16 @@ main() {
     setup_systemd_sidecar
     setup_systemd_mezo
     systemd_restart
+    show_validator_info
 }
 
 setenvs() {
     echo "Reading configuration from environment files"
     . ${ENVIRONMENT_FILE}
+
+    MEZOD_DESTINATION=$MEZOD_HOME/bin/mezod-${MEZOD_VERSION}
+    MEZO_EXEC=$MEZOD_DESTINATION/mezod
+
 }
 
 # default env file name - can be changed through -e/--envfile option
@@ -416,6 +439,7 @@ healthcheck_flag=false
 show_variables_flag=false
 cleanup_flag=false
 backup_flag=false
+validator_info=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -437,6 +461,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -b|--backup)
             backup_flag=true
+            shift
+            ;;
+        -v|--validator-info)
+            validator_info=true
             shift
             ;;
         -h|--help)
@@ -463,11 +491,6 @@ if [[ "$healthcheck_flag" == true ]]; then
     exit 0
 fi
 
-if [[ "$show_variables_flag" == true ]]; then
-    setenvs
-    show_variables
-fi
-
 if [[ "$backup_flag" == true ]]; then
     setenvs
     backup
@@ -478,6 +501,17 @@ if [[ "$cleanup_flag" == true ]]; then
     setenvs
     cleanup
     exit 0
+fi
+
+if [[ "$validator_info" == true ]]; then
+    setenvs
+    show_validator_info
+    exit 0
+fi
+
+if [[ "$show_variables_flag" == true ]]; then
+    setenvs
+    show_variables
 fi
 
 setenvs
