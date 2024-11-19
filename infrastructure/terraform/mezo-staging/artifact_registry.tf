@@ -12,6 +12,13 @@ resource "google_artifact_registry_repository" "docker_public" {
   format        = "DOCKER"
 }
 
+resource "google_artifact_registry_repository" "generic_public" {
+  location      = var.region.name
+  repository_id = "mezo-staging-binary-public"
+  description   = "Generic repository for public images"
+  format        = "generic"
+}
+
 # Grant the GKE service account the ability to read from the internal Docker repository
 resource "google_artifact_registry_repository_iam_member" "gke_sa-docker_internal_reader" {
   project = google_artifact_registry_repository.docker_internal.project
@@ -26,6 +33,15 @@ resource "google_artifact_registry_repository_iam_member" "all_users-docker_publ
   project = google_artifact_registry_repository.docker_public.project
   location = google_artifact_registry_repository.docker_public.location
   repository = google_artifact_registry_repository.docker_public.name
+  role = "roles/artifactregistry.reader"
+  member = "allUsers"
+}
+
+# Grant all users the ability to read from the public Generic repository
+resource "google_artifact_registry_repository_iam_member" "all_users-generic_public_reader" {
+  project = google_artifact_registry_repository.generic_public.project
+  location = google_artifact_registry_repository.generic_public.location
+  repository = google_artifact_registry_repository.generic_public.name
   role = "roles/artifactregistry.reader"
   member = "allUsers"
 }
