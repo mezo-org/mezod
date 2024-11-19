@@ -6,18 +6,19 @@ The Mezo testnet is a network of nodes running the Mezo client software,
 assisted by several auxiliary services. This network is used for testing and
 experimentation. Specific components that form the core of the testnet are:
 
-| Component               | Public address                                                      |
-|-------------------------|---------------------------------------------------------------------|
-| Validator 0             | mezo-node-0.test.mezo.org                                           |
-| Validator 1             | mezo-node-1.test.mezo.org                                           |
-| Validator 2             | mezo-node-2.test.mezo.org                                           |
-| Validator 3             | mezo-node-3.test.mezo.org                                           |
-| Validator 4             | mezo-node-4.test.mezo.org                                           |
-| Block explorer app      | https://explorer.test.mezo.org                                      |
-| Block explorer server   | N/A                                                                 |
-| Block explorer database | N/A                                                                 |
-| Faucet                  | https://faucet.test.mezo.org                                        |
-| JSON-RPC server         | <!-- markdown-link-check-disable-line --> https://rpc.test.mezo.org |
+| Component                 | Public address                                                       |
+|---------------------------|----------------------------------------------------------------------|
+| Validator 0               | mezo-node-0.test.mezo.org                                            |
+| Validator 1               | mezo-node-1.test.mezo.org                                            |
+| Validator 2               | mezo-node-2.test.mezo.org                                            |
+| Validator 3               | mezo-node-3.test.mezo.org                                            |
+| Validator 4               | mezo-node-4.test.mezo.org                                            |
+| Block explorer app        | https://explorer.test.mezo.org                                       |
+| Block explorer server     | N/A                                                                  |
+| Block explorer database   | N/A                                                                  |
+| Faucet                    | https://faucet.test.mezo.org                                         |
+| JSON-RPC HTTP server      | <!-- markdown-link-check-disable-line --> https://rpc.test.mezo.org  |
+| JSON-RPC WebSocket server | <!-- markdown-link-check-disable-line --> wss://rpc-ws.test.mezo.org |
 
 Validator nodes expose the following services:
 

@@ -100,6 +100,7 @@ variable "global_external_ip_addresses" {
     "mezo-staging-blockscout-api-external-ip",
     "mezo-staging-blockscout-app-external-ip",
     "mezo-staging-rpc-external-ip",
+    "mezo-staging-rpc-ws-external-ip",
   ]
 }
 
