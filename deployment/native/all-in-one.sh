@@ -23,20 +23,11 @@ open_ports() {
     # allow ssh connections:
     ufw allow 22/tcp
 }
-install_mezo() {
-    MEZOD_DESTINATION=$MEZOD_HOME/bin/mezod-${MEZOD_VERSION}
-    MEZO_EXEC=$MEZOD_DESTINATION/mezod
 
-    mkdir -p ${MEZOD_DESTINATION}
-    mkdir -p ./tmp
+download_binary() {
+    url="$1"
 
     echo "Downloading mezod package to temporary dir"
-    
-    url=$(curl --silent "https://api.github.com/repos/mezo-org/mezod/releases" \
-        --header "Authorization: token ${GITHUB_TOKEN}" \
-        | jq --arg MEZOD_VERSION "$MEZOD_VERSION" --arg MEZOD_ARCH "$MEZOD_ARCH" \
-              '.[] | select(.name == $MEZOD_VERSION) | .assets[] | select(.name == ("mezod-" + $MEZOD_ARCH + ".tar.gz")) | .url' \
-        | tr -d '"')
 
     if [ -z "$url" ]; then
         echo "Error: URL is empty. Exiting."
@@ -45,8 +36,7 @@ install_mezo() {
 
     echo "Download URL: $url"
 
-    curl --verbose --silent --location --header "Authorization: token ${GITHUB_TOKEN}" \
-        --header "Accept: application/octet-stream" \
+    curl --verbose --silent --location \
         --output ./tmp/mezod-${MEZOD_ARCH}.tar.gz $url
 
     if [ $? -ne 0 ]; then
@@ -58,6 +48,17 @@ install_mezo() {
         echo "Error: Downloaded file does not exist."
         exit 1
     fi
+ 
+}
+
+install_mezo() {
+    MEZOD_DESTINATION=$MEZOD_HOME/bin/mezod-${MEZOD_VERSION}
+    MEZO_EXEC=$MEZOD_DESTINATION/mezod
+
+    mkdir -p ${MEZOD_DESTINATION}
+    mkdir -p ./tmp
+
+    download_binary ${MEZOD_DOWNLOAD_LINK}
 
     echo "Unpacking the binary build ${MEZOD_VERSION}"
     tar -xvf ./tmp/mezod-${MEZOD_ARCH}.tar.gz -C ${MEZOD_DESTINATION}
@@ -413,7 +414,6 @@ setenvs() {
 # default env file name - can be changed through -e/--envfile option
 ENVIRONMENT_FILE="testnet.env"
 healthcheck_flag=false
-run_flag=false
 show_variables_flag=false
 cleanup_flag=false
 backup_flag=false
