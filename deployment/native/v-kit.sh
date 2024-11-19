@@ -448,7 +448,7 @@ validate_opt() {
     fi
 
     services=("mezo" "ethereum-sidecar" "connect-sidecar")
-    for s in ${services[@]}; do
+    for s in "${services[@]}"; do
         if [[ "$1" == "$s" ]]; then
             echo "$s"
             return
