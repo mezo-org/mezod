@@ -203,6 +203,24 @@ configure_mezo() {
 
 }
 
+init_genval() {
+  test -f "${MEZOD_HOME}"/config/genval/genval-*.json && {
+    echo "Genval already exists!"
+    return
+  }
+
+  echo "Prepare genval..."
+  echo "${MEZOD_KEYRING_PASSWORD}" \
+    | ${MEZO_EXEC} genesis genval \
+      "${MEZOD_KEYRING_NAME}" \
+      --keyring-backend="file" \
+      --chain-id="${MEZOD_CHAIN_ID}" \
+      --home="${MEZOD_HOME}" \
+      --ip="${MEZOD_PUBLIC_IP}"
+
+  echo "Genval prepared!"
+}
+
 setup_systemd_skip(){
     echo "
 [Unit]
@@ -380,6 +398,7 @@ main() {
     install_skip
     init_mezo_config
     configure_mezo
+    init_genval
     setup_systemd_skip
     setup_systemd_sidecar
     setup_systemd_mezo
@@ -405,11 +424,7 @@ while [[ $# -gt 0 ]]; do
             healthcheck_flag=true
             shift
             ;;
-        -r|--run)
-            run_flag=true
-            shift
-            ;;
-        -s|--show-variables)
+       -s|--show-variables)
             show_variables_flag=true
             shift
             ;;
@@ -466,7 +481,5 @@ if [[ "$cleanup_flag" == true ]]; then
     exit 0
 fi
 
-if [[ "$run_flag" == true ]]; then
-    setenvs
-    main
-fi
+setenvs
+main
