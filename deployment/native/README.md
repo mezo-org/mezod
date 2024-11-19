@@ -22,7 +22,7 @@ Native binaries installation is tested on the following operating systems:
 > If you are planning to install on older system versions or other distributions,
 > it's not guaranteed it will work.
 
-Before setup, make sure you have `all-in-one.sh` and `testnet.env` on your machine.
+Before setup, make sure you have `v-kit.sh` and `testnet.env` on your machine.
 
 Make sure to you can run the setup script as `root` or using `sudo`.
 
@@ -49,10 +49,10 @@ fill the environment file (in case of testnet it's `testnet.env`).
 
 ### 2. Prepare installation script to run
 
-Before running `all-in-one.sh`, make sure it can be executed by your shell:
+Before running `v-kit.sh`, make sure it can be executed by your shell:
 
 ```bash
-chmod +x all-in-one.sh
+chmod +x v-kit.sh
 ```
 
 ### 3. Run the script (setup validator)
@@ -62,7 +62,7 @@ chmod +x all-in-one.sh
 Deployment script has the following options:
 
 ```text
-Usage: ./all-in-one.sh
+Usage: ./v-kit.sh
 
         [stop <opt>]
                 stop chosen mezo service (opts: mezo|ethereum-sidecar|connect-sidecar)
@@ -104,7 +104,7 @@ To run full validator setup, run:
 with sudo:
 
 ```bash
-sudo ./all-in-one --run
+sudo ./v-kit.sh --run
 ```
 
 or as root:
@@ -117,7 +117,7 @@ or as root:
 > If you are using an environment file other than `testnet.env` make sure to set `--envfile` flag.
 >
 > ```bash
-> ./all-in-one.sh --run --envfile <your_custom_envfile>
+> ./v-kit.sh --run --envfile <your_custom_envfile>
 > ```
 
 ## Other options
@@ -129,11 +129,11 @@ Backup creates a new folder using the name of mezo home dir suffixed by `-backup
 After that it zips the whole home dir to the created folder.
 
 ```bash
-./all-in-one.sh -b
+./v-kit.sh -b
 ```
 
 ```bash
-./all-in-one.sh --backup
+./v-kit.sh --backup
 ```
 
 ### Clean up the mezo installation
@@ -143,17 +143,17 @@ After that it zips the whole home dir to the created folder.
 > It's highly recommended to backup the home dir before cleanup.
 
 ```bash
-./all-in-one.sh -c
+./v-kit.sh -c
 ```
 
 ```bash
-./all-in-one.sh --cleanup
+./v-kit.sh --cleanup
 ```
 
 ### Check health of mezo systemd services
 
 ```bash
-./all-in-one.sh --health
+./v-kit.sh --health
 ```
 
 ### Verbose printing with variables
@@ -162,11 +162,11 @@ This option views all env variables read by the script and activates shell flag 
 all executed commands and their results (`set -x`).
 
 ```bash
-./all-in-one.sh -s
+./v-kit.sh -s
 ```
 
 ```bash
-./all-in-one.sh --show-variables
+./v-kit.sh --show-variables
 ```
 
 ### Start/Stop/Status/Logs
@@ -174,11 +174,11 @@ all executed commands and their results (`set -x`).
 You can perform basic administrative actions using the script:
 
 ```bash
-./all-in-one.sh <start/stop/status/logs> <service>
+./v-kit.sh <start/stop/status/logs> <service>
 ```
 
 Example:
 
 ```bash
-./all-in-one.sh logs mezo
+./v-kit.sh logs mezo
 ```
