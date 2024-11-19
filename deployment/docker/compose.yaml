@@ -1,0 +1,113 @@
+---
+x-volumes: &volumes
+  volumes:
+    - type: bind
+      source: ${LOCAL_BIND_PATH}
+      target: ${MEZOD_HOME}
+
+x-envfile: &envfile
+  env_file:
+    - ${NETWORK}.env
+
+x-platform: &platform
+  platform: linux/amd64
+
+# Enable logging to journald by default
+x-logging: &logging
+  logging:
+    driver: ${DOCKER_LOG_DRIVER:-journald}
+
+x-user: &user
+  user: "65532:65532" # nonroot user used in distroless image
+
+services:
+  #
+  # Operations
+  #
+  cli:
+    <<: [*platform, *envfile, *volumes, *logging, *user]
+    container_name: cli
+    image: local/mezod-cli # Use v-kit.sh to build the image
+    deploy:
+      # Make sure that the service won't run for "docker compose up".
+      # It is intended to be run manually.
+      replicas: 0
+    working_dir: ${MEZOD_HOME}
+    networks:
+      - mezo
+
+  #
+  # PHASE: runtime
+  #
+  ethereum-sidecar:
+    <<: [*platform, *logging, *user]
+    container_name: ethereum-sidecar
+    image: ${DOCKER_IMAGE}
+    entrypoint: [] # Disable the default entrypoint
+    command:
+      - mezod
+      - ethereum-sidecar
+      - --log_format=json
+      - --ethereum-sidecar.server.ethereum-node-address=${MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS}
+    restart: always
+    expose:
+      - 7500
+    cap_drop:
+      - ALL
+    networks:
+      - mezo
+
+  connect-sidecar:
+    # Dockerfile: https://github.com/skip-mev/connect/blob/main/contrib/images/connect.sidecar.prod.Dockerfile
+    <<: [*platform, *logging]
+    container_name: connect-sidecar
+    image: ghcr.io/skip-mev/connect-sidecar:v2.1.1
+    entrypoint: []
+    command:
+      - connect
+      - --log-disable-file-rotation
+      - --port=8080
+      - --market-map-endpoint=mezod:9090
+    expose:
+      - 8080
+    restart: always
+    cap_drop:
+      - ALL
+    networks:
+      - mezo
+
+  mezod:
+    <<: [*platform, *envfile, *volumes, *logging, *user]
+    container_name: mezod
+    image: ${DOCKER_IMAGE}
+    command:
+      - mezod
+      - start
+      - --home=${MEZOD_HOME}
+      - --metrics
+      - --log_format=${MEZOD_LOG_FORMAT}
+      - --log_level=${MEZOD_LOG_LEVEL}
+      - --log_no_color
+    restart: always
+    ports:
+      - 26656:26656  # p2p
+      - 26657:26657  # rpc
+      - 1317:1317    # api
+      - 9090:9090    # grpc
+      - 8545:8545    # json-rpc
+      - 8546:8546    # json-rpc-ws
+      - 6065:6065    # metrics of EVM (app.toml)
+      - 26660:26660  # metrics of cometbft (config.toml)
+    depends_on:
+      ethereum-sidecar:
+        condition: service_started
+      connect-sidecar:
+        condition: service_started
+    cap_drop:
+      - ALL
+    networks:
+      - mezo
+
+networks:
+  mezo:
+    driver: bridge

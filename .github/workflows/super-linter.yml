@@ -13,6 +13,11 @@ on:
 jobs:
   run-lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      # To report GitHub Actions status checks
+      statuses: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,4 +42,5 @@ jobs:
           VALIDATE_SQLFLUFF: false
           VALIDATE_TERRAFORM_TERRASCAN: false
           DEFAULT_BRANCH: "main"
+          FILTER_REGEX_EXCLUDE: ".*\\.env\\.example"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
