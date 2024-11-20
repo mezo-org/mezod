@@ -28,6 +28,13 @@ blockscout:
       # The default config sets timeoutSeconds > periodSeconds which is faulty.
       periodSeconds: 30
       timeoutSeconds: 10
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 8192Mi
+    requests:
+      cpu: 2000m
+      memory: 4096Mi
   env:
     ETHEREUM_JSONRPC_VARIANT: geth
     ETHEREUM_JSONRPC_HTTP_URL: http://mezo-node-0.default.svc.cluster.local:8545
