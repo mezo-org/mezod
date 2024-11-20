@@ -30,6 +30,8 @@ Make sure to you can run the setup script as `root` or using `sudo`.
 
 ### 1. Prepare environment file
 
+Copy the `testnet.env.example` and create your own file `testnet.env`.
+
 For the validator to be successfully deployed, it's necessary to
 fill the environment file (in case of testnet it's `testnet.env`).
 

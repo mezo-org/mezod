@@ -551,7 +551,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ ! -f "${ENVIRONMENT_FILE}" ]; then
-    echo "Error: Environment file not found!"
+    echo "Error: Environment file ${ENVIRONMENT_FILE} not found!"
     exit 1
 fi
 
