@@ -550,6 +550,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [ ! -f "${ENVIRONMENT_FILE}" ]; then
+    echo "Error: Environment file not found!"
+    exit 1
+fi
+
 if [ $(id -u) -ne 0 ]; then
     echo "This script requires root privileges"
     exit 1

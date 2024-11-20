@@ -44,8 +44,7 @@ fill the environment file (in case of testnet it's `testnet.env`).
 - `MEZOD_ETHEREUM_SIDECAR_SERVER_ETHEREUM_NODE_ADDRESS` - address for the Ethereum node
 (required for the sidecar to run)
 - `MEZOD_PUBLIC_IP` - public IP address of the validator
-- `GITHUB_TOKEN` - github token with `repo` scope
-(required to download mezo binary from github release)
+- `MEZOD_DOWNLOAD_LINK` - link to a public repository hosting a `tar.gz` file with mezo binary
 
 ### 2. Prepare installation script to run
 
@@ -104,20 +103,20 @@ To run full validator setup, run:
 with sudo:
 
 ```bash
-sudo ./v-kit.sh --run
+sudo ./v-kit.sh
 ```
 
 or as root:
 
 ```bash
-./all-in-one --run
+./v-kit.sh
 ```
 
 > [!IMPORTANT]
 > If you are using an environment file other than `testnet.env` make sure to set `--envfile` flag.
 >
 > ```bash
-> ./v-kit.sh --run --envfile <your_custom_envfile>
+> ./v-kit.sh --envfile <your_custom_envfile>
 > ```
 
 ## Other options
