@@ -77,41 +77,49 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 	// record index of valid eth tx during the iteration
 	var ethTxIndex int32
 	for txIndex, tx := range block.Txs {
-		// The first transaction in a block is always a pseudo-transaction
-		// containing information on assets bridged to Mezo. It requires a
-		// special handling.
 		if txIndex == 0 {
+			// Assume the transaction at index `0` is a pseudo-transaction
+			// containing bridging information. Save it if it is indeed
+			// a pseudo-transaction and it contains `AssetsLocked` events.
+			// If for some reason it is not a pseudo-transaction handle it
+			// like other transactions.
 			txHash := common.BytesToHash(tx.Hash())
 
-			assetsLockedEvents := kv.GetSerializedAssetsLockedEvents(
-				kv.clientCtx.Codec,
-				tx,
-			)
+			injectedTx, isPseudoTx := kv.parsePseudoTransaction(tx)
 
-			if len(assetsLockedEvents) == 0 {
+			if isPseudoTx {
+				if len(injectedTx.AssetsLockedEvents) == 0 {
+					// Skip saving the pseudo-transaction as it does not contain
+					// any `AssetsLocked` events.
+					continue
+				}
+
+				serializedTx := kv.clientCtx.Codec.MustMarshal(injectedTx)
+
+				extraData := append(
+					[]byte{BridgingInfoDiscriminator},
+					serializedTx...,
+				)
+
+				txResult := mezotypes.TxResult{
+					Height:     height,
+					EthTxIndex: ethTxIndex,
+					ExtraData:  extraData,
+				}
+
+				ethTxIndex++
+
+				if err := saveTxResult(
+					kv.clientCtx.Codec,
+					batch,
+					txHash,
+					&txResult,
+				); err != nil {
+					return errorsmod.Wrapf(err, "IndexBlock %d", height)
+				}
+
 				continue
 			}
-
-			extraData := append(
-				[]byte{BridgingInfoDiscriminator},
-				assetsLockedEvents...,
-			)
-
-			txResult := mezotypes.TxResult{
-				Height:    height,
-				ExtraData: extraData,
-			}
-
-			if err := savePseudoTxResult(
-				kv.clientCtx.Codec,
-				batch,
-				txHash,
-				&txResult,
-			); err != nil {
-				return errorsmod.Wrapf(err, "IndexBlock %d", height)
-			}
-
-			continue
 		}
 
 		result := txResults[txIndex]
@@ -179,52 +187,41 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 	return nil
 }
 
-// GetSerializedAssetsLockedEvents returns serialized AssetsLocked events in the
-// same order as they were stored in the block's pseudo-transaction.
-// GetSerializedAssetsLockedEvents returns serialized AssetsLocked events using the provided codec.
-func (kv *KVIndexer) GetSerializedAssetsLockedEvents(
-	codec codec.BinaryCodec,
+// parsePseudoTransaction attempts to extract bridging information from a
+// transaction. It returns an object with `AssetsLocked` events and information
+// on whether the transaction was a pseudo-transaction,
+func (kv *KVIndexer) parsePseudoTransaction(
 	tx tmtypes.Tx,
-) []byte {
+) (*bridgetypes.InjectedTx, bool) {
 	var blockTx apptypes.InjectedTx
 
+	// If the transaction does not unmarshal, it is not a pseudo-transaction.
 	err := blockTx.Unmarshal(tx)
 	if err != nil {
-		kv.logger.Error(
-			"Failed to unmarshal pseudo-transaction",
-			"err",
-			err,
-		)
-		return []byte{}
+		return nil, false
 	}
 
-	parts := blockTx.GetParts()
-	if len(parts) != 1 {
-		kv.logger.Error("Wrong number of parts in pseudo-transaction")
-		return []byte{}
+	// If parts at index `1` are not set, the pseudo-transaction does not hold
+	// any bridging info.
+	parts, ok := blockTx.Parts[1]
+	if !ok {
+		return nil, true
 	}
 
 	var bridgeTx bridgetypes.InjectedTx
 
-	err = bridgeTx.Unmarshal(parts[1])
+	// If parts do not unmarshal, the pseudo-transaction does not hold valid
+	// bridging info.
+	err = bridgeTx.Unmarshal(parts)
 	if err != nil {
-		kv.logger.Error(
-			"Failed to unmarshal bridging info from pseudo-transaction",
-			"err",
-			err,
-		)
-		return []byte{}
+		return nil, true
 	}
 
-	var serializedEvents []byte
-	for _, event := range bridgeTx.AssetsLockedEvents {
-		// Since the length of serialized events varies, marshal the events
-		// length-prefixed.
-		eventBytes := codec.MustMarshalLengthPrefixed(&event)
-		serializedEvents = append(serializedEvents, eventBytes...)
-	}
+	// Since the extended commit info is not needed, set it to nil to save up
+	// space when bride tx is stored in the database.
+	bridgeTx.ExtendedCommitInfo = nil
 
-	return serializedEvents
+	return &bridgeTx, true
 }
 
 // LastIndexedBlock returns the latest indexed block number, returns -1 if db is empty
@@ -314,16 +311,6 @@ func isEthTx(tx sdk.Tx) bool {
 		return false
 	}
 	return true
-}
-
-// savePseudoTxResult indexes the pseudo-transaction txResult into kv db batch.
-// The transaction is only indexed by its hash.
-func savePseudoTxResult(codec codec.Codec, batch dbm.Batch, txHash common.Hash, txResult *mezotypes.TxResult) error {
-	bz := codec.MustMarshal(txResult)
-	if err := batch.Set(TxHashKey(txHash), bz); err != nil {
-		return errorsmod.Wrap(err, "set tx-hash key")
-	}
-	return nil
 }
 
 // saveTxResult index the txResult into the kv db batch

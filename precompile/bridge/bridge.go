@@ -9,6 +9,8 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 )
 
+// TODO: Add the `Bridge` precompile.
+
 //go:embed abi.json
 var filesystem embed.FS
 
@@ -23,7 +25,9 @@ type AssetsLockedEvent struct {
 	TBTCAmount     *big.Int       `abi:"tbtcAmount"`
 }
 
-func PrepareInput(events []AssetsLockedEvent) ([]byte, error) {
+// PackEventsToInput packs given `AssetsLocked` events into an input of the
+// `bridge` function.
+func PackEventsToInput(events []AssetsLockedEvent) ([]byte, error) {
 	abi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load ABI file: [%w]", err)

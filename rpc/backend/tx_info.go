@@ -16,7 +16,6 @@
 package backend
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 	"math/big"
@@ -35,7 +34,7 @@ import (
 	"github.com/mezo-org/mezod/precompile/bridge"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/types"
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/abci/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
 )
@@ -59,37 +58,18 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 		blockHash := common.BytesToHash(block.BlockID.Hash.Bytes())
 		blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(res.Height)))
 		to := common.HexToAddress(bridge.EvmAddress)
+		txIndex := hexutil.Uint64(res.EthTxIndex)
 		chainID := (*hexutil.Big)(b.chainID)
 
 		// Skip the discriminator byte.
 		serializedEvents := res.ExtraData[1:]
 
+		// Unmarshal the serialized event.
+		var bridgeTx bridgetypes.InjectedTx
+		b.clientCtx.Codec.MustUnmarshal(serializedEvents, &bridgeTx)
+
 		var events []bridge.AssetsLockedEvent
-
-		for len(serializedEvents) > 0 {
-			// The events are serialized with a length prefix. Read the prefix
-			// first to know the length of the serialized event.
-			length, bytesRead := binary.Uvarint(serializedEvents)
-			if bytesRead <= 0 {
-				return nil, fmt.Errorf("failed to decode length prefix")
-			}
-
-			// Check if there is enough data for the serialized event.
-			if len(serializedEvents) < int(length)+bytesRead {
-				return nil, fmt.Errorf("serialized events data corrupted")
-			}
-
-			// Extract the serialized event.
-			serializedEvent := serializedEvents[bytesRead:bytesRead+int(length)]
-
-			var event bridgetypes.AssetsLockedEvent
-
-			// Unmarshal the serialized event.
-			err := b.clientCtx.Codec.Unmarshal(serializedEvent, &event)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal event: [%w]", err)
-			}
-
+		for _, event := range bridgeTx.AssetsLockedEvents {
 			accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
 			if err != nil {
 				return nil, fmt.Errorf(
@@ -105,23 +85,22 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 				Recipient:      recipient,
 				TBTCAmount:     event.Amount.BigInt(),
 			})
-
-			// Advance to the next event.
-			serializedEvents = serializedEvents[bytesRead+int(length):]
 		}
 
-		input, err := bridge.PrepareInput(events)
+		// Pack the events to an input of the precompile's `bridge` function.
+		input, err := bridge.PackEventsToInput(events)
 		if err != nil {
 			return nil, fmt.Errorf("failed to prepare input: [%w]", err)
 		}
 
 		return &rpctypes.RPCTransaction{
-			BlockHash:   &blockHash,
-			BlockNumber: blockNumber,
-			Hash:        txHash,
-			Input:       input,
-			To:          &to,
-			ChainID:     chainID,
+			BlockHash:        &blockHash,
+			BlockNumber:      blockNumber,
+			Hash:             txHash,
+			Input:            input,
+			To:               &to,
+			TransactionIndex: &txIndex,
+			ChainID:          chainID,
 		}, nil
 	}
 
