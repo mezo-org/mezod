@@ -167,6 +167,9 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 					continue
 				}
 				if parsedTx.EthTxIndex >= 0 && parsedTx.EthTxIndex != ethTxIndex {
+					// TODO: When there is a non-empty pseudo-transaction and an ordinary transaction
+					//       in one block, this if is true. Should we ignore this log?
+
 					kv.logger.Error("eth tx index don't match", "expect", ethTxIndex, "found", parsedTx.EthTxIndex)
 				}
 				txResult.GasUsed = parsedTx.GasUsed
