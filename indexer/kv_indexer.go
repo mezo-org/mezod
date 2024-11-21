@@ -103,6 +103,7 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 
 				txResult := mezotypes.TxResult{
 					Height:     height,
+					TxIndex:    uint32(txIndex),
 					EthTxIndex: ethTxIndex,
 					ExtraData:  extraData,
 				}
@@ -189,7 +190,7 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 
 // parsePseudoTransaction attempts to extract bridging information from a
 // transaction. It returns an object with `AssetsLocked` events and information
-// on whether the transaction was a pseudo-transaction,
+// on whether the transaction was a pseudo-transaction.
 func (kv *KVIndexer) parsePseudoTransaction(
 	tx tmtypes.Tx,
 ) (*bridgetypes.InjectedTx, bool) {

@@ -55,53 +55,7 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 
 	// Special case for pseudo-transactions containing bridging information.
 	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
-		blockHash := common.BytesToHash(block.BlockID.Hash.Bytes())
-		blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(res.Height)))
-		to := common.HexToAddress(bridge.EvmAddress)
-		txIndex := hexutil.Uint64(res.EthTxIndex)
-		chainID := (*hexutil.Big)(b.chainID)
-
-		// Skip the discriminator byte.
-		serializedEvents := res.ExtraData[1:]
-
-		// Unmarshal the serialized event.
-		var bridgeTx bridgetypes.InjectedTx
-		b.clientCtx.Codec.MustUnmarshal(serializedEvents, &bridgeTx)
-
-		var events []bridge.AssetsLockedEvent
-		for _, event := range bridgeTx.AssetsLockedEvents {
-			accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to convert Mezo address to account address: [%w]",
-					err,
-				)
-			}
-
-			recipient := common.BytesToAddress(accAddress)
-
-			events = append(events, bridge.AssetsLockedEvent{
-				SequenceNumber: event.Sequence.BigInt(),
-				Recipient:      recipient,
-				TBTCAmount:     event.Amount.BigInt(),
-			})
-		}
-
-		// Pack the events to an input of the precompile's `bridge` function.
-		input, err := bridge.PackEventsToInput(events)
-		if err != nil {
-			return nil, fmt.Errorf("failed to prepare input: [%w]", err)
-		}
-
-		return &rpctypes.RPCTransaction{
-			BlockHash:        &blockHash,
-			BlockNumber:      blockNumber,
-			Hash:             txHash,
-			Input:            input,
-			To:               &to,
-			TransactionIndex: &txIndex,
-			ChainID:          chainID,
-		}, nil
+		return b.getPseudoTransaction(res, block)
 	}
 
 	tx, err := b.clientCtx.TxConfig.TxDecoder()(block.Block.Txs[res.TxIndex])
@@ -155,6 +109,65 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 		baseFee,
 		b.chainID,
 	)
+}
+
+func (b *Backend) getPseudoTransaction(
+	txResult *types.TxResult,
+	blockResult *tmrpctypes.ResultBlock,
+) (
+	*rpctypes.RPCTransaction,
+	error,
+) {
+	blockHash := common.BytesToHash(blockResult.BlockID.Hash.Bytes())
+	blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(txResult.Height)))
+	to := common.HexToAddress(bridge.EvmAddress)
+	index := hexutil.Uint64(txResult.EthTxIndex)
+	chainID := (*hexutil.Big)(b.chainID)
+
+	tx := blockResult.Block.Txs[txResult.TxIndex]
+	txHash := common.BytesToHash(tx.Hash())
+
+	// Skip the discriminator byte.
+	serializedEvents := txResult.ExtraData[1:]
+
+	// Unmarshal the serialized event.
+	var bridgeTx bridgetypes.InjectedTx
+	b.clientCtx.Codec.MustUnmarshal(serializedEvents, &bridgeTx)
+
+	var events []bridge.AssetsLockedEvent
+	for _, event := range bridgeTx.AssetsLockedEvents {
+		accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to convert Mezo address to account address: [%w]",
+				err,
+			)
+		}
+
+		recipient := common.BytesToAddress(accAddress)
+
+		events = append(events, bridge.AssetsLockedEvent{
+			SequenceNumber: event.Sequence.BigInt(),
+			Recipient:      recipient,
+			TBTCAmount:     event.Amount.BigInt(),
+		})
+	}
+
+	// Pack the events to an input of the precompile's `bridge` function.
+	input, err := bridge.PackEventsToInput(events)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare input: [%w]", err)
+	}
+
+	return &rpctypes.RPCTransaction{
+		BlockHash:        &blockHash,
+		BlockNumber:      blockNumber,
+		Hash:             txHash,
+		Input:            input,
+		To:               &to,
+		TransactionIndex: &index,
+		ChainID:          chainID,
+	}, nil
 }
 
 // getTransactionByHashPending find pending tx from mempool
@@ -448,6 +461,11 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 	// find in tx indexer
 	res, err := b.GetTxByTxIndex(block.Block.Height, uint(idx))
 	if err == nil {
+		// Special case for pseudo-transactions containing bridging information.
+		if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+			return b.getPseudoTransaction(res, block)
+		}
+
 		tx, err := b.clientCtx.TxConfig.TxDecoder()(block.Block.Txs[res.TxIndex])
 		if err != nil {
 			b.logger.Debug("invalid ethereum tx", "height", block.Block.Header, "index", idx)
