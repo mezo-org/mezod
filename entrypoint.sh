@@ -176,12 +176,12 @@ get_validator_info() {
   validator_id="$(cat "${MEZOD_HOME}"/config/genval/genval-*.json | jq -r '.memo' | awk -F'@' '{print $1}')"
   echo "Validator ID: ${validator_id}"
 
-  validator_consensus_addr_bech="$(cat "${MEZOD_HOME}"/config/genval/genval-*.json | jq -r '.validator.cons_pub_key_bech32')"
-  validator_consensus_addr="$(mezod --home="${MEZOD_HOME}" keys parse "${validator_consensus_addr_bech}" | grep bytes | awk '{printf "%s", $2}' | tail -c 64 | awk '{print "0x"$1}')"
-  echo "Validator consensus address: ${validator_consensus_addr}"
+  validator_consensus_pubkey_bech="$(cat "${MEZOD_HOME}"/config/genval/genval-*.json | jq -r '.validator.cons_pub_key_bech32')"
+  validator_consensus_pubkey="$(mezod --home="${MEZOD_HOME}" keys parse "${validator_consensus_pubkey_bech}" | grep bytes | awk '{printf "%s", $2}' | tail -c 64 | awk '{print "0x"$1}')"
+  echo "Validator consensus pubkey: ${validator_consensus_pubkey}"
 
-  validator_network_addr="$(jq -r '.address' "${MEZOD_HOME}"/config/priv_validator_key.json | awk '{print "0x"$1}')"
-  echo "Validator network address: ${validator_network_addr}"
+  validator_consensus_addr="$(jq -r '.address' "${MEZOD_HOME}"/config/priv_validator_key.json | awk '{print "0x"$1}')"
+  echo "Validator consensus address: ${validator_consensus_addr}"
 }
 
 #
