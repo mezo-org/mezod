@@ -182,6 +182,8 @@ get_validator_info() {
 
   validator_consensus_addr="$(jq -r '.address' "${MEZOD_HOME}"/config/priv_validator_key.json | awk '{print "0x"$1}')"
   echo "Validator consensus address: ${validator_consensus_addr}"
+
+  echo "Moniker: $MEZOD_MONIKER" 
 }
 
 #
