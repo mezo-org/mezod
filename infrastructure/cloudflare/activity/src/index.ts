@@ -1,5 +1,5 @@
 import { WorkerEntrypoint } from "cloudflare:workers"
-import { BlockScoutAPI, ContractItem } from "#/blockscout"
+import { AddressItem, BlockScoutAPI } from "#/blockscout"
 
 type Env = {
   BLOCKSCOUT_API_URL: string
@@ -8,20 +8,33 @@ type Env = {
   UPDATE_BATCH_SIZE: string
 }
 
-async function updateActivity(env: Env) {
-  // TODO: The update approach taken here is quite naive and may bite us
-  //       when there is a lot of data. Potential issues are too many
-  //       concurrent DB connections, slow processing time, or memory issues.
-  //       Consider a more sophisticated approach for the next iteration.
+async function updateAddresses(env: Env) {
+  const addresses = await fetchAddresses(env)
 
+  // This statement inserts new addresses with the value of `updated_at` equal
+  // to unix timestamp 0. This will put them in the front of the queue for activity updates.
+  const stmts = addresses.map((item) => {
+    return env.DB
+      .prepare(`INSERT OR IGNORE INTO activity (address, tx_count, claimed_btc, deployer, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)`)
+      .bind(item.address, 0, "0", item.deployer ? item.deployer : null, 0)
+  })
+
+  await batchExecuteStmts(env, stmts)
+}
+
+async function updateActivity(env: Env) {
   const activity = await fetchActivity(env)
 
   const stmts = activity.map((item) => {
     return env.DB
-      .prepare(`INSERT OR REPLACE INTO activity (address, tx_count, deployed_contracts, deployed_contracts_tx_count, claimed_btc) VALUES (?1, ?2, ?3, ?4, ?5)`)
-      .bind(item.address, item.txCount, item.deployedContracts, item.deployedContractsTxCount, item.claimedBTC)
+      .prepare(`UPDATE activity SET tx_count = ?1, claimed_btc = ?2, updated_at = datetime('now') WHERE address = ?3`)
+      .bind(item.txCount, item.claimedBTC, item.address)
   })
 
+  await batchExecuteStmts(env, stmts)
+}
+
+async function batchExecuteStmts(env: Env, stmts: D1PreparedStatement[]): Promise<void> {
   const batchSize = parseInt(env.UPDATE_BATCH_SIZE);
   const batches = [];
 
@@ -37,29 +50,46 @@ async function updateActivity(env: Env) {
   )
 }
 
+async function getAddresses(env: Env, limit: number): Promise<string[]> {
+  // Return oldest addresses first.
+  const { results } = await env.DB.prepare(`SELECT address FROM activity ORDER BY updated_at ASC LIMIT ${limit}`).all<{ address: string }>()
+  return results.map((item) => item.address)
+}
+
 async function getActivity(env: Env): Promise<ActivityItem[]> {
-  const { results } = await env.DB.prepare("SELECT * FROM activity").all<ActivityItem>()
+  const { results } = await env.DB.prepare(
+    `
+    WITH contract_info AS (
+        SELECT deployer, count(*) as deployed_contracts, sum(tx_count) as deployed_contracts_tx_count
+        FROM activity
+        WHERE deployer IS NOT NULL
+        GROUP BY deployer
+    )
+    SELECT 
+        a.address, 
+        a.tx_count, 
+        COALESCE(ci.deployed_contracts, 0) as deployed_contracts, 
+        COALESCE(ci.deployed_contracts_tx_count, 0) as deployed_contracts_tx_count,
+        a.claimed_btc
+    FROM activity a
+    LEFT JOIN contract_info ci ON a.address = ci.deployer
+    WHERE a.deployer IS NULL;
+    `
+  ).all<ActivityItem>()
+
   return results
 }
 
-async function fetchActivity(env: Env): Promise<ActivityItem[]> {
+async function fetchAddresses(env: Env): Promise<AddressItem[]> {
   const bsAPI = new BlockScoutAPI(env.BLOCKSCOUT_API_URL)
-
-  // TODO: We may want to process addresses in batches if number of addresses is large.
-  const addresses = await bsAPI.addresses()
+  const EOAs = await bsAPI.externallyOwnedAccounts()
   const contracts = await bsAPI.contracts()
-  const txsFromFaucet = await bsAPI.txsFromAddress(env.FAUCET_ADDRESS)
+  return [...EOAs, ...contracts].filter((item) => item.address !== env.FAUCET_ADDRESS)
+}
 
-  const addressToContracts = contracts.reduce(
-    (acc, contract) => {
-      if (!acc[contract.deployer]) {
-        acc[contract.deployer] = []
-      }
-      acc[contract.deployer].push(contract)
-      return acc
-    },
-    {} as Record<string, ContractItem[]>
-  )
+async function fetchActivity(env: Env): Promise<Pick<ActivityItem, "address" | "txCount" | "claimedBTC">[]> {
+  const bsAPI = new BlockScoutAPI(env.BLOCKSCOUT_API_URL)
+  const txsFromFaucet = await bsAPI.txs(env.FAUCET_ADDRESS, "from")
 
   const addressToClaimedBTC = txsFromFaucet.reduce(
     (acc, tx) => {
@@ -72,24 +102,33 @@ async function fetchActivity(env: Env): Promise<ActivityItem[]> {
     {} as Record<string, bigint>
   )
 
-  return addresses
-    .filter((item) => item.address !== env.FAUCET_ADDRESS) // Filter out the faucet address.
-    .map((item) => {
-      const contracts = addressToContracts[item.address] || []
+  const batchSize = parseInt(env.UPDATE_BATCH_SIZE);
+  const addressBatch = await getAddresses(env, batchSize)
 
-      const deployedContractsTxCount = contracts.reduce(
-        (acc, contract) => acc + contract.txCount,
-        0
-      )
+  const addressToTxCount = new Map<string, number>
+  for (const address of addressBatch) {
+    try {
+      const txCount = await bsAPI.txCount(address)
+      addressToTxCount.set(address, txCount)
+    } catch (error) {
+      // Log error and continue to next address.
+      console.error(`error fetching tx count for: ${address}: ${error}`)
+    }
+  }
 
+  const activity = addressBatch
+    .filter((address) => addressToTxCount.has(address))
+    .map((address) => {
       return {
-        address: item.address,
-        txCount: item.txCount,
-        deployedContracts: contracts.length,
-        deployedContractsTxCount: deployedContractsTxCount,
-        claimedBTC: addressToClaimedBTC[item.address]?.toString() || "0"
+        address: address,
+        txCount: addressToTxCount.get(address)!,
+        claimedBTC: addressToClaimedBTC[address]?.toString() || "0"
       }
     })
+
+  console.log(`fetched activity for ${activity.length}/${addressBatch.length} addresses in the batch`)
+
+  return activity
 }
 
 export default {
@@ -101,8 +140,14 @@ export default {
       return Response.json({ success: false, errorMsg: `${error}` })
     }
   },
-  async scheduled(_: unknown, env: Env) {
+  async scheduled(_: { cron: unknown; scheduledTime: string }, env: Env) {
+    console.log(`updating addresses index`)
+    await updateAddresses(env)
+    console.log(`addresses index updated`)
+
+    console.log(`updating activity data`)
     await updateActivity(env)
+    console.log(`activity data updated`)
   },
 }
 
