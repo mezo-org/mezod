@@ -234,6 +234,12 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		b.logger.Debug("block not found", "height", res.Height, "error", err.Error())
 		return nil, nil
 	}
+
+	// Special case for pseudo-transactions containing bridging information.
+	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+		return b.getPseudoTransactionReceipt(hash, res, resBlock)
+	}
+
 	tx, err := b.clientCtx.TxConfig.TxDecoder()(resBlock.Block.Txs[res.TxIndex])
 	if err != nil {
 		b.logger.Debug("decoding failed", "error", err.Error())
@@ -341,6 +347,40 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 	}
 
 	return receipt, nil
+}
+
+// getPseudoTransactionReceipt creates a receipt for a pseudo-transaction
+// with bridging info.
+func (b *Backend) getPseudoTransactionReceipt(
+	txHash common.Hash,
+	txResult *types.TxResult,
+	blockResult *tmrpctypes.ResultBlock,
+) (
+	map[string]interface{},
+	error,
+) {
+	return map[string]interface{}{
+		// Consensus fields.
+		"status":            hexutil.Uint(ethtypes.ReceiptStatusSuccessful),
+		"cumulativeGasUsed": hexutil.Uint64(0),
+		"logsBloom":         ethtypes.Bloom{},
+		"logs":              []*ethtypes.Log{},
+
+		// Implementation fields
+		"transactionHash": txHash,
+		"contractAddress": nil,
+		"gasUsed":         hexutil.Uint64(0),
+
+		// Inclusion information.
+		"blockHash":        common.BytesToHash(blockResult.Block.Header.Hash()).Hex(),
+		"blockNumber":      hexutil.Uint64(txResult.Height),
+		"transactionIndex": hexutil.Uint64(txResult.EthTxIndex),
+
+		// Sender and receiver (contract or EOA) addresses.
+		"from": nil,
+		"to":   common.HexToAddress(bridge.EvmAddress),
+		"type": hexutil.Uint(0),
+	}, nil
 }
 
 // GetTransactionByBlockHashAndIndex returns the transaction identified by hash and index.
