@@ -1,15 +1,18 @@
 package precompile
 
 import (
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 )
 
-var mockAbi = abi.ABI{}
-var mockBytecode = "001122"
+var (
+	mockAbi      = abi.ABI{}
+	mockBytecode = "001122"
+)
 
 func TestSingleVersionMap(t *testing.T) {
 	contract := NewContract(mockAbi, common.HexToAddress("0x123"), mockBytecode)
@@ -41,4 +44,3 @@ func TestMultiVersionMap(t *testing.T) {
 	assert.Equal(t, contract2, vm.GetLatest())
 	assert.Equal(t, common.HexToAddress("0x123"), vm.Address())
 }
-
