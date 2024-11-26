@@ -26,12 +26,17 @@ const SubmitApplicationMethodName = "submitApplication"
 // - consPubKey: the consensus public key of the validator used to vote on blocks
 // - description: the validators description info
 type SubmitApplicationMethod struct {
-	keeper PoaKeeper
+	keeper    PoaKeeper
+	legacyGas bool
 }
 
-func newSubmitApplicationMethod(pk PoaKeeper) *SubmitApplicationMethod {
+func newSubmitApplicationMethod(
+	pk PoaKeeper,
+	legacyGas bool,
+) *SubmitApplicationMethod {
 	return &SubmitApplicationMethod{
-		keeper: pk,
+		keeper:    pk,
+		legacyGas: legacyGas,
 	}
 }
 
@@ -44,6 +49,11 @@ func (m *SubmitApplicationMethod) MethodType() precompile.MethodType {
 }
 
 func (m *SubmitApplicationMethod) RequiredGas(methodInputArgs []byte) (uint64, bool) {
+	if m.legacyGas {
+		// Use the legacy gas calculation formula i.e. fallback to the default gas calculation.
+		return 0, false
+	}
+
 	// Get default gas costs
 	gas := precompile.DefaultRequiredGas(
 		store.KVGasConfig(),
