@@ -83,7 +83,7 @@ type Keeper struct {
 	ss paramstypes.Subspace
 
 	// Custom precompiles registered with the keeper.
-	customPrecompiles map[common.Address]*precompile.Contract
+	customPrecompiles map[common.Address]*precompile.VersionMap
 }
 
 // NewKeeper generates new evm module keeper
@@ -122,7 +122,7 @@ func NewKeeper(
 		transientKey:      transientKey,
 		tracer:            tracer,
 		ss:                ss,
-		customPrecompiles: make(map[common.Address]*precompile.Contract),
+		customPrecompiles: make(map[common.Address]*precompile.VersionMap),
 	}
 }
 
@@ -413,7 +413,7 @@ func (k Keeper) AddTransientGasUsed(ctx sdk.Context, gasUsed uint64) (uint64, er
 // RegisterCustomPrecompiles registers custom precompiled contracts with the keeper.
 // This function does not check for duplicates. If a precompile with the same
 // address is already registered, it will be overwritten.
-func (k *Keeper) RegisterCustomPrecompiles(precompiles ...*precompile.Contract) {
+func (k *Keeper) RegisterCustomPrecompiles(precompiles ...*precompile.VersionMap) {
 	for _, precompile := range precompiles {
 		k.customPrecompiles[precompile.Address()] = precompile
 	}
@@ -432,7 +432,7 @@ func (k Keeper) CustomPrecompileGenesisAccounts() []types.GenesisAccount {
 	for k, v := range k.customPrecompiles {
 		accounts = append(accounts, types.GenesisAccount{
 			Address: k.String(),
-			Code:    v.Bytecode(),
+			Code:    v.GetLatest().Bytecode(),
 			Storage: types.Storage{},
 		})
 	}
