@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/mezo-org/mezod/indexer"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
@@ -392,6 +393,37 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 	ethRPCTxs := []interface{}{}
 	block := resBlock.Block
 
+	// The transaction at index `0` can be a pseudo-transaction. We need to
+	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
+	// transaction, it is still possible that it did not contain any events and
+	// was skipped during indexing.
+	if len(block.Txs) > 0 {
+		tx := block.Txs[0]
+		txHash := common.BytesToHash(tx.Hash())
+		res, err := b.GetTxByEthHash(txHash)
+		if err == nil {
+			// The transaction was saved during indexing.
+			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+				// The transaction was a pseudo-transaction containing events.
+				// Include the transaction in the command result.
+				pseudoTx, err := b.getPseudoTransaction(res, resBlock)
+				if err != nil {
+					b.logger.Debug("failed to get pseudo-transaction", "hash", txHash, "error", err.Error())
+				} else {
+					if !fullTx {
+						ethRPCTxs = append(ethRPCTxs, pseudoTx.Hash)
+					} else {
+						ethRPCTxs = append(ethRPCTxs, pseudoTx)
+					}
+				}
+			}
+		}
+	}
+
+	// Notice that a pseudo-transaction (if present) will be skipped by the
+	// `EthMsgsFromTendermintBlock` function below. We do not have to worry
+	// about such a transaction being included twice in the command result.
+
 	baseFee, err := b.BaseFee(blockRes)
 	if err != nil {
 		// handle the error for pruned node.
@@ -399,7 +431,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 	}
 
 	msgs := b.EthMsgsFromTendermintBlock(resBlock, blockRes)
-	for txIndex, ethMsg := range msgs {
+	for _, ethMsg := range msgs {
 		if !fullTx {
 			hash := common.HexToHash(ethMsg.Hash)
 			ethRPCTxs = append(ethRPCTxs, hash)
@@ -408,7 +440,19 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 
 		tx := ethMsg.AsTransaction()
 		height := uint64(block.Height) //#nosec G701 -- checked for int overflow already
-		index := uint64(txIndex)       //#nosec G701 -- checked for int overflow already
+
+		// Retrieve the transaction by hash to learn which index should be
+		// assigned to the transaction. Notice that we cannot assume the
+		// ordinary ETH transactions start at index `0` as they may be preceded
+		// by a pseudo-transaction.
+		res, err := b.GetTxByEthHash(tx.Hash())
+		if err != nil {
+			b.logger.Debug("failed to get transaction", "hash", tx.Hash(), "error", err.Error())
+			continue
+		}
+
+		index := uint64(res.EthTxIndex)
+
 		rpcTx, err := rpctypes.NewRPCTransaction(
 			tx,
 			common.BytesToHash(block.Hash()),
