@@ -822,19 +822,49 @@ func customEvmPrecompiles(
 	poaKeeper poakeeper.Keeper,
 	evmKeeper evmkeeper.Keeper,
 	chainID string,
-) ([]*precompile.Contract, error) {
+) ([]*precompile.VersionMap, error) {
+	// BTC token precompile.
 	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
 	}
+	btcTokenVersionMap := precompile.NewSingleVersionMap(btcTokenPrecompile)
 
+	// Validator pool precompile.
 	validatorPoolPrecompile, err := validatorpool.NewPrecompile(poaKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validatorpool precompile: [%w]", err)
 	}
+	validatorPoolVersionMap := precompile.NewSingleVersionMap(validatorPoolPrecompile)
 
-	return []*precompile.Contract{
-		btcTokenPrecompile,
-		validatorPoolPrecompile,
+	// For mezo_31611-1 testnet, we need to support the legacy validator pool precompile.
+	if chainID == "mezo_31611-1" {
+		// Create the legacy validator pool precompile.
+		legacyValidatorPoolPrecompile, err := validatorpool.NewLegacyPrecompile(poaKeeper)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create legacy validatorpool precompile: [%w]", err)
+		}
+		// Override the validator pool version map. Order is important here -
+		// the legacy precompile should have a lower version than the new one.
+		validatorPoolVersionMap = precompile.NewMultiVersionMap(
+			[]*precompile.Contract{
+				legacyValidatorPoolPrecompile,
+				validatorPoolPrecompile,
+			},
+			func(height int64) int {
+				// Use validator pool with legacy submitApplication gas formula
+				// before height 496901. This height denotes the first
+				// transaction using the new gas formula.
+				if height < 496901 {
+					return 1
+				}
+				return 2
+			},
+		)
+	}
+
+	return []*precompile.VersionMap{
+		btcTokenVersionMap,
+		validatorPoolVersionMap,
 	}, nil
 }

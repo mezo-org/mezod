@@ -62,6 +62,19 @@ func (s *PrecompileTestSuite) TestSubmitApplication() {
 				s.Require().Equal(description.Moniker, s.account1.Description.Moniker, "expected moniker to match")
 			},
 		},
+		{
+			name: "description exceeds character limit",
+			run: func() []interface{} {
+				return []interface{}{
+					s.account5.ConsPubKeyBytes32(),
+					s.account5.Description,
+				}
+			},
+			as:          s.account5.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: poatypes.ErrInvalidValidator.Error(),
+		},
 	}
 
 	s.RunMethodTestCases(testcases, "submitApplication")
@@ -178,6 +191,67 @@ func (s *PrecompileTestSuite) TestEmitApplicationApprovedEvent() {
 			// Check the first argument
 			s.Require().True(args[0].Indexed)
 			s.Require().Equal(tc.operator, args[0].Value)
+		})
+	}
+}
+
+func (s *PrecompileTestSuite) TestCleanupApplications() {
+	testcases := []TestCase{
+		{
+			name: "argument count mismatch",
+			run: func() []interface{} {
+				return []interface{}{
+					1,
+				}
+			},
+			errContains: "argument count mismatch",
+		},
+		{
+			name: "keeper returns error",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "sender is not owner",
+		},
+		{
+			name: "valid cleanup",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				// Check the keeper was updated
+				applications := s.keeper.GetAllApplications(s.ctx)
+				s.Require().Len(applications, 0, "expected 0 applications")
+			},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "cleanupApplications")
+}
+
+func (s *PrecompileTestSuite) TestEmitApplicationsCleanedEvent() {
+	testcases := []struct {
+		name     string
+		operator common.Address
+	}{
+		{
+			name:     "pass",
+			operator: s.account1.EvmAddr,
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		s.Run(tc.name, func() {
+			e := validatorpool.NewApplicationsCleanedEvent()
+			args := e.Arguments()
+			s.Require().Len(args, 0)
 		})
 	}
 }

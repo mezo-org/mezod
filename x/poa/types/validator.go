@@ -63,6 +63,17 @@ func NewValidator(
 		)
 	}
 
+	// Make sure description does not exceed limit to prevent HAL-02 - Resource exhaustion by abusing application’s descriptions
+	desclen := len(description.Moniker) + len(description.Identity) + len(description.Website) + len(description.SecurityContact) + len(description.Details)
+	if desclen > MaxValidatorDescriptionLength {
+		return Validator{}, errorsmod.Wrapf(
+			ErrInvalidValidator,
+			"description length %d exceeds limit %d",
+			desclen,
+			MaxValidatorDescriptionLength,
+		)
+	}
+
 	return Validator{
 		// This converts the ValAddress to a bech32 string.
 		OperatorBech32:   operator.String(),

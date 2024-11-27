@@ -1,0 +1,19 @@
+{
+  "name": "mezo-activity",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "deploy:staging": "wrangler deploy --env staging",
+    "dev": "wrangler dev --test-scheduled",
+    "migrations:staging:list": "wrangler d1 migrations list mezo-activity-staging --env staging --remote",
+    "migrations:staging:apply": "wrangler d1 migrations apply mezo-activity-staging --env staging --remote",
+    "migrations:local:list": "wrangler d1 migrations list mezo-activity --local",
+    "migrations:local:apply": "wrangler d1 migrations apply mezo-activity --local"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "@types/node": "^22.9.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.0.0"
+  }
+}

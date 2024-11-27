@@ -11,6 +11,9 @@ const (
 	// DefaultHistoricalEntries is the default number of historical entries
 	// to persist in store.
 	DefaultHistoricalEntries uint32 = 10000
+	// MaxDescriptionLength is the maximum allowed length of description info
+	// that can be included in a validator
+	MaxValidatorDescriptionLength = 100
 )
 
 // NewParams creates a new Params object.

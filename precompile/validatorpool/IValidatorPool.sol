@@ -35,6 +35,11 @@ interface IValidatorPool {
     event ApplicationApproved(address indexed operator);
 
     /** 
+     * @notice Emitted when pending applications are cleaned by the contract owner
+     */ 
+    event ApplicationsCleaned();
+
+    /** 
      * @notice Emitted when a new validator application is successfully submitted
      * @param operator The validators operator address
      * @param consPubKey The validators consensus public key
@@ -118,6 +123,12 @@ interface IValidatorPool {
      * @notice Returns the address of the current contract candidateOwner
      */
     function candidateOwner() external view returns (address);
+
+    /** 
+     * @notice Returns `true` after successfully removing all pending applications
+     * @dev Must be called by contract owner
+     */
+    function cleanupApplications() external returns (bool);
 
     /** 
      * @notice Returns `true` after successfully removing a validator with operator address from the pool

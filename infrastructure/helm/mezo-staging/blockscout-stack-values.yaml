@@ -6,10 +6,9 @@ config:
     id: 31611
     name: Mezo
     shortname: Mezo
-    # TODO: Not sure about currency values. Revisit later.
     currency:
-      name: aBTC
-      symbol: aBTC
+      name: Bitcoin
+      symbol: BTC
       decimals: 18
   account:
     enabled: false # This is false by default but disable it explicitly. As long as this feature is disable, Redis is not needed.
@@ -29,19 +28,31 @@ blockscout:
       # The default config sets timeoutSeconds > periodSeconds which is faulty.
       periodSeconds: 30
       timeoutSeconds: 10
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 8192Mi
+    requests:
+      cpu: 2000m
+      memory: 4096Mi
   env:
     ETHEREUM_JSONRPC_VARIANT: geth
     ETHEREUM_JSONRPC_HTTP_URL: http://mezo-node-0.default.svc.cluster.local:8545
     ETHEREUM_JSONRPC_WS_URL: ws://mezo-node-0.default.svc.cluster.local:8546
+    ETHEREUM_JSONRPC_TRACE_URL: http://mezo-node-0.default.svc.cluster.local:8545
     ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: http://mezo-node-1.default.svc.cluster.local:8545
+    ETHEREUM_JSONRPC_FALLBACK_WS_URL: ws://mezo-node-1.default.svc.cluster.local:8546
+    ETHEREUM_JSONRPC_FALLBACK_TRACE_URL: http://mezo-node-1.default.svc.cluster.local:8545
     NETWORK: Mezo
     SUBNETWORK: Testnet
     BLOCKSCOUT_PROTOCOL: https
     SECRET_KEY_BASE: K4rV3pnwzqGMRZNbyWKryw6Co4qcvm9LvZhUpuf4qftDTsZMjzz4pzgVPZcUXMtf # Just an arbitrary 64-char string
     POOL_SIZE: 80 # Increased from the default value of 50 based on the original Blockscout Docker Compose config
     ECTO_USE_SSL: false # Switched off based on the original Blockscout Docker Compose config
-    CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,paris,shanghai,cancun,default
-    CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,paris,shanghai,cancun,default
+    CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
+    CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
+    INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
+    CACHE_ADDRESS_TRANSACTIONS_COUNTER_PERIOD: 5m
   extraEnv:
     - name: POSTGRES_PASSWORD
       valueFrom:
@@ -68,6 +79,9 @@ frontend:
     NEXT_PUBLIC_APP_PROTOCOL: https
     NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL: wss
     NEXT_PUBLIC_API_SPEC_URL: https://raw.githubusercontent.com/blockscout/blockscout-api-v2-swagger/main/swagger.yaml
+    NEXT_PUBLIC_AD_BANNER_PROVIDER: none # Disable banner ads
+    NEXT_PUBLIC_AD_TEXT_PROVIDER: none # Disable text ads
+    NEXT_PUBLIC_NETWORK_CURRENCY_WEI_NAME: aBTC
 
 stats:
   enabled: false # This won't be needed for now.
