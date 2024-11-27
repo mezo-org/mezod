@@ -78,3 +78,23 @@ stateless deployments:
   and exposes them to the Mezo validators via a gRPC API. It uses the same
   Docker image as the validators but is started with a different CLI command.
   It is exposed through a ClusterIP service so, only cluster resources can access it.
+
+### Ingresses
+
+`mezo-staging` defines two ingress resources:
+- `mezo-rpc` exposing the Mezo JSON-RPC API over HTTP. It is pinned to the 
+  `mezo-staging-rpc-external-ip` static global IP and uses `mezo-staging-rpc-ssl-certificate`
+  SSL certificate, both created by the `mezo-staging` Terraform module.
+  This ingress hits the 8545 port of the `mezo-rpc` Kubernetes service which
+  load balances the requests to the Mezo nodes deployed on the cluster.
+- `mezo-rpc-ws` exposing the Mezo JSON-RPC API over WebSockets. It is pinned 
+  to the `mezo-staging-rpc-ws-external-ip` static global IP and uses 
+  `mezo-staging-rpc-ws-ssl-certificate` SSL certificate, both created by the 
+  `mezo-staging` Terraform module. This ingress hits the 8546 port of the `mezo-rpc` 
+  Kubernetes service which load balances the requests to the Mezo nodes deployed 
+  on the cluster. The WebSocket endpoint is deployed under a separate domain, 
+  not as a custom path of the HTTP endpoint due to the limitations of the 
+  default GCP ingress controller (gce). A custom path would have to be rewritten 
+  to `/` being the base path of the JSON-RPC API. However, the default
+  GCP ingress controller does not support path rewriting.
+  

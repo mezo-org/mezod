@@ -48,6 +48,8 @@ type PoaKeeper interface {
 	// ApproveApplication (onlyOwner) approves a pending application and
 	// promotes the applications candidate to validator
 	ApproveApplication(types.Context, types.AccAddress, types.ValAddress) error
+	// CleanupApplications (onlyOwner) removes all pending applications
+	CleanupApplications(types.Context, types.AccAddress) error
 	// GetValidator returns the validator for a operator address
 	GetValidator(types.Context, types.ValAddress) (poatypes.Validator, bool)
 	// GetAllValidators returns all validators (in all states)
@@ -88,7 +90,24 @@ type PoaKeeper interface {
 }
 
 // NewPrecompile creates a new validator pool precompile.
-func NewPrecompile(pk PoaKeeper) (*precompile.Contract, error) {
+func NewPrecompile(
+	pk PoaKeeper,
+) (*precompile.Contract, error) {
+	return newPrecompile(pk, false)
+}
+
+// NewLegacyPrecompile creates a new legacy validator pool precompile that
+// uses the old gas calculation formula for the submitApplication method.
+func NewLegacyPrecompile(
+	pk PoaKeeper,
+) (*precompile.Contract, error) {
+	return newPrecompile(pk, true)
+}
+
+func newPrecompile(
+	pk PoaKeeper,
+	submitApplicationLegacyGas bool,
+) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
@@ -100,7 +119,7 @@ func NewPrecompile(pk PoaKeeper) (*precompile.Contract, error) {
 		EvmByteCode,
 	)
 
-	methods := newPrecompileMethods(pk)
+	methods := newPrecompileMethods(pk, submitApplicationLegacyGas)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -108,10 +127,11 @@ func NewPrecompile(pk PoaKeeper) (*precompile.Contract, error) {
 
 // newPrecompileMethods builds the list of methods for the validator pool precompile.
 // All methods returned by this function are registered in the validator pool precompile.
-func newPrecompileMethods(pk PoaKeeper) []precompile.Method {
+func newPrecompileMethods(pk PoaKeeper, submitApplicationLegacyGas bool) []precompile.Method {
 	return []precompile.Method{
-		newSubmitApplicationMethod(pk),
+		newSubmitApplicationMethod(pk, submitApplicationLegacyGas),
 		newApproveApplicationMethod(pk),
+		newCleanupApplicationsMethod(pk),
 		newKickMethod(pk),
 		newLeaveMethod(pk),
 		newOwnerMethod(pk),

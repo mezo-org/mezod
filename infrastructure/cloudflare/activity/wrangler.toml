@@ -23,7 +23,7 @@ crons = ["*/5 * * * *"]
 
 # Staging
 [env.staging]
-workers_dev = false
+route = { pattern = "activity.test.mezo.org", custom_domain = true }
 
 [[env.staging.d1_databases]]
 binding = "DB"

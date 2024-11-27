@@ -94,7 +94,12 @@ async function fetchActivity(env: Env): Promise<ActivityItem[]> {
 
 export default {
   async fetch(request: Request, env: Env, _: ExecutionContext) {
-    return new Response("This worker does not expose a public REST API", { status: 404 })
+    try {
+      const activity = await getActivity(env)
+      return Response.json({ success: true, activity: activity })
+    } catch (error) {
+      return Response.json({ success: false, errorMsg: `${error}` })
+    }
   },
   async scheduled(_: unknown, env: Env) {
     await updateActivity(env)

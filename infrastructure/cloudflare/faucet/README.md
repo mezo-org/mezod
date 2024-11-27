@@ -48,7 +48,7 @@ are hot-reloaded by Wrangler.
 
 A custom deployment script deploys the faucet as a Cloudflare Worker using 
 Wrangler. The script is located in the `deploy.sh` file and is aliased by the
-`npm run deploy` command.
+`npm run deploy:staging` command.
 
 There are several steps in the deployment process:
 1. The script reads the faucet's secrets from the dedicated 1Password vault
@@ -63,6 +63,6 @@ There are several steps in the deployment process:
 
 To deploy the faucet to the target environment, run:
 ```shell
-npm run deploy
+npm run deploy:staging
 ```
 

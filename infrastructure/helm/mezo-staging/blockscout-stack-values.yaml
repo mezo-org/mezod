@@ -28,11 +28,21 @@ blockscout:
       # The default config sets timeoutSeconds > periodSeconds which is faulty.
       periodSeconds: 30
       timeoutSeconds: 10
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 8192Mi
+    requests:
+      cpu: 2000m
+      memory: 4096Mi
   env:
     ETHEREUM_JSONRPC_VARIANT: geth
     ETHEREUM_JSONRPC_HTTP_URL: http://mezo-node-0.default.svc.cluster.local:8545
     ETHEREUM_JSONRPC_WS_URL: ws://mezo-node-0.default.svc.cluster.local:8546
+    ETHEREUM_JSONRPC_TRACE_URL: http://mezo-node-0.default.svc.cluster.local:8545
     ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: http://mezo-node-1.default.svc.cluster.local:8545
+    ETHEREUM_JSONRPC_FALLBACK_WS_URL: ws://mezo-node-1.default.svc.cluster.local:8546
+    ETHEREUM_JSONRPC_FALLBACK_TRACE_URL: http://mezo-node-1.default.svc.cluster.local:8545
     NETWORK: Mezo
     SUBNETWORK: Testnet
     BLOCKSCOUT_PROTOCOL: https
@@ -69,7 +79,9 @@ frontend:
     NEXT_PUBLIC_APP_PROTOCOL: https
     NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL: wss
     NEXT_PUBLIC_API_SPEC_URL: https://raw.githubusercontent.com/blockscout/blockscout-api-v2-swagger/main/swagger.yaml
-    NEXT_PUBLIC_AD_BANNER_PROVIDER: none # Disable ads
+    NEXT_PUBLIC_AD_BANNER_PROVIDER: none # Disable banner ads
+    NEXT_PUBLIC_AD_TEXT_PROVIDER: none # Disable text ads
+    NEXT_PUBLIC_NETWORK_CURRENCY_WEI_NAME: aBTC
 
 stats:
   enabled: false # This won't be needed for now.

@@ -3,6 +3,7 @@ package validatorpool
 import (
 	"fmt"
 
+	store "cosmossdk.io/store/types"
 	"github.com/cometbft/cometbft/crypto/ed25519"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/types"
@@ -10,6 +11,9 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
+
+// SubmitApplicationGasMultiplier is used to increase the default gas requirements
+const SubmitApplicationGasMultiplier uint64 = 4
 
 // SubmitApplicationMethodName is the name of the submitApplication method. It matches the name
 // of the method in the contract ABI.
@@ -22,12 +26,17 @@ const SubmitApplicationMethodName = "submitApplication"
 // - consPubKey: the consensus public key of the validator used to vote on blocks
 // - description: the validators description info
 type SubmitApplicationMethod struct {
-	keeper PoaKeeper
+	keeper    PoaKeeper
+	legacyGas bool
 }
 
-func newSubmitApplicationMethod(pk PoaKeeper) *SubmitApplicationMethod {
+func newSubmitApplicationMethod(
+	pk PoaKeeper,
+	legacyGas bool,
+) *SubmitApplicationMethod {
 	return &SubmitApplicationMethod{
-		keeper: pk,
+		keeper:    pk,
+		legacyGas: legacyGas,
 	}
 }
 
@@ -39,9 +48,21 @@ func (m *SubmitApplicationMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *SubmitApplicationMethod) RequiredGas(_ []byte) (uint64, bool) {
-	// Fallback to the default gas calculation.
-	return 0, false
+func (m *SubmitApplicationMethod) RequiredGas(methodInputArgs []byte) (uint64, bool) {
+	if m.legacyGas {
+		// Use the legacy gas calculation formula i.e. fallback to the default gas calculation.
+		return 0, false
+	}
+
+	// Get default gas costs
+	gas := precompile.DefaultRequiredGas(
+		store.KVGasConfig(),
+		precompile.Write,
+		methodInputArgs,
+	)
+	// Increase by a factor of SubmitApplicationGasMultiplier
+	gas *= SubmitApplicationGasMultiplier
+	return gas, true
 }
 
 func (m *SubmitApplicationMethod) Payable() bool {
@@ -396,4 +417,81 @@ func (m *ApplicationMethod) Run(context *precompile.RunContext, inputs precompil
 	copy(consPubKey[:], val.GetConsPubKey().Bytes())
 
 	return precompile.MethodOutputs{consPubKey, val.Description}, nil
+}
+
+// CleanupApplicationsMethodName is the name of the cleanupApplications method. It matches the name
+// of the method in the contract ABI.
+const CleanupApplicationsMethodName = "cleanupApplications"
+
+// CleanupApplicationsMethod is the implementation of the cleanupApplications method that removes
+// all applications
+
+// The method has no arguments
+type CleanupApplicationsMethod struct {
+	keeper PoaKeeper
+}
+
+func newCleanupApplicationsMethod(pk PoaKeeper) *CleanupApplicationsMethod {
+	return &CleanupApplicationsMethod{
+		keeper: pk,
+	}
+}
+
+func (m *CleanupApplicationsMethod) MethodName() string {
+	return CleanupApplicationsMethodName
+}
+
+func (m *CleanupApplicationsMethod) MethodType() precompile.MethodType {
+	return precompile.Write
+}
+
+func (m *CleanupApplicationsMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (m *CleanupApplicationsMethod) Payable() bool {
+	return false
+}
+
+func (m *CleanupApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+	// check method inputs
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
+	err := m.keeper.CleanupApplications(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// emit event
+	err = context.EventEmitter().Emit(NewApplicationsCleanedEvent())
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit ApplicationsCleaned event: [%w]", err)
+	}
+
+	return precompile.MethodOutputs{true}, nil
+}
+
+// ApplicationsCleanedName is the name of the ApplicationsCleaned event. It matches the name
+// of the event in the contract ABI.
+const ApplicationsCleanedEventName = "ApplicationsCleaned"
+
+// ApplicationsCleanedEvent is the implementation of the ApplicationsCleaned event
+type ApplicationsCleanedEvent struct{}
+
+func NewApplicationsCleanedEvent() *ApplicationsCleanedEvent {
+	return &ApplicationsCleanedEvent{}
+}
+
+func (e *ApplicationsCleanedEvent) EventName() string {
+	return ApplicationsCleanedEventName
+}
+
+func (e *ApplicationsCleanedEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{}
 }
