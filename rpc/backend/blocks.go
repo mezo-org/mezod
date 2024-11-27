@@ -172,8 +172,33 @@ func (b *Backend) GetBlockTransactionCount(block *tmrpctypes.ResultBlock) *hexut
 		return nil
 	}
 
+	// The number of pseudo-transactions. Notice that we only count pseudo-
+	// transactions saved during indexing. If a pseudo-transaction was not saved
+	// (e.g. because it did not contain any information) we should not count it.
+	numPseudoTxs := 0
+
+	// The transaction at index `0` can be a pseudo-transaction. We need to
+	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
+	// transaction, it is still possible that it did not contain any events and
+	// was skipped during indexing.
+	if len(block.Block.Txs) > 0 {
+		tx := block.Block.Txs[0]
+		txHash := common.BytesToHash(tx.Hash())
+		res, err := b.GetTxByEthHash(txHash)
+		if err == nil {
+			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+				// The transaction was saved during indexing. We should add it to
+				// the transaction count.
+				numPseudoTxs = 1
+			}
+		}
+	}
+
+	// Notice that a pseudo-transaction (if present) will be skipped by the
+	// `EthMsgsFromTendermintBlock` function below. We do not have to worry
+	// about such a transaction being counted twice.
 	ethMsgs := b.EthMsgsFromTendermintBlock(block, blockRes)
-	n := hexutil.Uint(len(ethMsgs))
+	n := hexutil.Uint(numPseudoTxs + len(ethMsgs))
 	return &n
 }
 
@@ -393,6 +418,12 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 	ethRPCTxs := []interface{}{}
 	block := resBlock.Block
 
+	baseFee, err := b.BaseFee(blockRes)
+	if err != nil {
+		// handle the error for pruned node.
+		b.logger.Error("failed to fetch Base Fee from prunned block. Check node prunning configuration", "height", block.Height, "error", err)
+	}
+
 	// The transaction at index `0` can be a pseudo-transaction. We need to
 	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
 	// transaction, it is still possible that it did not contain any events and
@@ -423,13 +454,6 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 	// Notice that a pseudo-transaction (if present) will be skipped by the
 	// `EthMsgsFromTendermintBlock` function below. We do not have to worry
 	// about such a transaction being included twice in the command result.
-
-	baseFee, err := b.BaseFee(blockRes)
-	if err != nil {
-		// handle the error for pruned node.
-		b.logger.Error("failed to fetch Base Fee from prunned block. Check node prunning configuration", "height", block.Height, "error", err)
-	}
-
 	msgs := b.EthMsgsFromTendermintBlock(resBlock, blockRes)
 	for _, ethMsg := range msgs {
 		if !fullTx {
