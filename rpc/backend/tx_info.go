@@ -134,7 +134,7 @@ func (b *Backend) getPseudoTransaction(
 	var bridgeTx bridgetypes.InjectedTx
 	b.clientCtx.Codec.MustUnmarshal(serializedEvents, &bridgeTx)
 
-	var events []bridge.AssetsLockedEvent
+	events := make([]bridge.AssetsLockedEvent, 0, len(bridgeTx.AssetsLockedEvents))
 	for _, event := range bridgeTx.AssetsLockedEvents {
 		accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
 		if err != nil {
