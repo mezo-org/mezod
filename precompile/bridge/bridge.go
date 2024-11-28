@@ -9,8 +9,6 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 )
 
-// TODO: Add the `Bridge` precompile.
-
 //go:embed abi.json
 var filesystem embed.FS
 
@@ -18,6 +16,24 @@ var filesystem embed.FS
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 // used to avoid potential collisions with EVM native precompiles.
 const EvmAddress = "0x7b7C000000000000000000000000000000000012"
+
+// NewPrecompile creates a new bridge precompile.
+func NewPrecompile() (*precompile.Contract, error) {
+	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
+	}
+
+	contract := precompile.NewContract(
+		contractAbi,
+		common.HexToAddress(EvmAddress),
+		EvmByteCode,
+	)
+
+	contract.RegisterMethods(newBridgeMethod())
+
+	return contract, nil
+}
 
 type AssetsLockedEvent struct {
 	SequenceNumber *big.Int       `abi:"sequenceNumber"`
