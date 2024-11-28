@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"fmt"
+
 	"github.com/mezo-org/mezod/precompile"
 )
 
