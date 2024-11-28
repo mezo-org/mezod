@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mezo-org/mezod/precompile/maintenance"
 	"io"
 	"net/http"
 	"os"
@@ -923,8 +924,16 @@ func customEvmPrecompiles(
 		)
 	}
 
+	// Maintenance precompile.
+	maintenancePrecompile, err := maintenance.NewPrecompile(poaKeeper, evmKeeper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create maintenance precompile: [%w]", err)
+	}
+	maintenanceVersionMap := precompile.NewSingleVersionMap(maintenancePrecompile)
+
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
+		maintenanceVersionMap,
 	}, nil
 }
