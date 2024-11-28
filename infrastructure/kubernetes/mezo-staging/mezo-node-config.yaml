@@ -74,7 +74,7 @@ data:
       block-range-cap = 10000
       http-timeout = "30s"
       http-idle-timeout = "2m0s"
-      allow-unprotected-txs = false
+      allow-unprotected-txs = true
       max-open-connections = 0
       enable-indexer = false
       metrics-address = "0.0.0.0:6065"
