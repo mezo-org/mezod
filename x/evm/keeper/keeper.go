@@ -430,9 +430,14 @@ func (k Keeper) IsCustomPrecompile(address common.Address) bool {
 func (k Keeper) CustomPrecompileGenesisAccounts() []types.GenesisAccount {
 	accounts := []types.GenesisAccount{}
 	for k, v := range k.customPrecompiles {
+		bytecode := v.GetLatest().Bytecode()
+		if len(bytecode) == 0 {
+			continue
+		}
+
 		accounts = append(accounts, types.GenesisAccount{
 			Address: k.String(),
-			Code:    v.GetLatest().Bytecode(),
+			Code:    bytecode,
 			Storage: types.Storage{},
 		})
 	}
