@@ -5,6 +5,7 @@ import '@nomicfoundation/hardhat-toolbox'
 import './tasks/validatorpool'
 import './tasks/btctoken'
 import './tasks/util'
+import './tasks/maintenance'
 import fs from 'fs'
 import path from 'path'
 
