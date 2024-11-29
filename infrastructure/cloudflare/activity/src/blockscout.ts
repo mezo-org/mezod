@@ -285,6 +285,13 @@ export class BlockScoutAPI {
   }
 }
 
+/**
+ * This is a simple rate limiter that works only if the `wait` method is
+ * executed from a loop and one iteration blocks the next one.
+ * It is straightforward and fits the purpose of the BlockScout API.
+ * In case there is a need for a more sophisticated rate limiter, consider
+ * the leaky bucket algorithm.
+ */
 class RateLimiter {
   readonly #requestsPerInterval: number
   readonly #intervalTime: number
