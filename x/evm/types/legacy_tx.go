@@ -210,15 +210,23 @@ func (tx LegacyTx) Validate() error {
 	if chainID == nil {
 		return errorsmod.Wrap(
 			errortypes.ErrInvalidChainID,
-			"chain ID must be present on AccessList txs",
+			"chain ID must be present on Legacy txs",
 		)
 	}
 
 	if !(chainID.Cmp(big.NewInt(31612)) == 0 || chainID.Cmp(big.NewInt(31611)) == 0) {
-		return errorsmod.Wrapf(
-			errortypes.ErrInvalidChainID,
-			"chain ID must be 31611 or 31612 on Mezo, got %s", chainID,
-		)
+		// If the AllowUnprotectedTxs parameter of the x/evm state is set to true,
+		// there is a corner case here. Namely, the legacy tx can be
+		// a non-EIP155 transaction whose chain ID resolves to 0. We want
+		// to handle this case by allowing the transaction to be processed.
+		isUnprotectedTx := chainID.Cmp(big.NewInt(0)) == 0
+
+		if !isUnprotectedTx {
+			return errorsmod.Wrapf(
+				errortypes.ErrInvalidChainID,
+				"chain ID must be 31611 or 31612 on Mezo, got %s", chainID,
+			)
+		}
 	}
 
 	return nil
