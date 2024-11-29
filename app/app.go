@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/mezo-org/mezod/precompile/maintenance"
+
 	"github.com/cosmos/cosmos-sdk/runtime"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 
@@ -863,8 +865,16 @@ func customEvmPrecompiles(
 		)
 	}
 
+	// Maintenance precompile.
+	maintenancePrecompile, err := maintenance.NewPrecompile(poaKeeper, evmKeeper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create maintenance precompile: [%w]", err)
+	}
+	maintenanceVersionMap := precompile.NewSingleVersionMap(maintenancePrecompile)
+
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
+		maintenanceVersionMap,
 	}, nil
 }

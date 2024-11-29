@@ -40,6 +40,13 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }
 
+// CheckOwner checks if the sender is the validator pool owner.
+// Returns an error if the sender is not the owner or either of the compared
+// addresses is empty. Returns nil otherwise.
+func (k Keeper) CheckOwner(ctx sdk.Context, sender sdk.AccAddress) error {
+	return k.checkOwner(ctx, sender)
+}
+
 // checkOwner checks if the sender is the validator pool owner.
 // Returns an error if the sender is not the owner or either of the compared
 // addresses is empty. Returns nil otherwise.
