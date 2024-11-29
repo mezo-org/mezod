@@ -360,14 +360,57 @@ func (a appCreator) appExport(
 		return servertypes.ExportedApp{}, errors.New("application home not set")
 	}
 
+	chainID := cast.ToString(appOpts.Get(flags.FlagChainID))
+	if len(chainID) == 0 {
+		v := viper.New()
+		v.AddConfigPath(filepath.Join(homePath, "config"))
+		v.SetConfigName("client")
+		v.SetConfigType("toml")
+
+		if err := v.ReadInConfig(); err != nil {
+			panic(err)
+		}
+
+		clientConfig := new(config.ClientConfig)
+		if err := v.Unmarshal(clientConfig); err != nil {
+			panic(err)
+		}
+
+		chainID = clientConfig.ChainID
+	}
+
 	if height != -1 {
-		mezoApp = app.NewMezo(logger, db, traceStore, false, map[int64]bool{}, "", uint(1), a.encCfg, ethsidecar.NewClientMock(), appOpts)
+		mezoApp = app.NewMezo(
+			logger,
+			db,
+			traceStore,
+			false,
+			map[int64]bool{},
+			"",
+			uint(1),
+			a.encCfg,
+			ethsidecar.NewClientMock(),
+			appOpts,
+			baseapp.SetChainID(chainID),
+		)
 
 		if err := mezoApp.LoadHeight(height); err != nil {
 			return servertypes.ExportedApp{}, err
 		}
 	} else {
-		mezoApp = app.NewMezo(logger, db, traceStore, true, map[int64]bool{}, "", uint(1), a.encCfg, ethsidecar.NewClientMock(), appOpts)
+		mezoApp = app.NewMezo(
+			logger,
+			db,
+			traceStore,
+			true,
+			map[int64]bool{},
+			"",
+			uint(1),
+			a.encCfg,
+			ethsidecar.NewClientMock(),
+			appOpts,
+			baseapp.SetChainID(chainID),
+		)
 	}
 
 	return mezoApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
