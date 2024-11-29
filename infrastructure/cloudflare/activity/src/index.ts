@@ -59,7 +59,7 @@ async function getAddresses(env: Env, limit: number): Promise<string[]> {
 async function getActivity(env: Env): Promise<ActivityItem[]> {
   const { results } = await env.DB.prepare(
     `
-    WITH contract_info AS (
+    WITH deployer_contract_stats AS (
         SELECT deployer, count(*) as deployed_contracts, sum(tx_count) as deployed_contracts_tx_count
         FROM activity
         WHERE deployer IS NOT NULL
@@ -72,7 +72,7 @@ async function getActivity(env: Env): Promise<ActivityItem[]> {
         COALESCE(ci.deployed_contracts_tx_count, 0) as deployed_contracts_tx_count,
         a.claimed_btc
     FROM activity a
-    LEFT JOIN contract_info ci ON a.address = ci.deployer
+    LEFT JOIN deployer_contract_stats ci ON a.address = ci.deployer
     WHERE a.deployer IS NULL;
     `
   ).all<ActivityItem>()
