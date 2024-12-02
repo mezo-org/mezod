@@ -27,3 +27,13 @@ resource "google_compute_ssl_certificate" "mezo_staging_rpc-ws" {
     create_before_destroy = true
   }
 }
+
+resource "google_compute_ssl_certificate" "mezo_staging_safe" {
+  name = "mezo-staging-safe-ssl-certificate"
+  private_key = file("./ssl-certificates/mezo-staging-safe.key")
+  certificate = file("./ssl-certificates/mezo-staging-safe.crt")
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
