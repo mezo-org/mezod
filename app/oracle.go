@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
+	"github.com/mezo-org/mezod/app/abci"
 	connectpreblocker "github.com/skip-mev/connect/v2/abci/preblock/oracle"
 	connectproposals "github.com/skip-mev/connect/v2/abci/proposals"
 	"github.com/skip-mev/connect/v2/abci/strategies/aggregator"
 	compression "github.com/skip-mev/connect/v2/abci/strategies/codec"
 	"github.com/skip-mev/connect/v2/abci/strategies/currencypair"
 	connectve "github.com/skip-mev/connect/v2/abci/ve"
+	vetypes "github.com/skip-mev/connect/v2/abci/ve/types"
 	oracleconfig "github.com/skip-mev/connect/v2/oracle/config"
 	"github.com/skip-mev/connect/v2/pkg/math/voteweighted"
 	oracleclient "github.com/skip-mev/connect/v2/service/clients/oracle"
@@ -255,10 +257,10 @@ func init() {
 func (app *Mezo) connectABCIHandlers() (
 	*connectve.VoteExtensionHandler, *connectproposals.ProposalHandler, *connectpreblocker.PreBlockHandler,
 ) {
-	veCodec := compression.NewCompressionVoteExtensionCodec(
+	veCodec := NewConnectVEExtractionCodec(compression.NewCompressionVoteExtensionCodec(
 		compression.NewDefaultVoteExtensionCodec(),
 		compression.NewZLibCompressor(),
-	)
+	))
 	extCommitCodec := compression.NewCompressionExtendedCommitCodec(
 		compression.NewDefaultExtendedCommitCodec(),
 		compression.NewZStdCompressor(),
@@ -294,9 +296,11 @@ func (app *Mezo) connectABCIHandlers() (
 		baseapp.NoOpPrepareProposal(),
 		baseapp.NoOpProcessProposal(),
 		connectve.NewDefaultValidateVoteExtensionsFn(app.PoaKeeper),
-		compression.NewCompressionVoteExtensionCodec(
-			compression.NewDefaultVoteExtensionCodec(),
-			compression.NewZLibCompressor(),
+		NewConnectVEExtractionCodec(
+			compression.NewCompressionVoteExtensionCodec(
+				compression.NewDefaultVoteExtensionCodec(),
+				compression.NewZLibCompressor(),
+			),
 		),
 		compression.NewCompressionExtendedCommitCodec(
 			compression.NewDefaultExtendedCommitCodec(),
@@ -317,9 +321,11 @@ func (app *Mezo) connectABCIHandlers() (
 		&app.OracleKeeper,
 		app.oracleMetrics,
 		currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
-		compression.NewCompressionVoteExtensionCodec(
-			compression.NewDefaultVoteExtensionCodec(),
-			compression.NewZLibCompressor(),
+		NewConnectVEExtractionCodec(
+			compression.NewCompressionVoteExtensionCodec(
+				compression.NewDefaultVoteExtensionCodec(),
+				compression.NewZLibCompressor(),
+			),
 		),
 		compression.NewCompressionExtendedCommitCodec(
 			compression.NewDefaultExtendedCommitCodec(),
@@ -391,4 +397,27 @@ func (app *Mezo) initializeOracle(appOpts servertypes.AppOptions) (oracleclient.
 	}()
 
 	return oracleClient, oracleMetrics, nil
+}
+
+type ConnectVEExtractionCodec struct {
+	codec compression.VoteExtensionCodec
+}
+
+func NewConnectVEExtractionCodec(codec compression.VoteExtensionCodec) *ConnectVEExtractionCodec {
+	return &ConnectVEExtractionCodec{codec: codec}
+}
+
+// Encode just passes through to the wrapped VoteExtensionCodec
+func (c *ConnectVEExtractionCodec) Encode(ve vetypes.OracleVoteExtension) ([]byte, error) {
+	return c.codec.Encode(ve)
+}
+
+// Decode takes a set of vote extension data and returns the OracleVoteExtension
+func (c *ConnectVEExtractionCodec) Decode(veBytes []byte) (vetypes.OracleVoteExtension, error) {
+	connectVEBytes, err := abci.VoteExtensionDecomposer(abci.VoteExtensionPartConnect)(veBytes)
+	if err != nil {
+		return vetypes.OracleVoteExtension{}, err
+	}
+	return c.codec.Decode(connectVEBytes)
+
 }
