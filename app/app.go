@@ -29,8 +29,6 @@ import (
 
 	"github.com/mezo-org/mezod/precompile/maintenance"
 
-	"github.com/mezo-org/mezod/precompile/maintenance"
-
 	"github.com/cosmos/cosmos-sdk/runtime"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 
