@@ -495,8 +495,8 @@ func NewMezo(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
-		marketmaptypes.ModuleName,
 		oracletypes.ModuleName,
+		marketmaptypes.ModuleName,
 		crisistypes.ModuleName,
 		consensusparamstypes.ModuleName,
 	)
@@ -513,19 +513,7 @@ func NewMezo(
 	app.MountTransientStores(tkeys)
 
 	// initialize the BaseApp with markets in state.
-	app.SetInitChainer(func(ctx sdk.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
-		// initialize module state
-		app.OracleKeeper.InitGenesis(ctx, *oracletypes.DefaultGenesisState())
-		app.MarketMapKeeper.InitGenesis(ctx, *marketmaptypes.DefaultGenesisState())
-
-		// initialize markets
-		err = app.setupMarkets(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return app.InitChainer(ctx, req)
-	})
+	app.SetInitChainer(app.InitChainer)
 	app.SetPreBlocker(app.PreBlocker)
 	app.SetBeginBlocker(app.BeginBlocker)
 
@@ -648,6 +636,10 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 	if err != nil {
 		panic(err)
 	}
+	// Set default markets
+	oracleGenState, marketmapGenState := customMarketGenesis()
+	genesisState[oracletypes.ModuleName] = app.appCodec.MustMarshalJSON(oracleGenState)
+	genesisState[marketmaptypes.ModuleName] = app.appCodec.MustMarshalJSON(marketmapGenState)
 
 	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
 }

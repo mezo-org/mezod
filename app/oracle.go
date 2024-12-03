@@ -2,24 +2,254 @@ package app
 
 import (
 	"context"
-	"slices"
-
+	"encoding/json"
+	"fmt"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	connectpreblocker "github.com/skip-mev/connect/v2/abci/preblock/oracle"
 	connectproposals "github.com/skip-mev/connect/v2/abci/proposals"
 	"github.com/skip-mev/connect/v2/abci/strategies/aggregator"
 	compression "github.com/skip-mev/connect/v2/abci/strategies/codec"
 	"github.com/skip-mev/connect/v2/abci/strategies/currencypair"
 	connectve "github.com/skip-mev/connect/v2/abci/ve"
-	"github.com/skip-mev/connect/v2/cmd/constants/marketmaps"
 	oracleconfig "github.com/skip-mev/connect/v2/oracle/config"
 	"github.com/skip-mev/connect/v2/pkg/math/voteweighted"
 	oracleclient "github.com/skip-mev/connect/v2/service/clients/oracle"
 	servicemetrics "github.com/skip-mev/connect/v2/service/metrics"
+	marketmaptypes "github.com/skip-mev/connect/v2/x/marketmap/types"
+	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 )
+
+var (
+	MezoMarketMap     marketmaptypes.MarketMap
+	MezoMarketMapJSON = `
+	{
+		"markets": {
+		  "BTC/USD": {
+			"ticker": {
+			  "currency_pair": {
+				"Base": "BTC",
+				"Quote": "USD"
+			  },
+			  "decimals": 5,
+			  "min_provider_count": 3,
+			  "enabled": true
+			},
+			"provider_configs": [
+			  {
+				"name": "binance_ws",
+				"off_chain_ticker": "BTCUSDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "bybit_ws",
+				"off_chain_ticker": "BTCUSDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "coinbase_ws",
+				"off_chain_ticker": "BTC-USD"
+			  },
+			  {
+				"name": "huobi_ws",
+				"off_chain_ticker": "btcusdt",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "kraken_api",
+				"off_chain_ticker": "XXBTZUSD"
+			  },
+			  {
+				"name": "kucoin_ws",
+				"off_chain_ticker": "BTC-USDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "mexc_ws",
+				"off_chain_ticker": "BTCUSDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "okx_ws",
+				"off_chain_ticker": "BTC-USDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "crypto_dot_com_ws",
+				"off_chain_ticker": "BTC_USD"
+			  }
+			]
+		  },
+		  "ETH/USD": {
+			"ticker": {
+			  "currency_pair": {
+				"Base": "ETH",
+				"Quote": "USD"
+			  },
+			  "decimals": 6,
+			  "min_provider_count": 3,
+			  "enabled": true
+			},
+			"provider_configs": [
+			  {
+				"name": "binance_ws",
+				"off_chain_ticker": "ETHUSDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "bybit_ws",
+				"off_chain_ticker": "ETHUSDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "coinbase_ws",
+				"off_chain_ticker": "ETH-USD"
+			  },
+			  {
+				"name": "huobi_ws",
+				"off_chain_ticker": "ethusdt",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "kraken_api",
+				"off_chain_ticker": "XETHZUSD"
+			  },
+			  {
+				"name": "kucoin_ws",
+				"off_chain_ticker": "ETH-USDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "mexc_ws",
+				"off_chain_ticker": "ETHUSDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "okx_ws",
+				"off_chain_ticker": "ETH-USDT",
+				"normalize_by_pair": {
+				  "Base": "USDT",
+				  "Quote": "USD"
+				}
+			  },
+			  {
+				"name": "crypto_dot_com_ws",
+				"off_chain_ticker": "ETH_USD"
+			  }
+			]
+		  },
+		  "USDT/USD": {
+			"ticker": {
+			  "currency_pair": {
+				"Base": "USDT",
+				"Quote": "USD"
+			  },
+			  "decimals": 9,
+			  "min_provider_count": 1,
+			  "enabled": true
+			},
+			"provider_configs": [
+			  {
+				"name": "binance_ws",
+				"off_chain_ticker": "USDCUSDT",
+				"invert": true
+			  },
+			  {
+				"name": "bybit_ws",
+				"off_chain_ticker": "USDCUSDT",
+				"invert": true
+			  },
+			  {
+				"name": "coinbase_ws",
+				"off_chain_ticker": "USDT-USD"
+			  },
+			  {
+				"name": "huobi_ws",
+				"off_chain_ticker": "ethusdt",
+				"normalize_by_pair": {
+				  "Base": "ETH",
+				  "Quote": "USD"
+				},
+				"invert": true
+			  },
+			  {
+				"name": "kraken_api",
+				"off_chain_ticker": "USDTZUSD"
+			  },
+			  {
+				"name": "kucoin_ws",
+				"off_chain_ticker": "BTC-USDT",
+				"normalize_by_pair": {
+				  "Base": "BTC",
+				  "Quote": "USD"
+				},
+				"invert": true
+			  },
+			  {
+				"name": "okx_ws",
+				"off_chain_ticker": "USDC-USDT",
+				"invert": true
+			  },
+			  {
+				"name": "crypto_dot_com_ws",
+				"off_chain_ticker": "USDT_USD"
+			  }
+			]
+		  }
+		}
+	}
+`
+)
+
+// unmarshalValidate unmarshalls data into mm and then calls ValidateBasic.
+func unmarshalValidate(name, data string, mm *marketmaptypes.MarketMap) error {
+	if err := json.Unmarshal([]byte(data), mm); err != nil {
+		return fmt.Errorf("failed to unmarshal %sMarketMap: %w", name, err)
+	}
+	if err := mm.ValidateBasic(); err != nil {
+		return fmt.Errorf("%sMarketMap failed validation: %w", name, err)
+	}
+	return nil
+}
+
+func init() {
+	if err := unmarshalValidate("MezoMarketMap", MezoMarketMapJSON, &MezoMarketMap); err != nil {
+		panic(err)
+	}
+}
 
 // connectABCIHandlers returns the Connect ABCI handlers.
 func (app *Mezo) connectABCIHandlers() (
@@ -100,34 +330,29 @@ func (app *Mezo) connectABCIHandlers() (
 	return voteExtensionsHandler, proposalHandler, preBlocker
 }
 
-func (app *Mezo) setupMarkets(ctx sdk.Context) error {
-	// add core markets
-	coreMarkets := marketmaps.CoreMarketMap
-	markets := coreMarkets.Markets
+func customMarketGenesis() (*oracletypes.GenesisState, *marketmaptypes.GenesisState) {
+	// Get defaults
+	oracleGenState := oracletypes.DefaultGenesisState()
+	marketmapGenState := marketmaptypes.DefaultGenesisState()
 
-	// sort keys so we can deterministically iterate over map items.
-	keys := make([]string, 0, len(markets))
-	for name := range markets {
-		keys = append(keys, name)
-	}
-	slices.Sort(keys)
+	// Update Markets
+	marketmapGenState.MarketMap = MezoMarketMap
 
-	for _, marketName := range keys {
-		// create market
-		market := markets[marketName]
-		err := app.MarketMapKeeper.CreateMarket(ctx, market)
-		if err != nil {
-			return err
+	// update oracle genesis state
+	id := uint64(1)
+	for _, market := range MezoMarketMap.Markets {
+		cp := oracletypes.CurrencyPairGenesis{
+			Id:                id,
+			Nonce:             0,
+			CurrencyPairPrice: nil,
+			CurrencyPair:      market.Ticker.CurrencyPair,
 		}
-
-		// invoke hooks. this syncs the market to x/oracle.
-		err = app.MarketMapKeeper.Hooks().AfterMarketCreated(ctx, market)
-		if err != nil {
-			return err
-		}
+		id++
+		oracleGenState.CurrencyPairGenesis = append(oracleGenState.CurrencyPairGenesis, cp)
 	}
+	oracleGenState.NextId = id
 
-	return nil
+	return oracleGenState, marketmapGenState
 }
 
 // initializeOracle initializes the oracle client and metrics.
