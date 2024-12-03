@@ -32,6 +32,7 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
+	bridgepre "github.com/mezo-org/mezod/precompile/bridge"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
@@ -863,8 +864,16 @@ func customEvmPrecompiles(
 		)
 	}
 
+	// Bridge precompile.
+	bridgePrecompile, err := bridgepre.NewPrecompile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Bridge precompile: [%w]", err)
+	}
+	bridgeVersionMap := precompile.NewSingleVersionMap(bridgePrecompile)
+
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
+		bridgeVersionMap,
 	}, nil
 }
