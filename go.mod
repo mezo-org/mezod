@@ -277,8 +277,6 @@ require (
 replace (
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	// use compatible version of btcec/v2 for cometbft@v0.38.9
-	github.com/btcsuite/btcd/btcec/v2 => github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	// use Evmos geth fork
 	github.com/ethereum/go-ethereum => github.com/mezo-org/go-ethereum v1.14.8-mezo
 	// Security Advisory https://github.com/advisories/GHSA-h395-qcrw-5vmq
