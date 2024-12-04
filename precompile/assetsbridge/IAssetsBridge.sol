@@ -9,11 +9,11 @@ struct AssetsLocked {
     uint256 tbtcAmount;
 }
 
-/// @title  IBridgeCaller
-/// @notice Interface for the Bridge precompile
-interface IBridgeCaller {
+/// @title  IAssetsBridge
+/// @notice Interface for the Assets Bridge precompile
+interface IAssetsBridge {
     /**
-     * @notice Helper function used to enable bridged assets obeservability.
+     * @notice Helper function used to enable bridged assets observability.
      */
     function bridge(AssetsLocked[] memory events) external returns (bool);
 }

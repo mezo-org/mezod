@@ -177,7 +177,7 @@ minimal implementations of the interfaces, and is semantically close to what's h
 
 ## Source code
 
-Flatten into a single solidity file to make verfication easier, e.g:
+Flatten into a single solidity file to make verification easier, e.g:
 
 `npx hardhat flatten contracts/ValidatorPoolCaller.sol > ~/Desktop/ValidatorPoolCaller.sol`
 

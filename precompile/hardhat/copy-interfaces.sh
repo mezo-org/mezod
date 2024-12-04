@@ -12,3 +12,6 @@ cp -R ../btctoken/solidity ./interfaces/
 
 # Copy Validator Pool interface
 cp ../validatorpool/IValidatorPool.sol ./interfaces/
+
+# Copy Assets Bridge interface
+cp ../assetsbridge/IAssetsBridge.sol ./interfaces
