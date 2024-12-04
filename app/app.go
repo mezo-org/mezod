@@ -32,9 +32,9 @@ import (
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 
 	"github.com/mezo-org/mezod/precompile"
-	bridgepre "github.com/mezo-org/mezod/precompile/bridge"
 	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
+	"github.com/mezo-org/mezod/precompile/assetsbridge"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
@@ -874,16 +874,16 @@ func customEvmPrecompiles(
 	maintenanceVersionMap := precompile.NewSingleVersionMap(maintenancePrecompile)
 
 	// Bridge precompile.
-	bridgePrecompile, err := bridgepre.NewPrecompile()
+	assetsBridgePrecompile, err := assetsbridge.NewPrecompile()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Bridge precompile: [%w]", err)
+		return nil, fmt.Errorf("failed to create assets bridge precompile: [%w]", err)
 	}
-	bridgeVersionMap := precompile.NewSingleVersionMap(bridgePrecompile)
+	assetsBridgeVersionMap := precompile.NewSingleVersionMap(assetsBridgePrecompile)
 
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
 		maintenanceVersionMap,
-		bridgeVersionMap,
+		assetsBridgeVersionMap,
 	}, nil
 }

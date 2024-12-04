@@ -1,4 +1,4 @@
-package bridge
+package assetsbridge
 
 import (
 	"fmt"
@@ -12,7 +12,6 @@ const BridgeMethodName = "bridge"
 
 // BridgeMethod is the implementation of the bridge method that is used to
 // enable asset bridging observability in tools such as block explorers.
-// nolint:revive // `BridgeMethod` is intentionally named this way for clarity.
 type BridgeMethod struct{}
 
 func newBridgeMethod() *BridgeMethod {

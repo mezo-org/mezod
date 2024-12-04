@@ -1,4 +1,4 @@
-package bridge
+package assetsbridge
 
 import (
 	"embed"
@@ -12,12 +12,12 @@ import (
 //go:embed abi.json
 var filesystem embed.FS
 
-// EvmAddress is the EVM address of the Bridge precompile. The address is
+// EvmAddress is the EVM address of the Assets Bridge precompile. The address is
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 // used to avoid potential collisions with EVM native precompiles.
 const EvmAddress = "0x7b7C000000000000000000000000000000000012"
 
-// NewPrecompile creates a new bridge precompile.
+// NewPrecompile creates a new Assets Bridge precompile.
 func NewPrecompile() (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {

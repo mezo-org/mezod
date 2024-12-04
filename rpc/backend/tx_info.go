@@ -31,7 +31,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/indexer"
-	"github.com/mezo-org/mezod/precompile/bridge"
+	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/abci/types"
@@ -120,7 +120,7 @@ func (b *Backend) getPseudoTransaction(
 ) {
 	blockHash := common.BytesToHash(blockResult.BlockID.Hash.Bytes())
 	blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(txResult.Height)))
-	to := common.HexToAddress(bridge.EvmAddress)
+	to := common.HexToAddress(assetsbridge.EvmAddress)
 	index := hexutil.Uint64(txResult.EthTxIndex)
 	chainID := (*hexutil.Big)(b.chainID)
 	zero := (*hexutil.Big)(new(big.Int).SetUint64(0))
@@ -135,7 +135,7 @@ func (b *Backend) getPseudoTransaction(
 	var bridgeTx bridgetypes.InjectedTx
 	b.clientCtx.Codec.MustUnmarshal(serializedEvents, &bridgeTx)
 
-	events := make([]bridge.AssetsLockedEvent, 0, len(bridgeTx.AssetsLockedEvents))
+	events := make([]assetsbridge.AssetsLockedEvent, 0, len(bridgeTx.AssetsLockedEvents))
 	for _, event := range bridgeTx.AssetsLockedEvents {
 		accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
 		if err != nil {
@@ -147,7 +147,7 @@ func (b *Backend) getPseudoTransaction(
 
 		recipient := common.BytesToAddress(accAddress)
 
-		events = append(events, bridge.AssetsLockedEvent{
+		events = append(events, assetsbridge.AssetsLockedEvent{
 			SequenceNumber: event.Sequence.BigInt(),
 			Recipient:      recipient,
 			TBTCAmount:     event.Amount.BigInt(),
@@ -155,7 +155,7 @@ func (b *Backend) getPseudoTransaction(
 	}
 
 	// Pack the events to an input of the precompile's `bridge` function.
-	input, err := bridge.PackEventsToInput(events)
+	input, err := assetsbridge.PackEventsToInput(events)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare input: [%w]", err)
 	}
@@ -383,7 +383,7 @@ func (b *Backend) getPseudoTransactionReceipt(
 
 		// Sender and receiver (contract or EOA) addresses.
 		"from": nil,
-		"to":   common.HexToAddress(bridge.EvmAddress),
+		"to":   common.HexToAddress(assetsbridge.EvmAddress),
 		"type": hexutil.Uint(0),
 	}
 }
