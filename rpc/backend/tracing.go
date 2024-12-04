@@ -23,6 +23,7 @@ import (
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/mezo-org/mezod/indexer"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
@@ -74,6 +75,17 @@ func (b *Backend) TraceTransaction(hash common.Hash, config *evmtypes.TraceConfi
 
 			predecessors = append(predecessors, ethMsg)
 		}
+	}
+
+	// Special case for pseudo-transactions containing bridging information.
+	// Return basic information as pseudo-transactions cannot be traced.
+	if len(transaction.ExtraData) > 0 && transaction.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+		return map[string]interface{}{
+			"failed":      false,
+			"gas":         0,
+			"returnValue": "0000000000000000000000000000000000000000000000000000000000000001",
+			"structLogs":  []interface{}{},
+		}, nil
 	}
 
 	tx, err := b.clientCtx.TxConfig.TxDecoder()(blk.Block.Txs[transaction.TxIndex])

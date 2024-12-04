@@ -123,6 +123,7 @@ func (b *Backend) getPseudoTransaction(
 	to := common.HexToAddress(bridge.EvmAddress)
 	index := hexutil.Uint64(txResult.EthTxIndex)
 	chainID := (*hexutil.Big)(b.chainID)
+	zero := (*hexutil.Big)(new(big.Int).SetUint64(0))
 
 	tx := blockResult.Block.Txs[txResult.TxIndex]
 	txHash := common.BytesToHash(tx.Hash())
@@ -162,10 +163,15 @@ func (b *Backend) getPseudoTransaction(
 	return &rpctypes.RPCTransaction{
 		BlockHash:        &blockHash,
 		BlockNumber:      blockNumber,
+		GasPrice:         zero,
+		GasFeeCap:        zero,
+		GasTipCap:        zero,
 		Hash:             txHash,
 		Input:            input,
 		To:               &to,
+		Type:             2,
 		TransactionIndex: &index,
+		Value:            zero,
 		ChainID:          chainID,
 	}, nil
 }
