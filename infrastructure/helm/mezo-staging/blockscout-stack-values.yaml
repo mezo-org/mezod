@@ -82,6 +82,12 @@ frontend:
     NEXT_PUBLIC_AD_BANNER_PROVIDER: none # Disable banner ads
     NEXT_PUBLIC_AD_TEXT_PROVIDER: none # Disable text ads
     NEXT_PUBLIC_NETWORK_CURRENCY_WEI_NAME: aBTC
+    NEXT_PUBLIC_HOMEPAGE_HERO_BANNER_CONFIG: {"background":["#ff004d"]}
+    NEXT_PUBLIC_COLOR_THEME_DEFAULT: light
+    NEXT_PUBLIC_FONT_FAMILY_HEADING: '{"name":"Roboto","url":"https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap"}'
+    NEXT_PUBLIC_FONT_FAMILY_BODY: '{"name":"Roboto","url":"https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap"}'
+    NEXT_PUBLIC_NETWORK_LOGO: https://mezo.org/assets/mezo-favicon-h-eecjcq.svg
+    NEXT_PUBLIC_NETWORK_ICON: https://mezo.org/assets/mezo-favicon-h-eecjcq.svg
 
 stats:
   enabled: false # This won't be needed for now.
