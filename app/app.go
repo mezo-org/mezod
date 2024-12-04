@@ -32,9 +32,9 @@ import (
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
-	"github.com/mezo-org/mezod/precompile/assetsbridge"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"

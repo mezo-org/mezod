@@ -361,9 +361,7 @@ func (b *Backend) getPseudoTransactionReceipt(
 	txHash common.Hash,
 	txResult *types.TxResult,
 	blockResult *tmrpctypes.ResultBlock,
-) (
-	map[string]interface{},
-) {
+) map[string]interface{} {
 	return map[string]interface{}{
 		// Consensus fields.
 		"status":            hexutil.Uint(ethtypes.ReceiptStatusSuccessful),
