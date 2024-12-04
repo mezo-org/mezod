@@ -43,7 +43,7 @@ type TxResult struct {
 	// processed messages within the current batch transaction.
 	CumulativeGasUsed uint64 `protobuf:"varint,7,opt,name=cumulative_gas_used,json=cumulativeGasUsed,proto3" json:"cumulative_gas_used,omitempty"`
 	// extra_data stores additional data associated with the transaction. It is
-	// an optional field. The first byte is a discriminator indicating what kind
+	// an optional field. The first byte is a descriptor indicating what kind
 	// of extra data is stored.
 	ExtraData []byte `protobuf:"bytes,8,opt,name=extra_data,json=extraData,proto3" json:"extra_data,omitempty"`
 }

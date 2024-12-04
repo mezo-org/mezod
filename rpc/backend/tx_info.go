@@ -54,7 +54,7 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 	}
 
 	// Special case for pseudo-transactions containing bridging information.
-	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
 		return b.getPseudoTransaction(res, block)
 	}
 
@@ -128,7 +128,7 @@ func (b *Backend) getPseudoTransaction(
 	tx := blockResult.Block.Txs[txResult.TxIndex]
 	txHash := common.BytesToHash(tx.Hash())
 
-	// Skip the discriminator byte.
+	// Skip the descriptor byte.
 	serializedEvents := txResult.ExtraData[1:]
 
 	// Unmarshal the serialized event.
@@ -242,7 +242,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 	}
 
 	// Special case for pseudo-transactions containing bridging information.
-	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
 		return b.getPseudoTransactionReceipt(hash, res, resBlock)
 	}
 
@@ -508,7 +508,7 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 	res, err := b.GetTxByTxIndex(block.Block.Height, uint(idx))
 	if err == nil {
 		// Special case for pseudo-transactions containing bridging information.
-		if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+		if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
 			return b.getPseudoTransaction(res, block)
 		}
 

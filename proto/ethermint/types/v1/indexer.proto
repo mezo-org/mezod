@@ -29,7 +29,7 @@ message TxResult {
   uint64 cumulative_gas_used = 7;
 
   // extra_data stores additional data associated with the transaction. It is
-  // an optional field. The first byte is a discriminator indicating what kind
+  // an optional field. The first byte is a descriptor indicating what kind
   // of extra data is stored.
   bytes extra_data = 8;
 }

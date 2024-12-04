@@ -186,7 +186,7 @@ func (b *Backend) GetBlockTransactionCount(block *tmrpctypes.ResultBlock) *hexut
 		txHash := common.BytesToHash(tx.Hash())
 		res, err := b.GetTxByEthHash(txHash)
 		if err == nil {
-			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
 				// The transaction was saved during indexing. We should add it to
 				// the transaction count.
 				numPseudoTxs = 1
@@ -434,7 +434,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		res, err := b.GetTxByEthHash(txHash)
 		if err == nil {
 			// The transaction was saved during indexing.
-			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
 				// The transaction was a pseudo-transaction containing events.
 				// Include the transaction in the command result.
 				pseudoTx, err := b.getPseudoTransaction(res, resBlock)

@@ -79,7 +79,7 @@ func (b *Backend) TraceTransaction(hash common.Hash, config *evmtypes.TraceConfi
 
 	// Special case for pseudo-transactions containing bridging information.
 	// Return basic information as pseudo-transactions cannot be traced.
-	if len(transaction.ExtraData) > 0 && transaction.ExtraData[0] == byte(indexer.BridgingInfoDiscriminator) {
+	if len(transaction.ExtraData) > 0 && transaction.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
 		return map[string]interface{}{
 			"failed":      false,
 			"gas":         0,
