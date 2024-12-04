@@ -33,6 +33,8 @@ func (vep VoteExtensionPart) String() string {
 	switch vep {
 	case VoteExtensionPartBridge:
 		return "bridge"
+	case VoteExtensionPartConnect:
+		return "connect"
 	default:
 		return fmt.Sprintf("unknown: %d", vep)
 	}
