@@ -81,14 +81,15 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 			// Assume the transaction at index `0` is a pseudo-transaction
 			// containing bridging information. Save it if it is indeed
 			// a pseudo-transaction and it contains `AssetsLocked` events.
-			// If for some reason it is not a pseudo-transaction handle it
-			// like other transactions.
+			// If for some reason it is not a pseudo-transaction, handle it
+			// like other transactions. Notice that if a pseudo-transaction is
+			// present in a block, it is always at index `0`.
 			txHash := common.BytesToHash(tx.Hash())
 
 			injectedTx, isPseudoTx := kv.parsePseudoTransaction(tx)
 
 			if isPseudoTx {
-				if len(injectedTx.AssetsLockedEvents) == 0 {
+				if injectedTx == nil || len(injectedTx.AssetsLockedEvents) == 0 {
 					// Skip saving the pseudo-transaction as it does not contain
 					// any `AssetsLocked` events.
 					continue
