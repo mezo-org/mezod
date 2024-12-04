@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	"github.com/mezo-org/mezod/app/abci"
@@ -419,5 +420,4 @@ func (c *ConnectVEExtractionCodec) Decode(veBytes []byte) (vetypes.OracleVoteExt
 		return vetypes.OracleVoteExtension{}, err
 	}
 	return c.codec.Decode(connectVEBytes)
-
 }
