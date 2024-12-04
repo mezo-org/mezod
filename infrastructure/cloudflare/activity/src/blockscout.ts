@@ -1,12 +1,6 @@
 export type AddressItem = {
   address: string
-  txCount: number
-}
-
-export type ContractItem = {
-  address: string
-  deployer: string
-  txCount: number
+  deployer?: string
 }
 
 export type TxItem = {
@@ -18,19 +12,30 @@ export type TxItem = {
 
 export class BlockScoutAPI {
   readonly #apiUrl: string
+  readonly #rateLimiter: RateLimiter
 
   constructor(readonly apiUrl: string) {
     this.#apiUrl = apiUrl
+    this.#rateLimiter = new RateLimiter(25, 1000) // ~25 req/s (BlockScout limit is 50 req/s)
   }
 
   async #call(endpoint: string) {
-    const response = await fetch(`${this.#apiUrl}/${endpoint}`)
+    await this.#rateLimiter.wait()
+
+    const response = await fetch(
+      `${this.#apiUrl}/${endpoint}`,
+      {
+        headers: {
+          "cache-control": "no-cache"
+        }
+      }
+    )
+
     return response.json()
   }
 
-  async addresses(): Promise<AddressItem[]> {
+  async externallyOwnedAccounts(): Promise<AddressItem[]> {
     type Item = {
-      tx_count: string
       hash: string
       is_contract: boolean
     }
@@ -47,20 +52,33 @@ export class BlockScoutAPI {
     for (let i = 0 ; ; i++) {
       console.log(`fetch addresses page number: ${i+1}`)
 
-      const responseJSON = await this.#call(`addresses${queryString}`) as {
-        items: Item[]
-        next_page_params: NextPageParams
+      // We do not use tx_count fields associated with addresses returned by
+      // this endpoint as they are not up-to-date. Transaction counts
+      // are not updated by the indexer but instead, on demand, upon an
+      // api call to addresses/<address>/counters or upon UI request that
+      // is done from the address page.
+      let responseJSON
+      try {
+        responseJSON = await this.#call(`addresses${queryString}`) as {
+          items: Item[]
+          next_page_params: NextPageParams
+        }
+      } catch (error) {
+        // In case of error, break the loop and return the addresses fetched so far.
+        console.error(`error fetching addresses page number: ${i+1}: ${error}`)
+        break
       }
 
+      // Filter out contracts to get EOAs. The above BlockScout endpoint
+      // returns addresses that have a balance so we need to get contract
+      // addresses in another way.
       const addressesPage = responseJSON.items
         .filter((item: Item) => {
-          const hasTxs = item.tx_count.length > 0 && item.tx_count !== "0"
-          return hasTxs && !item.is_contract
+          return !item.is_contract
         })
         .map((item: Item): AddressItem => {
           return {
             address: item.hash,
-            txCount: parseInt(item.tx_count),
           }
         })
 
@@ -80,21 +98,67 @@ export class BlockScoutAPI {
     return addresses
   }
 
-  async txCount(address: string): Promise<number> {
-    type Item = {
+  async txCount(address: string, filterMode?: "from" | "to"): Promise<number> {
+    console.log(`fetch tx count of address ${address} in regular mode`)
+
+    // First, try to fetch the transaction count directly from BlockScout
+    // `/counters` endpoint. However, this count may not be up-to-date
+    // and may return 0 for fresh addresses.
+    const item = await this.#call(`addresses/${address}/counters`) as {
       transactions_count: string
     }
 
-    const item = await this.#call(`addresses/${address}/counters`) as Item
-
-    if (!item.transactions_count || item.transactions_count.length === 0) {
-      return 0
+    // If the count is a parseable number...
+    if (item.transactions_count && item.transactions_count.length > 0) {
+      const txCount = parseInt(item.transactions_count)
+      // ...and it is greater than 0, return it.
+      if (txCount > 0) {
+        return txCount
+      }
     }
 
-    return parseInt(item.transactions_count)
+    // Otherwise, the count was likely not refreshed by BlockScout yet.
+    // Fall back to fetching the transactions manually and counting them.
+
+    type NextPageParams = {
+      block_number: number,
+      index: number,
+      items_count: number
+    }
+
+    let txCount = 0
+
+    let filterString: string = filterMode ? `filter=${filterMode}` : ""
+    let queryString: string = filterString ? `?${filterString}` : ""
+
+    for (let i = 0 ; ; i++) {
+      console.log(`fetch tx count of address ${address} in fallback mode - page number: ${i + 1}`)
+
+      const responseJSON = await this.#call(`addresses/${address}/transactions${queryString}`) as {
+        items: any[]
+        next_page_params: NextPageParams
+      }
+
+      txCount += responseJSON.items.length
+
+      if (!responseJSON.next_page_params) {
+        break
+      }
+
+      const {block_number, index, items_count} = responseJSON.next_page_params
+
+      queryString =
+        `?` +
+        `${filterString ? filterString + "&" : ""}` +
+        `block_number=${block_number}&` +
+        `index=${index}&` +
+        `items_count=${items_count}`
+    }
+
+    return txCount
   }
 
-  async txsFromAddress(address: string): Promise<TxItem[]> {
+  async txs(address: string, filterMode?: "from" | "to"): Promise<TxItem[]> {
     type Item = {
       hash: string
       status: string
@@ -115,11 +179,13 @@ export class BlockScoutAPI {
 
     const txs: TxItem[] = []
 
-    let queryString: string = ""
-    for (let i = 0 ; ; i++) {
-      console.log(`fetch txs from address ${address} page number: ${i + 1}`)
+    let filterString: string = filterMode ? `filter=${filterMode}` : ""
+    let queryString: string = filterString ? `?${filterString}` : ""
 
-      const responseJSON = await this.#call(`addresses/${address}/transactions?filter=from${queryString}`) as {
+    for (let i = 0 ; ; i++) {
+      console.log(`fetch txs related to address ${address} page number: ${i + 1}`)
+
+      const responseJSON = await this.#call(`addresses/${address}/transactions${queryString}`) as {
         items: Item[]
         next_page_params: NextPageParams
       }
@@ -145,7 +211,10 @@ export class BlockScoutAPI {
 
       const {block_number, index, items_count} = responseJSON.next_page_params
 
-      queryString = `&block_number=${block_number}&` +
+      queryString =
+        `?` +
+        `${filterString ? filterString + "&" : ""}` +
+        `block_number=${block_number}&` +
         `index=${index}&` +
         `items_count=${items_count}`
     }
@@ -153,7 +222,7 @@ export class BlockScoutAPI {
     return txs
   }
 
-  async contracts(): Promise<ContractItem[]> {
+  async contracts(): Promise<AddressItem[]> {
     type Item = {
       status: string
       from: {
@@ -170,30 +239,32 @@ export class BlockScoutAPI {
       items_count: number
     }
 
-    const contracts: ContractItem[] = []
+    const contracts: AddressItem[] = []
 
     let queryString: string = ""
     for (let i = 0 ; ; i++) {
       console.log(`fetch contract creation txs page number: ${i + 1}`)
 
-      const responseJSON = await this.#call(`transactions?type=contract_creation${queryString}`) as {
-        items: Item[]
-        next_page_params: NextPageParams
+      let responseJSON
+      try {
+        responseJSON = await this.#call(`transactions?type=contract_creation${queryString}`) as {
+          items: Item[]
+          next_page_params: NextPageParams
+        }
+      } catch (error) {
+        // In case of error, break the loop and return the contracts fetched so far.
+        console.error(`error fetching contract creation txs page number: ${i + 1}: ${error}`)
+        break
       }
 
       const contractsPage = responseJSON.items
         .filter((item: Item) => {
           return item.status === "ok"
         })
-        .map(async (item: Item): Promise<ContractItem> => {
-          const contractAddress = item.created_contract.hash
-
-          const txCount = await this.txCount(contractAddress)
-
+        .map(async (item: Item): Promise<AddressItem> => {
           return {
-            address: contractAddress,
+            address: item.created_contract.hash,
             deployer: item.from.hash,
-            txCount,
           }
         })
 
@@ -211,5 +282,46 @@ export class BlockScoutAPI {
     }
 
     return contracts
+  }
+}
+
+/**
+ * This is a simple rate limiter that works only if the `wait` method is
+ * executed from a loop and one iteration blocks the next one.
+ * It is straightforward and fits the purpose of the BlockScout API.
+ * In case there is a need for a more sophisticated rate limiter, consider
+ * the leaky bucket algorithm.
+ */
+class RateLimiter {
+  readonly #requestsPerInterval: number
+  readonly #intervalTime: number
+
+  #queuedRequests = 0
+
+  constructor(
+    requestsPerInterval: number,
+    intervalTime: number,
+  ) {
+    this.#requestsPerInterval = requestsPerInterval;
+    this.#intervalTime = intervalTime;
+  }
+
+  public async wait() {
+    let timeout = 0
+
+    if (this.#queuedRequests >= this.#requestsPerInterval) {
+      timeout = this.#intervalTime
+      this.#queuedRequests = 0
+    }
+
+    return new Promise((resolve) => {
+      setTimeout(
+        () => {
+          this.#queuedRequests++
+          resolve(() => {})
+        },
+        timeout
+      )
+    });
   }
 }
