@@ -243,7 +243,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 
 	// Special case for pseudo-transactions containing bridging information.
 	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
-		return b.getPseudoTransactionReceipt(hash, res, resBlock)
+		return b.getPseudoTransactionReceipt(hash, res, resBlock), nil
 	}
 
 	tx, err := b.clientCtx.TxConfig.TxDecoder()(resBlock.Block.Txs[res.TxIndex])
@@ -363,7 +363,6 @@ func (b *Backend) getPseudoTransactionReceipt(
 	blockResult *tmrpctypes.ResultBlock,
 ) (
 	map[string]interface{},
-	error,
 ) {
 	return map[string]interface{}{
 		// Consensus fields.
@@ -386,7 +385,7 @@ func (b *Backend) getPseudoTransactionReceipt(
 		"from": nil,
 		"to":   common.HexToAddress(bridge.EvmAddress),
 		"type": hexutil.Uint(0),
-	}, nil
+	}
 }
 
 // GetTransactionByBlockHashAndIndex returns the transaction identified by hash and index.
