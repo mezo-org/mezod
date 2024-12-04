@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
+
+	"golang.org/x/exp/maps"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
@@ -258,14 +261,36 @@ func init() {
 func (app *Mezo) connectABCIHandlers() (
 	*connectve.VoteExtensionHandler, *connectproposals.ProposalHandler, *connectpreblocker.PreBlockHandler,
 ) {
-	veCodec := NewConnectVEExtractionCodec(compression.NewCompressionVoteExtensionCodec(
+	// The basic VE codec is meant to be used by the Connect vote extension
+	// sub-handler. In our composite model, each vote extension sub-handler
+	// produces its specific vote extension part directly and the same
+	// part is later given for verification. That means the Connect vote
+	// extension sub-handler can encode/decode the vote extensions directly.
+	veCodec := compression.NewCompressionVoteExtensionCodec(
 		compression.NewDefaultVoteExtensionCodec(),
 		compression.NewZLibCompressor(),
-	))
+	)
+	// The composite VE codec is meant to be used by:
+	// - The oracle price applier used within the Connect vote extension sub-handler,
+	// - The Connect proposal sub-handler,
+	// - The Connect pre-block handler.
+	// This is because those components decode Connect-specific vote extensions
+	// from the extended commit info. In our composite model, the extended
+	// commit info contains composite vote extensions so Connect-specific
+	// parts are not directly available. The composite vote extensions must be
+	// decomposed first. This is exactly what ConnectVEExtractionCodec does.
+	// Note that ConnectVEExtractionCodec does not support encoding. This
+	// action is not needed here. Connect-specific vote extensions
+	// are encoded by the Connect vote extension sub-handler
+	// (using the basic VE codec, see veCodec) and then, by the composite
+	// app-level handler.
+	compositeVeCodec := NewConnectVEExtractionCodec(veCodec)
+
 	extCommitCodec := compression.NewCompressionExtendedCommitCodec(
 		compression.NewDefaultExtendedCommitCodec(),
 		compression.NewZStdCompressor(),
 	)
+
 	priceApplier := aggregator.NewOraclePriceApplier(
 		aggregator.NewDefaultVoteAggregator(
 			app.Logger(),
@@ -277,10 +302,11 @@ func (app *Mezo) connectABCIHandlers() (
 			currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
 		),
 		&app.OracleKeeper,
-		veCodec,
+		compositeVeCodec,
 		extCommitCodec,
 		app.Logger(),
 	)
+
 	voteExtensionsHandler := connectve.NewVoteExtensionHandler(
 		app.Logger(),
 		app.oracleClient,
@@ -297,12 +323,7 @@ func (app *Mezo) connectABCIHandlers() (
 		baseapp.NoOpPrepareProposal(),
 		baseapp.NoOpProcessProposal(),
 		connectve.NewDefaultValidateVoteExtensionsFn(app.PoaKeeper),
-		NewConnectVEExtractionCodec(
-			compression.NewCompressionVoteExtensionCodec(
-				compression.NewDefaultVoteExtensionCodec(),
-				compression.NewZLibCompressor(),
-			),
-		),
+		compositeVeCodec,
 		compression.NewCompressionExtendedCommitCodec(
 			compression.NewDefaultExtendedCommitCodec(),
 			compression.NewZStdCompressor(),
@@ -322,12 +343,7 @@ func (app *Mezo) connectABCIHandlers() (
 		&app.OracleKeeper,
 		app.oracleMetrics,
 		currencypair.NewDeltaCurrencyPairStrategy(&app.OracleKeeper),
-		NewConnectVEExtractionCodec(
-			compression.NewCompressionVoteExtensionCodec(
-				compression.NewDefaultVoteExtensionCodec(),
-				compression.NewZLibCompressor(),
-			),
-		),
+		compositeVeCodec,
 		compression.NewCompressionExtendedCommitCodec(
 			compression.NewDefaultExtendedCommitCodec(),
 			compression.NewZStdCompressor(),
@@ -345,9 +361,16 @@ func customMarketGenesis() (*oracletypes.GenesisState, *marketmaptypes.GenesisSt
 	// Update Markets
 	marketmapGenState.MarketMap = MezoMarketMap
 
+	// Ensure deterministic order of markets in genesis. This is a must
+	// so all nodes get the same ID for the same currency pair.
+	marketsKeys := maps.Keys(MezoMarketMap.Markets)
+	slices.Sort(marketsKeys)
+
 	// update oracle genesis state
 	id := uint64(1)
-	for _, market := range MezoMarketMap.Markets {
+	for _, marketKey := range marketsKeys {
+		market := MezoMarketMap.Markets[marketKey]
+
 		cp := oracletypes.CurrencyPairGenesis{
 			Id:                id,
 			Nonce:             0,
@@ -409,8 +432,11 @@ func NewConnectVEExtractionCodec(codec compression.VoteExtensionCodec) *ConnectV
 }
 
 // Encode just passes through to the wrapped VoteExtensionCodec
-func (c *ConnectVEExtractionCodec) Encode(ve vetypes.OracleVoteExtension) ([]byte, error) {
-	return c.codec.Encode(ve)
+func (c *ConnectVEExtractionCodec) Encode(vetypes.OracleVoteExtension) ([]byte, error) {
+	// The sole purpose of ConnectVEExtractionCodec is to decode Connect-specific
+	// vote extensions from composite vote extensions. It should never be used
+	// for encoding. Encoding happens elsewhere.
+	panic("this codec should not be used for encoding")
 }
 
 // Decode takes a set of vote extension data and returns the OracleVoteExtension
