@@ -3,6 +3,8 @@ package abci
 import (
 	"fmt"
 
+	connectve "github.com/skip-mev/connect/v2/abci/ve"
+
 	"cosmossdk.io/log"
 
 	cmtabci "github.com/cometbft/cometbft/abci/types"
@@ -22,6 +24,8 @@ const (
 	// VoteExtensionPartBridge is the part of the vote extension that
 	// is specific to the Bitcoin bridge.
 	VoteExtensionPartBridge
+	// VoteExtensionPartConnect is the part of the vote extension that is specific to the Connect oracle.
+	VoteExtensionPartConnect
 )
 
 // String returns a string representation of the vote extension part.
@@ -57,9 +61,11 @@ type VoteExtensionHandler struct {
 func NewVoteExtensionHandler(
 	logger log.Logger,
 	bridgeSubHandler *bridgeabci.VoteExtensionHandler,
+	connectVEHandler *connectve.VoteExtensionHandler,
 ) *VoteExtensionHandler {
 	subHandlers := map[VoteExtensionPart]IVoteExtensionHandler{
-		VoteExtensionPartBridge: bridgeSubHandler,
+		VoteExtensionPartBridge:  bridgeSubHandler,
+		VoteExtensionPartConnect: connectVEHandler,
 	}
 
 	return &VoteExtensionHandler{
