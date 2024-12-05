@@ -204,7 +204,6 @@ func (_BitcoinBridge *BitcoinBridgeTransactorRaw) Transact(opts *bind.TransactOp
 func (_BitcoinBridge *BitcoinBridgeCaller) SATOSHIMULTIPLIER(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "SATOSHI_MULTIPLIER")
-
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -212,7 +211,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) SATOSHIMULTIPLIER(opts *bind.CallOpts
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
-
 }
 
 // SATOSHIMULTIPLIER is a free data retrieval call binding the contract method 0xc7ba0347.
@@ -235,7 +233,6 @@ func (_BitcoinBridge *BitcoinBridgeCallerSession) SATOSHIMULTIPLIER() (*big.Int,
 func (_BitcoinBridge *BitcoinBridgeCaller) Bridge(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "bridge")
-
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -243,7 +240,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) Bridge(opts *bind.CallOpts) (common.A
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
-
 }
 
 // Bridge is a free data retrieval call binding the contract method 0xe78cea92.
@@ -266,7 +262,6 @@ func (_BitcoinBridge *BitcoinBridgeCallerSession) Bridge() (common.Address, erro
 func (_BitcoinBridge *BitcoinBridgeCaller) Deposits(opts *bind.CallOpts, arg0 *big.Int) (uint8, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "deposits", arg0)
-
 	if err != nil {
 		return *new(uint8), err
 	}
@@ -274,7 +269,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) Deposits(opts *bind.CallOpts, arg0 *b
 	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
 
 	return out0, err
-
 }
 
 // Deposits is a free data retrieval call binding the contract method 0xb02c43d0.
@@ -297,7 +291,6 @@ func (_BitcoinBridge *BitcoinBridgeCallerSession) Deposits(arg0 *big.Int) (uint8
 func (_BitcoinBridge *BitcoinBridgeCaller) MinTBTCAmount(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "minTBTCAmount")
-
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -305,7 +298,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) MinTBTCAmount(opts *bind.CallOpts) (*
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
-
 }
 
 // MinTBTCAmount is a free data retrieval call binding the contract method 0xdab1b4bd.
@@ -328,7 +320,6 @@ func (_BitcoinBridge *BitcoinBridgeCallerSession) MinTBTCAmount() (*big.Int, err
 func (_BitcoinBridge *BitcoinBridgeCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "owner")
-
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -336,7 +327,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) Owner(opts *bind.CallOpts) (common.Ad
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
-
 }
 
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
@@ -359,7 +349,6 @@ func (_BitcoinBridge *BitcoinBridgeCallerSession) Owner() (common.Address, error
 func (_BitcoinBridge *BitcoinBridgeCaller) PendingOwner(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "pendingOwner")
-
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -367,7 +356,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) PendingOwner(opts *bind.CallOpts) (co
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
-
 }
 
 // PendingOwner is a free data retrieval call binding the contract method 0xe30c3978.
@@ -390,7 +378,6 @@ func (_BitcoinBridge *BitcoinBridgeCallerSession) PendingOwner() (common.Address
 func (_BitcoinBridge *BitcoinBridgeCaller) Sequence(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "sequence")
-
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -398,7 +385,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) Sequence(opts *bind.CallOpts) (*big.I
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
-
 }
 
 // Sequence is a free data retrieval call binding the contract method 0x529d15cc.
@@ -421,7 +407,6 @@ func (_BitcoinBridge *BitcoinBridgeCallerSession) Sequence() (*big.Int, error) {
 func (_BitcoinBridge *BitcoinBridgeCaller) TbtcToken(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "tbtcToken")
-
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -429,7 +414,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) TbtcToken(opts *bind.CallOpts) (commo
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
-
 }
 
 // TbtcToken is a free data retrieval call binding the contract method 0xe5d3d714.
@@ -452,7 +436,6 @@ func (_BitcoinBridge *BitcoinBridgeCallerSession) TbtcToken() (common.Address, e
 func (_BitcoinBridge *BitcoinBridgeCaller) TbtcVault(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _BitcoinBridge.contract.Call(opts, &out, "tbtcVault")
-
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -460,7 +443,6 @@ func (_BitcoinBridge *BitcoinBridgeCaller) TbtcVault(opts *bind.CallOpts) (commo
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
-
 }
 
 // TbtcVault is a free data retrieval call binding the contract method 0x0f36403a.
@@ -745,7 +727,6 @@ type BitcoinBridgeAssetsLocked struct {
 //
 // Solidity: event AssetsLocked(uint256 indexed sequenceNumber, address indexed recipient, uint256 tbtcAmount)
 func (_BitcoinBridge *BitcoinBridgeFilterer) FilterAssetsLocked(opts *bind.FilterOpts, sequenceNumber []*big.Int, recipient []common.Address) (*BitcoinBridgeAssetsLockedIterator, error) {
-
 	var sequenceNumberRule []interface{}
 	for _, sequenceNumberItem := range sequenceNumber {
 		sequenceNumberRule = append(sequenceNumberRule, sequenceNumberItem)
@@ -766,7 +747,6 @@ func (_BitcoinBridge *BitcoinBridgeFilterer) FilterAssetsLocked(opts *bind.Filte
 //
 // Solidity: event AssetsLocked(uint256 indexed sequenceNumber, address indexed recipient, uint256 tbtcAmount)
 func (_BitcoinBridge *BitcoinBridgeFilterer) WatchAssetsLocked(opts *bind.WatchOpts, sink chan<- *BitcoinBridgeAssetsLocked, sequenceNumber []*big.Int, recipient []common.Address) (event.Subscription, error) {
-
 	var sequenceNumberRule []interface{}
 	for _, sequenceNumberItem := range sequenceNumber {
 		sequenceNumberRule = append(sequenceNumberRule, sequenceNumberItem)
@@ -899,7 +879,6 @@ type BitcoinBridgeDepositFinalized struct {
 //
 // Solidity: event DepositFinalized(uint256 indexed depositKey, uint256 initialAmount, uint256 tbtcAmount)
 func (_BitcoinBridge *BitcoinBridgeFilterer) FilterDepositFinalized(opts *bind.FilterOpts, depositKey []*big.Int) (*BitcoinBridgeDepositFinalizedIterator, error) {
-
 	var depositKeyRule []interface{}
 	for _, depositKeyItem := range depositKey {
 		depositKeyRule = append(depositKeyRule, depositKeyItem)
@@ -916,7 +895,6 @@ func (_BitcoinBridge *BitcoinBridgeFilterer) FilterDepositFinalized(opts *bind.F
 //
 // Solidity: event DepositFinalized(uint256 indexed depositKey, uint256 initialAmount, uint256 tbtcAmount)
 func (_BitcoinBridge *BitcoinBridgeFilterer) WatchDepositFinalized(opts *bind.WatchOpts, sink chan<- *BitcoinBridgeDepositFinalized, depositKey []*big.Int) (event.Subscription, error) {
-
 	var depositKeyRule []interface{}
 	for _, depositKeyItem := range depositKey {
 		depositKeyRule = append(depositKeyRule, depositKeyItem)
@@ -1044,7 +1022,6 @@ type BitcoinBridgeDepositInitialized struct {
 //
 // Solidity: event DepositInitialized(uint256 indexed depositKey, address indexed recipient)
 func (_BitcoinBridge *BitcoinBridgeFilterer) FilterDepositInitialized(opts *bind.FilterOpts, depositKey []*big.Int, recipient []common.Address) (*BitcoinBridgeDepositInitializedIterator, error) {
-
 	var depositKeyRule []interface{}
 	for _, depositKeyItem := range depositKey {
 		depositKeyRule = append(depositKeyRule, depositKeyItem)
@@ -1065,7 +1042,6 @@ func (_BitcoinBridge *BitcoinBridgeFilterer) FilterDepositInitialized(opts *bind
 //
 // Solidity: event DepositInitialized(uint256 indexed depositKey, address indexed recipient)
 func (_BitcoinBridge *BitcoinBridgeFilterer) WatchDepositInitialized(opts *bind.WatchOpts, sink chan<- *BitcoinBridgeDepositInitialized, depositKey []*big.Int, recipient []common.Address) (event.Subscription, error) {
-
 	var depositKeyRule []interface{}
 	for _, depositKeyItem := range depositKey {
 		depositKeyRule = append(depositKeyRule, depositKeyItem)
@@ -1196,7 +1172,6 @@ type BitcoinBridgeInitialized struct {
 //
 // Solidity: event Initialized(uint64 version)
 func (_BitcoinBridge *BitcoinBridgeFilterer) FilterInitialized(opts *bind.FilterOpts) (*BitcoinBridgeInitializedIterator, error) {
-
 	logs, sub, err := _BitcoinBridge.contract.FilterLogs(opts, "Initialized")
 	if err != nil {
 		return nil, err
@@ -1208,7 +1183,6 @@ func (_BitcoinBridge *BitcoinBridgeFilterer) FilterInitialized(opts *bind.Filter
 //
 // Solidity: event Initialized(uint64 version)
 func (_BitcoinBridge *BitcoinBridgeFilterer) WatchInitialized(opts *bind.WatchOpts, sink chan<- *BitcoinBridgeInitialized) (event.Subscription, error) {
-
 	logs, sub, err := _BitcoinBridge.contract.WatchLogs(opts, "Initialized")
 	if err != nil {
 		return nil, err
@@ -1330,7 +1304,6 @@ type BitcoinBridgeMinTBTCAmountUpdated struct {
 //
 // Solidity: event MinTBTCAmountUpdated(uint256 minTBTCAmount)
 func (_BitcoinBridge *BitcoinBridgeFilterer) FilterMinTBTCAmountUpdated(opts *bind.FilterOpts) (*BitcoinBridgeMinTBTCAmountUpdatedIterator, error) {
-
 	logs, sub, err := _BitcoinBridge.contract.FilterLogs(opts, "MinTBTCAmountUpdated")
 	if err != nil {
 		return nil, err
@@ -1342,7 +1315,6 @@ func (_BitcoinBridge *BitcoinBridgeFilterer) FilterMinTBTCAmountUpdated(opts *bi
 //
 // Solidity: event MinTBTCAmountUpdated(uint256 minTBTCAmount)
 func (_BitcoinBridge *BitcoinBridgeFilterer) WatchMinTBTCAmountUpdated(opts *bind.WatchOpts, sink chan<- *BitcoinBridgeMinTBTCAmountUpdated) (event.Subscription, error) {
-
 	logs, sub, err := _BitcoinBridge.contract.WatchLogs(opts, "MinTBTCAmountUpdated")
 	if err != nil {
 		return nil, err
@@ -1465,7 +1437,6 @@ type BitcoinBridgeOwnershipTransferStarted struct {
 //
 // Solidity: event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner)
 func (_BitcoinBridge *BitcoinBridgeFilterer) FilterOwnershipTransferStarted(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*BitcoinBridgeOwnershipTransferStartedIterator, error) {
-
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -1486,7 +1457,6 @@ func (_BitcoinBridge *BitcoinBridgeFilterer) FilterOwnershipTransferStarted(opts
 //
 // Solidity: event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner)
 func (_BitcoinBridge *BitcoinBridgeFilterer) WatchOwnershipTransferStarted(opts *bind.WatchOpts, sink chan<- *BitcoinBridgeOwnershipTransferStarted, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
-
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -1618,7 +1588,6 @@ type BitcoinBridgeOwnershipTransferred struct {
 //
 // Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
 func (_BitcoinBridge *BitcoinBridgeFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*BitcoinBridgeOwnershipTransferredIterator, error) {
-
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -1639,7 +1608,6 @@ func (_BitcoinBridge *BitcoinBridgeFilterer) FilterOwnershipTransferred(opts *bi
 //
 // Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
 func (_BitcoinBridge *BitcoinBridgeFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *BitcoinBridgeOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
-
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
