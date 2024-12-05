@@ -40,9 +40,11 @@ type PreBlockHandler struct {
 func NewPreBlockHandler(
 	logger log.Logger,
 	bridgeSubHandler *bridgeabci.PreBlockHandler,
+	connectSubHandler IPreBlockHandler,
 ) *PreBlockHandler {
 	subHandlers := map[VoteExtensionPart]IPreBlockHandler{
-		VoteExtensionPartBridge: bridgeSubHandler,
+		VoteExtensionPartBridge:  bridgeSubHandler,
+		VoteExtensionPartConnect: connectSubHandler,
 	}
 
 	return &PreBlockHandler{
