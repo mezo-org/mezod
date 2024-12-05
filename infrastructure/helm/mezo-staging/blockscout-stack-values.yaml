@@ -84,7 +84,7 @@ frontend:
     NEXT_PUBLIC_NETWORK_CURRENCY_WEI_NAME: aBTC
     NEXT_PUBLIC_HOMEPAGE_PLATE_BACKGROUND: ff004d
     NEXT_PUBLIC_COLOR_THEME_DEFAULT: light
-    NEXT_PUBLIC_NETWORK_LOGO: https://mezo.org/assets/mezo-favicon-h-eecjcq.svg
+    NEXT_PUBLIC_NETWORK_LOGO: https://mezo.org/assets/mezo-vsve-pvk.svg
     NEXT_PUBLIC_NETWORK_ICON: https://mezo.org/assets/mezo-favicon-h-eecjcq.svg
 
 stats:
