@@ -52,6 +52,16 @@ variable "gke_subnet" {
   }
 }
 
+variable "gce_subnet" {
+  type        = map(string)
+  description = "Subnet for deploying Google Compute Engine resources"
+
+  default = {
+    name             = "mezo-staging-gce-subnet"
+    primary_ip_range = "10.2.0.0/16"
+  }
+}
+
 variable "cloud_nat" {
   type        = map(string)
   description = "Cloud NAT info"
@@ -101,6 +111,7 @@ variable "global_external_ip_addresses" {
     "mezo-staging-blockscout-app-external-ip",
     "mezo-staging-rpc-external-ip",
     "mezo-staging-rpc-ws-external-ip",
+    "mezo-staging-safe-external-ip",
   ]
 }
 
