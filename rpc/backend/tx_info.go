@@ -288,6 +288,12 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 
 	// parse tx logs from events
 	msgIndex := int(res.MsgIndex) // #nosec G701 -- checked for int overflow already
+
+	// TODO: Verify correctness of this scenario:
+	//       A block contains a pseudo-transaction with `AssetsLocked` events
+	//       and a regular contract call (e.g. a transfer). The transaction receipt
+	//       for the regular transaction will incorrectly state in the logs that
+	//       the tx index is `0` instead of `1`.
 	logs, err := TxLogsFromEvents(blockRes.TxsResults[res.TxIndex].Events, msgIndex)
 	if err != nil {
 		b.logger.Debug("failed to parse logs", "hash", hexTx, "error", err.Error())
