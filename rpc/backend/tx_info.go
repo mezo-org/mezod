@@ -386,7 +386,7 @@ func (b *Backend) getPseudoTransactionReceipt(
 		"transactionIndex": hexutil.Uint64(txResult.EthTxIndex),
 
 		// Sender and receiver (contract or EOA) addresses.
-		"from": nil,
+		"from": common.Address{},
 		"to":   common.HexToAddress(assetsbridge.EvmAddress),
 		"type": hexutil.Uint(0),
 	}
