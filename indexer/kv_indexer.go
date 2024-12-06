@@ -223,7 +223,7 @@ func (kv *KVIndexer) parsePseudoTransaction(
 	}
 
 	// Since the extended commit info is not needed, set it to nil to save up
-	// space when bride tx is stored in the database.
+	// space when bridge tx is stored in the database.
 	bridgeTx.ExtendedCommitInfo = nil
 
 	return &bridgeTx, true
