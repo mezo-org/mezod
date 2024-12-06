@@ -4,8 +4,26 @@ helmDefaults:
 repositories:
   - name: mezo-org
     url: https://mezo-org.github.io/validator-kit
+  - name: blockscout
+    url: https://blockscout.github.io/helm-charts
 
 releases:
+  - name: postgresql
+    installed: true
+    namespace: default
+    chart: oci://registry-1.docker.io/bitnamicharts/postgresql
+    version: 15.2.10
+    values:
+      - ./values/postgresql.yaml
+
+  - name: blockscout-stack
+    installed: true
+    namespace: default
+    chart: blockscout/blockscout-stack
+    version: 1.5.0
+    values:
+      - ./values/blockscout-stack.yaml
+
   - name: mezo-node-4
     installed: true
     namespace: default

@@ -6,6 +6,11 @@ global:
     auth:
       database: blockscout
 
+      # Added after the first deployment as a workaround for
+      # https://github.com/bitnami/charts/issues/16417
+      # https://github.com/bitnami/charts/issues/15073
+      postgresPassword: secretref+k8s://v1/Secret/default/postgresql/postgres-password
+
 image:
   tag: 15 # Use version supported by Blockscout
 
