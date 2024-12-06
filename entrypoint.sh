@@ -79,8 +79,8 @@ customize_configuration() {
   #
   mezod toml set "$CONFIG_FILE" \
     -v "moniker=${MEZOD_MONIKER}" \
-    -v "p2p.laddr=tcp://0.0.0.0:${P2P_PORT}" \
-    -v "p2p.external_address=${PUBLIC_IP}:${P2P_PORT}" \
+    -v "p2p.laddr=tcp://0.0.0.0:${MEZOD_P2P_PORT}" \
+    -v "p2p.external_address=${PUBLIC_IP}:${MEZOD_P2P_PORT}" \
     -v "rpc.laddr=tcp://0.0.0.0:26657" \
     -v "instrumentation.prometheus=true" \
     -v "instrumentation.prometheus_listen_addr=0.0.0.0:26660"
