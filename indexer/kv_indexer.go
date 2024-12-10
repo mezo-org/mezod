@@ -74,6 +74,10 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 	batch := kv.db.NewBatch()
 	defer batch.Close()
 
+	// information on whether the block contains a non-empty pseudo-transaction
+	// with bridging information
+	hasPseudoTransaction := false
+
 	// record index of valid eth tx during the iteration
 	var ethTxIndex int32
 	for txIndex, tx := range block.Txs {
@@ -120,6 +124,7 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 					return errorsmod.Wrapf(err, "IndexBlock %d", height)
 				}
 
+				hasPseudoTransaction = true
 				continue
 			}
 		}
@@ -167,10 +172,21 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 					kv.logger.Error("msg index not found in events", "msgIndex", msgIndex)
 					continue
 				}
-				if parsedTx.EthTxIndex >= 0 && parsedTx.EthTxIndex != ethTxIndex {
-					// TODO: When there is a non-empty pseudo-transaction and an ordinary transaction
-					//       in one block, this if is true. Should we ignore this log?
 
+				// Perform ETH index check to ensure the info on used gas is
+				// taken from the proper transaction. Notice that the
+				// `parsedTx.EthTxIndex` is established within the EVM execution
+				// context which is not aware of pseudo-transactions.
+				// Therefore, if the block contains a pseudo-transaction we need
+				// subtract `1` from the `ethTxIndex` during the check.
+				var expectedEthTxIdx int32
+				if hasPseudoTransaction {
+					expectedEthTxIdx = ethTxIndex - 1
+				} else {
+					expectedEthTxIdx = ethTxIndex
+				}
+
+				if parsedTx.EthTxIndex >= 0 && parsedTx.EthTxIndex != expectedEthTxIdx {
 					kv.logger.Error("eth tx index don't match", "expect", ethTxIndex, "found", parsedTx.EthTxIndex)
 				}
 				txResult.GasUsed = parsedTx.GasUsed
