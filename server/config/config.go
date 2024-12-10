@@ -21,6 +21,8 @@ import (
 	"path"
 	"time"
 
+	oracleconfig "github.com/skip-mev/connect/v2/oracle/config"
+
 	"github.com/spf13/viper"
 
 	"github.com/cometbft/cometbft/libs/strings"
@@ -99,10 +101,11 @@ var evmTracers = []string{"json", "markdown", "struct", "access_list"}
 type Config struct {
 	config.Config
 
-	EVM             EVMConfig             `mapstructure:"evm"`
-	JSONRPC         JSONRPCConfig         `mapstructure:"json-rpc"`
-	TLS             TLSConfig             `mapstructure:"tls"`
-	EthereumSidecar EthereumSidecarConfig `mapstructure:"ethereum-sidecar.client"`
+	EVM             EVMConfig              `mapstructure:"evm"`
+	JSONRPC         JSONRPCConfig          `mapstructure:"json-rpc"`
+	TLS             TLSConfig              `mapstructure:"tls"`
+	EthereumSidecar EthereumSidecarConfig  `mapstructure:"ethereum-sidecar.client"`
+	Oracle          oracleconfig.AppConfig `mapstructure:"oracle"`
 }
 
 // EVMConfig defines the application configuration values for the EVM.
@@ -201,9 +204,10 @@ func AppConfig(denom string) (string, interface{}) {
 		JSONRPC:         *DefaultJSONRPCConfig(),
 		TLS:             *DefaultTLSConfig(),
 		EthereumSidecar: *DefaultEthereumSidecarConfig(),
+		Oracle:          *DefaultOracleConfig(),
 	}
 
-	customAppTemplate := config.DefaultConfigTemplate + DefaultConfigTemplate
+	customAppTemplate := config.DefaultConfigTemplate + DefaultConfigTemplate + oracleconfig.DefaultConfigTemplate
 
 	return customAppTemplate, customAppConfig
 }
@@ -216,6 +220,7 @@ func DefaultConfig() *Config {
 		JSONRPC:         *DefaultJSONRPCConfig(),
 		TLS:             *DefaultTLSConfig(),
 		EthereumSidecar: *DefaultEthereumSidecarConfig(),
+		Oracle:          *DefaultOracleConfig(),
 	}
 }
 
@@ -224,6 +229,15 @@ func DefaultEVMConfig() *EVMConfig {
 	return &EVMConfig{
 		Tracer:         DefaultEVMTracer,
 		MaxTxGasWanted: DefaultMaxTxGasWanted,
+	}
+}
+
+func DefaultOracleConfig() *oracleconfig.AppConfig {
+	return &oracleconfig.AppConfig{
+		Enabled:        true,
+		OracleAddress:  "localhost:8080",
+		ClientTimeout:  time.Second * 2,
+		MetricsEnabled: true,
 	}
 }
 

@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/mezo-org/mezod/precompile/maintenance"
 
@@ -86,6 +87,15 @@ import (
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
+	oracleclient "github.com/skip-mev/connect/v2/service/clients/oracle"
+	servicemetrics "github.com/skip-mev/connect/v2/service/metrics"
+	"github.com/skip-mev/connect/v2/x/marketmap"
+	marketmapkeeper "github.com/skip-mev/connect/v2/x/marketmap/keeper"
+	marketmaptypes "github.com/skip-mev/connect/v2/x/marketmap/types"
+	"github.com/skip-mev/connect/v2/x/oracle"
+	oraclekeeper "github.com/skip-mev/connect/v2/x/oracle/keeper"
+	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
+
 	appabci "github.com/mezo-org/mezod/app/abci"
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
 	"github.com/mezo-org/mezod/encoding"
@@ -143,6 +153,8 @@ var (
 	// DefaultNodeHome default home directories for the application daemon
 	DefaultNodeHome string
 
+	DefaultOracleTimeout = time.Second
+
 	// ModuleBasics defines the module BasicManager is in charge of setting up basic,
 	// non-dependant module elements, such as codec registration
 	// and genesis verification.
@@ -158,6 +170,8 @@ var (
 		evm.AppModuleBasic{},
 		feemarket.AppModuleBasic{},
 		bridge.AppModuleBasic{},
+		marketmap.AppModuleBasic{},
+		oracle.AppModuleBasic{},
 	)
 
 	// module account permissions
@@ -203,6 +217,8 @@ type Mezo struct {
 	EvmKeeper             *evmkeeper.Keeper
 	FeeMarketKeeper       feemarketkeeper.Keeper
 	BridgeKeeper          bridgekeeper.Keeper
+	OracleKeeper          oraclekeeper.Keeper
+	MarketMapKeeper       marketmapkeeper.Keeper
 
 	// the module manager
 	mm *module.Manager
@@ -211,6 +227,10 @@ type Mezo struct {
 	configurator module.Configurator
 
 	tpsCounter *tpsCounter
+
+	// Connect client
+	oracleClient  oracleclient.OracleClient
+	oracleMetrics servicemetrics.Metrics
 
 	preBlockHandler *appabci.PreBlockHandler
 }
@@ -259,6 +279,8 @@ func NewMezo(
 		evmtypes.StoreKey,
 		feemarkettypes.StoreKey,
 		bridgetypes.StoreKey,
+		marketmaptypes.StoreKey,
+		oracletypes.StoreKey,
 	)
 
 	tkeys := storetypes.NewTransientStoreKeys(
@@ -393,6 +415,18 @@ func NewMezo(
 		app.BankKeeper,
 	)
 
+	app.MarketMapKeeper = *marketmapkeeper.NewKeeper(
+		runtime.NewKVStoreService(keys[marketmaptypes.StoreKey]),
+		appCodec,
+		authority,
+	)
+	app.OracleKeeper = oraclekeeper.NewKeeper(
+		runtime.NewKVStoreService(keys[oracletypes.StoreKey]),
+		appCodec,
+		&app.MarketMapKeeper,
+		authority,
+	)
+
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.
 	skipGenesisInvariants := cast.ToBool(appOpts.Get(crisis.FlagSkipGenesisInvariants))
@@ -411,6 +445,8 @@ func NewMezo(
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
 		bridge.NewAppModule(app.BridgeKeeper),
+		marketmap.NewAppModule(appCodec, &app.MarketMapKeeper),
+		oracle.NewAppModule(appCodec, app.OracleKeeper),
 	)
 
 	// NOTE: upgrade module must go first to handle software upgrades.
@@ -422,6 +458,7 @@ func NewMezo(
 		feemarkettypes.ModuleName,
 		evmtypes.ModuleName,
 		poatypes.ModuleName,
+		oracletypes.ModuleName,
 		// no-op modules
 		authtypes.ModuleName,
 		banktypes.ModuleName,
@@ -430,6 +467,7 @@ func NewMezo(
 		paramstypes.ModuleName,
 		bridgetypes.ModuleName,
 		consensusparamstypes.ModuleName,
+		marketmaptypes.ModuleName,
 	)
 
 	// NOTE: fee market module must go last in order to retrieve the block gas used.
@@ -444,6 +482,8 @@ func NewMezo(
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
 		consensusparamstypes.ModuleName,
+		marketmaptypes.ModuleName,
+		oracletypes.ModuleName,
 		feemarkettypes.ModuleName,
 	)
 
@@ -458,6 +498,8 @@ func NewMezo(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		bridgetypes.ModuleName,
+		oracletypes.ModuleName,
+		marketmaptypes.ModuleName,
 		crisistypes.ModuleName,
 		consensusparamstypes.ModuleName,
 	)
@@ -473,7 +515,7 @@ func NewMezo(
 	app.MountKVStores(keys)
 	app.MountTransientStores(tkeys)
 
-	// initialize BaseApp
+	// initialize the BaseApp with markets in state.
 	app.SetInitChainer(app.InitChainer)
 	app.SetPreBlocker(app.PreBlocker)
 	app.SetBeginBlocker(app.BeginBlocker)
@@ -484,6 +526,14 @@ func NewMezo(
 	app.setPostHandler()
 	app.SetEndBlocker(app.EndBlocker)
 
+	// Set the x/marketmap keeper hooks
+	app.MarketMapKeeper.SetHooks(app.OracleKeeper.Hooks())
+	// oracle initialization
+	app.oracleClient, app.oracleMetrics, err = app.initializeOracle(appOpts)
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize oracle client and metrics: %s", err))
+	}
+	// Connect ABCI initialization requires the oracle client/metrics to be setup first.
 	app.setABCIExtensions(ethereumSidecarClient)
 
 	if loadLatest {
@@ -589,6 +639,10 @@ func (app *Mezo) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci
 	if err != nil {
 		panic(err)
 	}
+	// Set default markets
+	oracleGenState, marketmapGenState := customMarketGenesis()
+	genesisState[oracletypes.ModuleName] = app.appCodec.MustMarshalJSON(oracleGenState)
+	genesisState[marketmaptypes.ModuleName] = app.appCodec.MustMarshalJSON(marketmapGenState)
 
 	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
 }
@@ -601,11 +655,15 @@ func (app *Mezo) setABCIExtensions(
 	// Create the bridge ABCI handlers.
 	bridgeVoteExtensionHandler, bridgeProposalHandler, bridgePreBlockHandler := app.bridgeABCIHandlers(ethereumSidecarClient)
 
+	// Create the Connect ABCI handlers.
+	connectVEHandler, connectProposalHandler, connectPreBlocker := app.connectABCIHandlers()
+
 	// Create and attach the app-level composite vote extension handler for
 	// ExtendVote and VerifyVoteExtension ABCI requests.
 	voteExtensionHandler := appabci.NewVoteExtensionHandler(
 		app.Logger(),
 		bridgeVoteExtensionHandler,
+		connectVEHandler,
 	)
 	voteExtensionHandler.SetHandlers(app.BaseApp)
 
@@ -614,12 +672,14 @@ func (app *Mezo) setABCIExtensions(
 	proposalHandler := appabci.NewProposalHandler(
 		app.Logger(),
 		bridgeProposalHandler,
+		connectProposalHandler,
 	)
 	proposalHandler.SetHandlers(app.BaseApp)
 
 	app.preBlockHandler = appabci.NewPreBlockHandler(
 		app.Logger(),
 		bridgePreBlockHandler,
+		connectPreBlocker,
 	)
 }
 

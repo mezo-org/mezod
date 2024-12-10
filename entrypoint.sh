@@ -11,44 +11,14 @@ CLIENT_CONFIG_FILE="${MEZOD_HOME}/config/client.toml"
 APP_CONFIG_FILE="${MEZOD_HOME}/config/app.toml"
 CONFIG_FILE="${MEZOD_HOME}/config/config.toml"
 
-gen_mnemonic() {
-  mnemonic_file="$1"
-  # Check if the environment variable is set
-  if [ -n "$KEYRING_MNEMONIC" ]; then
-    echo "Using KEYRING_MNEMONIC from the environment"
-    echo "$KEYRING_MNEMONIC" > "$mnemonic_file"
-  else
-    # Ask the user to generate a new mnemonic
-    printf "Do you want to generate a new mnemonic? [y/N]: "; read -r response
-    case "$response" in
-      [yY])
-        echo "Generating a new mnemonic..."
-        m=$(mezod keys mnemonic)
-        echo "$m" > "$mnemonic_file"
-        printf "\n%s\n%s\n\n" "Generated mnemonic (make backup!):" "$m"
-        echo "Press any key to continue..."; read -r _
-        ;;
-      *)
-        # Ask the user to enter the mnemonic
-        printf "Enter the mnemonic: "; read -r mnemonic
-        echo "$mnemonic" > "$mnemonic_file"
-        ;;
-    esac
-  fi
-}
-
 init_keyring() {
   test -f "${MEZOD_HOME}/keyring-file/keyhash" && {
     echo "Keyring already exists!"
     return
   }
 
-  mnemonic_file="/tmp/mnemonic.txt"
-  gen_mnemonic "${mnemonic_file}"
-  read -r keyring_mnemonic < "${mnemonic_file}"
-
   echo "Prepare keyring..."
-  (echo "${keyring_mnemonic}"; echo "${KEYRING_PASSWORD}"; echo "${KEYRING_PASSWORD}") \
+  (echo "${KEYRING_MNEMONIC}"; echo "${KEYRING_PASSWORD}"; echo "${KEYRING_PASSWORD}") \
     | mezod keys add \
       "${KEYRING_NAME}" \
       --home="${MEZOD_HOME}" \
@@ -64,13 +34,14 @@ init_configuration() {
   test -f "$APP_CONFIG_FILE" && rm -fv "$APP_CONFIG_FILE"
   test -f "$CONFIG_FILE" && rm -fv "$CONFIG_FILE"
 
-  mezod \
+  echo "${KEYRING_MNEMONIC}" | mezod \
     init \
     "${MEZOD_MONIKER}" \
     --chain-id="${MEZOD_CHAIN_ID}" \
     --home="${MEZOD_HOME}" \
     --keyring-backend="file" \
-    --overwrite
+    --overwrite \
+    --recover
   echo "Configuration initialized!"
 }
 
@@ -108,8 +79,8 @@ customize_configuration() {
   #
   mezod toml set "$CONFIG_FILE" \
     -v "moniker=${MEZOD_MONIKER}" \
-    -v "p2p.laddr=tcp://0.0.0.0:26656" \
-    -v "p2p.external_address=${PUBLIC_IP}:26656" \
+    -v "p2p.laddr=tcp://0.0.0.0:${MEZOD_PORT_P2P}" \
+    -v "p2p.external_address=${PUBLIC_IP}:${MEZOD_PORT_P2P}" \
     -v "rpc.laddr=tcp://0.0.0.0:26657" \
     -v "instrumentation.prometheus=true" \
     -v "instrumentation.prometheus_listen_addr=0.0.0.0:26660"
@@ -136,7 +107,8 @@ customize_configuration() {
     -v "json-rpc.address=0.0.0.0:8545" \
     -v "json-rpc.api=eth,txpool,personal,net,debug,web3" \
     -v "json-rpc.ws-address=0.0.0.0:8546" \
-    -v "json-rpc.metrics-address=0.0.0.0:6065"
+    -v "json-rpc.metrics-address=0.0.0.0:6065" \
+    -v "pruning=nothing"
 
   # Check if MEZOD_CUSTOM_CONF_APP_TOML file exist
   if [ -f "$MEZOD_CUSTOM_CONF_APP_TOML" ]; then
@@ -145,7 +117,6 @@ customize_configuration() {
       mezod toml set $APP_CONFIG_FILE -v $line
     done < "$MEZOD_CUSTOM_CONF_APP_TOML"
   fi
-
 
   echo "Configuration customized!"
 }
@@ -183,7 +154,7 @@ get_validator_info() {
   validator_consensus_addr="$(jq -r '.address' "${MEZOD_HOME}"/config/priv_validator_key.json | awk '{print "0x"$1}')"
   echo "Validator consensus address: ${validator_consensus_addr}"
 
-  echo "Moniker: $MEZOD_MONIKER" 
+  echo "Moniker: $MEZOD_MONIKER"
 }
 
 #

@@ -18,6 +18,11 @@ module "cloud_nat" {
       name                     = var.gke_subnet.name
       source_ip_ranges_to_nat  = ["ALL_IP_RANGES"]
       secondary_ip_range_names = []
+    },
+    {
+      name                     = var.gce_subnet.name
+      source_ip_ranges_to_nat  = ["ALL_IP_RANGES"]
+      secondary_ip_range_names = []
     }
   ]
 }
