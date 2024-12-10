@@ -164,7 +164,22 @@ func (b *Backend) TraceBlock(height rpctypes.BlockNumber,
 	txDecoder := b.clientCtx.TxConfig.TxDecoder()
 
 	var txsMessages []*evmtypes.MsgEthereumTx
+	hasPseudoTransaction := false
 	for i, tx := range txs {
+		// Handle a situation when the transaction at index `0` is a pseudo-transaction.
+		if i == 0 {
+			txHash := common.BytesToHash(tx.Hash())
+			res, err := b.GetTxByEthHash(txHash)
+
+			if err == nil && len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+				// The transaction was saved during indexing, so it's a valid
+				// pseudo-transaction with bridging info. Its trace result needs
+				// to be added to the command's output.
+				hasPseudoTransaction = true
+				continue
+			}
+		}
+
 		decodedTx, err := txDecoder(tx)
 		if err != nil {
 			b.logger.Error("failed to decode transaction", "hash", txs[i].Hash(), "error", err.Error())
@@ -207,6 +222,23 @@ func (b *Backend) TraceBlock(height rpctypes.BlockNumber,
 	decodedResults := make([]*evmtypes.TxTraceResult, txsLength)
 	if err := json.Unmarshal(res.Data, &decodedResults); err != nil {
 		return nil, err
+	}
+
+	if hasPseudoTransaction {
+		// Create a basic trace result for the pseudo-transaction and put it in
+		// front of other results.
+		pseudoTxResult := &evmtypes.TxTraceResult{
+			Result: map[string]interface{}{
+				"failed":      false,
+				"gas":         0,
+				"returnValue": "",
+				"structLogs":  []interface{}{},
+			},
+		}
+		decodedResults = append(
+			[]*evmtypes.TxTraceResult{pseudoTxResult},
+			decodedResults...,
+		)
 	}
 
 	return decodedResults, nil
