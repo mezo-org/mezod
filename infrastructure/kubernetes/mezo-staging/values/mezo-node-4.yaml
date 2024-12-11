@@ -1,5 +1,5 @@
 image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/mezod
-# tag: v0.2.0-rc1 # use version from chart
+# tag: v0.2.0-rc1
 
 env:
   NETWORK: testnet
