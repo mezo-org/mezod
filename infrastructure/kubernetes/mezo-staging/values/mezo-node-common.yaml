@@ -1,0 +1,31 @@
+resources:
+  requests:
+    cpu: "2000m"
+    memory: "8096Mi"
+
+service:
+  public:
+    enabled: true
+    annotations:
+      cloud.google.com/network-tier: Premium
+    type: LoadBalancer
+    allocateLoadBalancerNodePorts: true
+    ports:
+      p2p: 26656
+      rpc: 26657
+      api: 1317
+      grpc: 9090
+      json-rpc: 8545
+      json-rpc-ws: 8546
+  private:
+    enabled: true
+    ports:
+      evm-metrics: 6065
+      comet-metrics: 26660
+
+# priorityClassName: "" # not used
+customConfigs:
+  enabled: false
+  appTomlTxt: ""
+  clientTomlTxt: ""
+  configTomlTxt: ""

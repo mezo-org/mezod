@@ -1,0 +1,16 @@
+helmDefaults:
+  kubeContext: gke_mezo-test-420708_us-central1_mezo-staging-gke-cluster
+
+repositories:
+  - name: mezo-org
+    url: https://mezo-org.github.io/validator-kit
+
+releases:
+  - name: mezo-node-4
+    installed: true
+    namespace: default
+    chart: mezo-org/mezod
+    version: 0.0.4
+    values:
+      - ./values/mezo-node-common.yaml
+      - ./values/mezo-node-4.yaml
