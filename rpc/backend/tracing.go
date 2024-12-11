@@ -19,10 +19,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/big"
 
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/mezo-org/mezod/indexer"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -78,13 +80,24 @@ func (b *Backend) TraceTransaction(hash common.Hash, config *evmtypes.TraceConfi
 	}
 
 	// Special case for pseudo-transactions containing bridging information.
-	// Return basic information as pseudo-transactions cannot be traced.
+	// Return basic information as pseudo-transactions cannot be fully traced.
 	if len(transaction.ExtraData) > 0 && transaction.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+		zero := (*hexutil.Big)(new(big.Int).SetUint64(0))
+
+		pseudoTx, err := b.getPseudoTransaction(transaction, blk)
+		if err != nil {
+			return nil, err
+		}
+
 		return map[string]interface{}{
-			"failed":      false,
-			"gas":         0,
-			"returnValue": "0000000000000000000000000000000000000000000000000000000000000001",
-			"structLogs":  []interface{}{},
+			"from":    pseudoTx.From,
+			"to":      pseudoTx.To,
+			"type":    "CALL",
+			"gas":     zero,
+			"gasUsed": zero,
+			"input":   pseudoTx.Input,
+			"output":  "0x0000000000000000000000000000000000000000000000000000000000000001",
+			"failed":  false,
 		}, nil
 	}
 

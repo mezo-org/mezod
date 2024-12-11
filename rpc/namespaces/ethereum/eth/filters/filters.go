@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/mezo-org/mezod/indexer"
 	"github.com/mezo-org/mezod/rpc/backend"
 	"github.com/mezo-org/mezod/rpc/types"
-	"github.com/mezo-org/mezod/indexer"
 
 	"cosmossdk.io/log"
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
