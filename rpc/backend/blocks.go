@@ -424,6 +424,10 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		b.logger.Error("failed to fetch Base Fee from prunned block. Check node prunning configuration", "height", block.Height, "error", err)
 	}
 
+	// Information on whether the block contains a non-empty pseudo-transaction
+	// with bridging information.
+	hasPseudoTransaction := false
+
 	// The transaction at index `0` can be a pseudo-transaction. We need to
 	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
 	// transaction, it is still possible that it did not contain any events and
@@ -446,6 +450,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 					} else {
 						ethRPCTxs = append(ethRPCTxs, pseudoTx)
 					}
+					hasPseudoTransaction = true
 				}
 			}
 		}
@@ -455,7 +460,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 	// `EthMsgsFromTendermintBlock` function below. We do not have to worry
 	// about such a transaction being included twice in the command result.
 	msgs := b.EthMsgsFromTendermintBlock(resBlock, blockRes)
-	for _, ethMsg := range msgs {
+	for txIndex, ethMsg := range msgs {
 		if !fullTx {
 			hash := common.HexToHash(ethMsg.Hash)
 			ethRPCTxs = append(ethRPCTxs, hash)
@@ -464,18 +469,14 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 
 		tx := ethMsg.AsTransaction()
 		height := uint64(block.Height) //#nosec G701 -- checked for int overflow already
+		index := uint64(txIndex)       //#nosec G701 -- checked for int overflow already
 
-		// Retrieve the transaction by hash to learn which index should be
-		// assigned to the transaction. Notice that we cannot assume the
-		// ordinary ETH transactions start at index `0` as they may be preceded
-		// by a pseudo-transaction.
-		res, err := b.GetTxByEthHash(tx.Hash())
-		if err != nil {
-			b.logger.Debug("failed to get transaction", "hash", tx.Hash(), "error", err.Error())
-			continue
+		// If there is a pseudo-transaction present in the block, we need to
+		// increase the index by `1` as the pseudo-transaction should be
+		// considered the first transaction in the block.
+		if hasPseudoTransaction {
+			index = uint64(txIndex) + 1
 		}
-
-		index := uint64(res.EthTxIndex)
 
 		rpcTx, err := rpctypes.NewRPCTransaction(
 			tx,
