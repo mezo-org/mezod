@@ -485,6 +485,8 @@ func NewMezo(
 
 	app.setABCIExtensions(ethereumSidecarClient)
 
+	app.setupUpgradeHandlers()
+
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
 			tmos.Exit(err.Error())
@@ -545,6 +547,7 @@ func (app *Mezo) PreBlocker(
 }
 
 func (app *Mezo) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+	app.beginBlockForks(ctx)
 	return app.mm.BeginBlock(ctx)
 }
 
