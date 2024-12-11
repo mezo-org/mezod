@@ -26,6 +26,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/mezo-org/mezod/rpc/types"
+	mezodtypes "github.com/mezo-org/mezod/types"
 
 	"cosmossdk.io/log"
 
@@ -57,7 +58,9 @@ type Backend interface {
 	GetBlockByNumber(blockNum types.BlockNumber, fullTx bool) (map[string]interface{}, error)
 	HeaderByNumber(blockNum types.BlockNumber) (*ethtypes.Header, error)
 	HeaderByHash(blockHash common.Hash) (*ethtypes.Header, error)
+	GetTxByEthHash(txHash common.Hash) (*mezodtypes.TxResult, error)
 	TendermintBlockByHash(hash common.Hash) (*coretypes.ResultBlock, error)
+	TendermintBlockByNumber(blockNum types.BlockNumber) (*coretypes.ResultBlock, error)
 	TendermintBlockResultByNumber(height *int64) (*coretypes.ResultBlockResults, error)
 	GetLogs(blockHash common.Hash) ([][]*ethtypes.Log, error)
 	GetLogsByHeight(*int64) ([][]*ethtypes.Log, error)

@@ -289,14 +289,38 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 	// parse tx logs from events
 	msgIndex := int(res.MsgIndex) // #nosec G701 -- checked for int overflow already
 
-	// TODO: Verify correctness of this scenario:
-	//       A block contains a pseudo-transaction with `AssetsLocked` events
-	//       and a regular contract call (e.g. a transfer). The transaction receipt
-	//       for the regular transaction will incorrectly state in the logs that
-	//       the tx index is `0` instead of `1`.
 	logs, err := TxLogsFromEvents(blockRes.TxsResults[res.TxIndex].Events, msgIndex)
 	if err != nil {
 		b.logger.Debug("failed to parse logs", "hash", hexTx, "error", err.Error())
+	}
+
+	hasPseudoTransaction := func(resBlock *tmrpctypes.ResultBlock) bool {
+		if resBlock == nil || resBlock.Block == nil {
+			return false
+		}
+
+		// Check if the block's first transaction is a pseudo-transaction.
+		if len(resBlock.Block.Txs) > 0 {
+			tx := resBlock.Block.Txs[0]
+			txHash := common.BytesToHash(tx.Hash())
+			res, err := b.GetTxByEthHash(txHash)
+			if err == nil {
+				if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+					// The transaction was saved during indexing. The block
+					// contains a pseudo-transaction with bridging info.
+					return true
+				}
+			}
+		}
+
+		return false
+	}
+
+	// Adjust the transaction index to account for the pseudo-transaction.
+	if hasPseudoTransaction(resBlock) {
+		for _, log := range logs {
+			log.TxIndex++
+		}
 	}
 
 	if res.EthTxIndex == -1 {
