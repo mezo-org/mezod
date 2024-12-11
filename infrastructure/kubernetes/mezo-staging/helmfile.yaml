@@ -28,7 +28,7 @@ releases:
     installed: true
     namespace: default
     chart: mezo-org/mezod
-    version: 0.0.4
+    version: 0.0.6
     values:
       - ./values/mezo-node-common.yaml
       - ./values/mezo-node-4.yaml
