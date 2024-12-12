@@ -226,6 +226,11 @@ which accepts a path for the resulting pprof file.
 	cmd.Flags().String(srvflags.EthereumSidecarServerAddress, config.DefaultEthereumSidecarServerAddress, "Address of the Ethereum sidecar server")
 	cmd.Flags().Duration(srvflags.EthereumSidecarRequestTimeout, config.DefaultEthereumSidecarRequestTimeout, "Timeout for requests to the Ethereum sidecar server")
 
+	cmd.Flags().Bool(srvflags.ConnectOracleEnabled, config.DefaultConnectOracleEnabled, "Enable the Connect oracle")
+	cmd.Flags().String(srvflags.ConnectOracleAddress, config.DefaultConnectOracleAddress, "Address of the Connect oracle sidecar")
+	cmd.Flags().Duration(srvflags.ConnectOracleClientTimeout, config.DefaultConnectOracleClientTimeout, "Time to wait for a response from the Connect oracle sidecar")
+	cmd.Flags().Bool(srvflags.ConnectOracleMetricsEnabled, config.DefaultConnectOracleMetricsEnabled, "Enable metrics for the Connect oracle")
+
 	// add support for all Tendermint-specific command line options
 	tcmd.AddNodeFlags(cmd)
 	return cmd
