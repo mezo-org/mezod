@@ -92,6 +92,20 @@ const (
 
 	// DefaultEthereumSidecarRequestTimeout is the default timeout for requests to the Ethereum sidecar server.
 	DefaultEthereumSidecarRequestTimeout = 5 * time.Second
+
+	// DefaultConnectOracleEnabled is the default value indicating whether the oracle is enabled.
+	DefaultConnectOracleEnabled = true
+
+	// DefaultConnectOracleAddress is the default address of the oracle sidecar.
+	DefaultConnectOracleAddress = "localhost:8080"
+
+	// DefaultConnectOracleClientTimeout is the default time that the client is
+	// willing to wait for responses from the oracle sidecar before timing out.
+	DefaultConnectOracleClientTimeout = 2 * time.Second
+
+	// DefaultConnectOracleMetricsEnabled is the default value indicating
+	// whether the oracle metrics are enabled.
+	DefaultConnectOracleMetricsEnabled = true
 )
 
 var evmTracers = []string{"json", "markdown", "struct", "access_list"}
@@ -234,10 +248,10 @@ func DefaultEVMConfig() *EVMConfig {
 
 func DefaultOracleConfig() *oracleconfig.AppConfig {
 	return &oracleconfig.AppConfig{
-		Enabled:        true,
-		OracleAddress:  "localhost:8080",
-		ClientTimeout:  time.Second * 2,
-		MetricsEnabled: true,
+		Enabled:        DefaultConnectOracleEnabled,
+		OracleAddress:  DefaultConnectOracleAddress,
+		ClientTimeout:  DefaultConnectOracleClientTimeout,
+		MetricsEnabled: DefaultConnectOracleMetricsEnabled,
 	}
 }
 
