@@ -38,7 +38,7 @@ type Fork struct {
 	// Upgrade version name, for the upgrade handler, e.g. `v2`.
 	UpgradeName string
 	// UpgradeHeight the upgrade occurs at.
-	UpgradeHeight int64
+	UpgradeHeight func(chainID string) int64
 	// BeginForkLogic runs some custom state transition code at the
 	// beginning of a fork.
 	BeginForkLogic func(sdk.Context, *Keepers)

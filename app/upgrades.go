@@ -1,21 +1,24 @@
 package app
 
 import (
-	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"fmt"
+
+	upgradetypes "cosmossdk.io/x/upgrade/types"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/app/upgrades"
+	"github.com/mezo-org/mezod/app/upgrades/v0_3"
 )
 
 var (
 	Upgrades = []upgrades.Upgrade{}
-	Forks    = []upgrades.Fork{}
+	Forks    = []upgrades.Fork{v0_3.Fork}
 )
 
 // BeginBlockForks is intended to be run in a chain upgrade.
 func (app *Mezo) beginBlockForks(ctx sdk.Context) {
 	for _, fork := range Forks {
-		if ctx.BlockHeight() == fork.UpgradeHeight {
+		if ctx.BlockHeight() == fork.UpgradeHeight(ctx.ChainID()) {
 			fork.BeginForkLogic(ctx, app.GetKeepers())
 			return
 		}
@@ -61,6 +64,7 @@ func (app *Mezo) setupUpgradeStoreLoaders() {
 	}
 }
 
+//nolint:all
 func (app *Mezo) customPreUpgradeHandler(upgradeInfo upgradetypes.Plan) {
 	switch upgradeInfo.Name {
 	default:
