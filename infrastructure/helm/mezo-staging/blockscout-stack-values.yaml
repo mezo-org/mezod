@@ -37,12 +37,12 @@ blockscout:
       memory: 4096Mi
   env:
     ETHEREUM_JSONRPC_VARIANT: geth
-    ETHEREUM_JSONRPC_HTTP_URL: http://mezo-node-0.default.svc.cluster.local:8545
-    ETHEREUM_JSONRPC_WS_URL: ws://mezo-node-0.default.svc.cluster.local:8546
-    ETHEREUM_JSONRPC_TRACE_URL: http://mezo-node-0.default.svc.cluster.local:8545
-    ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: http://mezo-node-1.default.svc.cluster.local:8545
-    ETHEREUM_JSONRPC_FALLBACK_WS_URL: ws://mezo-node-1.default.svc.cluster.local:8546
-    ETHEREUM_JSONRPC_FALLBACK_TRACE_URL: http://mezo-node-1.default.svc.cluster.local:8545
+    ETHEREUM_JSONRPC_HTTP_URL: http://public-mezo-node-0.default.svc.cluster.local:8545
+    ETHEREUM_JSONRPC_WS_URL: ws://public-mezo-node-0.default.svc.cluster.local:8546
+    ETHEREUM_JSONRPC_TRACE_URL: http://public-mezo-node-0.default.svc.cluster.local:8545
+    ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: http://public-mezo-node-1.default.svc.cluster.local:8545
+    ETHEREUM_JSONRPC_FALLBACK_WS_URL: ws://public-mezo-node-1.default.svc.cluster.local:8546
+    ETHEREUM_JSONRPC_FALLBACK_TRACE_URL: http://public-mezo-node-1.default.svc.cluster.local:8545
     NETWORK: Mezo
     SUBNETWORK: Testnet
     BLOCKSCOUT_PROTOCOL: https

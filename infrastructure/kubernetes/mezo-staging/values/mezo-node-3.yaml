@@ -1,0 +1,36 @@
+image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/mezod
+# tag: v0.2.0-rc1 # use version from chart
+
+env:
+  NETWORK: testnet
+  PUBLIC_IP: "34.170.77.124" # mezo-staging-node-3-external-ip
+  MEZOD_MONIKER: "mezo-node-3"
+
+secret: "mezo-node-3" # created manually
+
+storage:
+  className: "premium-rwo"
+  size: "100Gi"
+  useDataSource:
+    enabled: true
+    apiGroup: ""
+    kind: PersistentVolumeClaim
+    name: "mezo-node-data-mezo-node-3-0"
+
+service:
+  public:
+    loadBalancerIP: "34.170.77.124" # same as PUBLIC_IP
+
+labels:
+  app: mezo
+  type: node
+  id: "3"
+
+maintenanceMode: false
+
+customConfigs:
+  enabled: true
+  appTomlTxt: ""
+  clientTomlTxt: ""
+  configTomlTxt: |
+    p2p.seeds=2d4e0216da0d1ec18655d9588df21319025efab0@mezo-node-0.test.mezo.org:26656,eedead51f768b908e6ae068e5a8cda6236774010@mezo-node-1.test.mezo.org:26656,84805b6cb9c86673c1f1685f08f0276ea02ce814@mezo-node-2.test.mezo.org:26656,deb793b789da8ff3e995f77fa47a7a50e0b2ea97@mezo-node-3.test.mezo.org:26656,8b041c159d6b981db56ffb9a3c1fda468f51407b@mezo-node-4.test.mezo.org:26656,eb0211caf3254262b275492492f9cd9fa21063fc@35.209.7.223:26656,643a437a7492370d588ea4246dd9345afd97c6af@35.209.252.61:26656,eb0211caf3254262b275492492f9cd9fa21063fc@35.209.7.223:26656,643a437a7492370d588ea4246dd9345afd97c6af@35.209.252.61:26656
