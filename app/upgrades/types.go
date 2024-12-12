@@ -16,6 +16,8 @@ import (
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
 	feemarketkeeper "github.com/mezo-org/mezod/x/feemarket/keeper"
 	poakeeper "github.com/mezo-org/mezod/x/poa/keeper"
+	marketmapkeeper "github.com/skip-mev/connect/v2/x/marketmap/keeper"
+	oraclekeeper "github.com/skip-mev/connect/v2/x/oracle/keeper"
 )
 
 // Upgrade defines a struct containing necessary fields that a SoftwareUpgradeProposal
@@ -57,4 +59,6 @@ type Keepers struct {
 	EvmKeeper             *evmkeeper.Keeper
 	FeeMarketKeeper       feemarketkeeper.Keeper
 	BridgeKeeper          bridgekeeper.Keeper
+	OracleKeeper          oraclekeeper.Keeper
+	MarketMapKeeper       marketmapkeeper.Keeper
 }

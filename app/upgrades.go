@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	Upgrades = []upgrades.Upgrade{}
+	Upgrades = []upgrades.Upgrade{v0_3.Upgrade}
 	Forks    = []upgrades.Fork{v0_3.Fork}
 )
 
@@ -86,5 +86,7 @@ func (app *Mezo) GetKeepers() *upgrades.Keepers {
 		EvmKeeper:             app.EvmKeeper,
 		FeeMarketKeeper:       app.FeeMarketKeeper,
 		BridgeKeeper:          app.BridgeKeeper,
+		OracleKeeper:          app.OracleKeeper,
+		MarketMapKeeper:       app.MarketMapKeeper,
 	}
 }

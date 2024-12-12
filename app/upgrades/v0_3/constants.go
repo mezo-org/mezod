@@ -2,8 +2,11 @@
 package v0_3
 
 import (
+	store "cosmossdk.io/store/types"
 	"github.com/mezo-org/mezod/app/upgrades"
 	"github.com/mezo-org/mezod/utils"
+	marketmaptypes "github.com/skip-mev/connect/v2/x/marketmap/types"
+	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 )
 
 const (
@@ -29,4 +32,15 @@ var Fork = upgrades.Fork{
 	UpgradeName:    UpgradeName,
 	UpgradeHeight:  upgradeHeight,
 	BeginForkLogic: RunForkLogic,
+}
+
+var Upgrade = upgrades.Upgrade{
+	UpgradeName:          UpgradeName,
+	CreateUpgradeHandler: CreateUpgradeHandler,
+	StoreUpgrades: store.StoreUpgrades{
+		Added: []string{
+			marketmaptypes.StoreKey,
+			oracletypes.StoreKey,
+		},
+	},
 }
