@@ -98,6 +98,8 @@ customize_configuration() {
   #
   mezod toml set "$APP_CONFIG_FILE" \
     -v "ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_SERVER:-ethereum-sidecar:7500}" \
+    -v "oracle.oracle_address=${MEZOD_ORACLE_ORACLE_ADDRESS:-connect-sidecar:8080}" \
+    -v "oracle.enabled=true" \
     -v "api.enable=true" \
     -v "api.address=tcp://0.0.0.0:1317" \
     -v "grpc.enable=true" \
