@@ -9,12 +9,12 @@ created by the corresponding [Terraform module](./../../terraform/mezo-staging/R
   corresponding Terraform module (make sure GKE version is >=1.29)
 - `gcloud` installed and authorized to access the `mezo-staging` GCP project
 - `kubectl` tool installed
-- If `generate-mezo-node-keystore.sh` script is used, testnet artifacts
-  must be present in the `.public-testnet` directory (see `scripts/public-testnet.sh`)
+- `helm` tool installed
+- `helmfile` tool installed (run `helmfile init` to install required Helm plugins)
 
 ### Authentication
 
-Use `gcloud` to get credentials for the cluster and automatically 
+Use `gcloud` to get credentials for the cluster and automatically
 configure `kubectl`:
 
 ```shell
@@ -22,79 +22,65 @@ gcloud container clusters get-credentials mezo-staging-gke-cluster --region=us-c
 ```
 
 Verify that everything went as expected and `kubectl` points to the correct cluster:
-```shell 
-kubectl config current-context
-```
-
-### Config maps
-
-Testnet artifacts are ported to the Kubernetes cluster as config maps:
-- `mezo-node-config`: Config map holding the three configuration files
-  `app.toml`, `client.toml`, and `config.toml` consumed by Mezo validators. 
-  This is a common config map re-used by all Mezo validators forming the initial set.
-- `mezo-genesis-config`: Config map storing the genesis file necessary to 
-  bootstrap the Mezo test chain. It is common for all Mezo validators.
-
-Use `kubectl` to create the config maps or apply changes:
 ```shell
-kubectl apply -f mezo-<name>-config.yaml
+kubectl config current-context
 ```
 
 ### Secrets
 
 Sensitive testnet artifacts like private keys are ported to the Kubernetes
-cluster as secrets:
-- `mezo-node-<index>-keystore`: Secrets storing all private keys 
-  (for different layers of the Cosmos SDK stack) used by Mezo validators. 
-  Each secret is validator-specific. This secret is not defined directly as a k8s manifest. 
-  Custom `generate-mezo-node-keystore.sh` script is used to inject those secrets 
-  directly into the Kubernetes cluster.
+cluster as secrets: `mezo-node-<index>`. Each validator requires a separate
+secret containing the following keys:
+- `ETHEREUM_ENDPOINT`
+- `KEYRING_MNEMONIC`
+- `KEYRING_NAME`
+- `KEYRING_PASSWORD`
+
+These keys are used in the environment variables of the Mezo node. They must
+be created before deploying the Mezo validators. Use `kubectl` to create the
+secrets or apply changes (example for `mezo-node-0`):
+```shell
+kubectl create secret generic mezo-node-0 \
+  -n default \
+  --from-literal=ETHEREUM_ENDPOINT="wss://<provide_ethereum_endpoint>" \
+  --from-literal=KEYRING_NAME=mezo-node-0 \
+  --from-literal=KEYRING_PASSWORD="<provide_password>" \
+  --from-literal=KEYRING_MNEMONIC="<provide_mnemonic>"
+```
 
 ### Stateful sets
 
-Initial Mezo validators were defined as Kubernetes `mezo-node-<index>` stateful sets. 
-They mount the aforementioned config maps and secrets as volumes and map their 
-content to specific files expected by the Mezo node binary. Moreover, 
-each validator uses a persistent volume to hold their validator state.
+Initial Mezo validators are defined as Kubernetes `mezo-node-<index>` stateful sets using Helmfile.
+They mount the aforementioned secret. Moreover, each validator uses a persistent volume to hold their validator state.
 
-Each stateful set uses the `mezo-node` Docker image from the `mezo-staging-docker-internal`
-Docker registry created by the `mezo-staging` Terraform module.
-
-All Mezo validators are exposed publicly using external load balancers 
-pinned to `mezo-staging-node-<index>-external-ip` static IPs created by 
-the `mezo-staging` Terraform module.
-
-Use `kubectl` to create the stateful sets (and services) or apply changes:
+To deploy the Mezo validators using Helmfile, run the following command:
 ```shell
-kubectl apply -f mezo-node-<index>.yaml
+helmfile apply -i -l name=mezo-node-0
 ```
 
-### Stateless deployments
+Each stateful set uses Docker image from the `mezo-staging-docker-internal`
+Docker registry created by the `mezo-staging` Terraform module.
 
-In addition to the Mezo validators, the `mezo-staging` cluster hosts the following 
-stateless deployments:
-- `ethereum-sidecar`: A sidecar process being the BTC bridge's pillar on Ethereum. 
-  It listens to `AssetsLocked` events emitted by the `BitcoinBridge` contract
-  and exposes them to the Mezo validators via a gRPC API. It uses the same
-  Docker image as the validators but is started with a different CLI command.
-  It is exposed through a ClusterIP service so, only cluster resources can access it.
+All Mezo validators are exposed publicly using external load balancers
+pinned to `mezo-staging-node-<index>-external-ip` static IPs created by
+the `mezo-staging` Terraform module.
 
 ### Ingresses
 
 `mezo-staging` defines two ingress resources:
-- `mezo-rpc` exposing the Mezo JSON-RPC API over HTTP. It is pinned to the 
+- `mezo-rpc` exposing the Mezo JSON-RPC API over HTTP. It is pinned to the
   `mezo-staging-rpc-external-ip` static global IP and uses `mezo-staging-rpc-ssl-certificate`
   SSL certificate, both created by the `mezo-staging` Terraform module.
   This ingress hits the 8545 port of the `mezo-rpc` Kubernetes service which
   load balances the requests to the Mezo nodes deployed on the cluster.
-- `mezo-rpc-ws` exposing the Mezo JSON-RPC API over WebSockets. It is pinned 
-  to the `mezo-staging-rpc-ws-external-ip` static global IP and uses 
-  `mezo-staging-rpc-ws-ssl-certificate` SSL certificate, both created by the 
-  `mezo-staging` Terraform module. This ingress hits the 8546 port of the `mezo-rpc` 
-  Kubernetes service which load balances the requests to the Mezo nodes deployed 
-  on the cluster. The WebSocket endpoint is deployed under a separate domain, 
-  not as a custom path of the HTTP endpoint due to the limitations of the 
-  default GCP ingress controller (gce). A custom path would have to be rewritten 
+- `mezo-rpc-ws` exposing the Mezo JSON-RPC API over WebSockets. It is pinned
+  to the `mezo-staging-rpc-ws-external-ip` static global IP and uses
+  `mezo-staging-rpc-ws-ssl-certificate` SSL certificate, both created by the
+  `mezo-staging` Terraform module. This ingress hits the 8546 port of the `mezo-rpc`
+  Kubernetes service which load balances the requests to the Mezo nodes deployed
+  on the cluster. The WebSocket endpoint is deployed under a separate domain,
+  not as a custom path of the HTTP endpoint due to the limitations of the
+  default GCP ingress controller (gce). A custom path would have to be rewritten
   to `/` being the base path of the JSON-RPC API. However, the default
   GCP ingress controller does not support path rewriting.
-  
+
