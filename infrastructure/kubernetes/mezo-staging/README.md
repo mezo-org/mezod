@@ -10,7 +10,7 @@ created by the corresponding [Terraform module](./../../terraform/mezo-staging/R
 - `gcloud` installed and authorized to access the `mezo-staging` GCP project
 - `kubectl` tool installed
 - `helm` tool installed
-- `helmfile` tool installed
+- `helmfile` tool installed (run `helmfile init` to install required Helm plugins)
 
 ### Authentication
 
