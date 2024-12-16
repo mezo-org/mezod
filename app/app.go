@@ -33,6 +33,7 @@ import (
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
 
@@ -535,6 +536,8 @@ func NewMezo(
 	// Connect ABCI initialization requires the oracle client/metrics to be setup first.
 	app.setABCIExtensions(ethereumSidecarClient)
 
+	app.setupUpgradeHandlers()
+
 	if loadLatest {
 		if err := app.LoadLatestVersion(); err != nil {
 			tmos.Exit(err.Error())
@@ -595,6 +598,7 @@ func (app *Mezo) PreBlocker(
 }
 
 func (app *Mezo) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+	app.beginBlockForks(ctx)
 	return app.mm.BeginBlock(ctx)
 }
 
@@ -932,9 +936,17 @@ func customEvmPrecompiles(
 	}
 	maintenanceVersionMap := precompile.NewSingleVersionMap(maintenancePrecompile)
 
+	// Bridge precompile.
+	assetsBridgePrecompile, err := assetsbridge.NewPrecompile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create assets bridge precompile: [%w]", err)
+	}
+	assetsBridgeVersionMap := precompile.NewSingleVersionMap(assetsBridgePrecompile)
+
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
 		maintenanceVersionMap,
+		assetsBridgeVersionMap,
 	}, nil
 }

@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/mezo-org/mezod/indexer"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
@@ -171,8 +172,33 @@ func (b *Backend) GetBlockTransactionCount(block *tmrpctypes.ResultBlock) *hexut
 		return nil
 	}
 
+	// The number of pseudo-transactions. Notice that we only count pseudo-
+	// transactions saved during indexing. If a pseudo-transaction was not saved
+	// (e.g. because it did not contain any information) we should not count it.
+	numPseudoTxs := 0
+
+	// The transaction at index `0` can be a pseudo-transaction. We need to
+	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
+	// transaction, it is still possible that it did not contain any events and
+	// was skipped during indexing.
+	if len(block.Block.Txs) > 0 {
+		tx := block.Block.Txs[0]
+		txHash := common.BytesToHash(tx.Hash())
+		res, err := b.GetTxByEthHash(txHash)
+		if err == nil {
+			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+				// The transaction was saved during indexing. We should add it to
+				// the transaction count.
+				numPseudoTxs = 1
+			}
+		}
+	}
+
+	// Notice that a pseudo-transaction (if present) will be skipped by the
+	// `EthMsgsFromTendermintBlock` function below. We do not have to worry
+	// about such a transaction being counted twice.
 	ethMsgs := b.EthMsgsFromTendermintBlock(block, blockRes)
-	n := hexutil.Uint(len(ethMsgs))
+	n := hexutil.Uint(numPseudoTxs + len(ethMsgs))
 	return &n
 }
 
@@ -398,6 +424,41 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		b.logger.Error("failed to fetch Base Fee from prunned block. Check node prunning configuration", "height", block.Height, "error", err)
 	}
 
+	// Information on whether the block contains a non-empty pseudo-transaction
+	// with bridging information.
+	hasPseudoTransaction := false
+
+	// The transaction at index `0` can be a pseudo-transaction. We need to
+	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
+	// transaction, it is still possible that it did not contain any events and
+	// was skipped during indexing.
+	if len(block.Txs) > 0 {
+		tx := block.Txs[0]
+		txHash := common.BytesToHash(tx.Hash())
+		res, err := b.GetTxByEthHash(txHash)
+		if err == nil {
+			// The transaction was saved during indexing.
+			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+				// The transaction was a pseudo-transaction containing events.
+				// Include the transaction in the command result.
+				pseudoTx, err := b.getPseudoTransaction(res, resBlock)
+				if err != nil {
+					b.logger.Debug("failed to get pseudo-transaction", "hash", txHash, "error", err.Error())
+				} else {
+					if !fullTx {
+						ethRPCTxs = append(ethRPCTxs, pseudoTx.Hash)
+					} else {
+						ethRPCTxs = append(ethRPCTxs, pseudoTx)
+					}
+					hasPseudoTransaction = true
+				}
+			}
+		}
+	}
+
+	// Notice that a pseudo-transaction (if present) will be skipped by the
+	// `EthMsgsFromTendermintBlock` function below. We do not have to worry
+	// about such a transaction being included twice in the command result.
 	msgs := b.EthMsgsFromTendermintBlock(resBlock, blockRes)
 	for txIndex, ethMsg := range msgs {
 		if !fullTx {
@@ -409,6 +470,14 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		tx := ethMsg.AsTransaction()
 		height := uint64(block.Height) //#nosec G701 -- checked for int overflow already
 		index := uint64(txIndex)       //#nosec G701 -- checked for int overflow already
+
+		// If there is a pseudo-transaction present in the block, we need to
+		// increase the index by `1` as the pseudo-transaction should be
+		// considered the first transaction in the block.
+		if hasPseudoTransaction {
+			index = uint64(txIndex) + 1
+		}
+
 		rpcTx, err := rpctypes.NewRPCTransaction(
 			tx,
 			common.BytesToHash(block.Hash()),

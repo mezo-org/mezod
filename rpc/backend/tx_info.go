@@ -30,8 +30,11 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/mezo-org/mezod/indexer"
+	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/abci/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
 )
@@ -48,6 +51,11 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 	block, err := b.TendermintBlockByNumber(rpctypes.BlockNumber(res.Height))
 	if err != nil {
 		return nil, err
+	}
+
+	// Special case for pseudo-transactions containing bridging information.
+	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+		return b.getPseudoTransaction(res, block)
 	}
 
 	tx, err := b.clientCtx.TxConfig.TxDecoder()(block.Block.Txs[res.TxIndex])
@@ -101,6 +109,71 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 		baseFee,
 		b.chainID,
 	)
+}
+
+func (b *Backend) getPseudoTransaction(
+	txResult *types.TxResult,
+	blockResult *tmrpctypes.ResultBlock,
+) (
+	*rpctypes.RPCTransaction,
+	error,
+) {
+	blockHash := common.BytesToHash(blockResult.BlockID.Hash.Bytes())
+	blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(txResult.Height)))
+	to := common.HexToAddress(assetsbridge.EvmAddress)
+	index := hexutil.Uint64(txResult.EthTxIndex)
+	chainID := (*hexutil.Big)(b.chainID)
+	zero := (*hexutil.Big)(new(big.Int).SetUint64(0))
+
+	tx := blockResult.Block.Txs[txResult.TxIndex]
+	txHash := common.BytesToHash(tx.Hash())
+
+	// Skip the descriptor byte.
+	serializedEvents := txResult.ExtraData[1:]
+
+	// Unmarshal the serialized event.
+	var bridgeTx bridgetypes.InjectedTx
+	b.clientCtx.Codec.MustUnmarshal(serializedEvents, &bridgeTx)
+
+	events := make([]assetsbridge.AssetsLockedEvent, 0, len(bridgeTx.AssetsLockedEvents))
+	for _, event := range bridgeTx.AssetsLockedEvents {
+		accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to convert Mezo address to account address: [%w]",
+				err,
+			)
+		}
+
+		recipient := common.BytesToAddress(accAddress)
+
+		events = append(events, assetsbridge.AssetsLockedEvent{
+			SequenceNumber: event.Sequence.BigInt(),
+			Recipient:      recipient,
+			TBTCAmount:     event.Amount.BigInt(),
+		})
+	}
+
+	// Pack the events to an input of the precompile's `bridge` function.
+	input, err := assetsbridge.PackEventsToInput(events)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare input: [%w]", err)
+	}
+
+	return &rpctypes.RPCTransaction{
+		BlockHash:        &blockHash,
+		BlockNumber:      blockNumber,
+		GasPrice:         zero,
+		GasFeeCap:        zero,
+		GasTipCap:        zero,
+		Hash:             txHash,
+		Input:            input,
+		To:               &to,
+		Type:             2,
+		TransactionIndex: &index,
+		Value:            zero,
+		ChainID:          chainID,
+	}, nil
 }
 
 // getTransactionByHashPending find pending tx from mempool
@@ -167,6 +240,12 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		b.logger.Debug("block not found", "height", res.Height, "error", err.Error())
 		return nil, nil
 	}
+
+	// Special case for pseudo-transactions containing bridging information.
+	if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+		return b.getPseudoTransactionReceipt(hash, res, resBlock), nil
+	}
+
 	tx, err := b.clientCtx.TxConfig.TxDecoder()(resBlock.Block.Txs[res.TxIndex])
 	if err != nil {
 		b.logger.Debug("decoding failed", "error", err.Error())
@@ -209,9 +288,39 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 
 	// parse tx logs from events
 	msgIndex := int(res.MsgIndex) // #nosec G701 -- checked for int overflow already
+
 	logs, err := TxLogsFromEvents(blockRes.TxsResults[res.TxIndex].Events, msgIndex)
 	if err != nil {
 		b.logger.Debug("failed to parse logs", "hash", hexTx, "error", err.Error())
+	}
+
+	hasPseudoTransaction := func(resBlock *tmrpctypes.ResultBlock) bool {
+		if resBlock == nil || resBlock.Block == nil {
+			return false
+		}
+
+		// Check if the block's first transaction is a pseudo-transaction.
+		if len(resBlock.Block.Txs) > 0 {
+			tx := resBlock.Block.Txs[0]
+			txHash := common.BytesToHash(tx.Hash())
+			res, err := b.GetTxByEthHash(txHash)
+			if err == nil {
+				if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+					// The transaction was saved during indexing. The block
+					// contains a pseudo-transaction with bridging info.
+					return true
+				}
+			}
+		}
+
+		return false
+	}
+
+	// Adjust the transaction index to account for the pseudo-transaction.
+	if hasPseudoTransaction(resBlock) {
+		for _, log := range logs {
+			log.TxIndex++
+		}
 	}
 
 	if res.EthTxIndex == -1 {
@@ -274,6 +383,37 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 	}
 
 	return receipt, nil
+}
+
+// getPseudoTransactionReceipt creates a receipt for a pseudo-transaction
+// with bridging info.
+func (b *Backend) getPseudoTransactionReceipt(
+	txHash common.Hash,
+	txResult *types.TxResult,
+	blockResult *tmrpctypes.ResultBlock,
+) map[string]interface{} {
+	return map[string]interface{}{
+		// Consensus fields.
+		"status":            hexutil.Uint(ethtypes.ReceiptStatusSuccessful),
+		"cumulativeGasUsed": hexutil.Uint64(0),
+		"logsBloom":         ethtypes.Bloom{},
+		"logs":              []*ethtypes.Log{},
+
+		// Implementation fields
+		"transactionHash": txHash,
+		"contractAddress": nil,
+		"gasUsed":         hexutil.Uint64(0),
+
+		// Inclusion information.
+		"blockHash":        common.BytesToHash(blockResult.Block.Header.Hash()).Hex(),
+		"blockNumber":      hexutil.Uint64(txResult.Height),
+		"transactionIndex": hexutil.Uint64(txResult.EthTxIndex),
+
+		// Sender and receiver (contract or EOA) addresses.
+		"from": common.Address{},
+		"to":   common.HexToAddress(assetsbridge.EvmAddress),
+		"type": hexutil.Uint(0),
+	}
 }
 
 // GetTransactionByBlockHashAndIndex returns the transaction identified by hash and index.
@@ -394,6 +534,11 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 	// find in tx indexer
 	res, err := b.GetTxByTxIndex(block.Block.Height, uint(idx))
 	if err == nil {
+		// Special case for pseudo-transactions containing bridging information.
+		if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
+			return b.getPseudoTransaction(res, block)
+		}
+
 		tx, err := b.clientCtx.TxConfig.TxDecoder()(block.Block.Txs[res.TxIndex])
 		if err != nil {
 			b.logger.Debug("invalid ethereum tx", "height", block.Block.Header, "index", idx)
