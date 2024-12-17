@@ -10,13 +10,8 @@ terraform {
       version = "5.25.0"
     }
 
-    helm = {
-      source = "hashicorp/helm"
-      version = "2.13.2"
-    }
-
     archive = {
-      source = "hashicorp/archive"
+      source  = "hashicorp/archive"
       version = "2.6.0"
     }
   }
