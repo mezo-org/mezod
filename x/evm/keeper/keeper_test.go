@@ -188,7 +188,8 @@ func (suite *KeeperTestSuite) TestGetAccountOrEmpty() {
 
 func (suite *KeeperTestSuite) TestCustomPrecompileGenesisAccounts() {
 	accounts := suite.app.EvmKeeper.CustomPrecompileGenesisAccounts()
-	suite.Require().Equal(len(accounts), 2)
+	suite.Require().Equal(len(accounts), 3)
 	suite.Require().Equal(accounts[0].Address, "0x7b7C000000000000000000000000000000000000")
 	suite.Require().Equal(accounts[1].Address, "0x7B7C000000000000000000000000000000000011")
+	suite.Require().Equal(accounts[2].Address, "0x7B7C000000000000000000000000000000000012")
 }

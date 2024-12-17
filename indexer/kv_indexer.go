@@ -30,7 +30,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 
+	apptypes "github.com/mezo-org/mezod/app/abci/types"
 	mezotypes "github.com/mezo-org/mezod/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/abci/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -40,6 +42,11 @@ const (
 
 	// TxIndexKeyLength is the length of tx-index key
 	TxIndexKeyLength = 1 + 8 + 8
+
+	// BridgingInfoDescriptor is the descriptor indicating that the `ExtraData`
+	// field of the `TxResult` contains bridging information (serialized
+	// `AssetsLocked` events).
+	BridgingInfoDescriptor = 1
 )
 
 var _ mezotypes.EVMTxIndexer = &KVIndexer{}
@@ -67,9 +74,61 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 	batch := kv.db.NewBatch()
 	defer batch.Close()
 
+	// information on whether the block contains a non-empty pseudo-transaction
+	// with bridging information
+	hasPseudoTransaction := false
+
 	// record index of valid eth tx during the iteration
 	var ethTxIndex int32
 	for txIndex, tx := range block.Txs {
+		if txIndex == 0 {
+			// Assume the transaction at index `0` is a pseudo-transaction
+			// containing bridging information. Save it if it is indeed
+			// a pseudo-transaction and it contains `AssetsLocked` events.
+			// If for some reason it is not a pseudo-transaction, handle it
+			// like other transactions. Notice that if a pseudo-transaction is
+			// present in a block, it is always at index `0`.
+			txHash := common.BytesToHash(tx.Hash())
+
+			injectedTx, isPseudoTx := kv.parsePseudoTransaction(tx)
+
+			if isPseudoTx {
+				if injectedTx == nil || len(injectedTx.AssetsLockedEvents) == 0 {
+					// Skip saving the pseudo-transaction as it does not contain
+					// any `AssetsLocked` events.
+					continue
+				}
+
+				serializedTx := kv.clientCtx.Codec.MustMarshal(injectedTx)
+
+				extraData := append(
+					[]byte{BridgingInfoDescriptor},
+					serializedTx...,
+				)
+
+				txResult := mezotypes.TxResult{
+					Height:     height,
+					TxIndex:    uint32(txIndex),
+					EthTxIndex: ethTxIndex,
+					ExtraData:  extraData,
+				}
+
+				ethTxIndex++
+
+				if err := saveTxResult(
+					kv.clientCtx.Codec,
+					batch,
+					txHash,
+					&txResult,
+				); err != nil {
+					return errorsmod.Wrapf(err, "IndexBlock %d", height)
+				}
+
+				hasPseudoTransaction = true
+				continue
+			}
+		}
+
 		result := txResults[txIndex]
 		if !rpctypes.TxSuccessOrExceedsBlockGasLimit(result) {
 			continue
@@ -113,7 +172,21 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 					kv.logger.Error("msg index not found in events", "msgIndex", msgIndex)
 					continue
 				}
-				if parsedTx.EthTxIndex >= 0 && parsedTx.EthTxIndex != ethTxIndex {
+
+				// Perform ETH index check to ensure the info on used gas is
+				// taken from the proper transaction. Notice that the
+				// `parsedTx.EthTxIndex` is established within the EVM execution
+				// context which is not aware of pseudo-transactions.
+				// Therefore, if the block contains a pseudo-transaction we need
+				// subtract `1` from the `ethTxIndex` during the check.
+				var expectedEthTxIdx int32
+				if hasPseudoTransaction {
+					expectedEthTxIdx = ethTxIndex - 1
+				} else {
+					expectedEthTxIdx = ethTxIndex
+				}
+
+				if parsedTx.EthTxIndex >= 0 && parsedTx.EthTxIndex != expectedEthTxIdx {
 					kv.logger.Error("eth tx index don't match", "expect", ethTxIndex, "found", parsedTx.EthTxIndex)
 				}
 				txResult.GasUsed = parsedTx.GasUsed
@@ -133,6 +206,43 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 		return errorsmod.Wrapf(err, "IndexBlock %d, write batch", block.Height)
 	}
 	return nil
+}
+
+// parsePseudoTransaction attempts to extract bridging information from a
+// transaction. It returns an object with `AssetsLocked` events and information
+// on whether the transaction was a pseudo-transaction.
+func (kv *KVIndexer) parsePseudoTransaction(
+	tx tmtypes.Tx,
+) (*bridgetypes.InjectedTx, bool) {
+	var blockTx apptypes.InjectedTx
+
+	// If the transaction does not unmarshal, it is not a pseudo-transaction.
+	err := blockTx.Unmarshal(tx)
+	if err != nil {
+		return nil, false
+	}
+
+	// If parts at index `1` are not set, the pseudo-transaction does not hold
+	// any bridging info.
+	parts, ok := blockTx.Parts[1]
+	if !ok {
+		return nil, true
+	}
+
+	var bridgeTx bridgetypes.InjectedTx
+
+	// If parts do not unmarshal, the pseudo-transaction does not hold valid
+	// bridging info.
+	err = bridgeTx.Unmarshal(parts)
+	if err != nil {
+		return nil, true
+	}
+
+	// Since the extended commit info is not needed, set it to nil to save up
+	// space when bridge tx is stored in the database.
+	bridgeTx.ExtendedCommitInfo = nil
+
+	return &bridgeTx, true
 }
 
 // LastIndexedBlock returns the latest indexed block number, returns -1 if db is empty

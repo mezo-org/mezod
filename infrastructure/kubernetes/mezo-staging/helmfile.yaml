@@ -8,6 +8,51 @@ repositories:
     url: https://blockscout.github.io/helm-charts
 
 releases:
+  - name: mezo-node-0
+    installed: true
+    namespace: default
+    chart: mezo-org/mezod
+    version: 0.0.10
+    values:
+      - ./values/mezo-node-common.yaml
+      - ./values/mezo-node-0.yaml
+
+  - name: mezo-node-1
+    installed: true
+    namespace: default
+    chart: mezo-org/mezod
+    version: 0.0.10
+    values:
+      - ./values/mezo-node-common.yaml
+      - ./values/mezo-node-1.yaml
+
+  - name: mezo-node-2
+    installed: true
+    namespace: default
+    chart: mezo-org/mezod
+    version: 0.0.10
+    values:
+      - ./values/mezo-node-common.yaml
+      - ./values/mezo-node-2.yaml
+
+  - name: mezo-node-3
+    installed: true
+    namespace: default
+    chart: mezo-org/mezod
+    version: 0.0.10
+    values:
+      - ./values/mezo-node-common.yaml
+      - ./values/mezo-node-3.yaml
+
+  - name: mezo-node-4
+    installed: true
+    namespace: default
+    chart: mezo-org/mezod
+    version: 0.0.10
+    values:
+      - ./values/mezo-node-common.yaml
+      - ./values/mezo-node-4.yaml
+
   - name: postgresql
     installed: true
     namespace: default
@@ -23,12 +68,3 @@ releases:
     version: 1.5.0
     values:
       - ./values/blockscout-stack.yaml
-
-  - name: mezo-node-4
-    installed: true
-    namespace: default
-    chart: mezo-org/mezod
-    version: 0.0.6
-    values:
-      - ./values/mezo-node-common.yaml
-      - ./values/mezo-node-4.yaml

@@ -45,12 +45,6 @@ init_configuration() {
   echo "Configuration initialized!"
 }
 
-validate_genesis() {
-  echo "Validate genesis..."
-  mezod genesis validate --home="${MEZOD_HOME}"
-  echo "Genesis validated!"
-}
-
 customize_configuration() {
   echo "Backup original configuration..."
   test -f "${CLIENT_CONFIG_FILE}.bak" || cat "$CLIENT_CONFIG_FILE" > "${CLIENT_CONFIG_FILE}.bak"
@@ -98,6 +92,8 @@ customize_configuration() {
   #
   mezod toml set "$APP_CONFIG_FILE" \
     -v "ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_SERVER:-ethereum-sidecar:7500}" \
+    -v "oracle.oracle_address=${MEZOD_ORACLE_ORACLE_ADDRESS:-connect-sidecar:8080}" \
+    -v "oracle.enabled=true" \
     -v "api.enable=true" \
     -v "api.address=tcp://0.0.0.0:1317" \
     -v "grpc.enable=true" \
@@ -180,14 +176,12 @@ case "$1" in
     ;;
   config)
     init_configuration
-    validate_genesis
     customize_configuration
     exit 0
     ;;
   *)
     init_keyring
     init_configuration
-    validate_genesis
     customize_configuration
     init_genval
     get_validator_info

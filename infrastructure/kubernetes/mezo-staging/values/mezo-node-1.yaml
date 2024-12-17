@@ -3,10 +3,10 @@ image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/me
 
 env:
   NETWORK: testnet
-  PUBLIC_IP: "34.70.22.86" # mezo-staging-node-4-external-ip
-  MEZOD_MONIKER: "mezo-node-4"
+  PUBLIC_IP: "104.198.64.215" # mezo-staging-node-1-external-ip
+  MEZOD_MONIKER: "mezo-node-1"
 
-secret: "mezo-node-4" # created manually
+secret: "mezo-node-1" # created manually
 
 storage:
   className: "premium-rwo"
@@ -15,15 +15,15 @@ storage:
     enabled: true
     apiGroup: ""
     kind: PersistentVolumeClaim
-    name: "mezo-node-data-mezo-node-4-0"
+    name: "mezo-node-data-mezo-node-1-0"
 
 service:
   public:
-    loadBalancerIP: "34.70.22.86" # same as PUBLIC_IP
+    loadBalancerIP: "104.198.64.215" # same as PUBLIC_IP
 
 labels:
   app: mezo
   type: node
-  id: "4"
+  id: "1"
 
 maintenanceMode: false
