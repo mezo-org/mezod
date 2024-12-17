@@ -45,12 +45,6 @@ init_configuration() {
   echo "Configuration initialized!"
 }
 
-validate_genesis() {
-  echo "Validate genesis..."
-  mezod genesis validate --home="${MEZOD_HOME}"
-  echo "Genesis validated!"
-}
-
 customize_configuration() {
   echo "Backup original configuration..."
   test -f "${CLIENT_CONFIG_FILE}.bak" || cat "$CLIENT_CONFIG_FILE" > "${CLIENT_CONFIG_FILE}.bak"
@@ -182,14 +176,12 @@ case "$1" in
     ;;
   config)
     init_configuration
-    validate_genesis
     customize_configuration
     exit 0
     ;;
   *)
     init_keyring
     init_configuration
-    validate_genesis
     customize_configuration
     init_genval
     get_validator_info
