@@ -12,7 +12,9 @@ releases:
     installed: true
     namespace: default
     chart: mezo-org/mezod
-    version: 0.0.10
+    version: 1.0.0
+    labels:
+      type: validator
     values:
       - ./values/mezo-node-common.yaml
       - ./values/mezo-node-0.yaml
@@ -21,7 +23,9 @@ releases:
     installed: true
     namespace: default
     chart: mezo-org/mezod
-    version: 0.0.10
+    version: 1.0.0
+    labels:
+      type: validator
     values:
       - ./values/mezo-node-common.yaml
       - ./values/mezo-node-1.yaml
@@ -30,7 +34,9 @@ releases:
     installed: true
     namespace: default
     chart: mezo-org/mezod
-    version: 0.0.10
+    version: 1.0.0
+    labels:
+      type: validator
     values:
       - ./values/mezo-node-common.yaml
       - ./values/mezo-node-2.yaml
@@ -39,7 +45,9 @@ releases:
     installed: true
     namespace: default
     chart: mezo-org/mezod
-    version: 0.0.10
+    version: 1.0.0
+    labels:
+      type: validator
     values:
       - ./values/mezo-node-common.yaml
       - ./values/mezo-node-3.yaml
@@ -48,7 +56,9 @@ releases:
     installed: true
     namespace: default
     chart: mezo-org/mezod
-    version: 0.0.10
+    version: 1.0.0
+    labels:
+      type: validator
     values:
       - ./values/mezo-node-common.yaml
       - ./values/mezo-node-4.yaml
