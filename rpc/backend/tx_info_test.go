@@ -14,6 +14,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	apptypes "github.com/mezo-org/mezod/app/abci/types"
 	"github.com/mezo-org/mezod/indexer"
 	"github.com/mezo-org/mezod/precompile/assetsbridge"
@@ -592,10 +593,27 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 
 	txBz := suite.signAndEncodeEthTx(msgEthereumTx)
 
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxHash := common.BytesToHash(pseudoTx.Hash())
+	pseudoTxBlock := &types.Block{
+		Header: types.Header{Height: 1},
+		Data: types.Data{
+			Txs: []types.Tx{*pseudoTx},
+		},
+	}
+	pseudoTxReceipt := buildPseudoTxReceipt(pseudoTx, pseudoTxBlock)
+
 	testCases := []struct {
 		name         string
 		registerMock func()
-		tx           *evmtypes.MsgEthereumTx
+		txHash       common.Hash
 		block        *types.Block
 		blockResult  []*abci.ExecTxResult
 		expTxReceipt map[string]interface{}
@@ -614,7 +632,7 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 				_, err = RegisterBlockResults(client, 1)
 				suite.Require().NoError(err)
 			},
-			msgEthereumTx,
+			common.HexToHash(msgEthereumTx.Hash),
 			&types.Block{Header: types.Header{Height: 1}, Data: types.Data{Txs: []types.Tx{txBz}}},
 			[]*abci.ExecTxResult{
 				{
@@ -634,6 +652,33 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 			map[string]interface{}(nil),
 			false,
 		},
+		{
+			"pass - Pseudo-transaction",
+			func() {
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				_, err := RegisterBlock(client, 1, *pseudoTx)
+				suite.Require().NoError(err)
+			},
+			pseudoTxHash,
+			pseudoTxBlock,
+			[]*abci.ExecTxResult{
+				{
+					Code: 0,
+					Events: []abci.Event{
+						{Type: evmtypes.EventTypeEthereumTx, Attributes: []abci.EventAttribute{
+							{Key: "ethereumTxHash", Value: txHash.Hex()},
+							{Key: "txIndex", Value: "0"},
+							{Key: "amount", Value: "1000"},
+							{Key: "txGasUsed", Value: "21000"},
+							{Key: "txHash", Value: ""},
+							{Key: "recipient", Value: "0x775b87ef5D82ca211811C1a02CE0fE0CA3a455d7"},
+						}},
+					},
+				},
+			},
+			pseudoTxReceipt,
+			true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -646,7 +691,7 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 			err := suite.backend.indexer.IndexBlock(tc.block, tc.blockResult)
 			suite.Require().NoError(err)
 
-			txReceipt, err := suite.backend.GetTransactionReceipt(common.HexToHash(tc.tx.Hash))
+			txReceipt, err := suite.backend.GetTransactionReceipt(tc.txHash)
 			if tc.expPass {
 				suite.Require().NoError(err)
 				suite.Require().Equal(txReceipt, tc.expTxReceipt)
@@ -779,4 +824,25 @@ func buildRPCPseudoTx(
 		Value:            zero,
 		ChainID:          (*hexutil.Big)(chainID),
 	}, nil
+}
+
+func buildPseudoTxReceipt(
+	tx *types.Tx,
+	block *types.Block,
+) map[string]interface{} {
+	return map[string]interface{}{
+		"status":            hexutil.Uint(ethtypes.ReceiptStatusSuccessful),
+		"cumulativeGasUsed": hexutil.Uint64(0),
+		"logsBloom":         ethtypes.Bloom{},
+		"logs":              []*ethtypes.Log{},
+		"transactionHash":   common.BytesToHash(tx.Hash()),
+		"contractAddress":   nil,
+		"gasUsed":           hexutil.Uint64(0),
+		"blockHash":         common.BytesToHash(block.Header.Hash()).Hex(),
+		"blockNumber":       hexutil.Uint64(block.Height),
+		"transactionIndex":  hexutil.Uint64(0),
+		"from":              common.Address{},
+		"to":                common.HexToAddress(assetsbridge.EvmAddress),
+		"type":              hexutil.Uint(0),
+	}
 }
