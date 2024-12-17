@@ -11,19 +11,24 @@ import (
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cometbft/cometbft/types"
 	dbm "github.com/cosmos/cosmos-db"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	apptypes "github.com/mezo-org/mezod/app/abci/types"
 	"github.com/mezo-org/mezod/indexer"
+	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	mezotypes "github.com/mezo-org/mezod/types"
+	bridgeabcitypes "github.com/mezo-org/mezod/x/bridge/abci/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"google.golang.org/grpc/metadata"
 )
 
 func (suite *BackendTestSuite) TestGetTransactionByHash() {
 	msgEthereumTx, _ := suite.buildEthereumTx()
-	txHash := msgEthereumTx.AsTransaction().Hash()
+	ethTxHash := msgEthereumTx.AsTransaction().Hash()
 
 	txBz := suite.signAndEncodeEthTx(msgEthereumTx)
 	block := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{txBz}}}
@@ -32,7 +37,7 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 			Code: 0,
 			Events: []abci.Event{
 				{Type: evmtypes.EventTypeEthereumTx, Attributes: []abci.EventAttribute{
-					{Key: "ethereumTxHash", Value: txHash.Hex()},
+					{Key: "ethereumTxHash", Value: ethTxHash.Hex()},
 					{Key: "txIndex", Value: "0"},
 					{Key: "amount", Value: "1000"},
 					{Key: "txGasUsed", Value: "21000"},
@@ -42,13 +47,35 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 			},
 		},
 	}
+	txHash := common.HexToHash(msgEthereumTx.Hash)
 
 	rpcTransaction, _ := rpctypes.NewRPCTransaction(msgEthereumTx.AsTransaction(), common.Hash{}, 0, 0, big.NewInt(1), suite.backend.chainID)
+
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	blockWithPseudoTx := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
+
+	fmt.Println("suite.backend.chainID", suite.backend.chainID)
+	rpcPseudoTx, err := buildRPCPseudoTx(
+		event,
+		blockWithPseudoTx,
+		pseudoTx,
+		suite.backend.chainID,
+	)
+	suite.Require().NoError(err)
+	pseudoTxHash := common.BytesToHash(pseudoTx.Hash())
 
 	testCases := []struct {
 		name         string
 		registerMock func()
-		tx           *evmtypes.MsgEthereumTx
+		block        *types.Block
+		txHash       common.Hash
 		expRPCTx     *rpctypes.RPCTransaction
 		expPass      bool
 	}{
@@ -58,7 +85,8 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
 				RegisterBlockError(client, 1)
 			},
-			msgEthereumTx,
+			block,
+			txHash,
 			rpcTransaction,
 			false,
 		},
@@ -70,7 +98,8 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 				suite.Require().NoError(err)
 				RegisterBlockResultsError(client, 1)
 			},
-			msgEthereumTx,
+			block,
+			txHash,
 			nil,
 			true,
 		},
@@ -85,7 +114,8 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 				suite.Require().NoError(err)
 				RegisterBaseFeeError(queryClient)
 			},
-			msgEthereumTx,
+			block,
+			txHash,
 			rpcTransaction,
 			true,
 		},
@@ -100,8 +130,21 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 				suite.Require().NoError(err)
 				RegisterBaseFee(queryClient, sdkmath.NewInt(1))
 			},
-			msgEthereumTx,
+			block,
+			txHash,
 			rpcTransaction,
+			true,
+		},
+		{
+			"pass - Pseudo-transaction found and returned",
+			func() {
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				_, err := RegisterBlock(client, 1, *pseudoTx)
+				suite.Require().NoError(err)
+			},
+			blockWithPseudoTx,
+			pseudoTxHash,
+			rpcPseudoTx,
 			true,
 		},
 	}
@@ -113,10 +156,10 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 
 			db := dbm.NewMemDB()
 			suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-			err := suite.backend.indexer.IndexBlock(block, responseDeliver)
+			err := suite.backend.indexer.IndexBlock(tc.block, responseDeliver)
 			suite.Require().NoError(err)
 
-			rpcTx, err := suite.backend.GetTransactionByHash(common.HexToHash(tc.tx.Hash))
+			rpcTx, err := suite.backend.GetTransactionByHash(tc.txHash)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -668,4 +711,72 @@ func (suite *BackendTestSuite) TestGetGasUsed() {
 			suite.backend.cfg.JSONRPC.FixRevertGasRefundHeight = origin
 		})
 	}
+}
+
+func buildPseudoTx(event bridgetypes.AssetsLockedEvent) (*types.Tx, error) {
+	bridgeTx := bridgeabcitypes.InjectedTx{
+		AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{event},
+	}
+
+	parts, err := bridgeTx.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	var blockTx apptypes.InjectedTx
+	blockTx.Parts = map[uint32][]byte{1: parts}
+
+	tx, err := blockTx.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	result := types.Tx(tx)
+	return &result, nil
+}
+
+func buildRPCPseudoTx(
+	event bridgetypes.AssetsLockedEvent,
+	block *types.Block,
+	tx *types.Tx,
+	chainID *big.Int,
+) (*rpctypes.RPCTransaction, error) {
+	blockHash := common.BytesToHash(block.Hash())
+	blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(block.Height)))
+	index := hexutil.Uint64(0)
+	to := common.HexToAddress(assetsbridge.EvmAddress)
+	zero := (*hexutil.Big)(new(big.Int).SetUint64(0))
+
+	accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
+	if err != nil {
+		return nil, err
+	}
+	recipient := common.BytesToAddress(accAddress)
+	input, err := assetsbridge.PackEventsToInput(
+		[]assetsbridge.AssetsLockedEvent{
+			{
+				SequenceNumber: event.Sequence.BigInt(),
+				Recipient:      recipient,
+				TBTCAmount:     event.Amount.BigInt(),
+			},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rpctypes.RPCTransaction{
+		BlockHash:        &blockHash,
+		BlockNumber:      blockNumber,
+		GasFeeCap:        zero,
+		GasPrice:         zero,
+		GasTipCap:        zero,
+		Hash:             common.BytesToHash(tx.Hash()),
+		Input:            input,
+		To:               &to,
+		TransactionIndex: &index,
+		Type:             2,
+		Value:            zero,
+		ChainID:          (*hexutil.Big)(chainID),
+	}, nil
 }
