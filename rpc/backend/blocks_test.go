@@ -16,9 +16,13 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 	"google.golang.org/grpc/metadata"
 
+	"cosmossdk.io/log"
+	dbm "github.com/cosmos/cosmos-db"
+	"github.com/mezo-org/mezod/indexer"
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
 	ethrpc "github.com/mezo-org/mezod/rpc/types"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -374,6 +378,16 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByHash() {
 	block := tmtypes.MakeBlock(1, []tmtypes.Tx{bz}, nil, nil)
 	emptyBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{}, nil, nil)
 
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{*pseudoTx}, nil, nil)
+
 	testCases := []struct {
 		name         string
 		hash         common.Hash
@@ -425,6 +439,25 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByHash() {
 				height := int64(1)
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
 				_, err := RegisterBlockByHash(client, hash, bz)
+				suite.Require().NoError(err)
+				_, err = RegisterBlockResults(client, height)
+				suite.Require().NoError(err)
+			},
+			hexutil.Uint(1),
+			true,
+		},
+		{
+			"pass - block with pseudo-tx",
+			common.BytesToHash(pseudoTxBlock.Hash()),
+			func(hash common.Hash) {
+				height := int64(1)
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				// Handling pseudo-transactions only works if indexer is enabled.
+				db := dbm.NewMemDB()
+				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
+				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*types.ExecTxResult{})
+				suite.Require().NoError(err)
+				_, err = RegisterBlockByHash(client, hash, *pseudoTx)
 				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, height)
 				suite.Require().NoError(err)
