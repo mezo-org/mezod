@@ -486,6 +486,16 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByNumber() {
 	block := tmtypes.MakeBlock(1, []tmtypes.Tx{bz}, nil, nil)
 	emptyBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{}, nil, nil)
 
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{*pseudoTx}, nil, nil)
+
 	testCases := []struct {
 		name         string
 		blockNum     ethrpc.BlockNumber
@@ -538,6 +548,25 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByNumber() {
 				height := blockNum.Int64()
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
 				_, err := RegisterBlock(client, height, bz)
+				suite.Require().NoError(err)
+				_, err = RegisterBlockResults(client, height)
+				suite.Require().NoError(err)
+			},
+			hexutil.Uint(1),
+			true,
+		},
+		{
+			"pass - block with pseudo-tx",
+			ethrpc.BlockNumber(block.Height),
+			func(blockNum ethrpc.BlockNumber) {
+				height := blockNum.Int64()
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				// Handling pseudo-transactions only works if indexer is enabled.
+				db := dbm.NewMemDB()
+				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
+				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*types.ExecTxResult{})
+				suite.Require().NoError(err)
+				_, err = RegisterBlock(client, height, *pseudoTx)
 				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, height)
 				suite.Require().NoError(err)
