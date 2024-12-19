@@ -10,12 +10,14 @@ const (
 	FlagServerAddress             = "ethereum-sidecar.server.address"
 	FlagServerEthereumNodeAddress = "ethereum-sidecar.server.ethereum-node-address"
 	FlagServerNetwork             = "ethereum-sidecar.server.network"
+	FlagServerBatchSize           = "ethereum-sidecar.server.batch-size"
 )
 
 func NewFlagSetEthereumSidecar(
 	defaultServerAddress,
 	defaultServerEthereumNodeAddress,
 	defaultServerNetwork string,
+	defaultServerBatchSize uint64,
 ) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
@@ -43,6 +45,12 @@ func NewFlagSetEthereumSidecar(
 				"Possible values: mainnet | sepolia | developer "+
 				"If not set, sepolia is used by default",
 		),
+	)
+
+	fs.Uint64(
+		FlagServerBatchSize,
+		defaultServerBatchSize,
+		"Size of the block batch for fallback AssetsLocked events lookup",
 	)
 
 	return fs
