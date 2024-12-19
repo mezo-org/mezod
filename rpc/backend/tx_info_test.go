@@ -62,7 +62,6 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 	suite.Require().NoError(err)
 	blockWithPseudoTx := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
 
-	fmt.Println("suite.backend.chainID", suite.backend.chainID)
 	rpcPseudoTx, err := buildRPCPseudoTx(
 		event,
 		blockWithPseudoTx,
@@ -353,6 +352,24 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockAndIndex() {
 		big.NewInt(1),
 		suite.backend.chainID,
 	)
+
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxBlock := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
+	rpcPseudoTx, err := buildRPCPseudoTx(
+		event,
+		pseudoTxBlock,
+		pseudoTx,
+		suite.backend.chainID,
+	)
+	suite.Require().NoError(err)
+
 	testCases := []struct {
 		name         string
 		registerMock func()
@@ -419,6 +436,22 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockAndIndex() {
 			&tmrpctypes.ResultBlock{Block: defaultBlock},
 			0,
 			txFromMsg,
+			true,
+		},
+		{
+			"pass - Pseudo-transaction",
+			func() {
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				db := dbm.NewMemDB()
+				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
+				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
+				suite.Require().NoError(err)
+				_, err = RegisterBlockResults(client, 1)
+				suite.Require().NoError(err)
+			},
+			&tmrpctypes.ResultBlock{Block: pseudoTxBlock},
+			0,
+			rpcPseudoTx,
 			true,
 		},
 	}
