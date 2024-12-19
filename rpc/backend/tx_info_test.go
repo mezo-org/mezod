@@ -902,3 +902,38 @@ func buildPseudoTxReceipt(
 		"type":              hexutil.Uint(0),
 	}
 }
+
+func buildPseudoTxTrace(
+	event bridgetypes.AssetsLockedEvent,
+) (map[string]interface{}, error) {
+	zero := (*hexutil.Big)(new(big.Int).SetUint64(0))
+	to := common.HexToAddress(assetsbridge.EvmAddress)
+	accAddress, err := sdk.AccAddressFromBech32(event.Recipient)
+	if err != nil {
+		return nil, err
+	}
+	recipient := common.BytesToAddress(accAddress)
+	input, err := assetsbridge.PackEventsToInput(
+		[]assetsbridge.AssetsLockedEvent{
+			{
+				SequenceNumber: event.Sequence.BigInt(),
+				Recipient:      recipient,
+				TBTCAmount:     event.Amount.BigInt(),
+			},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"from":    common.Address{},
+		"to":      &to,
+		"type":    "CALL",
+		"gas":     zero,
+		"gasUsed": zero,
+		"input":   hexutil.Bytes(input),
+		"output":  "0x0000000000000000000000000000000000000000000000000000000000000001",
+		"failed":  false,
+	}, nil
+}
