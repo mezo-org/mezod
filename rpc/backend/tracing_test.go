@@ -241,6 +241,18 @@ func (suite *BackendTestSuite) TestTraceBlock() {
 	resBlockEmpty := tmrpctypes.ResultBlock{Block: emptyBlock, BlockID: emptyBlock.LastBlockID}
 	resBlockFilled := tmrpctypes.ResultBlock{Block: filledBlock, BlockID: filledBlock.LastBlockID}
 
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxBlock := types.MakeBlock(1, []types.Tx{*pseudoTx}, nil, nil)
+	pseudoTxBlock.ChainID = ChainID
+	resBlockPseudoTx := tmrpctypes.ResultBlock{Block: pseudoTxBlock, BlockID: pseudoTxBlock.LastBlockID}
+
 	testCases := []struct {
 		name            string
 		registerMock    func()
@@ -261,12 +273,36 @@ func (suite *BackendTestSuite) TestTraceBlock() {
 			"fail - cannot unmarshal data",
 			func() {
 				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
-				RegisterTraceBlock(queryClient, []*evmtypes.MsgEthereumTx{msgEthTx})
+				RegisterTraceBlock(queryClient, []*evmtypes.MsgEthereumTx{msgEthTx}, []byte(`{"test": "hello"}`))
 			},
 			[]*evmtypes.TxTraceResult{},
 			&resBlockFilled,
 			&evmtypes.TraceConfig{},
 			false,
+		},
+		{
+			"pass - pseudo-transaction",
+			func() {
+				db := dbm.NewMemDB()
+				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
+				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
+				suite.Require().NoError(err)
+				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+				RegisterTraceBlock(queryClient, nil, []byte(`[]`))
+			},
+			[]*evmtypes.TxTraceResult{
+				{
+					Result: map[string]interface{}{
+						"failed":      false,
+						"gas":         0,
+						"returnValue": "",
+						"structLogs":  []interface{}{},
+					},
+				},
+			},
+			&resBlockPseudoTx,
+			&evmtypes.TraceConfig{},
+			true,
 		},
 	}
 
