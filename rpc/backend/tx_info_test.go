@@ -484,6 +484,25 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 		big.NewInt(1),
 		suite.backend.chainID,
 	)
+
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxBlock := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
+
+	rpcPseudoTx, err := buildRPCPseudoTx(
+		event,
+		pseudoTxBlock,
+		pseudoTx,
+		suite.backend.chainID,
+	)
+	suite.Require().NoError(err)
+
 	testCases := []struct {
 		name         string
 		registerMock func()
@@ -517,6 +536,24 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 			0,
 			0,
 			txFromMsg,
+			true,
+		},
+		{
+			"pass - pseudo-transaction",
+			func() {
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				db := dbm.NewMemDB()
+				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
+				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
+				suite.Require().NoError(err)
+				_, err = RegisterBlock(client, 1, *pseudoTx)
+				suite.Require().NoError(err)
+				_, err = RegisterBlockResults(client, 1)
+				suite.Require().NoError(err)
+			},
+			0,
+			0,
+			rpcPseudoTx,
 			true,
 		},
 	}
@@ -694,21 +731,7 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 			},
 			pseudoTxHash,
 			pseudoTxBlock,
-			[]*abci.ExecTxResult{
-				{
-					Code: 0,
-					Events: []abci.Event{
-						{Type: evmtypes.EventTypeEthereumTx, Attributes: []abci.EventAttribute{
-							{Key: "ethereumTxHash", Value: txHash.Hex()},
-							{Key: "txIndex", Value: "0"},
-							{Key: "amount", Value: "1000"},
-							{Key: "txGasUsed", Value: "21000"},
-							{Key: "txHash", Value: ""},
-							{Key: "recipient", Value: "0x775b87ef5D82ca211811C1a02CE0fE0CA3a455d7"},
-						}},
-					},
-				},
-			},
+			[]*abci.ExecTxResult{},
 			pseudoTxReceipt,
 			true,
 		},
