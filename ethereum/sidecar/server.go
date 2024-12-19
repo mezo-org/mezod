@@ -62,15 +62,18 @@ type Server struct {
 	bitcoinBridge *abi.BitcoinBridge
 
 	chain *ethconnect.BaseChain
+
+	batchSize uint64
 }
 
 // RunServer initializes the server, starts the event observing routine and
 // starts the gRPC server.
 func RunServer(
+	logger log.Logger,
 	grpcAddress string,
 	providerURL string,
 	ethereumNetwork string,
-	logger log.Logger,
+	batchSize uint64,
 ) {
 	if gen.BitcoinBridgeAddress == "" {
 		panic(
@@ -106,6 +109,7 @@ func RunServer(
 		lastFinalizedBlock: new(big.Int),
 		bitcoinBridge:      bitcoinBridge,
 		chain:              chain,
+		batchSize:          batchSize,
 	}
 
 	go func() {
@@ -235,29 +239,24 @@ func (s *Server) processEvents(ctx context.Context) error {
 // transformed into an `AssetsLockedEvent` type compatible with the bridgetypes
 // package and added to the server's event list with mutex protection.
 func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error {
-	opts := &bind.FilterOpts{
-		Start: startBlock,
-		End:   &endBlock,
-	}
-
-	events, err := s.bitcoinBridge.FilterAssetsLocked(opts, nil, nil)
+	abiEvents, err := s.fetchABIEvents(startBlock, endBlock)
 	if err != nil {
-		return fmt.Errorf("failed to filter AssetsLocked events [%w]", err)
+		return fmt.Errorf("failed to fetch ABI events: [%w]", err)
 	}
 
+	//nolint:all
 	var bufferedEvents []bridgetypes.AssetsLockedEvent
-
-	for events.Next() {
+	for _, abiEvent := range abiEvents {
 		event := bridgetypes.AssetsLockedEvent{
-			Sequence:  sdkmath.NewIntFromBigInt(events.Event.SequenceNumber),
-			Recipient: sdk.AccAddress(events.Event.Recipient.Bytes()).String(),
-			Amount:    sdkmath.NewIntFromBigInt(events.Event.TbtcAmount),
+			Sequence:  sdkmath.NewIntFromBigInt(abiEvent.SequenceNumber),
+			Recipient: sdk.AccAddress(abiEvent.Recipient.Bytes()).String(),
+			Amount:    sdkmath.NewIntFromBigInt(abiEvent.TbtcAmount),
 		}
 		bufferedEvents = append(bufferedEvents, event)
 		s.logger.Info(
 			"finalized AssetsLocked event",
 			"sequence", event.Sequence.String(),
-			"recipient", events.Event.Recipient,
+			"recipient", abiEvent.Recipient,
 			"amount", event.Amount.String(),
 		)
 	}
@@ -291,6 +290,78 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 	s.events = append(s.events, bufferedEvents...)
 
 	return nil
+}
+
+// fetchABIEvents retrieves raw `AssetsLocked` ABI events from the BitcoinBridge
+// contract within a specified block range. The function fetches events in batches if
+// the entire range is too large to fetch at once.
+func (s *Server) fetchABIEvents(
+	startBlock uint64,
+	endBlock uint64,
+) ([]*abi.BitcoinBridgeAssetsLocked, error) {
+	s.logger.Info(
+		"fetching AssetsLocked events from range",
+		"startBlock", startBlock,
+		"endBlock", endBlock,
+	)
+
+	abiEvents := make([]*abi.BitcoinBridgeAssetsLocked, 0)
+
+	iterator, err := s.bitcoinBridge.FilterAssetsLocked(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   &endBlock,
+		}, nil, nil,
+	)
+	if err != nil {
+		s.logger.Warn(
+			"failed to fetch AssetsLocked events from the entire range; "+
+				"falling back to batched events fetch",
+			"startBlock", startBlock,
+			"endBlock", endBlock,
+			"err", err,
+		)
+
+		batchStartBlock := startBlock
+
+		for batchStartBlock <= endBlock {
+			batchEndBlock := batchStartBlock + s.batchSize
+			if batchEndBlock > endBlock {
+				batchEndBlock = endBlock
+			}
+
+			s.logger.Info(
+				"fetching a batch of AssetsLocked events from range",
+				"batchStartBlock", batchStartBlock,
+				"batchEndBlock", batchEndBlock,
+			)
+
+			batchIterator, batchErr := s.bitcoinBridge.FilterAssetsLocked(
+				&bind.FilterOpts{
+					Start: batchStartBlock,
+					End:   &batchEndBlock,
+				}, nil, nil,
+			)
+			if batchErr != nil {
+				return nil, fmt.Errorf(
+					"batched AssetsLocked fetch failed: [%w]; giving up",
+					batchErr,
+				)
+			}
+
+			for batchIterator.Next() {
+				abiEvents = append(abiEvents, batchIterator.Event)
+			}
+
+			batchStartBlock = batchEndBlock + 1
+		}
+	} else {
+		for iterator.Next() {
+			abiEvents = append(abiEvents, iterator.Event)
+		}
+	}
+
+	return abiEvents, nil
 }
 
 // startGRPCServer starts the gRPC server and registers the Ethereum sidecar
