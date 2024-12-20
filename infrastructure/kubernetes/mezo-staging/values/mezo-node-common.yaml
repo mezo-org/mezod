@@ -23,7 +23,6 @@ service:
       evm-metrics: 6065
       comet-metrics: 26660
 
-# priorityClassName: "" # not used
 customConfigs:
   enabled: false
   appTomlTxt: ""
