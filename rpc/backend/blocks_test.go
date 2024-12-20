@@ -1194,6 +1194,96 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint() {
 	}
 }
 
+func (suite *BackendTestSuite) TestGetEthBlockFromTendermint_PsuedoTx() {
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{*pseudoTx}, nil, nil)
+	rpcPseudoTx, err := buildRPCPseudoTx(
+		event,
+		pseudoTxBlock,
+		pseudoTx,
+		suite.backend.chainID,
+	)
+	suite.Require().NoError(err)
+	pseudoTxHash := common.BytesToHash(pseudoTx.Hash())
+
+	testCases := []struct {
+		name      string
+		fullTx    bool
+		ethRPCTxs []interface{}
+	}{
+		{
+			"pass - non fullTx",
+			false,
+			[]interface{}{pseudoTxHash},
+		},
+		{
+			"pass - fullTx",
+			true,
+			[]interface{}{rpcPseudoTx},
+		},
+	}
+	for _, tc := range testCases {
+		suite.Run(fmt.Sprintf("Case %s", tc.name), func() {
+			suite.SetupTest() // reset test and queries
+
+			baseFee := sdkmath.NewInt(1).BigInt()
+			validator := sdk.AccAddress(utiltx.GenerateAddress().Bytes())
+			height := int64(1)
+
+			db := dbm.NewMemDB()
+			suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
+			err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*types.ExecTxResult{})
+			suite.Require().NoError(err)
+
+			queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+			RegisterBaseFee(queryClient, sdkmath.NewIntFromBigInt(baseFee))
+			RegisterValidatorAccount(queryClient, validator)
+
+			client := suite.backend.clientCtx.Client.(*mocks.Client)
+			RegisterConsensusParams(client, height)
+
+			resBlock := &tmrpctypes.ResultBlock{Block: pseudoTxBlock}
+			blockRes := &tmrpctypes.ResultBlockResults{
+				Height:     height,
+				TxsResults: []*types.ExecTxResult{{Code: 0, GasUsed: 0}},
+			}
+
+			block, err := suite.backend.RPCBlockFromTendermintBlock(
+				resBlock,
+				blockRes,
+				tc.fullTx,
+			)
+			suite.Require().NoError(err)
+
+			header := resBlock.Block.Header
+			gasLimit := int64(^uint32(0)) // for `MaxGas = -1` (DefaultConsensusParams)
+			gasUsed := new(big.Int).SetUint64(uint64(blockRes.TxsResults[0].GasUsed))
+
+			root := common.Hash{}.Bytes()
+			receipt := ethtypes.NewReceipt(root, false, gasUsed.Uint64())
+			bloom := ethtypes.CreateBloom(ethtypes.Receipts{receipt})
+
+			expBlock := ethrpc.FormatBlock(
+				header,
+				resBlock.Block.Size(),
+				gasLimit,
+				gasUsed,
+				tc.ethRPCTxs,
+				bloom,
+				common.BytesToAddress(validator.Bytes()),
+				baseFee,
+			)
+			suite.Require().Equal(expBlock, block)
+		})
+	}
+}
+
 func (suite *BackendTestSuite) TestEthMsgsFromTendermintBlock() {
 	msgEthereumTx, bz := suite.buildEthereumTx()
 
