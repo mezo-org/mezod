@@ -68,3 +68,13 @@ the token and map it to the right denominator when calling the Bank module
 Keeper to mint coins. The address-to-denominator mapping can be initially
 hardcoded in the client as the set of non-Bitcoin tokens supported by the bridge
 will be minimal. Also, the particular entries once set, should never change.
+
+### Token precompiles
+Each token supported by the bridge will have to be represented by a precompile.
+The Bitcoin token precompile contains most of the logic we need, so the code
+should be abstracted out making the introduction of new token precompiles as
+easy as possible. The most common differences will be the denominator for the
+Bank module, the token name, and the token decimals. Note this approach -
+although it requires some per-token effort - feels to be the most future-proof
+and is compatible with both RFC-4 and RFC-3 approaches, in case the minting
+mechanism needs to be changed in the future. 
