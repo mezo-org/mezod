@@ -49,3 +49,22 @@ indicate they are used for Bitcoin bridging.
 Only a small selected set of ERC20 tokens should be accepted by the `MezoBridge`
 contract. The contract should expose a set of functions for the governance to
 add and remove the to-Mezo bridging support for selected ERC20s.
+
+### Ethereum sidecar
+
+No changes to the Ethereum sidecar are necessary other than those required to
+reflect the changes in the `AssetsLocked` event and pull the events from the new
+`MezoBridge` contract instead of the existing `BitcoinBridge` contract.
+
+### x/bridge module
+
+More changes will affect the x/bridge module. Since we are going to use the same
+sequence nonce for Bitcoin and ERC20 bridging, the ABCI code should remain
+mostly unchanged. The `AssetsLockedEvent`'s `Equal` function will have to be
+extended to include the `token` check as nothing prevents a malicious validator
+from voting on an event with the given sequence nonce but a different token. The
+Bridge Keeper's `AcceptAssetsLocked` function should be extended to recognize
+the token and map it to the right denominator when calling the Bank module
+Keeper to mint coins. The address-to-denominator mapping can be initially
+hardcoded in the client as the set of non-Bitcoin tokens supported by the bridge
+will be minimal. Also, the particular entries once set, should never change.
