@@ -1,6 +1,7 @@
 # RFC-4: Native non-Bitcoin asset Bridge
 
 ## Background
+
 [RFC-3: Bridging non-Bitcoin assets to Mezo](./rfc-3.md) was the first attempt 
 to describe the mechanism to support the operation of bridging non-Bitcoin
 assets to Mezo minimizing the fragmentation of liquidity . While all of the
@@ -50,6 +51,9 @@ Only a small selected set of ERC20 tokens should be accepted by the `MezoBridge`
 contract. The contract should expose a set of functions for the governance to
 add and remove the to-Mezo bridging support for selected ERC20s.
 
+Ideally, the minimum bridgable amount should be tracked for each token
+separately as each token has a different value.
+
 ### Ethereum sidecar
 
 No changes to the Ethereum sidecar are necessary other than those required to
@@ -70,6 +74,7 @@ hardcoded in the client as the set of non-Bitcoin tokens supported by the bridge
 will be minimal. Also, the particular entries once set, should never change.
 
 ### Token precompiles
+
 Each token supported by the bridge will have to be represented by a precompile.
 The Bitcoin token precompile contains most of the logic we need, so the code
 should be abstracted out making the introduction of new token precompiles as
@@ -78,3 +83,21 @@ Bank module, the token name, and the token decimals. Note this approach -
 although it requires some per-token effort - feels to be the most future-proof
 and is compatible with both RFC-4 and RFC-3 approaches, in case the minting
 mechanism needs to be changed in the future. 
+
+### Supported Tokens
+
+Based on the current knowledge, about 10 ERC-20 tokens should be bridgable to
+Mezo on day one. Each token can have separate conversion rules. For example,
+USDC and USDT are converted to M but then bridged separately as mUSDC and mUSDT.
+ETH is wrapped to stETH but bridged as mETH. All those conversions are out of
+the scope of RFC-4 and should happen before the token is deposited in the
+`MezoBridge` contract.
+
+For the PoC implementation of the bridging protocol, we will assume the
+following tokens should be represented on Mezo:
+* mETH
+* mUSDC
+* mUSDT
+
+The remaining tokens will be added later, once more confidence about them is 
+obtained.
