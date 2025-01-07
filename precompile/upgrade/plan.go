@@ -1,6 +1,7 @@
 package upgrade
 
 import (
+	"fmt"
 	"strconv"
 
 	upgradetypes "cosmossdk.io/x/upgrade/types"
@@ -115,7 +116,45 @@ func (m *SubmitPlanMethod) Run(context *precompile.RunContext, inputs precompile
 		return nil, err
 	}
 
+	// emit event
+	err = context.EventEmitter().Emit(
+		NewPlanSubmittedEvent(plan.Name),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit PlanSubmitted event: [%w]", err)
+	}
+
 	return precompile.MethodOutputs{true}, nil
+}
+
+// PlanSubmittedName is the name of the PlanSubmitted event. It matches the name
+// of the event in the contract ABI.
+const PlanSubmittedEventName = "PlanSubmitted"
+
+// PlanSubmittedEvent is the implementation of the PlanSubmitted event that contains
+// the following arguments:
+// - name: is the name of the submitted upgrade plan
+type PlanSubmittedEvent struct {
+	name string
+}
+
+func NewPlanSubmittedEvent(name string) *PlanSubmittedEvent {
+	return &PlanSubmittedEvent{
+		name: name,
+	}
+}
+
+func (e *PlanSubmittedEvent) EventName() string {
+	return PlanSubmittedEventName
+}
+
+func (e *PlanSubmittedEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: false,
+			Value:   e.name,
+		},
+	}
 }
 
 // CancelPlanMethodName is the name of the cancelPlan method. It matches the name
@@ -163,10 +202,56 @@ func (m *CancelPlanMethod) Run(context *precompile.RunContext, inputs precompile
 		return nil, err
 	}
 
+	plan, err := m.upgradeKeeper.GetUpgradePlan(context.SdkCtx())
+	if err != nil {
+		return nil, err
+	}
+	if plan.Name == "" {
+		return nil, fmt.Errorf("there is no upgrade scheduled")
+	}
+
 	err = m.upgradeKeeper.ClearUpgradePlan(context.SdkCtx())
 	if err != nil {
 		return nil, err
 	}
 
+	// emit event
+	err = context.EventEmitter().Emit(
+		NewPlanCanceledEvent(plan.Name),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit PlanCanceled event: [%w]", err)
+	}
+
 	return precompile.MethodOutputs{true}, nil
+}
+
+// PlanCanceledName is the name of the PlanCanceled event. It matches the name
+// of the event in the contract ABI.
+const PlanCanceledEventName = "PlanCanceled"
+
+// PlanCanceledEvent is the implementation of the PlanCanceled event that contains
+// the following arguments:
+// - name: is the name of the canceled upgrade plan
+type PlanCanceledEvent struct {
+	name string
+}
+
+func NewPlanCanceledEvent(name string) *PlanCanceledEvent {
+	return &PlanCanceledEvent{
+		name: name,
+	}
+}
+
+func (e *PlanCanceledEvent) EventName() string {
+	return PlanCanceledEventName
+}
+
+func (e *PlanCanceledEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: false,
+			Value:   e.name,
+		},
+	}
 }

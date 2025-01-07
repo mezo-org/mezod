@@ -1,5 +1,31 @@
 [
     {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+            }
+        ],
+        "name": "PlanCanceled",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+            }
+        ],
+        "name": "PlanSubmitted",
+        "type": "event"
+    },
+    {
         "inputs": [],
         "name": "cancelPlan",
         "outputs": [

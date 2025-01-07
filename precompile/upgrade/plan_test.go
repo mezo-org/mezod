@@ -1,5 +1,11 @@
 package upgrade_test
 
+import (
+	upgradetypes "cosmossdk.io/x/upgrade/types"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/mezo-org/mezod/precompile/upgrade"
+)
+
 func (s *PrecompileTestSuite) TestPlan() {
 	testcases := []TestCase{
 		{
@@ -98,6 +104,38 @@ func (s *PrecompileTestSuite) TestSubmitPlan() {
 	s.RunMethodTestCases(testcases, "submitPlan")
 }
 
+func (s *PrecompileTestSuite) TestEmitPlanSubmittedEvent() {
+	testcases := []struct {
+		name     string
+		operator common.Address
+		plan     upgradetypes.Plan
+	}{
+		{
+			name:     "pass",
+			operator: s.account1.EvmAddr,
+			plan: upgradetypes.Plan{
+				Name:   "v2.0.0",
+				Height: 1000,
+				Info:   "{...}",
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		s.Run(tc.name, func() {
+			e := upgrade.NewPlanSubmittedEvent(tc.plan.Name)
+			args := e.Arguments()
+
+			s.Require().Len(args, 1)
+
+			// Check the first argument
+			s.Require().False(args[0].Indexed)
+			s.Require().Equal(tc.plan.Name, args[0].Value)
+		})
+	}
+}
+
 func (s *PrecompileTestSuite) TestCancelPlan() {
 	testcases := []TestCase{
 		{
@@ -118,20 +156,48 @@ func (s *PrecompileTestSuite) TestCancelPlan() {
 			errContains: "sender is not owner",
 		},
 		{
-			name: "valid call",
+			name: "no upgrade scheduled",
 			run: func() []interface{} {
 				return nil
 			},
-			as:        s.account1.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{true},
-			postCheck: func() {
-				plan, err := s.upgradeKeeper.GetUpgradePlan(s.ctx)
-				s.Require().NoError(err, "expected no error")
-				s.Require().Empty(plan, "upgrade plan is not empty")
-			},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "there is no upgrade scheduled",
 		},
 	}
 
 	s.RunMethodTestCases(testcases, "cancelPlan")
+}
+
+func (s *PrecompileTestSuite) TestEmitPlanCanceledEvent() {
+	testcases := []struct {
+		name     string
+		operator common.Address
+		plan     upgradetypes.Plan
+	}{
+		{
+			name:     "pass",
+			operator: s.account1.EvmAddr,
+			plan: upgradetypes.Plan{
+				Name:   "v2.0.0",
+				Height: 1000,
+				Info:   "{...}",
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		s.Run(tc.name, func() {
+			e := upgrade.NewPlanCanceledEvent(tc.plan.Name)
+			args := e.Arguments()
+
+			s.Require().Len(args, 1)
+
+			// Check the first argument
+			s.Require().False(args[0].Indexed)
+			s.Require().Equal(tc.plan.Name, args[0].Value)
+		})
+	}
 }

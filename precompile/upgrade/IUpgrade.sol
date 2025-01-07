@@ -5,6 +5,18 @@ pragma solidity ^0.8.24;
 /// @notice Interface for the Upgrade precompile
 interface IUpgrade {
     /** 
+     * @notice Emitted when an upgrade plan is canceled
+     * @param name The name of the canceled upgrade plan
+     */ 
+    event PlanCanceled(string name);
+
+    /** 
+     * @notice Emitted when a new upgrade plan is submitted
+     * @param name The name of the new upgrade plan
+     */ 
+    event PlanSubmitted(string name);
+
+    /** 
      * @notice Returns the latest upgrade plan
      * @return name The name of the upgrade plan
      * @return height The block height to activate the upgrade
