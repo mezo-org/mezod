@@ -3,6 +3,8 @@ package backend
 import (
 	"fmt"
 
+	sdkmath "cosmossdk.io/math"
+
 	"cosmossdk.io/log"
 	abci "github.com/cometbft/cometbft/abci/types"
 	tmrpctypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -14,6 +16,7 @@ import (
 	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
 	"github.com/mezo-org/mezod/indexer"
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -49,9 +52,23 @@ func (suite *BackendTestSuite) TestTraceTransaction() {
 	tx2, _ := msgEthereumTx.BuildTx(suite.backend.clientCtx.TxConfig.NewTxBuilder(), evmtypes.DefaultEVMDenom)
 	txBz2, _ := txEncoder(tx2)
 
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxBlock := &types.Block{Header: types.Header{Height: 1}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
+	pseudoTxTrace, err := buildPseudoTxTrace(event)
+	suite.Require().NoError(err)
+	pseudoTxHash := common.BytesToHash(pseudoTx.Hash())
+
 	testCases := []struct {
 		name          string
 		registerMock  func()
+		txHash        common.Hash
 		block         *types.Block
 		responseBlock []*abci.ExecTxResult
 		expResult     interface{}
@@ -60,6 +77,7 @@ func (suite *BackendTestSuite) TestTraceTransaction() {
 		{
 			"fail - tx not found",
 			func() {},
+			txHash,
 			&types.Block{Header: types.Header{Height: 1}, Data: types.Data{Txs: []types.Tx{}}},
 			[]*abci.ExecTxResult{
 				{
@@ -86,6 +104,7 @@ func (suite *BackendTestSuite) TestTraceTransaction() {
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
 				RegisterBlockError(client, 1)
 			},
+			txHash,
 			&types.Block{Header: types.Header{Height: 1}, Data: types.Data{Txs: []types.Tx{txBz}}},
 			[]*abci.ExecTxResult{
 				{
@@ -114,6 +133,7 @@ func (suite *BackendTestSuite) TestTraceTransaction() {
 				suite.Require().NoError(err)
 				RegisterTraceTransactionWithPredecessors(queryClient, msgEthereumTx, []*evmtypes.MsgEthereumTx{msgEthereumTx})
 			},
+			txHash,
 			&types.Block{Header: types.Header{Height: 1, ChainID: ChainID}, Data: types.Data{Txs: []types.Tx{txBz, txBz2}}},
 			[]*abci.ExecTxResult{
 				{
@@ -155,6 +175,7 @@ func (suite *BackendTestSuite) TestTraceTransaction() {
 				suite.Require().NoError(err)
 				RegisterTraceTransaction(queryClient, msgEthereumTx)
 			},
+			txHash,
 			&types.Block{Header: types.Header{Height: 1}, Data: types.Data{Txs: []types.Tx{txBz}}},
 			[]*abci.ExecTxResult{
 				{
@@ -174,6 +195,19 @@ func (suite *BackendTestSuite) TestTraceTransaction() {
 			map[string]interface{}{"test": "hello"},
 			true,
 		},
+		{
+			"pass - pseudo-transaction found",
+			func() {
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				_, err := RegisterBlock(client, 1, *pseudoTx)
+				suite.Require().NoError(err)
+			},
+			pseudoTxHash,
+			pseudoTxBlock,
+			[]*abci.ExecTxResult{},
+			pseudoTxTrace,
+			true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -186,7 +220,7 @@ func (suite *BackendTestSuite) TestTraceTransaction() {
 
 			err := suite.backend.indexer.IndexBlock(tc.block, tc.responseBlock)
 			suite.Require().NoError(err)
-			txResult, err := suite.backend.TraceTransaction(txHash, nil)
+			txResult, err := suite.backend.TraceTransaction(tc.txHash, nil)
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -206,6 +240,18 @@ func (suite *BackendTestSuite) TestTraceBlock() {
 	filledBlock.ChainID = ChainID
 	resBlockEmpty := tmrpctypes.ResultBlock{Block: emptyBlock, BlockID: emptyBlock.LastBlockID}
 	resBlockFilled := tmrpctypes.ResultBlock{Block: filledBlock, BlockID: filledBlock.LastBlockID}
+
+	// Prepare test data for pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+	pseudoTx, err := buildPseudoTx(event)
+	suite.Require().NoError(err)
+	pseudoTxBlock := types.MakeBlock(1, []types.Tx{*pseudoTx}, nil, nil)
+	pseudoTxBlock.ChainID = ChainID
+	resBlockPseudoTx := tmrpctypes.ResultBlock{Block: pseudoTxBlock, BlockID: pseudoTxBlock.LastBlockID}
 
 	testCases := []struct {
 		name            string
@@ -227,12 +273,36 @@ func (suite *BackendTestSuite) TestTraceBlock() {
 			"fail - cannot unmarshal data",
 			func() {
 				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
-				RegisterTraceBlock(queryClient, []*evmtypes.MsgEthereumTx{msgEthTx})
+				RegisterTraceBlock(queryClient, []*evmtypes.MsgEthereumTx{msgEthTx}, []byte(`{"test": "hello"}`))
 			},
 			[]*evmtypes.TxTraceResult{},
 			&resBlockFilled,
 			&evmtypes.TraceConfig{},
 			false,
+		},
+		{
+			"pass - pseudo-transaction",
+			func() {
+				db := dbm.NewMemDB()
+				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
+				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
+				suite.Require().NoError(err)
+				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+				RegisterTraceBlock(queryClient, nil, []byte(`[]`))
+			},
+			[]*evmtypes.TxTraceResult{
+				{
+					Result: map[string]interface{}{
+						"failed":      false,
+						"gas":         0,
+						"returnValue": "",
+						"structLogs":  []interface{}{},
+					},
+				},
+			},
+			&resBlockPseudoTx,
+			&evmtypes.TraceConfig{},
+			true,
 		},
 	}
 
