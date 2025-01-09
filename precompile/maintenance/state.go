@@ -14,10 +14,11 @@ import (
 const SetPrecompileByteCodeMethodName = "setPrecompileByteCode"
 
 // setPrecompileByteCodeMethod is the implementation of the setPrecompileByteCode
-// method that enables/disables support for non-EIP155 txs.
+// method that updates a precompile associated byte code stored in the statedb
 //
 // The method has the following input arguments:
-// - value: The new value of the flag.
+// - precompile: The precompile contract address
+// - code: The new byte code
 //
 // The method returns true if the update was executed.
 type setPrecompileByteCodeMethod struct {
