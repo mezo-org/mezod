@@ -55,7 +55,7 @@ echo "starting node $NODE_NAME with home directory $NODE_HOMEDIR"
 ETH_SIDECAR_PORT=$((7500 + $NODE_INDEX))
 ETH_SIDECAR_ADDRESS="0.0.0.0:$ETH_SIDECAR_PORT"
 
-#start the ethereumn sidecar
+#start the ethereum sidecar
 ./build/mezod ethereum-sidecar \
   --ethereum-sidecar.server.ethereum-node-address=$ETH_SIDECAR_RPC_PROVIDER \
   --ethereum-sidecar.server.address=$ETH_SIDECAR_ADDRESS &
@@ -73,7 +73,7 @@ MEZOD_GRPC_ADDRESS="localhost:$MEZOD_GRPC_PORT"
 connect --port=$CONNECT_SIDECAR_PORT --market-map-endpoint=$MEZOD_GRPC_ADDRESS &
 CONNECT_SIDECAR_PID=$!
 
-# stat the mezod binary
+# start the mezod binary
 ./build/mezod start --home "$NODE_HOMEDIR" \
   --chain-id=$LOCALNET_CHAIN_ID \
   --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" \
