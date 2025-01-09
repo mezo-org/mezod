@@ -447,3 +447,18 @@ func (k Keeper) CustomPrecompileGenesisAccounts() []types.GenesisAccount {
 	})
 	return accounts
 }
+
+// SetStorageRootStrategy sets the strategy for the EVM storage root mechanism.
+func (k *Keeper) SetStorageRootStrategy(
+	ctx sdk.Context,
+	strategy types.StorageRootStrategy,
+) error {
+	p := k.GetParams(ctx)
+	p.StorageRootStrategy = uint32(strategy)
+	return k.SetParams(ctx, p)
+}
+
+// GetStorageRootStrategy returns the strategy for the EVM storage root mechanism.
+func (k *Keeper) GetStorageRootStrategy(ctx sdk.Context) types.StorageRootStrategy {
+	return types.StorageRootStrategy(k.GetParams(ctx).StorageRootStrategy)
+}
