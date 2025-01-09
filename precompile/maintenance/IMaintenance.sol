@@ -23,5 +23,5 @@ interface IMaintenance {
      * @param code The new byte code to use
      * @dev Must be called by contract owner.
      */
-    function setPrecompileByteCode(address precompile, bytes calldata code) external view returns (bool);
+    function setPrecompileByteCode(address precompile, bytes calldata code) external returns (bool);
 }
