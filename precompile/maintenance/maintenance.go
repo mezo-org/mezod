@@ -50,7 +50,7 @@ func newPrecompileMethods(
 	return []precompile.Method{
 		newSetSupportNonEIP155TxsMethod(poaKeeper, evmKeeper),
 		newGetSupportNonEIP155TxsMethod(evmKeeper),
-		newSetCustomPrecompileByteCodeMethod(poaKeeper, evmKeeper),
+		newSetPrecompileByteCodeMethod(poaKeeper, evmKeeper),
 	}
 }
 

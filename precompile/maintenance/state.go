@@ -9,50 +9,50 @@ import (
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
-// SetCustomPrecompileByteCodeMethodName is the name of the setCustomPrecompileByteCode method.
+// SetPrecompileByteCodeMethodName is the name of the setPrecompileByteCode method.
 // It matches the name of the method in the contract ABI.
-const SetCustomPrecompileByteCodeMethodName = "setCustomPrecompileByteCode"
+const SetPrecompileByteCodeMethodName = "setPrecompileByteCode"
 
-// setCustomPrecompileByteCodeMethod is the implementation of the setCustomPrecompileByteCode
+// setPrecompileByteCodeMethod is the implementation of the setPrecompileByteCode
 // method that enables/disables support for non-EIP155 txs.
 //
 // The method has the following input arguments:
 // - value: The new value of the flag.
 //
 // The method returns true if the update was executed.
-type setCustomPrecompileByteCodeMethod struct {
+type setPrecompileByteCodeMethod struct {
 	poaKeeper PoaKeeper
 	evmKeeper EvmKeeper
 }
 
-func newSetCustomPrecompileByteCodeMethod(
+func newSetPrecompileByteCodeMethod(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
-) *setCustomPrecompileByteCodeMethod {
-	return &setCustomPrecompileByteCodeMethod{
+) *setPrecompileByteCodeMethod {
+	return &setPrecompileByteCodeMethod{
 		poaKeeper: poaKeeper,
 		evmKeeper: evmKeeper,
 	}
 }
 
-func (m *setCustomPrecompileByteCodeMethod) MethodName() string {
-	return SetCustomPrecompileByteCodeMethodName
+func (m *setPrecompileByteCodeMethod) MethodName() string {
+	return SetPrecompileByteCodeMethodName
 }
 
-func (m *setCustomPrecompileByteCodeMethod) MethodType() precompile.MethodType {
+func (m *setPrecompileByteCodeMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (m *setCustomPrecompileByteCodeMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *setPrecompileByteCodeMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *setCustomPrecompileByteCodeMethod) Payable() bool {
+func (m *setPrecompileByteCodeMethod) Payable() bool {
 	return false
 }
 
-func (m *setCustomPrecompileByteCodeMethod) Run(
+func (m *setPrecompileByteCodeMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {

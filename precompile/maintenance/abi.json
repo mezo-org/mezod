@@ -44,7 +44,7 @@
         "type": "bytes"
       }
     ],
-    "name": "setCustomPrecompileByteCode",
+    "name": "setPrecompileByteCode",
     "outputs": [
       {
         "internalType": "bool",
