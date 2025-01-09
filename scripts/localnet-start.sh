@@ -6,12 +6,15 @@ HOMEDIR=./.localnet
 # for now a single option is available to set the ethereum
 # RPC provider URL, e.g:
 # ETH_SIDECAR_RPC_PROVIDER=wss://my.eth.rpc/provider
-set -a; source .env; set +a
-if [ -z "${ETH_SIDECAR_RPC_PROVIDER}" ]; then
-  echo "Please set the ETH_SIDECAR_RPC_PROVIDER variable in the .env file."
-  exit 1
-fi
+if [ -f .env ]; then
+  set -a; source .env; set +a
 
+  if [ -z "${ETH_SIDECAR_RPC_PROVIDER}" ]; then
+    echo "warning: no ETH_SIDECAR_RPC_PROVIDER variable set in .env file, ethereum sidecar may not start successfully."
+  fi
+else
+  echo "warning: no .env file specified, some binary might not start successfully."
+fi
 
 if [ -z "${LOCALNET_CHAIN_ID}" ]; then
   echo "Please set the LOCALNET_CHAIN_ID environment variable."
