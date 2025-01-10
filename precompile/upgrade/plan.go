@@ -118,7 +118,7 @@ func (m *SubmitPlanMethod) Run(context *precompile.RunContext, inputs precompile
 
 	// emit event
 	err = context.EventEmitter().Emit(
-		NewPlanSubmittedEvent(plan.Name),
+		NewPlanSubmittedEvent(plan.Name, plan.Height),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit PlanSubmitted event: [%w]", err)
@@ -134,13 +134,16 @@ const PlanSubmittedEventName = "PlanSubmitted"
 // PlanSubmittedEvent is the implementation of the PlanSubmitted event that contains
 // the following arguments:
 // - name: is the name of the submitted upgrade plan
+// - height: is the block height of the submitted upgrade plan
 type PlanSubmittedEvent struct {
-	name string
+	name   string
+	height int64
 }
 
-func NewPlanSubmittedEvent(name string) *PlanSubmittedEvent {
+func NewPlanSubmittedEvent(name string, height int64) *PlanSubmittedEvent {
 	return &PlanSubmittedEvent{
-		name: name,
+		name:   name,
+		height: height,
 	}
 }
 
@@ -153,6 +156,10 @@ func (e *PlanSubmittedEvent) Arguments() []*precompile.EventArgument {
 		{
 			Indexed: false,
 			Value:   e.name,
+		},
+		{
+			Indexed: false,
+			Value:   e.height,
 		},
 	}
 }
@@ -214,7 +221,7 @@ func (m *CancelPlanMethod) Run(context *precompile.RunContext, inputs precompile
 
 	// emit event
 	err = context.EventEmitter().Emit(
-		NewPlanCanceledEvent(plan.Name),
+		NewPlanCanceledEvent(plan.Name, plan.Height),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit PlanCanceled event: [%w]", err)
@@ -230,13 +237,16 @@ const PlanCanceledEventName = "PlanCanceled"
 // PlanCanceledEvent is the implementation of the PlanCanceled event that contains
 // the following arguments:
 // - name: is the name of the canceled upgrade plan
+// - height: is the block height of the submitted upgrade plan
 type PlanCanceledEvent struct {
-	name string
+	name   string
+	height int64
 }
 
-func NewPlanCanceledEvent(name string) *PlanCanceledEvent {
+func NewPlanCanceledEvent(name string, height int64) *PlanCanceledEvent {
 	return &PlanCanceledEvent{
-		name: name,
+		name:   name,
+		height: height,
 	}
 }
 
@@ -249,6 +259,10 @@ func (e *PlanCanceledEvent) Arguments() []*precompile.EventArgument {
 		{
 			Indexed: false,
 			Value:   e.name,
+		},
+		{
+			Indexed: false,
+			Value:   e.height,
 		},
 	}
 }

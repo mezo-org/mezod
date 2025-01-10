@@ -7,14 +7,16 @@ interface IUpgrade {
     /** 
      * @notice Emitted when an upgrade plan is canceled
      * @param name The name of the canceled upgrade plan
+     * @param height The block height of the canceled upgrade plan
      */ 
-    event PlanCanceled(string name);
+    event PlanCanceled(string name, int64 height);
 
     /** 
      * @notice Emitted when a new upgrade plan is submitted
      * @param name The name of the new upgrade plan
+     * @param height The block height of the new upgrade plan
      */ 
-    event PlanSubmitted(string name);
+    event PlanSubmitted(string name, int64 height);
 
     /** 
      * @notice Returns the latest upgrade plan

@@ -18,11 +18,12 @@ func (s *PrecompileTestSuite) TestPlan() {
 			errContains: "argument count mismatch",
 		},
 		{
-			name:      "valid call",
-			run:       func() []interface{} { return nil },
-			as:        s.account2.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{string("")}, // No plan set
+			name:        "upgrade plan not found",
+			run:         func() []interface{} { return nil },
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "upgrade plan not found",
 		},
 	}
 
@@ -45,7 +46,7 @@ func (s *PrecompileTestSuite) TestSubmitPlan() {
 			run: func() []interface{} {
 				return []interface{}{
 					"v2.0.0",
-					"100",
+					int64(100),
 					"{...}",
 				}
 			},
@@ -59,7 +60,7 @@ func (s *PrecompileTestSuite) TestSubmitPlan() {
 			run: func() []interface{} {
 				return []interface{}{
 					"v2.0.0",
-					"1000",
+					int64(1000),
 					"{...}",
 				}
 			},
@@ -79,7 +80,7 @@ func (s *PrecompileTestSuite) TestSubmitPlan() {
 			run: func() []interface{} {
 				return []interface{}{
 					"v2.0.0",
-					"1000",
+					int64(1000),
 					"{...}",
 				}
 			},
@@ -95,7 +96,7 @@ func (s *PrecompileTestSuite) TestSubmitPlan() {
 				err = s.upgradeKeeper.ClearUpgradePlan(s.ctx)
 				s.Require().NoError(err, "expected no error")
 				plan, err = s.upgradeKeeper.GetUpgradePlan(s.ctx)
-				s.Require().NoError(err, "expected no error")
+				s.Require().Error(err, "upgrade plan not found")
 				s.Require().Empty(plan, "upgrade plan is not empty")
 			},
 		},
@@ -124,14 +125,17 @@ func (s *PrecompileTestSuite) TestEmitPlanSubmittedEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			e := upgrade.NewPlanSubmittedEvent(tc.plan.Name)
+			e := upgrade.NewPlanSubmittedEvent(tc.plan.Name, tc.plan.Height)
 			args := e.Arguments()
 
-			s.Require().Len(args, 1)
+			s.Require().Len(args, 2)
 
 			// Check the first argument
 			s.Require().False(args[0].Indexed)
 			s.Require().Equal(tc.plan.Name, args[0].Value)
+			// Check the second argument
+			s.Require().False(args[1].Indexed)
+			s.Require().Equal(tc.plan.Height, args[1].Value)
 		})
 	}
 }
@@ -190,14 +194,17 @@ func (s *PrecompileTestSuite) TestEmitPlanCanceledEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			e := upgrade.NewPlanCanceledEvent(tc.plan.Name)
+			e := upgrade.NewPlanCanceledEvent(tc.plan.Name, tc.plan.Height)
 			args := e.Arguments()
 
-			s.Require().Len(args, 1)
+			s.Require().Len(args, 2)
 
 			// Check the first argument
 			s.Require().False(args[0].Indexed)
 			s.Require().Equal(tc.plan.Name, args[0].Value)
+			// Check the second argument
+			s.Require().False(args[1].Indexed)
+			s.Require().Equal(tc.plan.Height, args[1].Value)
 		})
 	}
 }

@@ -7,6 +7,12 @@
                 "internalType": "string",
                 "name": "name",
                 "type": "string"
+            },
+            {
+                "indexed": false,
+                "internalType": "int64",
+                "name": "height",
+                "type": "int64"
             }
         ],
         "name": "PlanCanceled",
@@ -20,6 +26,12 @@
                 "internalType": "string",
                 "name": "name",
                 "type": "string"
+            },
+            {
+                "indexed": false,
+                "internalType": "int64",
+                "name": "height",
+                "type": "int64"
             }
         ],
         "name": "PlanSubmitted",
