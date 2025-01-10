@@ -22,7 +22,7 @@ interface IUpgrade {
      * @return height The block height to activate the upgrade
      * @return info The upgrade information
      */
-    function plan() external view returns (string memory name, string memory height, string memory info);
+    function plan() external view returns (string memory name, int64 height, string memory info);
 
     /** 
      * @notice Returns `true` after updating the contracts upgrade plan
@@ -31,9 +31,9 @@ interface IUpgrade {
      * @param info The upgrade information
      * @dev Must be called by contract owner
      */
-    function submitPlan(string calldata name, string calldata height, string calldata info) external returns (bool);
+    function submitPlan(string calldata name, int64 height, string calldata info) external returns (bool);
 
-    /** 
+    /**
      * @notice Returns `true` after cancelling the contracts upgrade plan
      * @dev Must be called by contract owner
      */

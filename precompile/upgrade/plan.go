@@ -100,14 +100,14 @@ func (m *SubmitPlanMethod) Run(context *precompile.RunContext, inputs precompile
 		return nil, err
 	}
 
-	height, err := strconv.Atoi(inputs[1].(string))
-	if err != nil {
-		return nil, err
+	height, ok := inputs[1].(int64)
+	if !ok {
+		return nil, fmt.Errorf("height argument must be an int64")
 	}
 
 	plan := upgradetypes.Plan{
 		Name:   inputs[0].(string),
-		Height: int64(height),
+		Height: height,
 		Info:   inputs[2].(string),
 	}
 
