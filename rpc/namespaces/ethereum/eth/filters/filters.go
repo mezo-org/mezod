@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/mezo-org/mezod/indexer"
 	"github.com/mezo-org/mezod/rpc/backend"
 	"github.com/mezo-org/mezod/rpc/types"
 
@@ -112,36 +111,12 @@ func (f *Filter) Logs(_ context.Context, logLimit int, blockLimit int64) ([]*eth
 	logs := []*ethtypes.Log{}
 	var err error
 
-	hasPseudoTransaction := func(resBlock *tmrpctypes.ResultBlock) bool {
-		if resBlock == nil || resBlock.Block == nil {
-			return false
-		}
-
-		// Check if the block's first transaction is a pseudo-transaction.
-		if len(resBlock.Block.Txs) > 0 {
-			tx := resBlock.Block.Txs[0]
-			txHash := common.BytesToHash(tx.Hash())
-			res, err := f.backend.GetTxByEthHash(txHash)
-			if err == nil {
-				if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
-					// The transaction was saved during indexing. The block
-					// contains a pseudo-transaction with bridging info.
-					return true
-				}
-			}
-		}
-
-		return false
-	}
-
 	// If we're doing singleton block filtering, execute and return
 	if f.criteria.BlockHash != nil && *f.criteria.BlockHash != (common.Hash{}) {
 		resBlock, err := f.backend.TendermintBlockByHash(*f.criteria.BlockHash)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch header by hash %s: %w", f.criteria.BlockHash, err)
 		}
-
-		hasPseudoTx := hasPseudoTransaction(resBlock)
 
 		blockRes, err := f.backend.TendermintBlockResultByNumber(&resBlock.Block.Height)
 		if err != nil {
@@ -159,8 +134,11 @@ func (f *Filter) Logs(_ context.Context, logLimit int, blockLimit int64) ([]*eth
 			return nil, err
 		}
 
+		// Check if the block contains a pseudo-transaction.
+		pseudoTxResult := f.backend.GetPseudoTransactionResult(resBlock)
+
 		// Adjust the transaction index to account for the pseudo-transaction.
-		if hasPseudoTx {
+		if pseudoTxResult != nil {
 			for _, log := range logs {
 				log.TxIndex++
 			}
@@ -212,7 +190,6 @@ func (f *Filter) Logs(_ context.Context, logLimit int, blockLimit int64) ([]*eth
 			f.logger.Debug("failed to fetch block result from Tendermint", "height", height, "error", err.Error())
 			return nil, nil
 		}
-		hasPseudoTx := hasPseudoTransaction(resBlock)
 
 		blockRes, err := f.backend.TendermintBlockResultByNumber(&height)
 		if err != nil {
@@ -230,8 +207,11 @@ func (f *Filter) Logs(_ context.Context, logLimit int, blockLimit int64) ([]*eth
 			return nil, errors.Wrapf(err, "failed to fetch block by number %d", height)
 		}
 
+		// Check if the block contains a pseudo-transaction.
+		pseudoTxResult := f.backend.GetPseudoTransactionResult(resBlock)
+
 		// Adjust the transaction index to account for the pseudo-transaction.
-		if hasPseudoTx {
+		if pseudoTxResult != nil {
 			for _, filteredLog := range filtered {
 				filteredLog.TxIndex++
 			}

@@ -58,7 +58,7 @@ type Backend interface {
 	GetBlockByNumber(blockNum types.BlockNumber, fullTx bool) (map[string]interface{}, error)
 	HeaderByNumber(blockNum types.BlockNumber) (*ethtypes.Header, error)
 	HeaderByHash(blockHash common.Hash) (*ethtypes.Header, error)
-	GetTxByEthHash(txHash common.Hash) (*mezodtypes.TxResult, error)
+	GetPseudoTransactionResult(block *coretypes.ResultBlock) *mezodtypes.TxResult
 	TendermintBlockByHash(hash common.Hash) (*coretypes.ResultBlock, error)
 	TendermintBlockByNumber(blockNum types.BlockNumber) (*coretypes.ResultBlock, error)
 	TendermintBlockResultByNumber(height *int64) (*coretypes.ResultBlockResults, error)

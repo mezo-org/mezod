@@ -295,7 +295,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 	}
 
 	// Check if the block contains a pseudo-transaction.
-	pseudoTxResult := b.getPseudoTransactionResult(resBlock)
+	pseudoTxResult := b.GetPseudoTransactionResult(resBlock)
 
 	// Adjust the transaction index to account for the pseudo-transaction.
 	if pseudoTxResult != nil {
@@ -508,7 +508,7 @@ func (b *Backend) queryTendermintTxIndexer(query string, txGetter func(*rpctypes
 // getPseudoTransactionResult attempts to parse the pseudo-transaction from
 // the given block. If the block does not contain the pseudo-transaction, it
 // returns nil.
-func (b *Backend) getPseudoTransactionResult(
+func (b *Backend) GetPseudoTransactionResult(
 	block *tmrpctypes.ResultBlock,
 ) *types.TxResult {
 	if block == nil {
@@ -555,7 +555,7 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 		return nil, nil
 	}
 
-	pseudoTxResult := b.getPseudoTransactionResult(block)
+	pseudoTxResult := b.GetPseudoTransactionResult(block)
 	if idx == 0 && pseudoTxResult != nil {
 		// There is a pseudo-transaction in the block and it is requested.
 		return b.getPseudoTransaction(pseudoTxResult, block)

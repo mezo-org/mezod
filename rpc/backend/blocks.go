@@ -425,7 +425,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 	}
 
 	// Check if the block contains a pseudo transaction.
-	pseudoTxResult := b.getPseudoTransactionResult(resBlock)
+	pseudoTxResult := b.GetPseudoTransactionResult(resBlock)
 
 	if pseudoTxResult != nil {
 		// The block contains a pseudo-transaction. Append it at the front of

@@ -175,7 +175,7 @@ func (b *Backend) TraceBlock(height rpctypes.BlockNumber,
 	}
 
 	// Check if the block contains a pseudo-transaction.
-	pseudoTxResult := b.getPseudoTransactionResult(block)
+	pseudoTxResult := b.GetPseudoTransactionResult(block)
 
 	txDecoder := b.clientCtx.TxConfig.TxDecoder()
 
