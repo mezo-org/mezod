@@ -96,10 +96,11 @@ This process can be automated using Cosmovisor. Alternatively, nodes can
 use the state sync process that starts syncing from a snapshot block
 compatible with the latest version.
 
-## The Upgrade Precompile
+## The Upgrade precompile
 
 The `Upgrade` precompile `precompile/upgrade`, serves as an EVM interface to the
-[x/upgrade module](https://docs.cosmos.network/main/build/modules/upgrade).
+[x/upgrade module](https://docs.cosmos.network/main/build/modules/upgrade) and is used by 
+the `Planned upgrade with state migrations` scenario described above.
 
 ### Upgrade Plan
 
@@ -113,7 +114,7 @@ An upgrade `Plan` has the following values:
 - `Height`: The block height old clients should halt at to prevent state corruption
 - `Info`: Any metadata about the upgrade (e.g. urls to updated binaries or git commit hash)
 
-### Usage
+### Upgrade precompile API
 
 Address: `0x7b7c000000000000000000000000000000000014`
 ABI: `precompile/upgrade/abi.json`
@@ -130,10 +131,15 @@ And emits 2 events:
 - `PlanSubmitted`: Emitted when a new upgrade plan is submitted
 - `PlanCanceled`: Emitted when an upgrade plan is canceled
 
-#### Hardhat
+### Interaction via the Hardhat toolbox 
+
+Hardhat tasks are used to simplify interacting with Mezo precompiles. More information,
+including setup steps and usage can be found in `precompile/hardhat/README.md`
+
+After the hardhat environment and accounts have been configured, interaction with the
+`Upgrade` precompile is possible with the following commands:
 
 ```
-cd precompile/hardhat
 npx hardhat upgrade:submitPlan --signer OWNER --name NAME --height HEIGHT --info "{}"
 npx hardhat upgrade:plan
 npx hardhat upgrade:cancelPlan --signer OWNER
