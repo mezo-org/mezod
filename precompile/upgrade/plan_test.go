@@ -163,7 +163,7 @@ func (s *PrecompileTestSuite) TestCancelPlan() {
 			as:          s.account1.EvmAddr,
 			basicPass:   true,
 			revert:      true,
-			errContains: "there is no upgrade scheduled",
+			errContains: "upgrade plan not found",
 		},
 	}
 

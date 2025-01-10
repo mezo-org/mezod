@@ -166,7 +166,7 @@ type FakePoaKeeper struct {
 }
 
 type FakeUpgradeKeeper struct {
-	plan upgradetypes.Plan
+	plan *upgradetypes.Plan
 }
 
 func NewFakePoaKeeper(owner sdk.AccAddress) *FakePoaKeeper {
@@ -190,15 +190,18 @@ func NewFakeUpgradeKeeper() *FakeUpgradeKeeper {
 }
 
 func (k *FakeUpgradeKeeper) GetUpgradePlan(_ context.Context) (upgradetypes.Plan, error) {
-	return k.plan, nil
+	if k.plan == nil {
+		return upgradetypes.Plan{}, upgradetypes.ErrNoUpgradePlanFound
+	}
+	return *k.plan, nil
 }
 
 func (k *FakeUpgradeKeeper) ScheduleUpgrade(_ context.Context, plan upgradetypes.Plan) error {
-	k.plan = plan
+	k.plan = &plan
 	return nil
 }
 
 func (k *FakeUpgradeKeeper) ClearUpgradePlan(_ context.Context) error {
-	k.plan = upgradetypes.Plan{}
+	k.plan = nil
 	return nil
 }

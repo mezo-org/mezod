@@ -206,9 +206,6 @@ func (m *CancelPlanMethod) Run(context *precompile.RunContext, inputs precompile
 	if err != nil {
 		return nil, err
 	}
-	if plan.Name == "" {
-		return nil, fmt.Errorf("there is no upgrade scheduled")
-	}
 
 	err = m.upgradeKeeper.ClearUpgradePlan(context.SdkCtx())
 	if err != nil {
