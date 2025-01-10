@@ -21,6 +21,8 @@ message Params {
   // allow_unprotected_txs defines if replay-protected (i.e non EIP155
   // signed) transactions can be executed on the state machine.
   bool allow_unprotected_txs = 6;
+  // storage_root_strategy defines the strategy for the EVM storage root mechanism.
+  uint32 storage_root_strategy = 7;
 }
 
 // ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int values

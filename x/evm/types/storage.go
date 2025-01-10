@@ -23,6 +23,28 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// StorageRootStrategy defines the strategy for the EVM storage root mechanism.
+// Our custom StateDB implementation does not support go-ethereum storage roots,
+// yet it has to comply with the original go-ethereum StateDB interface.
+// To overcome that problem, we initially used the DummyHash strategy, which
+// returned a dummy hash in case a storage was detected under the given address.
+// However, this approach turned out to be problematic for Mezo Passport
+// hence, we switched to the EmptyHash strategy which returns an empty hash
+// as storage root for every account, regardless of the actual storage.
+// See https://github.com/mezo-org/mezod/issues/368 for more details.
+// If we ever need to support storage roots, we should implement it as a
+// new strategy.
+type StorageRootStrategy uint32
+
+const (
+	// StorageRootStrategyDummyHash returns a dummy hash as the storage root if
+	// the account has a storage and an empty hash otherwise.
+	StorageRootStrategyDummyHash StorageRootStrategy = iota
+	// StorageRootStrategyEmptyHash always returns an empty hash as the storage
+	// root, regardless of the actual storage.
+	StorageRootStrategyEmptyHash
+)
+
 // Storage represents the account Storage map as a slice of single key value
 // State pairs. This is to prevent non determinism at genesis initialization or export.
 type Storage []State

@@ -124,7 +124,7 @@ func (s *PrecompileTestSuite) TestTransfer() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
 			bankKeeper := s.app.BankKeeper
@@ -303,7 +303,7 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
 			bankKeeper := s.app.BankKeeper
