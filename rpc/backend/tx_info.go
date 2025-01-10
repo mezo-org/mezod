@@ -294,30 +294,11 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		b.logger.Debug("failed to parse logs", "hash", hexTx, "error", err.Error())
 	}
 
-	hasPseudoTransaction := func(resBlock *tmrpctypes.ResultBlock) bool {
-		if resBlock == nil || resBlock.Block == nil {
-			return false
-		}
-
-		// Check if the block's first transaction is a pseudo-transaction.
-		if len(resBlock.Block.Txs) > 0 {
-			tx := resBlock.Block.Txs[0]
-			txHash := common.BytesToHash(tx.Hash())
-			res, err := b.GetTxByEthHash(txHash)
-			if err == nil {
-				if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
-					// The transaction was saved during indexing. The block
-					// contains a pseudo-transaction with bridging info.
-					return true
-				}
-			}
-		}
-
-		return false
-	}
+	// Check if the block contains a pseudo-transaction.
+	pseudoTxResult := b.getPseudoTransactionResult(resBlock)
 
 	// Adjust the transaction index to account for the pseudo-transaction.
-	if hasPseudoTransaction(resBlock) {
+	if pseudoTxResult != nil {
 		for _, log := range logs {
 			log.TxIndex++
 		}
@@ -530,6 +511,10 @@ func (b *Backend) queryTendermintTxIndexer(query string, txGetter func(*rpctypes
 func (b *Backend) getPseudoTransactionResult(
 	block *tmrpctypes.ResultBlock,
 ) *types.TxResult {
+	if block == nil {
+		return nil
+	}
+
 	if len(block.Block.Txs) == 0 {
 		// There are no transactions in the block. Therefore there is no
 		// pseudo-transaction.
