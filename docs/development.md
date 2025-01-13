@@ -17,6 +17,8 @@ cluster so on macOS, Docker Desktop must be running locally.
 ```bash
 # Build and install the `mezo-org/mezod` image locally.
 $ make localnet-docker-build
+# Start four client instances.
+$ make localnet-docker-start
 # Stop client instances started with localnet-docker-start.
 $ make localnet-docker-stop
 # Show logs of all four client instances together.
