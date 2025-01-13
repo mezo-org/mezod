@@ -413,6 +413,8 @@ func NewMezo(
 		appCodec,
 		keys[bridgetypes.StoreKey],
 		app.BankKeeper,
+		app.EvmKeeper,
+		app.AccountKeeper,
 	)
 
 	app.MarketMapKeeper = *marketmapkeeper.NewKeeper(
@@ -444,7 +446,7 @@ func NewMezo(
 		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
-		bridge.NewAppModule(app.BridgeKeeper),
+		bridge.NewAppModule(app.BridgeKeeper, app.AccountKeeper),
 		marketmap.NewAppModule(appCodec, &app.MarketMapKeeper),
 		oracle.NewAppModule(appCodec, app.OracleKeeper),
 	)

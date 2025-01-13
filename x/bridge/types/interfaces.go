@@ -2,6 +2,9 @@ package types
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/eth/tracers"
+	"github.com/mezo-org/mezod/x/evm/types"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -39,4 +42,18 @@ type BankKeeper interface {
 		recipientAddr sdk.AccAddress,
 		amt sdk.Coins,
 	) error
+}
+
+type EVMKeeper interface {
+	ApplyMessage(
+		ctx sdk.Context,
+		msg core.Message,
+		tracer *tracers.Tracer,
+		commit bool,
+	) (*types.MsgEthereumTxResponse, error)
+}
+
+type AccountKeeper interface {
+	GetSequence(ctx context.Context, addr sdk.AccAddress) (uint64, error)
+	GetModuleAccount(ctx context.Context, moduleName string) sdk.ModuleAccountI
 }

@@ -2,6 +2,8 @@ package app
 
 import (
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/common"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"os"
 	"testing"
 
@@ -30,6 +32,14 @@ import (
 	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/utils"
 )
+
+func TestGetXBridgeModuleAddress(t *testing.T) {
+	addr := authtypes.NewModuleAddress(bridgetypes.ModuleName)
+
+	if common.Address(addr).Hex() != "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5" {
+		t.Errorf("GetXBridgeModuleAddress failed")
+	}
+}
 
 func TestMezoExport(t *testing.T) {
 	// create public key

@@ -28,9 +28,9 @@ var (
 	bitcoinBridgeName = "BitcoinBridge"
 
 	// searchedRange is a number of blocks to look back for AssetsLocked events in
-	// the BitcoinBridge contract. This is approximately 30 days window for 12 sec.
+	// the BitcoinBridge contract. This is approximately 120 days window for 12 sec.
 	// block time.
-	searchedRange = new(big.Int).SetInt64(220000)
+	searchedRange = new(big.Int).SetInt64(220000 * 4)
 
 	// cachedEventsLimit is a number of events to keep in the cache.
 	// Size of Sequence: 32 bytes
