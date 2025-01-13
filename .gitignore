@@ -48,6 +48,7 @@ localnet-setup
 .testnets
 
 # Binary-based localnet
+.env
 .localnet
 
 # Single-node localnet
