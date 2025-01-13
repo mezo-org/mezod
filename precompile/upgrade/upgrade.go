@@ -19,18 +19,6 @@ var filesystem embed.FS
 // used to avoid potential collisions with EVM native precompiles.
 const EvmAddress = "0x7b7c000000000000000000000000000000000014"
 
-// Plan is the upgrade plan structure that contains information
-// about the upgrade.
-//
-// Note: This struct mimics `upgradetypes.Plan` however is declared with an
-// `= struct`, this is required for correct deserialization within a precompile
-// methods `Run` function
-type Plan = struct {
-	Name   string `json:"name"`
-	Height int64  `json:"height"`
-	Info   string `json:"info"`
-}
-
 // NewPrecompile creates a new upgrade precompile.
 func NewPrecompile(upgradeKeeper UpgradeKeeper, poaKeeper PoaKeeper) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
