@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie/utils"
 	"github.com/holiman/uint256"
+	"github.com/mezo-org/mezod/x/evm/types"
 )
 
 // revision is the identifier of a version of state.
@@ -80,18 +81,20 @@ type StateDB struct {
 
 	// State witness if cross validation is needed
 	witness *stateless.Witness
+
+	storageRootStrategy types.StorageRootStrategy
 }
 
 // New creates a new state from a given trie.
 func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 	return &StateDB{
-		keeper:       keeper,
-		ctx:          ctx,
-		stateObjects: make(map[common.Address]*stateObject),
-		journal:      newJournal(),
-		accessList:   newAccessList(),
-
-		txConfig: txConfig,
+		keeper:              keeper,
+		ctx:                 ctx,
+		stateObjects:        make(map[common.Address]*stateObject),
+		journal:             newJournal(),
+		accessList:          newAccessList(),
+		txConfig:            txConfig,
+		storageRootStrategy: keeper.GetStorageRootStrategy(ctx),
 	}
 }
 
@@ -171,7 +174,35 @@ func (s *StateDB) GetNonce(addr common.Address) uint64 {
 
 // GetStorageRoot always returns an empty hash as the current implementation
 // does not track storage roots.
-func (s *StateDB) GetStorageRoot(_ common.Address) common.Hash {
+func (s *StateDB) GetStorageRoot(addr common.Address) common.Hash {
+	switch s.storageRootStrategy {
+	case types.StorageRootStrategyDummyHash:
+		return getStorageRootDummyHash(s, addr)
+	case types.StorageRootStrategyEmptyHash:
+		return getStorageRootEmptyHash(s, addr)
+	default:
+		panic("unknown storage root strategy")
+	}
+}
+
+// getStorageRootDummyHash is the implementation of the types.StorageRootStrategyDummyHash strategy.
+func getStorageRootDummyHash(s *StateDB, addr common.Address) common.Hash {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		// NOTE! The intention here is to return a state root hash to comply with
+		// https://eips.ethereum.org/EIPS/eip-7610 Proper implementation is used
+		// to revert contract creation if address already has the non-empty storage.
+		// However, our current codebase does not support tracking the storage root
+		// hash that is required by the currently used go-ethereum version. For now,
+		// we just return a dummy hash to indicate that the storage exists behind this
+		// address. This should be good enough for now.
+		return common.HexToHash("6d657a6f")
+	}
+	return common.Hash{}
+}
+
+// getStorageRootEmptyHash is the implementation of the types.StorageRootStrategyEmptyHash strategy.
+func getStorageRootEmptyHash(_ *StateDB, _ common.Address) common.Hash {
 	// !!! WARNING !!!
 	//
 	// Mezo does not support tracking the storage roots and it is not possible

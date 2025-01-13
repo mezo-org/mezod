@@ -25,7 +25,7 @@ func (s *PrecompileTestSuite) setup() {
 
 func (s *PrecompileTestSuite) runTest(input []byte, expected interface{}, methodName string) {
 	evm := &vm.EVM{
-		StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 	}
 
 	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)

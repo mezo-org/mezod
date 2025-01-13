@@ -19,6 +19,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/mezo-org/mezod/x/evm/types"
 )
 
 // ExtStateDB defines an extension to the interface provided by the go-ethereum
@@ -39,6 +40,7 @@ type Keeper interface {
 	GetCode(ctx sdk.Context, codeHash common.Hash) []byte
 	// the callback returns false to break early
 	ForEachStorage(ctx sdk.Context, addr common.Address, cb func(key, value common.Hash) bool)
+	GetStorageRootStrategy(ctx sdk.Context) types.StorageRootStrategy
 
 	// Write methods, only called by `StateDB.Commit()`
 	SetAccount(ctx sdk.Context, addr common.Address, account Account) error

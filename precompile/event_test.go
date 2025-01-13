@@ -42,7 +42,7 @@ func TestEventEmitter_Emit(t *testing.T) {
 
 	address := common.HexToAddress("0x1")
 
-	stateDB := statedb.New(sdkCtx, nil, statedb.TxConfig{})
+	stateDB := statedb.New(sdkCtx, statedb.NewMockKeeper(), statedb.TxConfig{})
 
 	eventEmitter := NewEventEmitter(sdkCtx, contactAbi, address, stateDB)
 

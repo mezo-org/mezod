@@ -126,7 +126,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
 			bankKeeper := s.app.BankKeeper
