@@ -30,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/mezo-org/mezod/indexer"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
@@ -177,21 +176,13 @@ func (b *Backend) GetBlockTransactionCount(block *tmrpctypes.ResultBlock) *hexut
 	// (e.g. because it did not contain any information) we should not count it.
 	numPseudoTxs := 0
 
-	// The transaction at index `0` can be a pseudo-transaction. We need to
-	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
-	// transaction, it is still possible that it did not contain any events and
-	// was skipped during indexing.
-	if len(block.Block.Txs) > 0 {
-		tx := block.Block.Txs[0]
-		txHash := common.BytesToHash(tx.Hash())
-		res, err := b.GetTxByEthHash(txHash)
-		if err == nil {
-			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
-				// The transaction was saved during indexing. We should add it to
-				// the transaction count.
-				numPseudoTxs = 1
-			}
-		}
+	// Check if the block contains a pseudo-transaction.
+	pseudoTxResult := b.GetPseudoTransactionResult(block)
+
+	if pseudoTxResult != nil {
+		// There is a pseudo-transaction in the block. We should add it to
+		// the transaction count.
+		numPseudoTxs = 1
 	}
 
 	// Notice that a pseudo-transaction (if present) will be skipped by the
