@@ -99,7 +99,7 @@ compatible with the latest version.
 ## The Upgrade precompile
 
 The `Upgrade` precompile `precompile/upgrade`, serves as an EVM interface to the
-[x/upgrade module](https://docs.cosmos.network/main/build/modules/upgrade) and is used by 
+[x/upgrade module](https://docs.cosmos.network/main/build/modules/upgrade) and is used by
 the `Planned upgrade with state migrations` scenario described above.
 
 ### Upgrade Plan
@@ -131,7 +131,7 @@ And emits 2 events:
 - `PlanSubmitted`: Emitted when a new upgrade plan is submitted
 - `PlanCanceled`: Emitted when an upgrade plan is canceled
 
-### Interaction via the Hardhat toolbox 
+### Interaction via the Hardhat toolbox
 
 Hardhat tasks are used to simplify interacting with Mezo precompiles. More information,
 including setup steps and usage can be found in `precompile/hardhat/README.md`
