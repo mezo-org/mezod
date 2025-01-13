@@ -112,7 +112,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 			upgradePrecompile, err := upgrade.NewPrecompile(s.upgradeKeeper, s.poaKeeper)
 			s.Require().NoError(err)
