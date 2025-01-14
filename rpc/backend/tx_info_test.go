@@ -574,48 +574,6 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 	}
 }
 
-func (suite *BackendTestSuite) TestGetTransactionByTxIndex() {
-	_, bz := suite.buildEthereumTx()
-
-	testCases := []struct {
-		name         string
-		registerMock func()
-		height       int64
-		index        uint
-		expTxResult  *mezotypes.TxResult
-		expPass      bool
-	}{
-		{
-			"fail - Ethereum tx with query not found",
-			func() {
-				client := suite.backend.clientCtx.Client.(*mocks.Client)
-				suite.backend.indexer = nil
-				RegisterTxSearch(client, "tx.height=0 AND ethereum_tx.txIndex=0", bz)
-			},
-			0,
-			0,
-			&mezotypes.TxResult{},
-			false,
-		},
-	}
-
-	for _, tc := range testCases {
-		suite.Run(tc.name, func() {
-			suite.SetupTest() // reset
-			tc.registerMock()
-
-			txResults, err := suite.backend.GetTxByTxIndex(tc.height, tc.index)
-
-			if tc.expPass {
-				suite.Require().NoError(err)
-				suite.Require().Equal(txResults, tc.expTxResult)
-			} else {
-				suite.Require().Error(err)
-			}
-		})
-	}
-}
-
 func (suite *BackendTestSuite) TestQueryTendermintTxIndexer() {
 	testCases := []struct {
 		name         string

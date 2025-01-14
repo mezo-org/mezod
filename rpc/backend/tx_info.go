@@ -457,28 +457,6 @@ func (b *Backend) GetTxByEthHash(hash common.Hash) (*types.TxResult, error) {
 	return txResult, nil
 }
 
-// GetTxByTxIndex uses `/tx_query` to find transaction by tx index of valid ethereum txs
-// TODO: Most likely not needed. Remove
-func (b *Backend) GetTxByTxIndex(height int64, index uint) (*types.TxResult, error) {
-	int32Index := int32(index) // #nosec G701 -- checked for int overflow already
-	if b.indexer != nil {
-		return b.indexer.GetByBlockAndIndex(height, int32Index)
-	}
-
-	// fallback to tendermint tx indexer
-	query := fmt.Sprintf("tx.height=%d AND %s.%s=%d",
-		height, evmtypes.TypeMsgEthereumTx,
-		evmtypes.AttributeKeyTxIndex, index,
-	)
-	txResult, err := b.queryTendermintTxIndexer(query, func(txs *rpctypes.ParsedTxs) *rpctypes.ParsedTx {
-		return txs.GetTxByTxIndex(int(index)) // #nosec G701 -- checked for int overflow already
-	})
-	if err != nil {
-		return nil, errorsmod.Wrapf(err, "GetTxByTxIndex %d %d", height, index)
-	}
-	return txResult, nil
-}
-
 // queryTendermintTxIndexer query tx in tendermint tx indexer
 func (b *Backend) queryTendermintTxIndexer(query string, txGetter func(*rpctypes.ParsedTxs) *rpctypes.ParsedTx) (*types.TxResult, error) {
 	resTxs, err := b.clientCtx.Client.TxSearch(b.ctx, query, false, nil, nil, "")
