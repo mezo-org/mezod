@@ -47,7 +47,7 @@ func (s *PrecompileTestSuite) TestSetPrecompileByteCode() {
 			run: func() []interface{} {
 				return []interface{}{
 					common.HexToAddress(maintenance.EvmAddress),
-					common.Hex2Bytes("0xffffffff"),
+					common.Hex2Bytes("ffffffff"),
 				}
 			},
 			as:        s.account1.EvmAddr,
@@ -57,7 +57,7 @@ func (s *PrecompileTestSuite) TestSetPrecompileByteCode() {
 				account := s.evmKeeper.GetAccount(s.ctx, common.HexToAddress(maintenance.EvmAddress))
 				codeHash := account.CodeHash
 				code := s.evmKeeper.GetCode(s.ctx, common.BytesToHash(codeHash))
-				s.Require().Equal(code, "0xffffffff")
+				s.Require().Equal(code, common.Hex2Bytes("ffffffff"))
 			},
 		},
 	}
