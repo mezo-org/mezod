@@ -59,7 +59,6 @@ func init() {
 
 	GoVersion = runtime.Version()
 	GoArch = runtime.GOARCH
-
 }
 
 func AsJSON() map[string]string {

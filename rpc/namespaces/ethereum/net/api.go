@@ -24,6 +24,7 @@ import (
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/server"
+	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/server/config"
 	"github.com/mezo-org/mezod/types"
 	oracleclient "github.com/skip-mev/connect/v2/service/clients/oracle"
@@ -33,10 +34,11 @@ import (
 
 // PublicAPI is the eth_ prefixed set of APIs in the Web3 JSON-RPC spec.
 type PublicAPI struct {
-	networkVersion uint64
-	tmClient       rpcclient.Client
-	oracleClient   oracleclient.OracleClient
-	logger         log.Logger
+	logger                log.Logger
+	networkVersion        uint64
+	tmClient              rpcclient.Client
+	oracleClient          oracleclient.OracleClient
+	ethereumSidecarClient *sidecar.Client
 }
 
 // NewPublicAPI creates an instance of the public Net Web3 API.
@@ -44,7 +46,6 @@ func NewPublicAPI(
 	ctx *server.Context,
 	clientCtx client.Context,
 ) *PublicAPI {
-
 	appConf, err := config.GetConfig(ctx.Viper)
 	if err != nil {
 		panic(err)
@@ -62,6 +63,16 @@ func NewPublicAPI(
 		panic(err)
 	}
 
+	ethereumSidecarClient, err := sidecar.NewClient(
+		ctx.Logger,
+		appConf.EthereumSidecar.ServerAddress,
+		appConf.EthereumSidecar.RequestTimeout,
+		clientCtx.InterfaceRegistry,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	// parse the chainID from a integer string
 	chainIDEpoch, err := types.ParseChainID(clientCtx.ChainID)
 	if err != nil {
@@ -69,10 +80,11 @@ func NewPublicAPI(
 	}
 
 	return &PublicAPI{
-		networkVersion: chainIDEpoch.Uint64(),
-		tmClient:       clientCtx.Client.(rpcclient.Client),
-		oracleClient:   oracleClient,
-		logger:         ctx.Logger,
+		logger:                ctx.Logger,
+		networkVersion:        chainIDEpoch.Uint64(),
+		tmClient:              clientCtx.Client.(rpcclient.Client),
+		oracleClient:          oracleClient,
+		ethereumSidecarClient: ethereumSidecarClient,
 	}
 }
 
@@ -113,8 +125,10 @@ func (s *PublicAPI) Sidecars() map[string]SidecarInfos {
 	defer cancel()
 
 	var (
-		connectVersion = "unknown"
-		connectStatus  = false
+		connectVersion  = "unknown"
+		connectStatus   = false
+		ethereumVersion = "unknown"
+		ethereumStatus  = false
 	)
 
 	resp, err := s.oracleClient.Version(ctx, &oracletypes.QueryVersionRequest{})
@@ -125,10 +139,18 @@ func (s *PublicAPI) Sidecars() map[string]SidecarInfos {
 		connectStatus = true
 	}
 
+	ethv, err := s.ethereumSidecarClient.Version(ctx)
+	if err != nil {
+		s.logger.Error("couldn't reach ethereum sidecar", "error", err)
+	} else {
+		ethereumVersion = ethv
+		ethereumStatus = true
+	}
+
 	return map[string]SidecarInfos{
 		"ethereum": {
-			Version:   "0",
-			Connected: true,
+			Version:   ethereumVersion,
+			Connected: ethereumStatus,
 		},
 		"connect": {
 			Version:   connectVersion,
