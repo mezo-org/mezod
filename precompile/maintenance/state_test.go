@@ -64,8 +64,3 @@ func (s *PrecompileTestSuite) TestSetPrecompileByteCode() {
 
 	s.RunMethodTestCases(testcases, "setPrecompileByteCode")
 }
-
-// argument count mismatch
-// sender not owner
-// address is not precompile
-// valid call
