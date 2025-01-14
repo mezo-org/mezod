@@ -16,9 +16,6 @@ both part of the `app/upgrades` module:
   The state migrations are executed using the built-in
   [Cosmos In-Place Store Migrations mechanism](https://docs.cosmos.network/v0.52/learn/advanced/upgrade).
 
-> [!IMPORTANT]
-> The `Upgrade` precompile is still under development and not yet available in the Mezo chain client.
-
 Those two primitives can be combined to perform different upgrade procedures
 depending on the requirements of the upgrade. Each procedure assumes
 all Mezo chain clients run on version `v1.0.0` initially.
@@ -98,6 +95,55 @@ produced by `v1.0.0` clients. New nodes must sync from the genesis block using
 This process can be automated using Cosmovisor. Alternatively, nodes can
 use the state sync process that starts syncing from a snapshot block
 compatible with the latest version.
+
+## The Upgrade precompile
+
+The `Upgrade` precompile `precompile/upgrade`, serves as an EVM interface to the
+[x/upgrade module](https://docs.cosmos.network/main/build/modules/upgrade) and is used by
+the `Planned upgrade with state migrations` scenario described above.
+
+### Upgrade Plan
+
+The `x/upgrade` module defines a `Plan` type in which a live upgrade is scheduled to occur.
+A `Plan` can be scheduled at a specific block `Height`. A `Plan` is submitted via the `Upgrade`
+precompile after a Mezo chain client release with an appropriate upgrade handler.
+
+An upgrade `Plan` has the following values:
+
+- `Name`: The upgrade name (corresponds to handler)
+- `Height`: The block height old clients should halt at to prevent state corruption
+- `Info`: Any metadata about the upgrade (e.g. urls to updated binaries or git commit hash)
+
+### Upgrade precompile API
+
+Address: `0x7b7c000000000000000000000000000000000014`
+ABI: `precompile/upgrade/abi.json`
+Interface: `precompile/upgrade/IUpgrade.sol`
+
+The `Upgrade` precompile provides 3 methods:
+
+- `plan`: Returns the latest upgrade plan
+- `submitPlan`: Submits a new upgrade plan (restricted to the validator pool owner)
+- `cancelPlan`: Cancels an upgrade plan (restricted to the validator pool owner)
+
+And emits 2 events:
+
+- `PlanSubmitted`: Emitted when a new upgrade plan is submitted
+- `PlanCanceled`: Emitted when an upgrade plan is canceled
+
+### Interaction via the Hardhat toolbox
+
+Hardhat tasks are used to simplify interacting with Mezo precompiles. More information,
+including setup steps and usage can be found in `precompile/hardhat/README.md`
+
+After the hardhat environment and accounts have been configured, interaction with the
+`Upgrade` precompile is possible with the following commands:
+
+```
+npx hardhat upgrade:submitPlan --signer OWNER --name NAME --height HEIGHT --info "{}"
+npx hardhat upgrade:plan
+npx hardhat upgrade:cancelPlan --signer OWNER
+```
 
 ## Historical upgrades
 

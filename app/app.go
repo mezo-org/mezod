@@ -35,6 +35,7 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	"github.com/mezo-org/mezod/precompile/btctoken"
+	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
 
 	"github.com/gorilla/mux"
@@ -403,7 +404,7 @@ func NewMezo(
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
-	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper, *app.EvmKeeper, bApp.ChainID())
+	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper, *app.EvmKeeper, *app.UpgradeKeeper, bApp.ChainID())
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
@@ -887,6 +888,7 @@ func customEvmPrecompiles(
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
 	evmKeeper evmkeeper.Keeper,
+	upgradeKeeper upgradekeeper.Keeper,
 	chainID string,
 ) ([]*precompile.VersionMap, error) {
 	// BTC token precompile.
@@ -943,10 +945,18 @@ func customEvmPrecompiles(
 	}
 	assetsBridgeVersionMap := precompile.NewSingleVersionMap(assetsBridgePrecompile)
 
+	// Upgrade precompile.
+	upgradePrecompile, err := upgradelocal.NewPrecompile(upgradeKeeper, poaKeeper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create upgrade precompile: [%w]", err)
+	}
+	upgradeVersionMap := precompile.NewSingleVersionMap(upgradePrecompile)
+
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
 		maintenanceVersionMap,
 		assetsBridgeVersionMap,
+		upgradeVersionMap,
 	}, nil
 }
