@@ -435,6 +435,17 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			ServerAddress:  v.GetString("ethereum-sidecar.client.server-address"),
 			RequestTimeout: v.GetDuration("ethereum-sidecar.client.request-timeout"),
 		},
+		Oracle: oracleconfig.AppConfig{
+			Enabled:        v.GetBool("oracle.enabled"),
+			OracleAddress:  v.GetString("oracle.oracle_address"),
+			ClientTimeout:  v.GetDuration("oracle.client_timeout"),
+			MetricsEnabled: v.GetBool("oracle.metrics_enabled"),
+			// FIXME(jeremy): these two do not seems to be available from the config
+			// and default are being used else, what's needs to be done? Expose them on
+			// the CLI or keeps the defaults here.
+			PriceTTL: oracleconfig.DefaultPriceTTL,
+			Interval: oracleconfig.DefaultInterval,
+		},
 	}, nil
 }
 

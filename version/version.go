@@ -47,9 +47,9 @@ func init() {
 	}
 
 	// if we are not in a git repository, this value will be 0
-	if len(AppVersion) == 0 {
+	if len(AppVersion) <= 0 {
 		AppVersion = "dev"
-	} else {
+	} else if len(AppVersion) > 0 {
 		// only set in case we are in a git repository, then we know
 		// the code on the commit have been altered
 		if GitModified == "true" {
