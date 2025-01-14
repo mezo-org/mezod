@@ -62,6 +62,7 @@ type EvmKeeper interface {
 	GetParams(ctx sdk.Context) (params evmtypes.Params)
 	SetParams(ctx sdk.Context, params evmtypes.Params) error
 	SetCode(ctx sdk.Context, codeHash, code []byte)
+	GetCode(ctx sdk.Context, codeHash common.Hash) []byte
 	IsCustomPrecompile(address common.Address) bool
 	GetAccount(ctx sdk.Context, addr common.Address) *statedb.Account
 	SetAccount(ctx sdk.Context, addr common.Address, account statedb.Account) error

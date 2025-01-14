@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
@@ -86,22 +87,33 @@ func (m *setPrecompileByteCodeMethod) Run(
 		return nil, fmt.Errorf("address is not a precompile")
 	}
 
+	nonce := uint64(0)
+	balance := uint256.Int{0}
 	account := m.evmKeeper.GetAccount(context.SdkCtx(), precompileAddress)
-	prevCodeHash := account.CodeHash
+	if account != nil {
+		// is an existing account
+		nonce = account.Nonce
+		balance = *account.Balance
+	}
 
+	// set new code/codeHash
 	newCodeHash := crypto.Keccak256Hash(precompileBytecode)
 	m.evmKeeper.SetCode(context.SdkCtx(), newCodeHash[:], precompileBytecode)
 
+	// update/set account
 	err = m.evmKeeper.SetAccount(context.SdkCtx(), precompileAddress, statedb.Account{
-		Nonce:    account.Nonce,
-		Balance:  account.Balance,
+		Nonce:    nonce,
+		Balance:  &balance,
 		CodeHash: newCodeHash[:],
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	m.evmKeeper.SetCode(context.SdkCtx(), prevCodeHash, []byte{})
+	// clear old code/codeHash
+	if account != nil && len(account.CodeHash) > 0 {
+		m.evmKeeper.SetCode(context.SdkCtx(), account.CodeHash, []byte{})
+	}
 
 	return precompile.MethodOutputs{true}, nil
 }
