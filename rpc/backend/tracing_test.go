@@ -58,7 +58,7 @@ func (suite *BackendTestSuite) TestTraceTransaction() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	pseudoTxBlock := &types.Block{Header: types.Header{Height: 1}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
 	pseudoTxTrace, err := buildPseudoTxTrace(event)
@@ -247,7 +247,7 @@ func (suite *BackendTestSuite) TestTraceBlock() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	pseudoTxBlock := types.MakeBlock(1, []types.Tx{*pseudoTx}, nil, nil)
 	pseudoTxBlock.ChainID = ChainID

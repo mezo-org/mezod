@@ -384,7 +384,7 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByHash() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	pseudoTxBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{*pseudoTx}, nil, nil)
 
@@ -492,7 +492,7 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByNumber() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	pseudoTxBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{*pseudoTx}, nil, nil)
 
@@ -1200,7 +1200,7 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint_PsuedoTx() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	pseudoTxBlock := tmtypes.MakeBlock(1, []tmtypes.Tx{*pseudoTx}, nil, nil)
 	rpcPseudoTx, err := buildRPCPseudoTx(
