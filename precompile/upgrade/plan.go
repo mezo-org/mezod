@@ -2,9 +2,9 @@ package upgrade
 
 import (
 	"fmt"
-	"strconv"
 
 	upgradetypes "cosmossdk.io/x/upgrade/types"
+
 	"github.com/mezo-org/mezod/precompile"
 )
 
@@ -51,7 +51,7 @@ func (m *PlanMethod) Run(context *precompile.RunContext, inputs precompile.Metho
 		return nil, err
 	}
 
-	return precompile.MethodOutputs{plan.Name, strconv.FormatInt(plan.Height, 10), plan.Info}, nil
+	return precompile.MethodOutputs{plan.Name, plan.Height, plan.Info}, nil
 }
 
 // SubmitPlanMethodName is the name of the submitPlan method. It matches the name
