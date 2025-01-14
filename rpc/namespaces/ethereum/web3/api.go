@@ -31,8 +31,8 @@ func NewPublicAPI() *PublicAPI {
 }
 
 // ClientVersion returns the client version in the Web3 user agent format.
-func (a *PublicAPI) ClientVersion() string {
-	return version.Version()
+func (a *PublicAPI) ClientVersion() map[string]string {
+	return version.AsJSON()
 }
 
 // Sha3 returns the keccak-256 hash of the passed-in input.

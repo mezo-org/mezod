@@ -47,7 +47,7 @@ func init() {
 	}
 
 	// if we are not in a git repository, this value will be 0
-	if len(AppVersion) <= 0 {
+	if len(AppVersion) == 0 {
 		AppVersion = "dev"
 	} else if len(AppVersion) > 0 {
 		// only set in case we are in a git repository, then we know
@@ -60,6 +60,16 @@ func init() {
 	GoVersion = runtime.Version()
 	GoArch = runtime.GOARCH
 
+}
+
+func AsJSON() map[string]string {
+	return map[string]string{
+		"app_version": AppVersion,
+		"commit":      GitCommit,
+		"build_date":  BuildDate,
+		"go":          GoVersion,
+		"go_arch":     GoArch,
+	}
 }
 
 func Version() string {
