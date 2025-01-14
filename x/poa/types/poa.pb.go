@@ -71,7 +71,8 @@ func (m *Params) GetMaxValidators() uint32 {
 
 // Validator represents a validator in the pool.
 type Validator struct {
-	// operator_bech32 is the Cosmos SDK address (bech32) identifying the validator.
+	// operator_bech32 is the Cosmos SDK address (bech32) identifying the
+	// validator.
 	OperatorBech32 string `protobuf:"bytes,1,opt,name=operator_bech32,json=operatorBech32,proto3" json:"operator_bech32,omitempty"`
 	// cons_pub_key_bech32 is the consensus public key (bech32) of the validator
 	// used to vote on blocks.

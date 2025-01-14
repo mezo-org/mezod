@@ -33,9 +33,11 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // AssetsLockedEventsRequest is the request type for the GetAssetsLockedEvents
 // query.
 type AssetsLockedEventsRequest struct {
-	// sequence_start is the start of the sequence range (inclusive). If null, unbounded on the lower side.
+	// sequence_start is the start of the sequence range (inclusive). If null,
+	// unbounded on the lower side.
 	SequenceStart cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=sequence_start,json=sequenceStart,proto3,customtype=cosmossdk.io/math.Int" json:"sequence_start"`
-	// sequence_end is the end of the sequence range (exclusive). If null, unbounded on the upper side.
+	// sequence_end is the end of the sequence range (exclusive). If null,
+	// unbounded on the upper side.
 	SequenceEnd cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=sequence_end,json=sequenceEnd,proto3,customtype=cosmossdk.io/math.Int" json:"sequence_end"`
 }
 

@@ -9,18 +9,21 @@ option go_package = "github.com/mezo-org/mezod/ethereum/sidecar/types";
 // EthereumSidecar defines the Ethereum sidecar service.
 service EthereumSidecar {
   // AssetsLockedEvents returns AssetsLockedEvents within a sequence range.
-  rpc AssetsLockedEvents(AssetsLockedEventsRequest) returns (AssetsLockedEventsResponse);
+  rpc AssetsLockedEvents(AssetsLockedEventsRequest)
+      returns (AssetsLockedEventsResponse);
 }
 
 // AssetsLockedEventsRequest is the request type for the GetAssetsLockedEvents
 // query.
 message AssetsLockedEventsRequest {
-  // sequence_start is the start of the sequence range (inclusive). If null, unbounded on the lower side.
+  // sequence_start is the start of the sequence range (inclusive). If null,
+  // unbounded on the lower side.
   string sequence_start = 1 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
-  // sequence_end is the end of the sequence range (exclusive). If null, unbounded on the upper side.
+  // sequence_end is the end of the sequence range (exclusive). If null,
+  // unbounded on the upper side.
   string sequence_end = 2 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
