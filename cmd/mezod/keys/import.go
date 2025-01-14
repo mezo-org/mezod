@@ -13,7 +13,8 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
-package client
+
+package keys
 
 import (
 	"bufio"
@@ -29,8 +30,8 @@ import (
 	"github.com/mezo-org/mezod/crypto/hd"
 )
 
-// UnsafeImportKeyCommand imports private keys from a keyfile.
-func UnsafeImportKeyCommand() *cobra.Command {
+// NewUnsafeImportCmd imports private keys from a keyfile.
+func NewUnsafeImportCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unsafe-import-eth-key <name> <pk>",
 		Short: "**UNSAFE** Import Ethereum private keys into the local keybase",

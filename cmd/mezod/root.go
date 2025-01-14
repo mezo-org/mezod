@@ -24,6 +24,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mezo-org/mezod/cmd/mezod/keys"
+
+	"github.com/mezo-org/mezod/cmd/mezod/localnet"
+
 	"github.com/mezo-org/mezod/cmd/mezod/genesis"
 	"github.com/mezo-org/mezod/cmd/mezod/toml"
 
@@ -38,8 +42,8 @@ import (
 
 	"cosmossdk.io/log"
 	confixcmd "cosmossdk.io/tools/confix/cmd"
-	tmcfg "github.com/cometbft/cometbft/config"
-	tmcli "github.com/cometbft/cometbft/libs/cli"
+	cometcfg "github.com/cometbft/cometbft/config"
+	cometcli "github.com/cometbft/cometbft/libs/cli"
 	dbm "github.com/cosmos/cosmos-db"
 
 	"cosmossdk.io/simapp/params"
@@ -54,11 +58,8 @@ import (
 	sdkserver "github.com/cosmos/cosmos-sdk/server"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
-	mezoclient "github.com/mezo-org/mezod/client"
-	"github.com/mezo-org/mezod/client/debug"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
 	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
@@ -70,7 +71,6 @@ import (
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
-	rosettacmd "github.com/cosmos/rosetta/cmd"
 	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
 )
 
@@ -121,9 +121,14 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 
 			// override the app and tendermint configuration
 			customAppTemplate, customAppConfig := initAppConfig()
-			customTMConfig := initTendermintConfig()
+			customCometConfig := initCometConfig()
 
-			return sdkserver.InterceptConfigsPreRunHandler(cmd, customAppTemplate, customAppConfig, customTMConfig)
+			return sdkserver.InterceptConfigsPreRunHandler(
+				cmd,
+				customAppTemplate,
+				customAppConfig,
+				customCometConfig,
+			)
 		},
 	}
 
@@ -131,16 +136,18 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	cfg.Seal()
 
 	a := appCreator{encodingConfig}
+
 	rootCmd.AddCommand(
 		genesis.NewCmd(),
 		toml.NewCmd(),
 		NewInitCmd(app.ModuleBasics),
 		escli.NewEthereumSidecarCmd(),
-		tmcli.NewCompletionCmd(rootCmd, true),
-		NewTestnetCmd(app.ModuleBasics),
-		debug.Cmd(),
+		cometcli.NewCompletionCmd(rootCmd, true),
+		localnet.NewCmd(app.ModuleBasics),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
+		keys.NewCmd(),
+		queryCommand(),
 	)
 
 	mezoserver.AddCommands(
@@ -150,25 +157,10 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		addModuleInitFlags,
 	)
 
-	// add keybase, auxiliary RPC, query, and tx child commands
-	rootCmd.AddCommand(
-		sdkserver.StatusCommand(),
-		queryCommand(),
-		txCommand(),
-		mezoclient.KeyCommands(app.DefaultNodeHome),
-	)
 	rootCmd, err := srvflags.AddTxFlags(rootCmd)
 	if err != nil {
 		panic(err)
 	}
-
-	// add rosetta
-	rootCmd.AddCommand(
-		rosettacmd.RosettaCommand(
-			encodingConfig.InterfaceRegistry,
-			encodingConfig.Codec,
-		),
-	)
 
 	return rootCmd, encodingConfig
 }
@@ -190,38 +182,8 @@ func queryCommand() *cobra.Command {
 	cmd.AddCommand(
 		rpc.ValidatorCommand(),
 		sdkserver.QueryBlockCmd(),
-		authcmd.QueryTxsByEventsCmd(),
-		authcmd.QueryTxCmd(),
+		sdkserver.StatusCommand(),
 	)
-
-	app.ModuleBasics.AddQueryCommands(cmd)
-	cmd.PersistentFlags().String(flags.FlagChainID, "", "The network chain ID")
-
-	return cmd
-}
-
-func txCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:                        "tx",
-		Short:                      "Transactions subcommands",
-		DisableFlagParsing:         true,
-		SuggestionsMinimumDistance: 2,
-		RunE:                       client.ValidateCmd,
-	}
-
-	cmd.AddCommand(
-		authcmd.GetSignCommand(),
-		authcmd.GetSignBatchCommand(),
-		authcmd.GetMultiSignCommand(),
-		authcmd.GetMultiSignBatchCmd(),
-		authcmd.GetValidateSignaturesCommand(),
-		authcmd.GetBroadcastCommand(),
-		authcmd.GetEncodeCommand(),
-		authcmd.GetDecodeCommand(),
-	)
-
-	app.ModuleBasics.AddTxCommands(cmd)
-	cmd.PersistentFlags().String(flags.FlagChainID, "", "The network chain ID")
 
 	return cmd
 }
@@ -416,10 +378,10 @@ func (a appCreator) appExport(
 	return mezoApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
 }
 
-// initTendermintConfig helps to override default Tendermint Config values.
-// return tmcfg.DefaultConfig if no custom configuration is required for the application.
-func initTendermintConfig() *tmcfg.Config {
-	cfg := tmcfg.DefaultConfig()
+// initCometConfig helps to override default CometBFT config values.
+// return DefaultConfig if no custom configuration is required for the application.
+func initCometConfig() *cometcfg.Config {
+	cfg := cometcfg.DefaultConfig()
 	cfg.Consensus.TimeoutCommit = time.Second * 3
 	// to put a higher strain on node memory, use these values:
 	// cfg.P2P.MaxNumInboundPeers = 100

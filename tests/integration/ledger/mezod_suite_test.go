@@ -32,7 +32,7 @@ import (
 	rpcclientmock "github.com/cometbft/cometbft/rpc/client/mock"
 	cosmosledger "github.com/cosmos/cosmos-sdk/crypto/ledger"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	clientkeys "github.com/mezo-org/mezod/client/keys"
+	cmdkeys "github.com/mezo-org/mezod/cmd/mezod/keys"
 	mezokeyring "github.com/mezo-org/mezod/crypto/keyring"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
@@ -161,7 +161,7 @@ func (suite *LedgerTestSuite) mezoAddKeyCmd() *cobra.Command {
 			return err
 		}
 		buf := bufio.NewReader(clientCtx.Input)
-		return clientkeys.RunAddCmd(clientCtx, cmd, args, buf)
+		return cmdkeys.RunAddCmd(clientCtx, cmd, args, buf)
 	}
 	return cmd
 }

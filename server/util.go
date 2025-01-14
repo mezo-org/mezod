@@ -33,7 +33,7 @@ import (
 
 	"cosmossdk.io/log"
 
-	tmcmd "github.com/cometbft/cometbft/cmd/cometbft/commands"
+	cometcmd "github.com/cometbft/cometbft/cmd/cometbft/commands"
 	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 )
 
@@ -44,18 +44,18 @@ func AddCommands(
 	appExport types.AppExporter,
 	addStartFlags types.ModuleInitFlags,
 ) {
-	tendermintCmd := &cobra.Command{
-		Use:   "tendermint",
-		Short: "Tendermint subcommands",
+	cometCmd := &cobra.Command{
+		Use:   "cometbft",
+		Short: "CometBFT subcommands",
 	}
 
-	tendermintCmd.AddCommand(
+	cometCmd.AddCommand(
 		sdkserver.ShowNodeIDCmd(),
 		sdkserver.ShowValidatorCmd(),
 		sdkserver.ShowAddressCmd(),
 		sdkserver.VersionCmd(),
-		tmcmd.ResetAllCmd,
-		tmcmd.ResetStateCmd,
+		cometcmd.ResetAllCmd,
+		cometcmd.ResetStateCmd,
 	)
 
 	startCmd := StartCmd(opts)
@@ -63,7 +63,7 @@ func AddCommands(
 
 	rootCmd.AddCommand(
 		startCmd,
-		tendermintCmd,
+		cometCmd,
 		sdkserver.ExportCmd(appExport, opts.DefaultNodeHome),
 		version.NewVersionCommand(),
 		sdkserver.NewRollbackCmd(opts.AppCreator, opts.DefaultNodeHome),

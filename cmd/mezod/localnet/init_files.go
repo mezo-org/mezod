@@ -1,22 +1,4 @@
-// Copyright 2022 Evmos Foundation
-// This file is part of the Evmos Network packages.
-//
-// Evmos is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The Evmos packages are distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
-
-package main
-
-// DONTCOVER
+package localnet
 
 import (
 	"bufio"
@@ -28,17 +10,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cosmos/cosmos-sdk/x/genutil/types"
-
 	sdkmath "cosmossdk.io/math"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	tmconfig "github.com/cometbft/cometbft/config"
+	cometos "github.com/cometbft/cometbft/libs/os"
 	tmrand "github.com/cometbft/cometbft/libs/rand"
 	tmtime "github.com/cometbft/cometbft/types/time"
-	"github.com/spf13/cobra"
-
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -52,18 +29,16 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
+	"github.com/cosmos/cosmos-sdk/x/genutil/types"
+	"github.com/ethereum/go-ethereum/common"
+	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	"github.com/mezo-org/mezod/crypto/hd"
+	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 	"github.com/mezo-org/mezod/server/config"
-	srvflags "github.com/mezo-org/mezod/server/flags"
-
 	mezotypes "github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
-
-	cmdcfg "github.com/mezo-org/mezod/cmd/config"
-	mezokr "github.com/mezo-org/mezod/crypto/keyring"
-	"github.com/mezo-org/mezod/testutil/network"
-
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -72,10 +47,6 @@ var (
 	flagOutputDir         = "output-dir"
 	flagNodeDaemonHome    = "node-daemon-home"
 	flagStartingIPAddress = "starting-ip-address"
-	flagEnableLogging     = "enable-logging"
-	flagRPCAddress        = "rpc.address"
-	flagAPIAddress        = "api.address"
-	flagPrintMnemonic     = "print-mnemonic"
 )
 
 type initArgs struct {
@@ -90,61 +61,19 @@ type initArgs struct {
 	startingIPAddress string
 }
 
-type startArgs struct {
-	algo           string
-	apiAddress     string
-	chainID        string
-	grpcAddress    string
-	minGasPrices   string
-	outputDir      string
-	rpcAddress     string
-	jsonrpcAddress string
-	numValidators  int
-	enableLogging  bool
-	printMnemonic  bool
-}
+const InitFilesCmdLong = `Initialize config directories and files for a multi-validator localnet. ` + "\n" +
+	`This command sets up the given number of directories and populate each with ` +
+	`necessary files (validator key, node key, genesis, configuration).` + "\n" +
+	`Resulting directories can be used to start a localnet based either on the native binary or Docker.`
 
-func addTestnetFlagsToCmd(cmd *cobra.Command) {
-	cmd.Flags().Int(flagNumValidators, 4, "Number of validators to initialize the testnet with")
-	cmd.Flags().StringP(flagOutputDir, "o", "./.testnets", "Directory to store initialization data for the testnet")
-	cmd.Flags().String(flags.FlagChainID, "", "genesis file chain-id, if left blank will be randomly created")
-	cmd.Flags().String(sdkserver.FlagMinGasPrices, fmt.Sprintf("0.000006%s", cmdcfg.BaseDenom), "Minimum gas prices to accept for transactions; All fees in a tx must meet this minimum (e.g. 0.01photino,0.001stake)")
-	cmd.Flags().String(flags.FlagKeyType, string(hd.EthSecp256k1Type), "Key signing algorithm to generate keys for")
-}
+const InitFilesCmdExample = "init-files --v 4 --output-dir ./.localnet --starting-ip-address 192.168.10.2"
 
-// NewTestnetCmd creates a root testnet command with subcommands to run an in-process testnet or initialize
-// validator configuration files for running a multi-validator testnet in a separate process
-func NewTestnetCmd(mbm module.BasicManager) *cobra.Command {
-	testnetCmd := &cobra.Command{
-		Use:                        "testnet",
-		Short:                      "subcommands for starting or configuring local testnets",
-		DisableFlagParsing:         true,
-		SuggestionsMinimumDistance: 2,
-		RunE:                       client.ValidateCmd,
-	}
-
-	testnetCmd.AddCommand(testnetStartCmd())
-	testnetCmd.AddCommand(testnetInitFilesCmd(mbm))
-
-	return testnetCmd
-}
-
-// get cmd to initialize all files for tendermint testnet and application
-func testnetInitFilesCmd(mbm module.BasicManager) *cobra.Command {
+func NewInitFilesCmd(mbm module.BasicManager) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "init-files",
-		Short: "Initialize config directories & files for a multi-validator testnet running locally via separate processes (e.g. Docker Compose or similar)",
-		Long: `init-files will setup "v" number of directories and populate each with
-necessary files (private validator, genesis, config, etc.) for running "v" validator nodes.
-
-Booting up a network with these validator folders is intended to be used with Docker Compose,
-or a similar setup where each node has a manually configurable IP address.
-
-Note, strict routability for addresses is turned off in the config file.
-
-Example:
-	mezod testnet init-files --v 4 --output-dir ./.testnets --starting-ip-address 192.168.10.2
-	`,
+		Use:     "init-files",
+		Short:   "Initialize config directories and files for a multi-validator localnet",
+		Long:    InitFilesCmdLong,
+		Example: InitFilesCmdExample,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
@@ -164,56 +93,19 @@ Example:
 			args.numValidators, _ = cmd.Flags().GetInt(flagNumValidators)
 			args.algo, _ = cmd.Flags().GetString(flags.FlagKeyType)
 
-			return initTestnetFiles(clientCtx, cmd, serverCtx.Config, mbm, args)
+			return initLocalnetFiles(clientCtx, cmd, serverCtx.Config, mbm, args)
 		},
 	}
 
-	addTestnetFlagsToCmd(cmd)
+	cmd.Flags().Int(flagNumValidators, 4, "Number of validators to initialize the localnet with")
+	cmd.Flags().StringP(flagOutputDir, "o", "./.localnet", "Directory to store initialization data for the localnet")
+	cmd.Flags().String(sdkserver.FlagMinGasPrices, fmt.Sprintf("0.000006%s", cmdcfg.BaseDenom), "Minimum gas prices to accept for transactions; All fees in a tx must meet this minimum (e.g. 0.01abtc)")
+	cmd.Flags().String(flags.FlagKeyType, string(hd.EthSecp256k1Type), "Key signing algorithm to generate keys for")
 	cmd.Flags().String(flagNodeDirPrefix, "node", "Prefix the directory name for each node with (node results in node0, node1, ...)")
 	cmd.Flags().String(flagNodeDaemonHome, "mezod", "Home directory of the node's daemon configuration")
-	cmd.Flags().String(flagStartingIPAddress, "192.168.0.1", "Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:46656, ID1@192.168.0.2:46656, ...). Setting this flag to localhost results in configuration generation for binary-based localnet")
+	cmd.Flags().String(flagStartingIPAddress, "192.168.0.1", "Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:46656, ID1@192.168.0.2:46656, etc.). Setting this flag to localhost results in configuration generation for binary-based localnet")
 	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "Select keyring's backend (os|file|test)")
 
-	return cmd
-}
-
-// get cmd to start multi validator in-process testnet
-func testnetStartCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "start",
-		Short: "Launch an in-process multi-validator testnet",
-		Long: `testnet will launch an in-process multi-validator testnet,
-and generate "v" directories, populated with necessary validator configuration files
-(private validator, genesis, config, etc.).
-
-Example:
-	mezod testnet --v 4 --output-dir ./.testnets
-	`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			args := startArgs{}
-			args.outputDir, _ = cmd.Flags().GetString(flagOutputDir)
-			args.chainID, _ = cmd.Flags().GetString(flags.FlagChainID)
-			args.minGasPrices, _ = cmd.Flags().GetString(sdkserver.FlagMinGasPrices)
-			args.numValidators, _ = cmd.Flags().GetInt(flagNumValidators)
-			args.algo, _ = cmd.Flags().GetString(flags.FlagKeyType)
-			args.enableLogging, _ = cmd.Flags().GetBool(flagEnableLogging)
-			args.rpcAddress, _ = cmd.Flags().GetString(flagRPCAddress)
-			args.apiAddress, _ = cmd.Flags().GetString(flagAPIAddress)
-			args.grpcAddress, _ = cmd.Flags().GetString(srvflags.GRPCAddress)
-			args.jsonrpcAddress, _ = cmd.Flags().GetString(srvflags.JSONRPCAddress)
-			args.printMnemonic, _ = cmd.Flags().GetBool(flagPrintMnemonic)
-
-			return startTestnet(cmd, args)
-		},
-	}
-
-	addTestnetFlagsToCmd(cmd)
-	cmd.Flags().Bool(flagEnableLogging, false, "Enable INFO logging of tendermint validator nodes")
-	cmd.Flags().String(flagRPCAddress, "tcp://0.0.0.0:26657", "the RPC address to listen on")
-	cmd.Flags().String(flagAPIAddress, "tcp://0.0.0.0:1317", "the address to listen on for REST API")
-	cmd.Flags().String(srvflags.GRPCAddress, config.DefaultGRPCAddress, "the gRPC server address to listen on")
-	cmd.Flags().String(srvflags.JSONRPCAddress, config.DefaultJSONRPCAddress, "the JSON-RPC server address to listen on")
-	cmd.Flags().Bool(flagPrintMnemonic, true, "print mnemonic of first validator to stdout for manual testing")
 	return cmd
 }
 
@@ -222,8 +114,8 @@ const (
 	localhost   = "localhost"
 )
 
-// initTestnetFiles initializes testnet files for a testnet to be run in a separate process
-func initTestnetFiles(
+// initLocalnetFiles initializes localnet files for a localnet to be run in a separate process
+func initLocalnetFiles(
 	clientCtx client.Context,
 	cmd *cobra.Command,
 	nodeConfig *tmconfig.Config,
@@ -317,7 +209,7 @@ func initTestnetFiles(
 		}
 
 		// save private key seed words
-		if err := network.WriteFile(
+		if err := writeFile(
 			fmt.Sprintf("%v.json", "key_seed"),
 			nodeDir,
 			infoBytes,
@@ -601,49 +493,13 @@ func calculateIP(ip string, i int) (string, error) {
 	return ipv4.String(), nil
 }
 
-// startTestnet starts an in-process testnet
-func startTestnet(cmd *cobra.Command, args startArgs) error {
-	networkConfig := network.DefaultConfig()
+func writeFile(name string, dir string, contents []byte) error {
+	file := filepath.Join(dir, name)
 
-	// Default networkConfig.ChainID is random, and we should only override it if chainID provided
-	// is non-empty
-	if args.chainID != "" {
-		networkConfig.ChainID = args.chainID
-	}
-	networkConfig.SigningAlgo = args.algo
-	networkConfig.MinGasPrices = args.minGasPrices
-	networkConfig.NumValidators = args.numValidators
-	networkConfig.EnableTMLogging = args.enableLogging
-	networkConfig.RPCAddress = args.rpcAddress
-	networkConfig.APIAddress = args.apiAddress
-	networkConfig.GRPCAddress = args.grpcAddress
-	networkConfig.JSONRPCAddress = args.jsonrpcAddress
-	networkConfig.PrintMnemonic = args.printMnemonic
-	networkLogger := network.NewCLILogger(cmd)
-
-	baseDir := fmt.Sprintf("%s/%s", args.outputDir, networkConfig.ChainID)
-	if _, err := os.Stat(baseDir); !os.IsNotExist(err) {
-		return fmt.Errorf(
-			"testnests directory already exists for chain-id '%s': %s, please remove or select a new --chain-id",
-			networkConfig.ChainID, baseDir)
-	}
-
-	testnet, err := network.New(networkLogger, baseDir, networkConfig)
+	err := cometos.EnsureDir(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
-	_, err = testnet.WaitForHeight(1)
-	if err != nil {
-		return err
-	}
-
-	cmd.Println("press the Enter Key to terminate")
-	_, err = fmt.Scanln() // wait for Enter Key
-	if err != nil {
-		return err
-	}
-	testnet.Cleanup()
-
-	return nil
+	return cometos.WriteFile(file, contents, 0o644)
 }

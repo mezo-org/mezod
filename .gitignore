@@ -39,7 +39,6 @@ keyring_test_cosmos
 ./**/dist
 secret.yml
 artifacts/*
-tmp-swagger-gen
 github.com/
 # vue/
 

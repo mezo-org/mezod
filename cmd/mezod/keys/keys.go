@@ -13,7 +13,8 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the Evmos packages. If not, see https://github.com/evmos/evmos/blob/main/LICENSE
-package client
+
+package keys
 
 import (
 	"bufio"
@@ -24,18 +25,10 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/spf13/cobra"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	clientkeys "github.com/mezo-org/mezod/client/keys"
 	"github.com/mezo-org/mezod/crypto/hd"
 )
 
-// KeyCommands registers a sub-tree of commands to interact with
-// local private key storage.
-func KeyCommands(defaultNodeHome string) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "keys",
-		Short: "Manage your application's keys",
-		Long: `Keyring management commands. These keys may be in any format supported by the
+const CmdLong = `Keyring management commands. These keys may be in any format supported by the
 Tendermint crypto library and can be used by light-clients, full nodes, or any other application
 that needs to sign with a private key.
 
@@ -56,7 +49,14 @@ information:
     pass        https://www.passwordstore.org/
 
 The pass backend requires GnuPG: https://gnupg.org/
-`,
+`
+
+// NewCmd registers a subtree of commands to interact with local private key storage.
+func NewCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "keys",
+		Short: "Manage your application's keys",
+		Long:  CmdLong,
 	}
 
 	// support adding Ethereum supported keys
@@ -84,14 +84,13 @@ The pass backend requires GnuPG: https://gnupg.org/
 		keys.ParseKeyStringCommand(),
 		keys.MigrateCommand(),
 		flags.LineBreak,
-		UnsafeExportEthKeyCommand(),
-		UnsafeImportKeyCommand(),
+		NewUnsafeExportCmd(),
+		NewUnsafeImportCmd(),
 	)
 
-	cmd.PersistentFlags().String(flags.FlagHome, defaultNodeHome, "The application home directory")
 	cmd.PersistentFlags().String(flags.FlagKeyringDir, "", "The client Keyring directory; if omitted, the default 'home' directory will be used")
-	cmd.PersistentFlags().String(flags.FlagKeyringBackend, keyring.BackendOS, "Select keyring's backend (os|file|test)")
 	cmd.PersistentFlags().String(cli.OutputFlag, "text", "Output format (text|json)")
+
 	return cmd
 }
 
@@ -102,5 +101,5 @@ func runAddCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	buf := bufio.NewReader(clientCtx.Input)
-	return clientkeys.RunAddCmd(clientCtx, cmd, args, buf)
+	return RunAddCmd(clientCtx, cmd, args, buf)
 }
