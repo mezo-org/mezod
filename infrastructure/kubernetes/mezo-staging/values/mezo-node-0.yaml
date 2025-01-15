@@ -5,6 +5,7 @@ env:
   NETWORK: testnet
   PUBLIC_IP: "34.134.59.27" # mezo-staging-node-0-external-ip
   MEZOD_MONIKER: "mezo-node-0"
+  MEZOD_JSON_RPC_ENABLE_INDEXER: true
 
 secrets:
   credentials: "mezo-node-0" # created manually
