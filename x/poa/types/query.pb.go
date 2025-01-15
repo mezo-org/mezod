@@ -197,7 +197,8 @@ func (m *QueryValidatorsResponse) GetValidators() []Validator {
 
 // QueryValidatorRequest is request type for the Query/Validator RPC method.
 type QueryValidatorRequest struct {
-	// operator is the Cosmos SDK operator address (bech32) of the validator to query.
+	// operator is the Cosmos SDK operator address (bech32) of the validator to
+	// query.
 	Operator string `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
 }
 
@@ -287,7 +288,8 @@ func (m *QueryValidatorResponse) GetValidator() Validator {
 	return Validator{}
 }
 
-// QueryApplicationsRequest is request type for the Query/Applications RPC method.
+// QueryApplicationsRequest is request type for the Query/Applications RPC
+// method.
 type QueryApplicationsRequest struct {
 }
 
@@ -324,7 +326,8 @@ func (m *QueryApplicationsRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_QueryApplicationsRequest proto.InternalMessageInfo
 
-// QueryApplicationsResponse is response type for the Query/Applications RPC method.
+// QueryApplicationsResponse is response type for the Query/Applications RPC
+// method.
 type QueryApplicationsResponse struct {
 	// applications holds all the validators' applications of the module.
 	Applications []Application `protobuf:"bytes,1,rep,name=applications,proto3" json:"applications"`
