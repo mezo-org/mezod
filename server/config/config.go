@@ -106,6 +106,14 @@ const (
 	// DefaultConnectOracleMetricsEnabled is the default value indicating
 	// whether the oracle metrics are enabled.
 	DefaultConnectOracleMetricsEnabled = true
+
+	// DefaultConnectOracleInterval is the time between each price update request.
+	// The recommended interval is the block time of the chain.
+	DefaultConnectOracleInterval = 3 * time.Second
+
+	// DefaultConnectOraclePriceTTL is the maximum age of the latest price
+	// response before it is considered stale.
+	DefaultConnectOraclePriceTTL = 10 * time.Second
 )
 
 var evmTracers = []string{"json", "markdown", "struct", "access_list"}
@@ -252,6 +260,8 @@ func DefaultOracleConfig() *oracleconfig.AppConfig {
 		OracleAddress:  DefaultConnectOracleAddress,
 		ClientTimeout:  DefaultConnectOracleClientTimeout,
 		MetricsEnabled: DefaultConnectOracleMetricsEnabled,
+		PriceTTL:       DefaultConnectOraclePriceTTL,
+		Interval:       DefaultConnectOracleInterval,
 	}
 }
 
@@ -440,11 +450,8 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			OracleAddress:  v.GetString("oracle.oracle_address"),
 			ClientTimeout:  v.GetDuration("oracle.client_timeout"),
 			MetricsEnabled: v.GetBool("oracle.metrics_enabled"),
-			// FIXME(jeremy): these two do not seems to be available from the config
-			// and default are being used else, what's needs to be done? Expose them on
-			// the CLI or keeps the defaults here.
-			PriceTTL: oracleconfig.DefaultPriceTTL,
-			Interval: oracleconfig.DefaultInterval,
+			PriceTTL:       v.GetDuration("oracle.price_ttl"),
+			Interval:       v.GetDuration("oracle.interval"),
 		},
 	}, nil
 }

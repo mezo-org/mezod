@@ -16,7 +16,6 @@
 package version
 
 import (
-	"fmt"
 	"runtime"
 	"runtime/debug"
 )
@@ -41,7 +40,6 @@ func init() {
 				GitModified = setting.Value
 			case "vcs.time":
 				BuildDate = setting.Value
-
 			}
 		}
 	}
@@ -61,7 +59,7 @@ func init() {
 	GoArch = runtime.GOARCH
 }
 
-func AsJSON() map[string]string {
+func Version() map[string]string {
 	return map[string]string{
 		"app_version": AppVersion,
 		"commit":      GitCommit,
@@ -69,15 +67,4 @@ func AsJSON() map[string]string {
 		"go":          GoVersion,
 		"go_arch":     GoArch,
 	}
-}
-
-func Version() string {
-	return fmt.Sprintf(
-		"Version %s (%s) Compiled at %s using Go %s (%s)",
-		AppVersion,
-		GitCommit,
-		BuildDate,
-		GoVersion,
-		GoArch,
-	)
 }

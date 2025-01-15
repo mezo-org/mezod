@@ -70,24 +70,24 @@ var apiCreators map[string]APICreator
 
 func init() {
 	apiCreators = map[string]APICreator{
-		EthNamespace: func(ctx *server.Context,
+		EthNamespace: func(serverCtx *server.Context,
 			clientCtx client.Context,
 			tmWSClient *rpcclient.WSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
-			evmBackend := backend.NewBackend(ctx, ctx.Logger, clientCtx, allowUnprotectedTxs, indexer)
+			evmBackend := backend.NewBackend(serverCtx, serverCtx.Logger, clientCtx, allowUnprotectedTxs, indexer)
 			return []rpc.API{
 				{
 					Namespace: EthNamespace,
 					Version:   apiVersion,
-					Service:   eth.NewPublicAPI(ctx.Logger, evmBackend),
+					Service:   eth.NewPublicAPI(serverCtx.Logger, evmBackend),
 					Public:    true,
 				},
 				{
 					Namespace: EthNamespace,
 					Version:   apiVersion,
-					Service:   filters.NewPublicAPI(ctx.Logger, clientCtx, tmWSClient, evmBackend),
+					Service:   filters.NewPublicAPI(serverCtx.Logger, clientCtx, tmWSClient, evmBackend),
 					Public:    true,
 				},
 			}
@@ -102,70 +102,70 @@ func init() {
 				},
 			}
 		},
-		NetNamespace: func(ctx *server.Context, clientCtx client.Context, _ *rpcclient.WSClient, _ bool, _ types.EVMTxIndexer) []rpc.API {
+		NetNamespace: func(serverCtx *server.Context, clientCtx client.Context, _ *rpcclient.WSClient, _ bool, _ types.EVMTxIndexer) []rpc.API {
 			return []rpc.API{
 				{
 					Namespace: NetNamespace,
 					Version:   apiVersion,
-					Service:   net.NewPublicAPI(ctx, clientCtx),
+					Service:   net.NewPublicAPI(serverCtx, clientCtx),
 					Public:    true,
 				},
 			}
 		},
-		PersonalNamespace: func(ctx *server.Context,
+		PersonalNamespace: func(serverCtx *server.Context,
 			clientCtx client.Context,
 			_ *rpcclient.WSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
-			evmBackend := backend.NewBackend(ctx, ctx.Logger, clientCtx, allowUnprotectedTxs, indexer)
+			evmBackend := backend.NewBackend(serverCtx, serverCtx.Logger, clientCtx, allowUnprotectedTxs, indexer)
 			return []rpc.API{
 				{
 					Namespace: PersonalNamespace,
 					Version:   apiVersion,
-					Service:   personal.NewAPI(ctx.Logger, evmBackend),
+					Service:   personal.NewAPI(serverCtx.Logger, evmBackend),
 					Public:    false,
 				},
 			}
 		},
-		TxPoolNamespace: func(ctx *server.Context, _ client.Context, _ *rpcclient.WSClient, _ bool, _ types.EVMTxIndexer) []rpc.API {
+		TxPoolNamespace: func(serverCtx *server.Context, _ client.Context, _ *rpcclient.WSClient, _ bool, _ types.EVMTxIndexer) []rpc.API {
 			return []rpc.API{
 				{
 					Namespace: TxPoolNamespace,
 					Version:   apiVersion,
-					Service:   txpool.NewPublicAPI(ctx.Logger),
+					Service:   txpool.NewPublicAPI(serverCtx.Logger),
 					Public:    true,
 				},
 			}
 		},
-		DebugNamespace: func(ctx *server.Context,
+		DebugNamespace: func(serverCtx *server.Context,
 			clientCtx client.Context,
 			_ *rpcclient.WSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
-			evmBackend := backend.NewBackend(ctx, ctx.Logger, clientCtx, allowUnprotectedTxs, indexer)
+			evmBackend := backend.NewBackend(serverCtx, serverCtx.Logger, clientCtx, allowUnprotectedTxs, indexer)
 			return []rpc.API{
 				{
 					Namespace: DebugNamespace,
 					Version:   apiVersion,
-					Service:   debug.NewAPI(ctx, evmBackend),
+					Service:   debug.NewAPI(serverCtx, evmBackend),
 					Public:    true,
 				},
 			}
 		},
-		MinerNamespace: func(ctx *server.Context,
+		MinerNamespace: func(serverCtx *server.Context,
 			clientCtx client.Context,
 			_ *rpcclient.WSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
-			evmBackend := backend.NewBackend(ctx, ctx.Logger, clientCtx, allowUnprotectedTxs, indexer)
+			evmBackend := backend.NewBackend(serverCtx, serverCtx.Logger, clientCtx, allowUnprotectedTxs, indexer)
 			return []rpc.API{
 				{
 					Namespace: MinerNamespace,
 					Version:   apiVersion,
-					Service:   miner.NewPrivateAPI(ctx, evmBackend),
+					Service:   miner.NewPrivateAPI(serverCtx, evmBackend),
 					Public:    false,
 				},
 			}

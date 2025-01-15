@@ -24,7 +24,7 @@ import (
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/server"
-	"github.com/mezo-org/mezod/ethereum/sidecar"
+	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/mezo-org/mezod/server/config"
 	"github.com/mezo-org/mezod/types"
 	oracleclient "github.com/skip-mev/connect/v2/service/clients/oracle"
@@ -38,7 +38,7 @@ type PublicAPI struct {
 	networkVersion        uint64
 	tmClient              rpcclient.Client
 	oracleClient          oracleclient.OracleClient
-	ethereumSidecarClient *sidecar.Client
+	ethereumSidecarClient *ethsidecar.Client
 }
 
 // NewPublicAPI creates an instance of the public Net Web3 API.
@@ -58,12 +58,12 @@ func NewPublicAPI(
 		panic(err)
 	}
 
-	err = oracleClient.Start(context.Background())
+	oracleClient.Start(context.Background())
 	if err != nil {
 		panic(err)
 	}
 
-	ethereumSidecarClient, err := sidecar.NewClient(
+	ethereumSidecarClient, err := ethsidecar.NewClient(
 		ctx.Logger,
 		appConf.EthereumSidecar.ServerAddress,
 		appConf.EthereumSidecar.RequestTimeout,
@@ -114,16 +114,12 @@ func (s *PublicAPI) PeerCount() int {
 }
 
 type SidecarInfos struct {
-	Version   string
-	Connected bool
+	Version   string `json:"version"`
+	Connected bool   `json:"connected"`
 }
 
 // Sidecars returns informations about the ethereum
 func (s *PublicAPI) Sidecars() map[string]SidecarInfos {
-	// FIXME(jeremy): use better timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
 	var (
 		connectVersion  = "unknown"
 		connectStatus   = false
@@ -131,21 +127,25 @@ func (s *PublicAPI) Sidecars() map[string]SidecarInfos {
 		ethereumStatus  = false
 	)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	resp, err := s.oracleClient.Version(ctx, &oracletypes.QueryVersionRequest{})
 	if err != nil {
-		s.logger.Error("couldn't reach oracle", "error", err)
+		s.logger.Error("couldn't reach Connect oracle sidecar", "error", err)
 	} else {
 		connectVersion = resp.Version
 		connectStatus = true
 	}
+	cancel()
 
+	ctx, cancel = context.WithTimeout(context.Background(), 500*time.Millisecond)
 	ethv, err := s.ethereumSidecarClient.Version(ctx)
 	if err != nil {
-		s.logger.Error("couldn't reach ethereum sidecar", "error", err)
+		s.logger.Error("couldn't reach Ethereum sidecar", "error", err)
 	} else {
 		ethereumVersion = ethv
 		ethereumStatus = true
 	}
+	cancel()
 
 	return map[string]SidecarInfos{
 		"ethereum": {
