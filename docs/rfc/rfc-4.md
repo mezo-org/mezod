@@ -110,7 +110,6 @@ consideration of the performance implications.
 
 #### Alternative approach: token precompiles
 
-
 An alternative approach is to use token precompiles. We rejected this approach
 given the high-maintenance cost on the validator development team as well as the
 network validators. Each new token added would require code change and validator
@@ -121,6 +120,13 @@ The Bitcoin token precompile contains most of the logic we need, so the code
 could be abstracted out making the introduction of new token precompiles as
 easy as possible. The most common differences would be the denominator for the
 Bank module, the token name, and the token decimals.
+
+### EVM observability
+
+The proposed approach requires small changes in the EVM observability mechanism
+given the transactions injected by pre-blocker are not actual EVM transaction.
+The existing observability mechanism should be reused and enhanced to inform
+about the asset that got bridged.
 
 ### Supported Tokens
 
