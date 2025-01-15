@@ -19,7 +19,7 @@ probably using a mechanism described in RFC-3.
 
 The goal of the proposal is to perform the minimum necessary changes to the
 existing RFC-2 Bitcoin bridging protocol, without adding too much overhead to
-the validator, both in terms of the code and chain performance.
+the Mezo validator client, both in terms of the code and chain performance.
 
 ### MezoBridge contract
 
@@ -55,9 +55,10 @@ indicate they are used for Bitcoin bridging.
 
 Only a small selected set of ERC20 tokens should be accepted by the `MezoBridge`
 contract. The contract should expose a set of functions for the governance to
-add and remove the to-Mezo bridging support for selected ERC20s.
-
-Ideally, the minimum bridgable amount should be tracked for each token
+add and remove the to-Mezo bridging support for selected ERC20s. There should be
+a global limit of 20 tokens supported by the native bridge protecting the chain
+and bridge performance in the event of the bridge governance getting compromised.
+Ideally, the minimum bridgeable amount should be tracked for each token
 separately as each token has a different value.
 
 ### Ethereum sidecar
@@ -79,16 +80,47 @@ Keeper to mint coins. The address-to-denominator mapping can be initially
 hardcoded in the client as the set of non-Bitcoin tokens supported by the bridge
 will be minimal. Also, the particular entries once set, should never change.
 
-### Token precompiles
+### Token contracts
 
-Each token supported by the bridge will have to be represented by a precompile.
+Each token supported by the native bridge will have its corresponding token
+contract deployed on Mezo EVM with a minting authority delegated to the bridge
+module's address. The pre-blocker, upon detecting the bridging request in the
+vote extension pseudo-transaction, will prepare an internal EVM transaction
+triggering the token mint. Such transactions will not incur any gas costs.
+
+Token address mapping will be held by a maintenance precompile managed by the
+governance. Before the token is allowlisted in the `MezoBridge` contract,
+a mapping has to be added to the maintenance precompile. In case of a governance
+failure to perform those operations in the right order and the mapping entry not
+being present, the bridge should ignore the bridging request, and proceed as
+usual. The funds locked in the `MezoBridge` contract will remain locked there
+forever unless they are manually recovered. The initial implementation will
+assume governance actions are executed in the right order and will not introduce
+any mechanism for token recovery from the bridging contract.
+
+This approach allows the governance to add new tokens to the bridge without
+involving mezod development teams or performing chain forks. It also enables
+adding custom logic to the token contract, depending on individual needs.
+Enabling IBC will require introducing a dedicated token mapping mechanism. 
+
+The bridge maintenance precompile should enforce the same global limit of 20
+tokens supported by the native bridge, as the `MezoBridge` contract. This limit
+can be increased by the validator development team in the future, after thorough
+consideration of the performance implications.
+
+#### Alternative approach: token precompiles
+
+
+An alternative approach is to use token precompiles. We rejected this approach
+given the high-maintenance cost on the validator development team as well as the
+network validators. Each new token added would require code change and validator
+client update.
+
+Each token supported by the bridge would have to be represented by a precompile.
 The Bitcoin token precompile contains most of the logic we need, so the code
-should be abstracted out making the introduction of new token precompiles as
-easy as possible. The most common differences will be the denominator for the
-Bank module, the token name, and the token decimals. Note this approach -
-although it requires some per-token effort - feels to be the most future-proof
-and is compatible with both RFC-4 and RFC-3 approaches, in case the minting
-mechanism needs to be changed in the future. 
+could be abstracted out making the introduction of new token precompiles as
+easy as possible. The most common differences would be the denominator for the
+Bank module, the token name, and the token decimals.
 
 ### Supported Tokens
 
