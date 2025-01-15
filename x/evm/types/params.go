@@ -36,6 +36,8 @@ var (
 	DefaultEnableCreate = true
 	// DefaultEnableCall enables contract calls (i.e true)
 	DefaultEnableCall = true
+	// DefaultStorageRootStrategy defines the default strategy for the EVM storage root mechanism.
+	DefaultStorageRootStrategy = StorageRootStrategyEmptyHash
 )
 
 // AvailableExtraEIPs define the list of all EIPs that can be enabled by the
@@ -67,6 +69,7 @@ func DefaultParams() Params {
 		ChainConfig:         DefaultChainConfig(),
 		ExtraEIPs:           nil,
 		AllowUnprotectedTxs: DefaultAllowUnprotectedTxs,
+		StorageRootStrategy: uint32(DefaultStorageRootStrategy),
 	}
 }
 

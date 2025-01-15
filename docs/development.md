@@ -55,12 +55,24 @@ needed. However, it requires starting each node separately.
 ```bash
 # Build the binaries and generate configuration for the clients.
 $ make localnet-bin-init
+# Start the sidecars instances.
+$ make localnet-bin-sidecars-start
 # Start a single instance of the client. Needs to be called for each of the
 # the clients. At least 2/3 (so 3 out of 4) of clients are needed to produce
 # blocks.
 $ make localnet-bin-start
 # Remove the `build` and `.localnet` directories.
 $ make localnet-bin-clean
+```
+
+NOTE: The connect sidecar defaults to use the node0 grpc API, therefore in
+order for it to work properly, node0 needs to be running.
+
+For the Ethereum sidecar to startup properly, an Ethereum RPC provider
+needs to be set. This can be done using a .env file located at the root of the
+repository:
+```
+ETH_SIDECAR_RPC_PROVIDER=wss://eth-sepolia.g.alchemy.com/v2/<YOUR_ID>
 ```
 
 The network consists of four clients connected to each other. All the data

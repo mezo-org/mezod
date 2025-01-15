@@ -6,7 +6,8 @@ env:
   PUBLIC_IP: "104.198.64.215" # mezo-staging-node-1-external-ip
   MEZOD_MONIKER: "mezo-node-1"
 
-secret: "mezo-node-1" # created manually
+secrets:
+  credentials: "mezo-node-1" # created manually
 
 storage:
   className: "premium-rwo"

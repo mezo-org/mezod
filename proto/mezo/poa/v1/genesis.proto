@@ -9,9 +9,9 @@ option go_package = "github.com/mezo-org/mezod/x/poa/types";
 // GenesisState defines the module's genesis state.
 message GenesisState {
   // params defines all the parameters of the module.
-  Params params = 1 [(gogoproto.nullable) = false];
+  Params params = 1 [ (gogoproto.nullable) = false ];
   // owner is the initial owner of the validator pool in Bech32 format.
   string owner = 2;
   // validators defines the initial list of validators.
-  repeated Validator validators = 3 [(gogoproto.nullable) = false];
+  repeated Validator validators = 3 [ (gogoproto.nullable) = false ];
 }

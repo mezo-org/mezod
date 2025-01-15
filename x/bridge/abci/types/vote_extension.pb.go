@@ -26,7 +26,8 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // VoteExtension defines the vote extension structure for the Bitcoin bridge.
 type VoteExtension struct {
-	// assets_locked_events is a list of AssetsLockedEvent that are part of the vote extension.
+	// assets_locked_events is a list of AssetsLockedEvent that are part of the
+	// vote extension.
 	AssetsLockedEvents []types.AssetsLockedEvent `protobuf:"bytes,1,rep,name=assets_locked_events,json=assetsLockedEvents,proto3" json:"assets_locked_events"`
 }
 

@@ -204,6 +204,11 @@ func NewInitCmd(mbm module.BasicManager) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().String(
+		flags.FlagKeyringDir,
+		"",
+		"The client Keyring directory; if omitted, the default 'home' directory will be used",
+	)
 	cmd.Flags().Bool(
 		flagIgnorePredefined,
 		false,
