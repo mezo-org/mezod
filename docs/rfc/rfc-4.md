@@ -30,6 +30,7 @@ the Extend Vote phase and broadcast as a vote extension.
 The existing `AssetsLocked` event should be extended to include the address of
 the token being bridged. The `tbtcAmount` field should be renamed to just
 `amount` and all other fields should remain unchanged:
+
 ```
 event AssetsLocked(
   uint256 indexed sequenceNumber,
@@ -39,12 +40,17 @@ event AssetsLocked(
 );
 ```
 
+The `MezoBridge` is a single contract deployed on Ethereum. It is the native
+bridge contract controlling both Bitcoin (tBTC) and ERC20 bridging. All bridging
+operations are sequenced using the same nonce. The existing `BitcoinBridge`
+contract deployed on Sepolia is going to be replaced maintaining the continuity
+of the nonce. 
+
 This RFC does not enforce any specific implementation choices in regards to how
-to organize the contract code but we could potentially separate the common
-bridge code like the `AssetsLocked` event and the sequence nonce, so that they
-can be reused by the `BitcoinBridge` and `ERC20Bridge` contracts, both extended
-by the `MezoBridge` contract. In this setup, some of the fields, events, and
-errors in the `BitcoinBridge` contract will have to be renamed to clearly
+to organize the contract code. One interesting option is to separate Bitcoin and
+ERC20 bridging operations into two parent contracts for `MezoBridge`:
+`BitcoinBridge` and `ERC20Bridge`. In this setup, some of the fields, events,
+and, errors in the `BitcoinBridge` contract will have to be renamed to clearly
 indicate they are used for Bitcoin bridging.
 
 Only a small selected set of ERC20 tokens should be accepted by the `MezoBridge`
@@ -95,6 +101,7 @@ the scope of RFC-4 and should happen before the token is deposited in the
 
 For the PoC implementation of the bridging protocol, we will assume the
 following tokens should be represented on Mezo:
+
 * mETH
 * mUSDC
 * mUSDT
