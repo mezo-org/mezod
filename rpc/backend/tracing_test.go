@@ -283,10 +283,6 @@ func (suite *BackendTestSuite) TestTraceBlock() {
 		{
 			"pass - pseudo-transaction",
 			func() {
-				db := dbm.NewMemDB()
-				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
-				suite.Require().NoError(err)
 				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
 				RegisterTraceBlock(queryClient, nil, []byte(`[]`))
 			},

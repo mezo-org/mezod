@@ -443,10 +443,6 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockAndIndex() {
 			"pass - Pseudo-transaction",
 			func() {
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
-				db := dbm.NewMemDB()
-				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
-				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, 1)
 				suite.Require().NoError(err)
 			},
@@ -543,10 +539,6 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 			"pass - pseudo-transaction",
 			func() {
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
-				db := dbm.NewMemDB()
-				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
-				suite.Require().NoError(err)
 				_, err = RegisterBlock(client, 1, *pseudoTx)
 				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, 1)

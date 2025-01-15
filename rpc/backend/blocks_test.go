@@ -14,16 +14,12 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
-	"google.golang.org/grpc/metadata"
-
-	"cosmossdk.io/log"
-	dbm "github.com/cosmos/cosmos-db"
-	"github.com/mezo-org/mezod/indexer"
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
 	ethrpc "github.com/mezo-org/mezod/rpc/types"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	"google.golang.org/grpc/metadata"
 )
 
 func (suite *BackendTestSuite) TestBlockNumber() {
@@ -452,11 +448,6 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByHash() {
 			func(hash common.Hash) {
 				height := int64(1)
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
-				// Handling pseudo-transactions only works if indexer is enabled.
-				db := dbm.NewMemDB()
-				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*types.ExecTxResult{})
-				suite.Require().NoError(err)
 				_, err = RegisterBlockByHash(client, hash, *pseudoTx)
 				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, height)
@@ -557,15 +548,10 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByNumber() {
 		},
 		{
 			"pass - block with pseudo-tx",
-			ethrpc.BlockNumber(block.Height),
+			ethrpc.BlockNumber(pseudoTxBlock.Height),
 			func(blockNum ethrpc.BlockNumber) {
 				height := blockNum.Int64()
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
-				// Handling pseudo-transactions only works if indexer is enabled.
-				db := dbm.NewMemDB()
-				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*types.ExecTxResult{})
-				suite.Require().NoError(err)
 				_, err = RegisterBlock(client, height, *pseudoTx)
 				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, height)
@@ -1235,11 +1221,6 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint_PsuedoTx() {
 			baseFee := sdkmath.NewInt(1).BigInt()
 			validator := sdk.AccAddress(utiltx.GenerateAddress().Bytes())
 			height := int64(1)
-
-			db := dbm.NewMemDB()
-			suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-			err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*types.ExecTxResult{})
-			suite.Require().NoError(err)
 
 			queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
 			RegisterBaseFee(queryClient, sdkmath.NewIntFromBigInt(baseFee))
