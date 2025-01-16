@@ -81,7 +81,7 @@ func (m *LatestRoundDataMethod) Run(
 	roundId := priceData.Nonce
 	startedAt := big.NewInt(priceData.Price.BlockTimestamp.Unix())
 	updatedAt := startedAt
-	answeredInRound := uint64(0) // deprecated field, returning 0 for consitency
+	answeredInRound := uint64(0) // deprecated field, returning 0 for consistency
 
 	return precompile.MethodOutputs{
 		roundId,

@@ -391,6 +391,24 @@ func NewMezo(
 		app.GetSubspace(feemarkettypes.ModuleName),
 	)
 
+	app.BridgeKeeper = bridgekeeper.NewKeeper(
+		appCodec,
+		keys[bridgetypes.StoreKey],
+		app.BankKeeper,
+	)
+
+	app.MarketMapKeeper = *marketmapkeeper.NewKeeper(
+		runtime.NewKVStoreService(keys[marketmaptypes.StoreKey]),
+		appCodec,
+		authority,
+	)
+	app.OracleKeeper = oraclekeeper.NewKeeper(
+		runtime.NewKVStoreService(keys[oracletypes.StoreKey]),
+		appCodec,
+		&app.MarketMapKeeper,
+		authority,
+	)
+
 	app.EvmKeeper = evmkeeper.NewKeeper(
 		appCodec,
 		keys[evmtypes.StoreKey],
@@ -418,24 +436,6 @@ func NewMezo(
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
 	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
-
-	app.BridgeKeeper = bridgekeeper.NewKeeper(
-		appCodec,
-		keys[bridgetypes.StoreKey],
-		app.BankKeeper,
-	)
-
-	app.MarketMapKeeper = *marketmapkeeper.NewKeeper(
-		runtime.NewKVStoreService(keys[marketmaptypes.StoreKey]),
-		appCodec,
-		authority,
-	)
-	app.OracleKeeper = oraclekeeper.NewKeeper(
-		runtime.NewKVStoreService(keys[oracletypes.StoreKey]),
-		appCodec,
-		&app.MarketMapKeeper,
-		authority,
-	)
 
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.
