@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mezo-org/mezod/precompile/priceoracle"
 	"io"
 	"net/http"
 	"os"
@@ -404,7 +405,15 @@ func NewMezo(
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
-	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper, *app.EvmKeeper, *app.UpgradeKeeper, bApp.ChainID())
+	precompiles, err := customEvmPrecompiles(
+		app.BankKeeper,
+		app.AuthzKeeper,
+		app.PoaKeeper,
+		*app.EvmKeeper,
+		*app.UpgradeKeeper,
+		oraclekeeper.NewQueryServer(app.OracleKeeper),
+		bApp.ChainID(),
+	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
 	}
@@ -889,6 +898,7 @@ func customEvmPrecompiles(
 	poaKeeper poakeeper.Keeper,
 	evmKeeper evmkeeper.Keeper,
 	upgradeKeeper upgradekeeper.Keeper,
+	oracleQueryServer oracletypes.QueryServer,
 	chainID string,
 ) ([]*precompile.VersionMap, error) {
 	// BTC token precompile.
@@ -952,11 +962,19 @@ func customEvmPrecompiles(
 	}
 	upgradeVersionMap := precompile.NewSingleVersionMap(upgradePrecompile)
 
+	// Price Oracle precompile.
+	priceOraclePrecompile, err := priceoracle.NewPrecompile(oracleQueryServer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create price oracle precompile: [%w]", err)
+	}
+	priceOracleVersionMap := precompile.NewSingleVersionMap(priceOraclePrecompile)
+
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
 		maintenanceVersionMap,
 		assetsBridgeVersionMap,
 		upgradeVersionMap,
+		priceOracleVersionMap,
 	}, nil
 }
