@@ -411,6 +411,21 @@ func GetConfig(v *viper.Viper) (Config, error) {
 		return Config{}, err
 	}
 
+	// Because the configuration used to generate wrong
+	// default, these two could prevent the node to start
+	// after an upgrade and panic. To avoid this we check for
+	// the go zero value and assign the default value instead
+	var (
+		oraclePriceTTL = v.GetDuration("oracle.price_ttl")
+		oracleInterval = v.GetDuration("oracle.interval")
+	)
+	if oraclePriceTTL == 0 {
+		oraclePriceTTL = DefaultConnectOraclePriceTTL
+	}
+	if oracleInterval == 0 {
+		oracleInterval = DefaultConnectOracleInterval
+	}
+
 	return Config{
 		Config: cfg,
 		EVM: EVMConfig{
@@ -450,8 +465,8 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			OracleAddress:  v.GetString("oracle.oracle_address"),
 			ClientTimeout:  v.GetDuration("oracle.client_timeout"),
 			MetricsEnabled: v.GetBool("oracle.metrics_enabled"),
-			PriceTTL:       v.GetDuration("oracle.price_ttl"),
-			Interval:       v.GetDuration("oracle.interval"),
+			PriceTTL:       oraclePriceTTL,
+			Interval:       oracleInterval,
 		},
 	}, nil
 }
