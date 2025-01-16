@@ -2,9 +2,10 @@ package priceoracle
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/mezo-org/mezod/precompile"
 	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
-	"math/big"
 )
 
 // LatestRoundDataMethodName is the name of the latestRoundData method. It
@@ -78,13 +79,13 @@ func (m *LatestRoundDataMethod) Run(
 		new(big.Int).Exp(big.NewInt(10), deltaDecimals, nil),
 	)
 
-	roundId := priceData.Nonce
+	roundID := priceData.Nonce
 	startedAt := big.NewInt(priceData.Price.BlockTimestamp.Unix())
 	updatedAt := startedAt
 	answeredInRound := uint64(0) // deprecated field, returning 0 for consistency
 
 	return precompile.MethodOutputs{
-		roundId,
+		roundID,
 		answer,
 		startedAt,
 		updatedAt,

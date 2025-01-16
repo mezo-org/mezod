@@ -11,7 +11,7 @@ const Decimals = uint8(18)
 const DecimalsMethodName = "decimals"
 
 // DecimalsMethod is the implementation of the decimals method.
-type DecimalsMethod struct {}
+type DecimalsMethod struct{}
 
 func newDecimalsMethod() *DecimalsMethod {
 	return &DecimalsMethod{}

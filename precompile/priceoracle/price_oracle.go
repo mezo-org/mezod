@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+
 	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 
 	"github.com/ethereum/go-ethereum/common"
