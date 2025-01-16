@@ -79,10 +79,10 @@ func (m *LatestRoundDataMethod) Run(
 		new(big.Int).Exp(big.NewInt(10), deltaDecimals, nil),
 	)
 
-	roundID := priceData.Nonce
+	roundID := new(big.Int).SetUint64(priceData.Nonce)
 	startedAt := big.NewInt(priceData.Price.BlockTimestamp.Unix())
 	updatedAt := startedAt
-	answeredInRound := uint64(0) // deprecated field, returning 0 for consistency
+	answeredInRound := big.NewInt(0) // deprecated field, returning 0 for consistency
 
 	return precompile.MethodOutputs{
 		roundID,
