@@ -106,7 +106,6 @@ func NewBitcoinBridge(
 
 // Transaction submission.
 func (bb *BitcoinBridge) AcceptOwnership(
-
 	transactionOptions ...chainutil.TransactionOptions,
 ) (*types.Transaction, error) {
 	bbLogger.Debug(
@@ -1030,7 +1029,6 @@ func (bb *BitcoinBridge) InitializeBTCBridgingGasEstimate(
 
 // Transaction submission.
 func (bb *BitcoinBridge) RenounceOwnership(
-
 	transactionOptions ...chainutil.TransactionOptions,
 ) (*types.Transaction, error) {
 	bbLogger.Debug(
@@ -1434,7 +1432,6 @@ func (bb *BitcoinBridge) Bridge() (common.Address, error) {
 	result, err := bb.contract.Bridge(
 		bb.callerOptions,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,
@@ -1474,7 +1471,6 @@ func (bb *BitcoinBridge) Deposits(
 		bb.callerOptions,
 		arg0,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,
@@ -1514,7 +1510,6 @@ func (bb *BitcoinBridge) MinTBTCAmount() (*big.Int, error) {
 	result, err := bb.contract.MinTBTCAmount(
 		bb.callerOptions,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,
@@ -1551,7 +1546,6 @@ func (bb *BitcoinBridge) Owner() (common.Address, error) {
 	result, err := bb.contract.Owner(
 		bb.callerOptions,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,
@@ -1588,7 +1582,6 @@ func (bb *BitcoinBridge) PendingOwner() (common.Address, error) {
 	result, err := bb.contract.PendingOwner(
 		bb.callerOptions,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,
@@ -1625,7 +1618,6 @@ func (bb *BitcoinBridge) SATOSHIMULTIPLIER() (*big.Int, error) {
 	result, err := bb.contract.SATOSHIMULTIPLIER(
 		bb.callerOptions,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,
@@ -1662,7 +1654,6 @@ func (bb *BitcoinBridge) Sequence() (*big.Int, error) {
 	result, err := bb.contract.Sequence(
 		bb.callerOptions,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,
@@ -1699,7 +1690,6 @@ func (bb *BitcoinBridge) TbtcToken() (common.Address, error) {
 	result, err := bb.contract.TbtcToken(
 		bb.callerOptions,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,
@@ -1736,7 +1726,6 @@ func (bb *BitcoinBridge) TbtcVault() (common.Address, error) {
 	result, err := bb.contract.TbtcVault(
 		bb.callerOptions,
 	)
-
 	if err != nil {
 		return result, bb.errorResolver.ResolveError(
 			err,

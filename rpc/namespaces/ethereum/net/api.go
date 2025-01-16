@@ -58,7 +58,7 @@ func NewPublicAPI(
 		panic(err)
 	}
 
-	oracleClient.Start(context.Background())
+	err = oracleClient.Start(context.Background())
 	if err != nil {
 		panic(err)
 	}
