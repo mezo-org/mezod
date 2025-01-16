@@ -19,6 +19,7 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
+	"github.com/mezo-org/mezod/version"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"google.golang.org/grpc"
 )
@@ -399,6 +400,16 @@ func (s *Server) startGRPCServer(
 	case <-ctx.Done():
 		return nil
 	}
+}
+
+// Version return the current version of the ethereum sidecar.
+func (s *Server) Version(
+	_ context.Context,
+	_ *pb.VersionRequest,
+) (*pb.VersionResponse, error) {
+	return &pb.VersionResponse{
+		Version: version.AppVersion,
+	}, nil
 }
 
 // AssetsLockedEvents returns a list of AssetsLocked events based on the

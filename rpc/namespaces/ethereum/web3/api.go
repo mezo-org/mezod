@@ -31,7 +31,7 @@ func NewPublicAPI() *PublicAPI {
 }
 
 // ClientVersion returns the client version in the Web3 user agent format.
-func (a *PublicAPI) ClientVersion() string {
+func (a *PublicAPI) ClientVersion() map[string]string {
 	return version.Version()
 }
 
