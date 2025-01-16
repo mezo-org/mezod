@@ -109,7 +109,7 @@ const (
 
 	// DefaultConnectOracleInterval is the time between each price update request.
 	// The recommended interval is the block time of the chain.
-	DefaultConnectOracleInterval = 3 * time.Second
+	DefaultConnectOracleInterval = 1500 * time.Millisecond
 
 	// DefaultConnectOraclePriceTTL is the maximum age of the latest price
 	// response before it is considered stale.
