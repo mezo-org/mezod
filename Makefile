@@ -516,6 +516,9 @@ localnet-bin-init:
 localnet-bin-start:
 	LOCALNET_CHAIN_ID=$(LOCALNET_CHAIN_ID) ./scripts/localnet-start.sh
 
+localnet-bin-sidecars-start:
+	./scripts/localnet-sidecars-start.sh
+
 localnet-bin-clean:
 	rm -rf $(LOCALNET_DIR) build
 

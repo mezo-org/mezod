@@ -234,7 +234,7 @@ func TestContract_Run(t *testing.T) {
 			sdkCtx := sdk.Context{}
 
 			evm := &vm.EVM{
-				StateDB: statedb.New(sdkCtx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(sdkCtx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
 			vmContract := vm.NewContract(&Contract{}, nil, test.value, 0)
