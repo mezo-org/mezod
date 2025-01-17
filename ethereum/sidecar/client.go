@@ -96,6 +96,19 @@ func NewClient(
 	return c, nil
 }
 
+func (c *Client) Version(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.requestTimeout)
+	defer cancel()
+
+	sidecarClient := pb.NewEthereumSidecarClient(c.connection)
+	resp, err := sidecarClient.Version(ctx, &pb.VersionRequest{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get Version, %w", err)
+	}
+
+	return resp.Version, nil
+}
+
 // GetAssetsLockedEvents returns confirmed AssetsLockedEvents with
 // the sequence number falling within the half-open range, denoted by
 // sequenceStart (included) and sequenceEnd (excluded). Nil can be
