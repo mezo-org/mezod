@@ -72,12 +72,23 @@ func (m *LatestRoundDataMethod) Run(
 
 	targetDecimals := uint64(Decimals)
 	actualDecimals := priceData.Decimals
-	deltaDecimals := big.NewInt(int64(targetDecimals - actualDecimals))
-	// Adjust to the desired precision up or down.
-	answer := new(big.Int).Mul(
-		priceValue.BigInt(),
-		new(big.Int).Exp(big.NewInt(10), deltaDecimals, nil),
-	)
+	deltaDecimals := int64(targetDecimals - actualDecimals)
+
+	var answer *big.Int
+	if deltaDecimals >= 0 {
+		// Adjust to the desired precision up: priceValue * 10^deltaDecimals.
+		answer = new(big.Int).Mul(
+			priceValue.BigInt(),
+			new(big.Int).Exp(big.NewInt(10), big.NewInt(deltaDecimals), nil),
+		)
+	} else {
+		// Adjust to the desired precision down: priceValue / 10^|deltaDecimals|.
+		deltaDecimalsAbs := new(big.Int).Abs(big.NewInt(deltaDecimals))
+		answer = new(big.Int).Div(
+			priceValue.BigInt(),
+			new(big.Int).Exp(big.NewInt(10), deltaDecimalsAbs, nil),
+		)
+	}
 
 	roundID := new(big.Int).SetUint64(priceData.Nonce)
 	startedAt := big.NewInt(priceData.Price.BlockTimestamp.Unix())
