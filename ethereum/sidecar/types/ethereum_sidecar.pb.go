@@ -30,7 +30,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-// AssetsLockedEventsRequest is the request type for the GetAssetsLockedEvents
+// AssetsLockedEventsRequest is the request type for the AssetsLockedEvents
 // query.
 type AssetsLockedEventsRequest struct {
 	// sequence_start is the start of the sequence range (inclusive). If null,
@@ -74,7 +74,7 @@ func (m *AssetsLockedEventsRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_AssetsLockedEventsRequest proto.InternalMessageInfo
 
-// AssetsLockedEventsResponse is the response type for the GetAssetsLockedEvents
+// AssetsLockedEventsResponse is the response type for the AssetsLockedEvents
 // query.
 type AssetsLockedEventsResponse struct {
 	// events contains a list of AssetsLockedEvents.
@@ -121,9 +121,94 @@ func (m *AssetsLockedEventsResponse) GetEvents() []*types.AssetsLockedEvent {
 	return nil
 }
 
+// VersionRequest is the request type for the Version query.
+type VersionRequest struct {
+}
+
+func (m *VersionRequest) Reset()         { *m = VersionRequest{} }
+func (m *VersionRequest) String() string { return proto.CompactTextString(m) }
+func (*VersionRequest) ProtoMessage()    {}
+func (*VersionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_f8cb11e8648a9ddc, []int{2}
+}
+func (m *VersionRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *VersionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_VersionRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *VersionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionRequest.Merge(m, src)
+}
+func (m *VersionRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *VersionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_VersionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_VersionRequest proto.InternalMessageInfo
+
+// VersionResponse is the response type for the Version query.
+type VersionResponse struct {
+	// version contains the version of the Ethereum sidecar.
+	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+}
+
+func (m *VersionResponse) Reset()         { *m = VersionResponse{} }
+func (m *VersionResponse) String() string { return proto.CompactTextString(m) }
+func (*VersionResponse) ProtoMessage()    {}
+func (*VersionResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_f8cb11e8648a9ddc, []int{3}
+}
+func (m *VersionResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *VersionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_VersionResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *VersionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionResponse.Merge(m, src)
+}
+func (m *VersionResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *VersionResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_VersionResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_VersionResponse proto.InternalMessageInfo
+
+func (m *VersionResponse) GetVersion() string {
+	if m != nil {
+		return m.Version
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*AssetsLockedEventsRequest)(nil), "mezo.ethereum_sidecar.v1.AssetsLockedEventsRequest")
 	proto.RegisterType((*AssetsLockedEventsResponse)(nil), "mezo.ethereum_sidecar.v1.AssetsLockedEventsResponse")
+	proto.RegisterType((*VersionRequest)(nil), "mezo.ethereum_sidecar.v1.VersionRequest")
+	proto.RegisterType((*VersionResponse)(nil), "mezo.ethereum_sidecar.v1.VersionResponse")
 }
 
 func init() {
@@ -131,29 +216,32 @@ func init() {
 }
 
 var fileDescriptor_f8cb11e8648a9ddc = []byte{
-	// 346 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x92, 0xbf, 0x4e, 0x3a, 0x41,
-	0x10, 0xc7, 0x6f, 0x7f, 0xbf, 0x84, 0xc4, 0xc5, 0x3f, 0xc9, 0x46, 0x93, 0xf3, 0x8c, 0x07, 0x52,
-	0xd1, 0xb8, 0x27, 0x60, 0x63, 0xa7, 0x44, 0x0a, 0x8d, 0x15, 0x14, 0x26, 0x36, 0x04, 0x6e, 0x27,
-	0xc7, 0x85, 0xdc, 0x2d, 0xee, 0x2c, 0x97, 0x68, 0xe3, 0x2b, 0x18, 0x5f, 0xc1, 0x97, 0xa1, 0xa4,
-	0x34, 0x16, 0xc4, 0xc0, 0x8b, 0x98, 0xdb, 0x03, 0x9a, 0x93, 0x44, 0xbb, 0x6f, 0x66, 0xe6, 0x33,
-	0xb3, 0xf3, 0xdd, 0xa1, 0x5e, 0x04, 0xcf, 0xd2, 0x03, 0x3d, 0x00, 0x05, 0xe3, 0xa8, 0x8b, 0xa1,
-	0x00, 0xbf, 0xa7, 0xbc, 0xa4, 0x96, 0x8b, 0xf1, 0x91, 0x92, 0x5a, 0x32, 0x3b, 0x05, 0x78, 0x2e,
-	0x99, 0xd4, 0x9c, 0xfd, 0x40, 0x06, 0xd2, 0x14, 0x79, 0xa9, 0xca, 0xea, 0x9d, 0x23, 0x33, 0xa0,
-	0xaf, 0x42, 0x11, 0x40, 0xda, 0x36, 0x53, 0x59, 0xb2, 0xf2, 0x4e, 0xe8, 0xe1, 0x15, 0x22, 0x68,
-	0xbc, 0x93, 0xfe, 0x10, 0x44, 0x2b, 0x81, 0x58, 0x63, 0x1b, 0x1e, 0xc7, 0x80, 0x9a, 0x5d, 0xd3,
-	0x5d, 0x4c, 0x65, 0xec, 0x43, 0x17, 0x75, 0x4f, 0x69, 0x9b, 0x94, 0x49, 0x75, 0xab, 0x79, 0x3c,
-	0x99, 0x95, 0xac, 0xcf, 0x59, 0xe9, 0xc0, 0x97, 0x18, 0x49, 0x44, 0x31, 0xe4, 0xa1, 0xf4, 0xa2,
-	0x9e, 0x1e, 0xf0, 0x9b, 0x58, 0xb7, 0x77, 0x56, 0x50, 0x27, 0x65, 0xd8, 0x25, 0xdd, 0x5e, 0x77,
-	0x81, 0x58, 0xd8, 0xff, 0x7e, 0xd3, 0xa3, 0xb8, 0x42, 0x5a, 0xb1, 0xa8, 0xdc, 0x53, 0xe7, 0xa7,
-	0x47, 0xe2, 0x48, 0xc6, 0x08, 0xec, 0x82, 0x16, 0xc0, 0x44, 0x6c, 0x52, 0xfe, 0x5f, 0x2d, 0xd6,
-	0x4f, 0xb8, 0x71, 0x68, 0xb9, 0x67, 0x52, 0xe3, 0x39, 0xb6, 0xbd, 0x04, 0xea, 0x6f, 0x84, 0xee,
-	0xb5, 0x96, 0x4e, 0x76, 0x32, 0x23, 0xd9, 0x0b, 0x65, 0xf9, 0x61, 0xac, 0xc1, 0x37, 0xd9, 0xce,
-	0x37, 0xfa, 0xe7, 0x9c, 0xff, 0x0d, 0xca, 0xf6, 0x69, 0xde, 0x4e, 0xe6, 0x2e, 0x99, 0xce, 0x5d,
-	0xf2, 0x35, 0x77, 0xc9, 0xeb, 0xc2, 0xb5, 0xa6, 0x0b, 0xd7, 0xfa, 0x58, 0xb8, 0xd6, 0xc3, 0x59,
-	0x10, 0xea, 0xc1, 0xb8, 0xcf, 0x7d, 0x19, 0x99, 0xb3, 0x39, 0x95, 0x2a, 0x30, 0x42, 0xac, 0x8f,
-	0xc5, 0x5b, 0x1d, 0x90, 0x7e, 0x1a, 0x01, 0xf6, 0x0b, 0xe6, 0x9b, 0x1b, 0xdf, 0x01, 0x00, 0x00,
-	0xff, 0xff, 0xe9, 0xd7, 0xcf, 0xf4, 0x66, 0x02, 0x00, 0x00,
+	// 390 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x52, 0xcd, 0x4a, 0xc3, 0x40,
+	0x10, 0xce, 0x2a, 0xb4, 0xb8, 0xd5, 0x56, 0x16, 0x85, 0x18, 0x31, 0xad, 0x39, 0x55, 0xc4, 0x8d,
+	0x6d, 0xbd, 0x78, 0xd3, 0x62, 0x0f, 0x8a, 0xa7, 0x14, 0x14, 0x3c, 0x58, 0xda, 0x64, 0x48, 0x43,
+	0x49, 0xb6, 0x66, 0xb7, 0x01, 0xbd, 0xf8, 0x0a, 0xbe, 0x83, 0x2f, 0xd3, 0x63, 0x8f, 0xe2, 0xa1,
+	0x48, 0xfb, 0x06, 0x3e, 0x81, 0xe4, 0xaf, 0x20, 0xb1, 0x50, 0x6f, 0x93, 0x6f, 0xe7, 0xfb, 0x32,
+	0xdf, 0xcc, 0x87, 0x75, 0x17, 0x5e, 0x98, 0x0e, 0xa2, 0x0f, 0x3e, 0x8c, 0xdc, 0x0e, 0x77, 0x2c,
+	0x30, 0xbb, 0xbe, 0x1e, 0xd4, 0x32, 0x18, 0x1d, 0xfa, 0x4c, 0x30, 0x22, 0x87, 0x04, 0x9a, 0x79,
+	0x0c, 0x6a, 0xca, 0x8e, 0xcd, 0x6c, 0x16, 0x35, 0xe9, 0x61, 0x15, 0xf7, 0x2b, 0xfb, 0xd1, 0x0f,
+	0x7a, 0xbe, 0x63, 0xd9, 0x10, 0xca, 0xc6, 0x55, 0xfc, 0xa8, 0xbd, 0x23, 0xbc, 0x77, 0xc9, 0x39,
+	0x08, 0x7e, 0xcb, 0xcc, 0x01, 0x58, 0xad, 0x00, 0x3c, 0xc1, 0x0d, 0x78, 0x1a, 0x01, 0x17, 0xe4,
+	0x0a, 0x17, 0x79, 0x58, 0x7a, 0x26, 0x74, 0xb8, 0xe8, 0xfa, 0x42, 0x46, 0x15, 0x54, 0xdd, 0x68,
+	0x1e, 0x8c, 0xa7, 0x65, 0xe9, 0x73, 0x5a, 0xde, 0x35, 0x19, 0x77, 0x19, 0xe7, 0xd6, 0x80, 0x3a,
+	0x4c, 0x77, 0xbb, 0xa2, 0x4f, 0xaf, 0x3d, 0x61, 0x6c, 0xa5, 0xa4, 0x76, 0xc8, 0x21, 0x17, 0x78,
+	0x73, 0xa1, 0x02, 0x9e, 0x25, 0xaf, 0xad, 0xa2, 0x51, 0x48, 0x29, 0x2d, 0xcf, 0xd2, 0xee, 0xb1,
+	0xf2, 0xd7, 0x90, 0x7c, 0xc8, 0x3c, 0x0e, 0xe4, 0x1c, 0xe7, 0x20, 0x42, 0x64, 0x54, 0x59, 0xaf,
+	0x16, 0xea, 0x87, 0x34, 0xda, 0x50, 0xe2, 0x33, 0xa8, 0xd1, 0x0c, 0xd7, 0x48, 0x08, 0xda, 0x36,
+	0x2e, 0xde, 0x81, 0xcf, 0x1d, 0xe6, 0x25, 0x96, 0xb5, 0x63, 0x5c, 0x5a, 0x20, 0x89, 0xbe, 0x8c,
+	0xf3, 0x41, 0x0c, 0xc5, 0xf6, 0x8d, 0xf4, 0xb3, 0xfe, 0x8d, 0x70, 0xa9, 0x95, 0x1c, 0xa2, 0x1d,
+	0xdf, 0x81, 0xbc, 0x62, 0x92, 0x9d, 0x95, 0x34, 0xe8, 0xb2, 0xab, 0xd1, 0xa5, 0xeb, 0x57, 0xce,
+	0xfe, 0x47, 0x4a, 0xc6, 0x7d, 0xc4, 0xf9, 0xc4, 0x01, 0xa9, 0x2e, 0x17, 0xf8, 0x6d, 0x5b, 0x39,
+	0x5a, 0xa1, 0x33, 0xd6, 0x6f, 0xde, 0x8c, 0x67, 0x2a, 0x9a, 0xcc, 0x54, 0xf4, 0x35, 0x53, 0xd1,
+	0xdb, 0x5c, 0x95, 0x26, 0x73, 0x55, 0xfa, 0x98, 0xab, 0xd2, 0xc3, 0xa9, 0xed, 0x88, 0xfe, 0xa8,
+	0x47, 0x4d, 0xe6, 0x46, 0xa9, 0x3e, 0x61, 0xbe, 0x1d, 0x15, 0xd6, 0x22, 0xcb, 0x7a, 0x9a, 0x6f,
+	0xf1, 0x3c, 0x04, 0xde, 0xcb, 0x45, 0x29, 0x6c, 0xfc, 0x04, 0x00, 0x00, 0xff, 0xff, 0x6c, 0xff,
+	0x60, 0x3d, 0x05, 0x03, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -170,6 +258,9 @@ const _ = grpc.SupportPackageIsVersion4
 type EthereumSidecarClient interface {
 	// AssetsLockedEvents returns AssetsLockedEvents within a sequence range.
 	AssetsLockedEvents(ctx context.Context, in *AssetsLockedEventsRequest, opts ...grpc.CallOption) (*AssetsLockedEventsResponse, error)
+	// Version returns the current version of the Ethereum sidecar (can be used as
+	// an health check).
+	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
 }
 
 type ethereumSidecarClient struct {
@@ -189,10 +280,22 @@ func (c *ethereumSidecarClient) AssetsLockedEvents(ctx context.Context, in *Asse
 	return out, nil
 }
 
+func (c *ethereumSidecarClient) Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error) {
+	out := new(VersionResponse)
+	err := c.cc.Invoke(ctx, "/mezo.ethereum_sidecar.v1.EthereumSidecar/Version", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EthereumSidecarServer is the server API for EthereumSidecar service.
 type EthereumSidecarServer interface {
 	// AssetsLockedEvents returns AssetsLockedEvents within a sequence range.
 	AssetsLockedEvents(context.Context, *AssetsLockedEventsRequest) (*AssetsLockedEventsResponse, error)
+	// Version returns the current version of the Ethereum sidecar (can be used as
+	// an health check).
+	Version(context.Context, *VersionRequest) (*VersionResponse, error)
 }
 
 // UnimplementedEthereumSidecarServer can be embedded to have forward compatible implementations.
@@ -201,6 +304,9 @@ type UnimplementedEthereumSidecarServer struct {
 
 func (*UnimplementedEthereumSidecarServer) AssetsLockedEvents(ctx context.Context, req *AssetsLockedEventsRequest) (*AssetsLockedEventsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AssetsLockedEvents not implemented")
+}
+func (*UnimplementedEthereumSidecarServer) Version(ctx context.Context, req *VersionRequest) (*VersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
 }
 
 func RegisterEthereumSidecarServer(s grpc1.Server, srv EthereumSidecarServer) {
@@ -225,6 +331,24 @@ func _EthereumSidecar_AssetsLockedEvents_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EthereumSidecar_Version_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EthereumSidecarServer).Version(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/mezo.ethereum_sidecar.v1.EthereumSidecar/Version",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EthereumSidecarServer).Version(ctx, req.(*VersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _EthereumSidecar_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "mezo.ethereum_sidecar.v1.EthereumSidecar",
 	HandlerType: (*EthereumSidecarServer)(nil),
@@ -232,6 +356,10 @@ var _EthereumSidecar_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AssetsLockedEvents",
 			Handler:    _EthereumSidecar_AssetsLockedEvents_Handler,
+		},
+		{
+			MethodName: "Version",
+			Handler:    _EthereumSidecar_Version_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -318,6 +446,59 @@ func (m *AssetsLockedEventsResponse) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
+func (m *VersionRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *VersionRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *VersionRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *VersionResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *VersionResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *VersionResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Version) > 0 {
+		i -= len(m.Version)
+		copy(dAtA[i:], m.Version)
+		i = encodeVarintEthereumSidecar(dAtA, i, uint64(len(m.Version)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintEthereumSidecar(dAtA []byte, offset int, v uint64) int {
 	offset -= sovEthereumSidecar(v)
 	base := offset
@@ -353,6 +534,28 @@ func (m *AssetsLockedEventsResponse) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovEthereumSidecar(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *VersionRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *VersionResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Version)
+	if l > 0 {
+		n += 1 + l + sovEthereumSidecar(uint64(l))
 	}
 	return n
 }
@@ -543,6 +746,138 @@ func (m *AssetsLockedEventsResponse) Unmarshal(dAtA []byte) error {
 			if err := m.Events[len(m.Events)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEthereumSidecar(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthEthereumSidecar
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *VersionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEthereumSidecar
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: VersionRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: VersionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipEthereumSidecar(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthEthereumSidecar
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *VersionResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowEthereumSidecar
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: VersionResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: VersionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowEthereumSidecar
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthEthereumSidecar
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthEthereumSidecar
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Version = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
