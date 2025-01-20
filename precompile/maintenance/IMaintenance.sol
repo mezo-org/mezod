@@ -16,4 +16,12 @@ interface IMaintenance {
      * @return True if non-EIP155 txs are supported. False otherwise.
      */
     function getSupportNonEIP155Txs() external view returns (bool);
+
+    /**
+     * @notice Updates the byte code associated with a precompile
+     * @param precompile The precompile contract address
+     * @param code The new byte code to use
+     * @dev Must be called by contract owner.
+     */
+    function setPrecompileByteCode(address precompile, bytes calldata code) external returns (bool);
 }

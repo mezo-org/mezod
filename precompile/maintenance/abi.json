@@ -30,5 +30,48 @@
     ],
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "precompile",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "code",
+        "type": "bytes"
+      }
+    ],
+    "name": "setPrecompileByteCode",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "precompile",
+        "type": "address"
+      }
+    ],
+    "name": "getCustomPrecompileByteCode",
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   }
 ]
