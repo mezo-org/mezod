@@ -423,7 +423,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		// the response.
 		pseudoTx, err := b.getPseudoTransaction(pseudoTxResult, resBlock)
 		if err != nil {
-			b.logger.Debug("failed to get pseudo-transaction", "block", resBlock.Block.Hash(), "error", err.Error())
+			b.logger.Error("failed to get pseudo-transaction", "block", resBlock.Block.Hash(), "error", err.Error())
 		} else {
 			if !fullTx {
 				ethRPCTxs = append(ethRPCTxs, pseudoTx.Hash)

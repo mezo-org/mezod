@@ -567,7 +567,7 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 			return txs.GetTxByTxIndex(int(adjustedIndex)) // #nosec G701 -- checked for int overflow already
 		})
 		if err != nil {
-			return nil, errorsmod.Wrapf(err, "GetTxByTxIndex %d %d", block.Block.Height, adjustedIndex)
+			return nil, errorsmod.Wrapf(err, "GetTransactionByBlockAndIndex %d %d", block.Block.Height, adjustedIndex)
 		}
 
 		return txResult, nil
