@@ -16,35 +16,55 @@
 package version
 
 import (
-	"fmt"
 	"runtime"
+	"runtime/debug"
 )
 
 var (
-	AppVersion = ""
-	GitCommit  = ""
-	BuildDate  = ""
+	AppVersion  = ""
+	GitCommit   = ""
+	GitModified = ""
+	BuildDate   = ""
 
 	GoVersion = ""
 	GoArch    = ""
 )
 
 func init() {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				GitCommit = setting.Value
+			case "vcs.modified":
+				GitModified = setting.Value
+			case "vcs.time":
+				BuildDate = setting.Value
+			}
+		}
+	}
+
+	// if we are not in a git repository, this value will be 0
 	if len(AppVersion) == 0 {
 		AppVersion = "dev"
+	} else if len(AppVersion) > 0 {
+		// only set in case we are in a git repository, then we know
+		// the code on the commit have been altered
+		if GitModified == "true" {
+			GitCommit += "-modified"
+		}
 	}
 
 	GoVersion = runtime.Version()
 	GoArch = runtime.GOARCH
 }
 
-func Version() string {
-	return fmt.Sprintf(
-		"Version %s (%s)\nCompiled at %s using Go %s (%s)",
-		AppVersion,
-		GitCommit,
-		BuildDate,
-		GoVersion,
-		GoArch,
-	)
+func Version() map[string]string {
+	return map[string]string{
+		"app_version": AppVersion,
+		"commit":      GitCommit,
+		"build_date":  BuildDate,
+		"go":          GoVersion,
+		"go_arch":     GoArch,
+	}
 }
