@@ -7,6 +7,7 @@ import (
 	"net"
 	"sort"
 	"sync"
+	"time"
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
@@ -64,7 +65,8 @@ type Server struct {
 
 	chain *ethconnect.BaseChain
 
-	batchSize uint64
+	batchSize         uint64
+	requestsPerMinute uint64
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -75,6 +77,7 @@ func RunServer(
 	providerURL string,
 	ethereumNetwork string,
 	batchSize uint64,
+	requestsPerMinute uint64,
 ) {
 	if gen.BitcoinBridgeAddress == "" {
 		panic(
@@ -111,6 +114,7 @@ func RunServer(
 		bitcoinBridge:      bitcoinBridge,
 		chain:              chain,
 		batchSize:          batchSize,
+		requestsPerMinute:  requestsPerMinute,
 	}
 
 	go func() {
@@ -308,6 +312,9 @@ func (s *Server) fetchABIEvents(
 
 	abiEvents := make([]*abi.BitcoinBridgeAssetsLocked, 0)
 
+	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute))
+	defer ticker.Stop()
+
 	iterator, err := s.bitcoinBridge.FilterAssetsLocked(
 		&bind.FilterOpts{
 			Start: startBlock,
@@ -336,6 +343,8 @@ func (s *Server) fetchABIEvents(
 				"batchStartBlock", batchStartBlock,
 				"batchEndBlock", batchEndBlock,
 			)
+
+			<-ticker.C
 
 			batchIterator, batchErr := s.bitcoinBridge.FilterAssetsLocked(
 				&bind.FilterOpts{

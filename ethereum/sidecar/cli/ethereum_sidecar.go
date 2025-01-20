@@ -17,6 +17,15 @@ func NewEthereumSidecarCmd() *cobra.Command {
 	defaultServerEthereumNodeAddress := "ws://127.0.0.1:8546"
 	defaultServerEthereumNetwork := ethconfig.Sepolia
 	defaultServerBatchSize := uint64(1000)
+	// Default requests per minute. A 'minute' unit was chosen so that a
+	// validator can chose from the wider range of values.
+	// This default value might not work with all the Ethereum providers and should
+	// be adjusted based on the Ethereum provider capabilities. It happens that a
+	// free provider account won't even accept 1 request per second, meaning
+	// that this number should be adjusted by setting a flag to e.g. 1 request
+	// per 2 seconds, which is 30 requests per minute. Flag should be set to 30 for
+	// this example.
+	defaultServerRequestsPerMinute := uint64(600) // 10 requests per second
 
 	cmd := &cobra.Command{
 		Use:   "ethereum-sidecar",
@@ -32,6 +41,7 @@ func NewEthereumSidecarCmd() *cobra.Command {
 			defaultServerEthereumNodeAddress,
 			defaultServerEthereumNetwork.String(),
 			defaultServerBatchSize,
+			defaultServerRequestsPerMinute,
 		))
 
 	return cmd
@@ -47,6 +57,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 	ethNodeAddress, _ := cmd.Flags().GetString(FlagServerEthereumNodeAddress)
 	network, _ := cmd.Flags().GetString(FlagServerNetwork)
 	batchSize, _ := cmd.Flags().GetUint64(FlagServerBatchSize)
+	requestsPerMinute, _ := cmd.Flags().GetUint64(FlagServerRequestsPerMinute)
 
 	clientCtx, err := client.GetClientQueryContext(cmd)
 	if err != nil {
@@ -59,7 +70,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		codec.NewProtoCodec(clientCtx.InterfaceRegistry).GRPCCodec(),
 	)
 
-	sidecar.RunServer(logger, grpcAddress, ethNodeAddress, network, batchSize)
+	sidecar.RunServer(logger, grpcAddress, ethNodeAddress, network, batchSize, requestsPerMinute)
 
 	return nil
 }
