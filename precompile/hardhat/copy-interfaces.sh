@@ -16,5 +16,8 @@ cp ../validatorpool/IValidatorPool.sol ./interfaces/
 # Copy Assets Bridge interface
 cp ../assetsbridge/IAssetsBridge.sol ./interfaces/
 
+# Copy Maintenance interface
+cp ../maintenance/IMaintenance.sol ./interfaces/
+
 # Copy Upgrade interface
 cp ../upgrade/IUpgrade.sol ./interfaces/
