@@ -21,3 +21,6 @@ cp ../maintenance/IMaintenance.sol ./interfaces/
 
 # Copy Upgrade interface
 cp ../upgrade/IUpgrade.sol ./interfaces/
+
+# Copy Price Oracle interface
+cp ../priceoracle/IPriceOracle.sol ./interfaces/
