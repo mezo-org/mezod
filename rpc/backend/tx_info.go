@@ -443,10 +443,14 @@ func (b *Backend) GetTransactionByBlockNumberAndIndex(blockNum rpctypes.BlockNum
 // https://github.com/tendermint/tendermint/issues/6539
 func (b *Backend) GetTxByEthHash(hash common.Hash) (*types.TxResult, error) {
 	if b.indexer != nil {
+		// When getting the transaction result via the custom indexer, we do not
+		// have to make any adjustments as the indexer is aware of the possibility
+		// of a pseudo-transaction in the block and accounts for that.
 		return b.indexer.GetByTxHash(hash)
 	}
 
-	// fallback to tendermint tx indexer
+	// Fallback to Tendermint tx indexer - it is possible that the transaction
+	// ETH index may need to be adjusted.
 	query := fmt.Sprintf("%s.%s='%s'", evmtypes.TypeMsgEthereumTx, evmtypes.AttributeKeyEthereumTxHash, hash.Hex())
 	txResult, err := b.queryTendermintTxIndexer(query, func(txs *rpctypes.ParsedTxs) *rpctypes.ParsedTx {
 		return txs.GetTxByHash(hash)
@@ -454,6 +458,20 @@ func (b *Backend) GetTxByEthHash(hash common.Hash) (*types.TxResult, error) {
 	if err != nil {
 		return nil, errorsmod.Wrapf(err, "GetTxByEthHash %s", hash.Hex())
 	}
+
+	block, err := b.TendermintBlockByNumber(rpctypes.BlockNumber(txResult.Height))
+	if err != nil {
+		return nil, errorsmod.Wrapf(err, "GetTxByEthHash %s", hash.Hex())
+	}
+
+	// Check if the block contains a pseudo-transaction.
+	pseudoTxResult := b.GetPseudoTransactionResult(block)
+
+	// Adjust the ETH transaction index to account for the pseudo-transaction.
+	if pseudoTxResult != nil {
+		txResult.EthTxIndex++
+	}
+
 	return txResult, nil
 }
 
