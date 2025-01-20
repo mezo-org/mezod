@@ -16,7 +16,7 @@ interface IPriceOracle {
     * @return roundId The round ID.
     * @return answer The price represented in the 10^decimals precision.
     * @return startedAt Start timestamp of the update tick.
-    * @return updatedAt Start timestamp of the update tick.
+    * @return updatedAt End timestamp of the update tick.
     * @return answeredInRound Deprecated - Previously used when answers could
     *         take multiple rounds to be computed.
     */
