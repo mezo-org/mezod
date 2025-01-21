@@ -52,8 +52,7 @@ func RegisterTraceTransactionError(queryClient *mocks.EVMQueryClient, msgEthTx *
 }
 
 // TraceBlock
-func RegisterTraceBlock(queryClient *mocks.EVMQueryClient, txs []*evmtypes.MsgEthereumTx) {
-	data := []byte{0x7b, 0x22, 0x74, 0x65, 0x73, 0x74, 0x22, 0x3a, 0x20, 0x22, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x22, 0x7d}
+func RegisterTraceBlock(queryClient *mocks.EVMQueryClient, txs []*evmtypes.MsgEthereumTx, data []byte) {
 	queryClient.On("TraceBlock", rpc.ContextWithHeight(1),
 		&evmtypes.QueryTraceBlockRequest{Txs: txs, BlockNumber: 1, TraceConfig: &evmtypes.TraceConfig{}, ChainId: 31611}).
 		Return(&evmtypes.QueryTraceBlockResponse{Data: data}, nil)

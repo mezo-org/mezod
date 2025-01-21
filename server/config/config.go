@@ -106,6 +106,14 @@ const (
 	// DefaultConnectOracleMetricsEnabled is the default value indicating
 	// whether the oracle metrics are enabled.
 	DefaultConnectOracleMetricsEnabled = true
+
+	// DefaultConnectOracleInterval is the time between each price update request.
+	// The recommended interval is the block time of the chain.
+	DefaultConnectOracleInterval = 1500 * time.Millisecond
+
+	// DefaultConnectOraclePriceTTL is the maximum age of the latest price
+	// response before it is considered stale.
+	DefaultConnectOraclePriceTTL = 10 * time.Second
 )
 
 var evmTracers = []string{"json", "markdown", "struct", "access_list"}
@@ -252,6 +260,8 @@ func DefaultOracleConfig() *oracleconfig.AppConfig {
 		OracleAddress:  DefaultConnectOracleAddress,
 		ClientTimeout:  DefaultConnectOracleClientTimeout,
 		MetricsEnabled: DefaultConnectOracleMetricsEnabled,
+		PriceTTL:       DefaultConnectOraclePriceTTL,
+		Interval:       DefaultConnectOracleInterval,
 	}
 }
 
@@ -401,6 +411,21 @@ func GetConfig(v *viper.Viper) (Config, error) {
 		return Config{}, err
 	}
 
+	// Because the configuration used to generate wrong
+	// default, these two could prevent the node to start
+	// after an upgrade and panic. To avoid this we check for
+	// the go zero value and assign the default value instead
+	var (
+		oraclePriceTTL = v.GetDuration("oracle.price_ttl")
+		oracleInterval = v.GetDuration("oracle.interval")
+	)
+	if oraclePriceTTL == 0 {
+		oraclePriceTTL = DefaultConnectOraclePriceTTL
+	}
+	if oracleInterval == 0 {
+		oracleInterval = DefaultConnectOracleInterval
+	}
+
 	return Config{
 		Config: cfg,
 		EVM: EVMConfig{
@@ -434,6 +459,14 @@ func GetConfig(v *viper.Viper) (Config, error) {
 		EthereumSidecar: EthereumSidecarConfig{
 			ServerAddress:  v.GetString("ethereum-sidecar.client.server-address"),
 			RequestTimeout: v.GetDuration("ethereum-sidecar.client.request-timeout"),
+		},
+		Oracle: oracleconfig.AppConfig{
+			Enabled:        v.GetBool("oracle.enabled"),
+			OracleAddress:  v.GetString("oracle.oracle_address"),
+			ClientTimeout:  v.GetDuration("oracle.client_timeout"),
+			MetricsEnabled: v.GetBool("oracle.metrics_enabled"),
+			PriceTTL:       oraclePriceTTL,
+			Interval:       oracleInterval,
 		},
 	}, nil
 }

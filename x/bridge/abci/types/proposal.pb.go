@@ -24,16 +24,17 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-// InjectedTx defines the bridge-specific pseudo-tx used to inject previous-block
-// vote extensions along with a sequence of canonical AssetsLocked events
-// into the current block proposal.
+// InjectedTx defines the bridge-specific pseudo-tx used to inject
+// previous-block vote extensions along with a sequence of canonical
+// AssetsLocked events into the current block proposal.
 type InjectedTx struct {
 	// assets_locked_events is a list of canonical AssetsLockedEvent forming
 	// a sequence strictly increasing by 1. This list is derived from the
 	// extended_commit_info field.
 	AssetsLockedEvents []types.AssetsLockedEvent `protobuf:"bytes,1,rep,name=assets_locked_events,json=assetsLockedEvents,proto3" json:"assets_locked_events"`
 	// extended_commit_info is the extended commit info of the previous block.
-	// It holds the vote extensions that are used to derive the assets_locked_events.
+	// It holds the vote extensions that are used to derive the
+	// assets_locked_events.
 	ExtendedCommitInfo []byte `protobuf:"bytes,2,opt,name=extended_commit_info,json=extendedCommitInfo,proto3" json:"extended_commit_info,omitempty"`
 }
 

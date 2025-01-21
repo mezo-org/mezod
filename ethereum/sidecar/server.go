@@ -7,6 +7,7 @@ import (
 	"net"
 	"sort"
 	"sync"
+	"time"
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
@@ -19,6 +20,7 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
+	"github.com/mezo-org/mezod/version"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"google.golang.org/grpc"
 )
@@ -63,7 +65,8 @@ type Server struct {
 
 	chain *ethconnect.BaseChain
 
-	batchSize uint64
+	batchSize         uint64
+	requestsPerMinute uint64
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -74,6 +77,7 @@ func RunServer(
 	providerURL string,
 	ethereumNetwork string,
 	batchSize uint64,
+	requestsPerMinute uint64,
 ) {
 	if gen.BitcoinBridgeAddress == "" {
 		panic(
@@ -110,6 +114,7 @@ func RunServer(
 		bitcoinBridge:      bitcoinBridge,
 		chain:              chain,
 		batchSize:          batchSize,
+		requestsPerMinute:  requestsPerMinute,
 	}
 
 	go func() {
@@ -307,6 +312,9 @@ func (s *Server) fetchABIEvents(
 
 	abiEvents := make([]*abi.BitcoinBridgeAssetsLocked, 0)
 
+	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute))
+	defer ticker.Stop()
+
 	iterator, err := s.bitcoinBridge.FilterAssetsLocked(
 		&bind.FilterOpts{
 			Start: startBlock,
@@ -335,6 +343,8 @@ func (s *Server) fetchABIEvents(
 				"batchStartBlock", batchStartBlock,
 				"batchEndBlock", batchEndBlock,
 			)
+
+			<-ticker.C
 
 			batchIterator, batchErr := s.bitcoinBridge.FilterAssetsLocked(
 				&bind.FilterOpts{
@@ -399,6 +409,16 @@ func (s *Server) startGRPCServer(
 	case <-ctx.Done():
 		return nil
 	}
+}
+
+// Version return the current version of the ethereum sidecar.
+func (s *Server) Version(
+	_ context.Context,
+	_ *pb.VersionRequest,
+) (*pb.VersionResponse, error) {
+	return &pb.VersionResponse{
+		Version: version.AppVersion,
+	}, nil
 }
 
 // AssetsLockedEvents returns a list of AssetsLocked events based on the

@@ -16,13 +16,14 @@ message Params {
 
 // Validator represents a validator in the pool.
 message Validator {
-  // operator_bech32 is the Cosmos SDK address (bech32) identifying the validator.
+  // operator_bech32 is the Cosmos SDK address (bech32) identifying the
+  // validator.
   string operator_bech32 = 1;
   // cons_pub_key_bech32 is the consensus public key (bech32) of the validator
   // used to vote on blocks.
   string cons_pub_key_bech32 = 2;
   // description holds some human-readable information about the validator.
-  Description description = 3 [(gogoproto.nullable) = false];
+  Description description = 3 [ (gogoproto.nullable) = false ];
 }
 
 // Description defines a validator description.
@@ -42,7 +43,7 @@ message Description {
 // Application represents validator's application for joining the pool.
 message Application {
   // validator is the candidate that is subject of the application.
-  Validator validator = 1 [(gogoproto.nullable) = false];
+  Validator validator = 1 [ (gogoproto.nullable) = false ];
 }
 
 // HistoricalInfo contains header and validator information for a given block.
@@ -51,7 +52,7 @@ message Application {
 // HistoricalEntries constant.
 message HistoricalInfo {
   // header contains the block's header.
-  tendermint.types.Header header = 1 [(gogoproto.nullable) = false];
+  tendermint.types.Header header = 1 [ (gogoproto.nullable) = false ];
   // valset contains the active validator set at the block.
-  repeated Validator valset = 2 [(gogoproto.nullable) = false];
+  repeated Validator valset = 2 [ (gogoproto.nullable) = false ];
 }

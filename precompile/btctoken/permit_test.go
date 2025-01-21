@@ -300,7 +300,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
 			bankKeeper := s.app.BankKeeper
@@ -458,7 +458,7 @@ func (s *PrecompileTestSuite) TestNonce() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
 			evmKeeper := *s.app.EvmKeeper
@@ -538,7 +538,7 @@ func (s *PrecompileTestSuite) TestDomainSeparator() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
 			evmKeeper := *s.app.EvmKeeper
@@ -620,7 +620,7 @@ func (s *PrecompileTestSuite) TestPermitTypehash() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, nil, statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
 			evmKeeper := *s.app.EvmKeeper

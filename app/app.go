@@ -27,6 +27,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/mezo-org/mezod/precompile/priceoracle"
+
 	"github.com/mezo-org/mezod/precompile/maintenance"
 
 	"github.com/cosmos/cosmos-sdk/runtime"
@@ -35,6 +37,7 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	"github.com/mezo-org/mezod/precompile/btctoken"
+	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
 
 	"github.com/gorilla/mux"
@@ -389,26 +392,6 @@ func NewMezo(
 		app.GetSubspace(feemarkettypes.ModuleName),
 	)
 
-	app.EvmKeeper = evmkeeper.NewKeeper(
-		appCodec,
-		keys[evmtypes.StoreKey],
-		tkeys[evmtypes.TransientKey],
-		authority,
-		app.AccountKeeper,
-		app.BankKeeper,
-		app.PoaKeeper,
-		app.FeeMarketKeeper,
-		&app.ConsensusParamsKeeper,
-		tracer,
-		app.GetSubspace(evmtypes.ModuleName),
-	)
-
-	precompiles, err := customEvmPrecompiles(app.BankKeeper, app.AuthzKeeper, app.PoaKeeper, *app.EvmKeeper, bApp.ChainID())
-	if err != nil {
-		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
-	}
-	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
-
 	app.BridgeKeeper = bridgekeeper.NewKeeper(
 		appCodec,
 		keys[bridgetypes.StoreKey],
@@ -426,6 +409,34 @@ func NewMezo(
 		&app.MarketMapKeeper,
 		authority,
 	)
+
+	app.EvmKeeper = evmkeeper.NewKeeper(
+		appCodec,
+		keys[evmtypes.StoreKey],
+		tkeys[evmtypes.TransientKey],
+		authority,
+		app.AccountKeeper,
+		app.BankKeeper,
+		app.PoaKeeper,
+		app.FeeMarketKeeper,
+		&app.ConsensusParamsKeeper,
+		tracer,
+		app.GetSubspace(evmtypes.ModuleName),
+	)
+
+	precompiles, err := customEvmPrecompiles(
+		app.BankKeeper,
+		app.AuthzKeeper,
+		app.PoaKeeper,
+		*app.EvmKeeper,
+		*app.UpgradeKeeper,
+		oraclekeeper.NewQueryServer(app.OracleKeeper),
+		bApp.ChainID(),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
+	}
+	app.EvmKeeper.RegisterCustomPrecompiles(precompiles...)
 
 	// NOTE: we may consider parsing `appOpts` inside module constructors. For the moment
 	// we prefer to be more strict in what arguments the modules expect.
@@ -887,6 +898,8 @@ func customEvmPrecompiles(
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
 	evmKeeper evmkeeper.Keeper,
+	upgradeKeeper upgradekeeper.Keeper,
+	oracleQueryServer oracletypes.QueryServer,
 	chainID string,
 ) ([]*precompile.VersionMap, error) {
 	// BTC token precompile.
@@ -930,7 +943,7 @@ func customEvmPrecompiles(
 	}
 
 	// Maintenance precompile.
-	maintenancePrecompile, err := maintenance.NewPrecompile(poaKeeper, evmKeeper)
+	maintenancePrecompile, err := maintenance.NewPrecompile(poaKeeper, &evmKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create maintenance precompile: [%w]", err)
 	}
@@ -943,10 +956,26 @@ func customEvmPrecompiles(
 	}
 	assetsBridgeVersionMap := precompile.NewSingleVersionMap(assetsBridgePrecompile)
 
+	// Upgrade precompile.
+	upgradePrecompile, err := upgradelocal.NewPrecompile(upgradeKeeper, poaKeeper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create upgrade precompile: [%w]", err)
+	}
+	upgradeVersionMap := precompile.NewSingleVersionMap(upgradePrecompile)
+
+	// Price Oracle precompile.
+	priceOraclePrecompile, err := priceoracle.NewPrecompile(oracleQueryServer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create price oracle precompile: [%w]", err)
+	}
+	priceOracleVersionMap := precompile.NewSingleVersionMap(priceOraclePrecompile)
+
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
 		maintenanceVersionMap,
 		assetsBridgeVersionMap,
+		upgradeVersionMap,
+		priceOracleVersionMap,
 	}, nil
 }

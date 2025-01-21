@@ -26,6 +26,8 @@ var (
 	address3      common.Address   = common.BigToAddress(big.NewInt(103))
 	blockHash     common.Hash      = common.BigToHash(big.NewInt(9999))
 	emptyTxConfig statedb.TxConfig = statedb.NewEmptyTxConfig(blockHash)
+	emptyCodeHash                  = crypto.Keccak256(nil)
+	errAddress                     = common.BigToAddress(big.NewInt(100))
 )
 
 type StateDBTestSuite struct {
@@ -71,11 +73,11 @@ func (suite *StateDBTestSuite) TestAccount() {
 			db.CreateAccount(address)
 			suite.Require().NoError(db.Commit())
 
-			keeper := db.Keeper().(*MockKeeper)
-			acct := keeper.accounts[address]
-			suite.Require().Equal(statedb.NewEmptyAccount(), &acct.account)
-			suite.Require().Empty(acct.states)
-			suite.Require().False(acct.account.IsContract())
+			keeper := db.Keeper().(*statedb.MockKeeper)
+			acct := keeper.Accounts[address]
+			suite.Require().Equal(statedb.NewEmptyAccount(), &acct.Account)
+			suite.Require().Empty(acct.States)
+			suite.Require().False(acct.Account.IsContract())
 
 			db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 			suite.Require().Equal(true, db.Exist(address))
@@ -119,14 +121,14 @@ func (suite *StateDBTestSuite) TestAccount() {
 			suite.Require().False(db.Exist(address))
 
 			// and cleared in keeper too
-			keeper := db.Keeper().(*MockKeeper)
-			suite.Require().Empty(keeper.accounts)
-			suite.Require().Empty(keeper.codes)
+			keeper := db.Keeper().(*statedb.MockKeeper)
+			suite.Require().Empty(keeper.Accounts)
+			suite.Require().Empty(keeper.Codes)
 		}},
 	}
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			keeper := NewMockKeeper()
+			keeper := statedb.NewMockKeeper()
 			db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 			tc.malleate(db)
 		})
@@ -134,7 +136,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 }
 
 func (suite *StateDBTestSuite) TestAccountOverride() {
-	keeper := NewMockKeeper()
+	keeper := statedb.NewMockKeeper()
 	db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 	// test balance carry over when overwritten
 	amount := uint256.NewInt(1)
@@ -166,7 +168,7 @@ func (suite *StateDBTestSuite) TestDBError() {
 		}},
 	}
 	for _, tc := range testCases {
-		db := statedb.New(sdk.Context{}, NewMockKeeper(), emptyTxConfig)
+		db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
 		tc.malleate(db)
 		suite.Require().Error(db.Commit())
 	}
@@ -198,7 +200,7 @@ func (suite *StateDBTestSuite) TestBalance() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			keeper := NewMockKeeper()
+			keeper := statedb.NewMockKeeper()
 			db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 			tc.malleate(db)
 
@@ -208,7 +210,7 @@ func (suite *StateDBTestSuite) TestBalance() {
 			suite.Require().Equal(value, db.GetBalance(address))
 			suite.Require().NoError(db.Commit())
 			// check committed balance too
-			suite.Require().Equal(value, keeper.accounts[address].account.Balance)
+			suite.Require().Equal(value, keeper.Accounts[address].Account.Balance)
 		})
 	}
 }
@@ -234,7 +236,7 @@ func (suite *StateDBTestSuite) TestCode() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			keeper := NewMockKeeper()
+			keeper := statedb.NewMockKeeper()
 			db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 			tc.malleate(db)
 
@@ -300,7 +302,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
 			ctx := sdk.Context{}
-			keeper := NewMockKeeper()
+			keeper := statedb.NewMockKeeper()
 
 			{
 				// do some arbitrary changes to the storage
@@ -338,7 +340,7 @@ func (suite *StateDBTestSuite) TestNestedSnapshot() {
 	value1 := common.BigToHash(big.NewInt(1))
 	value2 := common.BigToHash(big.NewInt(2))
 
-	db := statedb.New(sdk.Context{}, NewMockKeeper(), emptyTxConfig)
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
 
 	rev1 := db.Snapshot()
 	db.SetState(address, key, value1)
@@ -355,7 +357,7 @@ func (suite *StateDBTestSuite) TestNestedSnapshot() {
 }
 
 func (suite *StateDBTestSuite) TestInvalidSnapshotId() {
-	db := statedb.New(sdk.Context{}, NewMockKeeper(), emptyTxConfig)
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
 	suite.Require().Panics(func() {
 		db.RevertToSnapshot(1)
 	})
@@ -434,7 +436,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 	}
 
 	for _, tc := range testCases {
-		db := statedb.New(sdk.Context{}, NewMockKeeper(), emptyTxConfig)
+		db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
 		tc.malleate(*db)
 	}
 }
@@ -447,7 +449,7 @@ func (suite *StateDBTestSuite) TestLog() {
 		txHash,
 		1, 1,
 	)
-	db := statedb.New(sdk.Context{}, NewMockKeeper(), txConfig)
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), txConfig)
 	data := []byte("hello world")
 	db.AddLog(&ethtypes.Log{
 		Address:     address,
@@ -499,7 +501,7 @@ func (suite *StateDBTestSuite) TestRefund() {
 		}, 0, true},
 	}
 	for _, tc := range testCases {
-		db := statedb.New(sdk.Context{}, NewMockKeeper(), emptyTxConfig)
+		db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
 		if !tc.expPanic {
 			tc.malleate(db)
 			suite.Require().Equal(tc.expRefund, db.GetRefund())
@@ -521,7 +523,7 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 	key2 := common.BigToHash(big.NewInt(3))
 	value2 := common.BigToHash(big.NewInt(4))
 
-	keeper := NewMockKeeper()
+	keeper := statedb.NewMockKeeper()
 	db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 	db.SetState(address, key1, value1)
 	db.SetState(address, key2, value2)
@@ -533,7 +535,7 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 
 	storage := CollectContractStorage(db)
 	suite.Require().Equal(2, len(storage))
-	suite.Require().Equal(keeper.accounts[address].states, storage)
+	suite.Require().Equal(keeper.Accounts[address].States, storage)
 
 	// break early iteration
 	storage = make(statedb.Storage)

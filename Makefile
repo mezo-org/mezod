@@ -61,7 +61,8 @@ ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=mezo \
           -X github.com/cosmos/cosmos-sdk/version.AppName=$(MEZO_BINARY) \
           -X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
           -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) \
-          -X github.com/cometbft/cometbft/version.CMTSemVer=$(CMTVERSION)
+          -X github.com/cometbft/cometbft/version.CMTSemVer=$(CMTVERSION) \
+          -X github.com/mezo-org/mezod/version.AppVersion=$(VERSION)
 
 # DB backend selection
 ifeq (cleveldb,$(findstring cleveldb,$(COSMOS_BUILD_OPTIONS)))
@@ -515,6 +516,9 @@ localnet-bin-init:
 
 localnet-bin-start:
 	LOCALNET_CHAIN_ID=$(LOCALNET_CHAIN_ID) ./scripts/localnet-start.sh
+
+localnet-bin-sidecars-start:
+	./scripts/localnet-sidecars-start.sh
 
 localnet-bin-clean:
 	rm -rf $(LOCALNET_DIR) build

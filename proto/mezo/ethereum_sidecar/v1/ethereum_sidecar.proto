@@ -9,27 +9,43 @@ option go_package = "github.com/mezo-org/mezod/ethereum/sidecar/types";
 // EthereumSidecar defines the Ethereum sidecar service.
 service EthereumSidecar {
   // AssetsLockedEvents returns AssetsLockedEvents within a sequence range.
-  rpc AssetsLockedEvents(AssetsLockedEventsRequest) returns (AssetsLockedEventsResponse);
+  rpc AssetsLockedEvents(AssetsLockedEventsRequest)
+      returns (AssetsLockedEventsResponse);
+
+  // Version returns the current version of the Ethereum sidecar (can be used as
+  // an health check).
+  rpc Version(VersionRequest) returns (VersionResponse);
 }
 
-// AssetsLockedEventsRequest is the request type for the GetAssetsLockedEvents
+// AssetsLockedEventsRequest is the request type for the AssetsLockedEvents
 // query.
 message AssetsLockedEventsRequest {
-  // sequence_start is the start of the sequence range (inclusive). If null, unbounded on the lower side.
+  // sequence_start is the start of the sequence range (inclusive). If null,
+  // unbounded on the lower side.
   string sequence_start = 1 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
-  // sequence_end is the end of the sequence range (exclusive). If null, unbounded on the upper side.
+  // sequence_end is the end of the sequence range (exclusive). If null,
+  // unbounded on the upper side.
   string sequence_end = 2 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
 }
 
-// AssetsLockedEventsResponse is the response type for the GetAssetsLockedEvents
+// AssetsLockedEventsResponse is the response type for the AssetsLockedEvents
 // query.
 message AssetsLockedEventsResponse {
   // events contains a list of AssetsLockedEvents.
   repeated mezo.bridge.v1.AssetsLockedEvent events = 1;
+}
+
+// VersionRequest is the request type for the Version query.
+message VersionRequest {}
+
+// VersionResponse is the response type for the Version query.
+message VersionResponse {
+  // version contains the version of the Ethereum sidecar.
+  string version = 1;
 }
