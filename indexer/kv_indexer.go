@@ -90,7 +90,7 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 			// present in a block, it is always at index `0`.
 			txHash := common.BytesToHash(tx.Hash())
 
-			injectedTx, isPseudoTx := kv.parsePseudoTransaction(tx)
+			injectedTx, isPseudoTx := ParsePseudoTransaction(tx)
 
 			if isPseudoTx {
 				if injectedTx == nil || len(injectedTx.AssetsLockedEvents) == 0 {
@@ -208,10 +208,10 @@ func (kv *KVIndexer) IndexBlock(block *tmtypes.Block, txResults []*abci.ExecTxRe
 	return nil
 }
 
-// parsePseudoTransaction attempts to extract bridging information from a
+// ParsePseudoTransaction attempts to extract bridging information from a
 // transaction. It returns an object with `AssetsLocked` events and information
 // on whether the transaction was a pseudo-transaction.
-func (kv *KVIndexer) parsePseudoTransaction(
+func ParsePseudoTransaction(
 	tx tmtypes.Tx,
 ) (*bridgetypes.InjectedTx, bool) {
 	var blockTx apptypes.InjectedTx

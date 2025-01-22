@@ -446,9 +446,30 @@ func (e *PublicAPI) GetTransactionLogs(txHash common.Hash) ([]*ethtypes.Log, err
 		return nil, nil
 	}
 
+	block, err := e.backend.TendermintBlockByNumber(rpctypes.BlockNumber(res.Height))
+	if err != nil {
+		e.logger.Debug("block not found", "number", res.Height, "error", err.Error())
+		return nil, nil
+	}
+
 	// parse tx logs from events
 	index := int(res.MsgIndex) // #nosec G701
-	return backend.TxLogsFromEvents(resBlockResult.TxsResults[res.TxIndex].Events, index)
+	logs, err := backend.TxLogsFromEvents(resBlockResult.TxsResults[res.TxIndex].Events, index)
+	if err != nil {
+		e.logger.Debug("tx logs could not be obtained from events", "hash", hexTx, "error", err.Error())
+	}
+
+	// Check if the block contains a pseudo-transaction.
+	pseudoTxResult := e.backend.GetPseudoTransactionResult(block)
+
+	// Adjust the transaction index to account for the pseudo-transaction.
+	if pseudoTxResult != nil {
+		for _, log := range logs {
+			log.TxIndex++
+		}
+	}
+
+	return logs, nil
 }
 
 // SignTypedData signs EIP-712 conformant typed data

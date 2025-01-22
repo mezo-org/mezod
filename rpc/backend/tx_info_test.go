@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -58,7 +59,7 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	blockWithPseudoTx := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
 
@@ -359,7 +360,7 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockAndIndex() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	pseudoTxBlock := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
 	rpcPseudoTx, err := buildRPCPseudoTx(
@@ -442,10 +443,6 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockAndIndex() {
 			"pass - Pseudo-transaction",
 			func() {
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
-				db := dbm.NewMemDB()
-				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
-				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, 1)
 				suite.Require().NoError(err)
 			},
@@ -491,7 +488,7 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	pseudoTxBlock := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
 
@@ -542,10 +539,6 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 			"pass - pseudo-transaction",
 			func() {
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
-				db := dbm.NewMemDB()
-				suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
-				err := suite.backend.indexer.IndexBlock(pseudoTxBlock, []*abci.ExecTxResult{})
-				suite.Require().NoError(err)
 				_, err = RegisterBlock(client, 1, *pseudoTx)
 				suite.Require().NoError(err)
 				_, err = RegisterBlockResults(client, 1)
@@ -567,48 +560,6 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 			if tc.expPass {
 				suite.Require().NoError(err)
 				suite.Require().Equal(rpcTx, tc.expRPCTx)
-			} else {
-				suite.Require().Error(err)
-			}
-		})
-	}
-}
-
-func (suite *BackendTestSuite) TestGetTransactionByTxIndex() {
-	_, bz := suite.buildEthereumTx()
-
-	testCases := []struct {
-		name         string
-		registerMock func()
-		height       int64
-		index        uint
-		expTxResult  *mezotypes.TxResult
-		expPass      bool
-	}{
-		{
-			"fail - Ethereum tx with query not found",
-			func() {
-				client := suite.backend.clientCtx.Client.(*mocks.Client)
-				suite.backend.indexer = nil
-				RegisterTxSearch(client, "tx.height=0 AND ethereum_tx.txIndex=0", bz)
-			},
-			0,
-			0,
-			&mezotypes.TxResult{},
-			false,
-		},
-	}
-
-	for _, tc := range testCases {
-		suite.Run(tc.name, func() {
-			suite.SetupTest() // reset
-			tc.registerMock()
-
-			txResults, err := suite.backend.GetTxByTxIndex(tc.height, tc.index)
-
-			if tc.expPass {
-				suite.Require().NoError(err)
-				suite.Require().Equal(txResults, tc.expTxResult)
 			} else {
 				suite.Require().Error(err)
 			}
@@ -669,7 +620,7 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
 	}
-	pseudoTx, err := buildPseudoTx(event)
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	pseudoTxHash := common.BytesToHash(pseudoTx.Hash())
 	pseudoTxBlock := &types.Block{
@@ -814,9 +765,97 @@ func (suite *BackendTestSuite) TestGetGasUsed() {
 	}
 }
 
-func buildPseudoTx(event bridgetypes.AssetsLockedEvent) (*types.Tx, error) {
+func (suite *BackendTestSuite) TestGetPseudoTransactionResult() {
+	// Data for a regular transaction.
+	regularTxMsg, _ := suite.buildEthereumTx()
+	regularTx := suite.signAndEncodeEthTx(regularTxMsg)
+
+	// Data for an empty pseudo-transaction.
+	emptyPseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{})
+	suite.Require().NoError(err)
+
+	// Data for a valid pseudo-transaction.
+	event := bridgetypes.AssetsLockedEvent{
+		Sequence:  sdkmath.NewInt(1),
+		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
+		Amount:    sdkmath.NewInt(1000000),
+	}
+
+	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
+	suite.Require().NoError(err)
+
+	extraData, err := hex.DecodeString(
+		"010a390a0131122b6d657a6f3177656e6761666176396d35796874393236716d783467723364337268786b35306135727a6b381a0731303030303030",
+	)
+	suite.Require().NoError(err)
+
+	testCases := []struct {
+		name        string
+		resultBlock *tmrpctypes.ResultBlock
+		expTxResult *mezotypes.TxResult
+	}{
+		{
+			"nil block result",
+			nil,
+			nil,
+		},
+		{
+			"no transactions in block",
+			&tmrpctypes.ResultBlock{
+				Block: &types.Block{},
+			},
+			nil,
+		},
+		{
+			"transaction in block is not a pseudo-transaction",
+			&tmrpctypes.ResultBlock{
+				Block: &types.Block{
+					Data: types.Data{
+						Txs: []types.Tx{regularTx},
+					},
+				},
+			},
+			nil,
+		},
+		{
+			"transaction in block is an empty pseudo-transaction",
+			&tmrpctypes.ResultBlock{
+				Block: &types.Block{
+					Data: types.Data{
+						Txs: []types.Tx{*emptyPseudoTx},
+					},
+				},
+			},
+			nil,
+		},
+		{
+			"transaction in block is a valid pseudo-transaction",
+			&tmrpctypes.ResultBlock{
+				Block: &types.Block{
+					Data: types.Data{
+						Txs: []types.Tx{*pseudoTx},
+					},
+				},
+			},
+			&mezotypes.TxResult{
+				ExtraData: extraData,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+
+			txResult := suite.backend.GetPseudoTransactionResult(tc.resultBlock)
+			suite.Require().Equal(tc.expTxResult, txResult)
+		})
+	}
+}
+
+func buildPseudoTx(events []bridgetypes.AssetsLockedEvent) (*types.Tx, error) {
 	bridgeTx := bridgeabcitypes.InjectedTx{
-		AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{event},
+		AssetsLockedEvents: events,
 	}
 
 	parts, err := bridgeTx.Marshal()
