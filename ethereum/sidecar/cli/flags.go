@@ -11,6 +11,7 @@ const (
 	FlagServerEthereumNodeAddress = "ethereum-sidecar.server.ethereum-node-address"
 	FlagServerNetwork             = "ethereum-sidecar.server.network"
 	FlagServerBatchSize           = "ethereum-sidecar.server.batch-size"
+	FlagServerRequestsPerMinute   = "ethereum-sidecar.server.requests-per-minute"
 )
 
 func NewFlagSetEthereumSidecar(
@@ -18,6 +19,7 @@ func NewFlagSetEthereumSidecar(
 	defaultServerEthereumNodeAddress,
 	defaultServerNetwork string,
 	defaultServerBatchSize uint64,
+	defaultServerRequestsPerMinute uint64,
 ) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
@@ -51,6 +53,12 @@ func NewFlagSetEthereumSidecar(
 		FlagServerBatchSize,
 		defaultServerBatchSize,
 		"Size of the block batch for fallback AssetsLocked events lookup",
+	)
+
+	fs.Uint64(
+		FlagServerRequestsPerMinute,
+		defaultServerRequestsPerMinute,
+		"Requests per minute for an Ethereum RPC provider",
 	)
 
 	return fs

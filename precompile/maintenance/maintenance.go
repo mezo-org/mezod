@@ -7,6 +7,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -49,6 +50,7 @@ func newPrecompileMethods(
 	return []precompile.Method{
 		newSetSupportNonEIP155TxsMethod(poaKeeper, evmKeeper),
 		newGetSupportNonEIP155TxsMethod(evmKeeper),
+		newSetPrecompileByteCodeMethod(poaKeeper, evmKeeper),
 	}
 }
 
@@ -59,4 +61,9 @@ type PoaKeeper interface {
 type EvmKeeper interface {
 	GetParams(ctx sdk.Context) (params evmtypes.Params)
 	SetParams(ctx sdk.Context, params evmtypes.Params) error
+	SetCode(ctx sdk.Context, codeHash, code []byte)
+	GetCode(ctx sdk.Context, codeHash common.Hash) []byte
+	IsCustomPrecompile(address common.Address) bool
+	GetAccount(ctx sdk.Context, addr common.Address) *statedb.Account
+	SetAccount(ctx sdk.Context, addr common.Address, account statedb.Account) error
 }

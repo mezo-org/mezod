@@ -20,3 +20,22 @@ task('maintenance:setSupportNonEIP155Txs', 'Enables/disables support for the non
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })
+
+task('maintenance:setPrecompileByteCode', 'Updates the byte code associated with a precompile')
+  .addParam('signer', 'The signer address (msg.sender)')
+  .addParam('precompile', 'The precompile contract address')
+  .addParam('code', 'The new byte code')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setPrecompileByteCode(taskArguments.precompile, taskArguments.code)
+    const confirmed = await pending.wait()
+    console.log(confirmed)
+  })
+
+task('maintenance:getPrecompileByteCode', '')
+  .addParam('precompile', 'The precompile contract address')
+  .setAction(async (taskArguments, hre) => {
+    const code = await hre.ethers.provider.getCode(taskArguments.precompile)
+    console.log(code)
+  })
