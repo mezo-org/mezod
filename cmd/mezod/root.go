@@ -72,6 +72,8 @@ import (
 
 	rosettacmd "github.com/cosmos/rosetta/cmd"
 	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
+
+	precompilecli "github.com/mezo-org/mezod/precompile/cli"
 )
 
 const (
@@ -141,6 +143,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		debug.Cmd(),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
+		precompilecli.NewSubmitApplicationCmd(),
 	)
 
 	mezoserver.AddCommands(
