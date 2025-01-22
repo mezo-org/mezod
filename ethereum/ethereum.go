@@ -38,12 +38,31 @@ func Connect(
 	*BaseChain,
 	error,
 ) {
+	// Enforce the connection via WebSockets as other protocols may not support
+	// subscriptions.
+	if !strings.HasPrefix(config.URL, "wss://") && !strings.HasPrefix(config.URL, "ws://") {
+		return nil, fmt.Errorf(
+			"ETH client URL must start with wss:// (recommended) or ws://. "+
+				"Provided: [%s]",
+			config.URL,
+		)
+	}
+
 	client, err := ethclient.Dial(config.URL)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error Connecting to Ethereum Server: %s [%v]",
 			config.URL,
 			err,
+		)
+	}
+
+	// Double-check if subscriptions are supported.
+	if !client.Client().SupportsSubscriptions() {
+		client.Close()
+		return nil, fmt.Errorf(
+			"ETH client for URL [%s] does not support subscriptions",
+			config.URL,
 		)
 	}
 
