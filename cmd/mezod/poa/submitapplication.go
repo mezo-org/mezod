@@ -80,7 +80,7 @@ func runSubmitApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, networkID, err := connectToEthereumNetwork(rpcURL)
+	client, networkID, err := connectToNetwork(rpcURL)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func getConsensusPublicKey(clientCtx clientSdk.Context, config *sdk.Config) ([32
 	return consPubKeyArray, nil
 }
 
-func connectToEthereumNetwork(rpcURL string) (*ethclient.Client, *big.Int, error) {
+func connectToNetwork(rpcURL string) (*ethclient.Client, *big.Int, error) {
 	url := localNodeURL
 	if rpcURL != "" {
 		url = rpcURL
