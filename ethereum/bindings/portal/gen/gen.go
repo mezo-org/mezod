@@ -8,9 +8,9 @@ import (
 //go:generate make
 
 var (
-	//go:embed _address/BitcoinBridge
-	bitcoinBridgeAddressFileContent string
+	//go:embed _address/MezoBridge
+	mezoBridgeAddressFileContent string
 
-	// BitcoinBridgeAddress is a Bitcoin Bridge contract's address read from the NPM package.
-	BitcoinBridgeAddress = strings.TrimSpace(bitcoinBridgeAddressFileContent)
+	// MezoBridgeAddress is the MezoBridge contract's address read from the NPM package.
+	MezoBridgeAddress = strings.TrimSpace(mezoBridgeAddressFileContent)
 )
