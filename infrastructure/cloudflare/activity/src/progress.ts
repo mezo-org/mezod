@@ -7,15 +7,15 @@ export async function getProgressForKey(
   const response = await db
     .prepare(
       `
-        SELECT page_count 
+        SELECT page 
         FROM fetch_progress
         WHERE id = ?1
         `,
     )
     .bind(key)
-    .first<{ page_count: number }>()
+    .first<{ page: number }>()
 
-  return response?.page_count ?? 0
+  return response?.page ?? 0
 }
 
 export async function updateProgressForKey(
@@ -27,7 +27,7 @@ export async function updateProgressForKey(
     .prepare(
       `
     UPDATE fetch_progress
-    SET page_count = ?1, updated_at = datetime('now')
+    SET page = ?1, updated_at = datetime('now')
     WHERE id = ?2
     `,
     )
