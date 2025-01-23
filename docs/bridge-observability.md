@@ -29,7 +29,4 @@ be seen by tools such as block explorers.
 ## Limitations
 
 When the custom indexer is not enabled, pseudo-transactions will not be stored.
-JSON-RPC commands will not be able to retrieve pseudo-transactions and will act
-as if there were no pseudo-transactions present in the Mezo network (blocks
-returned from commands will not contain pseudo-transactions, regular ETH
-transactions will be indexed starting from `0`).
+Therefore, JSON-RPC commands will not be able to retrieve them.

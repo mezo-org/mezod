@@ -30,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/mezo-org/mezod/indexer"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
@@ -177,21 +176,13 @@ func (b *Backend) GetBlockTransactionCount(block *tmrpctypes.ResultBlock) *hexut
 	// (e.g. because it did not contain any information) we should not count it.
 	numPseudoTxs := 0
 
-	// The transaction at index `0` can be a pseudo-transaction. We need to
-	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
-	// transaction, it is still possible that it did not contain any events and
-	// was skipped during indexing.
-	if len(block.Block.Txs) > 0 {
-		tx := block.Block.Txs[0]
-		txHash := common.BytesToHash(tx.Hash())
-		res, err := b.GetTxByEthHash(txHash)
-		if err == nil {
-			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
-				// The transaction was saved during indexing. We should add it to
-				// the transaction count.
-				numPseudoTxs = 1
-			}
-		}
+	// Check if the block contains a pseudo-transaction.
+	pseudoTxResult := b.GetPseudoTransactionResult(block)
+
+	if pseudoTxResult != nil {
+		// There is a pseudo-transaction in the block. We should add it to
+		// the transaction count.
+		numPseudoTxs = 1
 	}
 
 	// Notice that a pseudo-transaction (if present) will be skipped by the
@@ -424,34 +415,20 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		b.logger.Error("failed to fetch Base Fee from prunned block. Check node prunning configuration", "height", block.Height, "error", err)
 	}
 
-	// Information on whether the block contains a non-empty pseudo-transaction
-	// with bridging information.
-	hasPseudoTransaction := false
+	// Check if the block contains a pseudo transaction.
+	pseudoTxResult := b.GetPseudoTransactionResult(resBlock)
 
-	// The transaction at index `0` can be a pseudo-transaction. We need to
-	// verify if it is indeed a pseudo-transaction. Even if it is a pseudo-
-	// transaction, it is still possible that it did not contain any events and
-	// was skipped during indexing.
-	if len(block.Txs) > 0 {
-		tx := block.Txs[0]
-		txHash := common.BytesToHash(tx.Hash())
-		res, err := b.GetTxByEthHash(txHash)
-		if err == nil {
-			// The transaction was saved during indexing.
-			if len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
-				// The transaction was a pseudo-transaction containing events.
-				// Include the transaction in the command result.
-				pseudoTx, err := b.getPseudoTransaction(res, resBlock)
-				if err != nil {
-					b.logger.Debug("failed to get pseudo-transaction", "hash", txHash, "error", err.Error())
-				} else {
-					if !fullTx {
-						ethRPCTxs = append(ethRPCTxs, pseudoTx.Hash)
-					} else {
-						ethRPCTxs = append(ethRPCTxs, pseudoTx)
-					}
-					hasPseudoTransaction = true
-				}
+	if pseudoTxResult != nil {
+		// The block contains a pseudo-transaction. Append it at the front of
+		// the response.
+		pseudoTx, err := b.getPseudoTransaction(pseudoTxResult, resBlock)
+		if err != nil {
+			b.logger.Error("failed to get pseudo-transaction", "block", resBlock.Block.Hash(), "error", err.Error())
+		} else {
+			if !fullTx {
+				ethRPCTxs = append(ethRPCTxs, pseudoTx.Hash)
+			} else {
+				ethRPCTxs = append(ethRPCTxs, pseudoTx)
 			}
 		}
 	}
@@ -474,7 +451,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		// If there is a pseudo-transaction present in the block, we need to
 		// increase the index by `1` as the pseudo-transaction should be
 		// considered the first transaction in the block.
-		if hasPseudoTransaction {
+		if pseudoTxResult != nil {
 			index = uint64(txIndex) + 1
 		}
 
