@@ -116,7 +116,7 @@ export class BlockScoutAPI {
 
       if (!responseJSON.next_page_params) {
         // If no new pages, we reset to the first page
-        await this.#updateCurrentPageForKey(FetchProgressKey.ADDRESS, 0)
+        lastProcessedPage = 0
         break
       }
 
@@ -196,7 +196,7 @@ export class BlockScoutAPI {
 
       if (!responseJSON.next_page_params) {
         // If no new pages, we reset to the first page
-        await this.#updateCurrentPageForKey(FetchProgressKey.TX_COUNT, 0)
+        lastProcessedPage = 0
         break
       }
 
@@ -279,7 +279,7 @@ export class BlockScoutAPI {
 
       if (!responseJSON.next_page_params) {
         // If no new pages, we reset to the first page
-        await this.#updateCurrentPageForKey(FetchProgressKey.ADDRESS_TXS, 0)
+        lastProcessedPage = 0
         break
       }
 
@@ -366,7 +366,7 @@ export class BlockScoutAPI {
 
       if (!responseJSON.next_page_params) {
         // If no new pages, we reset to the first page
-        await this.#updateCurrentPageForKey(FetchProgressKey.CONTRACT_TXS, 0)
+        lastProcessedPage = 0
         break
       }
 
