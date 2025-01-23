@@ -12,11 +12,18 @@ func (k Keeper) InitGenesis(ctx sdk.Context, genState types.GenesisState) {
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting params"))
 	}
+
+	k.setAssetsLockedSequenceTip(ctx, genState.AssetsLockedSequenceTip)
+	k.setSourceBTCToken(ctx, genState.SourceBtcToken)
+	k.setSupportedERC20Tokens(ctx, genState.SupportedErc20Tokens)
 }
 
 // ExportGenesis returns the module's exported genesis
 func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 	return &types.GenesisState{
-		Params: k.GetParams(ctx),
+		Params:                  k.GetParams(ctx),
+		AssetsLockedSequenceTip: k.GetAssetsLockedSequenceTip(ctx),
+		SourceBtcToken:          k.GetSourceBTCToken(ctx),
+		SupportedErc20Tokens:    k.GetSupportedERC20Tokens(ctx),
 	}
 }

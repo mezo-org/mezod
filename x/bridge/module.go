@@ -50,7 +50,7 @@ func (AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
 	return cdc.MustMarshalJSON(types.DefaultGenesis())
 }
 
-// ValidateGenesis performs genesis state validation for the dualstaking module.
+// ValidateGenesis performs genesis state validation for the bridge module.
 func (AppModuleBasic) ValidateGenesis(
 	cdc codec.JSONCodec,
 	_ client.TxEncodingConfig,

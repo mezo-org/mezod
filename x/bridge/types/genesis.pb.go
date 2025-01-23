@@ -4,6 +4,7 @@
 package types
 
 import (
+	cosmossdk_io_math "cosmossdk.io/math"
 	fmt "fmt"
 	_ "github.com/cosmos/gogoproto/gogoproto"
 	proto "github.com/cosmos/gogoproto/proto"
@@ -27,6 +28,18 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 type GenesisState struct {
 	// params defines all the parameters of related to bridge.
 	Params Params `protobuf:"bytes,1,opt,name=params,proto3" json:"params"`
+	// assets_locked_sequence_tip is the current sequence tip for the AssetsLocked
+	// events. The tip denotes the sequence number of the last event processed by
+	// the x/bridge module.
+	AssetsLockedSequenceTip cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=assets_locked_sequence_tip,json=assetsLockedSequenceTip,proto3,customtype=cosmossdk.io/math.Int" json:"assets_locked_sequence_tip"`
+	// source_btc_token is the BTC token address on the source chain. AssetsLocked
+	// events carrying this token address are directly mapped to the Mezo native
+	// denomination - BTC.
+	SourceBtcToken string `protobuf:"bytes,3,opt,name=source_btc_token,json=sourceBtcToken,proto3" json:"source_btc_token,omitempty"`
+	// supported_erc20_tokens is the map holding ERC20 tokens supported by the
+	// bridge. The key is the token address on the source chain, and the value is
+	// the token address on the Mezo chain.
+	SupportedErc20Tokens map[string]string `protobuf:"bytes,4,rep,name=supported_erc20_tokens,json=supportedErc20Tokens,proto3" json:"supported_erc20_tokens,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *GenesisState) Reset()         { *m = GenesisState{} }
@@ -69,27 +82,54 @@ func (m *GenesisState) GetParams() Params {
 	return Params{}
 }
 
+func (m *GenesisState) GetSourceBtcToken() string {
+	if m != nil {
+		return m.SourceBtcToken
+	}
+	return ""
+}
+
+func (m *GenesisState) GetSupportedErc20Tokens() map[string]string {
+	if m != nil {
+		return m.SupportedErc20Tokens
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*GenesisState)(nil), "mezo.bridge.v1.GenesisState")
+	proto.RegisterMapType((map[string]string)(nil), "mezo.bridge.v1.GenesisState.SupportedErc20TokensEntry")
 }
 
 func init() { proto.RegisterFile("mezo/bridge/v1/genesis.proto", fileDescriptor_c6a9d1c622979efc) }
 
 var fileDescriptor_c6a9d1c622979efc = []byte{
-	// 195 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0xc9, 0x4d, 0xad, 0xca,
-	0xd7, 0x4f, 0x2a, 0xca, 0x4c, 0x49, 0x4f, 0xd5, 0x2f, 0x33, 0xd4, 0x4f, 0x4f, 0xcd, 0x4b, 0x2d,
-	0xce, 0x2c, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x03, 0xc9, 0xea, 0x41, 0x64, 0xf5,
-	0xca, 0x0c, 0xa5, 0x44, 0xd2, 0xf3, 0xd3, 0xf3, 0xc1, 0x52, 0xfa, 0x20, 0x16, 0x44, 0x95, 0x94,
-	0x34, 0x9a, 0x19, 0x50, 0xf5, 0x60, 0x49, 0x25, 0x17, 0x2e, 0x1e, 0x77, 0x88, 0x99, 0xc1, 0x25,
-	0x89, 0x25, 0xa9, 0x42, 0x26, 0x5c, 0x6c, 0x05, 0x89, 0x45, 0x89, 0xb9, 0xc5, 0x12, 0x8c, 0x0a,
-	0x8c, 0x1a, 0xdc, 0x46, 0x62, 0x7a, 0xa8, 0x76, 0xe8, 0x05, 0x80, 0x65, 0x9d, 0x58, 0x4e, 0xdc,
-	0x93, 0x67, 0x08, 0x82, 0xaa, 0x75, 0x72, 0x3a, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6,
-	0x07, 0x8f, 0xe4, 0x18, 0x27, 0x3c, 0x96, 0x63, 0xb8, 0xf0, 0x58, 0x8e, 0xe1, 0xc6, 0x63, 0x39,
-	0x86, 0x28, 0x8d, 0xf4, 0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd, 0xe4, 0xfc, 0x5c, 0x7d, 0x90, 0x49,
-	0xba, 0xf9, 0x45, 0xe9, 0x60, 0x46, 0x8a, 0x7e, 0x05, 0xcc, 0x4d, 0x25, 0x95, 0x05, 0xa9, 0xc5,
-	0x49, 0x6c, 0x60, 0x07, 0x19, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0xfc, 0x0f, 0x6c, 0xc7, 0xf3,
-	0x00, 0x00, 0x00,
+	// 388 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x91, 0x41, 0x8b, 0xd3, 0x40,
+	0x14, 0xc7, 0x93, 0xcd, 0xba, 0xb0, 0xb3, 0xb2, 0x2c, 0xa1, 0xae, 0x31, 0x6a, 0xb6, 0x78, 0xca,
+	0xc5, 0x89, 0x5b, 0x45, 0xc4, 0x63, 0x60, 0x59, 0x04, 0x0f, 0x92, 0xf6, 0xd4, 0x4b, 0x48, 0x26,
+	0x8f, 0x34, 0xa4, 0xc9, 0xc4, 0x79, 0x93, 0x62, 0xbd, 0xf9, 0x0d, 0xfc, 0x58, 0x3d, 0xf6, 0x28,
+	0x1e, 0x8a, 0xb4, 0x5f, 0x44, 0x66, 0xa6, 0x05, 0x2d, 0x7a, 0x7b, 0x79, 0xff, 0xff, 0xef, 0x9f,
+	0x79, 0xef, 0x91, 0x67, 0x0d, 0x7c, 0xe5, 0x51, 0x2e, 0xaa, 0xa2, 0x84, 0x68, 0x71, 0x1b, 0x95,
+	0xd0, 0x02, 0x56, 0x48, 0x3b, 0xc1, 0x25, 0x77, 0x2f, 0x95, 0x4a, 0x8d, 0x4a, 0x17, 0xb7, 0xfe,
+	0xa0, 0xe4, 0x25, 0xd7, 0x52, 0xa4, 0x2a, 0xe3, 0xf2, 0x9f, 0x1e, 0x65, 0xec, 0xfd, 0x5a, 0x7c,
+	0xf1, 0xcd, 0x21, 0x0f, 0xef, 0x4d, 0xe8, 0x58, 0x66, 0x12, 0xdc, 0x37, 0xe4, 0xac, 0xcb, 0x44,
+	0xd6, 0xa0, 0x67, 0x0f, 0xed, 0xf0, 0x62, 0x74, 0x4d, 0xff, 0xfe, 0x09, 0xfd, 0xa4, 0xd5, 0xf8,
+	0x74, 0xb5, 0xb9, 0xb1, 0x92, 0xbd, 0xd7, 0x9d, 0x12, 0x3f, 0x43, 0x04, 0x89, 0xe9, 0x9c, 0xb3,
+	0x1a, 0x8a, 0x14, 0xe1, 0x73, 0x0f, 0x2d, 0x83, 0x54, 0x56, 0x9d, 0x77, 0x32, 0xb4, 0xc3, 0xf3,
+	0xf8, 0xb9, 0x22, 0x7e, 0x6e, 0x6e, 0x1e, 0x31, 0x8e, 0x0d, 0x47, 0x2c, 0x6a, 0x5a, 0xf1, 0xa8,
+	0xc9, 0xe4, 0x8c, 0x7e, 0x68, 0x65, 0xf2, 0xd8, 0x04, 0x7c, 0xd4, 0xfc, 0x78, 0x8f, 0x4f, 0xaa,
+	0xce, 0x0d, 0xc9, 0x15, 0xf2, 0x5e, 0x30, 0x48, 0x73, 0xc9, 0x52, 0xc9, 0x6b, 0x68, 0x3d, 0x47,
+	0x25, 0x26, 0x97, 0xa6, 0x1f, 0x4b, 0x36, 0x51, 0x5d, 0x77, 0x4e, 0xae, 0xb1, 0xef, 0x3a, 0x2e,
+	0x24, 0x14, 0x29, 0x08, 0x36, 0x7a, 0x65, 0xec, 0xe8, 0x9d, 0x0e, 0x9d, 0xf0, 0x62, 0xf4, 0xf6,
+	0x78, 0x96, 0x3f, 0x27, 0xa7, 0xe3, 0x03, 0x7a, 0xa7, 0x48, 0x9d, 0x88, 0x77, 0xad, 0x14, 0xcb,
+	0x64, 0x80, 0xff, 0x90, 0xfc, 0x7b, 0xf2, 0xe4, 0xbf, 0x88, 0x7b, 0x45, 0x9c, 0x1a, 0x96, 0x7a,
+	0x87, 0xe7, 0x89, 0x2a, 0xdd, 0x01, 0x79, 0xb0, 0xc8, 0xe6, 0x3d, 0x98, 0x6d, 0x24, 0xe6, 0xe3,
+	0xfd, 0xc9, 0x3b, 0x3b, 0x8e, 0x57, 0xdb, 0xc0, 0x5e, 0x6f, 0x03, 0xfb, 0xd7, 0x36, 0xb0, 0xbf,
+	0xef, 0x02, 0x6b, 0xbd, 0x0b, 0xac, 0x1f, 0xbb, 0xc0, 0x9a, 0x86, 0x65, 0x25, 0x67, 0x7d, 0x4e,
+	0x19, 0x6f, 0x22, 0xf5, 0xf4, 0x97, 0x5c, 0x94, 0xba, 0x28, 0xa2, 0x2f, 0x87, 0x8b, 0xca, 0x65,
+	0x07, 0x98, 0x9f, 0xe9, 0x73, 0xbe, 0xfe, 0x1d, 0x00, 0x00, 0xff, 0xff, 0x67, 0xa8, 0xc1, 0xda,
+	0x31, 0x02, 0x00, 0x00,
 }
 
 func (m *GenesisState) Marshal() (dAtA []byte, err error) {
@@ -112,6 +152,42 @@ func (m *GenesisState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.SupportedErc20Tokens) > 0 {
+		for k := range m.SupportedErc20Tokens {
+			v := m.SupportedErc20Tokens[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintGenesis(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintGenesis(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintGenesis(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if len(m.SourceBtcToken) > 0 {
+		i -= len(m.SourceBtcToken)
+		copy(dAtA[i:], m.SourceBtcToken)
+		i = encodeVarintGenesis(dAtA, i, uint64(len(m.SourceBtcToken)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	{
+		size := m.AssetsLockedSequenceTip.Size()
+		i -= size
+		if _, err := m.AssetsLockedSequenceTip.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
 	{
 		size, err := m.Params.MarshalToSizedBuffer(dAtA[:i])
 		if err != nil {
@@ -144,6 +220,20 @@ func (m *GenesisState) Size() (n int) {
 	_ = l
 	l = m.Params.Size()
 	n += 1 + l + sovGenesis(uint64(l))
+	l = m.AssetsLockedSequenceTip.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	l = len(m.SourceBtcToken)
+	if l > 0 {
+		n += 1 + l + sovGenesis(uint64(l))
+	}
+	if len(m.SupportedErc20Tokens) > 0 {
+		for k, v := range m.SupportedErc20Tokens {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovGenesis(uint64(len(k))) + 1 + len(v) + sovGenesis(uint64(len(v)))
+			n += mapEntrySize + 1 + sovGenesis(uint64(mapEntrySize))
+		}
+	}
 	return n
 }
 
@@ -214,6 +304,199 @@ func (m *GenesisState) Unmarshal(dAtA []byte) error {
 			if err := m.Params.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AssetsLockedSequenceTip", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.AssetsLockedSequenceTip.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SourceBtcToken", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SourceBtcToken = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SupportedErc20Tokens", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SupportedErc20Tokens == nil {
+				m.SupportedErc20Tokens = make(map[string]string)
+			}
+			var mapkey string
+			var mapvalue string
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGenesis
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGenesis
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthGenesis
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey < 0 {
+						return ErrInvalidLengthGenesis
+					}
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var stringLenmapvalue uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGenesis
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapvalue |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapvalue := int(stringLenmapvalue)
+					if intStringLenmapvalue < 0 {
+						return ErrInvalidLengthGenesis
+					}
+					postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+					if postStringIndexmapvalue < 0 {
+						return ErrInvalidLengthGenesis
+					}
+					if postStringIndexmapvalue > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = string(dAtA[iNdEx:postStringIndexmapvalue])
+					iNdEx = postStringIndexmapvalue
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipGenesis(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
+						return ErrInvalidLengthGenesis
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.SupportedErc20Tokens[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
