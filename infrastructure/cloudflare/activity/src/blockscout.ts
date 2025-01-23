@@ -1,3 +1,6 @@
+import { getProgressForKey, updateProgressForKey } from "./progress"
+import { Env, FetchProgressKey } from "./types"
+
 export type AddressItem = {
   address: string
   deployer?: string
@@ -13,25 +16,41 @@ export type TxItem = {
 export class BlockScoutAPI {
   readonly #apiUrl: string
   readonly #rateLimiter: RateLimiter
+  readonly #db: D1Database
 
-  constructor(readonly apiUrl: string) {
+  // As we have 1000 subrequests limit and four endpoints to cover,
+  // we should limit max pages to 250
+  readonly #maxPagesToProcess: number = 250
+
+  constructor(readonly apiUrl: string, readonly db: D1Database) {
     this.#apiUrl = apiUrl
     this.#rateLimiter = new RateLimiter(25, 1000) // ~25 req/s (BlockScout limit is 50 req/s)
+    this.#db = db
   }
 
   async #call(endpoint: string) {
     await this.#rateLimiter.wait()
 
-    const response = await fetch(
-      `${this.#apiUrl}/${endpoint}`,
-      {
-        headers: {
-          "cache-control": "no-cache"
-        }
-      }
-    )
+    const response = await fetch(`${this.#apiUrl}/${endpoint}`, {
+      headers: {
+        "cache-control": "no-cache",
+      },
+    })
 
     return response.json()
+  }
+
+  async #getCurrentPageForKey(key: FetchProgressKey) {
+    const currentPage = await getProgressForKey(
+      this.#db,
+      FetchProgressKey.ADDRESS,
+    )
+
+    return currentPage
+  }
+
+  async #updateCurrentPageForKey(key: FetchProgressKey, newPageCount: number) {
+    await updateProgressForKey(this.#db, key, newPageCount)
   }
 
   async externallyOwnedAccounts(): Promise<AddressItem[]> {
@@ -41,16 +60,22 @@ export class BlockScoutAPI {
     }
 
     type NextPageParams = {
-      fetched_coin_balance: string,
-      hash: string,
+      fetched_coin_balance: string
+      hash: string
       items_count: number
     }
 
     const addresses: AddressItem[] = []
-
     let queryString: string = ""
-    for (let i = 0 ; ; i++) {
-      console.log(`fetch addresses page number: ${i+1}`)
+
+    const currentPage = await this.#getCurrentPageForKey(
+      FetchProgressKey.ADDRESS,
+    )
+
+    let lastProcessedPage = currentPage
+
+    for (let i = currentPage; i < currentPage + this.#maxPagesToProcess; i++) {
+      console.log(`fetch addresses page number: ${i + 1}`)
 
       // We do not use tx_count fields associated with addresses returned by
       // this endpoint as they are not up-to-date. Transaction counts
@@ -59,13 +84,18 @@ export class BlockScoutAPI {
       // is done from the address page.
       let responseJSON
       try {
-        responseJSON = await this.#call(`addresses${queryString}`) as {
+        responseJSON = (await this.#call(`addresses${queryString}`)) as {
           items: Item[]
           next_page_params: NextPageParams
         }
       } catch (error) {
         // In case of error, break the loop and return the addresses fetched so far.
-        console.error(`error fetching addresses page number: ${i+1}: ${error}`)
+        console.error(
+          `error fetching addresses page number: ${i + 1}: ${error}`,
+        )
+
+        await this.#updateCurrentPageForKey(FetchProgressKey.ADDRESS, i)
+
         break
       }
 
@@ -85,15 +115,26 @@ export class BlockScoutAPI {
       addresses.push(...addressesPage)
 
       if (!responseJSON.next_page_params) {
+        // If no new pages, we reset to the first page
+        lastProcessedPage = 0
         break
       }
 
-      const {fetched_coin_balance, hash, items_count} = responseJSON.next_page_params
+      const { fetched_coin_balance, hash, items_count } =
+        responseJSON.next_page_params
 
-      queryString = `?fetched_coin_balance=${fetched_coin_balance}&` +
+      queryString =
+        `?fetched_coin_balance=${fetched_coin_balance}&` +
         `hash=${hash}&` +
         `items_count=${items_count}`
+
+      lastProcessedPage++
     }
+
+    await this.#updateCurrentPageForKey(
+      FetchProgressKey.ADDRESS,
+      lastProcessedPage,
+    )
 
     return addresses
   }
@@ -104,7 +145,7 @@ export class BlockScoutAPI {
     // First, try to fetch the transaction count directly from BlockScout
     // `/counters` endpoint. However, this count may not be up-to-date
     // and may return 0 for fresh addresses.
-    const item = await this.#call(`addresses/${address}/counters`) as {
+    const item = (await this.#call(`addresses/${address}/counters`)) as {
       transactions_count: string
     }
 
@@ -121,8 +162,8 @@ export class BlockScoutAPI {
     // Fall back to fetching the transactions manually and counting them.
 
     type NextPageParams = {
-      block_number: number,
-      index: number,
+      block_number: number
+      index: number
       items_count: number
     }
 
@@ -131,10 +172,22 @@ export class BlockScoutAPI {
     let filterString: string = filterMode ? `filter=${filterMode}` : ""
     let queryString: string = filterString ? `?${filterString}` : ""
 
-    for (let i = 0 ; ; i++) {
-      console.log(`fetch tx count of address ${address} in fallback mode - page number: ${i + 1}`)
+    const currentPage = await this.#getCurrentPageForKey(
+      FetchProgressKey.TX_COUNT,
+    )
 
-      const responseJSON = await this.#call(`addresses/${address}/transactions${queryString}`) as {
+    let lastProcessedPage = currentPage
+
+    for (let i = currentPage; i < currentPage + this.#maxPagesToProcess; i++) {
+      console.log(
+        `fetch tx count of address ${address} in fallback mode - page number: ${
+          i + 1
+        }`,
+      )
+
+      const responseJSON = (await this.#call(
+        `addresses/${address}/transactions${queryString}`,
+      )) as {
         items: any[]
         next_page_params: NextPageParams
       }
@@ -142,10 +195,12 @@ export class BlockScoutAPI {
       txCount += responseJSON.items.length
 
       if (!responseJSON.next_page_params) {
+        // If no new pages, we reset to the first page
+        lastProcessedPage = 0
         break
       }
 
-      const {block_number, index, items_count} = responseJSON.next_page_params
+      const { block_number, index, items_count } = responseJSON.next_page_params
 
       queryString =
         `?` +
@@ -153,7 +208,14 @@ export class BlockScoutAPI {
         `block_number=${block_number}&` +
         `index=${index}&` +
         `items_count=${items_count}`
+
+      lastProcessedPage++
     }
+
+    await this.#updateCurrentPageForKey(
+      FetchProgressKey.TX_COUNT,
+      lastProcessedPage,
+    )
 
     return txCount
   }
@@ -167,13 +229,13 @@ export class BlockScoutAPI {
       }
       to: {
         hash: string
-      },
+      }
       value: string
     }
 
     type NextPageParams = {
-      block_number: number,
-      index: number,
+      block_number: number
+      index: number
       items_count: number
     }
 
@@ -182,10 +244,20 @@ export class BlockScoutAPI {
     let filterString: string = filterMode ? `filter=${filterMode}` : ""
     let queryString: string = filterString ? `?${filterString}` : ""
 
-    for (let i = 0 ; ; i++) {
-      console.log(`fetch txs related to address ${address} page number: ${i + 1}`)
+    const currentPage = await this.#getCurrentPageForKey(
+      FetchProgressKey.ADDRESS_TXS,
+    )
 
-      const responseJSON = await this.#call(`addresses/${address}/transactions${queryString}`) as {
+    let lastProcessedPage = currentPage
+
+    for (let i = currentPage; i < currentPage + this.#maxPagesToProcess; i++) {
+      console.log(
+        `fetch txs related to address ${address} page number: ${i + 1}`,
+      )
+
+      const responseJSON = (await this.#call(
+        `addresses/${address}/transactions${queryString}`,
+      )) as {
         items: Item[]
         next_page_params: NextPageParams
       }
@@ -206,10 +278,12 @@ export class BlockScoutAPI {
       txs.push(...txsPage)
 
       if (!responseJSON.next_page_params) {
+        // If no new pages, we reset to the first page
+        lastProcessedPage = 0
         break
       }
 
-      const {block_number, index, items_count} = responseJSON.next_page_params
+      const { block_number, index, items_count } = responseJSON.next_page_params
 
       queryString =
         `?` +
@@ -217,7 +291,14 @@ export class BlockScoutAPI {
         `block_number=${block_number}&` +
         `index=${index}&` +
         `items_count=${items_count}`
+
+      lastProcessedPage++
     }
+
+    await this.#updateCurrentPageForKey(
+      FetchProgressKey.ADDRESS_TXS,
+      lastProcessedPage,
+    )
 
     return txs
   }
@@ -234,26 +315,39 @@ export class BlockScoutAPI {
     }
 
     type NextPageParams = {
-      block_number: number,
-      index: number,
+      block_number: number
+      index: number
       items_count: number
     }
 
     const contracts: AddressItem[] = []
 
     let queryString: string = ""
-    for (let i = 0 ; ; i++) {
+
+    const currentPage = await this.#getCurrentPageForKey(
+      FetchProgressKey.CONTRACT_TXS,
+    )
+
+    let lastProcessedPage = currentPage
+
+    for (let i = currentPage; i < currentPage + this.#maxPagesToProcess; i++) {
       console.log(`fetch contract creation txs page number: ${i + 1}`)
 
       let responseJSON
       try {
-        responseJSON = await this.#call(`transactions?type=contract_creation${queryString}`) as {
+        responseJSON = (await this.#call(
+          `transactions?type=contract_creation${queryString}`,
+        )) as {
           items: Item[]
           next_page_params: NextPageParams
         }
       } catch (error) {
         // In case of error, break the loop and return the contracts fetched so far.
-        console.error(`error fetching contract creation txs page number: ${i + 1}: ${error}`)
+        console.error(
+          `error fetching contract creation txs page number: ${
+            i + 1
+          }: ${error}`,
+        )
         break
       }
 
@@ -268,19 +362,28 @@ export class BlockScoutAPI {
           }
         })
 
-      contracts.push(...await Promise.all(contractsPage))
+      contracts.push(...(await Promise.all(contractsPage)))
 
       if (!responseJSON.next_page_params) {
+        // If no new pages, we reset to the first page
+        lastProcessedPage = 0
         break
       }
 
-      const {block_number, index, items_count} = responseJSON.next_page_params
+      const { block_number, index, items_count } = responseJSON.next_page_params
 
-      queryString = `&block_number=${block_number}&` +
+      queryString =
+        `&block_number=${block_number}&` +
         `index=${index}&` +
         `items_count=${items_count}`
+
+      lastProcessedPage++
     }
 
+    await this.#updateCurrentPageForKey(
+      FetchProgressKey.CONTRACT_TXS,
+      lastProcessedPage,
+    )
     return contracts
   }
 }
@@ -298,12 +401,9 @@ class RateLimiter {
 
   #queuedRequests = 0
 
-  constructor(
-    requestsPerInterval: number,
-    intervalTime: number,
-  ) {
-    this.#requestsPerInterval = requestsPerInterval;
-    this.#intervalTime = intervalTime;
+  constructor(requestsPerInterval: number, intervalTime: number) {
+    this.#requestsPerInterval = requestsPerInterval
+    this.#intervalTime = intervalTime
   }
 
   public async wait() {
@@ -315,13 +415,10 @@ class RateLimiter {
     }
 
     return new Promise((resolve) => {
-      setTimeout(
-        () => {
-          this.#queuedRequests++
-          resolve(() => {})
-        },
-        timeout
-      )
-    });
+      setTimeout(() => {
+        this.#queuedRequests++
+        resolve(() => {})
+      }, timeout)
+    })
   }
 }

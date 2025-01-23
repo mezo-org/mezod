@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"net/url"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -38,13 +39,29 @@ func Connect(
 	*BaseChain,
 	error,
 ) {
+	parsedURL, err := url.Parse(config.URL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL provided for ETH client")
+	}
+
+	// Enforce the connection via WebSockets as other protocols may not support
+	// subscriptions.
+	if parsedURL.Scheme != "wss" && parsedURL.Scheme != "ws" {
+		return nil, fmt.Errorf(
+			"ETH client requires a WebSocket URL starting with wss:// " +
+				"(recommended) or ws://",
+		)
+	}
+
 	client, err := ethclient.Dial(config.URL)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"error Connecting to Ethereum Server: %s [%v]",
-			config.URL,
-			err,
-		)
+		return nil, fmt.Errorf("error connecting to ETH Server: [%v]", err)
+	}
+
+	// Double-check if subscriptions are supported.
+	if !client.Client().SupportsSubscriptions() {
+		client.Close()
+		return nil, fmt.Errorf("ETH client does not support subscriptions")
 	}
 
 	baseChain, err := newBaseChain(ctx, config, client)

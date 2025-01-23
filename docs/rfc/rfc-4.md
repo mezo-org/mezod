@@ -2,11 +2,11 @@
 
 ## Background
 
-[RFC-3: Bridging non-Bitcoin assets to Mezo](./rfc-3.md) was the first attempt 
+[RFC-3: Bridging non-Bitcoin assets to Mezo](./rfc-3.md) was the first attempt
 to describe the mechanism to support the operation of bridging non-Bitcoin
 assets to Mezo minimizing the fragmentation of liquidity . While all of the
-concepts presented in RFC-3 are still technically correct, the RFC-3 proposal is 
-based on the existence of a Bridging Partner ready to perform to-Mezo bridging 
+concepts presented in RFC-3 are still technically correct, the RFC-3 proposal is
+based on the existence of a Bridging Partner ready to perform to-Mezo bridging
 on day one, and this assumption is quite risky in practice.
 
 RFC-4 proposes an extension to the Bitcoin bridge mechanism described in
@@ -25,7 +25,7 @@ the Mezo validator client, both in terms of the code and chain performance.
 
 The Ethereum sidecar observes the `AssetsLocked` events emitted by the
 `BitcoinBridge` contracts. Sufficiently confirmed events are processed during
-the Extend Vote phase and broadcast as a vote extension. 
+the Extend Vote phase and broadcast as a vote extension.
 
 The existing `AssetsLocked` event should be extended to include the address of
 the token being bridged. The `tbtcAmount` field should be renamed to just
@@ -44,7 +44,7 @@ The `MezoBridge` is a single contract deployed on Ethereum. It is the native
 bridge contract controlling both Bitcoin (tBTC) and ERC20 bridging. All bridging
 operations are sequenced using the same nonce. The existing `BitcoinBridge`
 contract deployed on Sepolia is going to be replaced maintaining the continuity
-of the nonce. 
+of the nonce.
 
 This RFC does not enforce any specific implementation choices in regards to how
 to organize the contract code. One interesting option is to separate Bitcoin and
@@ -101,7 +101,7 @@ any mechanism for token recovery from the bridging contract.
 This approach allows the governance to add new tokens to the bridge without
 involving mezod development teams or performing chain forks. It also enables
 adding custom logic to the token contract, depending on individual needs.
-Enabling IBC will require introducing a dedicated token mapping mechanism. 
+Enabling IBC will require introducing a dedicated token mapping mechanism.
 
 The bridge maintenance precompile should enforce the same global limit of 20
 tokens supported by the native bridge, as the `MezoBridge` contract. This limit
@@ -144,5 +144,5 @@ following tokens should be represented on Mezo:
 * mUSDC
 * mUSDT
 
-The remaining tokens will be added later, once more confidence about them is 
+The remaining tokens will be added later, once more confidence about them is
 obtained.

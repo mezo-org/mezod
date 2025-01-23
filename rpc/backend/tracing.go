@@ -174,23 +174,18 @@ func (b *Backend) TraceBlock(height rpctypes.BlockNumber,
 		return []*evmtypes.TxTraceResult{}, nil
 	}
 
+	// Check if the block contains a pseudo-transaction.
+	pseudoTxResult := b.GetPseudoTransactionResult(block)
+
 	txDecoder := b.clientCtx.TxConfig.TxDecoder()
 
 	var txsMessages []*evmtypes.MsgEthereumTx
-	hasPseudoTransaction := false
 	for i, tx := range txs {
-		// Handle a situation when the transaction at index `0` is a pseudo-transaction.
-		if i == 0 {
-			txHash := common.BytesToHash(tx.Hash())
-			res, err := b.GetTxByEthHash(txHash)
-
-			if err == nil && len(res.ExtraData) > 0 && res.ExtraData[0] == byte(indexer.BridgingInfoDescriptor) {
-				// The transaction was saved during indexing, so it's a valid
-				// pseudo-transaction with bridging info. Its trace result needs
-				// to be added to the command's output.
-				hasPseudoTransaction = true
-				continue
-			}
+		if i == 0 && pseudoTxResult != nil {
+			// Handle a situation when the transaction at index `0` is a
+			// pseudo-transaction. Do not try to decode the pseudo-transaction,
+			// but add the trace for it at the end of the command execution.
+			continue
 		}
 
 		decodedTx, err := txDecoder(tx)
@@ -237,7 +232,7 @@ func (b *Backend) TraceBlock(height rpctypes.BlockNumber,
 		return nil, err
 	}
 
-	if hasPseudoTransaction {
+	if pseudoTxResult != nil {
 		// Create a basic trace result for the pseudo-transaction and put it in
 		// front of other results.
 		pseudoTxResult := &evmtypes.TxTraceResult{
