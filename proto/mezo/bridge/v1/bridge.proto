@@ -24,4 +24,6 @@ message AssetsLockedEvent {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
+  // token is the address of the bridged token, in EIP55-compliant hexadecimal format.
+  string token = 4;
 }

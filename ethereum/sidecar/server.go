@@ -255,8 +255,8 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		event := bridgetypes.AssetsLockedEvent{
 			Sequence:  sdkmath.NewIntFromBigInt(abiEvent.SequenceNumber),
 			Recipient: sdk.AccAddress(abiEvent.Recipient.Bytes()).String(),
-			// TODO: Add token address once bridgetypes.AssetsLockedEvent is updated
-			Amount: sdkmath.NewIntFromBigInt(abiEvent.Amount),
+			Token:     abiEvent.Token.Hex(),
+			Amount:    sdkmath.NewIntFromBigInt(abiEvent.Amount),
 		}
 		bufferedEvents = append(bufferedEvents, event)
 		s.logger.Info(
@@ -455,8 +455,8 @@ func (s *Server) AssetsLockedEvents(
 			filteredEvents = append(filteredEvents, &bridgetypes.AssetsLockedEvent{
 				Sequence:  event.Sequence,
 				Recipient: event.Recipient,
-				// TODO: Add token address once bridgetypes.AssetsLockedEvent is updated
-				Amount: event.Amount,
+				Token:     event.Token,
+				Amount:    event.Amount,
 			})
 		}
 	}
