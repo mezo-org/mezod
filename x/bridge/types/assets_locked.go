@@ -3,12 +3,15 @@ package types
 import (
 	"slices"
 
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 // IsValid returns true if the event is valid. An event is considered valid if
 // its sequence number is positive, its recipient address is a valid Bech32
-// account address, and the amount of locked assets is positive.
+// account address, its token is a valid EVM hex address, and the amount of
+// locked assets is positive.
 func (ale AssetsLockedEvent) IsValid() bool {
 	sequenceValid := !ale.Sequence.IsNil() && ale.Sequence.IsPositive()
 	if !sequenceValid {
@@ -16,6 +19,10 @@ func (ale AssetsLockedEvent) IsValid() bool {
 	}
 
 	if _, err := sdk.AccAddressFromBech32(ale.Recipient); err != nil {
+		return false
+	}
+
+	if !evmtypes.IsHexAddress(ale.Token) {
 		return false
 	}
 
@@ -35,6 +42,7 @@ func (ale AssetsLockedEvent) IsValid() bool {
 func (ale AssetsLockedEvent) Equal(other AssetsLockedEvent) bool {
 	return ale.Sequence.Equal(other.Sequence) &&
 		ale.Recipient == other.Recipient &&
+		ale.Token == other.Token &&
 		ale.Amount.Equal(other.Amount)
 }
 
