@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/mezo-org/mezod/cmd/mezod/genesis"
+	"github.com/mezo-org/mezod/cmd/mezod/poa"
 	"github.com/mezo-org/mezod/cmd/mezod/toml"
 
 	storetypes "cosmossdk.io/store/types"
@@ -72,8 +73,6 @@ import (
 
 	rosettacmd "github.com/cosmos/rosetta/cmd"
 	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
-
-	precompilecli "github.com/mezo-org/mezod/precompile/cli"
 )
 
 const (
@@ -143,7 +142,7 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		debug.Cmd(),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
-		precompilecli.NewSubmitApplicationCmd(),
+		poa.NewCmd(),
 	)
 
 	mezoserver.AddCommands(

@@ -1,4 +1,4 @@
-package cli
+package poa
 
 import flag "github.com/spf13/pflag"
 
