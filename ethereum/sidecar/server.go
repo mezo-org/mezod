@@ -263,6 +263,7 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 			"finalized AssetsLocked event",
 			"sequence", event.Sequence.String(),
 			"recipient", abiEvent.Recipient,
+			"token", abiEvent.Token,
 			"amount", event.Amount.String(),
 		)
 	}
