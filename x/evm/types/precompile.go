@@ -30,11 +30,14 @@ const (
 	PriceOraclePrecompileLatestVersion = 1
 )
 
-var DefaultPrecompilesVersions = map[string]uint32{
-	BTCTokenPrecompileAddress:      BTCTokenPrecompileLatestVersion,
-	ValidatorPoolPrecompileAddress: ValidatorPoolPrecompileLatestVersion,
-	AssetsBridgePrecompileAddress:  AssetsBridgePrecompileLatestVersion,
-	MaintenancePrecompileAddress:   MaintenancePrecompileLatestVersion,
-	UpgradePrecompileAddress:       UpgradePrecompileLatestVersion,
-	PriceOraclePrecompileAddress:   PriceOraclePrecompileLatestVersion,
+// DefaultPrecompilesVersions is a list of default precompiles and their versions.
+// Order of precompiles is important. If changed on a live network, it will break
+// the consensus.
+var DefaultPrecompilesVersions = []*PrecompileVersionInfo{
+	{BTCTokenPrecompileAddress, BTCTokenPrecompileLatestVersion},
+	{ValidatorPoolPrecompileAddress, ValidatorPoolPrecompileLatestVersion},
+	{AssetsBridgePrecompileAddress, AssetsBridgePrecompileLatestVersion},
+	{MaintenancePrecompileAddress, MaintenancePrecompileLatestVersion},
+	{UpgradePrecompileAddress, UpgradePrecompileLatestVersion},
+	{PriceOraclePrecompileAddress, PriceOraclePrecompileLatestVersion},
 }

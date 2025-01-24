@@ -31,7 +31,15 @@ message Params {
   // mechanism.
   uint32 storage_root_strategy = 7;
   // precompiles_versions defines the versions of the custom EVM precompiles.
-  map<string, uint32> precompiles_versions = 8;
+  repeated PrecompileVersionInfo precompiles_versions = 8;
+}
+
+// PrecompileVersionInfo defines the version of a custom EVM precompile.
+message PrecompileVersionInfo {
+  // precompile_address represents the EVM address of the precompile.
+  string precompile_address = 1;
+  // version represents the version of the precompile.
+  uint32 version = 2;
 }
 
 // ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int values

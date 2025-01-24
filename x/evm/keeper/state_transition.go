@@ -80,8 +80,8 @@ func (k *Keeper) NewEVM(
 	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
 
 	precompilesVersions := make(map[common.Address]uint32)
-	for address, version := range k.GetParams(ctx).PrecompilesVersions {
-		precompilesVersions[common.HexToAddress(address)] = version
+	for _, pv := range k.GetParams(ctx).PrecompilesVersions {
+		precompilesVersions[common.HexToAddress(pv.PrecompileAddress)] = pv.Version
 	}
 
 	// Load default EVM precompiles for the recent fork. The `vm.DefaultPrecompiles`
