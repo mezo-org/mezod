@@ -30,6 +30,8 @@ message Params {
   // storage_root_strategy defines the strategy for the EVM storage root
   // mechanism.
   uint32 storage_root_strategy = 7;
+  // precompiles_versions defines the versions of the custom EVM precompiles.
+  map<string, uint32> precompiles_versions = 8;
 }
 
 // ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int values

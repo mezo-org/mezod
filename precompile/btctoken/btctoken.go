@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,11 +21,31 @@ var filesystem embed.FS
 // EvmAddress is the EVM address of the BTC token precompile. Token address is
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 // used to avoid potential collisions with EVM native precompiles.
-const EvmAddress = "0x7b7c000000000000000000000000000000000000"
+const EvmAddress = evmtypes.BTCTokenPrecompileAddress
 
 // Parsed chain ID represented as a big integer.
 // E.g. mezo_31612-1 is parsed to 31612.
 var chainID *big.Int
+
+// NewPrecompileVersionMap creates a new version map for the BTC token precompile.
+func NewPrecompileVersionMap(
+	bankKeeper bankkeeper.Keeper,
+	authzkeeper authzkeeper.Keeper,
+	evmkeeper evmkeeper.Keeper,
+	id string,
+) (*precompile.VersionMap, error) {
+	contractV1, err := NewPrecompile(bankKeeper, authzkeeper, evmkeeper, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return precompile.NewVersionMap(
+		map[int]*precompile.Contract{
+			0:                                        contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
+			evmtypes.BTCTokenPrecompileLatestVersion: contractV1,
+		},
+	), nil
+}
 
 // NewPrecompile creates a new BTC token precompile.
 func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper, id string) (*precompile.Contract, error) {

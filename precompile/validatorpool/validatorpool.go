@@ -4,6 +4,8 @@ import (
 	"embed"
 	"fmt"
 
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
@@ -16,7 +18,7 @@ var filesystem embed.FS
 // EvmAddress is the EVM address of the validatorpool precompile. The address is
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 // used to avoid potential collisions with EVM native precompiles.
-const EvmAddress = "0x7b7c000000000000000000000000000000000011"
+const EvmAddress = evmtypes.ValidatorPoolPrecompileAddress
 
 // Description is the validator description structure that contains information
 // about the validator.
@@ -89,22 +91,23 @@ type PoaKeeper interface {
 	) []types.ValAddress
 }
 
+// NewPrecompileVersionMap creates a new version map for the validator pool precompile.
+func NewPrecompileVersionMap(pk PoaKeeper) (*precompile.VersionMap, error) {
+	contractV1, err := NewPrecompile(pk, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return precompile.NewVersionMap(
+		map[int]*precompile.Contract{
+			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
+			evmtypes.ValidatorPoolPrecompileLatestVersion: contractV1,
+		},
+	), nil
+}
+
 // NewPrecompile creates a new validator pool precompile.
 func NewPrecompile(
-	pk PoaKeeper,
-) (*precompile.Contract, error) {
-	return newPrecompile(pk, false)
-}
-
-// NewLegacyPrecompile creates a new legacy validator pool precompile that
-// uses the old gas calculation formula for the submitApplication method.
-func NewLegacyPrecompile(
-	pk PoaKeeper,
-) (*precompile.Contract, error) {
-	return newPrecompile(pk, true)
-}
-
-func newPrecompile(
 	pk PoaKeeper,
 	submitApplicationLegacyGas bool,
 ) (*precompile.Contract, error) {

@@ -426,17 +426,17 @@ func (k Keeper) IsCustomPrecompile(address common.Address) bool {
 	return found
 }
 
-// CustomPrecompileGenesisAccounts
+// CustomPrecompileGenesisAccounts returns the genesis accounts for the custom precompiles.
 func (k Keeper) CustomPrecompileGenesisAccounts() []types.GenesisAccount {
 	accounts := []types.GenesisAccount{}
-	for k, v := range k.customPrecompiles {
-		bytecode := v.GetLatest().Bytecode()
+	for address, versionMap := range k.customPrecompiles {
+		bytecode := versionMap.GetLatest().Bytecode()
 		if len(bytecode) == 0 {
 			continue
 		}
 
 		accounts = append(accounts, types.GenesisAccount{
-			Address: k.String(),
+			Address: address.String(),
 			Code:    bytecode,
 			Storage: types.Storage{},
 		})
