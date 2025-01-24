@@ -127,7 +127,7 @@ the process easier as there is no need to deal with Helm directly.
 The sidecar is a component of the Mezo node, running as a separate process
 responsible for interacting with the Ethereum network. It plays a key role in
 the bridging architecture, monitoring the Ethereum network for `AssetsLocked`
-events emitted by the `BitcoinBridge` contract when assets are deposited.
+events emitted by the `MezoBridge` contract when assets are deposited.
 
 Once the blocks containing these `AssetsLocked` events are finalized, they are cached
 for further processing by the Mezo node. Due to Ethereum’s block finality mechanics,
