@@ -126,6 +126,7 @@ for full version information.
 | `v0.2.0` | 496901  | Hard fork upgrade without state migrations | Change gas formula for the `ValidatorPool` precompile. <br/>This change was done before the `Fork` primitive was introduced. <br/>It was executed by introducing versioned precompiles. |
 | `v0.3.0` | 1093500 | Hard fork upgrade with state migrations    | Introduce the Connect price oracle.                                                                                                                                                     |
 | `v0.4.0` | 1745000 | Hard fork upgrade without state migrations | Update EVM storage root strategy (fix for Mezo Passport create2 problem) and introduce EVM observability for the BTC bridge.                                                            |
+| `v0.5.0` | 2213000 | Hard fork upgrade without state migrations | On-chain precompile versioning. New Upgrade and PriceOracle precompiles and upgrade of the existing Maintenance precompile.                                                             |
 
 ### Mainnet
 
