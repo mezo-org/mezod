@@ -3,247 +3,307 @@ package app
 import (
 	"fmt"
 
+	"cosmossdk.io/core/address"
 	"cosmossdk.io/x/upgrade"
+	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
+	upgradetypes "cosmossdk.io/x/upgrade/types"
+	"github.com/cosmos/cosmos-sdk/codec"
+	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/auth"
-	authz "github.com/cosmos/cosmos-sdk/x/authz/module"
+	"github.com/cosmos/cosmos-sdk/x/authz"
+	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
+	authzmodule "github.com/cosmos/cosmos-sdk/x/authz/module"
 	"github.com/cosmos/cosmos-sdk/x/bank"
+	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	consensusparams "github.com/cosmos/cosmos-sdk/x/consensus"
+	consensusparamskeeper "github.com/cosmos/cosmos-sdk/x/consensus/keeper"
+	consensusparamstypes "github.com/cosmos/cosmos-sdk/x/consensus/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
+	crisiskeeper "github.com/cosmos/cosmos-sdk/x/crisis/keeper"
+	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
 	"github.com/cosmos/cosmos-sdk/x/params"
-	"github.com/mezo-org/mezod/x/bridge"
-	"github.com/mezo-org/mezod/x/evm"
-	"github.com/mezo-org/mezod/x/feemarket"
-	"github.com/mezo-org/mezod/x/poa"
 	"github.com/skip-mev/connect/v2/x/marketmap"
+	marketmapkeeper "github.com/skip-mev/connect/v2/x/marketmap/keeper"
+	marketmaptypes "github.com/skip-mev/connect/v2/x/marketmap/types"
 	"github.com/skip-mev/connect/v2/x/oracle"
+	oraclekeeper "github.com/skip-mev/connect/v2/x/oracle/keeper"
+	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 	"google.golang.org/grpc"
+
+	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
+	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 )
 
-// The AppModule wrappers provide a means to override module methods
-
-// SDK modules
+// `AppModule`` wrappers provide a means to override sdk module methods
 
 // ConsensusParams wrapper
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/consensus/module.go#L62
 type WrappedConsensusParamsAppModule struct {
 	consensusparams.AppModule
+
+	keeper consensusparamskeeper.Keeper
 }
 
-func WrapConsensusParamsAppModule(am consensusparams.AppModule) WrappedConsensusParamsAppModule {
+func NewConsensusParamsAppModule(cdc codec.Codec, keeper consensusparamskeeper.Keeper) WrappedConsensusParamsAppModule {
 	return WrappedConsensusParamsAppModule{
-		am,
+		consensusparams.NewAppModule(cdc, keeper),
+		keeper,
 	}
 }
 
 // ConsensusParams method overrides
+// Override the `RegisterServices` method, replicating the original, minus
+// the call to `consensusparamstypes.RegisterMsgServer()`
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/consensus/module.go#L76
 func (am WrappedConsensusParamsAppModule) RegisterServices(registrar grpc.ServiceRegistrar) error {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	return am.AppModule.RegisterServices(registrar)
+	consensusparamstypes.RegisterQueryServer(registrar, am.keeper)
+	return nil
 }
 
 // Auth wrapper
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/auth/module.go#L86
 type WrappedAuthAppModule struct {
 	auth.AppModule
+
+	accountKeeper     authkeeper.AccountKeeper
+	randGenAccountsFn authtypes.RandomGenesisAccountsFn
+	legacySubspace    paramstypes.Subspace
 }
 
-func WrapAuthAppModule(am auth.AppModule) WrappedAuthAppModule {
+func NewAuthAppModule(cdc codec.Codec, ak authkeeper.AccountKeeper, randGenAccountsFn authtypes.RandomGenesisAccountsFn, ss paramstypes.Subspace) WrappedAuthAppModule {
 	return WrappedAuthAppModule{
-		am,
+		auth.NewAppModule(cdc, ak, randGenAccountsFn, ss),
+		ak,
+		randGenAccountsFn,
+		ss,
 	}
 }
 
 // Auth method overrides
+// Override the `RegisterServices` method, replicating the original, minus
+// the call to `authtypes.RegisterMsgServer()`
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/auth/module.go#L115
 func (am WrappedAuthAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
-}
+	authtypes.RegisterQueryServer(cfg.QueryServer(), authkeeper.NewQueryServer(am.accountKeeper))
 
-// bank wrapper
-type WrappedBankAppModule struct {
-	bank.AppModule
-}
+	m := authkeeper.NewMigrator(am.accountKeeper, cfg.QueryServer(), am.legacySubspace)
+	if err := cfg.RegisterMigration(authtypes.ModuleName, 1, m.Migrate1to2); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 1 to 2: %v", authtypes.ModuleName, err))
+	}
 
-func WrapBankAppModule(am bank.AppModule) WrappedBankAppModule {
-	return WrappedBankAppModule{
-		am,
+	if err := cfg.RegisterMigration(authtypes.ModuleName, 2, m.Migrate2to3); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 2 to 3: %v", authtypes.ModuleName, err))
+	}
+
+	if err := cfg.RegisterMigration(authtypes.ModuleName, 3, m.Migrate3to4); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 3 to 4: %v", authtypes.ModuleName, err))
+	}
+
+	if err := cfg.RegisterMigration(authtypes.ModuleName, 4, m.Migrate4To5); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 4 to 5", authtypes.ModuleName))
 	}
 }
 
-// bank method overrides
+// Bank wrapper
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/bank/module.go#L99
+type WrappedBankAppModule struct {
+	bank.AppModule
+
+	keeper         bankkeeper.Keeper
+	accountKeeper  banktypes.AccountKeeper
+	legacySubspace paramstypes.Subspace
+}
+
+func NewBankAppModule(cdc codec.Codec, keeper bankkeeper.Keeper, ak banktypes.AccountKeeper, ss paramstypes.Subspace) WrappedBankAppModule {
+	return WrappedBankAppModule{
+		bank.NewAppModule(cdc, keeper, ak, ss),
+		keeper,
+		ak,
+		ss,
+	}
+}
+
+// Bank method overrides
+// Override the `RegisterServices` method, replicating the original, minus
+// the call to `banktypes.RegisterMsgServer()`
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/bank/module.go#L116
 func (am WrappedBankAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
+	banktypes.RegisterQueryServer(cfg.QueryServer(), am.keeper)
+
+	m := bankkeeper.NewMigrator(am.keeper.(bankkeeper.BaseKeeper), am.legacySubspace)
+	if err := cfg.RegisterMigration(banktypes.ModuleName, 1, m.Migrate1to2); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/bank from version 1 to 2: %v", err))
+	}
+
+	if err := cfg.RegisterMigration(banktypes.ModuleName, 2, m.Migrate2to3); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/bank from version 2 to 3: %v", err))
+	}
+
+	if err := cfg.RegisterMigration(banktypes.ModuleName, 3, m.Migrate3to4); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/bank from version 3 to 4: %v", err))
+	}
 }
 
 // Crisis wrapper
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/crisis/module.go#L87
 type WrappedCrisisAppModule struct {
 	crisis.AppModule
+
+	keeper                *crisiskeeper.Keeper
+	legacySubspace        paramstypes.Subspace
+	skipGenesisInvariants bool
 }
 
-func WrapCrisisAppModule(am crisis.AppModule) WrappedCrisisAppModule {
+func NewCrisisAppModule(keeper *crisiskeeper.Keeper, skipGenesisInvariants bool, ss paramstypes.Subspace) WrappedCrisisAppModule {
 	return WrappedCrisisAppModule{
-		am,
+		crisis.NewAppModule(keeper, skipGenesisInvariants, ss),
+		keeper,
+		ss,
+		skipGenesisInvariants,
 	}
 }
 
 // Crisis method overrides
+// Override the `RegisterServices` method, replicating the original, minus
+// the call to `crisistypes.RegisterMsgServer()`
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/crisis/module.go#L127
 func (am WrappedCrisisAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
+	m := crisiskeeper.NewMigrator(am.keeper, am.legacySubspace)
+	if err := cfg.RegisterMigration(crisistypes.ModuleName, 1, m.Migrate1to2); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 1 to 2: %v", crisistypes.ModuleName, err))
+	}
 }
 
 // Upgrade wrapper
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/upgrade/module.go#L94
 type WrappedUpgradeAppModule struct {
 	upgrade.AppModule
+
+	keeper *upgradekeeper.Keeper
 }
 
-func WrapUpgradeAppModule(am upgrade.AppModule) WrappedUpgradeAppModule {
+func NewUpgradeAppModule(keeper *upgradekeeper.Keeper, ac address.Codec) WrappedUpgradeAppModule {
 	return WrappedUpgradeAppModule{
-		am,
+		upgrade.NewAppModule(keeper, ac),
+		keeper,
 	}
 }
 
 // Upgrade method overrides
+// Override the `RegisterServices` method, replicating the original, minus
+// the call to `upgradetypes.RegisterMsgServer()`
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/upgrade/module.go#L114
 func (am WrappedUpgradeAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
+	upgradetypes.RegisterQueryServer(cfg.QueryServer(), am.keeper)
+
+	m := upgradekeeper.NewMigrator(am.keeper)
+	err := cfg.RegisterMigration(upgradetypes.ModuleName, 1, m.Migrate1to2)
+	if err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 1 to 2: %v", upgradetypes.ModuleName, err))
+	}
 }
 
 // Params wrapper
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/params/module.go#L59
 type WrappedParamsAppModule struct {
 	params.AppModule
+
+	keeper paramskeeper.Keeper
 }
 
-func WrapParamsAppModule(am params.AppModule) WrappedParamsAppModule {
+func NewParamsAppModule(keeper paramskeeper.Keeper) WrappedParamsAppModule {
 	return WrappedParamsAppModule{
-		am,
+		params.NewAppModule(keeper),
+		keeper,
 	}
 }
 
 // Params method overrides
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/params/module.go#L83
 func (am WrappedParamsAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
+	// Nothing to override (no MsgServer registration). Call original method
 	am.AppModule.RegisterServices(cfg)
 }
 
 // Authz wrapper
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/authz/module/module.go#L102
 type WrappedAuthzAppModule struct {
-	authz.AppModule
+	authzmodule.AppModule
+
+	keeper        authzkeeper.Keeper
+	accountKeeper authz.AccountKeeper
+	bankKeeper    authz.BankKeeper
+	registry      cdctypes.InterfaceRegistry
 }
 
-func WrapAuthzAppModule(am authz.AppModule) WrappedAuthzAppModule {
+func NewAuthzAppModule(cdc codec.Codec, keeper authzkeeper.Keeper, ak authz.AccountKeeper, bk authz.BankKeeper, registry cdctypes.InterfaceRegistry) WrappedAuthzAppModule {
 	return WrappedAuthzAppModule{
-		am,
+		authzmodule.NewAppModule(cdc, keeper, ak, bk, registry),
+		keeper,
+		ak,
+		bk,
+		registry,
 	}
 }
 
 // Authz method overrides
+// Override the `RegisterServices` method, replicating the original, minus
+// the call to `authz.RegisterMsgServer()`
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/authz/module/module.go#L52
 func (am WrappedAuthzAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
-}
-
-// Mezo modules
-// Note: These will likely not be needed as we can make changes on the module side
-
-// Poa Wrapper
-type WrappedPoaAppModule struct {
-	poa.AppModule
-}
-
-func WrapPoaAppModule(am poa.AppModule) WrappedPoaAppModule {
-	return WrappedPoaAppModule{
-		am,
+	authz.RegisterQueryServer(cfg.QueryServer(), am.keeper)
+	m := authzkeeper.NewMigrator(am.keeper)
+	err := cfg.RegisterMigration(authz.ModuleName, 1, m.Migrate1to2)
+	if err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 1 to 2: %v", authz.ModuleName, err))
 	}
-}
-
-// Poa method overrides
-func (am WrappedPoaAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
-}
-
-// Evm Wrapper
-type WrappedEvmAppModule struct {
-	evm.AppModule
-}
-
-func WrapEvmAppModule(am evm.AppModule) WrappedEvmAppModule {
-	return WrappedEvmAppModule{
-		am,
-	}
-}
-
-// Evm method overrides
-func (am WrappedEvmAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
-}
-
-// FeeMarket Wrapper
-type WrappedFeeMarketAppModule struct {
-	feemarket.AppModule
-}
-
-func WrapFeeMarketAppModule(am feemarket.AppModule) WrappedFeeMarketAppModule {
-	return WrappedFeeMarketAppModule{
-		am,
-	}
-}
-
-// FeeMarket method overrides
-func (am WrappedFeeMarketAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
-}
-
-// Bridge Wrapper
-type WrappedBridgeAppModule struct {
-	bridge.AppModule
-}
-
-func WrapBridgeAppModule(am bridge.AppModule) WrappedBridgeAppModule {
-	return WrappedBridgeAppModule{
-		am,
-	}
-}
-
-// Bridge method overrides
-func (am WrappedBridgeAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
 }
 
 // MarketMap Wrapper
+// See: https://github.com/skip-mev/connect/blob/v2.1.2/x/marketmap/module.go#L105
 type WrappedMarketMapAppModule struct {
 	marketmap.AppModule
+	k *marketmapkeeper.Keeper
 }
 
-func WrapMarketMapAppModule(am marketmap.AppModule) WrappedMarketMapAppModule {
+func NewMarketMapAppModule(cdc codec.Codec, keeper *marketmapkeeper.Keeper) WrappedMarketMapAppModule {
 	return WrappedMarketMapAppModule{
-		am,
+		marketmap.NewAppModule(cdc, keeper),
+		keeper,
 	}
 }
 
 // MarketMap method overrides
+// Override the `RegisterServices` method, replicating the original, minus
+// the call to `marketmaptypes.RegisterMsgServer()`
+// See: https://github.com/skip-mev/connect/blob/v2.1.2/x/marketmap/module.go#L140
 func (am WrappedMarketMapAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
+	marketmaptypes.RegisterQueryServer(cfg.QueryServer(), marketmapkeeper.NewQueryServer(am.k))
 }
 
 // Oracle Wrapper
+// See: https://github.com/skip-mev/connect/blob/v2.1.2/x/oracle/module.go#L79
 type WrappedOracleAppModule struct {
 	oracle.AppModule
+
+	k oraclekeeper.Keeper
 }
 
-func WrapOracleAppModule(am oracle.AppModule) WrappedOracleAppModule {
+func NewOracleAppModule(cdc codec.Codec, keeper oraclekeeper.Keeper) WrappedOracleAppModule {
 	return WrappedOracleAppModule{
-		am,
+		oracle.NewAppModule(cdc, keeper),
+		keeper,
 	}
 }
 
 // Oracle method overrides
+// Override the `RegisterServices` method, replicating the original, minus
+// the call to `oracletypes.RegisterMsgServer()`
+// See: https://github.com/skip-mev/connect/blob/v2.1.2/x/oracle/module.go#L115
 func (am WrappedOracleAppModule) RegisterServices(cfg module.Configurator) {
-	fmt.Printf("%s: Registering Services\n", am.Name())
-	am.AppModule.RegisterServices(cfg)
+	oracletypes.RegisterQueryServer(cfg.QueryServer(), oraclekeeper.NewQueryServer(am.k))
 }

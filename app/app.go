@@ -445,19 +445,19 @@ func NewMezo(
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
-		WrapConsensusParamsAppModule(consensusparams.NewAppModule(appCodec, app.ConsensusParamsKeeper)),
-		WrapAuthAppModule(auth.NewAppModule(appCodec, app.AccountKeeper, authsims.RandomGenesisAccounts, app.GetSubspace(authtypes.ModuleName))),
-		WrapBankAppModule(bank.NewAppModule(appCodec, app.BankKeeper, app.AccountKeeper, app.GetSubspace(banktypes.ModuleName))),
-		WrapCrisisAppModule(crisis.NewAppModule(app.CrisisKeeper, skipGenesisInvariants, app.GetSubspace(crisistypes.ModuleName))),
-		WrapPoaAppModule(poa.NewAppModule(app.PoaKeeper)),
-		WrapUpgradeAppModule(upgrade.NewAppModule(app.UpgradeKeeper, addressCodec)),
-		WrapParamsAppModule(params.NewAppModule(app.ParamsKeeper)),
-		WrapAuthzAppModule(authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry)),
-		WrapEvmAppModule(evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName))),
-		WrapFeeMarketAppModule(feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName))),
-		WrapBridgeAppModule(bridge.NewAppModule(app.BridgeKeeper)),
-		WrapMarketMapAppModule(marketmap.NewAppModule(appCodec, &app.MarketMapKeeper)),
-		WrapOracleAppModule(oracle.NewAppModule(appCodec, app.OracleKeeper)),
+		NewConsensusParamsAppModule(appCodec, app.ConsensusParamsKeeper),
+		NewAuthAppModule(appCodec, app.AccountKeeper, authsims.RandomGenesisAccounts, app.GetSubspace(authtypes.ModuleName)),
+		NewBankAppModule(appCodec, app.BankKeeper, app.AccountKeeper, app.GetSubspace(banktypes.ModuleName)),
+		NewCrisisAppModule(app.CrisisKeeper, skipGenesisInvariants, app.GetSubspace(crisistypes.ModuleName)),
+		poa.NewAppModule(app.PoaKeeper),
+		NewUpgradeAppModule(app.UpgradeKeeper, addressCodec),
+		NewParamsAppModule(app.ParamsKeeper),
+		NewAuthzAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
+		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
+		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
+		bridge.NewAppModule(app.BridgeKeeper),
+		NewMarketMapAppModule(appCodec, &app.MarketMapKeeper),
+		NewOracleAppModule(appCodec, app.OracleKeeper),
 	)
 
 	// NOTE: upgrade module must go first to handle software upgrades.
