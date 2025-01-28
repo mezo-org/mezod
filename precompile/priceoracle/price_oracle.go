@@ -5,6 +5,8 @@ import (
 	"embed"
 	"fmt"
 
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+
 	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,7 +19,23 @@ var filesystem embed.FS
 // EvmAddress is the EVM address of the Price Oracle precompile. The address is
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 // used to avoid potential collisions with EVM native precompiles.
-const EvmAddress = "0x7b7c000000000000000000000000000000000015"
+const EvmAddress = evmtypes.PriceOraclePrecompileAddress
+
+// NewPrecompileVersionMap creates a new version map for the price oracle precompile.
+func NewPrecompileVersionMap(
+	oracleQueryServer OracleQueryServer,
+) (*precompile.VersionMap, error) {
+	contractV1, err := NewPrecompile(oracleQueryServer)
+	if err != nil {
+		return nil, err
+	}
+
+	return precompile.NewVersionMap(
+		map[int]*precompile.Contract{
+			evmtypes.PriceOraclePrecompileLatestVersion: contractV1,
+		},
+	), nil
+}
 
 // NewPrecompile creates a new Price Oracle precompile.
 func NewPrecompile(

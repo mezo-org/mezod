@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
 )
@@ -15,7 +17,22 @@ var filesystem embed.FS
 // EvmAddress is the EVM address of the Assets Bridge precompile. The address is
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 // used to avoid potential collisions with EVM native precompiles.
-const EvmAddress = "0x7b7C000000000000000000000000000000000012"
+const EvmAddress = evmtypes.AssetsBridgePrecompileAddress
+
+// NewPrecompileVersionMap creates a new version map for the assets bridge precompile.
+func NewPrecompileVersionMap() (*precompile.VersionMap, error) {
+	contractV1, err := NewPrecompile()
+	if err != nil {
+		return nil, err
+	}
+
+	return precompile.NewVersionMap(
+		map[int]*precompile.Contract{
+			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV1,
+		},
+	), nil
+}
 
 // NewPrecompile creates a new Assets Bridge precompile.
 func NewPrecompile() (*precompile.Contract, error) {

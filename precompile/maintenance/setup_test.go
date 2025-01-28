@@ -113,7 +113,14 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 			evm := &vm.EVM{
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
-			maintenancePrecompile, err := maintenance.NewPrecompile(s.poaKeeper, s.evmKeeper)
+			maintenancePrecompile, err := maintenance.NewPrecompile(
+				s.poaKeeper,
+				s.evmKeeper,
+				&maintenance.Settings{
+					EVM:         true,
+					Precompiles: true,
+				},
+			)
 			s.Require().NoError(err)
 			s.maintenancePrecompile = maintenancePrecompile
 
