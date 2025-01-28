@@ -26,11 +26,11 @@ import (
 )
 
 var (
-	// bitcoinBridgeName is the name of the BitcoinBridge contract.
-	bitcoinBridgeName = "BitcoinBridge"
+	// mezoBridgeName is the name of the MezoBridge contract.
+	mezoBridgeName = "MezoBridge"
 
 	// searchedRange is a number of blocks to look back for AssetsLocked events in
-	// the BitcoinBridge contract. This is approximately 30 days window for 12 sec.
+	// the MezoBridge contract. This is approximately 30 days window for 12 sec.
 	// block time.
 	searchedRange = new(big.Int).SetInt64(220000)
 
@@ -47,7 +47,7 @@ var (
 	cachedEventsLimit = 500000
 )
 
-// Server observes events emitted by the Mezo `BitcoinBridge` contract on the
+// Server observes events emitted by the Mezo `MezoBridge` contract on the
 // Ethereum chain. It enables retrieval of information on the assets locked by
 // the contract. It is intended to be run as a separate process.
 type Server struct {
@@ -61,7 +61,7 @@ type Server struct {
 	lastFinalizedBlockMutex sync.RWMutex
 	lastFinalizedBlock      *big.Int
 
-	bitcoinBridge *abi.BitcoinBridge
+	bridgeContract *abi.MezoBridge
 
 	chain *ethconnect.BaseChain
 
@@ -79,9 +79,9 @@ func RunServer(
 	batchSize uint64,
 	requestsPerMinute uint64,
 ) {
-	if gen.BitcoinBridgeAddress == "" {
+	if gen.MezoBridgeAddress == "" {
 		panic(
-			"cannot get address of the BitcoinBridge contract on Ethereum; " +
+			"cannot get address of the MezoBridge contract on Ethereum; " +
 				"make sure you run 'make bindings' before building the binary",
 		)
 	}
@@ -94,16 +94,16 @@ func RunServer(
 	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
 		Network:           ethconnect.NetworkFromString(ethereumNetwork),
 		URL:               providerURL,
-		ContractAddresses: map[string]string{bitcoinBridgeName: gen.BitcoinBridgeAddress},
+		ContractAddresses: map[string]string{mezoBridgeName: gen.MezoBridgeAddress},
 	})
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to the Ethereum network: %v", err))
 	}
 
-	// Initialize the BitcoinBridge contract instance
-	bitcoinBridge, err := initializeBitcoinBridgeContract(common.HexToAddress(gen.BitcoinBridgeAddress), chain.Client())
+	// Initialize the MezoBridge contract instance.
+	bridgeContract, err := initializeBridgeContract(common.HexToAddress(gen.MezoBridgeAddress), chain.Client())
 	if err != nil {
-		panic(fmt.Sprintf("failed to initialize BitcoinBridge contract: %v", err))
+		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
 	server := &Server{
@@ -111,7 +111,7 @@ func RunServer(
 		grpcServer:         grpc.NewServer(),
 		events:             make([]bridgetypes.AssetsLockedEvent, 0),
 		lastFinalizedBlock: new(big.Int),
-		bitcoinBridge:      bitcoinBridge,
+		bridgeContract:     bridgeContract,
 		chain:              chain,
 		batchSize:          batchSize,
 		requestsPerMinute:  requestsPerMinute,
@@ -142,9 +142,9 @@ func RunServer(
 	server.logger.Error("sidecar stopped")
 }
 
-// observeEvents monitors and processes events from the BitcoinBridge smart contract.
+// observeEvents monitors and processes events from the MezoBridge smart contract.
 //
-//   - Initializes a BitcoinBridge contract instance using the provided blockchain connection and contract address.
+//   - Initializes a MezoBridge contract instance using the provided blockchain connection and contract address.
 //   - Retrieves the most recent finalized block number from the blockchain.
 //   - Calculates a start block that is two weeks prior to the current finalized block. It then fetches
 //     `AssetsLocked` events for this range.
@@ -240,7 +240,7 @@ func (s *Server) processEvents(ctx context.Context) error {
 
 // fetchFinalizedEvents retrieves and processes finalized `AssetsLocked` events
 // from the Ethereum network, within a specified block range. It uses the
-// provided BitcoinBridge contract to filter these events. Each event is
+// provided MezoBridge contract to filter these events. Each event is
 // transformed into an `AssetsLockedEvent` type compatible with the bridgetypes
 // package and added to the server's event list with mutex protection.
 func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error {
@@ -255,13 +255,15 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		event := bridgetypes.AssetsLockedEvent{
 			Sequence:  sdkmath.NewIntFromBigInt(abiEvent.SequenceNumber),
 			Recipient: sdk.AccAddress(abiEvent.Recipient.Bytes()).String(),
-			Amount:    sdkmath.NewIntFromBigInt(abiEvent.TbtcAmount),
+			// TODO: Add token address once bridgetypes.AssetsLockedEvent is updated
+			Amount: sdkmath.NewIntFromBigInt(abiEvent.Amount),
 		}
 		bufferedEvents = append(bufferedEvents, event)
 		s.logger.Info(
 			"finalized AssetsLocked event",
 			"sequence", event.Sequence.String(),
 			"recipient", abiEvent.Recipient,
+			"token", abiEvent.Token,
 			"amount", event.Amount.String(),
 		)
 	}
@@ -297,29 +299,29 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 	return nil
 }
 
-// fetchABIEvents retrieves raw `AssetsLocked` ABI events from the BitcoinBridge
+// fetchABIEvents retrieves raw `AssetsLocked` ABI events from the MezoBridge
 // contract within a specified block range. The function fetches events in batches if
 // the entire range is too large to fetch at once.
 func (s *Server) fetchABIEvents(
 	startBlock uint64,
 	endBlock uint64,
-) ([]*abi.BitcoinBridgeAssetsLocked, error) {
+) ([]*abi.MezoBridgeAssetsLocked, error) {
 	s.logger.Info(
 		"fetching AssetsLocked events from range",
 		"startBlock", startBlock,
 		"endBlock", endBlock,
 	)
 
-	abiEvents := make([]*abi.BitcoinBridgeAssetsLocked, 0)
+	abiEvents := make([]*abi.MezoBridgeAssetsLocked, 0)
 
 	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute))
 	defer ticker.Stop()
 
-	iterator, err := s.bitcoinBridge.FilterAssetsLocked(
+	iterator, err := s.bridgeContract.FilterAssetsLocked(
 		&bind.FilterOpts{
 			Start: startBlock,
 			End:   &endBlock,
-		}, nil, nil,
+		}, nil, nil, nil,
 	)
 	if err != nil {
 		s.logger.Warn(
@@ -346,11 +348,11 @@ func (s *Server) fetchABIEvents(
 
 			<-ticker.C
 
-			batchIterator, batchErr := s.bitcoinBridge.FilterAssetsLocked(
+			batchIterator, batchErr := s.bridgeContract.FilterAssetsLocked(
 				&bind.FilterOpts{
 					Start: batchStartBlock,
 					End:   &batchEndBlock,
-				}, nil, nil,
+				}, nil, nil, nil,
 			)
 			if batchErr != nil {
 				return nil, fmt.Errorf(
@@ -453,7 +455,8 @@ func (s *Server) AssetsLockedEvents(
 			filteredEvents = append(filteredEvents, &bridgetypes.AssetsLockedEvent{
 				Sequence:  event.Sequence,
 				Recipient: event.Recipient,
-				Amount:    event.Amount,
+				// TODO: Add token address once bridgetypes.AssetsLockedEvent is updated
+				Amount: event.Amount,
 			})
 		}
 	}
@@ -463,15 +466,15 @@ func (s *Server) AssetsLockedEvents(
 	}, nil
 }
 
-// Construct a new instance of the Ethereum Bitcoin Bridge contract.
-func initializeBitcoinBridgeContract(
-	bitcoinBridgeAddress common.Address,
+// Construct a new instance of the Ethereum MezoBridge contract.
+func initializeBridgeContract(
+	address common.Address,
 	client ethutil.EthereumClient,
-) (*abi.BitcoinBridge, error) {
-	bitcoinBridge, err := abi.NewBitcoinBridge(bitcoinBridgeAddress, client)
+) (*abi.MezoBridge, error) {
+	bridgeContract, err := abi.NewMezoBridge(address, client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to attach to Bitcoin Bridge contract. %v", err)
+		return nil, fmt.Errorf("failed to attach to MezoBridge contract. %v", err)
 	}
 
-	return bitcoinBridge, nil
+	return bridgeContract, nil
 }
