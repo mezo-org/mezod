@@ -641,7 +641,7 @@ endif
 export bindings_environment
 
 # List of NPM packages for which to generate bindings - expand if needed.
-npm_packages := @mezo-org/contracts
+npm_packages := @mezo-org/contracts@0.4.0-dev
 
 # Working directory where contracts artifacts should be stored.
 contracts_dir := tmp/contracts
