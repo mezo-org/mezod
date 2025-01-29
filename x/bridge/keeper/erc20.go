@@ -47,8 +47,8 @@ func (k Keeper) GetERC20TokenMapping(
 
 // CreateERC20TokenMapping creates a new ERC20 token mapping.
 // Requirements:
-// - The source token address must be a valid hex-encoded EVM address,
-// - The Mezo token address must be a valid hex-encoded EVM address,
+// - The source token address must be a valid hex-encoded EVM address and not zero,
+// - The Mezo token address must be a valid hex-encoded EVM address and not zero,
 // - The source token address must not be already mapped,
 // - The maximum number of mappings must not be reached.
 func (k Keeper) CreateERC20TokenMapping(
@@ -59,8 +59,16 @@ func (k Keeper) CreateERC20TokenMapping(
 		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid source token")
 	}
 
+	if evm.IsZeroHexAddress(mapping.SourceToken) {
+		return sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero source token")
+	}
+
 	if !evm.IsHexAddress(mapping.MezoToken) {
 		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid mezo token")
+	}
+
+	if evm.IsZeroHexAddress(mapping.MezoToken) {
+		return sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero mezo token")
 	}
 
 	if _, exists := k.GetERC20TokenMapping(ctx, mapping.SourceToken); exists {

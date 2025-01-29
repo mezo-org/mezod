@@ -123,6 +123,11 @@ func IsHexAddress(address string) bool {
 	return common.IsHexAddress(address)
 }
 
+// IsZeroHexAddress checks if the given hex-encoded EVM address is the zero address.
+func IsZeroHexAddress(address string) bool {
+	return common.HexToAddress(address) == common.Address{}
+}
+
 // HexAddressToBytes converts a hex-encoded EVM address to a byte slice.
 func HexAddressToBytes(address string) []byte {
 	return common.HexToAddress(address).Bytes()
