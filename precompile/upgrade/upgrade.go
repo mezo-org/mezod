@@ -5,6 +5,8 @@ import (
 	"embed"
 	"fmt"
 
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+
 	upgradetypes "cosmossdk.io/x/upgrade/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,7 +19,24 @@ var filesystem embed.FS
 // EvmAddress is the EVM address of the upgrade precompile. The address is
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 // used to avoid potential collisions with EVM native precompiles.
-const EvmAddress = "0x7b7c000000000000000000000000000000000014"
+const EvmAddress = evmtypes.UpgradePrecompileAddress
+
+// NewPrecompileVersionMap creates a new version map for the upgrade precompile.
+func NewPrecompileVersionMap(
+	upgradeKeeper UpgradeKeeper,
+	poaKeeper PoaKeeper,
+) (*precompile.VersionMap, error) {
+	contractV1, err := NewPrecompile(upgradeKeeper, poaKeeper)
+	if err != nil {
+		return nil, err
+	}
+
+	return precompile.NewVersionMap(
+		map[int]*precompile.Contract{
+			evmtypes.UpgradePrecompileLatestVersion: contractV1,
+		},
+	), nil
+}
 
 // NewPrecompile creates a new upgrade precompile.
 func NewPrecompile(upgradeKeeper UpgradeKeeper, poaKeeper PoaKeeper) (*precompile.Contract, error) {

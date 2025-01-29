@@ -79,6 +79,11 @@ func (k *Keeper) NewEVM(
 
 	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
 
+	precompilesVersions := make(map[common.Address]uint32)
+	for _, pv := range k.GetParams(ctx).PrecompilesVersions {
+		precompilesVersions[common.HexToAddress(pv.PrecompileAddress)] = pv.Version
+	}
+
 	// Load default EVM precompiles for the recent fork. The `vm.DefaultPrecompiles`
 	// function returns a global map of default precompiles. We need to clone it
 	// before assigning it to the `precompiles` variable to avoid modifying
@@ -90,8 +95,16 @@ func (k *Keeper) NewEVM(
 	)
 	// Add custom precompiles into the mix. Note that if a custom precompile
 	// uses the same address as a default precompile, the custom one will be used.
-	for k, v := range k.customPrecompiles {
-		precompiles[k] = vm.PrecompiledContract(v.GetByHeight(ctx.BlockHeight()))
+	for address, versionMap := range k.customPrecompiles {
+		// If the precompile version is not in the state, it will resolve to 0.
+		version := precompilesVersions[address]
+
+		precompile, ok := versionMap.GetByVersion(int(version))
+		if !ok {
+			continue
+		}
+
+		precompiles[address] = vm.PrecompiledContract(precompile)
 	}
 	// Add all precompiles to the EVM instance.
 	evm.WithPrecompiles(precompiles, maps.Keys(precompiles))

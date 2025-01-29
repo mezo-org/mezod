@@ -903,72 +903,48 @@ func customEvmPrecompiles(
 	chainID string,
 ) ([]*precompile.VersionMap, error) {
 	// BTC token precompile.
-	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, chainID)
+	btcTokenVersionMap, err := btctoken.NewPrecompileVersionMap(
+		bankKeeper,
+		authzKeeper,
+		evmKeeper,
+		chainID,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create BTC token precompile: [%w]", err)
-	}
-	btcTokenVersionMap := precompile.NewSingleVersionMap(btcTokenPrecompile)
-
-	// Validator pool precompile.
-	validatorPoolPrecompile, err := validatorpool.NewPrecompile(poaKeeper)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validatorpool precompile: [%w]", err)
-	}
-	validatorPoolVersionMap := precompile.NewSingleVersionMap(validatorPoolPrecompile)
-
-	// For mezo_31611-1 testnet, we need to support the legacy validator pool precompile.
-	if chainID == "mezo_31611-1" {
-		// Create the legacy validator pool precompile.
-		legacyValidatorPoolPrecompile, err := validatorpool.NewLegacyPrecompile(poaKeeper)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create legacy validatorpool precompile: [%w]", err)
-		}
-		// Override the validator pool version map. Order is important here -
-		// the legacy precompile should have a lower version than the new one.
-		validatorPoolVersionMap = precompile.NewMultiVersionMap(
-			[]*precompile.Contract{
-				legacyValidatorPoolPrecompile,
-				validatorPoolPrecompile,
-			},
-			func(height int64) int {
-				// Use validator pool with legacy submitApplication gas formula
-				// before height 496901. This height denotes the first
-				// transaction using the new gas formula.
-				if height < 496901 {
-					return 1
-				}
-				return 2
-			},
+		return nil, fmt.Errorf(
+			"failed to create BTC token precompile: [%w]",
+			err,
 		)
 	}
 
+	// Validator pool precompile.
+	validatorPoolVersionMap, err := validatorpool.NewPrecompileVersionMap(poaKeeper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validatorpool precompile: [%w]", err)
+	}
+
 	// Maintenance precompile.
-	maintenancePrecompile, err := maintenance.NewPrecompile(poaKeeper, &evmKeeper)
+	maintenanceVersionMap, err := maintenance.NewPrecompileVersionMap(poaKeeper, &evmKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create maintenance precompile: [%w]", err)
 	}
-	maintenanceVersionMap := precompile.NewSingleVersionMap(maintenancePrecompile)
 
 	// Bridge precompile.
-	assetsBridgePrecompile, err := assetsbridge.NewPrecompile()
+	assetsBridgeVersionMap, err := assetsbridge.NewPrecompileVersionMap()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create assets bridge precompile: [%w]", err)
 	}
-	assetsBridgeVersionMap := precompile.NewSingleVersionMap(assetsBridgePrecompile)
 
 	// Upgrade precompile.
-	upgradePrecompile, err := upgradelocal.NewPrecompile(upgradeKeeper, poaKeeper)
+	upgradeVersionMap, err := upgradelocal.NewPrecompileVersionMap(upgradeKeeper, poaKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create upgrade precompile: [%w]", err)
 	}
-	upgradeVersionMap := precompile.NewSingleVersionMap(upgradePrecompile)
 
 	// Price Oracle precompile.
-	priceOraclePrecompile, err := priceoracle.NewPrecompile(oracleQueryServer)
+	priceOracleVersionMap, err := priceoracle.NewPrecompileVersionMap(oracleQueryServer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create price oracle precompile: [%w]", err)
 	}
-	priceOracleVersionMap := precompile.NewSingleVersionMap(priceOraclePrecompile)
 
 	return []*precompile.VersionMap{
 		btcTokenVersionMap,

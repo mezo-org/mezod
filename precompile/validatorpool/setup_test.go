@@ -178,7 +178,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 			evm := &vm.EVM{
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
-			validatorpoolPrecompile, err := validatorpool.NewPrecompile(s.keeper)
+			validatorpoolPrecompile, err := validatorpool.NewPrecompile(s.keeper, false)
 			s.Require().NoError(err)
 			s.validatorpoolPrecompile = validatorpoolPrecompile
 
