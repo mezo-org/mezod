@@ -19,13 +19,12 @@ message GenesisState {
     (gogoproto.nullable) = false
   ];
 
-  // source_btc_token is the BTC token address on the source chain. AssetsLocked
-  // events carrying this token address are directly mapped to the Mezo native
-  // denomination - BTC.
+  // source_btc_token is the hex-encoded EVM address of the BTC token on the source chain.
+  // AssetsLocked events carrying this token address are directly mapped to the
+  // Mezo native denomination - BTC.
   string source_btc_token = 3;
 
-  // supported_erc20_tokens is the map holding ERC20 tokens supported by the
-  // bridge. The key is the token address on the source chain, and the value is
-  // the token address on the Mezo chain.
-  map<string, string> supported_erc20_tokens = 4;
+  // erc20_tokens_mappings is the list of ERC20 token mappings supported by the
+  // bridge.
+  repeated ERC20TokenMapping erc20_tokens_mappings = 4;
 }

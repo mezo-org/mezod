@@ -15,7 +15,7 @@ func (k Keeper) InitGenesis(ctx sdk.Context, genState types.GenesisState) {
 
 	k.setAssetsLockedSequenceTip(ctx, genState.AssetsLockedSequenceTip)
 	k.setSourceBTCToken(ctx, genState.SourceBtcToken)
-	k.setSupportedERC20Tokens(ctx, genState.SupportedErc20Tokens)
+	k.setERC20TokensMappings(ctx, genState.Erc20TokensMappings)
 }
 
 // ExportGenesis returns the module's exported genesis
@@ -24,6 +24,6 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		Params:                  k.GetParams(ctx),
 		AssetsLockedSequenceTip: k.GetAssetsLockedSequenceTip(ctx),
 		SourceBtcToken:          k.GetSourceBTCToken(ctx),
-		SupportedErc20Tokens:    k.GetSupportedERC20Tokens(ctx),
+		Erc20TokensMappings:     k.GetERC20TokensMappings(ctx),
 	}
 }

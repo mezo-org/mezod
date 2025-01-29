@@ -1,5 +1,7 @@
 package types
 
+import evmtypes "github.com/mezo-org/mezod/x/evm/types"
+
 const (
 	// ModuleName defines the module name
 	ModuleName = "bridge"
@@ -24,17 +26,18 @@ var (
 	// token address on the Ethereum chain.
 	SourceBTCTokenKey = []byte{0x30}
 
-	// SupportedERC20TokenKeyPrefix is a prefix used to construct a key to a
-	// Mezo ERC20 token, supported by the bridge. Specifically, a key to a
-	// Mezo ERC20 token is constructed by taking this prefix and appending the
+	// ERC20TokenMappingKeyPrefix is a prefix used to construct a key to an
+	// ERC20 token mapping, supported by the bridge. Specifically, a key to an
+	// ERC20 token mapping is constructed by taking this prefix and appending the
 	// corresponding token contract address on the source chain. In other words,
 	// this prefix is used to construct the following mapping:
-	// SupportedERC20TokenKeyPrefix + SourceERC20Token -> MezoERC20Token
-	SupportedERC20TokenKeyPrefix = []byte{0x40}
+	// ERC20TokenMappingKeyPrefix + SourceERC20Token -> MezoERC20Token
+	ERC20TokenMappingKeyPrefix = []byte{0x40}
 )
 
-// GetSupportedERC20TokenKey gets the key for a Mezo ERC20 bridgeable token
-// address by the corresponding source token address.
-func GetSupportedERC20TokenKey(sourceERC20Token []byte) []byte {
-	return append(SupportedERC20TokenKeyPrefix, sourceERC20Token...)
+// GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
+// corresponding source token address.
+func GetERC20TokenMappingKey(sourceERC20Token string) []byte {
+	sourceERC20TokenBytes := evmtypes.HexAddressToBytes(sourceERC20Token)
+	return append(ERC20TokenMappingKeyPrefix, sourceERC20TokenBytes...)
 }

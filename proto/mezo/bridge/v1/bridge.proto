@@ -9,10 +9,10 @@ option go_package = "github.com/mezo-org/mezod/x/bridge/types";
 message Params {
   option (gogoproto.goproto_stringer) = false;
 
-  // max_erc20_tokens is the maximum number of distinct ERC20 tokens that can
-  // be supported in the bridge. The reason for this limit is to not downgrade
-  // the bridge performance on the Mezo chain side too much.
-  uint32 max_erc20_tokens = 1;
+  // max_erc20_tokens_mappings is the maximum number of distinct ERC20 tokens
+  // mappings that can be supported in the bridge. The reason for this limit is
+  // to not downgrade the bridge performance on the Mezo chain side too much.
+  uint32 max_erc20_tokens_mappings = 1;
 }
 
 // AssetsLockedEvent represents the event where inbound assets are locked in
@@ -31,6 +31,16 @@ message AssetsLockedEvent {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
-  // token is the address of the bridged token, in EIP55-compliant hexadecimal format.
+  // token is the hex-encoded EVM address of the bridged token.
   string token = 4;
+}
+
+// ERC20TokenMapping defines a mapping between an ERC20 token on the source chain
+// and on the Mezo chain.
+message ERC20TokenMapping {
+  // source_token is the hex-encoded EVM address of the token on the source chain.
+  string source_token = 1;
+
+  // mezo_token is the hex-encoded EVM address of the token on the Mezo chain.
+  string mezo_token = 2;
 }

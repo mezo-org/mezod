@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+
 	sdkmath "cosmossdk.io/math"
 )
 
@@ -16,7 +18,7 @@ func DefaultGenesis() *GenesisState {
 		Params:                  DefaultParams(),
 		AssetsLockedSequenceTip: sdkmath.NewInt(0),
 		SourceBtcToken:          "",
-		SupportedErc20Tokens:    make(map[string]string),
+		Erc20TokensMappings:     []*ERC20TokenMapping{},
 	}
 }
 
@@ -36,6 +38,26 @@ func (gs GenesisState) Validate() error {
 
 	if len(gs.SourceBtcToken) == 0 {
 		return fmt.Errorf("source btc token cannot be empty")
+	}
+
+	if !evmtypes.IsHexAddress(gs.SourceBtcToken) {
+		return fmt.Errorf("source btc token must be a valid hex-encoded EVM address")
+	}
+
+	for i, mapping := range gs.Erc20TokensMappings {
+		if !evmtypes.IsHexAddress(mapping.SourceToken) {
+			return fmt.Errorf(
+				"source token of ERC20 mapping %d must be a valid hex-encoded EVM address",
+				i,
+			)
+		}
+
+		if !evmtypes.IsHexAddress(mapping.MezoToken) {
+			return fmt.Errorf(
+				"mezo token of ERC20 mapping %d must be a valid hex-encoded EVM address",
+				i,
+			)
+		}
 	}
 
 	return nil

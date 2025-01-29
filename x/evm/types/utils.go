@@ -122,3 +122,13 @@ func EffectiveGasPrice(baseFee, feeCap, tipCap *big.Int) *big.Int {
 func IsHexAddress(address string) bool {
 	return common.IsHexAddress(address)
 }
+
+// HexAddressToBytes converts a hex-encoded EVM address to a byte slice.
+func HexAddressToBytes(address string) []byte {
+	return common.HexToAddress(address).Bytes()
+}
+
+// BytesToHexAddress converts a byte slice to a hex-encoded EVM address.
+func BytesToHexAddress(address []byte) string {
+	return common.BytesToAddress(address).Hex()
+}
