@@ -56,20 +56,20 @@ function bridge(uint256 amount, address recipient) external
 /// @notice The same as the `bridge` function except that with EIP-2612 permit
 ///         instead of an on-chain approval.
 function bridgeWithPermit(
-    uint256 amount, 
-    address recipient, 
-    address owner, 
-    uint256 deadline, 
-    uint8 v, 
-    bytes32 r, 
+    uint256 amount,
+    address recipient,
+    address owner,
+    uint256 deadline,
+    uint8 v,
+    bytes32 r,
     bytes32 s
-) 
+)
 
 /// @notice Registers tBTC Bitcoin deposit in the contract and reveals it to the
-///         tBTC Bitcoin bridge. The `recipient` address should be encoded in 
+///         tBTC Bitcoin bridge. The `recipient` address should be encoded in
 ///         the `extraData` section of the tBTC P2WSH deposit script.
 function initializeDeposit(
-    IBridgeTypes.BitcoinTxInfo calldata fundingTx, 
+    IBridgeTypes.BitcoinTxInfo calldata fundingTx,
     IBridgeTypes.DepositRevealInfo calldata reveal
     address recipient
 )
@@ -256,7 +256,7 @@ deposited WBTC to Bitcoin, mint tBTC, and put it back into the Portal contract.
 Special-casing stBTC-ed deposits require more attention as well. The exact
 description of the transition will be covered by a separate RFC.
 
-On a high leve, upon disabling deposits and withdrawals in the Portal contract,
+On a high level, upon disabling deposits and withdrawals in the Portal contract,
 a special script should iterate towards Portal's `DepositInfo` structures,
 filter deposits for tBTC token for which stBTC was not minted, and generate
 a module genesis JSON to set Bitcoin balances on Mezo chain for each depositor.
