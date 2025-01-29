@@ -431,6 +431,7 @@ func NewMezo(
 		*app.EvmKeeper,
 		*app.UpgradeKeeper,
 		oraclekeeper.NewQueryServer(app.OracleKeeper),
+		app.BridgeKeeper,
 		bApp.ChainID(),
 	)
 	if err != nil {
@@ -900,6 +901,7 @@ func customEvmPrecompiles(
 	evmKeeper evmkeeper.Keeper,
 	upgradeKeeper upgradekeeper.Keeper,
 	oracleQueryServer oracletypes.QueryServer,
+	bridgeKeeper bridgekeeper.Keeper,
 	chainID string,
 ) ([]*precompile.VersionMap, error) {
 	// BTC token precompile.
@@ -929,7 +931,7 @@ func customEvmPrecompiles(
 	}
 
 	// Bridge precompile.
-	assetsBridgeVersionMap, err := assetsbridge.NewPrecompileVersionMap()
+	assetsBridgeVersionMap, err := assetsbridge.NewPrecompileVersionMap(poaKeeper, bridgeKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create assets bridge precompile: [%w]", err)
 	}
