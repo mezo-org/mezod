@@ -89,27 +89,24 @@ func NewAuthAppModule(cdc codec.Codec, ak authkeeper.AccountKeeper, randGenAccou
 // the call to `authtypes.RegisterMsgServer()`
 // See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/auth/module.go#L115
 func (am WrappedAuthAppModule) RegisterServices(cfg module.Configurator) {
-	// msgServer := authkeeper.NewMsgServerImpl(am.accountKeeper)
+	authtypes.RegisterQueryServer(cfg.QueryServer(), authkeeper.NewQueryServer(am.accountKeeper))
 
-	am.AppModule.RegisterServices(cfg)
-	// authtypes.RegisterQueryServer(cfg.QueryServer(), authkeeper.NewQueryServer(am.accountKeeper))
+	m := authkeeper.NewMigrator(am.accountKeeper, cfg.QueryServer(), am.legacySubspace)
+	if err := cfg.RegisterMigration(authtypes.ModuleName, 1, m.Migrate1to2); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 1 to 2: %v", authtypes.ModuleName, err))
+	}
 
-	// m := authkeeper.NewMigrator(am.accountKeeper, cfg.QueryServer(), am.legacySubspace)
-	// if err := cfg.RegisterMigration(authtypes.ModuleName, 1, m.Migrate1to2); err != nil {
-	// 	panic(fmt.Sprintf("failed to migrate x/%s from version 1 to 2: %v", authtypes.ModuleName, err))
-	// }
+	if err := cfg.RegisterMigration(authtypes.ModuleName, 2, m.Migrate2to3); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 2 to 3: %v", authtypes.ModuleName, err))
+	}
 
-	// if err := cfg.RegisterMigration(authtypes.ModuleName, 2, m.Migrate2to3); err != nil {
-	// 	panic(fmt.Sprintf("failed to migrate x/%s from version 2 to 3: %v", authtypes.ModuleName, err))
-	// }
+	if err := cfg.RegisterMigration(authtypes.ModuleName, 3, m.Migrate3to4); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 3 to 4: %v", authtypes.ModuleName, err))
+	}
 
-	// if err := cfg.RegisterMigration(authtypes.ModuleName, 3, m.Migrate3to4); err != nil {
-	// 	panic(fmt.Sprintf("failed to migrate x/%s from version 3 to 4: %v", authtypes.ModuleName, err))
-	// }
-
-	// if err := cfg.RegisterMigration(authtypes.ModuleName, 4, m.Migrate4To5); err != nil {
-	// 	panic(fmt.Sprintf("failed to migrate x/%s from version 4 to 5", authtypes.ModuleName))
-	// }
+	if err := cfg.RegisterMigration(authtypes.ModuleName, 4, m.Migrate4To5); err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 4 to 5", authtypes.ModuleName))
+	}
 }
 
 // Bank wrapper
@@ -132,20 +129,29 @@ func NewBankAppModule(cdc codec.Codec, keeper bankkeeper.Keeper, ak banktypes.Ac
 }
 
 // Bank MsgServer wrapper
-// banktypes.MsgServer.Send is used by btctoken and other modules, we need to keep it exposed.
-// So we'll wrap the msgServer and override its other methods
+// Override all methods for clarity.
+// Call original method if required, return error if not
+// See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/bank/keeper/msg_server.go
 type RestrictedBankMsgServer struct {
 	banktypes.MsgServer
 }
 
+// Required (btctoken), call original method
+func (ms RestrictedBankMsgServer) UpdateParams(ctx context.Context, msg *banktypes.MsgUpdateParams) (*banktypes.MsgUpdateParamsResponse, error) {
+	return ms.MsgServer.UpdateParams(ctx, msg)
+}
+
+// Required (btctoken), call original method
+func (ms RestrictedBankMsgServer) Send(ctx context.Context, msg *banktypes.MsgSend) (*banktypes.MsgSendResponse, error) {
+	return ms.MsgServer.Send(ctx, msg)
+}
+
+// disable
 func (ms RestrictedBankMsgServer) MultiSend(_ context.Context, _ *banktypes.MsgMultiSend) (*banktypes.MsgMultiSendResponse, error) {
 	return nil, fmt.Errorf("method is disabled")
 }
 
-func (ms RestrictedBankMsgServer) UpdateParams(_ context.Context, _ *banktypes.MsgUpdateParams) (*banktypes.MsgUpdateParamsResponse, error) {
-	return nil, fmt.Errorf("method is disabled")
-}
-
+// disable
 func (ms RestrictedBankMsgServer) SetSendEnabled(_ context.Context, _ *banktypes.MsgSetSendEnabled) (*banktypes.MsgSetSendEnabledResponse, error) {
 	return nil, fmt.Errorf("method is disabled")
 }
@@ -276,17 +282,17 @@ func NewAuthzAppModule(cdc codec.Codec, keeper authzkeeper.Keeper, ak authz.Acco
 }
 
 // Authz method overrides
-// Override the `RegisterServices` method, replicating the original, minus
-// the call to `authz.RegisterMsgServer()`
+// Override the `RegisterServices` method, replicating the original
+// TODO: determine what authz.MsgServer methods are required, disable the rest
 // See: https://github.com/cosmos/cosmos-sdk/blob/v0.50.10/x/authz/module/module.go#L52
 func (am WrappedAuthzAppModule) RegisterServices(cfg module.Configurator) {
-	// authz.RegisterQueryServer(cfg.QueryServer(), am.keeper)
-	// m := authzkeeper.NewMigrator(am.keeper)
-	// err := cfg.RegisterMigration(authz.ModuleName, 1, m.Migrate1to2)
-	// if err != nil {
-	// 	panic(fmt.Sprintf("failed to migrate x/%s from version 1 to 2: %v", authz.ModuleName, err))
-	// }
-	am.AppModule.RegisterServices(cfg)
+	authz.RegisterMsgServer(cfg.MsgServer(), am.keeper)
+	authz.RegisterQueryServer(cfg.QueryServer(), am.keeper)
+	m := authzkeeper.NewMigrator(am.keeper)
+	err := cfg.RegisterMigration(authz.ModuleName, 1, m.Migrate1to2)
+	if err != nil {
+		panic(fmt.Sprintf("failed to migrate x/%s from version 1 to 2: %v", authz.ModuleName, err))
+	}
 }
 
 // MarketMap Wrapper
