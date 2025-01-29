@@ -58,7 +58,7 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
-	}
+	} // TODO: Add some token address to events used in unit tests.
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	blockWithPseudoTx := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
@@ -897,7 +897,7 @@ func buildRPCPseudoTx(
 			{
 				SequenceNumber: event.Sequence.BigInt(),
 				Recipient:      recipient,
-				TBTCAmount:     event.Amount.BigInt(),
+				Amount:         event.Amount.BigInt(),
 			},
 		},
 	)
@@ -957,7 +957,7 @@ func buildPseudoTxTrace(
 			{
 				SequenceNumber: event.Sequence.BigInt(),
 				Recipient:      recipient,
-				TBTCAmount:     event.Amount.BigInt(),
+				Amount:         event.Amount.BigInt(),
 			},
 		},
 	)

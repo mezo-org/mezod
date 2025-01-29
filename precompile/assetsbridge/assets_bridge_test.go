@@ -14,17 +14,20 @@ func TestPackEventsToInput(t *testing.T) {
 		{
 			SequenceNumber: big.NewInt(1),
 			Recipient:      common.HexToAddress("0xa9bDddA0816EE183C51B28e0C33664B2DB069481"),
-			TBTCAmount:     big.NewInt(1000000),
+			Amount:         big.NewInt(1000000),
+			Token:          common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9"),
 		},
 		{
 			SequenceNumber: big.NewInt(2),
 			Recipient:      common.HexToAddress("0xFc62EBEccDfccc1610844B4e0E3b85FE33829e84"),
-			TBTCAmount:     big.NewInt(1000),
+			Amount:         big.NewInt(1000),
+			Token:          common.HexToAddress("0x3127b53ab26ba3f70A25F5bC82BDAf5f4fd4f197"),
 		},
 		{
 			SequenceNumber: big.NewInt(3),
 			Recipient:      common.HexToAddress("0xA0209205d902c3a70EDba71C0e30420bd84AE1b8"),
-			TBTCAmount:     big.NewInt(20000),
+			Amount:         big.NewInt(20000),
+			Token:          common.HexToAddress("0x388Dc627C8876cC6a83209788e9CDE033060F03A"),
 		},
 	}
 

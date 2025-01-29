@@ -150,7 +150,7 @@ func (b *Backend) getPseudoTransaction(
 		events = append(events, assetsbridge.AssetsLockedEvent{
 			SequenceNumber: event.Sequence.BigInt(),
 			Recipient:      recipient,
-			TBTCAmount:     event.Amount.BigInt(),
+			Amount:         event.Amount.BigInt(),
 		})
 	}
 
