@@ -49,5 +49,5 @@ func (m *GetSourceBTCTokenMethod) Run(
 
 	sourceBTCToken := m.bridgeKeeper.GetSourceBTCToken(context.SdkCtx())
 
-	return precompile.MethodOutputs{common.HexToAddress(sourceBTCToken)}, nil
+	return precompile.MethodOutputs{common.BytesToAddress(sourceBTCToken)}, nil
 }

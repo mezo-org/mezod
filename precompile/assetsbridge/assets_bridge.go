@@ -137,10 +137,10 @@ type PoaKeeper interface {
 }
 
 type BridgeKeeper interface {
-	GetSourceBTCToken(ctx sdk.Context) string
-	CreateERC20TokenMapping(ctx sdk.Context, mapping *bridgetypes.ERC20TokenMapping) error
-	DeleteERC20TokenMapping(ctx sdk.Context, sourceToken string) error
+	GetSourceBTCToken(ctx sdk.Context) []byte
+	CreateERC20TokenMapping(ctx sdk.Context, sourceToken, mezoToken []byte) error
+	DeleteERC20TokenMapping(ctx sdk.Context, sourceToken []byte) error
 	GetERC20TokensMappings(ctx sdk.Context) []*bridgetypes.ERC20TokenMapping
-	GetERC20TokenMapping(ctx sdk.Context, sourceToken string) (*bridgetypes.ERC20TokenMapping, bool)
+	GetERC20TokenMapping(ctx sdk.Context, sourceToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
 	GetParams(ctx sdk.Context) bridgetypes.Params
 }

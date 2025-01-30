@@ -4,6 +4,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // InitGenesis initializes the module's state from a provided genesis state.
@@ -23,7 +24,7 @@ func (k Keeper) InitGenesis(
 	}
 
 	k.setAssetsLockedSequenceTip(ctx, genState.AssetsLockedSequenceTip)
-	k.setSourceBTCToken(ctx, genState.SourceBtcToken)
+	k.setSourceBTCToken(ctx, evmtypes.HexAddressToBytes(genState.SourceBtcToken))
 	k.setERC20TokensMappings(ctx, genState.Erc20TokensMappings)
 }
 
@@ -32,7 +33,7 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 	return &types.GenesisState{
 		Params:                  k.GetParams(ctx),
 		AssetsLockedSequenceTip: k.GetAssetsLockedSequenceTip(ctx),
-		SourceBtcToken:          k.GetSourceBTCToken(ctx),
+		SourceBtcToken:          evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx)),
 		Erc20TokensMappings:     k.GetERC20TokensMappings(ctx),
 	}
 }

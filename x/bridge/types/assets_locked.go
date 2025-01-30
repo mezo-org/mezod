@@ -1,12 +1,18 @@
 package types
 
 import (
+	"bytes"
 	"slices"
 
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
+
+// TokenBytes returns the token EVM address as bytes.
+func (ale AssetsLockedEvent) TokenBytes() []byte {
+	return evmtypes.HexAddressToBytes(ale.Token)
+}
 
 // IsValid returns true if the event is valid. An event is considered valid if
 // its sequence number is positive, its recipient address is a valid Bech32
@@ -37,12 +43,12 @@ func (ale AssetsLockedEvent) IsValid() bool {
 // DEV NOTE: THIS FUNCTION PLAYS A CRUCIAL ROLE IN `assetsLockedExtractor` WHERE
 // WE DETERMINE CANONICAL EVENTS BASED ON VALIDATORS' VOTES. NOTHING PREVENTS A
 // MALICIOUS VALIDATOR FROM VOTING ON AN EVENT WITH THE GIVEN SEQUENCE BUT
-// WITH A DIFFERENT AMOUNT/RECIPIENT. THIS IS WHY WE NEED A WAY TO COMPARE
+// WITH A DIFFERENT AMOUNT/RECIPIENT/TOKEN. THIS IS WHY WE NEED A WAY TO COMPARE
 // ALL FIELDS OF `AssetsLockedEvent`.
 func (ale AssetsLockedEvent) Equal(other AssetsLockedEvent) bool {
 	return ale.Sequence.Equal(other.Sequence) &&
 		ale.Recipient == other.Recipient &&
-		ale.Token == other.Token &&
+		bytes.Equal(ale.TokenBytes(), other.TokenBytes()) &&
 		ale.Amount.Equal(other.Amount)
 }
 

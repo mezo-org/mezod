@@ -5,7 +5,7 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
-	evm "github.com/mezo-org/mezod/x/evm/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // GetERC20TokensMappings returns all ERC20 token mappings supported by the bridge.
@@ -31,7 +31,7 @@ func (k Keeper) GetERC20TokensMappings(ctx sdk.Context) []*types.ERC20TokenMappi
 // source token address. The boolean return value indicates if the mapping was found.
 func (k Keeper) GetERC20TokenMapping(
 	ctx sdk.Context,
-	sourceToken string,
+	sourceToken []byte,
 ) (*types.ERC20TokenMapping, bool) {
 	store := ctx.KVStore(k.storeKey)
 
@@ -53,25 +53,27 @@ func (k Keeper) GetERC20TokenMapping(
 // - The maximum number of mappings must not be reached.
 func (k Keeper) CreateERC20TokenMapping(
 	ctx sdk.Context,
-	mapping *types.ERC20TokenMapping,
+	sourceToken, mezoToken []byte,
 ) error {
-	if !evm.IsHexAddress(mapping.SourceToken) {
+	mapping := types.NewERC20TokenMapping(sourceToken, mezoToken)
+
+	if !evmtypes.IsHexAddress(mapping.SourceToken) {
 		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid source token")
 	}
 
-	if evm.IsZeroHexAddress(mapping.SourceToken) {
+	if evmtypes.IsZeroHexAddress(mapping.SourceToken) {
 		return sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero source token")
 	}
 
-	if !evm.IsHexAddress(mapping.MezoToken) {
+	if !evmtypes.IsHexAddress(mapping.MezoToken) {
 		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid mezo token")
 	}
 
-	if evm.IsZeroHexAddress(mapping.MezoToken) {
+	if evmtypes.IsZeroHexAddress(mapping.MezoToken) {
 		return sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero mezo token")
 	}
 
-	if _, exists := k.GetERC20TokenMapping(ctx, mapping.SourceToken); exists {
+	if _, exists := k.GetERC20TokenMapping(ctx, mapping.SourceTokenBytes()); exists {
 		return types.ErrAlreadyMapping
 	}
 
@@ -92,7 +94,7 @@ func (k Keeper) CreateERC20TokenMapping(
 // - The mapping must exist.
 func (k Keeper) DeleteERC20TokenMapping(
 	ctx sdk.Context,
-	sourceToken string,
+	sourceToken []byte,
 ) error {
 	if _, exists := k.GetERC20TokenMapping(ctx, sourceToken); !exists {
 		return types.ErrNotMapping
@@ -121,5 +123,5 @@ func (k Keeper) setERC20TokenMapping(
 ) {
 	store := ctx.KVStore(k.storeKey)
 	mappingBytes := types.MustMarshalERC20TokenMapping(k.cdc, *mapping)
-	store.Set(types.GetERC20TokenMappingKey(mapping.SourceToken), mappingBytes)
+	store.Set(types.GetERC20TokenMappingKey(mapping.SourceTokenBytes()), mappingBytes)
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
 // CreateERC20TokenMappingMethodName is the name of the createERC20TokenMapping method.
@@ -76,10 +75,8 @@ func (m *CreateERC20TokenMappingMethod) Run(
 
 	err = m.bridgeKeeper.CreateERC20TokenMapping(
 		context.SdkCtx(),
-		&bridgetypes.ERC20TokenMapping{
-			SourceToken: sourceToken.Hex(),
-			MezoToken:   mezoToken.Hex(),
-		},
+		sourceToken.Bytes(),
+		mezoToken.Bytes(),
 	)
 	if err != nil {
 		return nil, err
@@ -202,12 +199,12 @@ func (m *DeleteERC20TokenMappingMethod) Run(
 	// Ignore mapping existence flag as it is checked in DeleteERC20TokenMapping.
 	mapping, _ := m.bridgeKeeper.GetERC20TokenMapping(
 		context.SdkCtx(),
-		sourceToken.Hex(),
+		sourceToken.Bytes(),
 	)
 
 	err = m.bridgeKeeper.DeleteERC20TokenMapping(
 		context.SdkCtx(),
-		sourceToken.Hex(),
+		sourceToken.Bytes(),
 	)
 	if err != nil {
 		return nil, err
@@ -216,7 +213,7 @@ func (m *DeleteERC20TokenMappingMethod) Run(
 	err = context.EventEmitter().Emit(
 		NewERC20TokenMappingDeletedEvent(
 			sourceToken,
-			common.HexToAddress(mapping.MezoToken),
+			common.BytesToAddress(mapping.MezoTokenBytes()),
 		),
 	)
 	if err != nil {
@@ -323,7 +320,7 @@ func (m *GetERC20TokenMappingMethod) Run(
 
 	mapping, exists := m.bridgeKeeper.GetERC20TokenMapping(
 		context.SdkCtx(),
-		sourceToken.Hex(),
+		sourceToken.Bytes(),
 	)
 	if !exists {
 		return precompile.MethodOutputs{
@@ -336,8 +333,8 @@ func (m *GetERC20TokenMappingMethod) Run(
 
 	return precompile.MethodOutputs{
 		mappingDescriptor{
-			SourceToken: common.HexToAddress(mapping.SourceToken),
-			MezoToken:   common.HexToAddress(mapping.MezoToken),
+			SourceToken: common.BytesToAddress(mapping.SourceTokenBytes()),
+			MezoToken:   common.BytesToAddress(mapping.MezoTokenBytes()),
 		},
 	}, nil
 }
@@ -393,8 +390,8 @@ func (m *GetERC20TokensMappingsMethod) Run(
 
 	for _, mapping := range m.bridgeKeeper.GetERC20TokensMappings(context.SdkCtx()) {
 		mappings = append(mappings, mappingDescriptor{
-			SourceToken: common.HexToAddress(mapping.SourceToken),
-			MezoToken:   common.HexToAddress(mapping.MezoToken),
+			SourceToken: common.BytesToAddress(mapping.SourceTokenBytes()),
+			MezoToken:   common.BytesToAddress(mapping.MezoTokenBytes()),
 		})
 	}
 

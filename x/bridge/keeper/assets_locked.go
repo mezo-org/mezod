@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"bytes"
 	"fmt"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -95,7 +96,7 @@ func (k Keeper) AcceptAssetsLocked(
 			return fmt.Errorf("failed to parse recipient address: %w", err)
 		}
 
-		if evmtypes.EqualHexAddresses(event.Token, sourceBTCToken) {
+		if bytes.Equal(event.TokenBytes(), sourceBTCToken) {
 			err = k.mintBTC(ctx, recipient, event.Amount)
 			if err != nil {
 				return fmt.Errorf(
@@ -105,7 +106,7 @@ func (k Keeper) AcceptAssetsLocked(
 				)
 			}
 		} else {
-			mapping, exists := k.GetERC20TokenMapping(ctx, event.Token)
+			mapping, exists := k.GetERC20TokenMapping(ctx, event.TokenBytes())
 			if !exists {
 				// In case of a missing mapping, we skip the event and log a
 				// warning. This is because we cannot mint ERC20 tokens without
