@@ -3,6 +3,8 @@ package keeper
 import (
 	"fmt"
 
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+
 	"cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -85,19 +87,7 @@ func (k Keeper) AcceptAssetsLocked(
 		)
 	}
 
-	toMint := math.ZeroInt()
-	for _, event := range events {
-		toMint = toMint.Add(event.Amount)
-	}
-
-	err := k.bankKeeper.MintCoins(
-		ctx,
-		types.ModuleName,
-		sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, toMint)),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to mint coins: %w", err)
-	}
+	sourceBTCToken := k.GetSourceBTCToken(ctx)
 
 	for _, event := range events {
 		recipient, err := sdk.AccAddressFromBech32(event.Recipient)
@@ -105,28 +95,114 @@ func (k Keeper) AcceptAssetsLocked(
 			return fmt.Errorf("failed to parse recipient address: %w", err)
 		}
 
-		err = k.bankKeeper.SendCoinsFromModuleToAccount(
-			ctx,
-			types.ModuleName,
-			recipient,
-			sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, event.Amount)),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to send coins: %w", err)
+		if evmtypes.EqualHexAddresses(event.Token, sourceBTCToken) {
+			err = k.mintBTC(ctx, recipient, event.Amount)
+			if err != nil {
+				return fmt.Errorf(
+					"failed to mint BTC for event %v: %w",
+					event.Sequence,
+					err,
+				)
+			}
+		} else {
+			mapping, exists := k.GetERC20TokenMapping(ctx, event.Token)
+			if !exists {
+				// In case of a missing mapping, we skip the event and log a
+				// warning. This is because we cannot mint ERC20 tokens without
+				// a valid mapping. NOTE THAT THE SKIPPED EVENT WON'T BE
+				// RE-PROCESSED SO FUNDS REMAIN LOCKED ON THE SOURCE CHAIN.
+				ctx.Logger().Warn(
+					"ERC20 mapping for source token not found; "+
+						"AssetsLocked event skipped",
+					"eventSequence", event.Sequence,
+				)
+				continue
+			}
+
+			err = k.mintERC20(
+				ctx,
+				recipient,
+				mapping.MezoToken,
+				event.Amount,
+			)
+			if err != nil {
+				// In case of an error, we skip the event and log a warning.
+				// Unlike the BTC minting, we do not return an error here to
+				// stop the consensus engine. This is because minting occurs on
+				// external contracts, and we cannot guarantee that the minting
+				// will always succeed. We cannot take a risk that one
+				// malfunctioning contract will halt the whole chain.
+				// NOTE THAT THE SKIPPED EVENT WON'T BE RE-PROCESSED SO FUNDS
+				// REMAIN LOCKED ON THE SOURCE CHAIN.
+				ctx.Logger().Error(
+					"Encountered error while minting ERC20; "+
+						"AssetsLocked event skipped",
+					"eventSequence", event.Sequence,
+					"error", err,
+				)
+				continue
+			}
 		}
 	}
 
 	k.setAssetsLockedSequenceTip(ctx, events[len(events)-1].Sequence)
 
-	// TODO: Revisit this in the context of bridging events observability.
-	//  From state's perspective, it's enough to update the sequence tip
-	//  based on processed events to avoid double-bridging. Storing all
-	//  processed events in the state is redundant, increases state management
-	//  complexity, and negatively impacts the blockchain size in the long run.
-	//  A sane alternative is using an opt-in EVM tx indexer (kv_indexer.go)
-	//  to capture processed AssetsLocked events (they are part of the injected
-	//  pseudo-tx and are available in the indexer) and expose them through
-	//  a custom JSON-RPC API namespace (e.g. mezo_assetsLocked).
+	return nil
+}
+
+// mintBTC mints the given amount of BTC to the recipient address, directly
+// in the x/bank module.
+func (k Keeper) mintBTC(
+	ctx sdk.Context,
+	recipient sdk.AccAddress,
+	amount math.Int,
+) error {
+	coins := sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, amount))
+
+	// Mint coins to the x/bridge module account.
+	err := k.bankKeeper.MintCoins(ctx, types.ModuleName, coins)
+	if err != nil {
+		return fmt.Errorf("failed to mint coins: %w", err)
+	}
+
+	// Send the minted coins from x/bridge module account to the final recipient.
+	err = k.bankKeeper.SendCoinsFromModuleToAccount(
+		ctx,
+		types.ModuleName,
+		recipient,
+		coins,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to send coins: %w", err)
+	}
+
+	return nil
+}
+
+// mintERC20 mints the given amount of ERC20 token to the recipient address,
+// by executing a mint(address,uint256) call on the token contract.
+func (k Keeper) mintERC20(
+	ctx sdk.Context,
+	recipient sdk.AccAddress,
+	token string,
+	amount math.Int,
+) error {
+	from := evmtypes.BytesToHexAddress(authtypes.NewModuleAddress(types.ModuleName).Bytes())
+
+	call, err := evmtypes.NewERC20MintCall(
+		from,
+		token,
+		evmtypes.BytesToHexAddress(recipient.Bytes()),
+		amount.BigInt(),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create ERC20 mint call: %w", err)
+	}
+
+	_, err = k.evmKeeper.ExecuteContractCall(ctx, call)
+	if err != nil {
+		return fmt.Errorf("failed to execute ERC20 mint call: %w", err)
+	}
 
 	return nil
 }

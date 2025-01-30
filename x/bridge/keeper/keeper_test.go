@@ -25,7 +25,7 @@ func mockContext() (sdk.Context, Keeper) {
 	cdc := codec.NewProtoCodec(registry)
 
 	// Create the keeper
-	keeper := NewKeeper(cdc, keys[types.StoreKey], newMockBankKeeper())
+	keeper := NewKeeper(cdc, keys[types.StoreKey], newMockBankKeeper(), nil)
 
 	// Create multiStore in memory
 	db := dbm.NewMemDB()

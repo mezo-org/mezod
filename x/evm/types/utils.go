@@ -137,3 +137,10 @@ func HexAddressToBytes(address string) []byte {
 func BytesToHexAddress(address []byte) string {
 	return common.BytesToAddress(address).Hex()
 }
+
+// EqualHexAddresses compares two hex-encoded EVM addresses. They are
+// compared at the byte level so the 0x prefix and case sensitivity are
+// ignored.
+func EqualHexAddresses(a, b string) bool {
+	return common.HexToAddress(a) == common.HexToAddress(b)
+}

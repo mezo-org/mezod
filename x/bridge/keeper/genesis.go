@@ -7,7 +7,16 @@ import (
 )
 
 // InitGenesis initializes the module's state from a provided genesis state.
-func (k Keeper) InitGenesis(ctx sdk.Context, genState types.GenesisState) {
+func (k Keeper) InitGenesis(
+	ctx sdk.Context,
+	genState types.GenesisState,
+	accountKeeper types.AccountKeeper,
+) {
+	// Ensure x/bridge module account is created, if not already exist.
+	if acc := accountKeeper.GetModuleAccount(ctx, types.ModuleName); acc == nil {
+		panic("the x/bridge module account has not been set")
+	}
+
 	err := k.SetParams(ctx, genState.Params)
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting params"))

@@ -392,12 +392,6 @@ func NewMezo(
 		app.GetSubspace(feemarkettypes.ModuleName),
 	)
 
-	app.BridgeKeeper = bridgekeeper.NewKeeper(
-		appCodec,
-		keys[bridgetypes.StoreKey],
-		app.BankKeeper,
-	)
-
 	app.MarketMapKeeper = *marketmapkeeper.NewKeeper(
 		runtime.NewKVStoreService(keys[marketmaptypes.StoreKey]),
 		appCodec,
@@ -422,6 +416,13 @@ func NewMezo(
 		&app.ConsensusParamsKeeper,
 		tracer,
 		app.GetSubspace(evmtypes.ModuleName),
+	)
+
+	app.BridgeKeeper = bridgekeeper.NewKeeper(
+		appCodec,
+		keys[bridgetypes.StoreKey],
+		app.BankKeeper,
+		app.EvmKeeper,
 	)
 
 	precompiles, err := customEvmPrecompiles(
@@ -456,7 +457,7 @@ func NewMezo(
 		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
-		bridge.NewAppModule(app.BridgeKeeper),
+		bridge.NewAppModule(app.BridgeKeeper, app.AccountKeeper),
 		marketmap.NewAppModule(appCodec, &app.MarketMapKeeper),
 		oracle.NewAppModule(appCodec, app.OracleKeeper),
 	)
