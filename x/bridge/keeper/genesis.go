@@ -26,6 +26,11 @@ func (k Keeper) InitGenesis(
 	k.setAssetsLockedSequenceTip(ctx, genState.AssetsLockedSequenceTip)
 	k.setSourceBTCToken(ctx, evmtypes.HexAddressToBytes(genState.SourceBtcToken))
 	k.setERC20TokensMappings(ctx, genState.Erc20TokensMappings)
+
+	err = k.IncreaseCoinsMinted(ctx, sdk.NewCoin(evmtypes.DefaultEVMDenom, genState.InitialBtcSupply))
+	if err != nil {
+		panic(errorsmod.Wrapf(err, "error setting params"))
+	}
 }
 
 // ExportGenesis returns the module's exported genesis
@@ -35,5 +40,6 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		AssetsLockedSequenceTip: k.GetAssetsLockedSequenceTip(ctx),
 		SourceBtcToken:          evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx)),
 		Erc20TokensMappings:     k.GetERC20TokensMappings(ctx),
+		InitialBtcSupply:        k.GetCoinsMinted(ctx, evmtypes.DefaultEVMDenom).Amount,
 	}
 }

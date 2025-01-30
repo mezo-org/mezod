@@ -27,4 +27,11 @@ message GenesisState {
   // erc20_tokens_mappings is the list of ERC20 token mappings supported by the
   // bridge.
   repeated ERC20TokenMapping erc20_tokens_mappings = 4;
+
+  // initial_btc_supply is the BTC supply minted by the network
+  // at genesis.
+  string initial_btc_supply = 5 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
 }

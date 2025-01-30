@@ -32,6 +32,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 
+	"cosmossdk.io/math"
 	sdkmath "cosmossdk.io/math"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -59,6 +60,7 @@ import (
 	srvflags "github.com/mezo-org/mezod/server/flags"
 
 	mezotypes "github.com/mezo-org/mezod/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
@@ -246,8 +248,9 @@ func initTestnetFiles(
 	}
 
 	var (
-		genAccounts []authtypes.GenesisAccount
-		genBalances []banktypes.Balance
+		genAccounts        []authtypes.GenesisAccount
+		genBalances        []banktypes.Balance
+		totalBalanceMinted = math.NewInt(0)
 	)
 
 	genFiles := make([]string, args.numValidators)
@@ -337,6 +340,7 @@ func initTestnetFiles(
 		}
 
 		balance, _ := sdkmath.NewIntFromString("100000000000000000000000000")
+		totalBalanceMinted = totalBalanceMinted.Add(balance)
 		coins := sdk.NewCoins(sdk.NewCoin(cmdcfg.BaseDenom, balance))
 
 		genBalances = append(
@@ -407,6 +411,7 @@ func initTestnetFiles(
 		validators,
 		args.assetsLockedSequenceTip,
 		args.sourceBtcToken,
+		totalBalanceMinted,
 	); err != nil {
 		return err
 	}
@@ -427,6 +432,7 @@ func initGenesisFiles(
 	validators []poatypes.Validator,
 	assetsLockedSequenceTip string,
 	sourceBtcToken string,
+	totalBalanceMinted math.Int,
 ) error {
 	appGenState := mbm.DefaultGenesis(clientCtx.Codec)
 	// set the accounts in the genesis state
@@ -445,6 +451,13 @@ func initGenesisFiles(
 	clientCtx.Codec.MustUnmarshalJSON(appGenState[banktypes.ModuleName], &bankGenState)
 	bankGenState.Balances = genBalances
 	appGenState[banktypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&bankGenState)
+
+	// set total balance minted in the bridge in the genesis state
+	var bridgeGenState bridgetypes.GenesisState
+	clientCtx.Codec.MustUnmarshalJSON(
+		appGenState[bridgetypes.ModuleName], &bridgeGenState)
+	bridgeGenState.InitialBtcSupply = totalBalanceMinted
+	appGenState[bridgetypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&bridgeGenState)
 
 	var crisisGenState crisistypes.GenesisState
 	clientCtx.Codec.MustUnmarshalJSON(appGenState[crisistypes.ModuleName], &crisisGenState)

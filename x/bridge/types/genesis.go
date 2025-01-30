@@ -19,6 +19,7 @@ func DefaultGenesis() *GenesisState {
 		AssetsLockedSequenceTip: sdkmath.NewInt(0),
 		SourceBtcToken:          "",
 		Erc20TokensMappings:     nil,
+		InitialBtcSupply:        sdkmath.NewInt(0),
 	}
 }
 
