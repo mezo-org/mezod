@@ -2,6 +2,7 @@ package assetsbridge
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
@@ -315,15 +316,30 @@ func (m *GetERC20TokenMappingMethod) Run(
 		return nil, fmt.Errorf("source token must be common.Address")
 	}
 
+	type mappingDescriptor struct {
+		SourceToken common.Address
+		MezoToken   common.Address
+	}
+
 	mapping, exists := m.bridgeKeeper.GetERC20TokenMapping(
 		context.SdkCtx(),
 		sourceToken.Hex(),
 	)
 	if !exists {
-		return precompile.MethodOutputs{common.Address{}, common.Address{}}, nil
+		return precompile.MethodOutputs{
+			mappingDescriptor{
+				SourceToken: common.Address{},
+				MezoToken:   common.Address{},
+			},
+		}, nil
 	}
 
-	return precompile.MethodOutputs{mapping.SourceToken, mapping.MezoToken}, nil
+	return precompile.MethodOutputs{
+		mappingDescriptor{
+			SourceToken: common.HexToAddress(mapping.SourceToken),
+			MezoToken:   common.HexToAddress(mapping.MezoToken),
+		},
+	}, nil
 }
 
 // GetERC20TokensMappingsMethodName is the name of the getERC20TokensMappings method.
@@ -429,5 +445,5 @@ func (m *GetMaxERC20TokensMappingsMethod) Run(
 
 	params := m.bridgeKeeper.GetParams(context.SdkCtx())
 
-	return precompile.MethodOutputs{params.MaxErc20TokensMappings}, nil
+	return precompile.MethodOutputs{big.NewInt(int64(params.MaxErc20TokensMappings))}, nil
 }
