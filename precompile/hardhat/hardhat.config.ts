@@ -8,6 +8,7 @@ import './tasks/util'
 import './tasks/maintenance'
 import './tasks/upgrade'
 import './tasks/priceoracle'
+import './tasks/assetsbridge'
 import fs from 'fs'
 import path from 'path'
 
