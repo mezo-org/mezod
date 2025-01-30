@@ -123,7 +123,7 @@ func (k Keeper) AcceptAssetsLocked(
 			err = k.mintERC20(
 				ctx,
 				recipient,
-				mapping.MezoToken,
+				mapping.MezoTokenBytes(),
 				event.Amount,
 			)
 			if err != nil {
@@ -185,15 +185,13 @@ func (k Keeper) mintBTC(
 func (k Keeper) mintERC20(
 	ctx sdk.Context,
 	recipient sdk.AccAddress,
-	token string,
+	token []byte,
 	amount math.Int,
 ) error {
-	from := evmtypes.BytesToHexAddress(authtypes.NewModuleAddress(types.ModuleName).Bytes())
-
 	call, err := evmtypes.NewERC20MintCall(
-		from,
+		authtypes.NewModuleAddress(types.ModuleName).Bytes(),
 		token,
-		evmtypes.BytesToHexAddress(recipient.Bytes()),
+		recipient.Bytes(),
 		amount.BigInt(),
 	)
 	if err != nil {

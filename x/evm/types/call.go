@@ -34,7 +34,7 @@ type ERC20MintCall struct {
 }
 
 // NewERC20MintCall creates a new ERC20MintCall.
-func NewERC20MintCall(from, to, recipient string, amount *big.Int) (*ERC20MintCall, error) {
+func NewERC20MintCall(from, to, recipient []byte, amount *big.Int) (*ERC20MintCall, error) {
 	addressType, err := abi.NewType("address", "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create address type: %w", err)
@@ -61,14 +61,14 @@ func NewERC20MintCall(from, to, recipient string, amount *big.Int) (*ERC20MintCa
 		},
 	}
 
-	data, err := contractAbi.Pack("mint", common.HexToAddress(recipient), amount)
+	data, err := contractAbi.Pack("mint", common.BytesToAddress(recipient), amount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pack mint data: %w", err)
 	}
 
 	return &ERC20MintCall{
-		from: common.HexToAddress(from),
-		to:   common.HexToAddress(to),
+		from: common.BytesToAddress(from),
+		to:   common.BytesToAddress(to),
 		data: data,
 	}, nil
 }
