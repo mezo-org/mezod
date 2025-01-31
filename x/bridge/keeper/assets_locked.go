@@ -177,7 +177,7 @@ func (k Keeper) mintBTC(
 		return fmt.Errorf("failed to send coins: %w", err)
 	}
 
-	k.IncreaseCoinsMinted(ctx, sdk.NewCoin(evmtypes.DefaultEVMDenom, amount))
+	k.IncreaseBTCsMinted(ctx, amount)
 
 	return nil
 }

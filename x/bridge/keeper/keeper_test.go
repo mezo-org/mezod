@@ -72,6 +72,22 @@ func (mbk *mockBankKeeper) MintCoins(
 	return args.Error(0)
 }
 
+func (mbk *mockBankKeeper) GetSupply(
+	ctx context.Context,
+	denom string,
+) sdk.Coin {
+	args := mbk.Called(ctx, denom)
+
+	var ret sdk.Coin
+	if rf, ok := args.Get(0).(func(context.Context, string) sdk.Coin); ok {
+		ret = rf(ctx, denom)
+	} else {
+		ret = args.Get(0).(sdk.Coin)
+	}
+
+	return ret
+}
+
 func (mbk *mockBankKeeper) SendCoinsFromModuleToAccount(
 	ctx context.Context,
 	senderModule string,

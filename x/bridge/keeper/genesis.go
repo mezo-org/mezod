@@ -4,7 +4,6 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
-	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // InitGenesis initializes the module's state from a provided genesis state.
@@ -27,7 +26,7 @@ func (k Keeper) InitGenesis(
 	k.setSourceBTCToken(ctx, evmtypes.HexAddressToBytes(genState.SourceBtcToken))
 	k.setERC20TokensMappings(ctx, genState.Erc20TokensMappings)
 
-	err = k.IncreaseCoinsMinted(ctx, sdk.NewCoin(evmtypes.DefaultEVMDenom, genState.InitialBtcSupply))
+	err = k.IncreaseBTCsMinted(ctx, genState.InitialBtcSupply)
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting params"))
 	}
@@ -41,5 +40,6 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		SourceBtcToken:          evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx)),
 		Erc20TokensMappings:     k.GetERC20TokensMappings(ctx),
 		InitialBtcSupply:        k.GetCoinsMinted(ctx, evmtypes.DefaultEVMDenom).Amount,
+		InitialBtcSupply:        k.GetBTCsMinted(ctx),
 	}
 }

@@ -39,18 +39,18 @@ func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
 
 	var (
 		totalSupply = k.bankKeeper.GetSupply(ctx, evmtypes.DefaultEVMDenom)
-		totalMinted = k.GetCoinsMinted(sdkCtx, evmtypes.DefaultEVMDenom)
-		totalBurnt  = k.GetCoinsBurnt(sdkCtx, evmtypes.DefaultEVMDenom)
+		totalMinted = k.GetBTCsMinted(sdkCtx)
+		totalBurnt  = k.GetBTCsBurnt(sdkCtx)
 	)
 
-	if !totalSupply.IsEqual(totalMinted.Sub(totalBurnt)) {
+	if !totalSupply.Amount.Equal(totalMinted.Sub(totalBurnt)) {
 		return fmt.Errorf(
 			"invalid asset supply x/bank = %v, total minted = %v, total burnt = %v",
 			totalSupply, totalMinted, totalBurnt,
 		)
 	}
 
-	k.Logger(sdkCtx).Info("safe BTC supply state",
+	k.Logger(sdkCtx).Debug("safe BTC supply state",
 		"totalSupply", totalSupply.String(),
 		"totalMinted", totalMinted.String(),
 		"totalBurnt", totalBurnt.String(),

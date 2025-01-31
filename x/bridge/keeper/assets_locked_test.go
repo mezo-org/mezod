@@ -380,7 +380,6 @@ func TestAcceptAssetsLocked(t *testing.T) {
 			postCheckFn: func(ctx sdk.Context, k Keeper) {
 				k.bankKeeper.(*mockBankKeeper).AssertExpectations(t)
 				k.evmKeeper.(*mockEvmKeeper).AssertExpectations(t)
-
 				require.EqualValues(
 					t,
 					math.NewInt(14),
