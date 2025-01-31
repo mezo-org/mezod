@@ -1,6 +1,28 @@
 package types
 
-import "github.com/cosmos/cosmos-sdk/codec"
+import (
+	"github.com/cosmos/cosmos-sdk/codec"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+)
+
+func NewERC20TokenMapping(
+	sourceToken, mezoToken []byte,
+) *ERC20TokenMapping {
+	return &ERC20TokenMapping{
+		SourceToken: evmtypes.BytesToHexAddress(sourceToken),
+		MezoToken:   evmtypes.BytesToHexAddress(mezoToken),
+	}
+}
+
+// SourceTokenBytes returns the source token EVM address as bytes.
+func (m *ERC20TokenMapping) SourceTokenBytes() []byte {
+	return evmtypes.HexAddressToBytes(m.SourceToken)
+}
+
+// MezoTokenBytes returns the Mezo token EVM address as bytes.
+func (m *ERC20TokenMapping) MezoTokenBytes() []byte {
+	return evmtypes.HexAddressToBytes(m.MezoToken)
+}
 
 // MustMarshalERC20TokenMapping marshals an ERC20TokenMapping to bytes.
 // It panics on error.

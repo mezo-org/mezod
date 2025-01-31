@@ -495,6 +495,13 @@ localnet-docker-show-logstream:
 
 LOCALNET_DIR = .localnet
 LOCALNET_CHAIN_ID = mezo_31611-10
+# LOCALNET_ASSETS_LOCKED_SEQUENCE_TIP is set to the sequence tip the
+# MezoBridge contract on Sepolia was initialized with. This ensures the
+# localnet can start bridging from the first AssetLocked event emitted
+# by the MezoBridge contract.
+LOCALNET_ASSETS_LOCKED_SEQUENCE_TIP = 21061
+# LOCALNET_SOURCE_BTC_TOKEN is the TBTC on Ethereum Sepolia.
+LOCALNET_SOURCE_BTC_TOKEN = 0x517f2982701695D4E52f1ECFBEf3ba31Df470161
 
 localnet-bin-init:
 	@if ! [ -d build ]; then \
@@ -509,7 +516,9 @@ localnet-bin-init:
 		--home $(LOCALNET_DIR) \
 		--keyring-backend=test \
 		--starting-ip-address localhost \
-		--chain-id $(LOCALNET_CHAIN_ID); \
+		--chain-id $(LOCALNET_CHAIN_ID) \
+		--assets-locked-sequence-tip=$(LOCALNET_ASSETS_LOCKED_SEQUENCE_TIP) \
+		--source-btc-token=$(LOCALNET_SOURCE_BTC_TOKEN); \
 	else \
 		echo "Skipped initializing localnet configuration."; \
 	fi

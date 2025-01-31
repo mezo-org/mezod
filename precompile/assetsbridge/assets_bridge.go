@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -20,8 +23,34 @@ var filesystem embed.FS
 const EvmAddress = evmtypes.AssetsBridgePrecompileAddress
 
 // NewPrecompileVersionMap creates a new version map for the assets bridge precompile.
-func NewPrecompileVersionMap() (*precompile.VersionMap, error) {
-	contractV1, err := NewPrecompile()
+func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
+	*precompile.VersionMap,
+	error,
+) {
+	// v1 is just BTC observability.
+	contractV1, err := NewPrecompile(
+		poaKeeper,
+		bridgeKeeper,
+		&Settings{
+			Observability:   true,
+			BTCManagement:   false,
+			ERC20Management: false,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// v2 is BTC observability, BTC management, and ERC20 management.
+	contractV2, err := NewPrecompile(
+		poaKeeper,
+		bridgeKeeper,
+		&Settings{
+			Observability:   true,
+			BTCManagement:   true,
+			ERC20Management: true,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -29,13 +58,24 @@ func NewPrecompileVersionMap() (*precompile.VersionMap, error) {
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
-			evmtypes.AssetsBridgePrecompileLatestVersion: contractV1,
+			1: contractV1,
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV2,
 		},
 	), nil
 }
 
+type Settings struct {
+	Observability   bool // enable methods related to the bridge observability
+	BTCManagement   bool // enable methods related to the BTC bridging management
+	ERC20Management bool // enable methods related to the ERC20 bridging management
+}
+
 // NewPrecompile creates a new Assets Bridge precompile.
-func NewPrecompile() (*precompile.Contract, error) {
+func NewPrecompile(
+	poaKeeper PoaKeeper,
+	bridgeKeeper BridgeKeeper,
+	settings *Settings,
+) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
@@ -47,7 +87,25 @@ func NewPrecompile() (*precompile.Contract, error) {
 		EvmByteCode,
 	)
 
-	contract.RegisterMethods(newBridgeMethod())
+	var methods []precompile.Method
+
+	if settings.Observability {
+		methods = append(methods, newBridgeMethod())
+	}
+
+	if settings.BTCManagement {
+		methods = append(methods, newGetSourceBTCTokenMethod(bridgeKeeper))
+	}
+
+	if settings.ERC20Management {
+		methods = append(methods, newCreateERC20TokenMappingMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newDeleteERC20TokenMappingMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetERC20TokenMappingMethod(bridgeKeeper))
+		methods = append(methods, newGetERC20TokensMappingsMethod(bridgeKeeper))
+		methods = append(methods, newGetMaxERC20TokensMappingsMethod(bridgeKeeper))
+	}
+
+	contract.RegisterMethods(methods...)
 
 	return contract, nil
 }
@@ -73,4 +131,17 @@ func PackEventsToInput(events []AssetsLockedEvent) ([]byte, error) {
 	}
 
 	return packedData, nil
+}
+
+type PoaKeeper interface {
+	CheckOwner(ctx sdk.Context, sender sdk.AccAddress) error
+}
+
+type BridgeKeeper interface {
+	GetSourceBTCToken(ctx sdk.Context) []byte
+	CreateERC20TokenMapping(ctx sdk.Context, sourceToken, mezoToken []byte) error
+	DeleteERC20TokenMapping(ctx sdk.Context, sourceToken []byte) error
+	GetERC20TokensMappings(ctx sdk.Context) []*bridgetypes.ERC20TokenMapping
+	GetERC20TokenMapping(ctx sdk.Context, sourceToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
+	GetParams(ctx sdk.Context) bridgetypes.Params
 }

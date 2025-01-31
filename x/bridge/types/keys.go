@@ -1,7 +1,5 @@
 package types
 
-import evmtypes "github.com/mezo-org/mezod/x/evm/types"
-
 const (
 	// ModuleName defines the module name
 	ModuleName = "bridge"
@@ -37,7 +35,6 @@ var (
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
 // corresponding source token address.
-func GetERC20TokenMappingKey(sourceERC20Token string) []byte {
-	sourceERC20TokenBytes := evmtypes.HexAddressToBytes(sourceERC20Token)
-	return append(ERC20TokenMappingKeyPrefix, sourceERC20TokenBytes...)
+func GetERC20TokenMappingKey(sourceERC20Token []byte) []byte {
+	return append(ERC20TokenMappingKeyPrefix, sourceERC20Token...)
 }

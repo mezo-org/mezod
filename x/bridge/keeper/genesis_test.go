@@ -12,7 +12,7 @@ func TestGenesis(t *testing.T) {
 
 	genesisState := types.DefaultGenesis()
 
-	k.InitGenesis(ctx, *genesisState)
+	k.InitGenesis(ctx, *genesisState, nil)
 
 	got := k.ExportGenesis(ctx)
 
