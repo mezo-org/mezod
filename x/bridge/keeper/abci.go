@@ -60,13 +60,13 @@ func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
 }
 
 // verifyBridgeSequenceTip ...
-func (k *Keeper) verifyBridgeSequenceTip(ctx context.Context) error {
+func (k *Keeper) verifyBridgeSequenceTip(_ context.Context) error {
 	/* todo */
 	return nil
 }
 
 // verifyERC20Supply ...
-func (k *Keeper) verifyERC20Supply(ctx context.Context) error {
+func (k *Keeper) verifyERC20Supply(_ context.Context) error {
 	/* todo */
 	return nil
 }

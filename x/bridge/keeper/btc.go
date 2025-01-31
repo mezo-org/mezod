@@ -97,7 +97,7 @@ func (k Keeper) IncreaseBTCsBurnt(ctx sdk.Context, amount math.Int) error {
 // should have they amount burn and minted tracked at all time, however this was
 // introduce only in a later upgrade. This will be call as soon as the first EndBlock call
 // for the execution of the first block after the upgrade, if the keeper didn't have a
-// storage slot for this coin specifically, and then initialise it with the current total
+// storage slot for this coin specifically, and then initialize it with the current total
 // supply known by the x/bank module.
 func (k Keeper) applyBTCStorageMigration(ctx sdk.Context) math.Int {
 	supply := k.bankKeeper.GetSupply(ctx, evmtypes.DefaultEVMDenom)
@@ -106,7 +106,7 @@ func (k Keeper) applyBTCStorageMigration(ctx sdk.Context) math.Int {
 		// then we upgrade the store with the current
 		// know supply
 		if err := k.IncreaseBTCsMinted(ctx, supply.Amount); err != nil {
-			panic(fmt.Sprintf("unable to migrate storage on the 1st block of an upgrade"))
+			panic(fmt.Sprintf("unable to migrate storage on the 1st block of an upgrade: %v", err))
 		}
 	}
 

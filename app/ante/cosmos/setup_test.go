@@ -128,6 +128,7 @@ func (suite *AnteTestSuite) SetupTest() {
 	err = testutil.FundAccount(
 		suite.ctx,
 		suite.app.BankKeeper,
+		suite.app.BridgeKeeper,
 		suite.priv.PubKey().Address().Bytes(),
 		sdk.NewCoins(sdk.NewCoin(utils.BaseDenom, amt)),
 	)

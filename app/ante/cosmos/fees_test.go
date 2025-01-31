@@ -158,7 +158,7 @@ func (suite *AnteTestSuite) TestDeductFeeDecorator() {
 
 			// prepare the testcase
 			var err error
-			err = testutil.PrepareAccount(suite.ctx, suite.app.AccountKeeper, suite.app.BankKeeper, addr, tc.balance)
+			err = testutil.PrepareAccount(suite.ctx, suite.app.AccountKeeper, suite.app.BankKeeper, suite.app.BridgeKeeper, addr, tc.balance)
 			suite.Require().NoError(err, "failed to prepare account")
 
 			// Create an arbitrary message for testing purposes

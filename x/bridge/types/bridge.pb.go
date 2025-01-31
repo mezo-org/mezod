@@ -157,6 +157,7 @@ func (m *ERC20TokenMapping) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 =======
 // BalanceStorage represent an asset balance stored in the bridge state
 type BalanceStorage struct {
+	// amount is amount save in this given storage slot.
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
 }
 

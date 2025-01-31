@@ -47,6 +47,7 @@ message ERC20TokenMapping {
 
 // BalanceStorage represent an asset balance stored in the bridge state
 message BalanceStorage {
+  // amount is amount save in this given storage slot.
   string amount = 1 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false

@@ -32,7 +32,6 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 
-	"cosmossdk.io/math"
 	sdkmath "cosmossdk.io/math"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -250,7 +249,7 @@ func initTestnetFiles(
 	var (
 		genAccounts        []authtypes.GenesisAccount
 		genBalances        []banktypes.Balance
-		totalBalanceMinted = math.NewInt(0)
+		totalBalanceMinted = sdkmath.NewInt(0)
 	)
 
 	genFiles := make([]string, args.numValidators)
@@ -432,7 +431,7 @@ func initGenesisFiles(
 	validators []poatypes.Validator,
 	assetsLockedSequenceTip string,
 	sourceBtcToken string,
-	totalBalanceMinted math.Int,
+	totalBalanceMinted sdkmath.Int,
 ) error {
 	appGenState := mbm.DefaultGenesis(clientCtx.Codec)
 	// set the accounts in the genesis state
