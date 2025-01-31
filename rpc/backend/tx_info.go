@@ -151,6 +151,7 @@ func (b *Backend) getPseudoTransaction(
 			SequenceNumber: event.Sequence.BigInt(),
 			Recipient:      recipient,
 			Amount:         event.Amount.BigInt(),
+			Token:          common.HexToAddress(event.Token),
 		})
 	}
 
