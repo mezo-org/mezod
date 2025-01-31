@@ -66,6 +66,12 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	OWNER=$(mezod keys show "${KEYS[0]}" --address --bech acc --keyring-backend $KEYRING --home "$HOMEDIR")
 	jq '.app_state["poa"]["owner"]="'"$OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
+	# Set the required x/bridge parameters.
+	# A single node cannot bridge anyway (both bridge and non-bridge validators
+	# are required). We set the source_btc_token to 0x0 just to bypass the check
+	# in the bridge module genesis validation.
+	jq '.app_state["bridge"]["source_btc_token"]="'"0x0000000000000000000000000000000000000000"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+
 	# Change parameter token denominations to abtc
 	jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 	jq '.app_state["evm"]["params"]["evm_denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
