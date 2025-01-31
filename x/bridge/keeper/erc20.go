@@ -84,6 +84,10 @@ func (k Keeper) CreateERC20TokenMapping(
 		return types.ErrMaxMappingsReached
 	}
 
+	if !k.evmKeeper.IsContract(ctx, mapping.MezoTokenBytes()) {
+		return sdkerrors.Wrap(types.ErrTokenNotContract, "mezo token")
+	}
+
 	k.setERC20TokenMapping(ctx, mapping)
 
 	return nil

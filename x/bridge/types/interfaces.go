@@ -50,6 +50,9 @@ type EvmKeeper interface {
 		ctx sdk.Context,
 		call types.ContractCall,
 	) (*types.MsgEthereumTxResponse, error)
+
+	// IsContract returns if the account contains contract code.
+	IsContract(ctx sdk.Context, address []byte) bool
 }
 
 // AccountKeeper is an interface to the x/auth module keeper.
