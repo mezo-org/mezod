@@ -58,7 +58,8 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
-	} // TODO: Add some token address to events used in unit tests.
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
+	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 	blockWithPseudoTx := &types.Block{Header: types.Header{Height: 1, ChainID: "test"}, Data: types.Data{Txs: []types.Tx{*pseudoTx}}}
@@ -359,6 +360,7 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockAndIndex() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -487,6 +489,7 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -619,6 +622,7 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -779,6 +783,7 @@ func (suite *BackendTestSuite) TestGetPseudoTransactionResult() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
@@ -898,6 +903,7 @@ func buildRPCPseudoTx(
 				SequenceNumber: event.Sequence.BigInt(),
 				Recipient:      recipient,
 				Amount:         event.Amount.BigInt(),
+				Token:          common.HexToAddress(event.Token),
 			},
 		},
 	)
@@ -958,6 +964,7 @@ func buildPseudoTxTrace(
 				SequenceNumber: event.Sequence.BigInt(),
 				Recipient:      recipient,
 				Amount:         event.Amount.BigInt(),
+				Token:          common.HexToAddress(event.Token),
 			},
 		},
 	)

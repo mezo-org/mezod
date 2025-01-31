@@ -379,6 +379,7 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByHash() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -482,6 +483,7 @@ func (suite *BackendTestSuite) TestGetBlockTransactionCountByNumber() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -1185,6 +1187,7 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint_PsuedoTx() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
