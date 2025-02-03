@@ -54,4 +54,3 @@ func (mak *mockAccountKeeper) GetModuleAccount(
 
 	return nil
 }
-

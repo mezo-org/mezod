@@ -259,4 +259,3 @@ func (k *FakeBridgeKeeper) GetERC20TokenMapping(
 func (k *FakeBridgeKeeper) GetParams(_ sdk.Context) bridgetypes.Params {
 	return bridgetypes.DefaultParams()
 }
-
