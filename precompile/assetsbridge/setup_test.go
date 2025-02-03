@@ -240,7 +240,7 @@ func (k *FakeBridgeKeeper) GetERC20TokensMappings(_ sdk.Context) []*bridgetypes.
 }
 
 func (k *FakeBridgeKeeper) GetERC20TokenMapping(
-	ctx sdk.Context,
+	_ sdk.Context,
 	sourceToken []byte,
 ) (*bridgetypes.ERC20TokenMapping, bool) {
 	index := slices.IndexFunc(
