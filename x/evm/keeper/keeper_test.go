@@ -196,3 +196,36 @@ func (suite *KeeperTestSuite) TestCustomPrecompileGenesisAccounts() {
 	suite.Require().Equal(accounts[4].Address, "0x7b7c000000000000000000000000000000000014")
 	suite.Require().Equal(accounts[5].Address, "0x7b7c000000000000000000000000000000000015")
 }
+
+func (suite *KeeperTestSuite) TestIsContract() {
+	contract := suite.DeployTestContract(suite.T(), suite.address, big.NewInt(0))
+
+	testCases := []struct {
+		name           string
+		address        common.Address
+		expectedResult bool
+	}{
+		{
+			"non-existing account",
+			common.Address{},
+			false,
+		},
+		{
+			"existing account",
+			common.HexToAddress("0x4ccA899acA68EC4E04408f5A582456D4165e7A8e"),
+			false,
+		},
+		{
+			"existing contract",
+			contract,
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			result := suite.app.EvmKeeper.IsContract(suite.ctx, tc.address.Bytes())
+			suite.Require().Equal(tc.expectedResult, result)
+		})
+	}
+}

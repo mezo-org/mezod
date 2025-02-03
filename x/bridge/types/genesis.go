@@ -18,7 +18,7 @@ func DefaultGenesis() *GenesisState {
 		Params:                  DefaultParams(),
 		AssetsLockedSequenceTip: sdkmath.NewInt(0),
 		SourceBtcToken:          "",
-		Erc20TokensMappings:     []*ERC20TokenMapping{},
+		Erc20TokensMappings:     nil,
 	}
 }
 
@@ -45,9 +45,23 @@ func (gs GenesisState) Validate() error {
 	}
 
 	for i, mapping := range gs.Erc20TokensMappings {
+		if len(mapping.SourceToken) == 0 {
+			return fmt.Errorf(
+				"source token of ERC20 mapping %d cannot be empty",
+				i,
+			)
+		}
+
 		if !evmtypes.IsHexAddress(mapping.SourceToken) {
 			return fmt.Errorf(
 				"source token of ERC20 mapping %d must be a valid hex-encoded EVM address",
+				i,
+			)
+		}
+
+		if len(mapping.MezoToken) == 0 {
+			return fmt.Errorf(
+				"mezo token of ERC20 mapping %d cannot be empty",
 				i,
 			)
 		}

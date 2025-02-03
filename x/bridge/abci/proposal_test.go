@@ -29,6 +29,8 @@ const (
 	recipient4 = "mezo1j0ghx6d9kmerxhgn5ahr2nahs6yfulea4te22c"
 	recipient5 = "mezo120mkxfvkx2t72quddqh92md2dp7csq4wgqux06"
 	recipient6 = "mezo1dmr6mhh352vh9wa34xs0qxtr8thkqu39pw6x2p"
+	//nolint:gosec
+	token = "0x517f2982701695D4E52f1ECFBEf3ba31Df470161"
 )
 
 func TestProposalHandlerTestSuite(t *testing.T) {
@@ -149,9 +151,9 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
 					// First event starts at 202 while the tip is 200.
-					mockEvent(202, recipient1, 100),
-					mockEvent(203, recipient2, 200),
-					mockEvent(204, recipient3, 300),
+					mockEvent(202, recipient1, 100, token),
+					mockEvent(203, recipient2, 200, token),
+					mockEvent(204, recipient3, 300, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -187,9 +189,9 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			reqTxs: txsVector("tx1", "tx2"),
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -201,9 +203,9 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 			expectedInjectedTxFn: func(extCommitInfo []byte) *types.InjectedTx {
 				return &types.InjectedTx{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(201, recipient1, 100),
-						mockEvent(202, recipient2, 200),
-						mockEvent(203, recipient3, 300),
+						mockEvent(201, recipient1, 100, token),
+						mockEvent(202, recipient2, 200, token),
+						mockEvent(203, recipient3, 300, token),
 					},
 					ExtendedCommitInfo: extCommitInfo,
 				}
@@ -395,7 +397,7 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 						marshalInjectedTx(
 							types.InjectedTx{
 								AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-									mockEvent(201, recipient1, 100),
+									mockEvent(201, recipient1, 100, token),
 								},
 								ExtendedCommitInfo: []byte("corrupted"),
 							},
@@ -421,7 +423,7 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 						marshalInjectedTx(
 							types.InjectedTx{
 								AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-									mockEvent(201, recipient1, 100),
+									mockEvent(201, recipient1, 100, token),
 								},
 								ExtendedCommitInfo: marshalExtCommitInfo(
 									cmtabci.ExtendedCommitInfo{
@@ -461,7 +463,7 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 						marshalInjectedTx(
 							types.InjectedTx{
 								AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-									mockEvent(201, recipient1, 100),
+									mockEvent(201, recipient1, 100, token),
 								},
 								ExtendedCommitInfo: marshalExtCommitInfo(
 									cmtabci.ExtendedCommitInfo{
@@ -506,7 +508,7 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 						marshalInjectedTx(
 							types.InjectedTx{
 								AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-									mockEvent(201, recipient1, 100),
+									mockEvent(201, recipient1, 100, token),
 								},
 								ExtendedCommitInfo: marshalExtCommitInfo(
 									cmtabci.ExtendedCommitInfo{
@@ -522,6 +524,7 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 													201,
 													recipient1,
 													1000, // Different amount.
+													token,
 												),
 											),
 										},
@@ -562,9 +565,9 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 				// The injected tx sequence starts at 202 while the tip is 200.
 				// It should be 201 to be valid.
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(202, recipient1, 100),
-					mockEvent(203, recipient2, 200),
-					mockEvent(204, recipient3, 300),
+					mockEvent(202, recipient1, 100, token),
+					mockEvent(203, recipient2, 200, token),
+					mockEvent(204, recipient3, 300, token),
 				}
 
 				return append(
@@ -620,9 +623,9 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			},
 			reqTxsFn: func() [][]byte {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				return append(
@@ -788,9 +791,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -805,9 +808,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 				}
 			},
 			expectedEvents: bridgetypes.AssetsLockedEvents{
-				mockEvent(201, recipient1, 100),
-				mockEvent(202, recipient2, 200),
-				mockEvent(203, recipient3, 300),
+				mockEvent(201, recipient1, 100, token),
+				mockEvent(202, recipient2, 200, token),
+				mockEvent(203, recipient3, 300, token),
 			},
 			errContains: "",
 		},
@@ -820,17 +823,17 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				// Events the super-majority of validators are voting on.
 				eventsSm := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Events the minority of validators are voting on. They
 				// differ in the sequence numbers.
 				eventsNonSm := []bridgetypes.AssetsLockedEvent{
-					mockEvent(204, recipient1, 100),
-					mockEvent(205, recipient2, 200),
-					mockEvent(206, recipient3, 300),
+					mockEvent(204, recipient1, 100, token),
+					mockEvent(205, recipient2, 200, token),
+					mockEvent(206, recipient3, 300, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -845,9 +848,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 				}
 			},
 			expectedEvents: bridgetypes.AssetsLockedEvents{
-				mockEvent(201, recipient1, 100),
-				mockEvent(202, recipient2, 200),
-				mockEvent(203, recipient3, 300),
+				mockEvent(201, recipient1, 100, token),
+				mockEvent(202, recipient2, 200, token),
+				mockEvent(203, recipient3, 300, token),
 			},
 
 			errContains: "",
@@ -861,17 +864,17 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				// Events the super-majority of validators are voting on.
 				eventsSm := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Events the minority of validators are voting on. They
 				// differ in the recipient address.
 				eventsNonSm := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient4, 100),
-					mockEvent(202, recipient5, 200),
-					mockEvent(203, recipient6, 300),
+					mockEvent(201, recipient4, 100, token),
+					mockEvent(202, recipient5, 200, token),
+					mockEvent(203, recipient6, 300, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -886,9 +889,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 				}
 			},
 			expectedEvents: bridgetypes.AssetsLockedEvents{
-				mockEvent(201, recipient1, 100),
-				mockEvent(202, recipient2, 200),
-				mockEvent(203, recipient3, 300),
+				mockEvent(201, recipient1, 100, token),
+				mockEvent(202, recipient2, 200, token),
+				mockEvent(203, recipient3, 300, token),
 			},
 			errContains: "",
 		},
@@ -901,17 +904,17 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				// Events the super-majority of validators are voting on.
 				eventsSm := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Events the minority of validators are voting on. They
 				// differ in the amount of locked assets.
 				eventsNonSm := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
-					mockEvent(202, recipient2, 2000),
-					mockEvent(203, recipient3, 3000),
+					mockEvent(201, recipient1, 1000, token),
+					mockEvent(202, recipient2, 2000, token),
+					mockEvent(203, recipient3, 3000, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -926,9 +929,52 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 				}
 			},
 			expectedEvents: bridgetypes.AssetsLockedEvents{
-				mockEvent(201, recipient1, 100),
-				mockEvent(202, recipient2, 200),
-				mockEvent(203, recipient3, 300),
+				mockEvent(201, recipient1, 100, token),
+				mockEvent(202, recipient2, 200, token),
+				mockEvent(203, recipient3, 300, token),
+			},
+			errContains: "",
+		},
+		{
+			name:     "proper canonical sequence - some votes on different tokens",
+			valStore: newMockValidatorStore("val1Bridge", "val2Bridge", "val3Bridge", "val4Bridge"),
+			voteExtensionDecomposerFn: func() *mockVoteExtensionDecomposer {
+				return newMockVoteExtensionDecomposer().withReturnInputMode()
+			},
+			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
+				// Events the super-majority of validators are voting on.
+				eventsSm := []bridgetypes.AssetsLockedEvent{
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
+				}
+
+				//nolint:gosec
+				otherToken := "0x9395499f006821Fc5E22979fafEecD9f5C70E173"
+
+				// Events the minority of validators are voting on. They
+				// differ in the token of locked assets.
+				eventsNonSm := []bridgetypes.AssetsLockedEvent{
+					mockEvent(201, recipient1, 100, otherToken),
+					mockEvent(202, recipient2, 200, otherToken),
+					mockEvent(203, recipient3, 300, otherToken),
+				}
+
+				return []cmtabci.ExtendedVoteInfo{
+					mockVoteExtension("val1Bridge", 100, tmproto.BlockIDFlagCommit, eventsSm...),
+					mockVoteExtension("val2Bridge", 100, tmproto.BlockIDFlagCommit, eventsSm...),
+					mockVoteExtension("val3Bridge", 100, tmproto.BlockIDFlagCommit, eventsSm...),
+					mockVoteExtension("val4Bridge", 100, tmproto.BlockIDFlagCommit, eventsNonSm...),
+					mockVoteExtension("val5NonBridge", 100, tmproto.BlockIDFlagCommit, eventsSm...),
+					mockVoteExtension("val6NonBridge", 100, tmproto.BlockIDFlagCommit, eventsSm...),
+					mockVoteExtension("val7NonBridge", 100, tmproto.BlockIDFlagCommit, eventsSm...),
+					mockVoteExtension("val8NonBridge", 100, tmproto.BlockIDFlagCommit, eventsNonSm...),
+				}
+			},
+			expectedEvents: bridgetypes.AssetsLockedEvents{
+				mockEvent(201, recipient1, 100, token),
+				mockEvent(202, recipient2, 200, token),
+				mockEvent(203, recipient3, 300, token),
 			},
 			errContains: "",
 		},
@@ -941,15 +987,15 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				// Events the super-majority of validators are voting on.
 				eventsSm := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Outliers are events that some of the validators are voting on
 				// but, they are not supported by the super-majority.
-				outlier1 := mockEvent(200, recipient4, 90)
-				outlier2 := mockEvent(204, recipient5, 400)
+				outlier1 := mockEvent(200, recipient4, 90, token)
+				outlier2 := mockEvent(204, recipient5, 400, token)
 
 				return []cmtabci.ExtendedVoteInfo{
 					mockVoteExtension("val1Bridge", 100, tmproto.BlockIDFlagCommit, append([]bridgetypes.AssetsLockedEvent{outlier1}, eventsSm...)...),
@@ -963,9 +1009,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 				}
 			},
 			expectedEvents: bridgetypes.AssetsLockedEvents{
-				mockEvent(201, recipient1, 100),
-				mockEvent(202, recipient2, 200),
-				mockEvent(203, recipient3, 300),
+				mockEvent(201, recipient1, 100, token),
+				mockEvent(202, recipient2, 200, token),
+				mockEvent(203, recipient3, 300, token),
 			},
 			errContains: "",
 		},
@@ -978,16 +1024,16 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				// Set of events the first half of validators are voting on.
 				events1 := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Set of events the second half of validators are voting on.
 				events2 := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient4, 1000),
-					mockEvent(202, recipient5, 2000),
-					mockEvent(203, recipient6, 3000),
+					mockEvent(201, recipient4, 1000, token),
+					mockEvent(202, recipient5, 2000, token),
+					mockEvent(203, recipient6, 3000, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -1012,9 +1058,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// val3Bridge and val4Bridge are not supporting the canonical
@@ -1041,9 +1087,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// val7NonBridge and val8NonBridge are not supporting the canonical
@@ -1070,9 +1116,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -1093,9 +1139,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				return []cmtabci.ExtendedVoteInfo{
@@ -1116,9 +1162,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1145,9 +1191,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1174,9 +1220,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1203,9 +1249,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1248,9 +1294,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1286,9 +1332,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1315,9 +1361,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1351,9 +1397,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1380,23 +1426,23 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				val1BridgeEvents := []bridgetypes.AssetsLockedEvent{
 					events[0],
 					events[1],
 					events[2],
-					mockEvent(204, recipient3, 300),
-					mockEvent(205, recipient3, 300),
-					mockEvent(206, recipient3, 300),
-					mockEvent(207, recipient3, 300),
-					mockEvent(208, recipient3, 300),
-					mockEvent(209, recipient3, 300),
-					mockEvent(210, recipient3, 300),
-					mockEvent(211, recipient3, 300),
+					mockEvent(204, recipient3, 300, token),
+					mockEvent(205, recipient3, 300, token),
+					mockEvent(206, recipient3, 300, token),
+					mockEvent(207, recipient3, 300, token),
+					mockEvent(208, recipient3, 300, token),
+					mockEvent(209, recipient3, 300, token),
+					mockEvent(210, recipient3, 300, token),
+					mockEvent(211, recipient3, 300, token),
 				}
 
 				// Canonical sequence is not produced because val1Bridge's vote
@@ -1424,9 +1470,9 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
 				events := []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 100),
-					mockEvent(202, recipient2, 200),
-					mockEvent(203, recipient3, 300),
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
 				}
 
 				val1BridgeEvents := []bridgetypes.AssetsLockedEvent{
@@ -1527,11 +1573,13 @@ func mockEvent(
 	sequence int64,
 	recipient string,
 	amount int64,
+	token string,
 ) bridgetypes.AssetsLockedEvent {
 	return bridgetypes.AssetsLockedEvent{
 		Sequence:  sdkmath.NewInt(sequence),
 		Recipient: recipient,
 		Amount:    sdkmath.NewInt(amount),
+		Token:     token,
 	}
 }
 

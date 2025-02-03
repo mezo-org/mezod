@@ -57,6 +57,9 @@ func (k Keeper) CreateERC20TokenMapping(
 ) error {
 	mapping := types.NewERC20TokenMapping(sourceToken, mezoToken)
 
+	// In the current implementation using types.NewERC20TokenMapping, there is
+	// no possibility for the sourceToken to be an invalid hex-encoded EVM address.
+	// However, we keep this check for to make this code future-proof. Same for the mezoToken.
 	if !evmtypes.IsHexAddress(mapping.SourceToken) {
 		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid source token")
 	}

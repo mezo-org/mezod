@@ -98,7 +98,10 @@ func (suite *KeeperTestSuite) TestQueryCosmosAccount() {
 
 	// custom precompile accounts are added at genesis
 	// offset expected account numbers by the number of precompiles at genesis
-	precompileOffset := uint64(len(suite.app.EvmKeeper.CustomPrecompileGenesisAccounts()))
+	//
+	// 1 is added to the offset to account for the x/bridge module account
+	// which is also created at genesis
+	precompileOffset := uint64(len(suite.app.EvmKeeper.CustomPrecompileGenesisAccounts())) + 1
 
 	testCases := []struct {
 		msg      string
@@ -416,7 +419,10 @@ func (suite *KeeperTestSuite) TestQueryValidatorAccount() {
 
 	// custom precompile accounts are added at genesis
 	// offset expected account numbers by the number of precompiles at genesis
-	precompileOffset := uint64(len(suite.app.EvmKeeper.CustomPrecompileGenesisAccounts()))
+	//
+	// 1 is added to the offset to account for the x/bridge module account
+	// which is also created at genesis
+	precompileOffset := uint64(len(suite.app.EvmKeeper.CustomPrecompileGenesisAccounts())) + 1
 
 	testCases := []struct {
 		msg      string
