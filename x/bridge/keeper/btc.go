@@ -26,7 +26,7 @@ func (k Keeper) GetBTCMinted(ctx sdk.Context) math.Int {
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get(types.BTCMintedKey)
 	if len(bz) == 0 {
-		return k.applyBTCStorageMigration(ctx)
+		return math.NewInt(0)
 	}
 
 	var amount math.Int
@@ -105,7 +105,9 @@ func (k Keeper) IncreaseBTCBurnt(ctx sdk.Context, amount math.Int) error {
 // for the execution of the first block after the upgrade, if the keeper didn't have a
 // storage slot for this BTC specifically, and then initialize it with the current total
 // supply known by the x/bank module.
-func (k Keeper) applyBTCStorageMigration(ctx sdk.Context) math.Int {
+//
+//nolint:unused
+func (k Keeper) applyBTCStorageMigration(ctx sdk.Context) {
 	supply := k.bankKeeper.GetSupply(ctx, evmtypes.DefaultEVMDenom)
 	// if the supply is != 0, likely after an upgrade
 	if !supply.IsZero() {
@@ -115,6 +117,4 @@ func (k Keeper) applyBTCStorageMigration(ctx sdk.Context) math.Int {
 			panic(fmt.Sprintf("unable to migrate storage on the 1st block of an upgrade: %v", err))
 		}
 	}
-
-	return supply.Amount
 }
