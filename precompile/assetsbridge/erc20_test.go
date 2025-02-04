@@ -13,8 +13,8 @@ var (
 )
 
 type mappingDescriptor = struct {
-	SourceToken common.Address "json:\"sourceToken\""
-	MezoToken   common.Address "json:\"mezoToken\""
+	SourceToken common.Address `json:"sourceToken"`
+	MezoToken   common.Address `json:"mezoToken"`
 }
 
 func (s *PrecompileTestSuite) TestCreateERC20TokenMapping() {
