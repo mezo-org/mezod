@@ -69,16 +69,15 @@ import (
 )
 
 var (
-	flagNodeDirPrefix     = "node-dir-prefix"
-	flagNumValidators     = "v"
-	flagOutputDir         = "output-dir"
-	flagNodeDaemonHome    = "node-daemon-home"
-	flagStartingIPAddress = "starting-ip-address"
-	flagEnableLogging     = "enable-logging"
-	flagRPCAddress        = "rpc.address"
-	flagAPIAddress        = "api.address"
-	flagPrintMnemonic     = "print-mnemonic"
-	//nolint:gosec
+	flagNodeDirPrefix           = "node-dir-prefix"
+	flagNumValidators           = "v"
+	flagOutputDir               = "output-dir"
+	flagNodeDaemonHome          = "node-daemon-home"
+	flagStartingIPAddress       = "starting-ip-address"
+	flagEnableLogging           = "enable-logging"
+	flagRPCAddress              = "rpc.address"
+	flagAPIAddress              = "api.address"
+	flagPrintMnemonic           = "print-mnemonic"
 	flagAssetsLockedSequenceTip = "assets-locked-sequence-tip"
 	//nolint:gosec
 	flagSourceBtcToken = "source-btc-token"
