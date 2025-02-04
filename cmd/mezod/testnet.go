@@ -257,8 +257,6 @@ func initTestnetFiles(
 	memos := make([]string, args.numValidators)
 	nodeDirNames := make([]string, args.numValidators)
 	nodeDirs := make([]string, args.numValidators)
-	assetsLockedSequenceTip := args.assetsLockedSequenceTip
-	sourceBtcToken := args.sourceBtcToken
 
 	inBuf := bufio.NewReader(cmd.InOrStdin())
 
@@ -407,8 +405,8 @@ func initTestnetFiles(
 		genBalances,
 		genFiles,
 		validators,
-		assetsLockedSequenceTip,
-		sourceBtcToken,
+		args.assetsLockedSequenceTip,
+		args.sourceBtcToken,
 	); err != nil {
 		return err
 	}
