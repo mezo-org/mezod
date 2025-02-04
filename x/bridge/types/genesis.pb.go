@@ -40,7 +40,8 @@ type GenesisState struct {
 	// bridge.
 	Erc20TokensMappings []*ERC20TokenMapping `protobuf:"bytes,4,rep,name=erc20_tokens_mappings,json=erc20TokensMappings,proto3" json:"erc20_tokens_mappings,omitempty"`
 	// initial_btc_supply is the BTC supply minted by the network
-	// at genesis.
+	// at genesis, this is used only for development / testnet purpose
+	// and should be left set to 0 in an production network.
 	InitialBtcSupply cosmossdk_io_math.Int `protobuf:"bytes,5,opt,name=initial_btc_supply,json=initialBtcSupply,proto3,customtype=cosmossdk.io/math.Int" json:"initial_btc_supply"`
 }
 

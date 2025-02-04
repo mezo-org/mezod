@@ -13,10 +13,10 @@ func TestEndBlock(t *testing.T) {
 	ctx, k := mockContext()
 
 	// first increase the BTC minted
-	require.NoError(t, k.IncreaseBTCsMinted(ctx, math.NewInt(42)))
+	require.NoError(t, k.IncreaseBTCMinted(ctx, math.NewInt(42)))
 
 	// ... BTC burnt
-	require.NoError(t, k.IncreaseBTCsBurnt(ctx, math.NewInt(21)))
+	require.NoError(t, k.IncreaseBTCBurnt(ctx, math.NewInt(21)))
 
 	t.Run("does not panic when valid state", func(t *testing.T) {
 		// return the same supply so all is fine
@@ -29,7 +29,7 @@ func TestEndBlock(t *testing.T) {
 	})
 
 	t.Run("panics when state is invalid", func(t *testing.T) {
-		// return the same supply so all is fine
+		// return a different supply so not fine
 		k.bankKeeper.(*mockBankKeeper).
 			On("GetSupply", ctx, evmtypes.DefaultEVMDenom).
 			Return(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(37))).

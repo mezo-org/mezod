@@ -16,8 +16,6 @@ import (
 func (k *Keeper) EndBlock(ctx context.Context) error {
 	asserts := []func(context.Context) error{
 		k.verifyBTCSupply,
-		k.verifyBridgeSequenceTip,
-		k.verifyERC20Supply,
 	}
 
 	for _, f := range asserts {
@@ -39,8 +37,8 @@ func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
 
 	var (
 		totalSupply = k.bankKeeper.GetSupply(ctx, evmtypes.DefaultEVMDenom)
-		totalMinted = k.GetBTCsMinted(sdkCtx)
-		totalBurnt  = k.GetBTCsBurnt(sdkCtx)
+		totalMinted = k.GetBTCMinted(sdkCtx)
+		totalBurnt  = k.GetBTCBurnt(sdkCtx)
 	)
 
 	if !totalSupply.Amount.Equal(totalMinted.Sub(totalBurnt)) {
@@ -56,17 +54,5 @@ func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
 		"totalBurnt", totalBurnt.String(),
 	)
 
-	return nil
-}
-
-// verifyBridgeSequenceTip ...
-func (k *Keeper) verifyBridgeSequenceTip(_ context.Context) error {
-	/* todo */
-	return nil
-}
-
-// verifyERC20Supply ...
-func (k *Keeper) verifyERC20Supply(_ context.Context) error {
-	/* todo */
 	return nil
 }

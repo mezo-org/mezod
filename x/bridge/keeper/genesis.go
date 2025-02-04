@@ -26,7 +26,7 @@ func (k Keeper) InitGenesis(
 	k.setSourceBTCToken(ctx, evmtypes.HexAddressToBytes(genState.SourceBtcToken))
 	k.setERC20TokensMappings(ctx, genState.Erc20TokensMappings)
 
-	err = k.IncreaseBTCsMinted(ctx, genState.InitialBtcSupply)
+	err = k.IncreaseBTCMinted(ctx, genState.InitialBtcSupply)
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting params"))
 	}
@@ -41,5 +41,6 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		Erc20TokensMappings:     k.GetERC20TokensMappings(ctx),
 		InitialBtcSupply:        k.GetCoinsMinted(ctx, evmtypes.DefaultEVMDenom).Amount,
 		InitialBtcSupply:        k.GetBTCsMinted(ctx),
+		InitialBtcSupply:        k.GetBTCMinted(ctx).Sub(k.GetBTCBurnt(ctx)),
 	}
 }

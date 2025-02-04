@@ -38,7 +38,7 @@ func FundAccount(ctx sdk.Context, bankKeeper bankkeeper.Keeper, bridgeKeeper bri
 
 	for _, v := range amounts {
 		if v.Denom == evmtypes.DefaultEVMDenom {
-			if err := bridgeKeeper.IncreaseBTCsMinted(ctx, v.Amount); err != nil {
+			if err := bridgeKeeper.IncreaseBTCMinted(ctx, v.Amount); err != nil {
 				return err
 			}
 		}

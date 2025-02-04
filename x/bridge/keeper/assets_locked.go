@@ -177,7 +177,7 @@ func (k Keeper) mintBTC(
 		return fmt.Errorf("failed to send coins: %w", err)
 	}
 
-	if err := k.IncreaseBTCsMinted(ctx, amount); err != nil {
+	if err := k.IncreaseBTCMinted(ctx, amount); err != nil {
 		return fmt.Errorf("failed to increase btc minted: %w", err)
 	}
 

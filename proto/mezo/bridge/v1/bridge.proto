@@ -44,12 +44,3 @@ message ERC20TokenMapping {
   // mezo_token is the hex-encoded EVM address of the token on the Mezo chain.
   string mezo_token = 2;
 }
-
-// BalanceStorage represent an asset balance stored in the bridge state
-message BalanceStorage {
-  // amount is amount save in this given storage slot.
-  string amount = 1 [
-    (gogoproto.customtype) = "cosmossdk.io/math.Int",
-    (gogoproto.nullable) = false
-  ];
-}
