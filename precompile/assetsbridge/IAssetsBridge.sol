@@ -56,7 +56,7 @@ interface IAssetsBridge {
      *      - The caller must be the contract owner,
      *      - The sourceToken address must not be the zero address,
      *      - The mezoToken address must not be the zero address,
-     *      - The source token address must not be already mapped,
+     *      - The sourceToken address must not be already mapped,
      *      - The maximum number of mappings (getMaxERC20TokensMappings) must not be reached.
      */
     function createERC20TokenMapping(address sourceToken, address mezoToken) external returns (bool);

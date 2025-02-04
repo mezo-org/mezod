@@ -69,16 +69,15 @@ import (
 )
 
 var (
-	flagNodeDirPrefix     = "node-dir-prefix"
-	flagNumValidators     = "v"
-	flagOutputDir         = "output-dir"
-	flagNodeDaemonHome    = "node-daemon-home"
-	flagStartingIPAddress = "starting-ip-address"
-	flagEnableLogging     = "enable-logging"
-	flagRPCAddress        = "rpc.address"
-	flagAPIAddress        = "api.address"
-	flagPrintMnemonic     = "print-mnemonic"
-	//nolint:gosec
+	flagNodeDirPrefix           = "node-dir-prefix"
+	flagNumValidators           = "v"
+	flagOutputDir               = "output-dir"
+	flagNodeDaemonHome          = "node-daemon-home"
+	flagStartingIPAddress       = "starting-ip-address"
+	flagEnableLogging           = "enable-logging"
+	flagRPCAddress              = "rpc.address"
+	flagAPIAddress              = "api.address"
+	flagPrintMnemonic           = "print-mnemonic"
 	flagAssetsLockedSequenceTip = "assets-locked-sequence-tip"
 	//nolint:gosec
 	flagSourceBtcToken = "source-btc-token"
@@ -258,8 +257,6 @@ func initTestnetFiles(
 	memos := make([]string, args.numValidators)
 	nodeDirNames := make([]string, args.numValidators)
 	nodeDirs := make([]string, args.numValidators)
-	assetsLockedSequenceTip := args.assetsLockedSequenceTip
-	sourceBtcToken := args.sourceBtcToken
 
 	inBuf := bufio.NewReader(cmd.InOrStdin())
 
@@ -408,8 +405,8 @@ func initTestnetFiles(
 		genBalances,
 		genFiles,
 		validators,
-		assetsLockedSequenceTip,
-		sourceBtcToken,
+		args.assetsLockedSequenceTip,
+		args.sourceBtcToken,
 	); err != nil {
 		return err
 	}
