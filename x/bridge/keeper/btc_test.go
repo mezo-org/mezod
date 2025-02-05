@@ -16,7 +16,6 @@ func TestGetSourceBTCToken(t *testing.T) {
 	k.setSourceBTCToken(ctx, evmtypes.HexAddressToBytes(expectedToken))
 	actualToken := k.GetSourceBTCToken(ctx)
 	require.Equal(t, expectedToken, evmtypes.BytesToHexAddress(actualToken))
-
 }
 
 func TestBTCMint(t *testing.T) {

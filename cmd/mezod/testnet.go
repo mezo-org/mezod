@@ -28,8 +28,6 @@ import (
 	"sort"
 	"strings"
 
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 
 	sdkmath "cosmossdk.io/math"
@@ -451,13 +449,6 @@ func initGenesisFiles(
 	bankGenState.Balances = genBalances
 	appGenState[banktypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&bankGenState)
 
-	// set total balance minted in the bridge in the genesis state
-	var bridgeGenState bridgetypes.GenesisState
-	clientCtx.Codec.MustUnmarshalJSON(
-		appGenState[bridgetypes.ModuleName], &bridgeGenState)
-	bridgeGenState.InitialBtcSupply = totalBalanceMinted
-	appGenState[bridgetypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&bridgeGenState)
-
 	var crisisGenState crisistypes.GenesisState
 	clientCtx.Codec.MustUnmarshalJSON(appGenState[crisistypes.ModuleName], &crisisGenState)
 	crisisGenState.ConstantFee.Denom = coinDenom
@@ -481,6 +472,7 @@ func initGenesisFiles(
 		bridgeGenState.AssetsLockedSequenceTip = value
 	}
 	bridgeGenState.SourceBtcToken = sourceBtcToken
+	bridgeGenState.InitialBtcSupply = totalBalanceMinted
 	appGenState[bridgetypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&bridgeGenState)
 
 	if err := mbm.ValidateGenesis(clientCtx.Codec, clientCtx.TxConfig, appGenState); err != nil {
