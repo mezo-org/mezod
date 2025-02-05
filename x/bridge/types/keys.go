@@ -31,6 +31,10 @@ var (
 	// this prefix is used to construct the following mapping:
 	// ERC20TokenMappingKeyPrefix + SourceERC20Token -> MezoERC20Token
 	ERC20TokenMappingKeyPrefix = []byte{0x40}
+
+	BTCMintedKey = []byte{0x50}
+
+	BTCBurntKey = []byte{0x60}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the

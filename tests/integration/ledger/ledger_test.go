@@ -176,6 +176,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 					err := testutil.FundAccount(
 						s.ctx,
 						s.app.BankKeeper,
+						s.app.BridgeKeeper,
 						s.accAddr,
 						sdk.NewCoins(
 							sdk.NewCoin("abtc", sdkmath.NewInt(100000000000000)),

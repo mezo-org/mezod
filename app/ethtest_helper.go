@@ -25,6 +25,8 @@ import (
 
 	//nolint:staticcheck
 	"github.com/cosmos/cosmos-sdk/types/bech32/legacybech32"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 
 	"cosmossdk.io/simapp"
@@ -178,6 +180,11 @@ func genesisStateWithValSet(
 		[]banktypes.SendEnabled{},
 	)
 	genesisState[banktypes.ModuleName] = codec.MustMarshalJSON(bankGenesis)
+
+	// update total supply
+	bridgeGenesis := bridgetypes.DefaultGenesis()
+	bridgeGenesis.InitialBtcSupply = totalSupply.AmountOf(evmtypes.DefaultEVMDenom)
+	genesisState[bridgetypes.ModuleName] = codec.MustMarshalJSON(bridgeGenesis)
 
 	return genesisState
 }

@@ -25,14 +25,23 @@ import (
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/mezo-org/mezod/utils"
+	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // FundAccount is a utility function that funds an account by minting and
 // sending the coins to the address.
-func FundAccount(ctx sdk.Context, bankKeeper bankkeeper.Keeper, addr sdk.AccAddress, amounts sdk.Coins) error {
+func FundAccount(ctx sdk.Context, bankKeeper bankkeeper.Keeper, bridgeKeeper bridgekeeper.Keeper, addr sdk.AccAddress, amounts sdk.Coins) error {
 	if err := bankKeeper.MintCoins(ctx, evmtypes.ModuleName, amounts); err != nil {
 		return err
+	}
+
+	for _, v := range amounts {
+		if v.Denom == evmtypes.DefaultEVMDenom {
+			if err := bridgeKeeper.IncreaseBTCMinted(ctx, v.Amount); err != nil {
+				return err
+			}
+		}
 	}
 
 	return bankKeeper.SendCoinsFromModuleToAccount(ctx, evmtypes.ModuleName, addr, amounts)
@@ -40,11 +49,11 @@ func FundAccount(ctx sdk.Context, bankKeeper bankkeeper.Keeper, addr sdk.AccAddr
 
 // FundAccountWithBaseDenom is a utility function that uses the FundAccount function
 // to fund an account with the default Mezo denomination.
-func FundAccountWithBaseDenom(ctx sdk.Context, bankKeeper bankkeeper.Keeper, addr sdk.AccAddress, amount int64) error {
+func FundAccountWithBaseDenom(ctx sdk.Context, bankKeeper bankkeeper.Keeper, bridgeKeeper bridgekeeper.Keeper, addr sdk.AccAddress, amount int64) error {
 	coins := sdk.NewCoins(
 		sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(amount)),
 	)
-	return FundAccount(ctx, bankKeeper, addr, coins)
+	return FundAccount(ctx, bankKeeper, bridgeKeeper, addr, coins)
 }
 
 // FundModuleAccount is a utility function that funds a module account by
@@ -63,6 +72,7 @@ func PrepareAccount(
 	ctx sdk.Context,
 	accountKeeper authkeeper.AccountKeeper,
 	bankKeeper bankkeeper.Keeper,
+	bridgeKeeper bridgekeeper.Keeper,
 	addr sdk.AccAddress,
 	balance sdkmath.Int,
 ) error {
@@ -72,7 +82,7 @@ func PrepareAccount(
 		return nil
 	}
 
-	err := FundAccountWithBaseDenom(ctx, bankKeeper, addr, balance.Int64())
+	err := FundAccountWithBaseDenom(ctx, bankKeeper, bridgeKeeper, addr, balance.Int64())
 	if err != nil {
 		return fmt.Errorf("failed to fund account: %s", err.Error())
 	}

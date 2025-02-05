@@ -28,8 +28,6 @@ import (
 	"sort"
 	"strings"
 
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 
 	sdkmath "cosmossdk.io/math"
@@ -59,6 +57,7 @@ import (
 	srvflags "github.com/mezo-org/mezod/server/flags"
 
 	mezotypes "github.com/mezo-org/mezod/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
@@ -246,8 +245,9 @@ func initTestnetFiles(
 	}
 
 	var (
-		genAccounts []authtypes.GenesisAccount
-		genBalances []banktypes.Balance
+		genAccounts        []authtypes.GenesisAccount
+		genBalances        []banktypes.Balance
+		totalBalanceMinted = sdkmath.NewInt(0)
 	)
 
 	genFiles := make([]string, args.numValidators)
@@ -337,6 +337,7 @@ func initTestnetFiles(
 		}
 
 		balance, _ := sdkmath.NewIntFromString("100000000000000000000000000")
+		totalBalanceMinted = totalBalanceMinted.Add(balance)
 		coins := sdk.NewCoins(sdk.NewCoin(cmdcfg.BaseDenom, balance))
 
 		genBalances = append(
@@ -407,6 +408,7 @@ func initTestnetFiles(
 		validators,
 		args.assetsLockedSequenceTip,
 		args.sourceBtcToken,
+		totalBalanceMinted,
 	); err != nil {
 		return err
 	}
@@ -427,6 +429,7 @@ func initGenesisFiles(
 	validators []poatypes.Validator,
 	assetsLockedSequenceTip string,
 	sourceBtcToken string,
+	totalBalanceMinted sdkmath.Int,
 ) error {
 	appGenState := mbm.DefaultGenesis(clientCtx.Codec)
 	// set the accounts in the genesis state
@@ -469,6 +472,7 @@ func initGenesisFiles(
 		bridgeGenState.AssetsLockedSequenceTip = value
 	}
 	bridgeGenState.SourceBtcToken = sourceBtcToken
+	bridgeGenState.InitialBtcSupply = totalBalanceMinted
 	appGenState[bridgetypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&bridgeGenState)
 
 	if err := mbm.ValidateGenesis(clientCtx.Codec, clientCtx.TxConfig, appGenState); err != nil {

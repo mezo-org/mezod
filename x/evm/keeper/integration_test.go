@@ -158,7 +158,7 @@ func setupTest(localMinGasPrices string) (*ethsecp256k1.PrivKey, banktypes.MsgSe
 		Denom:  s.denom,
 		Amount: amount,
 	}}
-	err := testutil.FundAccount(s.ctx, s.app.BankKeeper, address, initBalance)
+	err := testutil.FundAccount(s.ctx, s.app.BankKeeper, s.app.BridgeKeeper, address, initBalance)
 	s.Require().NoError(err)
 
 	msg := banktypes.MsgSend{
