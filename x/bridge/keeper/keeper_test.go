@@ -13,8 +13,12 @@ import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/mock"
 )
+
+//nolint:gosec
+const testSourceBTCToken = "0x517f2982701695D4E52f1ECFBEf3ba31Df470161"
 
 func mockContext() (sdk.Context, Keeper) {
 	logger := log.NewNopLogger()
@@ -25,7 +29,7 @@ func mockContext() (sdk.Context, Keeper) {
 	cdc := codec.NewProtoCodec(registry)
 
 	// Create the keeper
-	keeper := NewKeeper(cdc, keys[types.StoreKey], newMockBankKeeper())
+	keeper := NewKeeper(cdc, keys[types.StoreKey], newMockBankKeeper(), newMockEvmKeeper())
 
 	// Create multiStore in memory
 	db := dbm.NewMemDB()
@@ -40,6 +44,13 @@ func mockContext() (sdk.Context, Keeper) {
 
 	// Create context
 	ctx := sdk.NewContext(cms, tmproto.Header{}, false, logger)
+
+	keeper.setSourceBTCToken(ctx, evmtypes.HexAddressToBytes(testSourceBTCToken))
+
+	err = keeper.SetParams(ctx, types.DefaultParams())
+	if err != nil {
+		panic(err)
+	}
 
 	return ctx, keeper
 }
@@ -69,4 +80,30 @@ func (mbk *mockBankKeeper) SendCoinsFromModuleToAccount(
 ) error {
 	args := mbk.Called(ctx, senderModule, recipientAddr, amt)
 	return args.Error(0)
+}
+
+type mockEvmKeeper struct {
+	mock.Mock
+}
+
+func newMockEvmKeeper() *mockEvmKeeper {
+	return &mockEvmKeeper{}
+}
+
+func (mek *mockEvmKeeper) ExecuteContractCall(
+	ctx sdk.Context,
+	call evmtypes.ContractCall,
+) (*evmtypes.MsgEthereumTxResponse, error) {
+	args := mek.Called(ctx, call)
+
+	if res := args.Get(0); res != nil {
+		return res.(*evmtypes.MsgEthereumTxResponse), args.Error(1)
+	}
+
+	return nil, args.Error(1)
+}
+
+func (mek *mockEvmKeeper) IsContract(ctx sdk.Context, address []byte) bool {
+	args := mek.Called(ctx, address)
+	return args.Bool(0)
 }

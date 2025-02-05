@@ -12,6 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:gosec
+const token = "0x517f2982701695D4E52f1ECFBEf3ba31Df470161"
+
 func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 	config := sdk.GetConfig()
 	cmdcfg.SetBech32Prefixes(config)
@@ -36,6 +39,7 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(2),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(-1000000), // Negative amount.
+					Token:     token,
 				},
 			},
 			expectedErr: ErrInvalidEventsSequence,
@@ -48,11 +52,13 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(3),
 					Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 				{
 					Sequence:  sdkmath.NewInt(5),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 			},
 			expectedErr: ErrInvalidEventsSequence,
@@ -65,6 +71,7 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(1),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 			},
 			expectedErr: ErrRequestedBoundariesViolated,
@@ -77,6 +84,7 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(5),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 			},
 			expectedErr: ErrRequestedBoundariesViolated,
@@ -89,6 +97,7 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(6),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 			},
 			expectedErr: ErrRequestedBoundariesViolated,
@@ -101,11 +110,13 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(2),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 				{
 					Sequence:  sdkmath.NewInt(3),
 					Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 			},
 			expectedErr: nil,
@@ -118,11 +129,13 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(3),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 				{
 					Sequence:  sdkmath.NewInt(4),
 					Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 			},
 			expectedErr: nil,
@@ -135,11 +148,13 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(2),
 					Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 				{
 					Sequence:  sdkmath.NewInt(3),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 			},
 			expectedErr: nil,
@@ -152,16 +167,19 @@ func TestClient_ValidateAssetsLockedEvents(t *testing.T) {
 					Sequence:  sdkmath.NewInt(2),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 				{
 					Sequence:  sdkmath.NewInt(3),
 					Recipient: "mezo1pd4u0j77ydrsrv8z8m9854rsmg3jh45kjqwg54",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 				{
 					Sequence:  sdkmath.NewInt(4),
 					Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 					Amount:    sdkmath.NewInt(1000000),
+					Token:     token,
 				},
 			},
 			expectedErr: nil,

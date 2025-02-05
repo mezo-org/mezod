@@ -15,17 +15,20 @@ type Keeper struct {
 	cdc        codec.Codec
 	storeKey   storetypes.StoreKey
 	bankKeeper types.BankKeeper
+	evmKeeper  types.EvmKeeper
 }
 
 func NewKeeper(
 	cdc codec.Codec,
 	storeKey storetypes.StoreKey,
 	bankKeeper types.BankKeeper,
+	evmKeeper types.EvmKeeper,
 ) Keeper {
 	return Keeper{
 		cdc:        cdc,
 		storeKey:   storeKey,
 		bankKeeper: bankKeeper,
+		evmKeeper:  evmKeeper,
 	}
 }
 

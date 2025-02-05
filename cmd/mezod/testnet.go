@@ -28,6 +28,8 @@ import (
 	"sort"
 	"strings"
 
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+
 	"github.com/cosmos/cosmos-sdk/x/genutil/types"
 
 	sdkmath "cosmossdk.io/math"
@@ -67,27 +69,32 @@ import (
 )
 
 var (
-	flagNodeDirPrefix     = "node-dir-prefix"
-	flagNumValidators     = "v"
-	flagOutputDir         = "output-dir"
-	flagNodeDaemonHome    = "node-daemon-home"
-	flagStartingIPAddress = "starting-ip-address"
-	flagEnableLogging     = "enable-logging"
-	flagRPCAddress        = "rpc.address"
-	flagAPIAddress        = "api.address"
-	flagPrintMnemonic     = "print-mnemonic"
+	flagNodeDirPrefix           = "node-dir-prefix"
+	flagNumValidators           = "v"
+	flagOutputDir               = "output-dir"
+	flagNodeDaemonHome          = "node-daemon-home"
+	flagStartingIPAddress       = "starting-ip-address"
+	flagEnableLogging           = "enable-logging"
+	flagRPCAddress              = "rpc.address"
+	flagAPIAddress              = "api.address"
+	flagPrintMnemonic           = "print-mnemonic"
+	flagAssetsLockedSequenceTip = "assets-locked-sequence-tip"
+	//nolint:gosec
+	flagSourceBtcToken = "source-btc-token"
 )
 
 type initArgs struct {
-	algo              string
-	chainID           string
-	keyringBackend    string
-	minGasPrices      string
-	nodeDaemonHome    string
-	nodeDirPrefix     string
-	numValidators     int
-	outputDir         string
-	startingIPAddress string
+	algo                    string
+	chainID                 string
+	keyringBackend          string
+	minGasPrices            string
+	nodeDaemonHome          string
+	nodeDirPrefix           string
+	numValidators           int
+	outputDir               string
+	startingIPAddress       string
+	assetsLockedSequenceTip string
+	sourceBtcToken          string
 }
 
 type startArgs struct {
@@ -163,6 +170,8 @@ Example:
 			args.startingIPAddress, _ = cmd.Flags().GetString(flagStartingIPAddress)
 			args.numValidators, _ = cmd.Flags().GetInt(flagNumValidators)
 			args.algo, _ = cmd.Flags().GetString(flags.FlagKeyType)
+			args.assetsLockedSequenceTip, _ = cmd.Flags().GetString(flagAssetsLockedSequenceTip)
+			args.sourceBtcToken, _ = cmd.Flags().GetString(flagSourceBtcToken)
 
 			return initTestnetFiles(clientCtx, cmd, serverCtx.Config, mbm, args)
 		},
@@ -173,6 +182,8 @@ Example:
 	cmd.Flags().String(flagNodeDaemonHome, "mezod", "Home directory of the node's daemon configuration")
 	cmd.Flags().String(flagStartingIPAddress, "192.168.0.1", "Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:46656, ID1@192.168.0.2:46656, ...). Setting this flag to localhost results in configuration generation for binary-based localnet")
 	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "Select keyring's backend (os|file|test)")
+	cmd.Flags().String(flagAssetsLockedSequenceTip, "0", "AssetsLocked sequence tip for the bridge module")
+	cmd.Flags().String(flagSourceBtcToken, "", "Source chain BTC token for the bridge module")
 
 	return cmd
 }
@@ -394,6 +405,8 @@ func initTestnetFiles(
 		genBalances,
 		genFiles,
 		validators,
+		args.assetsLockedSequenceTip,
+		args.sourceBtcToken,
 	); err != nil {
 		return err
 	}
@@ -412,6 +425,8 @@ func initGenesisFiles(
 	genBalances []banktypes.Balance,
 	genFiles []string,
 	validators []poatypes.Validator,
+	assetsLockedSequenceTip string,
+	sourceBtcToken string,
 ) error {
 	appGenState := mbm.DefaultGenesis(clientCtx.Codec)
 	// set the accounts in the genesis state
@@ -447,6 +462,18 @@ func initGenesisFiles(
 	poaGenState.Owner = sdk.AccAddress(validators[0].GetOperator()).String()
 	poaGenState.Validators = validators
 	appGenState[poatypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&poaGenState)
+
+	var bridgeGenState bridgetypes.GenesisState
+	clientCtx.Codec.MustUnmarshalJSON(appGenState[bridgetypes.ModuleName], &bridgeGenState)
+	if value, ok := sdkmath.NewIntFromString(assetsLockedSequenceTip); ok {
+		bridgeGenState.AssetsLockedSequenceTip = value
+	}
+	bridgeGenState.SourceBtcToken = sourceBtcToken
+	appGenState[bridgetypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&bridgeGenState)
+
+	if err := mbm.ValidateGenesis(clientCtx.Codec, clientCtx.TxConfig, appGenState); err != nil {
+		return fmt.Errorf("failed to validate genesis file: %w", err)
+	}
 
 	appGenStateJSON, err := json.MarshalIndent(appGenState, "", "  ")
 	if err != nil {

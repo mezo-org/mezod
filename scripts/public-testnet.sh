@@ -9,11 +9,13 @@ fi
 
 CHAIN_ID=mezo_31611-1
 LIQUID_AMOUNT=1000000000000000000000abtc
+SOURCE_BTC_TOKEN=0x517f2982701695D4E52f1ECFBEf3ba31Df470161 # TBTC on Ethereum Sepolia
 NODE_DOMAIN=test.mezo.org
 NODE_NAMES=("mezo-node-0" "mezo-node-1" "mezo-node-2" "mezo-node-3" "mezo-node-4" "mezo-faucet")
 
 echo "using chain-id: $CHAIN_ID"
 echo "using liquid amount: $LIQUID_AMOUNT"
+echo "using source BTC token: $SOURCE_BTC_TOKEN"
 echo "using node domain: $NODE_DOMAIN"
 echo "using node names:" "${NODE_NAMES[@]}"
 
@@ -117,9 +119,11 @@ jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENE
 # [Modification 2]: Set the first node's address as the initial PoA owner.
 POA_OWNER=${NODE_ADDRESSES[0]}
 jq '.app_state["poa"]["owner"]="'"$POA_OWNER"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+# [Modification 3]: Set the source chain BTC token address for the bridge module.
+jq '.app_state["bridge"]["source_btc_token"]="'"$SOURCE_BTC_TOKEN"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 # Validate the global genesis file and move it to the root directory.
-./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR genesis validate &> /dev/null
+./build/mezod --home=$GLOBAL_GENESIS_HOMEDIR genesis validate
 mv $GENESIS $HOMEDIR/genesis.json
 GENESIS=$HOMEDIR/genesis.json # Reassign the GENESIS variable to the new location.
 

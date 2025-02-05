@@ -462,3 +462,9 @@ func (k *Keeper) SetStorageRootStrategy(
 func (k *Keeper) GetStorageRootStrategy(ctx sdk.Context) types.StorageRootStrategy {
 	return types.StorageRootStrategy(k.GetParams(ctx).StorageRootStrategy)
 }
+
+// IsContract returns if the account contains contract code.
+func (k *Keeper) IsContract(ctx sdk.Context, address []byte) bool {
+	account := k.GetAccountWithoutBalance(ctx, common.BytesToAddress(address))
+	return account != nil && account.IsContract()
+}

@@ -87,8 +87,8 @@ func (s *PreBlockHandlerTestSuite) TestPreBlocker() {
 					"AcceptAssetsLocked",
 					s.ctx,
 					bridgetypes.AssetsLockedEvents{
-						mockEvent(1, recipient1, 100),
-						mockEvent(2, recipient2, 200),
+						mockEvent(1, recipient1, 100, token),
+						mockEvent(2, recipient2, 200, token),
 					},
 				).Return(fmt.Errorf("keeper error"))
 
@@ -98,8 +98,8 @@ func (s *PreBlockHandlerTestSuite) TestPreBlocker() {
 				marshalInjectedTx(
 					types.InjectedTx{
 						AssetsLockedEvents: bridgetypes.AssetsLockedEvents{
-							mockEvent(1, recipient1, 100),
-							mockEvent(2, recipient2, 200),
+							mockEvent(1, recipient1, 100, token),
+							mockEvent(2, recipient2, 200, token),
 						},
 						ExtendedCommitInfo: []byte("extendedCommitInfo"),
 					},
@@ -117,8 +117,8 @@ func (s *PreBlockHandlerTestSuite) TestPreBlocker() {
 					"AcceptAssetsLocked",
 					s.ctx,
 					bridgetypes.AssetsLockedEvents{
-						mockEvent(1, recipient1, 100),
-						mockEvent(2, recipient2, 200),
+						mockEvent(1, recipient1, 100, token),
+						mockEvent(2, recipient2, 200, token),
 					},
 				).Return(nil)
 
@@ -133,8 +133,8 @@ func (s *PreBlockHandlerTestSuite) TestPreBlocker() {
 				marshalInjectedTx(
 					types.InjectedTx{
 						AssetsLockedEvents: bridgetypes.AssetsLockedEvents{
-							mockEvent(1, recipient1, 100),
-							mockEvent(2, recipient2, 200),
+							mockEvent(1, recipient1, 100, token),
+							mockEvent(2, recipient2, 200, token),
 						},
 						ExtendedCommitInfo: []byte("extendedCommitInfo"),
 					},

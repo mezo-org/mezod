@@ -50,7 +50,7 @@ func (AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
 	return cdc.MustMarshalJSON(types.DefaultGenesis())
 }
 
-// ValidateGenesis performs genesis state validation for the dualstaking module.
+// ValidateGenesis performs genesis state validation for the bridge module.
 func (AppModuleBasic) ValidateGenesis(
 	cdc codec.JSONCodec,
 	_ client.TxEncodingConfig,
@@ -100,15 +100,18 @@ func (AppModuleBasic) GetQueryCmd() *cobra.Command {
 type AppModule struct {
 	AppModuleBasic
 
-	keeper keeper.Keeper
+	keeper        keeper.Keeper
+	accountKeeper types.AccountKeeper
 }
 
 func NewAppModule(
 	keeper keeper.Keeper,
+	accountKeeper types.AccountKeeper,
 ) AppModule {
 	return AppModule{
 		AppModuleBasic: NewAppModuleBasic(),
 		keeper:         keeper,
+		accountKeeper:  accountKeeper,
 	}
 }
 
@@ -124,7 +127,7 @@ func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONCodec, gs json.RawMessage) []abci.ValidatorUpdate {
 	var genState types.GenesisState
 	cdc.MustUnmarshalJSON(gs, &genState)
-	am.keeper.InitGenesis(ctx, genState)
+	am.keeper.InitGenesis(ctx, genState, am.accountKeeper)
 	return []abci.ValidatorUpdate{}
 }
 

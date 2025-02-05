@@ -116,3 +116,24 @@ func BinSearch(lo, hi uint64, executable func(uint64) (bool, *MsgEthereumTxRespo
 func EffectiveGasPrice(baseFee, feeCap, tipCap *big.Int) *big.Int {
 	return math.BigMin(new(big.Int).Add(tipCap, baseFee), feeCap)
 }
+
+// IsHexAddress verifies whether a string can represent a valid hex-encoded
+// EVM address or not.
+func IsHexAddress(address string) bool {
+	return common.IsHexAddress(address)
+}
+
+// IsZeroHexAddress checks if the given hex-encoded EVM address is the zero address.
+func IsZeroHexAddress(address string) bool {
+	return common.HexToAddress(address) == common.Address{}
+}
+
+// HexAddressToBytes converts a hex-encoded EVM address to a byte slice.
+func HexAddressToBytes(address string) []byte {
+	return common.HexToAddress(address).Bytes()
+}
+
+// BytesToHexAddress converts a byte slice to a hex-encoded EVM address.
+func BytesToHexAddress(address []byte) string {
+	return common.BytesToAddress(address).Hex()
+}

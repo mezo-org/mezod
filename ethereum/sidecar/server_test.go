@@ -16,8 +16,8 @@ import (
 func TestAssetsLockedEvents(t *testing.T) {
 	server := &Server{
 		events: []bridgetypes.AssetsLockedEvent{
-			{Sequence: sdkmath.NewIntFromBigInt(big.NewInt(1)), Recipient: "recipient1", Amount: sdkmath.NewIntFromBigInt(big.NewInt(100))},
-			{Sequence: sdkmath.NewIntFromBigInt(big.NewInt(2)), Recipient: "recipient2", Amount: sdkmath.NewIntFromBigInt(big.NewInt(200))},
+			{Sequence: sdkmath.NewIntFromBigInt(big.NewInt(1)), Recipient: "recipient1", Amount: sdkmath.NewIntFromBigInt(big.NewInt(100)), Token: "token1"},
+			{Sequence: sdkmath.NewIntFromBigInt(big.NewInt(2)), Recipient: "recipient2", Amount: sdkmath.NewIntFromBigInt(big.NewInt(200)), Token: "token2"},
 		},
 	}
 
@@ -36,4 +36,6 @@ func TestAssetsLockedEvents(t *testing.T) {
 	assert.Equal(t, int64(200), resp.Events[1].Amount.Int64())
 	assert.Equal(t, int64(1), resp.Events[0].Sequence.Int64())
 	assert.Equal(t, int64(2), resp.Events[1].Sequence.Int64())
+	assert.Equal(t, "token1", resp.Events[0].Token)
+	assert.Equal(t, "token2", resp.Events[1].Token)
 }
