@@ -113,7 +113,8 @@ func NewPrecompile(
 type AssetsLockedEvent struct {
 	SequenceNumber *big.Int       `abi:"sequenceNumber"`
 	Recipient      common.Address `abi:"recipient"`
-	TBTCAmount     *big.Int       `abi:"tbtcAmount"`
+	Amount         *big.Int       `abi:"amount"`
+	Token          common.Address `abi:"token"`
 }
 
 // PackEventsToInput packs given `AssetsLocked` events into an input of the

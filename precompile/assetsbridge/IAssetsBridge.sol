@@ -6,7 +6,8 @@ pragma solidity ^0.8.24;
 struct AssetsLocked {
     uint256 sequenceNumber;
     address recipient;
-    uint256 tbtcAmount;
+    uint256 amount;
+    address token;
 }
 
 /// @title ERC20TokenMapping

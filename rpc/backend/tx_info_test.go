@@ -58,6 +58,7 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -359,6 +360,7 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockAndIndex() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -487,6 +489,7 @@ func (suite *BackendTestSuite) TestGetTransactionByBlockNumberAndIndex() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -619,6 +622,7 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
@@ -779,13 +783,14 @@ func (suite *BackendTestSuite) TestGetPseudoTransactionResult() {
 		Sequence:  sdkmath.NewInt(1),
 		Recipient: "mezo1wengafav9m5yht926qmx4gr3d3rhxk50a5rzk8",
 		Amount:    sdkmath.NewInt(1000000),
+		Token:     common.HexToAddress("0x7d738d48b5c30f224aB86DaedE96CD95AB4854d9").Hex(),
 	}
 
 	pseudoTx, err := buildPseudoTx([]bridgetypes.AssetsLockedEvent{event})
 	suite.Require().NoError(err)
 
 	extraData, err := hex.DecodeString(
-		"010a390a0131122b6d657a6f3177656e6761666176396d35796874393236716d783467723364337268786b35306135727a6b381a0731303030303030",
+		"010a650a0131122b6d657a6f3177656e6761666176396d35796874393236716d783467723364337268786b35306135727a6b381a0731303030303030222a307837643733386434386235633330663232346142383644616564453936434439354142343835346439",
 	)
 	suite.Require().NoError(err)
 
@@ -897,7 +902,8 @@ func buildRPCPseudoTx(
 			{
 				SequenceNumber: event.Sequence.BigInt(),
 				Recipient:      recipient,
-				TBTCAmount:     event.Amount.BigInt(),
+				Amount:         event.Amount.BigInt(),
+				Token:          common.HexToAddress(event.Token),
 			},
 		},
 	)
@@ -957,7 +963,8 @@ func buildPseudoTxTrace(
 			{
 				SequenceNumber: event.Sequence.BigInt(),
 				Recipient:      recipient,
-				TBTCAmount:     event.Amount.BigInt(),
+				Amount:         event.Amount.BigInt(),
+				Token:          common.HexToAddress(event.Token),
 			},
 		},
 	)

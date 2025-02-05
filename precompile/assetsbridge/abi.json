@@ -53,8 +53,13 @@
           },
           {
             "internalType": "uint256",
-            "name": "tbtcAmount",
+            "name": "amount",
             "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
           }
         ],
         "internalType": "struct AssetsLocked[]",
