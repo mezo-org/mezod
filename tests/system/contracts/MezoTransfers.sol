@@ -12,6 +12,7 @@ contract MezoTransfers {
     event NativeTransfer(address indexed sender, address indexed recipient, uint256 amount);
     event BTCERC20Transfer(address indexed sender, address indexed recipient, address indexed token, uint256 amount);
 
+    /// @notice Transfers native BTC and then BTC ERC-20 Token from the contract
     function nativeThenBTCERC20(address recipient) external {
         uint256 balance = IBTC(precompile).balanceOf(address(this));
         require(balance > 0, "No balance to transfer");
@@ -27,6 +28,7 @@ contract MezoTransfers {
         require(success, "Transfer using transfer failed");
     }
 
+    /// @notice Transfers BTC ERC-20 Token and then native BTC from the contract
     function btcERC20ThenNative(address recipient) external {
         uint256 balance = IBTC(precompile).balanceOf(address(this));
         require(balance > 0, "No balance to transfer");
