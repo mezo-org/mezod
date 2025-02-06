@@ -11,6 +11,5 @@ networks
 Dockerfile
 **/tmp/
 .gitignore
-.git/
 docs/
 scripts/
