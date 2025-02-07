@@ -8,14 +8,17 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-// EndBlock is use to run a given set of insert after processing a block.
-// Each assert will ensure that the mezo state is in sync with its understanding
-// of the state of the bridge at the time.
+// EndBlock is used to run a given set of assertions after processing a block.
+// Each assertion will ensure that the mezo state is in sync with its
+// understanding of the state of the bridge at the time.
 // In case an assertion prove false, the function will panic, leaving time
 // for the node operators to investigate.
 func (k *Keeper) EndBlock(ctx context.Context) error {
-	asserts := []func(context.Context) error{
-		k.verifyBTCSupply,
+	params := k.GetParams(sdk.UnwrapSDKContext(ctx))
+	var asserts []func(context.Context) error
+
+	if params.BtcSupplyAssertionEnabled {
+		asserts = append(asserts, k.verifyBTCSupply)
 	}
 
 	for _, f := range asserts {
