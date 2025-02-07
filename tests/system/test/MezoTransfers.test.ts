@@ -73,6 +73,83 @@ describe("MezoTransfers", function () {
     });
   });
 
+  describe("receiveSendNative", function () {
+    let initialSenderBalance: any;
+    let initialRecipientBalance: any;
+    let nativeAmount: any;
+    let gasCost: any;
+
+    beforeEach(async function () {
+      nativeAmount = ethers.parseEther("10");
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+      initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
+
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendNative(recipientAddress, { value: nativeAmount });
+      const receipt = await tx.wait();
+      gasCost = receipt.gasUsed * tx.gasPrice;
+    });
+
+    it("should verify sender native balance", async function () {
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      expect(initialSenderBalance - nativeAmount - gasCost).to.equal(currentSenderNativeBalance);
+    });
+
+    it("should verify recipient native balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(initialRecipientBalance).to.equal(0);
+      expect(currentRecipientNativeBalance).to.equal(nativeAmount);
+    });
+
+    it("should verify MezoTransfers contract has zero balance", async function () {
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+      const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      expect(currentContractNativeBalance).to.equal(0);
+    });
+  });
+
+  describe("receiveSendBTCERC20", function () {
+    let initialSenderBalance: any;
+    let initialRecipientBalance: any;
+    let tokenAmount: any;
+    let nativeAmount: any;
+    let gasCost: any;
+    let mezoTransfersAddress: any;
+
+    beforeEach(async function () {
+      tokenAmount = ethers.parseEther("10");
+      nativeAmount = ethers.parseEther("1");
+      mezoTransfersAddress = await mezoTransfers.getAddress();
+
+      await btcErc20Token.connect(signers[0]).approve(mezoTransfersAddress, tokenAmount)
+        .then(tx => tx.wait());
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+      initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
+
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendBTCERC20(recipientAddress, tokenAmount, { value: nativeAmount });
+      const receipt = await tx.wait();
+
+      gasCost = receipt.gasUsed * tx.gasPrice;
+    });
+
+    it("should verify sender native balance", async function () {
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      expect(initialSenderBalance - tokenAmount - nativeAmount - gasCost).to.equal(currentSenderNativeBalance);
+    });
+
+    it("should verify recipient native balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(initialRecipientBalance).to.equal(0);
+      expect(currentRecipientNativeBalance).to.equal(tokenAmount);
+    });
+
+    it("should verify MezoTransfers contract has balance", async function () {
+      const currentContractBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      expect(currentContractBalance).to.equal(nativeAmount);
+    });
+  });
+
   describe("btcERC20ThenNative", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
@@ -177,6 +254,45 @@ describe("MezoTransfers", function () {
     it("should verify sender native balance deduction", async function () {
       const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
       expect(initialSenderBalance - nativeAmount- tokenAmount - gasCost).to.equal(currentSenderNativeBalance);
+    });
+
+    it("should verify recipient native balance received", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(initialRecipientBalance + nativeAmount + tokenAmount).to.equal(currentRecipientNativeBalance);
+    });
+
+    it("should verify MezoTransfers contract has zero balance", async function () {
+      const currentBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      expect(currentBalance).to.equal(0);
+    });
+  });
+
+  describe("multipleBTCERC20AndNative", function () {
+    let initialSenderBalance: any;
+    let initialRecipientBalance: any;
+    const tokenAmount = ethers.parseEther("2");
+    const nativeAmount = ethers.parseEther("8");
+    let gasCost: any;
+    let mezoTransfersAddress: any;
+
+    beforeEach(async function () {
+      mezoTransfersAddress = await mezoTransfers.getAddress();
+
+      await btcErc20Token.connect(signers[0]).approve(mezoTransfersAddress, tokenAmount)
+        .then(tx => tx.wait());
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+      initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
+
+      // Transfer
+      const tx = await mezoTransfers.connect(signers[0]).multipleBTCERC20AndNative(recipientAddress, tokenAmount, { value: nativeAmount });
+      const receipt = await tx.wait();
+      gasCost = receipt.gasUsed * tx.gasPrice;
+    });
+
+    it("should verify sender native balance deduction", async function () {
+      const currentSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(initialSenderBalance - nativeAmount- tokenAmount - gasCost).to.equal(currentSenderBalance);
     });
 
     it("should verify recipient native balance received", async function () {
