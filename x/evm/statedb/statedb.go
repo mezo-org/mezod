@@ -52,8 +52,10 @@ var _ vm.StateDB = &StateDB{}
 // * Contracts
 // * Accounts
 type StateDB struct {
-	keeper Keeper
-	ctx    sdk.Context
+	keeper     Keeper
+	ctx        sdk.Context
+	cachedCtx  sdk.Context
+	flushCache func()
 
 	// Journal of state modifications. This is the backbone of
 	// Snapshot and RevertToSnapshot.
@@ -613,18 +615,31 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 
 // Commit writes the dirty states to keeper
 // the StateDB object should be discarded after committed.
-func (s *StateDB) Commit() error {
+func (s *StateDB) Commit(maybeCtx ...sdk.Context) error {
+	// defaults on the main context
+	ctx := s.ctx
+
+	// we've passed around a context, we use it instead
+	// of the main context
+	if len(maybeCtx) > 0 {
+		ctx = maybeCtx[0]
+	} else if s.flushCache != nil {
+		// we are using the main context, if a cache context
+		// existed as well, let's flush it first
+		s.flushCache()
+	}
+
 	for _, addr := range s.journal.sortedDirties() {
 		obj := s.stateObjects[addr]
 		if obj.selfDestructed {
-			if err := s.keeper.DeleteAccount(s.ctx, obj.Address()); err != nil {
+			if err := s.keeper.DeleteAccount(ctx, obj.Address()); err != nil {
 				return errorsmod.Wrap(err, "failed to delete account")
 			}
 		} else {
 			if obj.code != nil && obj.dirtyCode {
-				s.keeper.SetCode(s.ctx, obj.CodeHash(), obj.code)
+				s.keeper.SetCode(ctx, obj.CodeHash(), obj.code)
 			}
-			if err := s.keeper.SetAccount(s.ctx, obj.Address(), obj.account); err != nil {
+			if err := s.keeper.SetAccount(ctx, obj.Address(), obj.account); err != nil {
 				return errorsmod.Wrap(err, "failed to set account")
 			}
 			for _, key := range obj.dirtyStorage.SortedKeys() {
@@ -633,9 +648,21 @@ func (s *StateDB) Commit() error {
 				if value == obj.originStorage[key] {
 					continue
 				}
-				s.keeper.SetState(s.ctx, obj.Address(), key, value.Bytes())
+				s.keeper.SetState(ctx, obj.Address(), key, value.Bytes())
 			}
 		}
 	}
 	return nil
+}
+
+func (s *StateDB) CommitCacheContext() error {
+	return s.Commit(s.cachedCtx)
+}
+
+func (s *StateDB) CacheContext() sdk.Context {
+	if s.flushCache == nil {
+		s.cachedCtx, s.flushCache = s.ctx.CacheContext()
+	}
+
+	return s.cachedCtx
 }
