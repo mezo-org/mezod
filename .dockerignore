@@ -13,3 +13,5 @@ Dockerfile
 .gitignore
 docs/
 scripts/
+# Do not add `.git` to this file.
+# It is needed when building Docker image.
