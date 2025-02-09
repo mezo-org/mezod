@@ -337,6 +337,9 @@ func NewMezo(
 	bech32Prefix := sdk.GetConfig().GetBech32AccountAddrPrefix()
 	addressCodec := authcodec.NewBech32Codec(bech32Prefix)
 
+	localMsgServiceRouter := baseapp.NewMsgServiceRouter()
+	localMsgServiceRouter.SetInterfaceRegistry(interfaceRegistry)
+
 	app.AccountKeeper = authkeeper.NewAccountKeeper(
 		appCodec,
 		runtime.NewKVStoreService(keys[authtypes.StoreKey]),
@@ -379,7 +382,7 @@ func NewMezo(
 	app.AuthzKeeper = authzkeeper.NewKeeper(
 		runtime.NewKVStoreService(keys[authzkeeper.StoreKey]),
 		appCodec,
-		app.MsgServiceRouter(),
+		localMsgServiceRouter,
 		app.AccountKeeper,
 	)
 
@@ -516,7 +519,7 @@ func NewMezo(
 	)
 
 	app.mm.RegisterInvariants(app.CrisisKeeper)
-	app.configurator = module.NewConfigurator(app.appCodec, app.MsgServiceRouter(), app.GRPCQueryRouter())
+	app.configurator = module.NewConfigurator(app.appCodec, localMsgServiceRouter, app.GRPCQueryRouter())
 	err = app.mm.RegisterServices(app.configurator)
 	if err != nil {
 		panic(err)
