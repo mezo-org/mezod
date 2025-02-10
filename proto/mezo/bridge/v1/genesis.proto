@@ -10,4 +10,29 @@ option go_package = "github.com/mezo-org/mezod/x/bridge/types";
 message GenesisState {
   // params defines all the parameters of related to bridge.
   Params params = 1 [ (gogoproto.nullable) = false ];
+
+  // assets_locked_sequence_tip is the current sequence tip for the AssetsLocked
+  // events. The tip denotes the sequence number of the last event processed by
+  // the x/bridge module.
+  string assets_locked_sequence_tip = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // source_btc_token is the hex-encoded EVM address of the BTC token on the source chain.
+  // AssetsLocked events carrying this token address are directly mapped to the
+  // Mezo native denomination - BTC.
+  string source_btc_token = 3;
+
+  // erc20_tokens_mappings is the list of ERC20 token mappings supported by the
+  // bridge.
+  repeated ERC20TokenMapping erc20_tokens_mappings = 4;
+
+  // initial_btc_supply is the BTC supply minted by the network
+  // at genesis, this is used only for development / testnet purpose
+  // and should be left set to 0 in an production network.
+  string initial_btc_supply = 5 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
 }

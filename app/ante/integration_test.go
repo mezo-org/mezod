@@ -35,7 +35,7 @@ var _ = Describe("when sending a Cosmos transaction", func() {
 				Amount:      sdk.Coins{sdk.Coin{Amount: sdkmath.NewInt(1e14), Denom: utils.BaseDenom}},
 			}
 
-			err := testutil.PrepareAccount(s.ctx, s.app.AccountKeeper, s.app.BankKeeper, addr, balance)
+			err := testutil.PrepareAccount(s.ctx, s.app.AccountKeeper, s.app.BankKeeper, s.app.BridgeKeeper, addr, balance)
 			Expect(err).To(BeNil())
 
 			s.ctx, err = testutil.Commit(s.ctx, s.app, time.Second*0, nil)
@@ -61,7 +61,7 @@ var _ = Describe("when sending a Cosmos transaction", func() {
 				Amount:      sdk.Coins{sdk.Coin{Amount: sdkmath.NewInt(1e14), Denom: utils.BaseDenom}},
 			}
 
-			err := testutil.PrepareAccount(s.ctx, s.app.AccountKeeper, s.app.BankKeeper, addr, balance)
+			err := testutil.PrepareAccount(s.ctx, s.app.AccountKeeper, s.app.BankKeeper, s.app.BridgeKeeper, addr, balance)
 			Expect(err).To(BeNil())
 
 			s.ctx, err = testutil.Commit(s.ctx, s.app, time.Second*0, nil)

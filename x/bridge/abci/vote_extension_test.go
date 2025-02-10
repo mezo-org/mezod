@@ -148,7 +148,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -156,7 +156,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 			reqTxs: txsVector(),
 			expectedVE: &types.VoteExtension{
 				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
 				},
 			},
 			errContains: "",
@@ -172,9 +172,9 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(203, recipient1, 1000),
-					mockEvent(202, recipient1, 1000),
-					mockEvent(201, recipient1, 1000),
+					mockEvent(203, recipient1, 1000, token),
+					mockEvent(202, recipient1, 1000, token),
+					mockEvent(201, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -194,10 +194,10 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
-					mockEvent(201, recipient1, 1000),
-					mockEvent(202, recipient1, 1000),
-					mockEvent(203, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
+					mockEvent(201, recipient1, 1000, token),
+					mockEvent(202, recipient1, 1000, token),
+					mockEvent(203, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -217,10 +217,10 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(203, recipient1, 1000),
-					mockEvent(203, recipient1, 1000),
-					mockEvent(202, recipient1, 1000),
-					mockEvent(201, recipient1, 1000),
+					mockEvent(203, recipient1, 1000, token),
+					mockEvent(203, recipient1, 1000, token),
+					mockEvent(202, recipient1, 1000, token),
+					mockEvent(201, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -240,9 +240,9 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
-					mockEvent(202, recipient1, 1000),
-					mockEvent(204, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
+					mockEvent(202, recipient1, 1000, token),
+					mockEvent(204, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -262,10 +262,10 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
-					mockEvent(202, recipient1, 1000),
-					mockEvent(203, recipient1, 1000),
-					mockEvent(201, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
+					mockEvent(202, recipient1, 1000, token),
+					mockEvent(203, recipient1, 1000, token),
+					mockEvent(201, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -285,17 +285,17 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
-					mockEvent(202, recipient1, 1000),
-					mockEvent(203, recipient1, 1000),
-					mockEvent(204, recipient1, 1000),
-					mockEvent(205, recipient1, 1000),
-					mockEvent(206, recipient1, 1000),
-					mockEvent(207, recipient1, 1000),
-					mockEvent(208, recipient1, 1000),
-					mockEvent(209, recipient1, 1000),
-					mockEvent(210, recipient1, 1000),
-					mockEvent(211, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
+					mockEvent(202, recipient1, 1000, token),
+					mockEvent(203, recipient1, 1000, token),
+					mockEvent(204, recipient1, 1000, token),
+					mockEvent(205, recipient1, 1000, token),
+					mockEvent(206, recipient1, 1000, token),
+					mockEvent(207, recipient1, 1000, token),
+					mockEvent(208, recipient1, 1000, token),
+					mockEvent(209, recipient1, 1000, token),
+					mockEvent(210, recipient1, 1000, token),
+					mockEvent(211, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -315,16 +315,16 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
-					mockEvent(202, recipient1, 1000),
-					mockEvent(203, recipient1, 1000),
-					mockEvent(204, recipient1, 1000),
-					mockEvent(205, recipient1, 1000),
-					mockEvent(206, recipient1, 1000),
-					mockEvent(207, recipient1, 1000),
-					mockEvent(208, recipient1, 1000),
-					mockEvent(209, recipient1, 1000),
-					mockEvent(210, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
+					mockEvent(202, recipient1, 1000, token),
+					mockEvent(203, recipient1, 1000, token),
+					mockEvent(204, recipient1, 1000, token),
+					mockEvent(205, recipient1, 1000, token),
+					mockEvent(206, recipient1, 1000, token),
+					mockEvent(207, recipient1, 1000, token),
+					mockEvent(208, recipient1, 1000, token),
+					mockEvent(209, recipient1, 1000, token),
+					mockEvent(210, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -332,16 +332,16 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 			reqTxs: txsVector(),
 			expectedVE: &types.VoteExtension{
 				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
-					mockEvent(202, recipient1, 1000),
-					mockEvent(203, recipient1, 1000),
-					mockEvent(204, recipient1, 1000),
-					mockEvent(205, recipient1, 1000),
-					mockEvent(206, recipient1, 1000),
-					mockEvent(207, recipient1, 1000),
-					mockEvent(208, recipient1, 1000),
-					mockEvent(209, recipient1, 1000),
-					mockEvent(210, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
+					mockEvent(202, recipient1, 1000, token),
+					mockEvent(203, recipient1, 1000, token),
+					mockEvent(204, recipient1, 1000, token),
+					mockEvent(205, recipient1, 1000, token),
+					mockEvent(206, recipient1, 1000, token),
+					mockEvent(207, recipient1, 1000, token),
+					mockEvent(208, recipient1, 1000, token),
+					mockEvent(209, recipient1, 1000, token),
+					mockEvent(210, recipient1, 1000, token),
 				},
 			},
 			errContains: "",
@@ -362,7 +362,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					sequenceStart,
 					sequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(206, recipient1, 1000),
+					mockEvent(206, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -375,11 +375,11 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 								// The sequence tip from state is 200 but
 								// the injected tx contains events that will
 								// move the sequence tip to 205
-								mockEvent(201, recipient1, 1000),
-								mockEvent(202, recipient1, 1000),
-								mockEvent(203, recipient1, 1000),
-								mockEvent(204, recipient1, 1000),
-								mockEvent(205, recipient1, 1000),
+								mockEvent(201, recipient1, 1000, token),
+								mockEvent(202, recipient1, 1000, token),
+								mockEvent(203, recipient1, 1000, token),
+								mockEvent(204, recipient1, 1000, token),
+								mockEvent(205, recipient1, 1000, token),
 							},
 							ExtendedCommitInfo: []byte("extendedCommitInfo"),
 						},
@@ -388,7 +388,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 			),
 			expectedVE: &types.VoteExtension{
 				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-					mockEvent(206, recipient1, 1000),
+					mockEvent(206, recipient1, 1000, token),
 				},
 			},
 			errContains: "",
@@ -425,7 +425,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 					defaultSequenceStart,
 					defaultSequenceEnd,
 				).Return([]bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
 				}, nil)
 
 				return sidecar
@@ -435,7 +435,7 @@ func (s *VoteExtensionHandlerTestSuite) TestExtendVote() {
 			),
 			expectedVE: &types.VoteExtension{
 				AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-					mockEvent(201, recipient1, 1000),
+					mockEvent(201, recipient1, 1000, token),
 				},
 			},
 			errContains: "",
@@ -566,7 +566,7 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(201, recipient1, 1000),
+						mockEvent(201, recipient1, 1000, token),
 					},
 				})
 			},
@@ -580,9 +580,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(203, recipient1, 1000),
-						mockEvent(202, recipient1, 1000),
-						mockEvent(201, recipient1, 1000),
+						mockEvent(203, recipient1, 1000, token),
+						mockEvent(202, recipient1, 1000, token),
+						mockEvent(201, recipient1, 1000, token),
 					},
 				})
 			},
@@ -596,10 +596,10 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(201, recipient1, 1000),
-						mockEvent(201, recipient1, 1000),
-						mockEvent(202, recipient1, 1000),
-						mockEvent(203, recipient1, 1000),
+						mockEvent(201, recipient1, 1000, token),
+						mockEvent(201, recipient1, 1000, token),
+						mockEvent(202, recipient1, 1000, token),
+						mockEvent(203, recipient1, 1000, token),
 					},
 				})
 			},
@@ -613,10 +613,10 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(203, recipient1, 1000),
-						mockEvent(203, recipient1, 1000),
-						mockEvent(202, recipient1, 1000),
-						mockEvent(201, recipient1, 1000),
+						mockEvent(203, recipient1, 1000, token),
+						mockEvent(203, recipient1, 1000, token),
+						mockEvent(202, recipient1, 1000, token),
+						mockEvent(201, recipient1, 1000, token),
 					},
 				})
 			},
@@ -630,9 +630,9 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(201, recipient1, 1000),
-						mockEvent(202, recipient1, 1000),
-						mockEvent(204, recipient1, 1000),
+						mockEvent(201, recipient1, 1000, token),
+						mockEvent(202, recipient1, 1000, token),
+						mockEvent(204, recipient1, 1000, token),
 					},
 				})
 			},
@@ -646,10 +646,10 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(201, recipient1, 1000),
-						mockEvent(202, recipient1, 1000),
-						mockEvent(203, recipient1, 1000),
-						mockEvent(201, recipient1, 1000),
+						mockEvent(201, recipient1, 1000, token),
+						mockEvent(202, recipient1, 1000, token),
+						mockEvent(203, recipient1, 1000, token),
+						mockEvent(201, recipient1, 1000, token),
 					},
 				})
 			},
@@ -663,17 +663,17 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(201, recipient1, 1000),
-						mockEvent(202, recipient1, 1000),
-						mockEvent(203, recipient1, 1000),
-						mockEvent(204, recipient1, 1000),
-						mockEvent(205, recipient1, 1000),
-						mockEvent(206, recipient1, 1000),
-						mockEvent(207, recipient1, 1000),
-						mockEvent(208, recipient1, 1000),
-						mockEvent(209, recipient1, 1000),
-						mockEvent(210, recipient1, 1000),
-						mockEvent(211, recipient1, 1000),
+						mockEvent(201, recipient1, 1000, token),
+						mockEvent(202, recipient1, 1000, token),
+						mockEvent(203, recipient1, 1000, token),
+						mockEvent(204, recipient1, 1000, token),
+						mockEvent(205, recipient1, 1000, token),
+						mockEvent(206, recipient1, 1000, token),
+						mockEvent(207, recipient1, 1000, token),
+						mockEvent(208, recipient1, 1000, token),
+						mockEvent(209, recipient1, 1000, token),
+						mockEvent(210, recipient1, 1000, token),
+						mockEvent(211, recipient1, 1000, token),
 					},
 				})
 			},
@@ -687,16 +687,16 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			voteExtensionFn: func() []byte {
 				return marshalVE(types.VoteExtension{
 					AssetsLockedEvents: []bridgetypes.AssetsLockedEvent{
-						mockEvent(201, recipient1, 1000),
-						mockEvent(202, recipient1, 1000),
-						mockEvent(203, recipient1, 1000),
-						mockEvent(204, recipient1, 1000),
-						mockEvent(205, recipient1, 1000),
-						mockEvent(206, recipient1, 1000),
-						mockEvent(207, recipient1, 1000),
-						mockEvent(208, recipient1, 1000),
-						mockEvent(209, recipient1, 1000),
-						mockEvent(210, recipient1, 1000),
+						mockEvent(201, recipient1, 1000, token),
+						mockEvent(202, recipient1, 1000, token),
+						mockEvent(203, recipient1, 1000, token),
+						mockEvent(204, recipient1, 1000, token),
+						mockEvent(205, recipient1, 1000, token),
+						mockEvent(206, recipient1, 1000, token),
+						mockEvent(207, recipient1, 1000, token),
+						mockEvent(208, recipient1, 1000, token),
+						mockEvent(209, recipient1, 1000, token),
+						mockEvent(210, recipient1, 1000, token),
 					},
 				})
 			},

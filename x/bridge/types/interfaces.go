@@ -3,6 +3,8 @@ package types
 import (
 	"context"
 
+	"github.com/mezo-org/mezod/x/evm/types"
+
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -31,6 +33,9 @@ type BankKeeper interface {
 	// MintCoins creates new coins and adds them to the module account.
 	MintCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
 
+	// GetSupply retrieves the Supply from store
+	GetSupply(ctx context.Context, denom string) sdk.Coin
+
 	// SendCoinsFromModuleToAccount sends coins from the module account to the
 	// recipient account.
 	SendCoinsFromModuleToAccount(
@@ -39,4 +44,23 @@ type BankKeeper interface {
 		recipientAddr sdk.AccAddress,
 		amt sdk.Coins,
 	) error
+}
+
+// EvmKeeper is an interface to the x/evm module keeper.
+type EvmKeeper interface {
+	// ExecuteContractCall executes an EVM contract call.
+	ExecuteContractCall(
+		ctx sdk.Context,
+		call types.ContractCall,
+	) (*types.MsgEthereumTxResponse, error)
+
+	// IsContract returns if the account contains contract code.
+	IsContract(ctx sdk.Context, address []byte) bool
+}
+
+// AccountKeeper is an interface to the x/auth module keeper.
+type AccountKeeper interface {
+	// GetModuleAccount gets the module account from the auth account store, if the account does not
+	// exist in the AccountKeeper, then it is created.
+	GetModuleAccount(ctx context.Context, moduleName string) sdk.ModuleAccountI
 }

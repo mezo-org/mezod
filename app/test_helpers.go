@@ -43,6 +43,8 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/mezo-org/mezod/encoding"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 
 	"github.com/mezo-org/mezod/cmd/config"
@@ -209,6 +211,11 @@ func GenesisStateWithValSet(
 		[]banktypes.SendEnabled{},
 	)
 	genesisState[banktypes.ModuleName] = app.AppCodec().MustMarshalJSON(bankGenesis)
+
+	// update total supply
+	bridgeGenesis := bridgetypes.DefaultGenesis()
+	bridgeGenesis.InitialBtcSupply = totalSupply.AmountOf(evmtypes.DefaultEVMDenom)
+	genesisState[bridgetypes.ModuleName] = app.AppCodec().MustMarshalJSON(bridgeGenesis)
 
 	return genesisState
 }

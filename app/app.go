@@ -392,12 +392,6 @@ func NewMezo(
 		app.GetSubspace(feemarkettypes.ModuleName),
 	)
 
-	app.BridgeKeeper = bridgekeeper.NewKeeper(
-		appCodec,
-		keys[bridgetypes.StoreKey],
-		app.BankKeeper,
-	)
-
 	app.MarketMapKeeper = *marketmapkeeper.NewKeeper(
 		runtime.NewKVStoreService(keys[marketmaptypes.StoreKey]),
 		appCodec,
@@ -424,6 +418,13 @@ func NewMezo(
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
+	app.BridgeKeeper = bridgekeeper.NewKeeper(
+		appCodec,
+		keys[bridgetypes.StoreKey],
+		app.BankKeeper,
+		app.EvmKeeper,
+	)
+
 	precompiles, err := customEvmPrecompiles(
 		app.BankKeeper,
 		app.AuthzKeeper,
@@ -431,6 +432,7 @@ func NewMezo(
 		*app.EvmKeeper,
 		*app.UpgradeKeeper,
 		oraclekeeper.NewQueryServer(app.OracleKeeper),
+		app.BridgeKeeper,
 		bApp.ChainID(),
 	)
 	if err != nil {
@@ -455,7 +457,7 @@ func NewMezo(
 		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
 		evm.NewAppModule(app.EvmKeeper, app.AccountKeeper, app.GetSubspace(evmtypes.ModuleName)),
 		feemarket.NewAppModule(app.FeeMarketKeeper, app.GetSubspace(feemarkettypes.ModuleName)),
-		bridge.NewAppModule(app.BridgeKeeper),
+		bridge.NewAppModule(app.BridgeKeeper, app.AccountKeeper),
 		marketmap.NewAppModule(appCodec, &app.MarketMapKeeper),
 		oracle.NewAppModule(appCodec, app.OracleKeeper),
 	)
@@ -900,6 +902,7 @@ func customEvmPrecompiles(
 	evmKeeper evmkeeper.Keeper,
 	upgradeKeeper upgradekeeper.Keeper,
 	oracleQueryServer oracletypes.QueryServer,
+	bridgeKeeper bridgekeeper.Keeper,
 	chainID string,
 ) ([]*precompile.VersionMap, error) {
 	// BTC token precompile.
@@ -929,7 +932,7 @@ func customEvmPrecompiles(
 	}
 
 	// Bridge precompile.
-	assetsBridgeVersionMap, err := assetsbridge.NewPrecompileVersionMap()
+	assetsBridgeVersionMap, err := assetsbridge.NewPrecompileVersionMap(poaKeeper, bridgeKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create assets bridge precompile: [%w]", err)
 	}
