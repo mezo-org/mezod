@@ -386,4 +386,97 @@ describe("MezoTransfers", function () {
       expect(currentBalance).to.equal(0);
     });
   });
+
+  describe("transferWithStorageUpdate", function () {
+    let initialSenderBalance: any;
+    let initialRecipientBalance: any;
+    let tokenAmount: any;
+    let nativeAmount: any;
+    let gasCost: any;
+
+    beforeEach(async function () {
+      tokenAmount = ethers.parseEther("12");
+      nativeAmount = ethers.parseEther("2");
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+
+      await btcErc20Token.connect(signers[0]).approve(mezoTransfersAddress, tokenAmount/2n)
+        .then(tx => tx.wait());
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+      initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
+
+      const tx = await mezoTransfers.connect(signers[0]).transferWithStorageUpdate(recipientAddress, tokenAmount, { value: nativeAmount });
+      const receipt = await tx.wait();
+      gasCost = receipt.gasUsed * tx.gasPrice;
+    });
+
+    it("should verify sender native balance", async function () {
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      expect(initialSenderBalance - tokenAmount/2n - nativeAmount - gasCost).to.equal(currentSenderNativeBalance);
+    });
+
+    it("should verify recipient native balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(initialRecipientBalance).to.equal(0);
+      expect(currentRecipientNativeBalance).to.equal(tokenAmount/2n + nativeAmount);
+    });
+
+    it("should verify MezoTransfers contract has zero balance", async function () {
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+      const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      expect(currentContractNativeBalance).to.equal(0);
+    });
+
+    it("should verify balanceTracker storage variable was updated", async function () {
+      const balanceTracker = await mezoTransfers.balanceTracker();
+      expect(balanceTracker).to.equal(tokenAmount/2n);
+    });
+  });
+
+  describe("transferWithStorageUpdateAndRevert", function () {
+    let initialSenderBalance: any;
+    let initialRecipientBalance: any;
+    let tokenAmount: any;
+    let nativeAmount: any;
+
+    beforeEach(async function () {
+      tokenAmount = ethers.parseEther("12");
+      nativeAmount = ethers.parseEther("2");
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+
+      await btcErc20Token.connect(signers[0]).approve(mezoTransfersAddress, tokenAmount/2n)
+        .then(tx => tx.wait());
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+      initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
+
+      try {
+        await mezoTransfers.connect(signers[0]).transferWithStorageUpdateAndRevert(recipientAddress, tokenAmount, { value: nativeAmount });
+      } catch (error) {
+        expect(error.message).to.include("revert");
+      }
+    });
+
+    it("should verify sender native balance", async function () {
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      expect(initialSenderBalance).to.equal(currentSenderNativeBalance);
+    });
+
+    it("should verify recipient native balance stayed unchanged", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(initialRecipientBalance).to.equal(0);
+      expect(currentRecipientNativeBalance).to.equal(0);
+    });
+
+    it("should verify MezoTransfers contract has zero balance", async function () {
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+      const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      expect(currentContractNativeBalance).to.equal(0);
+    });
+
+    it("should verify balanceTracker storage variable was not updated", async function () {
+      const balanceTracker = await mezoTransfers.balanceTracker();
+      expect(balanceTracker).to.equal(0);
+    });
+  });
 });
