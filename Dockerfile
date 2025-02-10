@@ -14,6 +14,7 @@ RUN curl -sL https://deb.nodesource.com/setup_18.x | bash && \
     apt-get update -y && \
     apt-get install -y nodejs
 
+COPY .git .git
 COPY go.mod go.sum ./
 RUN go mod download
 
