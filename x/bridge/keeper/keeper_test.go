@@ -45,7 +45,7 @@ func mockContext() (sdk.Context, Keeper) {
 	// Create context
 	ctx := sdk.NewContext(cms, tmproto.Header{}, false, logger)
 
-	keeper.setSourceBTCToken(ctx, evmtypes.HexAddressToBytes(testSourceBTCToken))
+	keeper.SetSourceBTCToken(ctx, evmtypes.HexAddressToBytes(testSourceBTCToken))
 
 	err = keeper.SetParams(ctx, types.DefaultParams())
 	if err != nil {
