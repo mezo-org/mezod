@@ -121,4 +121,21 @@ contract MezoTransfers {
         require(sent2, "Native transfer failed");
         emit NativeTransfer(msg.sender, recipient, halfNativeAmount);
     }
+
+    // @notice Transfers with revert
+    function transferWithRevert(address payable recipient, uint256 tokenAmount) external payable {
+        require(msg.value > 0, "Must send some native tokens");
+
+        // Transfer ERC-20 BTC
+        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
+        require(success, "BTC ERC-20 transfer failed");
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
+
+        // Transfer native BTC
+        (bool sent, ) = recipient.call{value: msg.value}("");
+        require(sent, "Native transfer failed");
+        emit NativeTransfer(msg.sender, recipient, msg.value);
+
+        revert("revert after transfers");
+    }
 }
