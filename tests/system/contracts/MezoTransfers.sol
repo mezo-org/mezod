@@ -10,9 +10,6 @@ contract MezoTransfers {
     address private constant precompile = 0x7b7C000000000000000000000000000000000000;
     uint256 public balanceTracker;
 
-    event NativeTransfer(address indexed sender, address indexed recipient, uint256 amount);
-    event BTCERC20Transfer(address indexed sender, address indexed recipient, address indexed token, uint256 amount);
-
     /// @notice Transfers native BTC and then BTC ERC-20 Token from the contract
     ///         which was previously funded.
     function nativeThenBTCERC20(address recipient) external {
@@ -55,7 +52,6 @@ contract MezoTransfers {
         // Transfer native BTC
         (bool sent, ) = recipient.call{value: msg.value}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, msg.value);
     }
 
     /// @notice Receive native then transfer all received native amount as
@@ -66,7 +62,6 @@ contract MezoTransfers {
         // Transfer ERC-20 BTC
         bool success = IBTC(precompile).transfer(recipient, msg.value);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, msg.value);
     }
 
     /// @notice Receive native then transfer half as native BTC and half as
@@ -80,12 +75,10 @@ contract MezoTransfers {
         // Transfer native BTC
         (bool sent, ) = recipient.call{value: halfAmount}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, halfAmount);
 
         // Transfer ERC-20 BTC
         bool success = IBTC(precompile).transfer(recipient, halfAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfAmount);
     }
 
     /// @notice Receive native then transfer half as BTC ERC-20 Token and half as
@@ -99,12 +92,10 @@ contract MezoTransfers {
         // Transfer ERC-20 BTC
         bool success = IBTC(precompile).transfer(recipient, halfAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfAmount);
 
         // Transfer native BTC
         (bool sent, ) = recipient.call{value: halfAmount}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, halfAmount);
     }
 
     /// @notice Transfers BTC ERC-20 Token and native BTC multiple times.
@@ -117,22 +108,18 @@ contract MezoTransfers {
         // Transfer 1/4 of the token amount as ERC-20 BTC
         bool success1 = IBTC(precompile).transfer(recipient, quarterAmount);
         require(success1, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, quarterAmount);
 
         // Transfer 1/4 of the native BTC
         (bool sent1, ) = recipient.call{value: quarterAmount}("");
         require(sent1, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, quarterAmount);
 
         // Transfer 1/4 of the token amount as ERC-20 BTC
         bool success2 = IBTC(precompile).transfer(recipient, quarterAmount);
         require(success2, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, quarterAmount);
 
         // Transfer 1/4 of the native BTC
         (bool sent2, ) = recipient.call{value: quarterAmount}("");
         require(sent2, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, quarterAmount);
     }
 
     /// @notice Transfers with revert
@@ -144,12 +131,10 @@ contract MezoTransfers {
         // Transfer ERC-20 BTC
         bool success = IBTC(precompile).transfer(recipient, halfAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfAmount);
 
         // Transfer native BTC
         (bool sent, ) = recipient.call{value: halfAmount}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, halfAmount);
 
         revert("revert after transfers");
     }
@@ -164,12 +149,10 @@ contract MezoTransfers {
         // Transfer native BTC
         (bool sent, ) = recipient.call{value: msg.value}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, msg.value);
 
         // Transfer BTC ERC-20
         bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
     }
 
     /// @notice Transfers BTC ERC-20 Token and then native BTC within the same transaction.
@@ -182,12 +165,10 @@ contract MezoTransfers {
         // Transfer BTC ERC-20
         bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
 
         // Transfer native BTC
         (bool sent, ) = recipient.call{value: msg.value}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, msg.value);
     }
 
     /// @notice Update the storage variable, transfer ERC-20 BTC and then revert.
@@ -200,7 +181,6 @@ contract MezoTransfers {
         // Transfer ERC-20 BTC
         bool success = IBTC(precompile).transfer(recipient, halfTokenAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfTokenAmount);
 
         revert("revert after transfers");
     }
