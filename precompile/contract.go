@@ -321,10 +321,6 @@ func (rc *RunContext) Journal() *StateDBJournal {
 	return rc.journal
 }
 
-func (rc *RunContext) EVM() *vm.EVM {
-	return rc.evm
-}
-
 // SdkCtx returns the Cosmos SDK context associated with the run context.
 func (rc *RunContext) SdkCtx() sdk.Context {
 	return rc.sdkCtx
