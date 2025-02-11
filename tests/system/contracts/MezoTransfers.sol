@@ -14,6 +14,7 @@ contract MezoTransfers {
     event BTCERC20Transfer(address indexed sender, address indexed recipient, address indexed token, uint256 amount);
 
     /// @notice Transfers native BTC and then BTC ERC-20 Token from the contract
+    ///         which was previously funded.
     function nativeThenBTCERC20(address recipient) external {
         uint256 balance = IBTC(precompile).balanceOf(address(this));
         require(balance > 0, "No balance to transfer");
@@ -30,6 +31,7 @@ contract MezoTransfers {
     }
 
     /// @notice Transfers BTC ERC-20 Token and then native BTC from the contract
+    ///         which was previously funded.
     function btcERC20ThenNative(address recipient) external {
         uint256 balance = IBTC(precompile).balanceOf(address(this));
         require(balance > 0, "No balance to transfer");
@@ -45,7 +47,8 @@ contract MezoTransfers {
         require(sent, "Transfer using call failed");
     }
 
-    /// @notice Transfers native BTC
+    /// @notice Receive native then transfer all received native amount as
+    ///         native BTC.
     function receiveSendNative(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
 
@@ -55,89 +58,136 @@ contract MezoTransfers {
         emit NativeTransfer(msg.sender, recipient, msg.value);
     }
 
-    /// @notice Receive native but transfer only BTC ERC-20 Token
-    function receiveSendBTCERC20(address payable recipient, uint256 tokenAmount) external payable {
+    /// @notice Receive native then transfer all received native amount as
+    ///         BTC ERC-20 Token.
+    function receiveSendBTCERC20(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
         
         // Transfer ERC-20 BTC
-        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
+        bool success = IBTC(precompile).transfer(recipient, msg.value);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, msg.value);
     }
 
-    /// @notice Transfers native BTC and then BTC ERC-20 Token within the same transaction
-    function receiveAndSendNativeThenBTCERC20(address payable recipient, uint256 tokenAmount) external payable {
+    /// @notice Receive native then transfer half as native BTC and half as
+    ///         BTC ERC-20 Token. All the transfers should be funded from the 
+    ///         received native amount.
+    function receiveSendNativeThenBTCERC20(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
+
+        uint256 halfAmount = msg.value / 2;
 
         // Transfer native BTC
-        (bool sent, ) = recipient.call{value: msg.value}("");
+        (bool sent, ) = recipient.call{value: halfAmount}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, msg.value);
+        emit NativeTransfer(msg.sender, recipient, halfAmount);
 
         // Transfer ERC-20 BTC
-        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
+        bool success = IBTC(precompile).transfer(recipient, halfAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfAmount);
     }
 
-    // @notice Transfers BTC ERC-20 Token and then native BTC within the same transaction
-    function receiveAndSendBtcERC20ThenNative(address payable recipient, uint256 tokenAmount) external payable {
+    /// @notice Receive native then transfer half as BTC ERC-20 Token and half as
+    ///         native BTC. All the transfers should be funded from the
+    ///         received native amount.
+    function receiveSendBTCERC20ThenNative(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
 
+        uint256 halfAmount = msg.value / 2;
+
         // Transfer ERC-20 BTC
-        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
+        bool success = IBTC(precompile).transfer(recipient, halfAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfAmount);
 
         // Transfer native BTC
-        (bool sent, ) = recipient.call{value: msg.value}("");
+        (bool sent, ) = recipient.call{value: halfAmount}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, msg.value);
+        emit NativeTransfer(msg.sender, recipient, halfAmount);
     }
 
-    // @notice Transfers BTC ERC-20 Token and native BTC multiple times
-    function multipleBTCERC20AndNative(address payable recipient, uint256 tokenAmount) external payable {
+    /// @notice Transfers BTC ERC-20 Token and native BTC multiple times.
+    ///         All the transfers should be funded from the received native amount.
+    function multipleBTCERC20AndNative(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
 
-        uint256 halfTokenAmount = tokenAmount / 2;
-        uint256 halfNativeAmount = msg.value / 2;
+        uint256 quarterAmount = msg.value / 4;
 
-        // Transfer 1/2 of the token amount as ERC-20 BTC
-        bool success1 = IBTC(precompile).transferFrom(msg.sender, recipient, halfTokenAmount);
+        // Transfer 1/4 of the token amount as ERC-20 BTC
+        bool success1 = IBTC(precompile).transfer(recipient, quarterAmount);
         require(success1, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfTokenAmount);
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, quarterAmount);
 
-        // Transfer 1/2 of the native BTC
-        (bool sent1, ) = recipient.call{value: halfNativeAmount}("");
+        // Transfer 1/4 of the native BTC
+        (bool sent1, ) = recipient.call{value: quarterAmount}("");
         require(sent1, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, halfNativeAmount);
+        emit NativeTransfer(msg.sender, recipient, quarterAmount);
 
-        // Transfer 1/2 of the token amount as ERC-20 BTC
-        bool success2 = IBTC(precompile).transferFrom(msg.sender, recipient, halfTokenAmount);
+        // Transfer 1/4 of the token amount as ERC-20 BTC
+        bool success2 = IBTC(precompile).transfer(recipient, quarterAmount);
         require(success2, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfTokenAmount);
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, quarterAmount);
 
-        // Transfer 1/2 of the native BTC
-        (bool sent2, ) = recipient.call{value: halfNativeAmount}("");
+        // Transfer 1/4 of the native BTC
+        (bool sent2, ) = recipient.call{value: quarterAmount}("");
         require(sent2, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, halfNativeAmount);
+        emit NativeTransfer(msg.sender, recipient, quarterAmount);
     }
 
-    // @notice Transfers with revert
-    function transferWithRevert(address payable recipient, uint256 tokenAmount) external payable {
+    /// @notice Transfers with revert
+    function transferWithRevert(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
 
+        uint256 halfAmount = msg.value / 2;
+
         // Transfer ERC-20 BTC
-        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
+        bool success = IBTC(precompile).transfer(recipient, halfAmount);
         require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfAmount);
 
         // Transfer native BTC
-        (bool sent, ) = recipient.call{value: msg.value}("");
+        (bool sent, ) = recipient.call{value: halfAmount}("");
         require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, msg.value);
+        emit NativeTransfer(msg.sender, recipient, halfAmount);
 
         revert("revert after transfers");
+    }
+
+    /// @notice Transfers native BTC then BTC ERC-20 Token within the same transaction.
+    ///         All funds for native BTC transfer should come from native tokens received.
+    ///         All the funds for BTC ERC20 transfer should be approved by the sender and
+    ///         this function should faciliate the transfer.
+    function transferNativeThenBTCERC20(address payable recipient, uint256 tokenAmount) external payable {
+        require(msg.value > 0, "Must send some native tokens");
+
+        // Transfer native BTC
+        (bool sent, ) = recipient.call{value: msg.value}("");
+        require(sent, "Native transfer failed");
+        emit NativeTransfer(msg.sender, recipient, msg.value);
+
+        // Transfer BTC ERC-20
+        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
+        require(success, "BTC ERC-20 transfer failed");
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
+    }
+
+    /// @notice Transfers BTC ERC-20 Token and then native BTC within the same transaction.
+    ///         All funds for native BTC transfer should come from native tokens received.
+    ///         All the funds for BTC ERC20 transfer should be approved by the sender and
+    ///         this function should faciliate the transfer.
+    function transferBTCERC20ThenNative(address payable recipient, uint256 tokenAmount) external payable {
+        require(msg.value > 0, "Must send some native tokens");
+
+        // Transfer BTC ERC-20
+        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, tokenAmount);
+        require(success, "BTC ERC-20 transfer failed");
+        emit BTCERC20Transfer(msg.sender, recipient, precompile, tokenAmount);
+
+        // Transfer native BTC
+        (bool sent, ) = recipient.call{value: msg.value}("");
+        require(sent, "Native transfer failed");
+        emit NativeTransfer(msg.sender, recipient, msg.value);
     }
 
     // @notice Transfers with storage update
