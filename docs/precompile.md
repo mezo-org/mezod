@@ -20,9 +20,9 @@ oracles, and maintenance operations.
    Each precompile defines its logic, supported methods, and how they
    interact with the EVM state.
 
-2. **ABI and bytecode generation:** A precompile must provide ABI located in
+2. **ABI and bytecode generation:** A precompile must provide an ABI located in
    `abi.json` and EVM bytecode located in `byte_code.go`. They both can be
-   obtained by compiling a Solidity contract stored in the Hardhat's
+   obtained by compiling a Solidity contract stored in Hardhat's
    [contract](https://github.com/mezo-org/mezod/tree/precompiles-doc/precompile/hardhat/contracts)
    directory.
 
@@ -33,13 +33,13 @@ oracles, and maintenance operations.
    [Method](https://github.com/mezo-org/mezod/blob/9d0d45abd839ce4d9e003536724cd8d38b0031f7/precompile/method.go#L30)
    interface.
 
-5. **Hardhat Integration:** Precompiles can be interacted with using
+5. **Hardhat Integration:** Users can interact with precompiles using
    [Hardhat tasks](https://github.com/mezo-org/mezod/tree/main/precompile/hardhat/tasks),
    which provide CLI-based access for reading and writing data to the blockchain.
 
 ### Adding a New Precompile
 
-To add a new precompile:
+Follow these steps to add a new precompile:
 
 1. **Define the Solidity interface:** Create a Solidity interface. See example
    for [BTC Token](https://github.com/mezo-org/mezod/tree/main/precompile/btctoken).
@@ -58,8 +58,8 @@ To add a new precompile:
 5. **Register the Precompile in the Chain:** Create an instance of the new precompile
    in the [Mezo app](https://github.com/mezo-org/mezod/blob/9d0d45abd839ce4d9e003536724cd8d38b0031f7/app/app.go#L898)
 
-6. **Write Hardhat Tasks:** Add new tasks to
-   [Hardhat tasks](https://github.com/mezo-org/mezod/tree/main/precompile/hardhat/tasks).
+6. **Write Hardhat Tasks:** Define new tasks in the
+   [Hardhat tasks](https://github.com/mezo-org/mezod/tree/main/precompile/hardhat/tasks) directory.
 
 ## Available Precompiles
 
@@ -69,7 +69,7 @@ The following precompiles are available in the Mezo blockchain:
 
 #### Overview
 
-The BTC Token precompile provides an interface for interacting with the Mezo's
+The BTC Token precompile provides an interface for interacting with Mezo's
 native BTC token. It enables standard ERC-20 token operations such as balance
 queries, transfers, approvals.
 
