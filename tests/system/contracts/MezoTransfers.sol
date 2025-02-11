@@ -190,40 +190,17 @@ contract MezoTransfers {
         emit NativeTransfer(msg.sender, recipient, msg.value);
     }
 
-    // @notice Transfers with storage update
-    function transferWithStorageUpdate(address payable recipient, uint256 tokenAmount) external payable {
+    /// @notice Update the storage variable, transfer ERC-20 BTC and then revert.
+    function storageUpdateAndRevert(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
 
-        uint256 halfTokenAmount = tokenAmount / 2;
+        uint256 halfTokenAmount = msg.value / 2;
         balanceTracker = halfTokenAmount;
 
         // Transfer ERC-20 BTC
-        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, halfTokenAmount);
+        bool success = IBTC(precompile).transfer(recipient, halfTokenAmount);
         require(success, "BTC ERC-20 transfer failed");
         emit BTCERC20Transfer(msg.sender, recipient, precompile, halfTokenAmount);
-
-        // Transfer native BTC
-        (bool sent, ) = recipient.call{value: msg.value}("");
-        require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, msg.value);
-    }
-
-    // @notice Transfers with storage update and revert
-    function transferWithStorageUpdateAndRevert(address payable recipient, uint256 tokenAmount) external payable {
-        require(msg.value > 0, "Must send some native tokens");
-
-        uint256 halfTokenAmount = tokenAmount / 2;
-        balanceTracker = halfTokenAmount;
-
-        // Transfer ERC-20 BTC
-        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, halfTokenAmount);
-        require(success, "BTC ERC-20 transfer failed");
-        emit BTCERC20Transfer(msg.sender, recipient, precompile, halfTokenAmount);
-
-        // Transfer native BTC
-        (bool sent, ) = recipient.call{value: msg.value}("");
-        require(sent, "Native transfer failed");
-        emit NativeTransfer(msg.sender, recipient, msg.value);
 
         revert("revert after transfers");
     }
