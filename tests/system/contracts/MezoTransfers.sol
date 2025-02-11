@@ -171,17 +171,17 @@ contract MezoTransfers {
         require(sent, "Native transfer failed");
     }
 
-    /// @notice Update the storage variable, transfer ERC-20 BTC and then revert.
-    function storageUpdateAndRevert(address payable recipient) external payable {
+    /// @notice Update the storage variable, transfer ERC20 and then reset the
+    ///         storage variable to its original value.
+    function storageStateTransition(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
 
-        uint256 halfTokenAmount = msg.value / 2;
-        balanceTracker = halfTokenAmount;
+        balanceTracker = msg.value;
 
-        // Transfer ERC-20 BTC
-        bool success = IBTC(precompile).transfer(recipient, halfTokenAmount);
+        // Transfer ERC-20
+        bool success = IBTC(precompile).transfer(recipient, msg.value);
         require(success, "BTC ERC-20 transfer failed");
 
-        revert("revert after transfers");
+        balanceTracker = 0;
     }
 }

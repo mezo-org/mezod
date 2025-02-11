@@ -473,6 +473,7 @@ describe("MezoTransfers", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let nativeAmount: any;
+    let gasCost: any;
 
     beforeEach(async function () {
       nativeAmount = ethers.parseEther("2");
@@ -480,22 +481,20 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      try {
-        await mezoTransfers.connect(signers[0]).storageUpdateAndRevert(recipientAddress, { value: nativeAmount });
-      } catch (error) {
-        expect(error.message).to.include("revert");
-      }
+      const tx = await mezoTransfers.connect(signers[0]).storageStateTransition(recipientAddress, { value: nativeAmount });
+      const receipt = await tx.wait();
+      gasCost = receipt.gasUsed * tx.gasPrice;
     });
 
     it("should verify sender native balance", async function () {
       const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(initialSenderBalance).to.equal(currentSenderNativeBalance);
+      expect(initialSenderBalance - nativeAmount - gasCost).to.equal(currentSenderNativeBalance);
     });
 
-    it("should verify recipient native balance stayed unchanged", async function () {
+    it("should verify recipient native balance increased", async function () {
       const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
       expect(initialRecipientBalance).to.equal(0);
-      expect(currentRecipientNativeBalance).to.equal(0);
+      expect(currentRecipientNativeBalance).to.equal(nativeAmount);
     });
 
     it("should verify MezoTransfers contract has zero balance", async function () {
@@ -504,7 +503,7 @@ describe("MezoTransfers", function () {
       expect(currentContractNativeBalance).to.equal(0);
     });
 
-    it("should verify balanceTracker storage variable was not updated", async function () {
+    it("should verify balanceTracker storage variable was unchanged", async function () {
       const balanceTracker = await mezoTransfers.balanceTracker();
       expect(balanceTracker).to.equal(0);
     });
