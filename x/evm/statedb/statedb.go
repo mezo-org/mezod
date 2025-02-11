@@ -615,20 +615,7 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 
 // Commit writes the dirty states to keeper
 // the StateDB object should be discarded after committed.
-func (s *StateDB) Commit(maybeCtx ...sdk.Context) error {
-	// defaults on the main context
-	ctx := s.ctx
-
-	// we've passed around a context, we use it instead
-	// of the main context
-	if len(maybeCtx) > 0 {
-		ctx = maybeCtx[0]
-	} else if s.flushCache != nil {
-		// we are using the main context, if a cache context
-		// existed as well, let's flush it first
-		s.flushCache()
-	}
-
+func (s *StateDB) commit(ctx sdk.Context) error {
 	for _, addr := range s.journal.sortedDirties() {
 		obj := s.stateObjects[addr]
 		if obj.selfDestructed {
@@ -655,8 +642,18 @@ func (s *StateDB) Commit(maybeCtx ...sdk.Context) error {
 	return nil
 }
 
+func (s *StateDB) Commit() error {
+	// if this is set, this means a cache context
+	// existed as well, let's flush it first
+	if s.flushCache != nil {
+		s.flushCache()
+	}
+
+	return s.commit(s.ctx)
+}
+
 func (s *StateDB) CommitCacheContext() error {
-	return s.Commit(s.cachedCtx)
+	return s.commit(s.cachedCtx)
 }
 
 func (s *StateDB) CacheContext() sdk.Context {

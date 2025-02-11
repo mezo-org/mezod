@@ -22,10 +22,11 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	errorsmod "cosmossdk.io/errors"
 	tmtypes "github.com/cometbft/cometbft/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/holiman/uint256"
+
+	errorsmod "cosmossdk.io/errors"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
