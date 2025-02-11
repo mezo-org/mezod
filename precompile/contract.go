@@ -239,6 +239,8 @@ func (c *Contract) finalizeJournalEntries(journal *StateDBJournal, stateDB *stat
 
 		stateDB.AddBalance(v.Address, v.Amount, v.TracingReason)
 	}
+
+	journal.entries = nil
 }
 
 // parseCallInput extracts the method ID and input arguments from the given
