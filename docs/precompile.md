@@ -8,7 +8,58 @@ Solidity-based contracts.
 
 ## Implementation
 
-TODO
+The precompile framework extends the CosmosSDK-based EVM implementation by
+introducing built-in smart contracts executed natively by the chain. These
+precompiles provide various functionalities, such as asset bridging, price
+oracles, and maintenance operations.
+
+### Main Components
+
+1. **Precompile Contracts:** The code for precompiles is located inside the
+   [precompile](https://github.com/mezo-org/mezod/tree/main/precompile) directory.
+   Each precompile defines its logic, supported methods, and how they
+   interact with the EVM state.
+
+2. **ABI and bytecode generation:** A precompile must provide ABI located in
+   `abi.json` and EVM bytecode located in `byte_code.go`. They both can be
+   obtained by compiling a Solidity contract stored in the Hardhat's
+   [contract](https://github.com/mezo-org/mezod/tree/precompiles-doc/precompile/hardhat/contracts)
+   directory.
+
+3. **Versioning:** Precompiles can have multiple versions. The versions are
+   handled by a version map.
+
+4. **Method Execution:** Each precompile registers methods that follow the
+   [Method](https://github.com/mezo-org/mezod/blob/9d0d45abd839ce4d9e003536724cd8d38b0031f7/precompile/method.go#L30)
+   interface.
+
+5. **Hardhat Integration:** Precompiles can be interacted with using
+   [Hardhat tasks](https://github.com/mezo-org/mezod/tree/main/precompile/hardhat/tasks),
+   which provide CLI-based access for reading and writing data to the blockchain.
+
+### Adding a New Precompile
+
+To add a new precompile:
+
+1. **Define the Solidity interface:** Create a Solidity interface. See example
+   for [BTC Token](https://github.com/mezo-org/mezod/tree/main/precompile/btctoken).
+
+2. **Implement the Solidity caller contract:** Create a contract that calls the
+   precompile. See example for
+   [BTC Token](https://github.com/mezo-org/mezod/blob/main/precompile/hardhat/contracts/BTCCaller.sol).
+
+3. **Generate ABI and bytecode:** Use Hardhat to compile the contract and
+   extract the `deployedBytecode` and `abi` from the artifacts.
+
+4. **Implement the precompile logic:** Create a new package for the new
+   precompile. Implement methods and register them. See example for
+   [BTC Token](https://github.com/mezo-org/mezod/tree/main/precompile/btctoken).
+
+5. **Register the Precompile in the Chain:** Create an instance of the new precompile
+   in the [Mezo app](https://github.com/mezo-org/mezod/blob/9d0d45abd839ce4d9e003536724cd8d38b0031f7/app/app.go#L898)
+
+6. **Write Hardhat Tasks:** Add new tasks to
+   [Hardhat tasks](https://github.com/mezo-org/mezod/tree/main/precompile/hardhat/tasks).
 
 ## Available Precompiles
 
