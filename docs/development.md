@@ -8,49 +8,11 @@ To start a single client instance locally please use the `make localnode-bin-sta
 command. The script will compile the client, perform genesis, and start a local
 client instance.
 
-### Multiple client instances using docker
+### Multiple client instances
 
-There is a set of `make` targets allowing to set up multiple client instances
-connected to each other locally. The formulas use Docker Compose to set up the
-cluster so on macOS, Docker Desktop must be running locally.
-
-```bash
-# Build and install the `mezo-org/mezod` image locally.
-$ make localnet-docker-build
-# Start four client instances.
-$ make localnet-docker-start
-# Stop client instances started with localnet-docker-start.
-$ make localnet-docker-stop
-# Show logs of all four client instances together.
-$ make localnet-docker-show-logstream
-```
-
-The client build can take some time even if there have been no changes, so it is
-not executed as part of the `localnet-docker-start` target to save time. To
-rebuild the client after code changes, please explicitly re-run the
-`localnet-docker-build` target.
-
-The configuration for the four nodes is available in the `build` directory.
-
-When `make localnet-docker-start` is used for the first time, a configuration
-for the four nodes is generated. To clear the chain state and reset the
-configuration, use `make localnet-docker-clean` followed by `make localnet-docker-start`.
-
-All client instances expose JSON-RPC HTTP and JSON-RPC WebSocket services
-available from the host machine.
-
-| Instance  | JSON-RPC HTTP | JSON-RPC WS |
-|-----------|---------------|-------------|
-| mezo-node0 | 8545          | 8546        |
-| mezo-node1 | 8547          | 8548        |
-| mezo-node3 | 8549          | 8550        |
-| mezo-node4 | 8551          | 8552        |
-
-### Multiple client instances using local binaries
-
-Multiple clients can also be run using locally built binaries. This method
-can be useful when there are frequent changes to the code and rebuilds are
-needed. However, it requires starting each node separately.
+Multiple clients can be run using locally built binaries. This method can be
+useful when there are frequent changes to the code and rebuilds are needed.
+However, it requires starting each node separately.
 
 ```bash
 # Build the binaries and generate configuration for the clients.
