@@ -23,14 +23,14 @@ oracles, and maintenance operations.
 2. **ABI and bytecode generation:** A precompile must provide an ABI located in
    `abi.json` and EVM bytecode located in `byte_code.go`. They both can be
    obtained by compiling a Solidity contract stored in Hardhat's
-   [contract](https://github.com/mezo-org/mezod/tree/precompiles-doc/precompile/hardhat/contracts)
+   [contract](https://github.com/mezo-org/mezod/tree/main/precompile/hardhat/contracts)
    directory.
 
 3. **Versioning:** Precompiles can have multiple versions. The versions are
    handled by a version map.
 
 4. **Method Execution:** Each precompile registers methods that follow the
-   [Method](https://github.com/mezo-org/mezod/blob/9d0d45abd839ce4d9e003536724cd8d38b0031f7/precompile/method.go#L30)
+   [Method](https://github.com/mezo-org/mezod/blob/main/precompile/method.go#L30)
    interface.
 
 5. **Hardhat Integration:** Users can interact with precompiles using
@@ -56,7 +56,7 @@ Follow these steps to add a new precompile:
    [BTC Token](https://github.com/mezo-org/mezod/tree/main/precompile/btctoken).
 
 5. **Register the Precompile in the Chain:** Create an instance of the new precompile
-   in the [Mezo app](https://github.com/mezo-org/mezod/blob/9d0d45abd839ce4d9e003536724cd8d38b0031f7/app/app.go#L898)
+   in the [Mezo app](https://github.com/mezo-org/mezod/blob/main/app/app.go#L898)
 
 6. **Write Hardhat Tasks:** Define new tasks in the
    [Hardhat tasks](https://github.com/mezo-org/mezod/tree/main/precompile/hardhat/tasks) directory.
