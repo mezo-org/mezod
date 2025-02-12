@@ -50,9 +50,12 @@ describe("MezoTransfers", function () {
       expect(initialSenderBalance - gasCost).to.equal(currentSenderNativeBalance);
     });
 
-    it("should verify recipient native balance", async function () {
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+    it("should verify initial recipient balance is zero", async function () {
       expect(initialRecipientBalance).to.equal(0);
+    });
+
+    it("should verify current recipient balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
       expect(currentRecipientNativeBalance).to.equal(tokenAmount);
     });
 
@@ -99,9 +102,12 @@ describe("MezoTransfers", function () {
       expect(initialSenderBalance - gasCost).to.equal(currentSenderNativeBalance);
     });
 
-    it("should verify recipient native balance", async function () {
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+    it("should verify initial recipient balance is zero", async function () {
       expect(initialRecipientBalance).to.equal(0);
+    });
+
+    it("should verify current recipient native balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
       expect(currentRecipientNativeBalance).to.equal(tokenAmount);
     });
 
@@ -134,9 +140,12 @@ describe("MezoTransfers", function () {
       expect(initialSenderBalance - nativeAmount - gasCost).to.equal(currentSenderNativeBalance);
     });
 
+    it("should verify initial recipient balance is zero", async function () {
+      expect(initialRecipientBalance).to.equal(0);
+    });
+
     it("should verify recipient native balance", async function () {
       const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(initialRecipientBalance).to.equal(0);
       expect(currentRecipientNativeBalance).to.equal(nativeAmount);
     });
 
@@ -172,9 +181,12 @@ describe("MezoTransfers", function () {
       expect(initialSenderBalance - nativeAmount - gasCost).to.equal(currentSenderNativeBalance);
     });
 
+    it("should verify initial recipient balance is zero", async function () {
+      expect(initialRecipientBalance).to.equal(0);
+    });
+
     it("should verify recipient native balance", async function () {
       const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(initialRecipientBalance).to.equal(0);
       expect(currentRecipientNativeBalance).to.equal(nativeAmount);
     });
 
@@ -322,9 +334,9 @@ describe("MezoTransfers", function () {
   });
 
   describe("receiveSendMultiple_hugeAmount", function () {
+    const nativeAmount = ethers.parseEther("21000000"); // this amount is split by 4 in contract
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
-    const nativeAmount = 5250000n; // this amount is split by 4 in contract
     let gasCost: any;
     let mezoTransfersAddress: any;
 
