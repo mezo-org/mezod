@@ -447,49 +447,6 @@ proto-download-deps:
 .PHONY: proto-all proto-gen proto-format proto-lint proto-check-breaking proto-swagger-gen
 
 ###############################################################################
-###                          Localnet docker                                ###
-###############################################################################
-
-# Build image for a local testnet
-localnet-docker-build:
-	@$(MAKE) -C networks/local
-
-# Start a 4-node testnet locally
-localnet-docker-start: localnet-docker-stop
-	@if ! [ -f build/node0/$(MEZO_BINARY)/config/genesis.json ]; then docker run --platform linux/amd64 --rm -v $(CURDIR)/build:/mezo:Z mezo-org/mezod "./mezod testnet init-files --v 4 -o /mezo --keyring-backend=test --starting-ip-address 192.167.10.2 --chain-id mezo_31611-10"; fi
-	docker-compose up -d
-
-# Stop testnet
-localnet-docker-stop:
-	docker-compose down
-
-# Clean testnet
-localnet-docker-clean:
-	docker-compose down
-	rm -rf build/*
-
- # Reset testnet
-localnet-docker-unsafe-reset:
-	docker-compose down
-ifeq ($(OS),Windows_NT)
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node0\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node1\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node2\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)\build\node3\mezod:/mezo\Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
-else
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node0/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node1/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node2/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
-	@docker run --platform linux/amd64 --rm -v $(CURDIR)/build/node3/mezod:/mezo:Z mezo-org/mezod "./mezod tendermint unsafe-reset-all --home=/mezo"
-endif
-
-# Clean testnet
-localnet-docker-show-logstream:
-	docker-compose logs --tail=1000 -f
-
-.PHONY: localnet-docker-build localnet-docker-start localnet-docker-stop
-
-###############################################################################
 ###                         Localnet binary-based                           ###
 ###############################################################################
 
@@ -532,7 +489,7 @@ localnet-bin-sidecars-start:
 localnet-bin-clean:
 	rm -rf $(LOCALNET_DIR) build
 
-.PHONY: localnet-bin-init localnet-bin-start localnet-bin-clean
+.PHONY: localnet-bin-init localnet-bin-start localnet-bin-sidecars-start localnet-bin-clean
 
 ###############################################################################
 ###                         Local node binary-based                         ###
