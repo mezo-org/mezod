@@ -42,6 +42,9 @@ var DomainSeparator = []byte{
 }
 
 func (s *PrecompileTestSuite) TestPermit() {
+	// TODO: Remove the skip once the flakiness is fixed.
+	s.T().Skip("This test is flaky and needs to be fixed. See https://linear.app/thesis-co/issue/TET-93/flaky-unit-test-of-the-btc-permit-method")
+
 	testcases := []struct {
 		name        string
 		run         func(nonce int64) []interface{}

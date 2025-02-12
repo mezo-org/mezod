@@ -1,0 +1,17 @@
+{
+  "name": "@mezo-org/e2e",
+  "version": "0.0.1",
+  "description": "e2e tests for mezo",
+  "scripts": {
+    "test": "hardhat test ./test/*.test.ts --network localhost",
+    "deploy": "hardhat deploy --network localhost"
+  },
+  "author": "",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "ethers": "^6.13.5",
+    "hardhat": "^2.22.18",
+    "hardhat-deploy": "^0.14.0"
+  }
+}

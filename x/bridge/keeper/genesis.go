@@ -24,7 +24,7 @@ func (k Keeper) InitGenesis(
 	}
 
 	k.setAssetsLockedSequenceTip(ctx, genState.AssetsLockedSequenceTip)
-	k.setSourceBTCToken(ctx, evmtypes.HexAddressToBytes(genState.SourceBtcToken))
+	k.SetSourceBTCToken(ctx, evmtypes.HexAddressToBytes(genState.SourceBtcToken))
 	k.setERC20TokensMappings(ctx, genState.Erc20TokensMappings)
 
 	err = k.IncreaseBTCMinted(ctx, genState.InitialBtcSupply)
