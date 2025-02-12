@@ -472,36 +472,46 @@ describe("MezoTransfers", function () {
   describe("storageUpdateAndRevert", function () {
     let initialContractBalance: any;
     let initialRecipientBalance: any;
+    let initialSenderBalance: any;
     let amount: any;
     let gasCost: any;
     let mezoTransfersAddress: any;
 
     beforeEach(async function () {
       amount = ethers.parseEther("2");
-      // Fund the contract first
       mezoTransfersAddress = await mezoTransfers.getAddress();
-      await btcErc20Token.connect(signers[0]).transfer(mezoTransfersAddress, amount)
+      
+      await btcErc20Token.connect(signers[0]).approve(mezoTransfersAddress, amount)
         .then(tx => tx.wait());
 
       initialContractBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).storageStateTransition(recipientAddress);
+      const tx = await mezoTransfers.connect(signers[0]).storageStateTransition(recipientAddress, amount);
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
 
-    it("should verify recipient native balance increased", async function () {
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+    it("should verify sender balance deduction", async function () {
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      expect(initialSenderBalance - amount - gasCost).to.equal(currentSenderNativeBalance);
+    });
+
+    it("should verify recipient native balance is zero before the call", async function () {
       expect(initialRecipientBalance).to.equal(0);
+    });
+
+    it("should verify recipient native balance increased after the call", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
       expect(currentRecipientNativeBalance).to.equal(amount);
     });
 
-    it("should verify MezoTransfers contract has non-zero at the beginning of the call", async function () {
-      expect(initialContractBalance).to.equal(amount);
+    it("should verify MezoTransfers contract has zero balance before the call", async function () {
+      expect(initialContractBalance).to.equal(0);
     });
 
-    it("should verify MezoTransfers contract has zero balance at the end of the call", async function () {
+    it("should verify MezoTransfers contract has zero balance after the call", async function () {
       const currentContractBalance = await ethers.provider.getBalance(mezoTransfersAddress);
       expect(currentContractBalance).to.equal(0);
     });
