@@ -1,6 +1,6 @@
 # System tests
 
-This project demonstrates system tests for BTC transfers on Mezo chain.
+This project demonstrates system tests for the Mezo chain.
 
 ## Run Mezo localnet
 

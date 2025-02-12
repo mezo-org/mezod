@@ -24,7 +24,7 @@ describe("MezoTransfers", function () {
     recipientAddress = ethers.Wallet.createRandom().address;
   });
 
-  describe("nativeThenBTCERC20", function () {
+  describe("nativeThenERC20", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let tokenAmount: any;
@@ -40,7 +40,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).nativeThenBTCERC20(recipientAddress);
+      const tx = await mezoTransfers.connect(signers[0]).nativeThenERC20(recipientAddress);
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -73,7 +73,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("btcERC20ThenNative", function () {
+  describe("erc20ThenNative", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let tokenAmount: any;
@@ -89,7 +89,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).btcERC20ThenNative(recipientAddress);
+      const tx = await mezoTransfers.connect(signers[0]).erc20ThenNative(recipientAddress);
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -147,7 +147,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("receiveSendBTCERC20", function () {
+  describe("receiveSendERC20", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let nativeAmount: any;
@@ -161,7 +161,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendBTCERC20(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendERC20(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
 
       gasCost = receipt.gasUsed * tx.gasPrice;
@@ -184,7 +184,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("receiveSendNativeThenBTCERC20", function () {
+  describe("receiveSendNativeThenERC20", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let gasCost: any;
@@ -197,7 +197,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendNativeThenBTCERC20(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendNativeThenERC20(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -218,7 +218,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("receiveSendBTCERC20ThenNative", function () {
+  describe("receiveSendERC20ThenNative", function () {
     const nativeAmount = ethers.parseEther("5");
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
@@ -231,7 +231,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendBTCERC20ThenNative(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendERC20ThenNative(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -252,7 +252,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("multipleBTCERC20AndNative", function () {
+  describe("receiveSendMultiple", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     const nativeAmount = ethers.parseEther("8");
@@ -265,7 +265,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).multipleBTCERC20AndNative(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendMultiple(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -286,7 +286,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("multipleBTCERC20AndNative_tinyAmount", function () {
+  describe("receiveSendMultiple_tinyAmount", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     const nativeAmount = 4n; // this amount is split by 4 in contract
@@ -300,7 +300,7 @@ describe("MezoTransfers", function () {
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
       // Transfer
-      const tx = await mezoTransfers.connect(signers[0]).multipleBTCERC20AndNative(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendMultiple(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -321,7 +321,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("multipleBTCERC20AndNative_hugeAmount", function () {
+  describe("receiveSendMultiple_hugeAmount", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     const nativeAmount = 5250000n; // this amount is split by 4 in contract
@@ -334,7 +334,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).multipleBTCERC20AndNative(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendMultiple(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -355,7 +355,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("transferWithRevert", function () {
+  describe("receiveSendRevert", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     const nativeAmount = 42;
@@ -371,7 +371,7 @@ describe("MezoTransfers", function () {
         // Transfer
         await mezoTransfers
           .connect(signers[0])
-          .transferWithRevert(recipientAddress, { value: nativeAmount });
+          .receiveSendRevert(recipientAddress, { value: nativeAmount });
       } catch (error) {
         expect(error.message).to.include("revert");
       }
@@ -393,7 +393,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("transferNativeThenBTCERC20", function () {
+  describe("receiveSendNativeThenPullERC20", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let gasCost: any;
@@ -410,7 +410,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).transferNativeThenBTCERC20(recipientAddress, tokenAmount, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(signers[0]).receiveSendNativeThenPullERC20(recipientAddress, tokenAmount, { value: nativeAmount });
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -431,7 +431,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("transferBTCERC20ThenNative", function () {
+  describe("receivePullERC20ThenNative", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
     const tokenAmount = ethers.parseEther("4");
@@ -448,7 +448,7 @@ describe("MezoTransfers", function () {
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).transferBTCERC20ThenNative(recipientAddress, tokenAmount, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(signers[0]).receivePullERC20ThenNative(recipientAddress, tokenAmount, { value: nativeAmount });
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * tx.gasPrice;
     });
@@ -469,7 +469,7 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("storageUpdateAndRevert", function () {
+  describe("storageStateTransition", function () {
     let initialContractBalance: any;
     let initialRecipientBalance: any;
     let initialSenderBalance: any;
