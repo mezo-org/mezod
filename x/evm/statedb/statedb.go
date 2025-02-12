@@ -630,12 +630,7 @@ func (s *StateDB) commit(ctx sdk.Context) error {
 				return errorsmod.Wrap(err, "failed to set account")
 			}
 			for _, key := range obj.dirtyStorage.SortedKeys() {
-				value := obj.dirtyStorage[key]
-				// Skip noop changes, persist actual changes
-				if value == obj.originStorage[key] {
-					continue
-				}
-				s.keeper.SetState(ctx, obj.Address(), key, value.Bytes())
+				s.keeper.SetState(ctx, obj.Address(), key, obj.dirtyStorage[key].Bytes())
 			}
 		}
 	}
