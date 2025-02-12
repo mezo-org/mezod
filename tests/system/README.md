@@ -19,5 +19,5 @@ make localnet-bin-start
 ## Run hardhat system tests against localnet
 
 ```shell
-npm run test
+./system-tests.sh
 ```
