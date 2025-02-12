@@ -90,9 +90,5 @@ dependency-graph.png
 # Node.js
 **/node_modules
 
-
-# OpenZeppelin contracts
-contracts/@openzeppelin/*
-
 # Directory for storing temporary data (e.g. fetched npm packages)
 tmp/
