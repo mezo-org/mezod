@@ -13,6 +13,11 @@ message Params {
   // mappings that can be supported in the bridge. The reason for this limit is
   // to not downgrade the bridge performance on the Mezo chain side too much.
   uint32 max_erc20_tokens_mappings = 1;
+
+  // btc_supply_assertion_enabled is a flag to enable/disable the assertion that
+  // checks if the total BTC supply on the Mezo chain is equal to the difference
+  // between the total BTC minted and burned by the bridge module.
+  bool btc_supply_assertion_enabled = 2;
 }
 
 // AssetsLockedEvent represents the event where inbound assets are locked in
