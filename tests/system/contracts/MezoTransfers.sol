@@ -172,16 +172,18 @@ contract MezoTransfers {
     }
 
     /// @notice Update the storage variable, transfer ERC20 and then reset the
-    ///         storage variable to its original value.
-    function storageStateTransition(address payable recipient) external payable {
-        require(msg.value > 0, "Must send some native tokens");
+    ///         storage variable to its original value. This contract should be
+    ///         funded with some BTC ERC-20 tokens before calling this function.
+    function storageStateTransition(address recipient) external {
+        uint256 balance = (address(this)).balance;
+        require(balance > 0, "Contract has no BTC ERC-20 balance");
 
-        balanceTracker = msg.value;
+        balanceTracker = 42; // This is an arbitrary value for testing purposes only.
 
-        // Transfer ERC-20
-        bool success = IBTC(precompile).transfer(recipient, msg.value);
+        // Transfer ERC-20.
+        bool success = IBTC(precompile).transfer(recipient, balance);
         require(success, "BTC ERC-20 transfer failed");
 
-        balanceTracker = 0;
+        balanceTracker = 0; // Reset the storage variable to its original value.
     }
 }
