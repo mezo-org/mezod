@@ -12,15 +12,17 @@ describe("MezoTransfers", function () {
   let btcErc20Token: any;
   let mezoTransfers: MezoTransfers;
   let signers: any;
+  let senderSigner: any;
   let senderAddress: string;
   let recipientAddress: string;
 
-  beforeEach(async function () {
+  const fixture = (async function () {
     await deployments.fixture();
     btcErc20Token = new hre.ethers.Contract(precompileAddress, abi, ethers.provider);
     mezoTransfers = await getDeployedContract("MezoTransfers");
     signers = await ethers.getSigners();
-    senderAddress = signers[0].address;
+    senderSigner = signers[0];
+    senderAddress = senderSigner.address;
     recipientAddress = ethers.Wallet.createRandom().address;
   });
 
@@ -30,19 +32,21 @@ describe("MezoTransfers", function () {
     let tokenAmount: any;
     let gasCost: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       tokenAmount = ethers.parseEther("8");
       const mezoTransfersAddress = await mezoTransfers.getAddress();
 
-      const transferTx = await btcErc20Token.connect(signers[0]).transfer(mezoTransfersAddress, tokenAmount);
+      const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
       await transferTx.wait();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).nativeThenERC20(recipientAddress);
+      const tx = await mezoTransfers.connect(senderSigner).nativeThenERC20(recipientAddress);
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance", async function () {
@@ -82,19 +86,21 @@ describe("MezoTransfers", function () {
     let tokenAmount: any;
     let gasCost: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       tokenAmount = ethers.parseEther("12");
       const mezoTransfersAddress = await mezoTransfers.getAddress();
 
-      const transferTx = await btcErc20Token.connect(signers[0]).transfer(mezoTransfersAddress, tokenAmount);
+      const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
       await transferTx.wait();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).erc20ThenNative(recipientAddress);
+      const tx = await mezoTransfers.connect(senderSigner).erc20ThenNative(recipientAddress);
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance", async function () {
@@ -124,15 +130,17 @@ describe("MezoTransfers", function () {
     let nativeAmount: any;
     let gasCost: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       nativeAmount = ethers.parseEther("10");
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendNative(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receiveSendNative(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance", async function () {
@@ -163,17 +171,19 @@ describe("MezoTransfers", function () {
     let gasCost: any;
     let mezoTransfersAddress: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       nativeAmount = ethers.parseEther("11");
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendERC20(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receiveSendERC20(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
 
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance", async function () {
@@ -203,15 +213,17 @@ describe("MezoTransfers", function () {
     let mezoTransfersAddress: any;
     const nativeAmount = ethers.parseEther("3");
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendNativeThenERC20(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receiveSendNativeThenERC20(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance deduction", async function () {
@@ -237,15 +249,17 @@ describe("MezoTransfers", function () {
     let gasCost: any;
     let mezoTransfersAddress: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendERC20ThenNative(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receiveSendERC20ThenNative(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance deduction", async function () {
@@ -271,15 +285,17 @@ describe("MezoTransfers", function () {
     let gasCost: any;
     let mezoTransfersAddress: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendMultiple(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receiveSendMultiple(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance deduction", async function () {
@@ -305,16 +321,18 @@ describe("MezoTransfers", function () {
     let gasCost: any;
     let mezoTransfersAddress: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
       // Transfer
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendMultiple(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receiveSendMultiple(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance deduction", async function () {
@@ -340,15 +358,17 @@ describe("MezoTransfers", function () {
     let gasCost: any;
     let mezoTransfersAddress: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendMultiple(recipientAddress, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receiveSendMultiple(recipientAddress, { value: nativeAmount });
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance deduction", async function () {
@@ -373,7 +393,9 @@ describe("MezoTransfers", function () {
     const nativeAmount = 42;
     let mezoTransfersAddress: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
@@ -382,7 +404,7 @@ describe("MezoTransfers", function () {
       try {
         // Transfer
         await mezoTransfers
-          .connect(signers[0])
+          .connect(senderSigner)
           .receiveSendRevert(recipientAddress, { value: nativeAmount });
       } catch (error) {
         expect(error.message).to.include("revert");
@@ -413,18 +435,20 @@ describe("MezoTransfers", function () {
     const nativeAmount = ethers.parseEther("3");
     const tokenAmount = ethers.parseEther("1");
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
-      await btcErc20Token.connect(signers[0]).approve(mezoTransfersAddress, tokenAmount)
+      await btcErc20Token.connect(senderSigner).approve(mezoTransfersAddress, tokenAmount)
         .then(tx => tx.wait());
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receiveSendNativeThenPullERC20(recipientAddress, tokenAmount, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receiveSendNativeThenPullERC20(recipientAddress, tokenAmount, { value: nativeAmount });
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance deduction", async function () {
@@ -451,18 +475,20 @@ describe("MezoTransfers", function () {
     let gasCost: any;
     let mezoTransfersAddress: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       mezoTransfersAddress = await mezoTransfers.getAddress();
 
-      await btcErc20Token.connect(signers[0]).approve(mezoTransfersAddress, tokenAmount)
+      await btcErc20Token.connect(senderSigner).approve(mezoTransfersAddress, tokenAmount)
         .then(tx => tx.wait());
 
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).receivePullERC20ThenNative(recipientAddress, tokenAmount, { value: nativeAmount });
+      const tx = await mezoTransfers.connect(senderSigner).receivePullERC20ThenNative(recipientAddress, tokenAmount, { value: nativeAmount });
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender native balance deduction", async function () {
@@ -489,20 +515,22 @@ describe("MezoTransfers", function () {
     let gasCost: any;
     let mezoTransfersAddress: any;
 
-    beforeEach(async function () {
+    before(async function () {
+      await fixture();
+
       amount = ethers.parseEther("2");
       mezoTransfersAddress = await mezoTransfers.getAddress();
       
-      await btcErc20Token.connect(signers[0]).approve(mezoTransfersAddress, amount)
+      await btcErc20Token.connect(senderSigner).approve(mezoTransfersAddress, amount)
         .then(tx => tx.wait());
 
       initialContractBalance = await ethers.provider.getBalance(mezoTransfersAddress);
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(signers[0]).storageStateTransition(recipientAddress, amount);
+      const tx = await mezoTransfers.connect(senderSigner).storageStateTransition(recipientAddress, amount);
       const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * tx.gasPrice;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender balance deduction", async function () {

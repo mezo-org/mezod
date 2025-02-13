@@ -5,14 +5,18 @@ import { ethers } from 'ethers'
 import fs from 'fs'
 import path from 'path'
 
-// TODO: make it work with a single node
-const BUILD_DIR = '../../.localnet/'
-const COUNT = 4
+const localnodeKeySeed = (index: number) => `../../.localnode/dev${index}_key_seed.json`
+
+const KEY_SEEDS = [
+  localnodeKeySeed(0),
+  localnodeKeySeed(1),
+  localnodeKeySeed(2),
+]
 
 function getPrivKeys (): string[] {
   const keys: string[] = []
-  for (let i = 0; i < COUNT; i++) {
-    const filePath = path.resolve(`${BUILD_DIR}node${i}/mezod/key_seed.json`)
+  for (let i = 0; i < KEY_SEEDS.length; i++) {
+    const filePath = path.resolve(KEY_SEEDS[i])
     const seed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
     const pk: string = ethers.Wallet.fromPhrase(seed.secret).privateKey
     keys.push(pk)
@@ -32,7 +36,7 @@ const config: HardhatUserConfig = {
 
   networks: {
     localhost: {
-      url: 'http://localhost:8545',
+      url: 'http://127.0.0.1:8545', // localnode listens on this specific interface
       chainId: 31611,
       accounts: getPrivKeys(),
       gas: 'auto'

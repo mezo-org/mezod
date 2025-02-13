@@ -2,19 +2,15 @@
 
 This project demonstrates system tests for the Mezo chain.
 
-## Run Mezo localnet
+## Run Mezo single-node localnet
 
-Clean and init localnet binaries
-
-```shell
-make localnet-bin-clean && make localnet-bin-init
-```
-
-Start 3 or 4 nodes
+Start the node using the following command:
 
 ```shell
-make localnet-bin-start
+make localnode-bin-start
 ```
+
+Wait a bit until the node's JSON-RPC server is up and running.
 
 ## Run hardhat system tests against localnet
 
