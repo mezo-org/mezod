@@ -119,9 +119,6 @@ BUILD_TARGETS := build install
 build: clean
   BUILD_ARGS=-o $(BUILDDIR)/
 
-build-linux:
-	GOOS=linux GOARCH=amd64 LEDGER_ENABLED=false $(MAKE) build
-
 # Set empty BUILD_ARGS for install. By default, BUILD_ARGS contain the -o
 # flag that is not supported by go install.
 install: BUILD_ARGS=
@@ -131,19 +128,6 @@ $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 
 $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
-
-build-reproducible: go.sum
-	$(DOCKER) rm latest-build || true
-	$(DOCKER) run --volume=$(CURDIR):/sources:ro \
-        --env TARGET_PLATFORMS='linux/amd64' \
-        --env APP=mezod \
-        --env VERSION=$(VERSION) \
-        --env COMMIT=$(COMMIT) \
-        --env CGO_ENABLED=1 \
-        --env LEDGER_ENABLED=$(LEDGER_ENABLED) \
-        --name latest-build tendermintdev/rbuilder:latest
-	$(DOCKER) cp -a latest-build:/home/builder/artifacts/ $(CURDIR)/
-
 
 build-docker:
 	# TODO replace with kaniko
@@ -161,14 +145,8 @@ build-docker:
 build-docker-linux:
 	$(DOCKER) buildx build --platform linux/amd64 --tag ${DOCKER_IMAGE}:${DOCKER_TAG} .
 
-push-docker: build-docker
-	$(DOCKER) push ${DOCKER_IMAGE}:${DOCKER_TAG}
-	$(DOCKER) push ${DOCKER_IMAGE}:latest
-
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
-
-distclean: clean tools-clean
 
 clean:
 	rm -rf \
@@ -178,9 +156,7 @@ clean:
 
 all: build
 
-build-all: tools build lint test vulncheck
-
-.PHONY: distclean clean build-all
+.PHONY: clean
 
 ###############################################################################
 ###                          Tools & Dependencies                           ###
