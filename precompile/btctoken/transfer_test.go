@@ -170,6 +170,10 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			s.Require().NoError(err)
 			s.Require().Equal(true, out[0], "expected different value")
 
+			// we call  the statedb commit here to simulate end of transaction
+			// processing and flush the cache context
+			s.Require().NoError(evm.StateDB.(*statedb.StateDB).Commit())
+
 			if tc.postCheck != nil {
 				tc.postCheck()
 			}
@@ -353,6 +357,10 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
 			s.Require().Equal(true, out[0], "expected different value")
+
+			// we call  the statedb commit here to simulate end of transaction
+			// processing and flush the cache context
+			s.Require().NoError(evm.StateDB.(*statedb.StateDB).Commit())
 
 			if tc.postCheck != nil {
 				tc.postCheck()
