@@ -56,7 +56,9 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# If keys exist they should be deleted
 	for KEY in "${KEYS[@]}"; do
-		mezod keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR"
+		KEYS_ADD_OUT=$(mezod keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR" --output=json)
+		MNEMONIC=$(echo $KEYS_ADD_OUT | jq -r '.mnemonic')
+		echo '{"secret":"'$MNEMONIC'"}' > $HOMEDIR/"$KEY"_key_seed.json
 	done
 
 	# Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
@@ -69,8 +71,10 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	# Set the required x/bridge parameters.
 	# A single node cannot bridge anyway (both bridge and non-bridge validators
 	# are required). We set the source_btc_token to 0x0 just to bypass the check
-	# in the bridge module genesis validation.
+	# in the bridge module genesis validation. Moreover, we set the initial
+	# BTC balance to satisfy the supply invariant.
 	jq '.app_state["bridge"]["source_btc_token"]="'"0x0000000000000000000000000000000000000000"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+	jq '.app_state["bridge"]["initial_btc_supply"]="'"300000000000000000000000000"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Change parameter token denominations to abtc
 	jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
