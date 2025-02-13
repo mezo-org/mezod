@@ -23,6 +23,9 @@ var _ = Describe("Feemarket", func() {
 	)
 
 	Describe("Performing Cosmos transactions", func() {
+		// Cosmos transactions have been disabled. All cosmos transactions are
+		// expected to return an "invalid transaction type" error. Test
+		// descriptions have been left as is for future reference
 		Context("with min-gas-prices (local) < MinGasPrices (feemarket param)", func() {
 			BeforeEach(func() {
 				privKey, msg = setupTestWithContext("1", sdkmath.LegacyNewDec(3), sdkmath.ZeroInt())
@@ -36,7 +39,7 @@ var _ = Describe("Feemarket", func() {
 					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 					Expect(
 						strings.Contains(res.Log,
-							"provided fee < minimum global fee"),
+							"invalid transaction type"),
 					).To(BeTrue())
 				})
 
@@ -44,7 +47,10 @@ var _ = Describe("Feemarket", func() {
 					gasPrice := sdkmath.NewInt(3)
 					res, err := testutil.CheckTx(s.ctx, s.app, privKey, &gasPrice, &msg)
 					Expect(err).To(BeNil())
-					Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
+					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
+					Expect(
+						strings.Contains(res.Log, "invalid transaction type"),
+					).To(BeTrue())
 				})
 			})
 
@@ -53,10 +59,10 @@ var _ = Describe("Feemarket", func() {
 					gasPrice := sdkmath.NewInt(2)
 					res, err := testutil.DeliverTx(s.ctx, s.app, privKey, &gasPrice, &msg)
 					Expect(err).To(BeNil())
-					Expect(res.IsOK()).To(BeFalse())
+					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 					Expect(
 						strings.Contains(res.Log,
-							"provided fee < minimum global fee"),
+							"invalid transaction type"),
 					).To(BeTrue())
 				})
 
@@ -64,7 +70,11 @@ var _ = Describe("Feemarket", func() {
 					gasPrice := sdkmath.NewInt(3)
 					res, err := testutil.DeliverTx(s.ctx, s.app, privKey, &gasPrice, &msg)
 					s.Require().NoError(err)
-					Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
+					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
+					Expect(
+						strings.Contains(res.Log,
+							"invalid transaction type"),
+					).To(BeTrue())
 				})
 			})
 		})
@@ -82,7 +92,7 @@ var _ = Describe("Feemarket", func() {
 					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 					Expect(
 						strings.Contains(res.Log,
-							"insufficient fee"),
+							"invalid transaction type"),
 					).To(BeTrue())
 				})
 
@@ -90,7 +100,11 @@ var _ = Describe("Feemarket", func() {
 					gasPrice := sdkmath.NewInt(3)
 					res, err := testutil.CheckTx(s.ctx, s.app, privKey, &gasPrice, &msg)
 					Expect(err).To(BeNil())
-					Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
+					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
+					Expect(
+						strings.Contains(res.Log,
+							"invalid transaction type"),
+					).To(BeTrue())
 				})
 			})
 
@@ -102,7 +116,7 @@ var _ = Describe("Feemarket", func() {
 					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 					Expect(
 						strings.Contains(res.Log,
-							"provided fee < minimum global fee"),
+							"invalid transaction type"),
 					).To(BeTrue())
 				})
 
@@ -110,7 +124,11 @@ var _ = Describe("Feemarket", func() {
 					gasPrice := sdkmath.NewInt(3)
 					res, err := testutil.DeliverTx(s.ctx, s.app, privKey, &gasPrice, &msg)
 					Expect(err).To(BeNil())
-					Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
+					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
+					Expect(
+						strings.Contains(res.Log,
+							"invalid transaction type"),
+					).To(BeTrue())
 				})
 			})
 		})
@@ -129,7 +147,7 @@ var _ = Describe("Feemarket", func() {
 					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 					Expect(
 						strings.Contains(res.Log,
-							"insufficient fee"),
+							"invalid transaction type"),
 					).To(BeTrue())
 				})
 
@@ -140,7 +158,7 @@ var _ = Describe("Feemarket", func() {
 					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 					Expect(
 						strings.Contains(res.Log,
-							"insufficient fee"),
+							"invalid transaction type"),
 					).To(BeTrue())
 				})
 
@@ -148,7 +166,11 @@ var _ = Describe("Feemarket", func() {
 					gasPrice := sdkmath.NewInt(5)
 					res, err := testutil.CheckTx(s.ctx, s.app, privKey, &gasPrice, &msg)
 					Expect(err).To(BeNil())
-					Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
+					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
+					Expect(
+						strings.Contains(res.Log,
+							"invalid transaction type"),
+					).To(BeTrue())
 				})
 			})
 
@@ -161,7 +183,7 @@ var _ = Describe("Feemarket", func() {
 					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 					Expect(
 						strings.Contains(res.Log,
-							"provided fee < minimum global fee"),
+							"invalid transaction type"),
 					).To(BeTrue())
 				})
 
@@ -172,14 +194,18 @@ var _ = Describe("Feemarket", func() {
 					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
 					Expect(
 						strings.Contains(res.Log,
-							"insufficient fee"),
+							"invalid transaction type"),
 					).To(BeTrue())
 				})
 				It("should accept transactions with gasPrice >= baseFee", func() {
 					gasPrice := sdkmath.NewInt(5)
 					res, err := testutil.DeliverTx(s.ctx, s.app, privKey, &gasPrice, &msg)
 					Expect(err).To(BeNil())
-					Expect(res.IsOK()).To(Equal(true), "transaction should have succeeded", res.GetLog())
+					Expect(res.IsOK()).To(BeFalse(), "transaction should have failed")
+					Expect(
+						strings.Contains(res.Log,
+							"invalid transaction type"),
+					).To(BeTrue())
 				})
 			})
 		})
