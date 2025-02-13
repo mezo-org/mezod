@@ -31,17 +31,12 @@ docs/cosmos-sdk
 docs/ethermint
 docs/ibc-go
 dist
-tools-stamp
-docs-tools-stamp
-proto-tools-stamp
 golangci-lint
 keyring_test_cosmos
 ./**/dist
 secret.yml
 artifacts/*
-tmp-swagger-gen
 github.com/
-# vue/
 
 # Local docker volume mappings
 localnet-setup
