@@ -9,6 +9,8 @@ import (
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
 	evm "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -182,6 +184,17 @@ func transfer(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, auth
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
 	}
+
+	balanceDelta, overflow := uint256.FromBig(amount)
+	if overflow {
+		return nil, fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", amount)
+	}
+
+	j := context.Journal()
+	// update our from and to balance by setting properly the state
+	// in the state DB
+	j.SubBalance(from, balanceDelta, tracing.BalanceChangeTransfer)
+	j.AddBalance(to, balanceDelta, tracing.BalanceChangeTransfer)
 
 	return precompile.MethodOutputs{true}, nil
 }

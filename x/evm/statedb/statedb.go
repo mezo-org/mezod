@@ -52,8 +52,10 @@ var _ vm.StateDB = &StateDB{}
 // * Contracts
 // * Accounts
 type StateDB struct {
-	keeper Keeper
-	ctx    sdk.Context
+	keeper     Keeper
+	ctx        sdk.Context
+	cachedCtx  sdk.Context
+	flushCache func()
 
 	// Journal of state modifications. This is the backbone of
 	// Snapshot and RevertToSnapshot.
@@ -613,29 +615,46 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 
 // Commit writes the dirty states to keeper
 // the StateDB object should be discarded after committed.
-func (s *StateDB) Commit() error {
+func (s *StateDB) commit(ctx sdk.Context) error {
 	for _, addr := range s.journal.sortedDirties() {
 		obj := s.stateObjects[addr]
 		if obj.selfDestructed {
-			if err := s.keeper.DeleteAccount(s.ctx, obj.Address()); err != nil {
+			if err := s.keeper.DeleteAccount(ctx, obj.Address()); err != nil {
 				return errorsmod.Wrap(err, "failed to delete account")
 			}
 		} else {
 			if obj.code != nil && obj.dirtyCode {
-				s.keeper.SetCode(s.ctx, obj.CodeHash(), obj.code)
+				s.keeper.SetCode(ctx, obj.CodeHash(), obj.code)
 			}
-			if err := s.keeper.SetAccount(s.ctx, obj.Address(), obj.account); err != nil {
+			if err := s.keeper.SetAccount(ctx, obj.Address(), obj.account); err != nil {
 				return errorsmod.Wrap(err, "failed to set account")
 			}
 			for _, key := range obj.dirtyStorage.SortedKeys() {
-				value := obj.dirtyStorage[key]
-				// Skip noop changes, persist actual changes
-				if value == obj.originStorage[key] {
-					continue
-				}
-				s.keeper.SetState(s.ctx, obj.Address(), key, value.Bytes())
+				s.keeper.SetState(ctx, obj.Address(), key, obj.dirtyStorage[key].Bytes())
 			}
 		}
 	}
 	return nil
+}
+
+func (s *StateDB) Commit() error {
+	// if this is set, this means a cache context
+	// existed as well, let's flush it first
+	if s.flushCache != nil {
+		s.flushCache()
+	}
+
+	return s.commit(s.ctx)
+}
+
+func (s *StateDB) CommitCacheContext() error {
+	return s.commit(s.cachedCtx)
+}
+
+func (s *StateDB) CacheContext() sdk.Context {
+	if s.flushCache == nil {
+		s.cachedCtx, s.flushCache = s.ctx.CacheContext()
+	}
+
+	return s.cachedCtx
 }
