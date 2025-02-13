@@ -296,12 +296,7 @@ else
 	go test -mod=readonly $(ARGS)  $(EXTRA_ARGS) $(TEST_PACKAGES)
 endif
 
-test-import:
-	@go test ./tests/importer -v --vet=off --run=TestImportBlocks --datadir tmp \
-	--blockchain blockchain
-	rm -rf tests/importer/tmp
-
-.PHONY: run-tests test test-all test-import $(TEST_TARGETS)
+.PHONY: run-tests test test-all $(TEST_TARGETS)
 
 benchmark:
 	@go test -mod=readonly -bench=. $(PACKAGES_NOSIMULATION)
