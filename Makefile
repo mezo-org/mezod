@@ -8,7 +8,6 @@ LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
 MEZO_BINARY = mezod
 BUILDDIR ?= $(CURDIR)/build
-HTTPS_GIT := https://github.com/mezo-org/mezod.git
 DOCKER := $(shell which docker)
 NAMESPACE := mezo-org
 PROJECT := mezod
@@ -107,9 +106,6 @@ ifneq (,$(findstring nooptimization,$(COSMOS_BUILD_OPTIONS)))
   BUILD_FLAGS += -gcflags "all=-N -l"
 endif
 
-# # The below include contains the tools and runsim targets.
-# include contrib/devtools/Makefile
-
 ###############################################################################
 ###                                  Build                                  ###
 ###############################################################################
@@ -118,9 +114,6 @@ BUILD_TARGETS := build install
 
 build: clean
   BUILD_ARGS=-o $(BUILDDIR)/
-
-build-linux:
-	GOOS=linux GOARCH=amd64 LEDGER_ENABLED=false $(MAKE) build
 
 # Set empty BUILD_ARGS for install. By default, BUILD_ARGS contain the -o
 # flag that is not supported by go install.
@@ -131,19 +124,6 @@ $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 
 $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
-
-build-reproducible: go.sum
-	$(DOCKER) rm latest-build || true
-	$(DOCKER) run --volume=$(CURDIR):/sources:ro \
-        --env TARGET_PLATFORMS='linux/amd64' \
-        --env APP=mezod \
-        --env VERSION=$(VERSION) \
-        --env COMMIT=$(COMMIT) \
-        --env CGO_ENABLED=1 \
-        --env LEDGER_ENABLED=$(LEDGER_ENABLED) \
-        --name latest-build tendermintdev/rbuilder:latest
-	$(DOCKER) cp -a latest-build:/home/builder/artifacts/ $(CURDIR)/
-
 
 build-docker:
 	# TODO replace with kaniko
@@ -161,105 +141,21 @@ build-docker:
 build-docker-linux:
 	$(DOCKER) buildx build --platform linux/amd64 --tag ${DOCKER_IMAGE}:${DOCKER_TAG} .
 
-push-docker: build-docker
-	$(DOCKER) push ${DOCKER_IMAGE}:${DOCKER_TAG}
-	$(DOCKER) push ${DOCKER_IMAGE}:latest
-
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
-
-distclean: clean tools-clean
 
 clean:
 	rm -rf \
     $(BUILDDIR)/ \
-    artifacts/ \
-    tmp-swagger-gen/
+    artifacts/
 
 all: build
 
-build-all: tools build lint test vulncheck
-
-.PHONY: distclean clean build-all
+.PHONY: clean
 
 ###############################################################################
-###                          Tools & Dependencies                           ###
+###                              Dependencies                               ###
 ###############################################################################
-
-TOOLS_DESTDIR  ?= $(GOPATH)/bin
-STATIK         = $(TOOLS_DESTDIR)/statik
-RUNSIM         = $(TOOLS_DESTDIR)/runsim
-
-# Install the runsim binary with a temporary workaround of entering an outside
-# directory as the "go get" command ignores the -mod option and will polute the
-# go.{mod, sum} files.
-#
-# ref: https://github.com/golang/go/issues/30515
-runsim: $(RUNSIM)
-$(RUNSIM):
-	@echo "Installing runsim..."
-	@(cd /tmp && ${GO_MOD} go install github.com/cosmos/tools/cmd/runsim@master)
-
-statik: $(STATIK)
-$(STATIK):
-	@echo "Installing statik..."
-	@(cd /tmp && go install github.com/rakyll/statik@v0.1.6)
-
-contract-tools:
-ifeq (, $(shell which stringer))
-	@echo "Installing stringer..."
-	@go install golang.org/x/tools/cmd/stringer@latest
-else
-	@echo "stringer already installed; skipping..."
-endif
-
-ifeq (, $(shell which go-bindata))
-	@echo "Installing go-bindata..."
-	@go install github.com/kevinburke/go-bindata/go-bindata@latest
-else
-	@echo "go-bindata already installed; skipping..."
-endif
-
-ifeq (, $(shell which gencodec))
-	@echo "Installing gencodec..."
-	@go install github.com/fjl/gencodec@latest
-else
-	@echo "gencodec already installed; skipping..."
-endif
-
-ifeq (, $(shell which protoc-gen-go))
-	@echo "Installing protoc-gen-go..."
-	@go install github.com/fjl/gencodec@latest
-	@go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-else
-	@echo "protoc-gen-go already installed; skipping..."
-endif
-
-ifeq (, $(shell which protoc-gen-go-grpc))
-	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-else
-	@echo "protoc-gen-go-grpc already installed; skipping..."
-endif
-
-ifeq (, $(shell which solcjs))
-	@echo "Installing solcjs..."
-	@npm install -g solc@0.5.11
-else
-	@echo "solcjs already installed; skipping..."
-endif
-
-tools: tools-stamp
-tools-stamp: contract-tools docs-tools statik runsim
-	# Create dummy file to satisfy dependency and avoid
-	# rebuilding when this Makefile target is hit twice
-	# in a row.
-	touch $@
-
-tools-clean:
-	rm -f $(RUNSIM)
-	rm -f tools-stamp
-
-.PHONY: runsim statik tools contract-tools tools-stamp tools-clean
 
 go.sum: go.mod
 	echo "Ensure dependencies have not been modified ..." >&2
@@ -269,24 +165,6 @@ go.sum: go.mod
 vulncheck: $(BUILDDIR)/
 	GOBIN=$(BUILDDIR) go install golang.org/x/vuln/cmd/govulncheck@latest
 	$(BUILDDIR)/govulncheck ./...
-
-###############################################################################
-###                              Documentation                              ###
-###############################################################################
-
-update-swagger-docs: statik
-	$(BINDIR)/statik -src=client/docs/swagger-ui -dest=client/docs -f -m
-	@if [ -n "$(git status --porcelain)" ]; then \
-        echo "\033[91mSwagger docs are out of sync!!!\033[0m";\
-        exit 1;\
-    else \
-        echo "\033[92mSwagger docs are in sync\033[0m";\
-    fi
-.PHONY: update-swagger-docs
-
-godocs:
-	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/mezo-org/mezod"
-	godoc -http=:6060
 
 ###############################################################################
 ###                           Tests & Simulation                            ###
@@ -320,12 +198,7 @@ else
 	go test -mod=readonly $(ARGS)  $(EXTRA_ARGS) $(TEST_PACKAGES)
 endif
 
-test-import:
-	@go test ./tests/importer -v --vet=off --run=TestImportBlocks --datadir tmp \
-	--blockchain blockchain
-	rm -rf tests/importer/tmp
-
-.PHONY: run-tests test test-all test-import $(TEST_TARGETS)
+.PHONY: run-tests test test-all $(TEST_TARGETS)
 
 benchmark:
 	@go test -mod=readonly -bench=. $(PACKAGES_NOSIMULATION)
@@ -337,21 +210,9 @@ benchmark:
 
 lint:
 	golangci-lint run --out-format=tab
-	solhint contracts/**/*.sol
-
-lint-contracts:
-	@cd contracts && \
-	npm i && \
-	npm run lint
 
 lint-fix:
 	golangci-lint run --fix --out-format=tab --issues-exit-code=0
-
-lint-fix-contracts:
-	@cd contracts && \
-	npm i && \
-	npm run lint-fix
-	solhint --fix contracts/**/*.sol
 
 .PHONY: lint lint-fix
 
@@ -378,12 +239,6 @@ proto-gen:
 	@echo "Generating Protobuf files"
 	$(protoImage) sh ./scripts/protocgen.sh
 
-proto-swagger-gen:
-	@echo "Downloading Protobuf dependencies"
-	@make proto-download-deps
-	@echo "Generating Protobuf Swagger"
-	$(protoImage) sh ./scripts/protoc-swagger-gen.sh
-
 proto-format:
 	@echo "Formatting Protobuf files"
 	$(protoImage) find ./ -name *.proto -exec clang-format -i {} \;
@@ -392,59 +247,7 @@ proto-lint:
 	@echo "Linting Protobuf files"
 	$(protoImage) buf lint --error-format=json
 
-proto-check-breaking:
-	@echo "Checking Protobuf files for breaking changes"
-	$(protoImage) buf breaking --against $(HTTPS_GIT) #branch=main
-
-SWAGGER_DIR=./swagger-proto
-THIRD_PARTY_DIR=$(SWAGGER_DIR)/third_party
-
-proto-download-deps:
-	mkdir -p "$(THIRD_PARTY_DIR)/cosmos_tmp" && \
-	cd "$(THIRD_PARTY_DIR)/cosmos_tmp" && \
-	git init && \
-	git remote add origin "https://github.com/cosmos/cosmos-sdk.git" && \
-	git config core.sparseCheckout true && \
-	printf "proto\nthird_party\n" > .git/info/sparse-checkout && \
-	git pull origin main && \
-	rm -f ./proto/buf.* && \
-	mv ./proto/* ..
-	rm -rf "$(THIRD_PARTY_DIR)/cosmos_tmp"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/ibc_tmp" && \
-	cd "$(THIRD_PARTY_DIR)/ibc_tmp" && \
-	git init && \
-	git remote add origin "https://github.com/cosmos/ibc-go.git" && \
-	git config core.sparseCheckout true && \
-	printf "proto\n" > .git/info/sparse-checkout && \
-	git pull origin main && \
-	rm -f ./proto/buf.* && \
-	mv ./proto/* ..
-	rm -rf "$(THIRD_PARTY_DIR)/ibc_tmp"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/cosmos_proto_tmp" && \
-	cd "$(THIRD_PARTY_DIR)/cosmos_proto_tmp" && \
-	git init && \
-	git remote add origin "https://github.com/cosmos/cosmos-proto.git" && \
-	git config core.sparseCheckout true && \
-	printf "proto\n" > .git/info/sparse-checkout && \
-	git pull origin main && \
-	rm -f ./proto/buf.* && \
-	mv ./proto/* ..
-	rm -rf "$(THIRD_PARTY_DIR)/cosmos_proto_tmp"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/gogoproto" && \
-	curl -SSL https://raw.githubusercontent.com/cosmos/gogoproto/main/gogoproto/gogo.proto > "$(THIRD_PARTY_DIR)/gogoproto/gogo.proto"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/google/api" && \
-	curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/annotations.proto > "$(THIRD_PARTY_DIR)/google/api/annotations.proto"
-	curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/http.proto > "$(THIRD_PARTY_DIR)/google/api/http.proto"
-
-	mkdir -p "$(THIRD_PARTY_DIR)/cosmos/ics23/v1" && \
-	curl -sSL https://raw.githubusercontent.com/cosmos/ics23/master/proto/cosmos/ics23/v1/proofs.proto > "$(THIRD_PARTY_DIR)/cosmos/ics23/v1/proofs.proto"
-
-
-.PHONY: proto-all proto-gen proto-format proto-lint proto-check-breaking proto-swagger-gen
+.PHONY: proto-all proto-gen proto-format proto-lint
 
 ###############################################################################
 ###                         Localnet binary-based                           ###
@@ -499,99 +302,6 @@ localnode-bin-start:
 	./scripts/localnode-start.sh
 
 .PHONY: localnode-bin-start
-
-###############################################################################
-###                                Releasing                                ###
-###############################################################################
-
-PACKAGE_NAME:=github.com/mezo-org/mezod
-GOLANG_CROSS_VERSION  = v1.20
-GOPATH ?= '$(HOME)/go'
-release-dry-run:
-	docker run \
-		--rm \
-		--privileged \
-		-e CGO_ENABLED=1 \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v `pwd`:/go/src/$(PACKAGE_NAME) \
-		-v ${GOPATH}/pkg:/go/pkg \
-		-w /go/src/$(PACKAGE_NAME) \
-		ghcr.io/goreleaser/goreleaser-cross:${GOLANG_CROSS_VERSION} \
-		--clean --skip-validate --skip-publish --snapshot
-
-release:
-	@if [ ! -f ".release-env" ]; then \
-		echo "\033[91m.release-env is required for release\033[0m";\
-		exit 1;\
-	fi
-	docker run \
-		--rm \
-		--privileged \
-		-e CGO_ENABLED=1 \
-		--env-file .release-env \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v `pwd`:/go/src/$(PACKAGE_NAME) \
-		-w /go/src/$(PACKAGE_NAME) \
-		ghcr.io/goreleaser/goreleaser-cross:${GOLANG_CROSS_VERSION} \
-		release --clean --skip-validate
-
-.PHONY: release-dry-run release
-
-###############################################################################
-###                        Compile Solidity Contracts                       ###
-###############################################################################
-
-CONTRACTS_DIR := contracts
-COMPILED_DIR := contracts/compiled_contracts
-TMP := tmp
-TMP_CONTRACTS := $(TMP).contracts
-TMP_COMPILED := $(TMP)/compiled.json
-TMP_JSON := $(TMP)/tmp.json
-
-# Compile and format solidity contracts for the erc20 module. Also install
-# openzeppeling as the contracts are build on top of openzeppelin templates.
-contracts-compile: contracts-clean openzeppelin create-contracts-json
-
-# Install openzeppelin solidity contracts
-openzeppelin:
-	@echo "Importing openzeppelin contracts..."
-	@cd $(CONTRACTS_DIR)
-	@npm install
-	@cd ../../../../
-	@mv node_modules $(TMP)
-	@mv package-lock.json $(TMP)
-	@mv $(TMP)/@openzeppelin $(CONTRACTS_DIR)
-
-# Clean tmp files
-contracts-clean:
-	@rm -rf tmp
-	@rm -rf node_modules
-	@rm -rf $(COMPILED_DIR)
-	@rm -rf $(CONTRACTS_DIR)/@openzeppelin
-
-# Compile, filter out and format contracts into the following format.
-# {
-# 	"abi": "[{\"inpu 			# JSON string
-# 	"bin": "60806040
-# 	"contractName": 			# filename without .sol
-# }
-create-contracts-json:
-	@for c in $(shell ls $(CONTRACTS_DIR) | grep '\.sol' | sed 's/.sol//g'); do \
-		command -v jq > /dev/null 2>&1 || { echo >&2 "jq not installed."; exit 1; } ;\
-		command -v solc > /dev/null 2>&1 || { echo >&2 "solc not installed."; exit 1; } ;\
-		mkdir -p $(COMPILED_DIR) ;\
-		mkdir -p $(TMP) ;\
-		echo "\nCompiling solidity contract $${c}..." ;\
-		solc --combined-json abi,bin $(CONTRACTS_DIR)/$${c}.sol > $(TMP_COMPILED) ;\
-		echo "Formatting JSON..." ;\
-		get_contract=$$(jq '.contracts["$(CONTRACTS_DIR)/'$$c'.sol:'$$c'"]' $(TMP_COMPILED)) ;\
-		add_contract_name=$$(echo $$get_contract | jq '. + { "contractName": "'$$c'" }') ;\
-		echo $$add_contract_name | jq > $(TMP_JSON) ;\
-		abi_string=$$(echo $$add_contract_name | jq -cr '.abi') ;\
-		echo $$add_contract_name | jq --arg newval "$$abi_string" '.abi = $$newval' > $(TMP_JSON) ;\
-		mv $(TMP_JSON) $(COMPILED_DIR)/$${c}.json ;\
-	done
-	@rm -rf tmp
 
 ###############################################################################
 ###                       Contract bindings generation                      ###
