@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -40,8 +39,6 @@ import (
 	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
 
-	"github.com/gorilla/mux"
-	"github.com/rakyll/statik/fs"
 	"github.com/spf13/cast"
 
 	"cosmossdk.io/log"
@@ -112,9 +109,6 @@ import (
 	"github.com/mezo-org/mezod/x/feemarket"
 	feemarketkeeper "github.com/mezo-org/mezod/x/feemarket/keeper"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
-
-	// unnamed import of statik for swagger UI support
-	_ "github.com/mezo-org/mezod/client/docs/statik"
 
 	"github.com/mezo-org/mezod/app/ante"
 	"github.com/mezo-org/mezod/x/bridge"
@@ -830,7 +824,9 @@ func (app *Mezo) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfi
 
 	// register swagger API from root so that other applications can override easily
 	if apiConfig.Swagger {
-		RegisterSwaggerAPI(clientCtx, apiSvr.Router)
+		app.Logger().Warn(
+			"api.swagger config key is enabled but the mechanism is currently not supported",
+		)
 	}
 }
 
@@ -866,17 +862,6 @@ func (app *Mezo) GetBaseApp() *baseapp.BaseApp {
 func (app *Mezo) GetTxConfig() client.TxConfig {
 	cfg := encoding.MakeConfig(ModuleBasics)
 	return cfg.TxConfig
-}
-
-// RegisterSwaggerAPI registers swagger route with API Server
-func RegisterSwaggerAPI(_ client.Context, rtr *mux.Router) {
-	statikFS, err := fs.New()
-	if err != nil {
-		panic(err)
-	}
-
-	staticServer := http.FileServer(statikFS)
-	rtr.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/", staticServer))
 }
 
 // initParamsKeeper init params keeper and its subspaces
