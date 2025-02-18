@@ -3,12 +3,56 @@ pragma solidity ^0.8.28;
 
 import { IBTC } from "./interfaces/IBTC.sol";
 
+/* contract RevertingTransfer { */
+/*     // BTC ERC-20 token address on Mezo */
+/*     address private constant precompile = 0x7b7C000000000000000000000000000000000000; */
+
+/*     function transferThenRevert(address recipient) external { */
+/*         uint256 balance = IBTC(precompile).balanceOf(address(this)); */
+/*         require(balance > 0, "No balance to transfer"); */
+
+/* 	// Transfer all remaining ERC-20 */
+/*         bool success = IBTC(precompile).transfer(recipient, balance); */
+/*         require(success, "Transfer using transfer failed"); */
+
+/* 	revert("some unexpected error"); */
+/*     } */
+/* } */
+
 /// @title MezoTransfers
 /// @notice Handles various transfer scenarios for Mezo native token - BTC.
 contract MezoTransfers {
     // BTC ERC-20 token address on Mezo
     address private constant precompile = 0x7b7C000000000000000000000000000000000000;
     uint256 public balanceTracker;
+
+    /// @notice Transfers  ERC-20 Token from the contract
+    ///         then call a second function which will move funds and
+    ///         revert in turn
+    /* function erc20ThenRevertingExternalCall(address recipient) external { */
+    /*     uint256 balance = IBTC(precompile).balanceOf(address(this)); */
+    /*     require(balance > 0, "No balance to transfer"); */
+
+    /*     uint256 halfBalance = balance / 2; */
+
+    /*     // Transfer ERC-20 */
+    /*     bool success = IBTC(precompile).transfer(recipient, halfBalance); */
+    /*     require(success, "Transfer using transfer failed"); */
+
+    /* 	// create the contract */
+    /*     RevertingTransfer revContract = new RevertingTransfer(); */
+
+    /*     // Transfer ERC-20 */
+    /*     success = IBTC(precompile).transfer(address(revContract), halfBalance); */
+    /*     require(success, "Transfer using transfer failed"); */
+
+    /* 	// call it with  a try catch */
+    /* 	try revContract.transferThenRevert(recipient) { */
+    /* 	    // nothing to do */
+    /* 	} catch Error (string memory reason) { */
+    /* 	    require(keccak256(bytes("some unexpected error")) == keccak256(bytes(reason))); */
+    /* 	} */
+    /* } */
 
     /// @notice Transfers native BTC and then ERC-20 Token from the contract
     ///         which was previously funded.
@@ -58,14 +102,14 @@ contract MezoTransfers {
     ///         ERC-20 Token.
     function receiveSendERC20(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");
-        
+
         // Transfer ERC-20
         bool success = IBTC(precompile).transfer(recipient, msg.value);
         require(success, "ERC-20 transfer failed");
     }
 
     /// @notice Receive native then transfer half as native BTC and half as
-    ///         ERC-20 Token. All the transfers should be funded from the 
+    ///         ERC-20 Token. All the transfers should be funded from the
     ///         received native amount.
     function receiveSendNativeThenERC20(address payable recipient) external payable {
         require(msg.value > 0, "Must send some native tokens");

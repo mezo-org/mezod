@@ -47,7 +47,6 @@ require (
 	github.com/onsi/gomega v1.27.2
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7
 	github.com/pkg/errors v0.9.1
-	github.com/rakyll/statik v0.1.7
 	github.com/rs/cors v1.11.1
 	github.com/skip-mev/connect/v2 v2.1.2
 	github.com/spf13/cast v1.7.0
@@ -275,12 +274,14 @@ require (
 )
 
 replace (
+
+	cosmossdk.io/store => ../cosmos-sdk/store
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	// use Evmos geth fork
+	// use mezo geth fork
 	github.com/ethereum/go-ethereum => github.com/mezo-org/go-ethereum v1.14.8-mezo
 	// Security Advisory https://github.com/advisories/GHSA-h395-qcrw-5vmq
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.7
-	// use cosmos flavored protobufs
+
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )

@@ -148,7 +148,7 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("cannot get state DB from EVM")
 	}
 
-	sdkCtx := stateDB.CacheContext()
+	sdkCtx, ctxCheckpoint := stateDB.CacheContext()
 
 	// Capture the initial values of gas config to restore them after execution.
 	kvGasConfig, transientKVGasConfig := sdkCtx.KVGasConfig(), sdkCtx.TransientKVGasConfig()
@@ -225,12 +225,20 @@ func (c *Contract) Run(
 	}
 
 	// now if nothing failed, we executed the journal entries against the stateDB
-	c.finalizeJournalEntries(runCtx.journal, stateDB)
+	c.finalizeJournalEntries(runCtx.journal, runCtx.eventEmitter.address, ctxCheckpoint, stateDB)
 
 	return methodOutputArgs, nil
 }
 
-func (c *Contract) finalizeJournalEntries(journal *StateDBJournal, stateDB *statedb.StateDB) {
+func (c *Contract) finalizeJournalEntries(
+	journal *StateDBJournal,
+	address common.Address,
+	cacheCtxCheckpoint *statedb.CachedContextCheckpoint,
+	stateDB *statedb.StateDB,
+) {
+	// fist save the checkpoint
+	stateDB.RegisterCachedContextCheckpoint(address, cacheCtxCheckpoint)
+
 	for _, v := range journal.entries {
 		if v.isSub {
 			stateDB.SubBalance(v.Address, v.Amount, v.TracingReason)

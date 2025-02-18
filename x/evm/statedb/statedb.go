@@ -20,6 +20,7 @@ import (
 	"sort"
 
 	errorsmod "cosmossdk.io/errors"
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/stateless"
@@ -530,6 +531,14 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 	}
 }
 
+// RegisterCachedContextCheckpoint ... todo
+func (s *StateDB) RegisterCachedContextCheckpoint(addr common.Address, ctxCheckpoint *CachedContextCheckpoint) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.RegisterCachedContextCheckpoint(ctxCheckpoint)
+	}
+}
+
 // SetNonce sets the nonce of account.
 func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
 	stateObject := s.getOrNewStateObject(addr)
@@ -651,10 +660,48 @@ func (s *StateDB) CommitCacheContext() error {
 	return s.commit(s.cachedCtx)
 }
 
-func (s *StateDB) CacheContext() sdk.Context {
+type CachedContextCheckpoint struct {
+	cacheMultiStoreCheckpoint storetypes.CacheMultiStore
+	flushCache                func()
+}
+
+func (ccc *CachedContextCheckpoint) Revert(stateDB *StateDB) {
+	// first we load back the state in the context
+	stateDB.cachedCtx.WithMultiStore(ccc.cacheMultiStoreCheckpoint)
+	// then replace the flush cache function
+	stateDB.flushCache = ccc.flushCache
+}
+
+func (s *StateDB) CacheContext() (sdk.Context, *CachedContextCheckpoint) {
+	// here we create a cache context on the very first
+	// call to this function
 	if s.flushCache == nil {
 		s.cachedCtx, s.flushCache = s.ctx.CacheContext()
 	}
 
-	return s.cachedCtx
+	// we do a copy of the state here so we can just hot swap it later on?
+	clonedCacheMultiStore := s.cachedCtx.MultiStore().CacheMultiStore().Clone()
+
+	// we copy the events from the cache context, just to restore them
+	// the same way later.
+	events := s.cachedCtx.EventManager().Events()
+
+	ccp := CachedContextCheckpoint{
+		cacheMultiStoreCheckpoint: clonedCacheMultiStore,
+		// we write our own flushCache function here which will be used at the
+		// time of rollback to generate the correct function using the context
+		flushCache: func() {
+			// we capture  the events and the actual context
+			s.ctx.EventManager().EmitEvents(events)
+
+			// and we capture the copy of the cache multistore
+			// at time of creation
+			clonedCacheMultiStore.Write()
+		},
+	}
+	// ccp.ctx, // ccp.flushCache = s.cachedCtx.CacheContext()
+
+	s.cachedCtx.EventManager().Events()
+
+	return s.cachedCtx, &ccp
 }
