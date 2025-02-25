@@ -274,8 +274,7 @@ require (
 )
 
 replace (
-
-	cosmossdk.io/store => ../cosmos-sdk/store
+	cosmossdk.io/store => github.com/mezo-org/cosmos-sdk/store v0.0.0-20250225153442-1b4fc43ab51a
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
 	// use mezo geth fork
