@@ -1,7 +1,6 @@
 package btctoken
 
 import (
-	"embed"
 	"fmt"
 	"math/big"
 
@@ -14,9 +13,6 @@ import (
 	mezotypes "github.com/mezo-org/mezod/types"
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
 )
-
-//go:embed abi.json
-var filesystem embed.FS
 
 // EvmAddress is the EVM address of the BTC token precompile. Token address is
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
@@ -49,7 +45,7 @@ func NewPrecompileVersionMap(
 
 // NewPrecompile creates a new BTC token precompile.
 func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper, id string) (*precompile.Contract, error) {
-	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
+	contractAbi, err := precompile.LoadAbiFile(filesystem, filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
 	}
@@ -81,7 +77,6 @@ func newBasePrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkee
 		newDecimalsMethod(),
 		newApproveMethod(bankKeeper, authzkeeper),
 		newTransferMethod(bankKeeper, authzkeeper),
-		newTransferWithRevertMethod(bankKeeper, authzkeeper),
 		newTransferFromMethod(bankKeeper, authzkeeper),
 		newAllowanceMethod(authzkeeper),
 		newPermitMethod(bankKeeper, authzkeeper, evmkeeper),

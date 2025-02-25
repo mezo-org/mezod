@@ -3,21 +3,25 @@ pragma solidity ^0.8.28;
 
 import { IBTC } from "./interfaces/IBTC.sol";
 
-/* contract RevertingTransfer { */
-/*     // BTC ERC-20 token address on Mezo */
-/*     address private constant precompile = 0x7b7C000000000000000000000000000000000000; */
+interface ITransferWithRevert is IBTC {
+    function transferWithRevert(address to, uint256 value) external returns (bool);
+}
 
-/*     function transferThenRevert(address recipient) external { */
-/*         uint256 balance = IBTC(precompile).balanceOf(address(this)); */
-/*         require(balance > 0, "No balance to transfer"); */
+contract RevertingTransfer {
+    // BTC ERC-20 token address on Mezo
+    address private constant precompile = 0x7b7C000000000000000000000000000000000000;
 
-/* 	// Transfer all remaining ERC-20 */
-/*         bool success = IBTC(precompile).transfer(recipient, balance); */
-/*         require(success, "Transfer using transfer failed"); */
+    function transferThenRevert(address recipient) external {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
 
-/* 	revert("some unexpected error"); */
-/*     } */
-/* } */
+	// Transfer all remaining ERC-20
+        bool success = IBTC(precompile).transfer(recipient, balance);
+        require(success, "Transfer using transfer failed");
+
+	revert("some unexpected error");
+    }
+}
 
 /// @title MezoTransfers
 /// @notice Handles various transfer scenarios for Mezo native token - BTC.
@@ -26,33 +30,50 @@ contract MezoTransfers {
     address private constant precompile = 0x7b7C000000000000000000000000000000000000;
     uint256 public balanceTracker;
 
+    /// @notice Transfers ERC-20 Token from the contract
+    ///         then call a second function which will move funds and
+    ///         revert in turn
+    function erc20ThenRevertingInPrecompile(address recipient) external {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
+
+        uint256 halfBalance = balance / 2;
+
+        // Transfer ERC-20
+        bool success = IBTC(precompile).transfer(recipient, halfBalance);
+        require(success, "Transfer using transfer failed");
+
+	// Transfer with revert now.
+        ITransferWithRevert(precompile).transferWithRevert(recipient, halfBalance);
+    }
+
     /// @notice Transfers  ERC-20 Token from the contract
     ///         then call a second function which will move funds and
     ///         revert in turn
-    /* function erc20ThenRevertingExternalCall(address recipient) external { */
-    /*     uint256 balance = IBTC(precompile).balanceOf(address(this)); */
-    /*     require(balance > 0, "No balance to transfer"); */
+    function erc20ThenRevertingExternalCall(address recipient) external {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
 
-    /*     uint256 halfBalance = balance / 2; */
+        uint256 halfBalance = balance / 2;
 
-    /*     // Transfer ERC-20 */
-    /*     bool success = IBTC(precompile).transfer(recipient, halfBalance); */
-    /*     require(success, "Transfer using transfer failed"); */
+        // Transfer ERC-20
+        bool success = IBTC(precompile).transfer(recipient, halfBalance);
+        require(success, "Transfer using transfer failed");
 
-    /* 	// create the contract */
-    /*     RevertingTransfer revContract = new RevertingTransfer(); */
+	// create the contract
+        RevertingTransfer revContract = new RevertingTransfer();
 
-    /*     // Transfer ERC-20 */
-    /*     success = IBTC(precompile).transfer(address(revContract), halfBalance); */
-    /*     require(success, "Transfer using transfer failed"); */
+        // Transfer ERC-20
+        success = IBTC(precompile).transfer(address(revContract), halfBalance);
+        require(success, "Transfer using transfer failed");
 
-    /* 	// call it with  a try catch */
-    /* 	try revContract.transferThenRevert(recipient) { */
-    /* 	    // nothing to do */
-    /* 	} catch Error (string memory reason) { */
-    /* 	    require(keccak256(bytes("some unexpected error")) == keccak256(bytes(reason))); */
-    /* 	} */
-    /* } */
+	// call it with  a try catch
+	try revContract.transferThenRevert(recipient) {
+	    // nothing to do
+	} catch Error (string memory reason) {
+	    require(keccak256(bytes("some unexpected error")) == keccak256(bytes(reason)));
+	}
+    }
 
     /// @notice Transfers native BTC and then ERC-20 Token from the contract
     ///         which was previously funded.

@@ -14,6 +14,7 @@ PROJECT := mezod
 DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DOCKER_TAG := $(COMMIT_HASH)
+DEBUG_BUILD_ENABLED ?= false
 
 export GO111MODULE = on
 
@@ -80,6 +81,10 @@ endif
 ifeq (boltdb,$(findstring boltdb,$(COSMOS_BUILD_OPTIONS)))
   build_tags += boltdb
   ldflags += -X github.com/cosmos/cosmos-sdk/types.DBBackend=boltdb
+endif
+
+ifeq ($(DEBUG_BUILD_ENABLED),true)
+  build_tags += debugprecompile
 endif
 
 # add build tags to linker flags

@@ -33,7 +33,7 @@ command -v jq >/dev/null 2>&1 || {
 set -e
 
 # Reinstall daemon
-make install
+make install DEBUG_BUILD_ENABLED=true
 
 # User prompt if an existing local node configuration is found.
 if [ -d "$HOMEDIR" ]; then
