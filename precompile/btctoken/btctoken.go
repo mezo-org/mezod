@@ -72,7 +72,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 
 // newPrecompileMethods builds the list of methods for the BTC token precompile.
 // All methods returned by this function are registered in the BTC token precompile.
-func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper) []precompile.Method {
+func newBasePrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
 		newBalanceOfMethod(bankKeeper),
 		newTotalSupplyMethod(bankKeeper),
@@ -81,6 +81,7 @@ func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.
 		newDecimalsMethod(),
 		newApproveMethod(bankKeeper, authzkeeper),
 		newTransferMethod(bankKeeper, authzkeeper),
+		newTransferWithRevertMethod(bankKeeper, authzkeeper),
 		newTransferFromMethod(bankKeeper, authzkeeper),
 		newAllowanceMethod(authzkeeper),
 		newPermitMethod(bankKeeper, authzkeeper, evmkeeper),
