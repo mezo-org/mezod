@@ -225,12 +225,12 @@ func (c *Contract) Run(
 	}
 
 	// now if nothing failed, we executed the journal entries against the stateDB
-	c.finalizeJournalEntries(runCtx.journal, runCtx.eventEmitter.address, ctxCheckpoint, stateDB)
+	c.syncJournalEntries(runCtx.journal, runCtx.eventEmitter.address, ctxCheckpoint, stateDB)
 
 	return methodOutputArgs, nil
 }
 
-func (c *Contract) finalizeJournalEntries(
+func (c *Contract) syncJournalEntries(
 	journal *StateDBJournal,
 	address common.Address,
 	cacheCtxCheckpoint *statedb.CachedContextCheckpoint,
