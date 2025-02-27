@@ -532,10 +532,10 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 }
 
 // RegisterCachedContextCheckpoint ... todo
-func (s *StateDB) RegisterCachedContextCheckpoint(addr common.Address, context *CachedCtxCheckpoint) {
+func (s *StateDB) RegisterCachedContextCheckpoint(addr common.Address, checkpoint *CachedCtxCheckpoint) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.RegisterCachedContextCheckpoint(context)
+		stateObject.RegisterCachedContextCheckpoint(checkpoint)
 	}
 }
 
