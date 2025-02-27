@@ -661,15 +661,24 @@ func (s *StateDB) CommitCacheContext() error {
 }
 
 type CachedCtxCheckpoint struct {
-	ms         storetypes.CacheMultiStore
-	flushCache func()
+	ms     storetypes.CacheMultiStore
+	events sdk.Events
 }
 
 func (ccc *CachedCtxCheckpoint) Revert(stateDB *StateDB) {
 	// first we load back the state in the context
 	stateDB.cachedCtx.WithMultiStore(ccc.ms)
 	// then replace the flush cache function
-	stateDB.flushCache = ccc.flushCache
+	// we write our own flushCache function here which will be used at the
+	// time of rollback to generate the correct function using the context
+	stateDB.flushCache = func() {
+		// we capture  the events and the actual context
+		stateDB.ctx.EventManager().EmitEvents(ccc.events)
+
+		// and we capture the copy of the cache multistore
+		// at time of creation
+		ccc.ms.Write()
+	}
 }
 
 func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {
@@ -679,26 +688,13 @@ func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {
 		s.cachedCtx, s.flushCache = s.ctx.CacheContext()
 	}
 
-	// we do a copy of the state here so we can just hot swap it later on?
-	// clonedCacheMultiStore := s.cachedCtx.MultiStore().CacheMultiStore().Clone()
-	clonedCacheMultiStore := s.cachedCtx.MultiStore().(storetypes.CacheMultiStore).Clone()
-
-	// we copy the events from the cache context, just to restore them
-	// the same way later.
-	events := s.cachedCtx.EventManager().Events()
-
 	ccp := CachedCtxCheckpoint{
-		ms: clonedCacheMultiStore,
-		// we write our own flushCache function here which will be used at the
-		// time of rollback to generate the correct function using the context
-		flushCache: func() {
-			// we capture  the events and the actual context
-			s.ctx.EventManager().EmitEvents(events)
-
-			// and we capture the copy of the cache multistore
-			// at time of creation
-			clonedCacheMultiStore.Write()
-		},
+		// we do a copy of the state here so we can just hot swap it later on?
+		// clonedCacheMultiStore := s.cachedCtx.MultiStore().CacheMultiStore().Clone()
+		ms: s.cachedCtx.MultiStore().(storetypes.CacheMultiStore).Clone(),
+		// we copy the events from the cache context, just to restore them
+		// the same way later.
+		events: s.cachedCtx.EventManager().Events(),
 	}
 
 	return s.cachedCtx, &ccp
