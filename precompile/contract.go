@@ -225,7 +225,7 @@ func (c *Contract) Run(
 	}
 
 	// now if nothing failed, we executed the journal entries against the stateDB
-	c.syncJournalEntries(runCtx.journal, runCtx.eventEmitter.address, ctxCheckpoint, stateDB)
+	c.syncJournalEntries(runCtx.journal, c.Address(), ctxCheckpoint, stateDB)
 
 	return methodOutputArgs, nil
 }
@@ -233,7 +233,7 @@ func (c *Contract) Run(
 func (c *Contract) syncJournalEntries(
 	journal *StateDBJournal,
 	address common.Address,
-	cacheCtxCheckpoint *statedb.CachedContextCheckpoint,
+	cacheCtxCheckpoint *statedb.CachedCtxCheckpoint,
 	stateDB *statedb.StateDB,
 ) {
 	// fist save the checkpoint

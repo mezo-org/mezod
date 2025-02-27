@@ -532,10 +532,10 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 }
 
 // RegisterCachedContextCheckpoint ... todo
-func (s *StateDB) RegisterCachedContextCheckpoint(addr common.Address, ctxCheckpoint *CachedContextCheckpoint) {
+func (s *StateDB) RegisterCachedContextCheckpoint(addr common.Address, context *CachedCtxCheckpoint) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.RegisterCachedContextCheckpoint(ctxCheckpoint)
+		stateObject.RegisterCachedContextCheckpoint(context)
 	}
 }
 
@@ -660,19 +660,19 @@ func (s *StateDB) CommitCacheContext() error {
 	return s.commit(s.cachedCtx)
 }
 
-type CachedContextCheckpoint struct {
-	cacheMultiStoreCheckpoint storetypes.CacheMultiStore
-	flushCache                func()
+type CachedCtxCheckpoint struct {
+	ms         storetypes.CacheMultiStore
+	flushCache func()
 }
 
-func (ccc *CachedContextCheckpoint) Revert(stateDB *StateDB) {
+func (ccc *CachedCtxCheckpoint) Revert(stateDB *StateDB) {
 	// first we load back the state in the context
-	stateDB.cachedCtx.WithMultiStore(ccc.cacheMultiStoreCheckpoint)
+	stateDB.cachedCtx.WithMultiStore(ccc.ms)
 	// then replace the flush cache function
 	stateDB.flushCache = ccc.flushCache
 }
 
-func (s *StateDB) CacheContext() (sdk.Context, *CachedContextCheckpoint) {
+func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {
 	// here we create a cache context on the very first
 	// call to this function
 	if s.flushCache == nil {
@@ -680,14 +680,15 @@ func (s *StateDB) CacheContext() (sdk.Context, *CachedContextCheckpoint) {
 	}
 
 	// we do a copy of the state here so we can just hot swap it later on?
-	clonedCacheMultiStore := s.cachedCtx.MultiStore().CacheMultiStore().Clone()
+	// clonedCacheMultiStore := s.cachedCtx.MultiStore().CacheMultiStore().Clone()
+	clonedCacheMultiStore := s.cachedCtx.MultiStore().(storetypes.CacheMultiStore).Clone()
 
 	// we copy the events from the cache context, just to restore them
 	// the same way later.
 	events := s.cachedCtx.EventManager().Events()
 
-	ccp := CachedContextCheckpoint{
-		cacheMultiStoreCheckpoint: clonedCacheMultiStore,
+	ccp := CachedCtxCheckpoint{
+		ms: clonedCacheMultiStore,
 		// we write our own flushCache function here which will be used at the
 		// time of rollback to generate the correct function using the context
 		flushCache: func() {
@@ -699,9 +700,6 @@ func (s *StateDB) CacheContext() (sdk.Context, *CachedContextCheckpoint) {
 			clonedCacheMultiStore.Write()
 		},
 	}
-	// ccp.ctx, // ccp.flushCache = s.cachedCtx.CacheContext()
-
-	s.cachedCtx.EventManager().Events()
 
 	return s.cachedCtx, &ccp
 }

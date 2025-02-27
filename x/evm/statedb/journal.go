@@ -118,7 +118,7 @@ type (
 		prev    *uint256.Int
 	}
 	cachedContextCheckpoint struct {
-		*CachedContextCheckpoint
+		*CachedCtxCheckpoint
 	}
 	nonceChange struct {
 		account *common.Address
@@ -206,7 +206,7 @@ func (ch balanceChange) Dirtied() *common.Address {
 }
 
 func (rc cachedContextCheckpoint) Revert(s *StateDB) {
-	rc.CachedContextCheckpoint.Revert(s)
+	rc.CachedCtxCheckpoint.Revert(s)
 }
 
 func (rc cachedContextCheckpoint) Dirtied() *common.Address {
