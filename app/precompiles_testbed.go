@@ -41,7 +41,7 @@ func customEvmPrecompiles(
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to create BTC token precompile: [%w]",
+			"failed to create StrippedERC20 token precompile: [%w]",
 			err,
 		)
 	}

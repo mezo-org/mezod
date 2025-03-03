@@ -22,7 +22,7 @@ const EvmAddress = evmtypes.TestBedStrippedERC20PrecompileAddress
 //nolint:unused
 var chainID *big.Int
 
-// NewPrecompileVersionMap creates a new version map for the BTC token precompile.
+// NewPrecompileVersionMap creates a new version map for the StrippedERC20 token precompile.
 func NewPrecompileVersionMap(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
@@ -65,8 +65,8 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 	return contract, nil
 }
 
-// newPrecompileMethods builds the list of methods for the BTC token precompile.
-// All methods returned by this function are registered in the BTC token precompile.
+// newPrecompileMethods builds the list of methods for the StrippedERC20 token precompile.
+// All methods returned by this function are registered in the StrippedERC20 token precompile.
 func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, _ evmkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
 		newTransferMethod(bankKeeper, authzkeeper),
