@@ -1637,8 +1637,8 @@ github.com/mattn/go-tty v0.0.0-20180907095812-13ff1204f104/go.mod h1:XPvLUNfbS4f
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
 github.com/mediocregopher/radix/v3 v3.8.1/go.mod h1:8FL3F6UQRXHXIBSPUs5h0RybMF8i4n7wVopoX3x7Bv8=
-github.com/mezo-org/cosmos-sdk/store v0.0.0-20250225153442-1b4fc43ab51a h1:j2qYTw3mPtEKltj2kscEvSnYiBIiWVKUHt8T5WQa1+E=
-github.com/mezo-org/cosmos-sdk/store v0.0.0-20250225153442-1b4fc43ab51a/go.mod h1:8DwVTz83/2PSI366FERGbWSH7hL6sB7HbYp8bqksNwM=
+github.com/mezo-org/cosmos-sdk/store v0.0.0-20250303163539-071e97691d43 h1:PimyAPwb1o2FtXwcNpJfTddzxaCUfrys3Bu52O+Q4cY=
+github.com/mezo-org/cosmos-sdk/store v0.0.0-20250303163539-071e97691d43/go.mod h1:8DwVTz83/2PSI366FERGbWSH7hL6sB7HbYp8bqksNwM=
 github.com/mezo-org/go-ethereum v1.14.8-mezo h1:AVG+BS/tzmeq1Vux991u2jH35AWcDxEI4/bx5JonFSY=
 github.com/mezo-org/go-ethereum v1.14.8-mezo/go.mod h1:ugZ1e3buGofOVBx5ZgNViY5ZVjS3bav1D4VqdtQViBI=
 github.com/microcosm-cc/bluemonday v1.0.23/go.mod h1:mN70sk7UkkF8TUr2IGBpNN0jAgStuPzlK76QuruE/z4=
