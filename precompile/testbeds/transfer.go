@@ -281,8 +281,6 @@ func transfer2(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, aut
 		}
 	}
 
-	fmt.Printf("\n\n\n\n\nTRANSFER WITH REVERT STRIPPED ERC20!!!!!!!!\n\n\n\n")
-
 	// Emit Transfer event.
 	err := context.EventEmitter().Emit(
 		NewTransferEvent(from, to, amount),

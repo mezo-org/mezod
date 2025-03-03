@@ -17,8 +17,6 @@ import (
 //go:embed abi.json
 var filesystem embed.FS
 
-const filePath = "abi.json"
-
 const EvmAddress = evmtypes.TestBedStrippedERC20PrecompileAddress
 
 //nolint:unused
@@ -46,7 +44,7 @@ func NewPrecompileVersionMap(
 
 // NewPrecompile creates a new StrippedERC20 token precompile.
 func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper, id string) (*precompile.Contract, error) {
-	contractAbi, err := precompile.LoadAbiFile(filesystem, filePath)
+	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
 	}

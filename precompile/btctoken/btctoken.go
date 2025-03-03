@@ -18,8 +18,6 @@ import (
 //go:embed abi.json
 var filesystem embed.FS
 
-const filePath = "abi.json"
-
 // EvmAddress is the EVM address of the BTC token precompile. Token address is
 // prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 // used to avoid potential collisions with EVM native precompiles.
@@ -51,7 +49,7 @@ func NewPrecompileVersionMap(
 
 // NewPrecompile creates a new BTC token precompile.
 func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper, id string) (*precompile.Contract, error) {
-	contractAbi, err := precompile.LoadAbiFile(filesystem, filePath)
+	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
 	}

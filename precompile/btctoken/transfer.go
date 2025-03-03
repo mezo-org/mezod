@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	TransferMethodName           = "transfer"
-	TransferFromMethodName       = "transferFrom"
-	TransferWithRevertMethodName = "transferWithRevert"
+	TransferMethodName     = "transfer"
+	TransferFromMethodName = "transferFrom"
 )
 
 type transferMethod struct {
