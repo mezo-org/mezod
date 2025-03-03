@@ -190,7 +190,7 @@ Use this file when verifying.
 Hardhat Ignition scripts are included for easy deployment of the precompile caller contracts.
 
 In order for the deployments to successfully run `solidity.settings.evmVersion` must be changed to `paris` within
-the `hardhat.config.ts` file. 
+the `hardhat.config.ts` file.
 
 The caller contracts can then be deployed as follows:
 
