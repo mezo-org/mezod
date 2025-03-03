@@ -182,3 +182,28 @@ Flatten into a single solidity file to make verification easier, e.g:
 `npx hardhat flatten contracts/ValidatorPoolCaller.sol > ~/Desktop/ValidatorPoolCaller.sol`
 
 Use this file when verifying.
+
+# Tests
+
+## Caller contract deployment
+
+Hardhat Ignition scripts are included for easy deployment of the precompile caller contracts.
+
+In order for the deployments to successfully run `solidity.settings.evmVersion` must be changed to `paris` within
+the `hardhat.config.ts` file. 
+
+The caller contracts can then be deployed as follows:
+
+```
+npx hardhat ignition deploy ./ignition/modules/AssetsBridge.ts
+npx hardhat ignition deploy ./ignition/modules/BTC.ts
+npx hardhat ignition deploy ./ignition/modules/Maintenance.ts
+npx hardhat ignition deploy ./ignition/modules/PriceOracle.ts
+npx hardhat ignition deploy ./ignition/modules/Upgrade.ts
+npx hardhat ignition deploy ./ignition/modules/ValidatorPool.ts
+```
+
+## Running the tests
+
+The included hardhat tests interact with the precompiles via their respective caller contracts. The tests can be
+executed with `npx hardhat test`
