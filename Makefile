@@ -84,7 +84,7 @@ ifeq (boltdb,$(findstring boltdb,$(COSMOS_BUILD_OPTIONS)))
 endif
 
 ifeq ($(DEBUG_BUILD_ENABLED),true)
-  build_tags += debugprecompile
+  build_tags += testbed
 endif
 
 # add build tags to linker flags

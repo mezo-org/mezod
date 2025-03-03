@@ -26,18 +26,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/mezo-org/mezod/precompile/priceoracle"
-
-	"github.com/mezo-org/mezod/precompile/maintenance"
-
 	"github.com/cosmos/cosmos-sdk/runtime"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
-
-	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/assetsbridge"
-	"github.com/mezo-org/mezod/precompile/btctoken"
-	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
-	"github.com/mezo-org/mezod/precompile/validatorpool"
 
 	"github.com/spf13/cast"
 
@@ -100,6 +90,13 @@ import (
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/assetsbridge"
+	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/precompile/maintenance"
+	"github.com/mezo-org/mezod/precompile/priceoracle"
+	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
+	"github.com/mezo-org/mezod/precompile/validatorpool"
 	srvflags "github.com/mezo-org/mezod/server/flags"
 	mezotypes "github.com/mezo-org/mezod/types"
 
@@ -879,8 +876,8 @@ func initParamsKeeper(
 	return paramsKeeper
 }
 
-// customEvmPrecompiles builds custom precompiles of the EVM module.
-func customEvmPrecompiles(
+// baseCustomEvmPrecompiles builds custom precompiles of the EVM module.
+func baseCustomEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
@@ -890,6 +887,7 @@ func customEvmPrecompiles(
 	bridgeKeeper bridgekeeper.Keeper,
 	chainID string,
 ) ([]*precompile.VersionMap, error) {
+
 	// BTC token precompile.
 	btcTokenVersionMap, err := btctoken.NewPrecompileVersionMap(
 		bankKeeper,
@@ -942,4 +940,5 @@ func customEvmPrecompiles(
 		upgradeVersionMap,
 		priceOracleVersionMap,
 	}, nil
+
 }

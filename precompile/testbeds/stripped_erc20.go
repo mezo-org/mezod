@@ -1,11 +1,9 @@
-package btctoken
+package testbeds
 
 import (
 	"embed"
 	"fmt"
 	"math/big"
-
-	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
@@ -13,6 +11,7 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 	mezotypes "github.com/mezo-org/mezod/types"
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 //go:embed abi.json
@@ -20,10 +19,7 @@ var filesystem embed.FS
 
 const filePath = "abi.json"
 
-// EvmAddress is the EVM address of the BTC token precompile. Token address is
-// prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
-// used to avoid potential collisions with EVM native precompiles.
-const EvmAddress = evmtypes.BTCTokenPrecompileAddress
+const EvmAddress = evmtypes.TestBedStrippedERC20PrecompileAddress
 
 // Parsed chain ID represented as a big integer.
 // E.g. mezo_31612-1 is parsed to 31612.
@@ -43,13 +39,13 @@ func NewPrecompileVersionMap(
 
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
-			0:                                        contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
-			evmtypes.BTCTokenPrecompileLatestVersion: contractV1,
+			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
+			evmtypes.TestBedStrippedERC20PrecompileLatestVersion: contractV1,
 		},
 	), nil
 }
 
-// NewPrecompile creates a new BTC token precompile.
+// NewPrecompile creates a new StrippedERC20 token precompile.
 func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper, id string) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, filePath)
 	if err != nil {
@@ -76,18 +72,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 // All methods returned by this function are registered in the BTC token precompile.
 func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
-		newBalanceOfMethod(bankKeeper),
-		newTotalSupplyMethod(bankKeeper),
-		newNameMethod(),
-		newSymbolMethod(),
-		newDecimalsMethod(),
-		newApproveMethod(bankKeeper, authzkeeper),
 		newTransferMethod(bankKeeper, authzkeeper),
-		newTransferFromMethod(bankKeeper, authzkeeper),
-		newAllowanceMethod(authzkeeper),
-		newPermitMethod(bankKeeper, authzkeeper, evmkeeper),
-		newNonceMethod(evmkeeper),
-		newDomainSeparatorMethod(),
-		newPermitTypehashMethod(),
+		newTransferWithRevertMethod(bankKeeper, authzkeeper),
 	}
 }

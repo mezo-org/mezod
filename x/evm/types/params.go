@@ -70,7 +70,7 @@ func DefaultParams() Params {
 		ExtraEIPs:           nil,
 		AllowUnprotectedTxs: DefaultAllowUnprotectedTxs,
 		StorageRootStrategy: uint32(DefaultStorageRootStrategy),
-		PrecompilesVersions: DefaultPrecompilesVersions,
+		PrecompilesVersions: getDefaultPrecompilesVersions(),
 	}
 }
 

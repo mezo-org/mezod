@@ -26,11 +26,45 @@ describe("MezoTransfers", function () {
     recipientAddress = ethers.Wallet.createRandom().address;
   });
 
-  describe("erc20ThenRevertingExternalCallWithMultiplePrecompile", function () {
-    let initialSenderBalance: any;
+  describe("erc20WithStrippedERC20Transfer", function () {
     let initialRecipientBalance: any;
     let tokenAmount: any;
-    let gasCost: any;
+
+    before(async function () {
+      await fixture();
+
+      tokenAmount = ethers.parseEther("12");
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+
+      const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
+      await transferTx.wait();
+
+      initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
+
+      const tx = await mezoTransfers.connect(senderSigner).erc20WithStrippedERC20Transfer(recipientAddress);
+      await tx.wait();
+    });
+
+    it("should verify initial recipient balance is zero", async function () {
+      expect(initialRecipientBalance).to.equal(0);
+    });
+
+    it("should verify current recipient native balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(currentRecipientNativeBalance).to.equal(tokenAmount / 2n);
+    });
+
+    it("should verify MezoTransfers contract has half balance", async function () {
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+      const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      expect(currentContractNativeBalance).to.equal(tokenAmount / 2n);
+    });
+  });
+
+
+  describe("erc20ThenRevertingExternalCallWithMultiplePrecompile", function () {
+    let initialRecipientBalance: any;
+    let tokenAmount: any;
 
     before(async function () {
       await fixture();
@@ -41,14 +75,11 @@ describe("MezoTransfers", function () {
       const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
       await transferTx.wait();
 
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
       const tx = await mezoTransfers.connect(senderSigner).erc20ThenRevertingExternalCallWithMultiplePrecompile(recipientAddress);
-      const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * receipt.gasPrice;
+      await tx.wait();
     });
-
 
     it("should verify initial recipient balance is zero", async function () {
       expect(initialRecipientBalance).to.equal(0);
@@ -77,10 +108,8 @@ describe("MezoTransfers", function () {
   });
 
   describe("revertingExternalCallInPrecompileThenERC20", function () {
-    let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let tokenAmount: any;
-    let gasCost: any;
 
     before(async function () {
       await fixture();
@@ -91,14 +120,11 @@ describe("MezoTransfers", function () {
       const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
       await transferTx.wait();
 
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
       const tx = await mezoTransfers.connect(senderSigner).revertingExternalCallInPrecompileThenERC20(recipientAddress);
-      const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * receipt.gasPrice;
+      await tx.wait();
     });
-
 
     it("should verify initial recipient balance is zero", async function () {
       expect(initialRecipientBalance).to.equal(0);
@@ -127,10 +153,8 @@ describe("MezoTransfers", function () {
   });
 
   describe("revertingExternalCallThenERC20Transfer", function () {
-    let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let tokenAmount: any;
-    let gasCost: any;
 
     before(async function () {
       await fixture();
@@ -141,12 +165,10 @@ describe("MezoTransfers", function () {
       const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
       await transferTx.wait();
 
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
       const tx = await mezoTransfers.connect(senderSigner).revertingExternalCallThenERC20Transfer(recipientAddress);
-      const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * receipt.gasPrice;
+      await tx.wait();
     });
 
 
@@ -177,10 +199,8 @@ describe("MezoTransfers", function () {
   });
 
   describe("erc20ThenRevertingExternalCallInPrecompile", function () {
-    let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let tokenAmount: any;
-    let gasCost: any;
 
     before(async function () {
       await fixture();
@@ -191,12 +211,10 @@ describe("MezoTransfers", function () {
       const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
       await transferTx.wait();
 
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
       const tx = await mezoTransfers.connect(senderSigner).erc20ThenRevertingExternalCallInPrecompile(recipientAddress);
-      const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * receipt.gasPrice;
+      await tx.wait();
     });
 
 
@@ -227,10 +245,8 @@ describe("MezoTransfers", function () {
   });
 
   describe("erc20ThenRevertingInPrecompile", function () {
-    let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let tokenAmount: any;
-    let gasCost: any;
 
     before(async function () {
       await fixture();
@@ -241,13 +257,11 @@ describe("MezoTransfers", function () {
       const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
       await transferTx.wait();
 
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
       try {
         const tx = await mezoTransfers.connect(senderSigner).erc20ThenRevertingInPrecompile(recipientAddress, {gasLimit: 10000000});
-        const receipt = await tx.wait();
-	gasCost = receipt.gasUsed * receipt.gasPrice;
+        await tx.wait();
       } catch (err) {}
     });
 
@@ -280,10 +294,8 @@ describe("MezoTransfers", function () {
   });
 
   describe("erc20ThenRevertingExternalCall", function () {
-    let initialSenderBalance: any;
     let initialRecipientBalance: any;
     let tokenAmount: any;
-    let gasCost: any;
 
     before(async function () {
       await fixture();
@@ -293,13 +305,10 @@ describe("MezoTransfers", function () {
 
       const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
       await transferTx.wait();
-
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
       const tx = await mezoTransfers.connect(senderSigner).erc20ThenRevertingExternalCall(recipientAddress);
-      const receipt = await tx.wait();
-      gasCost = receipt.gasUsed * receipt.gasPrice;
+      await tx.wait();
     });
 
 
