@@ -1,8 +1,0 @@
-{
-  "ValidatorPool#ValidatorPoolCaller": "0x69Fd1E84d567020C83FBB06bBd6C77F6c14DBA4C",
-  "Upgrade#UpgradeCaller": "0x7525C8AB09e6666048CD4619D50388a2060dA5d9",
-  "PriceOracle#PriceOracleCaller": "0xdE71578bC52d71f6A18d3315D9764871043D967d",
-  "Maintenance#MaintenanceCaller": "0x2c9fBcA1A33ce5B0CA74FCc920a5f084626805eF",
-  "BTC#BTCCaller": "0x2810ecE653454268150d8745Ffb540E83bd7158b",
-  "AssetsBridge#AssetsBridgeCaller": "0x88B6e98f3cdc9c569c2876efcf4bd041b62D07A6"
-}
