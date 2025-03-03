@@ -887,7 +887,6 @@ func baseCustomEvmPrecompiles(
 	bridgeKeeper bridgekeeper.Keeper,
 	chainID string,
 ) ([]*precompile.VersionMap, error) {
-
 	// BTC token precompile.
 	btcTokenVersionMap, err := btctoken.NewPrecompileVersionMap(
 		bankKeeper,
@@ -940,5 +939,4 @@ func baseCustomEvmPrecompiles(
 		upgradeVersionMap,
 		priceOracleVersionMap,
 	}, nil
-
 }

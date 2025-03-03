@@ -21,8 +21,7 @@ const filePath = "abi.json"
 
 const EvmAddress = evmtypes.TestBedStrippedERC20PrecompileAddress
 
-// Parsed chain ID represented as a big integer.
-// E.g. mezo_31612-1 is parsed to 31612.
+//nolint:unused
 var chainID *big.Int
 
 // NewPrecompileVersionMap creates a new version map for the BTC token precompile.
@@ -70,7 +69,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 
 // newPrecompileMethods builds the list of methods for the BTC token precompile.
 // All methods returned by this function are registered in the BTC token precompile.
-func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper) []precompile.Method {
+func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, _ evmkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
 		newTransferMethod(bankKeeper, authzkeeper),
 		newTransferWithRevertMethod(bankKeeper, authzkeeper),

@@ -30,6 +30,16 @@ const (
 	PriceOraclePrecompileLatestVersion = 1
 )
 
+// start these with the prefix: 0x7b7c1 in order to not conflict with any
+// production ones
+// these are not to be added in following slice, and only to be used in tests build
+// this is added in here to be visible during build to prevent compilation
+// issues down the line (in the testbeds package).
+const (
+	TestBedStrippedERC20PrecompileAddress       = "0x7b7c100000000000000000000000000000000000"
+	TestBedStrippedERC20PrecompileLatestVersion = 1
+)
+
 // DefaultPrecompilesVersions is a list of default precompiles and their versions.
 // Order of precompiles is important. If changed on a live network, it will break
 // the consensus.
