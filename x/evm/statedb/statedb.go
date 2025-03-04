@@ -552,7 +552,7 @@ func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxChec
 	// this cannot realistically fail
 	s.getOrNewStateObject(addr).RegisterCachedCtxCheckpoint(cachedCtxCheckpoint)
 
-	s.ongoingPrecompilesCallsCounter += 1
+	s.ongoingPrecompilesCallsCounter++
 	if s.ongoingPrecompilesCallsCounter > s.maxPrecompilesCallsPerExecution {
 		return fmt.Errorf("transaction have exceeded the maximum number of precompile calls per execution, max allowed: %v, attempted: %v", s.maxPrecompilesCallsPerExecution, s.ongoingPrecompilesCallsCounter)
 	}
