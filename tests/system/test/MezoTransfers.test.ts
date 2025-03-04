@@ -580,7 +580,7 @@ describe("MezoTransfers", function () {
       try {
         const tx = await mezoTransfers.connect(senderSigner).erc20RevertsWhenExceedMaxPrecompileCalls(recipientAddress, {gasLimit: 10000000});
         await tx.wait();
-      } catch () {
+      } catch (err) {
       }
     });
 
