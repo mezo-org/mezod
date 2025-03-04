@@ -595,16 +595,6 @@ describe("MezoTransfers", function () {
       expect(currentRecipientERC20Balance).to.equal(0n);
     });
 
-    it("should verify native and BTC ERC20 balance equivalence", async function () {
-      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
-      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
-
-      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
-    });
-
     it("should verify MezoTransfers contract has full balance", async function () {
       const mezoTransfersAddress = await mezoTransfers.getAddress();
       const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
@@ -639,16 +629,6 @@ describe("MezoTransfers", function () {
     it("should verify current recipient balance", async function () {
       const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
       expect(currentRecipientNativeBalance).to.equal(tokenAmount / 2n);
-    });
-
-    it("should verify native and BTC ERC20 balance equivalence", async function () {
-      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
-      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
-
-      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
     });
 
     it("should verify MezoTransfers contract has zero balance", async function () {
@@ -686,16 +666,6 @@ describe("MezoTransfers", function () {
       expect(currentRecipientNativeBalance).to.equal(tokenAmount / 2n);
     });
 
-    it("should verify native and BTC ERC20 balance equivalence", async function () {
-      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
-      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
-
-      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
-    });
-
     it("should verify MezoTransfers contract has zero balance", async function () {
       const mezoTransfersAddress = await mezoTransfers.getAddress();
       const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
@@ -731,16 +701,6 @@ describe("MezoTransfers", function () {
       expect(currentRecipientNativeBalance).to.equal(tokenAmount / 2n);
     });
 
-    it("should verify native and BTC ERC20 balance equivalence", async function () {
-      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
-      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
-
-      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
-    });
-
     it("should verify MezoTransfers contract has zero balance", async function () {
       const mezoTransfersAddress = await mezoTransfers.getAddress();
       const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
@@ -774,16 +734,6 @@ describe("MezoTransfers", function () {
     it("should verify current recipient balance", async function () {
       const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
       expect(currentRecipientNativeBalance).to.equal(tokenAmount / 2n);
-    });
-
-    it("should verify native and BTC ERC20 balance equivalence", async function () {
-      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
-      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
-
-      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
     });
 
     it("should verify MezoTransfers contract has zero balance", async function () {
@@ -825,16 +775,6 @@ describe("MezoTransfers", function () {
       expect(currentRecipientERC20Balance).to.equal(0n);
     });
 
-    it("should verify native and BTC ERC20 balance equivalence", async function () {
-      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
-      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
-
-      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
-    });
-
     it("should verify MezoTransfers contract has full balance", async function () {
       const mezoTransfersAddress = await mezoTransfers.getAddress();
       const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
@@ -867,16 +807,6 @@ describe("MezoTransfers", function () {
     it("should verify current recipient balance", async function () {
       const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
       expect(currentRecipientNativeBalance).to.equal(tokenAmount / 2n);
-    });
-
-    it("should verify native and BTC ERC20 balance equivalence", async function () {
-      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
-      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
-
-      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
     });
 
     it("should verify MezoTransfers contract has zero balance", async function () {

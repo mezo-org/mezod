@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	TransferMethodName           = "transfer"
 	TransferWithRevertMethodName = "transferWithRevert"
 )
 
