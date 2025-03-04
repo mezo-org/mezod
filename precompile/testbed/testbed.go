@@ -36,7 +36,6 @@ func NewPrecompileVersionMap(
 
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
-			0:                                       contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
 			evmtypes.TestBedPrecompileLatestVersion: contractV1,
 		},
 	), nil
