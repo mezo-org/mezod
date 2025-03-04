@@ -68,7 +68,6 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 // All methods returned by this function are registered in the TestBed token precompile.
 func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, _ evmkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
-		newTransferMethod(bankKeeper, authzkeeper),
 		newTransferWithRevertMethod(bankKeeper, authzkeeper),
 	}
 }

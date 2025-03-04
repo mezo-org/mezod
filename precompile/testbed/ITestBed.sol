@@ -14,15 +14,6 @@ interface ITestbed {
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     /**
-     * @dev Moves a `value` amount of tokens from the caller's account to `to`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transfer(address to, uint256 value) external returns (bool);
-
-    /**
      * @dev Moves a `value` amount of tokens from the caller's account to `to`,
      * then call revert (doing so reverting the transfer that just occured.
      *

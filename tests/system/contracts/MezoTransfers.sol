@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 import { IBTC } from "./interfaces/IBTC.sol";
 
 interface ITestbed {
-    function transfer(address to, uint256 value) external returns (bool);
     function transferWithRevert(address to, uint256 value) external returns (bool);
 }
 
@@ -26,7 +25,7 @@ contract MezoTransfers {
         uint256 halfBalance = balance / 2;
 
         // Transfer ERC-20
-        bool success = ITestbed(testbedPrecompile).transfer(recipient, halfBalance);
+        bool success = IBTC(precompile).transfer(recipient, halfBalance);
         require(success, "Transfer using transfer failed");
     }
 
