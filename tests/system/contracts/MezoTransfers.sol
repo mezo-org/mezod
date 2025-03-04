@@ -15,6 +15,41 @@ contract MezoTransfers {
     address private constant testbedPrecompile = 0x7b7c100000000000000000000000000000000000;
     uint256 public balanceTracker;
 
+    /// @notice Calls multiple precompile in order to reach the maximum
+    ///         precompile calls allowed per transaction (10).
+    ///         we'll do 1 balanceOf initial call, 9 transfer, all in the
+    ///         limits, and breach the limits with a final transfer call.
+    function erc20RevertsWhenExceedMaxPrecompileCalls(address recipient) external {
+	// this accounts for the first precompile call
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
+
+        uint256 tenthBalance = balance / 10;
+
+        // these takes up to the limit
+        bool success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+        success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+        success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+        success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+        success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+        success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+        success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+        success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+        success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+	// this will revert
+	success = IBTC(precompile).transfer(recipient, tenthBalance);
+        require(success, "Transfer using transfer failed");
+    }
+
     /// @notice Transfers ERC-20 Token from the contract
     ///         using the testbeds stripped token just to
     ///         test this works at least
