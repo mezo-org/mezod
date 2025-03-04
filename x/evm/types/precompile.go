@@ -30,11 +30,8 @@ const (
 	PriceOraclePrecompileLatestVersion = 1
 )
 
-// start these with the prefix: 0x7b7c1 in order to not conflict with any
-// production ones
-// these are not to be added in following slice, and only to be used in tests build
-// this is added in here to be visible during build to prevent compilation
-// issues down the line (in the testbeds package).
+// Start the TestBed precompile address with the prefix 0x7b7c1 in order 
+// to not conflict with any production precompile.
 const (
 	TestBedPrecompileAddress       = "0x7b7c100000000000000000000000000000000000"
 	TestBedPrecompileLatestVersion = 1
