@@ -138,10 +138,11 @@ func (s *stateObject) SubBalance(amount *uint256.Int) {
 	s.SetBalance(new(uint256.Int).Sub(s.Balance(), amount))
 }
 
-// RegisterCachedContextCheckpoint ... todo
-func (s *stateObject) RegisterCachedContextCheckpoint(checkpoint *CachedCtxCheckpoint) {
-	s.db.journal.append(cachedContextCheckpoint{
-		CachedCtxCheckpoint: checkpoint,
+// RegisterCachedCtxCheckpoint ... Registers a cached context checkpoint
+// in the journal entries
+func (s *stateObject) RegisterCachedCtxCheckpoint(cachedCtx *CachedCtxCheckpoint) {
+	s.db.journal.append(cachedCtxCheckpoint{
+		CachedCtxCheckpoint: cachedCtx,
 	})
 }
 

@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import { IBTC } from "./interfaces/IBTC.sol";
 
-interface IStrippedERC20 {
+interface ITestbed {
     function transfer(address to, uint256 value) external returns (bool);
     function transferWithRevert(address to, uint256 value) external returns (bool);
 }
@@ -29,7 +29,7 @@ contract RevertingTransfer {
         require(balance > 0, "No balance to transfer");
 
 	// Transfer all remaining ERC-20
-        IStrippedERC20(testbedPrecompile).transferWithRevert(recipient, balance);
+        ITestbed(testbedPrecompile).transferWithRevert(recipient, balance);
     }
 
     function multipleTransferWithPrecompileRevert(address recipient) external {
@@ -51,7 +51,7 @@ contract RevertingTransfer {
         require(success, "Transfer using transfer failed");
 
 	// Transfer all remaining ERC-20 with panic
-        IStrippedERC20(testbedPrecompile).transferWithRevert(recipient, fourthBalance);
+        ITestbed(testbedPrecompile).transferWithRevert(recipient, fourthBalance);
     }
 }
 
@@ -60,20 +60,20 @@ contract RevertingTransfer {
 contract MezoTransfers {
     // BTC ERC-20 token address on Mezo
     address private constant precompile = 0x7b7C000000000000000000000000000000000000;
-    address private constant strippedERC20Precompile = 0x7b7c100000000000000000000000000000000000;
+    address private constant testbedPrecompile = 0x7b7c100000000000000000000000000000000000;
     uint256 public balanceTracker;
 
     /// @notice Transfers ERC-20 Token from the contract
     ///         using the testbeds stripped token just to
     ///         test this works at least
-    function erc20WithStrippedERC20Transfer(address recipient) external {
+    function erc20WithTestbedPrecompileTransfer(address recipient) external {
         uint256 balance = IBTC(precompile).balanceOf(address(this));
         require(balance > 0, "No balance to transfer");
 
         uint256 halfBalance = balance / 2;
 
         // Transfer ERC-20
-        bool success = IStrippedERC20(strippedERC20Precompile).transfer(recipient, halfBalance);
+        bool success = ITestbed(testbedPrecompile).transfer(recipient, halfBalance);
         require(success, "Transfer using transfer failed");
     }
 
@@ -91,7 +91,7 @@ contract MezoTransfers {
         require(success, "Transfer using transfer failed");
 
 	// Transfer with revert now.
-        IStrippedERC20(strippedERC20Precompile).transferWithRevert(recipient, halfBalance);
+        ITestbed(testbedPrecompile).transferWithRevert(recipient, halfBalance);
     }
 
     /// @notice Transfers  ERC-20 Token from the contract

@@ -1,4 +1,4 @@
-package testbeds
+package testbed
 
 import (
 	"embed"
@@ -17,12 +17,12 @@ import (
 //go:embed abi.json
 var filesystem embed.FS
 
-const EvmAddress = evmtypes.TestBedStrippedERC20PrecompileAddress
+const EvmAddress = evmtypes.TestBedPrecompileAddress
 
 //nolint:unused
 var chainID *big.Int
 
-// NewPrecompileVersionMap creates a new version map for the StrippedERC20 token precompile.
+// NewPrecompileVersionMap creates a new version map for the TestBed token precompile.
 func NewPrecompileVersionMap(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
@@ -36,13 +36,13 @@ func NewPrecompileVersionMap(
 
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
-			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
-			evmtypes.TestBedStrippedERC20PrecompileLatestVersion: contractV1,
+			0:                                       contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
+			evmtypes.TestBedPrecompileLatestVersion: contractV1,
 		},
 	), nil
 }
 
-// NewPrecompile creates a new StrippedERC20 token precompile.
+// NewPrecompile creates a new TestBed token precompile.
 func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper, id string) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
@@ -65,8 +65,8 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 	return contract, nil
 }
 
-// newPrecompileMethods builds the list of methods for the StrippedERC20 token precompile.
-// All methods returned by this function are registered in the StrippedERC20 token precompile.
+// newPrecompileMethods builds the list of methods for the TestBed token precompile.
+// All methods returned by this function are registered in the TestBed token precompile.
 func newPrecompileMethods(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, _ evmkeeper.Keeper) []precompile.Method {
 	return []precompile.Method{
 		newTransferMethod(bankKeeper, authzkeeper),

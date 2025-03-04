@@ -95,6 +95,7 @@ import (
 	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/maintenance"
 	"github.com/mezo-org/mezod/precompile/priceoracle"
+	"github.com/mezo-org/mezod/precompile/testbed"
 	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
 	srvflags "github.com/mezo-org/mezod/server/flags"
@@ -425,6 +426,7 @@ func NewMezo(
 		oraclekeeper.NewQueryServer(app.OracleKeeper),
 		app.BridgeKeeper,
 		bApp.ChainID(),
+		appOpts.Get(srvflags.EnableTestbedPrecompile).(bool),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
@@ -877,7 +879,7 @@ func initParamsKeeper(
 }
 
 // baseCustomEvmPrecompiles builds custom precompiles of the EVM module.
-func baseCustomEvmPrecompiles(
+func customEvmPrecompiles(
 	bankKeeper bankkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
@@ -886,6 +888,7 @@ func baseCustomEvmPrecompiles(
 	oracleQueryServer oracletypes.QueryServer,
 	bridgeKeeper bridgekeeper.Keeper,
 	chainID string,
+	enableTestbedPrecompile bool,
 ) ([]*precompile.VersionMap, error) {
 	// BTC token precompile.
 	btcTokenVersionMap, err := btctoken.NewPrecompileVersionMap(
@@ -931,12 +934,33 @@ func baseCustomEvmPrecompiles(
 		return nil, fmt.Errorf("failed to create price oracle precompile: [%w]", err)
 	}
 
-	return []*precompile.VersionMap{
+	pvmap := []*precompile.VersionMap{
 		btcTokenVersionMap,
 		validatorPoolVersionMap,
 		maintenanceVersionMap,
 		assetsBridgeVersionMap,
 		upgradeVersionMap,
 		priceOracleVersionMap,
-	}, nil
+	}
+
+	// This is  the localnet chainID, we will load this specific
+	// precompile only when running system tests.
+	if chainID == "mezo_31611-10" && enableTestbedPrecompile {
+		testBedVersionMap, err := testbed.NewPrecompileVersionMap(
+			bankKeeper,
+			authzKeeper,
+			evmKeeper,
+			chainID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to create testbed precompile: [%w]",
+				err,
+			)
+		}
+
+		pvmap = append(pvmap, testBedVersionMap)
+	}
+
+	return pvmap, nil
 }

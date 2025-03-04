@@ -531,11 +531,12 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 	}
 }
 
-// RegisterCachedContextCheckpoint ... todo
-func (s *StateDB) RegisterCachedContextCheckpoint(addr common.Address, checkpoint *CachedCtxCheckpoint) {
+// RegisterCachedContextCheckpoint ... Register a cached context checkpoint
+// in the journal entries.
+func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtx *CachedCtxCheckpoint) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.RegisterCachedContextCheckpoint(checkpoint)
+		stateObject.RegisterCachedCtxCheckpoint(cachedCtx)
 	}
 }
 
@@ -690,7 +691,6 @@ func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {
 
 	ccp := CachedCtxCheckpoint{
 		// we do a copy of the state here so we can just hot swap it later on?
-		// clonedCacheMultiStore := s.cachedCtx.MultiStore().CacheMultiStore().Clone()
 		ms: s.cachedCtx.MultiStore().(storetypes.CacheMultiStore).Clone(),
 		// we copy the events from the cache context, just to restore them
 		// the same way later.

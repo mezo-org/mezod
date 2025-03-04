@@ -237,7 +237,7 @@ func (c *Contract) syncJournalEntries(
 	stateDB *statedb.StateDB,
 ) {
 	// fist save the checkpoint
-	stateDB.RegisterCachedContextCheckpoint(address, cacheCtxCheckpoint)
+	stateDB.RegisterCachedCtxCheckpoint(address, cacheCtxCheckpoint)
 
 	for _, v := range journal.entries {
 		if v.isSub {

@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MITx
 
 pragma solidity ^0.8.20;
 
-/// @title  IStrippedERC20
-/// @notice Interface for the StrippedERC20 token.
-interface IStrippedERC20 {
+/// @title  ITestbed
+/// @notice Interface for the ITestbed contract.
+interface ITestbed {
     /**
      * @dev Emitted when `value` tokens are moved from one account (`from`) to
      * another (`to`).
@@ -23,11 +23,10 @@ interface IStrippedERC20 {
     function transfer(address to, uint256 value) external returns (bool);
 
     /**
-     * @dev Moves a `value` amount of tokens from the caller's account to `to`.
+     * @dev Moves a `value` amount of tokens from the caller's account to `to`,
+     * then call revert (doing so reverting the transfer that just occured.
      *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
+     * Returns always false.
      */
     function transferWithRevert(address to, uint256 value) external returns (bool);
 }

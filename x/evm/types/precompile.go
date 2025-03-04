@@ -36,8 +36,8 @@ const (
 // this is added in here to be visible during build to prevent compilation
 // issues down the line (in the testbeds package).
 const (
-	TestBedStrippedERC20PrecompileAddress       = "0x7b7c100000000000000000000000000000000000"
-	TestBedStrippedERC20PrecompileLatestVersion = 1
+	TestBedPrecompileAddress       = "0x7b7c100000000000000000000000000000000000"
+	TestBedPrecompileLatestVersion = 1
 )
 
 // DefaultPrecompilesVersions is a list of default precompiles and their versions.
@@ -50,4 +50,5 @@ var DefaultPrecompilesVersions = []*PrecompileVersionInfo{
 	{MaintenancePrecompileAddress, MaintenancePrecompileLatestVersion},
 	{UpgradePrecompileAddress, UpgradePrecompileLatestVersion},
 	{PriceOraclePrecompileAddress, PriceOraclePrecompileLatestVersion},
+	{TestBedPrecompileAddress, TestBedPrecompileLatestVersion},
 }

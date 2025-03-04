@@ -26,7 +26,7 @@ describe("MezoTransfers", function () {
     recipientAddress = ethers.Wallet.createRandom().address;
   });
 
-  describe("erc20WithStrippedERC20Transfer", function () {
+  describe("erc20WithTestbedPrecompileTransfer", function () {
     let initialRecipientBalance: any;
     let tokenAmount: any;
 
@@ -41,7 +41,7 @@ describe("MezoTransfers", function () {
 
       initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(senderSigner).erc20WithStrippedERC20Transfer(recipientAddress);
+      const tx = await mezoTransfers.connect(senderSigner).erc20WithTestbedPrecompileTransfer(recipientAddress);
       await tx.wait();
     });
 

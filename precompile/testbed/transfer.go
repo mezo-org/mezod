@@ -1,4 +1,4 @@
-package testbeds
+package testbed
 
 import (
 	"errors"

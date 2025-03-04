@@ -1,4 +1,4 @@
-package testbeds
+package testbed
 
 // EvmByteCode is the EVM bytecode of the BTC token precompile. This code is
 // returned by eth_getCode and ensures the precompile address is detected as a

@@ -33,7 +33,7 @@ command -v jq >/dev/null 2>&1 || {
 set -e
 
 # Reinstall daemon
-make install DEBUG_BUILD_ENABLED=true
+make install
 
 # User prompt if an existing local node configuration is found.
 if [ -d "$HOMEDIR" ]; then
@@ -142,4 +142,4 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 fi
 
 # Start the node (remove the --pruning=nothing flag if historical queries are not needed)
-mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --home "$HOMEDIR"
+mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --enable-testbed-precompile --home "$HOMEDIR"
