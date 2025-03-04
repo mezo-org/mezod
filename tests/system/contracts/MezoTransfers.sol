@@ -223,20 +223,6 @@ contract MezoTransfers {
     }
 
     /// @notice Transfers ERC-20 Token from the contract
-    ///         using the testbeds stripped token just to
-    ///         test this works at least
-    function erc20WithTestbedPrecompileTransfer(address recipient) external {
-        uint256 balance = IBTC(precompile).balanceOf(address(this));
-        require(balance > 0, "No balance to transfer");
-
-        uint256 halfBalance = balance / 2;
-
-        // Transfer ERC-20
-        bool success = IBTC(precompile).transfer(recipient, halfBalance);
-        require(success, "Transfer using transfer failed");
-    }
-
-    /// @notice Transfers ERC-20 Token from the contract
     ///         then call a precompile which reverts
     ///         revert fully and all state as per pre-call of the method
     function erc20ThenRevertingInPrecompile(address recipient) external {
