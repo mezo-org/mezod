@@ -88,7 +88,7 @@ type StateDB struct {
 	storageRootStrategy types.StorageRootStrategy
 
 	// This counter is use to keep track of how many time
-	// a precompile have been call during this execution. This
+	// a precompile have been called during this execution. This
 	// is implemented as a counter limit against abusing the use
 	// of precompile as part of a single smart contract call. We
 	// are added because every time a precompile contract is call,
