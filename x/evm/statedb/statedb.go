@@ -547,10 +547,10 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 
 // RegisterCachedContextCheckpoint ... Register a cached context checkpoint
 // in the journal entries.
-func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtx *CachedCtxCheckpoint) error {
+func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxCheckpoint *CachedCtxCheckpoint) error {
 	// add the cache ctx checkpoint to the journal,
 	// this cannot realistically fail
-	s.getOrNewStateObject(addr).RegisterCachedCtxCheckpoint(cachedCtx)
+	s.getOrNewStateObject(addr).RegisterCachedCtxCheckpoint(cachedCtxCheckpoint)
 
 	s.ongoingPrecompilesCallsCounter += 1
 	if s.ongoingPrecompilesCallsCounter > s.maxPrecompilesCallsPerExecution {

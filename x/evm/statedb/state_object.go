@@ -140,9 +140,9 @@ func (s *stateObject) SubBalance(amount *uint256.Int) {
 
 // RegisterCachedCtxCheckpoint ... Registers a cached context checkpoint
 // in the journal entries
-func (s *stateObject) RegisterCachedCtxCheckpoint(cachedCtx *CachedCtxCheckpoint) {
+func (s *stateObject) RegisterCachedCtxCheckpoint(cachedCtxCpt *CachedCtxCheckpoint) {
 	s.db.journal.append(cachedCtxCheckpoint{
-		CachedCtxCheckpoint: cachedCtx,
+		CachedCtxCheckpoint: cachedCtxCpt,
 	})
 }
 

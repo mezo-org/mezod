@@ -8,53 +8,6 @@ interface ITestbed {
     function transferWithRevert(address to, uint256 value) external returns (bool);
 }
 
-contract RevertingTransfer {
-    // BTC ERC-20 token address on Mezo
-    address private constant precompile = 0x7b7C000000000000000000000000000000000000;
-    address private constant testbedPrecompile = 0x7b7c100000000000000000000000000000000000;
-
-    function transferThenRevert(address recipient) external {
-        uint256 balance = IBTC(precompile).balanceOf(address(this));
-        require(balance > 0, "No balance to transfer");
-
-	// Transfer all remaining ERC-20
-        bool success = IBTC(precompile).transfer(recipient, balance);
-        require(success, "Transfer using transfer failed");
-
-	revert("some unexpected error");
-    }
-
-    function transferWithPrecompileRevert(address recipient) external {
-        uint256 balance = IBTC(precompile).balanceOf(address(this));
-        require(balance > 0, "No balance to transfer");
-
-	// Transfer all remaining ERC-20
-        ITestbed(testbedPrecompile).transferWithRevert(recipient, balance);
-    }
-
-    function multipleTransferWithPrecompileRevert(address recipient) external {
-        uint256 balance = IBTC(precompile).balanceOf(address(this));
-        require(balance > 0, "No balance to transfer");
-
-        uint256 fourthBalance = balance / 4;
-
-	// Transfer some ERC-20
-        bool success = IBTC(precompile).transfer(recipient, fourthBalance);
-        require(success, "Transfer using transfer failed");
-
-	// Transfer some ERC-20
-        success = IBTC(precompile).transfer(recipient, fourthBalance);
-        require(success, "Transfer using transfer failed");
-
-	// Transfer some ERC-20
-        success = IBTC(precompile).transfer(recipient, fourthBalance);
-        require(success, "Transfer using transfer failed");
-
-	// Transfer all remaining ERC-20 with panic
-        ITestbed(testbedPrecompile).transferWithRevert(recipient, fourthBalance);
-    }
-}
-
 /// @title MezoTransfers
 /// @notice Handles various transfer scenarios for Mezo native token - BTC.
 contract MezoTransfers {
@@ -403,5 +356,52 @@ contract MezoTransfers {
         require(success, "ERC-20 transfer failed");
 
         balanceTracker = 0; // Reset the storage variable to its original value.
+    }
+}
+
+contract RevertingTransfer {
+    // BTC ERC-20 token address on Mezo
+    address private constant precompile = 0x7b7C000000000000000000000000000000000000;
+    address private constant testbedPrecompile = 0x7b7c100000000000000000000000000000000000;
+
+    function transferThenRevert(address recipient) external {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
+
+	// Transfer all remaining ERC-20
+        bool success = IBTC(precompile).transfer(recipient, balance);
+        require(success, "Transfer using transfer failed");
+
+	revert("some unexpected error");
+    }
+
+    function transferWithPrecompileRevert(address recipient) external {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
+
+	// Transfer all remaining ERC-20
+        ITestbed(testbedPrecompile).transferWithRevert(recipient, balance);
+    }
+
+    function multipleTransferWithPrecompileRevert(address recipient) external {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
+
+        uint256 fourthBalance = balance / 4;
+
+	// Transfer some ERC-20
+        bool success = IBTC(precompile).transfer(recipient, fourthBalance);
+        require(success, "Transfer using transfer failed");
+
+	// Transfer some ERC-20
+        success = IBTC(precompile).transfer(recipient, fourthBalance);
+        require(success, "Transfer using transfer failed");
+
+	// Transfer some ERC-20
+        success = IBTC(precompile).transfer(recipient, fourthBalance);
+        require(success, "Transfer using transfer failed");
+
+	// Transfer all remaining ERC-20 with panic
+        ITestbed(testbedPrecompile).transferWithRevert(recipient, fourthBalance);
     }
 }

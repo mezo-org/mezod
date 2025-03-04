@@ -235,7 +235,7 @@ func (c *Contract) Run(
 func (c *Contract) syncJournalEntries(
 	journal *StateDBJournal,
 	address common.Address,
-	cacheCtxCheckpoint *statedb.CachedCtxCheckpoint,
+	cachedCtxCheckpoint *statedb.CachedCtxCheckpoint,
 	stateDB *statedb.StateDB,
 ) error {
 	for _, v := range journal.entries {
@@ -253,7 +253,7 @@ func (c *Contract) syncJournalEntries(
 	// NOTE: this needs to be done last as it may be returning an error
 	// if we have exceeded the maximum amount of precompiles call per execution.
 	// always returns this last
-	return stateDB.RegisterCachedCtxCheckpoint(address, cacheCtxCheckpoint)
+	return stateDB.RegisterCachedCtxCheckpoint(address, cachedCtxCheckpoint)
 }
 
 // parseCallInput extracts the method ID and input arguments from the given

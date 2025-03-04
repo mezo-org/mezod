@@ -240,10 +240,10 @@ func (tm *transferWithRevertMethod) Run(
 		amount = big.NewInt(0)
 	}
 
-	return transfer2(context, tm.bankKeeper, tm.authzkeeper, from, to, amount)
+	return transferWithError(context, tm.bankKeeper, tm.authzkeeper, from, to, amount)
 }
 
-func transfer2(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, from, to common.Address, amount *big.Int) (precompile.MethodOutputs, error) {
+func transferWithError(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, from, to common.Address, amount *big.Int) (precompile.MethodOutputs, error) {
 	if amount.Sign() > 0 {
 		sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 		if err != nil {

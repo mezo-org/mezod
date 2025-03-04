@@ -418,6 +418,7 @@ func NewMezo(
 	)
 
 	precompiles, err := customEvmPrecompiles(
+		logger,
 		app.BankKeeper,
 		app.AuthzKeeper,
 		app.PoaKeeper,
@@ -880,6 +881,7 @@ func initParamsKeeper(
 
 // baseCustomEvmPrecompiles builds custom precompiles of the EVM module.
 func customEvmPrecompiles(
+	logger log.Logger,
 	bankKeeper bankkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
@@ -946,6 +948,8 @@ func customEvmPrecompiles(
 	// This is  the localnet chainID, we will load this specific
 	// precompile only when running system tests.
 	if chainID == "mezo_31611-10" && enableTestbedPrecompile {
+		logger.Warn("loading testbed precompiles")
+
 		testBedVersionMap, err := testbed.NewPrecompileVersionMap(
 			bankKeeper,
 			authzKeeper,
