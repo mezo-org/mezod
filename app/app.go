@@ -426,7 +426,7 @@ func NewMezo(
 		oraclekeeper.NewQueryServer(app.OracleKeeper),
 		app.BridgeKeeper,
 		bApp.ChainID(),
-		appOpts.Get(srvflags.EnableTestbedPrecompile).(bool),
+		cast.ToBool(appOpts.Get(srvflags.EnableTestbedPrecompile)),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))

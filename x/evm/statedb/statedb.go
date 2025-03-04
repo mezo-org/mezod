@@ -86,6 +86,16 @@ type StateDB struct {
 	witness *stateless.Witness
 
 	storageRootStrategy types.StorageRootStrategy
+
+	// This counter is use to keep track of how many time
+	// a precompile have been call during this execution. This
+	// is implemented as a counter limit against abusing the use
+	// of precompile as part of a single smart contract call. We
+	// are added because every time a precompile contract is call,
+	// a new copy of the state of the context is made, so we want
+	// to prevent it eating up too much memory at once and any possible
+	// attack related to this.
+	precompileCallCounter uint
 }
 
 // New creates a new state from a given trie.
