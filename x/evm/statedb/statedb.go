@@ -559,7 +559,7 @@ func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxChec
 	s.ongoingPrecompilesCallsCounter++
 
 	// for backward compatibility when maxPrecompilesCallsPerExecution == 0
-	// we do not had any check, the first assertion here bypass the check.
+	// we do not have any check, the first assertion bypass the check.
 	if s.maxPrecompilesCallsPerExecution > 0 && s.ongoingPrecompilesCallsCounter > s.maxPrecompilesCallsPerExecution {
 		return fmt.Errorf("transaction have exceeded the maximum number of precompile calls per execution, max allowed: %v, attempted: %v", s.maxPrecompilesCallsPerExecution, s.ongoingPrecompilesCallsCounter)
 	}
