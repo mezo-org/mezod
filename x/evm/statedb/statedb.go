@@ -95,7 +95,8 @@ type StateDB struct {
 	// a new copy of the state of the context is made, so we want
 	// to prevent it eating up too much memory at once and any possible
 	// attack related to this.
-	// For backward compatibility
+	// For backward compatibility a maxPrecompilesCallsPerExecution set to 0
+	// means there's no limits.
 	ongoingPrecompilesCallsCounter uint
 
 	maxPrecompilesCallsPerExecution uint
@@ -552,8 +553,14 @@ func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxChec
 	// this cannot realistically fail
 	s.getOrNewStateObject(addr).RegisterCachedCtxCheckpoint(cachedCtxCheckpoint)
 
+	// here we increment the state DB counter of precompile calls.
+	// we are doing it here because we are registering a cached context checkpoint.
+	// a cached checkpoint context is registered every time a precompile is executed.
 	s.ongoingPrecompilesCallsCounter++
-	if s.ongoingPrecompilesCallsCounter > s.maxPrecompilesCallsPerExecution {
+
+	// for backward compatibility when maxPrecompilesCallsPerExecution == 0
+	// we do not had any check, the first assertion here bypass the check.
+	if s.maxPrecompilesCallsPerExecution > 0 && s.ongoingPrecompilesCallsCounter > s.maxPrecompilesCallsPerExecution {
 		return fmt.Errorf("transaction have exceeded the maximum number of precompile calls per execution, max allowed: %v, attempted: %v", s.maxPrecompilesCallsPerExecution, s.ongoingPrecompilesCallsCounter)
 	}
 
@@ -688,10 +695,10 @@ type CachedCtxCheckpoint struct {
 
 func (ccc *CachedCtxCheckpoint) Revert(stateDB *StateDB) {
 	// first we load back the state in the context
-	stateDB.cachedCtx.WithMultiStore(ccc.ms)
+	stateDB.cachedCtx = stateDB.cachedCtx.WithMultiStore(ccc.ms)
 	// then replace the flush cache function
 	// we write our own flushCache function here which will be used at the
-	// time of rollback to generate the correct function using the context
+	// time of rollback.
 	stateDB.flushCache = func() {
 		// we capture  the events and the actual context
 		stateDB.ctx.EventManager().EmitEvents(ccc.events)
