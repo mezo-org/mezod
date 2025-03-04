@@ -225,7 +225,9 @@ func (c *Contract) Run(
 	}
 
 	// now if nothing failed, we executed the journal entries against the stateDB
-	c.syncJournalEntries(runCtx.journal, c.Address(), ctxCheckpoint, stateDB)
+	if err := c.syncJournalEntries(runCtx.journal, c.Address(), ctxCheckpoint, stateDB); err != nil {
+		return nil, err
+	}
 
 	return methodOutputArgs, nil
 }
@@ -235,10 +237,7 @@ func (c *Contract) syncJournalEntries(
 	address common.Address,
 	cacheCtxCheckpoint *statedb.CachedCtxCheckpoint,
 	stateDB *statedb.StateDB,
-) {
-	// fist save the checkpoint
-	stateDB.RegisterCachedCtxCheckpoint(address, cacheCtxCheckpoint)
-
+) error {
 	for _, v := range journal.entries {
 		if v.isSub {
 			stateDB.SubBalance(v.Address, v.Amount, v.TracingReason)
@@ -249,6 +248,12 @@ func (c *Contract) syncJournalEntries(
 	}
 
 	journal.entries = nil
+
+	// finally we register the checkpoint.
+	// NOTE: this needs to be done last as it may be returning an error
+	// if we have exceeded the maximum amount of precompiles call per execution.
+	// always returns this last
+	return stateDB.RegisterCachedCtxCheckpoint(address, cacheCtxCheckpoint)
 }
 
 // parseCallInput extracts the method ID and input arguments from the given

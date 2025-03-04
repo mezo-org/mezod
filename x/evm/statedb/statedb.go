@@ -95,19 +95,23 @@ type StateDB struct {
 	// a new copy of the state of the context is made, so we want
 	// to prevent it eating up too much memory at once and any possible
 	// attack related to this.
-	precompileCallCounter uint
+	// For backward compatibility
+	ongoingPrecompilesCallsCounter uint
+
+	maxPrecompilesCallsPerExecution uint
 }
 
 // New creates a new state from a given trie.
 func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 	return &StateDB{
-		keeper:              keeper,
-		ctx:                 ctx,
-		stateObjects:        make(map[common.Address]*stateObject),
-		journal:             newJournal(),
-		accessList:          newAccessList(),
-		txConfig:            txConfig,
-		storageRootStrategy: keeper.GetStorageRootStrategy(ctx),
+		keeper:                          keeper,
+		ctx:                             ctx,
+		stateObjects:                    make(map[common.Address]*stateObject),
+		journal:                         newJournal(),
+		accessList:                      newAccessList(),
+		txConfig:                        txConfig,
+		storageRootStrategy:             keeper.GetStorageRootStrategy(ctx),
+		maxPrecompilesCallsPerExecution: keeper.GetMaxPrecompilesCallsPerExecution(ctx),
 	}
 }
 
@@ -543,11 +547,17 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 
 // RegisterCachedContextCheckpoint ... Register a cached context checkpoint
 // in the journal entries.
-func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtx *CachedCtxCheckpoint) {
-	stateObject := s.getOrNewStateObject(addr)
-	if stateObject != nil {
-		stateObject.RegisterCachedCtxCheckpoint(cachedCtx)
+func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtx *CachedCtxCheckpoint) error {
+	// add the cache ctx checkpoint to the journal,
+	// this cannot realistically fail
+	s.getOrNewStateObject(addr).RegisterCachedCtxCheckpoint(cachedCtx)
+
+	s.ongoingPrecompilesCallsCounter += 1
+	if s.ongoingPrecompilesCallsCounter > s.maxPrecompilesCallsPerExecution {
+		return fmt.Errorf("transaction have exceeded the maximum number of precompile calls per execution, max allowed: %v, attempted: %v", s.maxPrecompilesCallsPerExecution, s.ongoingPrecompilesCallsCounter)
 	}
+
+	return nil
 }
 
 // SetNonce sets the nonce of account.

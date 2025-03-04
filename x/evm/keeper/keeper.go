@@ -463,6 +463,12 @@ func (k *Keeper) GetStorageRootStrategy(ctx sdk.Context) types.StorageRootStrate
 	return types.StorageRootStrategy(k.GetParams(ctx).StorageRootStrategy)
 }
 
+// GetMaxPrecompilesCallsPerExecution returns the max precompiles calls allowed per
+// transaction execution.
+func (k *Keeper) GetMaxPrecompilesCallsPerExecution(ctx sdk.Context) uint {
+	return uint(k.GetParams(ctx).MaxPrecompilesCallsPerExecution)
+}
+
 // IsContract returns if the account contains contract code.
 func (k *Keeper) IsContract(ctx sdk.Context, address []byte) bool {
 	account := k.GetAccountWithoutBalance(ctx, common.BytesToAddress(address))

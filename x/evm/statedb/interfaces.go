@@ -41,6 +41,7 @@ type Keeper interface {
 	// the callback returns false to break early
 	ForEachStorage(ctx sdk.Context, addr common.Address, cb func(key, value common.Hash) bool)
 	GetStorageRootStrategy(ctx sdk.Context) types.StorageRootStrategy
+	GetMaxPrecompilesCallsPerExecution(ctx sdk.Context) uint
 
 	// Write methods, only called by `StateDB.Commit()`
 	SetAccount(ctx sdk.Context, addr common.Address, account Account) error
