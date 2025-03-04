@@ -30,6 +30,13 @@ const (
 	PriceOraclePrecompileLatestVersion = 1
 )
 
+// Start the TestBed precompile address with the prefix 0x7b7c1 in order
+// to not conflict with any production precompile.
+const (
+	TestBedPrecompileAddress       = "0x7b7c100000000000000000000000000000000000"
+	TestBedPrecompileLatestVersion = 1
+)
+
 // DefaultPrecompilesVersions is a list of default precompiles and their versions.
 // Order of precompiles is important. If changed on a live network, it will break
 // the consensus.
@@ -40,4 +47,5 @@ var DefaultPrecompilesVersions = []*PrecompileVersionInfo{
 	{MaintenancePrecompileAddress, MaintenancePrecompileLatestVersion},
 	{UpgradePrecompileAddress, UpgradePrecompileLatestVersion},
 	{PriceOraclePrecompileAddress, PriceOraclePrecompileLatestVersion},
+	{TestBedPrecompileAddress, TestBedPrecompileLatestVersion},
 }

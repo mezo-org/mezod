@@ -38,6 +38,9 @@ var (
 	DefaultEnableCall = true
 	// DefaultStorageRootStrategy defines the default strategy for the EVM storage root mechanism.
 	DefaultStorageRootStrategy = StorageRootStrategyEmptyHash
+	// DefaultMaxPrecompilesCallsPerExecution defines the default amount of precompiles
+	// call per transaction execution allowed.
+	DefaultMaxPrecompilesCallsPerExecution = 10
 )
 
 // AvailableExtraEIPs define the list of all EIPs that can be enabled by the
@@ -63,14 +66,15 @@ func NewParams(evmDenom string, allowUnprotectedTxs, enableCreate, enableCall bo
 // ExtraEIPs is empty to prevent overriding the latest hard fork instruction set
 func DefaultParams() Params {
 	return Params{
-		EvmDenom:            DefaultEVMDenom,
-		EnableCreate:        DefaultEnableCreate,
-		EnableCall:          DefaultEnableCall,
-		ChainConfig:         DefaultChainConfig(),
-		ExtraEIPs:           nil,
-		AllowUnprotectedTxs: DefaultAllowUnprotectedTxs,
-		StorageRootStrategy: uint32(DefaultStorageRootStrategy),
-		PrecompilesVersions: DefaultPrecompilesVersions,
+		EvmDenom:                        DefaultEVMDenom,
+		EnableCreate:                    DefaultEnableCreate,
+		EnableCall:                      DefaultEnableCall,
+		ChainConfig:                     DefaultChainConfig(),
+		ExtraEIPs:                       nil,
+		AllowUnprotectedTxs:             DefaultAllowUnprotectedTxs,
+		StorageRootStrategy:             uint32(DefaultStorageRootStrategy),
+		PrecompilesVersions:             DefaultPrecompilesVersions,
+		MaxPrecompilesCallsPerExecution: uint32(DefaultMaxPrecompilesCallsPerExecution),
 	}
 }
 

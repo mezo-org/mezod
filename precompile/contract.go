@@ -148,7 +148,7 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("cannot get state DB from EVM")
 	}
 
-	sdkCtx := stateDB.CacheContext()
+	sdkCtx, ctxCheckpoint := stateDB.CacheContext()
 
 	// Capture the initial values of gas config to restore them after execution.
 	kvGasConfig, transientKVGasConfig := sdkCtx.KVGasConfig(), sdkCtx.TransientKVGasConfig()
@@ -225,12 +225,19 @@ func (c *Contract) Run(
 	}
 
 	// now if nothing failed, we executed the journal entries against the stateDB
-	c.finalizeJournalEntries(runCtx.journal, stateDB)
+	if err := c.syncJournalEntries(runCtx.journal, c.Address(), ctxCheckpoint, stateDB); err != nil {
+		return nil, err
+	}
 
 	return methodOutputArgs, nil
 }
 
-func (c *Contract) finalizeJournalEntries(journal *StateDBJournal, stateDB *statedb.StateDB) {
+func (c *Contract) syncJournalEntries(
+	journal *StateDBJournal,
+	address common.Address,
+	cachedCtxCheckpoint *statedb.CachedCtxCheckpoint,
+	stateDB *statedb.StateDB,
+) error {
 	for _, v := range journal.entries {
 		if v.isSub {
 			stateDB.SubBalance(v.Address, v.Amount, v.TracingReason)
@@ -241,6 +248,12 @@ func (c *Contract) finalizeJournalEntries(journal *StateDBJournal, stateDB *stat
 	}
 
 	journal.entries = nil
+
+	// finally we register the checkpoint.
+	// NOTE: this needs to be done last as it may be returning an error
+	// if we have exceeded the maximum amount of precompiles call per execution.
+	// always returns this last
+	return stateDB.RegisterCachedCtxCheckpoint(address, cachedCtxCheckpoint)
 }
 
 // parseCallInput extracts the method ID and input arguments from the given

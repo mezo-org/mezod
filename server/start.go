@@ -168,6 +168,7 @@ which accepts a path for the resulting pprof file.
 		},
 	}
 
+	cmd.Flags().Bool(srvflags.EnableTestbedPrecompile, false, "Enable the testbed precompile; Compatible only with local networks, incompatible with mainnet and testnet")
 	cmd.Flags().String(flags.FlagKeyringDir, "", "The client Keyring directory; if omitted, the default 'home' directory will be used")
 	cmd.Flags().String(flags.FlagHome, opts.DefaultNodeHome, "The application home directory")
 	cmd.Flags().Bool(srvflags.WithTendermint, true, "Run abci app embedded in-process with tendermint")

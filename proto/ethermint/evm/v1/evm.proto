@@ -32,6 +32,9 @@ message Params {
   uint32 storage_root_strategy = 7;
   // precompiles_versions defines the versions of the custom EVM precompiles.
   repeated PrecompileVersionInfo precompiles_versions = 8;
+  // max_precompiles_calls_per_execution defines the amount of precompiles
+  // calls a transaction can do when it's executed.
+  uint32 max_precompiles_calls_per_execution = 9;
 }
 
 // PrecompileVersionInfo defines the version of a custom EVM precompile.
