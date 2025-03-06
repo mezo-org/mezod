@@ -16,10 +16,11 @@
 package web3
 
 import (
-	"github.com/mezo-org/mezod/version"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/mezo-org/mezod/version"
 )
 
 // PublicAPI is the web3_ prefixed set of APIs in the Web3 JSON-RPC spec.
@@ -31,8 +32,13 @@ func NewPublicAPI() *PublicAPI {
 }
 
 // ClientVersion returns the client version in the Web3 user agent format.
-func (a *PublicAPI) ClientVersion() map[string]string {
-	return version.Version()
+func (a *PublicAPI) ClientVersion() string {
+	return fmt.Sprintf(
+		"Mezod/%s/%s/%s",
+		version.AppVersion,
+		version.GoArch,
+		version.GoVersion,
+	)
 }
 
 // Sha3 returns the keccak-256 hash of the passed-in input.
