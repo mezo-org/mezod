@@ -35,6 +35,9 @@ message Params {
   // max_precompiles_calls_per_execution defines the amount of precompiles
   // calls a transaction can do when it's executed.
   uint32 max_precompiles_calls_per_execution = 9;
+  // chain_fee_splitter_address defines the address of the chain fee splitter
+  // contract.
+  string chain_fee_splitter_address = 10;
 }
 
 // PrecompileVersionInfo defines the version of a custom EVM precompile.

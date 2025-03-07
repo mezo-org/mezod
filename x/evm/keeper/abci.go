@@ -20,9 +20,17 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	storetypes "cosmossdk.io/store/types"
+
+	errorsmod "cosmossdk.io/errors"
+
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
 // BeginBlock sets the sdk Context and EIP155 chain id to the Keeper.
@@ -43,6 +51,34 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 
 	bloom := ethtypes.BytesToBloom(k.GetBlockBloomTransient(infCtx).Bytes())
 	k.EmitBlockBloomEvent(infCtx, bloom)
+
+	feeCollectorAddr := authtypes.NewModuleAddress(authtypes.FeeCollectorName)
+	balance := k.bankKeeper.GetBalance(sdkCtx, feeCollectorAddr, k.GetParams(sdkCtx).EvmDenom)
+	if balance.IsZero() {
+		return nil
+	}
+
+	chainFeeSplitterAddress := common.HexToAddress(k.GetParams(sdkCtx).ChainFeeSplitterAddress)
+
+	// Check if the chain fee splitter address is the zero address.
+	// In case of zero address, fees are still being collected in the fee collector
+	// module account.
+	if chainFeeSplitterAddress == (common.Address{}) {
+		return nil
+	}
+
+	chainFeeSplitterAddressBytes := chainFeeSplitterAddress.Bytes()
+
+	// Check if the chain fee splitter address is valid format
+	if err := sdk.VerifyAddressFormat(chainFeeSplitterAddressBytes); err != nil {
+		return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid chain fee splitter address: %s", chainFeeSplitterAddress)
+	}
+
+	// Transfer chain fee to the chain fee splitter contract
+	err := k.bankKeeper.SendCoinsFromModuleToAccount(sdkCtx, authtypes.FeeCollectorName, chainFeeSplitterAddressBytes, sdk.NewCoins(balance))
+	if err != nil {
+		return errorsmod.Wrap(err, "failed to send chain fee to chain fee splitter contract")
+	}
 
 	return nil
 }
