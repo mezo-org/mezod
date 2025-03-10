@@ -24,4 +24,11 @@ interface IMaintenance {
      * @dev Must be called by contract owner.
      */
     function setPrecompileByteCode(address precompile, bytes calldata code) external returns (bool);
+
+    /**
+     * @notice Sets the fee chain splitter address
+     * @param feeChainSplitterAddress The new fee chain splitter address
+     * @dev Must be called by contract owner.
+     */
+    function setFeeChainSplitterAddress(address feeChainSplitterAddress) external returns (bool);
 }
