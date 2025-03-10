@@ -1,0 +1,5 @@
+repos:
+  - repo: https://github.com/mezo-org/pre-commit-hooks.git
+    rev: 31903eabdb97f5a3375fb1ea419ff782de64d7e7
+    hooks:
+      - id: check-added-large-files
