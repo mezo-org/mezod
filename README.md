@@ -31,6 +31,10 @@ please consult the [development](./docs/development.md) guide.
 Please consult our [contribution guide](./CONTRIBUTING.md) if you are willing
 to contribute to the codebase.
 
+## Security
+
+The project has the [security policy](./SECURITY.md) available.
+
 ## Testnet
 
 The Mezo testnet is a public network that can be used for testing and
