@@ -11,7 +11,7 @@ Mezo is a Bitcoin-first chain designed for:
 ## Overview
 
 The Mezo chain is a Cosmos SDK-based chain with EVM compatibility running on top
-of Cosmos BFT consensus engine.
+of Comet BFT consensus engine.
 
 The Mezo chain client codebase was forked from LGPL version Evmos and heavily
 modified.
