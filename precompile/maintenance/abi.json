@@ -59,6 +59,25 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "feeChainSplitterAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setFeeChainSplitterAddress",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "precompile",
         "type": "address"
       }
