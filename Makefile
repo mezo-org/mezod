@@ -234,6 +234,12 @@ format-fix:
 
 .PHONY: format format-fix
 
+format-markdown:
+	markdownlint '**/*.md' --config .markdownlint.yml
+
+format-markdown-fix:
+	markdownlint '**/*.md' --config .markdownlint.yml --fix
+
 ###############################################################################
 ###                                Protobuf                                 ###
 ###############################################################################

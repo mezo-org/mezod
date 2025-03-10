@@ -13,3 +13,9 @@ repos:
         files: '\.go$'
         language: script
         description: "Format Go code"
+      - id: markdown-format
+        name: 'format markdown'
+        entry: /usr/bin/env bash -c 'make format-markdown'
+        files: '\.md'
+        language: script
+        description: "Format Markdown files"
