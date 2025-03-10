@@ -218,19 +218,15 @@ lint-fix:
 
 format: 
 	find . -name "*.go" -type f \
-	  -not -path "./vendor*" \
-	  -not -path "*.git*" \
-	  -not -path "./client/docs/statik/statik.go" \
 	  -not -name "*.pb.go" \
-	  -not -name "*.pb.gw.go" | xargs gofumpt -l
+	  -not -name "*.pb.gw.go" \
+	  -not -path "*/gen/*" | xargs gofumpt -l
 
 format-fix:
 	find . -name "*.go" -type f \
-	  -not -path "./vendor*" \
-	  -not -path "*.git*" \
-	  -not -path "./client/docs/statik/statik.go" \
 	  -not -name "*.pb.go" \
-	  -not -name "*.pb.gw.go" | xargs gofumpt -w -l
+	  -not -name "*.pb.gw.go" \
+	  -not -path "*/gen/*" | xargs gofumpt -l -w
 
 .PHONY: format format-fix
 
