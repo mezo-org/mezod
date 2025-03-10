@@ -97,7 +97,6 @@ func newPrecompileMethods(
 		methods = append(methods, newSetPrecompileByteCodeMethod(poaKeeper, evmKeeper))
 	}
 
-	// TODO: unclear, do we need to add this function behind EVM/Precompiles flag?
 	methods = append(methods, newSetFeeChainSplitterAddressMethod(poaKeeper, evmKeeper))
 	methods = append(methods, newGetFeeChainSplitterAddressMethod(evmKeeper))
 
