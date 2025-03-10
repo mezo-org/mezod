@@ -50,3 +50,10 @@ task('maintenance:setFeeChainSplitterAddress', 'Sets the fee chain splitter addr
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })
+
+task('maintenance:getFeeChainSplitterAddress', 'Gets the fee chain splitter address')
+  .setAction(async (taskArguments, hre) => {
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const address = await maintenance.getFeeChainSplitterAddress()
+    console.log(address)
+  })
