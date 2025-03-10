@@ -204,6 +204,7 @@ func (_MezoBridge *MezoBridgeTransactorRaw) Transact(opts *bind.TransactOpts, me
 func (_MezoBridge *MezoBridgeCaller) ERC20Tokens(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "ERC20Tokens", arg0)
+
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -211,6 +212,7 @@ func (_MezoBridge *MezoBridgeCaller) ERC20Tokens(opts *bind.CallOpts, arg0 commo
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
+
 }
 
 // ERC20Tokens is a free data retrieval call binding the contract method 0xd80687ef.
@@ -233,6 +235,7 @@ func (_MezoBridge *MezoBridgeCallerSession) ERC20Tokens(arg0 common.Address) (*b
 func (_MezoBridge *MezoBridgeCaller) ERC20TokensCount(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "ERC20TokensCount")
+
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -240,6 +243,7 @@ func (_MezoBridge *MezoBridgeCaller) ERC20TokensCount(opts *bind.CallOpts) (*big
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
+
 }
 
 // ERC20TokensCount is a free data retrieval call binding the contract method 0xd252bb2c.
@@ -262,6 +266,7 @@ func (_MezoBridge *MezoBridgeCallerSession) ERC20TokensCount() (*big.Int, error)
 func (_MezoBridge *MezoBridgeCaller) MAXERC20TOKENS(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "MAX_ERC20_TOKENS")
+
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -269,6 +274,7 @@ func (_MezoBridge *MezoBridgeCaller) MAXERC20TOKENS(opts *bind.CallOpts) (*big.I
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
+
 }
 
 // MAXERC20TOKENS is a free data retrieval call binding the contract method 0x5febd8eb.
@@ -291,6 +297,7 @@ func (_MezoBridge *MezoBridgeCallerSession) MAXERC20TOKENS() (*big.Int, error) {
 func (_MezoBridge *MezoBridgeCaller) SATOSHIMULTIPLIER(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "SATOSHI_MULTIPLIER")
+
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -298,6 +305,7 @@ func (_MezoBridge *MezoBridgeCaller) SATOSHIMULTIPLIER(opts *bind.CallOpts) (*bi
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
+
 }
 
 // SATOSHIMULTIPLIER is a free data retrieval call binding the contract method 0xc7ba0347.
@@ -320,6 +328,7 @@ func (_MezoBridge *MezoBridgeCallerSession) SATOSHIMULTIPLIER() (*big.Int, error
 func (_MezoBridge *MezoBridgeCaller) Bridge(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "bridge")
+
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -327,6 +336,7 @@ func (_MezoBridge *MezoBridgeCaller) Bridge(opts *bind.CallOpts) (common.Address
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
+
 }
 
 // Bridge is a free data retrieval call binding the contract method 0xe78cea92.
@@ -349,6 +359,7 @@ func (_MezoBridge *MezoBridgeCallerSession) Bridge() (common.Address, error) {
 func (_MezoBridge *MezoBridgeCaller) BtcDeposits(opts *bind.CallOpts, arg0 *big.Int) (uint8, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "btcDeposits", arg0)
+
 	if err != nil {
 		return *new(uint8), err
 	}
@@ -356,6 +367,7 @@ func (_MezoBridge *MezoBridgeCaller) BtcDeposits(opts *bind.CallOpts, arg0 *big.
 	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
 
 	return out0, err
+
 }
 
 // BtcDeposits is a free data retrieval call binding the contract method 0x941b1f94.
@@ -378,6 +390,7 @@ func (_MezoBridge *MezoBridgeCallerSession) BtcDeposits(arg0 *big.Int) (uint8, e
 func (_MezoBridge *MezoBridgeCaller) MinTBTCAmount(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "minTBTCAmount")
+
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -385,6 +398,7 @@ func (_MezoBridge *MezoBridgeCaller) MinTBTCAmount(opts *bind.CallOpts) (*big.In
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
+
 }
 
 // MinTBTCAmount is a free data retrieval call binding the contract method 0xdab1b4bd.
@@ -407,6 +421,7 @@ func (_MezoBridge *MezoBridgeCallerSession) MinTBTCAmount() (*big.Int, error) {
 func (_MezoBridge *MezoBridgeCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "owner")
+
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -414,6 +429,7 @@ func (_MezoBridge *MezoBridgeCaller) Owner(opts *bind.CallOpts) (common.Address,
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
+
 }
 
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
@@ -436,6 +452,7 @@ func (_MezoBridge *MezoBridgeCallerSession) Owner() (common.Address, error) {
 func (_MezoBridge *MezoBridgeCaller) PendingOwner(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "pendingOwner")
+
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -443,6 +460,7 @@ func (_MezoBridge *MezoBridgeCaller) PendingOwner(opts *bind.CallOpts) (common.A
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
+
 }
 
 // PendingOwner is a free data retrieval call binding the contract method 0xe30c3978.
@@ -465,6 +483,7 @@ func (_MezoBridge *MezoBridgeCallerSession) PendingOwner() (common.Address, erro
 func (_MezoBridge *MezoBridgeCaller) Sequence(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "sequence")
+
 	if err != nil {
 		return *new(*big.Int), err
 	}
@@ -472,6 +491,7 @@ func (_MezoBridge *MezoBridgeCaller) Sequence(opts *bind.CallOpts) (*big.Int, er
 	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
+
 }
 
 // Sequence is a free data retrieval call binding the contract method 0x529d15cc.
@@ -494,6 +514,7 @@ func (_MezoBridge *MezoBridgeCallerSession) Sequence() (*big.Int, error) {
 func (_MezoBridge *MezoBridgeCaller) TbtcToken(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "tbtcToken")
+
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -501,6 +522,7 @@ func (_MezoBridge *MezoBridgeCaller) TbtcToken(opts *bind.CallOpts) (common.Addr
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
+
 }
 
 // TbtcToken is a free data retrieval call binding the contract method 0xe5d3d714.
@@ -523,6 +545,7 @@ func (_MezoBridge *MezoBridgeCallerSession) TbtcToken() (common.Address, error) 
 func (_MezoBridge *MezoBridgeCaller) TbtcVault(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _MezoBridge.contract.Call(opts, &out, "tbtcVault")
+
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -530,6 +553,7 @@ func (_MezoBridge *MezoBridgeCaller) TbtcVault(opts *bind.CallOpts) (common.Addr
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
+
 }
 
 // TbtcVault is a free data retrieval call binding the contract method 0x0f36403a.
@@ -899,6 +923,7 @@ type MezoBridgeAssetsLocked struct {
 //
 // Solidity: event AssetsLocked(uint256 indexed sequenceNumber, address indexed recipient, address indexed token, uint256 amount)
 func (_MezoBridge *MezoBridgeFilterer) FilterAssetsLocked(opts *bind.FilterOpts, sequenceNumber []*big.Int, recipient []common.Address, token []common.Address) (*MezoBridgeAssetsLockedIterator, error) {
+
 	var sequenceNumberRule []interface{}
 	for _, sequenceNumberItem := range sequenceNumber {
 		sequenceNumberRule = append(sequenceNumberRule, sequenceNumberItem)
@@ -923,6 +948,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterAssetsLocked(opts *bind.FilterOpts,
 //
 // Solidity: event AssetsLocked(uint256 indexed sequenceNumber, address indexed recipient, address indexed token, uint256 amount)
 func (_MezoBridge *MezoBridgeFilterer) WatchAssetsLocked(opts *bind.WatchOpts, sink chan<- *MezoBridgeAssetsLocked, sequenceNumber []*big.Int, recipient []common.Address, token []common.Address) (event.Subscription, error) {
+
 	var sequenceNumberRule []interface{}
 	for _, sequenceNumberItem := range sequenceNumber {
 		sequenceNumberRule = append(sequenceNumberRule, sequenceNumberItem)
@@ -1059,6 +1085,7 @@ type MezoBridgeBTCDepositFinalized struct {
 //
 // Solidity: event BTCDepositFinalized(uint256 indexed btcDepositKey, uint256 initialAmount, uint256 tbtcAmount)
 func (_MezoBridge *MezoBridgeFilterer) FilterBTCDepositFinalized(opts *bind.FilterOpts, btcDepositKey []*big.Int) (*MezoBridgeBTCDepositFinalizedIterator, error) {
+
 	var btcDepositKeyRule []interface{}
 	for _, btcDepositKeyItem := range btcDepositKey {
 		btcDepositKeyRule = append(btcDepositKeyRule, btcDepositKeyItem)
@@ -1075,6 +1102,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterBTCDepositFinalized(opts *bind.Filt
 //
 // Solidity: event BTCDepositFinalized(uint256 indexed btcDepositKey, uint256 initialAmount, uint256 tbtcAmount)
 func (_MezoBridge *MezoBridgeFilterer) WatchBTCDepositFinalized(opts *bind.WatchOpts, sink chan<- *MezoBridgeBTCDepositFinalized, btcDepositKey []*big.Int) (event.Subscription, error) {
+
 	var btcDepositKeyRule []interface{}
 	for _, btcDepositKeyItem := range btcDepositKey {
 		btcDepositKeyRule = append(btcDepositKeyRule, btcDepositKeyItem)
@@ -1202,6 +1230,7 @@ type MezoBridgeBTCDepositInitialized struct {
 //
 // Solidity: event BTCDepositInitialized(uint256 indexed btcDepositKey, address indexed recipient)
 func (_MezoBridge *MezoBridgeFilterer) FilterBTCDepositInitialized(opts *bind.FilterOpts, btcDepositKey []*big.Int, recipient []common.Address) (*MezoBridgeBTCDepositInitializedIterator, error) {
+
 	var btcDepositKeyRule []interface{}
 	for _, btcDepositKeyItem := range btcDepositKey {
 		btcDepositKeyRule = append(btcDepositKeyRule, btcDepositKeyItem)
@@ -1222,6 +1251,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterBTCDepositInitialized(opts *bind.Fi
 //
 // Solidity: event BTCDepositInitialized(uint256 indexed btcDepositKey, address indexed recipient)
 func (_MezoBridge *MezoBridgeFilterer) WatchBTCDepositInitialized(opts *bind.WatchOpts, sink chan<- *MezoBridgeBTCDepositInitialized, btcDepositKey []*big.Int, recipient []common.Address) (event.Subscription, error) {
+
 	var btcDepositKeyRule []interface{}
 	for _, btcDepositKeyItem := range btcDepositKey {
 		btcDepositKeyRule = append(btcDepositKeyRule, btcDepositKeyItem)
@@ -1352,6 +1382,7 @@ type MezoBridgeERC20TokenDisabled struct {
 //
 // Solidity: event ERC20TokenDisabled(address indexed ERC20Token)
 func (_MezoBridge *MezoBridgeFilterer) FilterERC20TokenDisabled(opts *bind.FilterOpts, ERC20Token []common.Address) (*MezoBridgeERC20TokenDisabledIterator, error) {
+
 	var ERC20TokenRule []interface{}
 	for _, ERC20TokenItem := range ERC20Token {
 		ERC20TokenRule = append(ERC20TokenRule, ERC20TokenItem)
@@ -1368,6 +1399,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterERC20TokenDisabled(opts *bind.Filte
 //
 // Solidity: event ERC20TokenDisabled(address indexed ERC20Token)
 func (_MezoBridge *MezoBridgeFilterer) WatchERC20TokenDisabled(opts *bind.WatchOpts, sink chan<- *MezoBridgeERC20TokenDisabled, ERC20Token []common.Address) (event.Subscription, error) {
+
 	var ERC20TokenRule []interface{}
 	for _, ERC20TokenItem := range ERC20Token {
 		ERC20TokenRule = append(ERC20TokenRule, ERC20TokenItem)
@@ -1495,6 +1527,7 @@ type MezoBridgeERC20TokenEnabled struct {
 //
 // Solidity: event ERC20TokenEnabled(address indexed ERC20Token, uint256 minERC20Amount)
 func (_MezoBridge *MezoBridgeFilterer) FilterERC20TokenEnabled(opts *bind.FilterOpts, ERC20Token []common.Address) (*MezoBridgeERC20TokenEnabledIterator, error) {
+
 	var ERC20TokenRule []interface{}
 	for _, ERC20TokenItem := range ERC20Token {
 		ERC20TokenRule = append(ERC20TokenRule, ERC20TokenItem)
@@ -1511,6 +1544,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterERC20TokenEnabled(opts *bind.Filter
 //
 // Solidity: event ERC20TokenEnabled(address indexed ERC20Token, uint256 minERC20Amount)
 func (_MezoBridge *MezoBridgeFilterer) WatchERC20TokenEnabled(opts *bind.WatchOpts, sink chan<- *MezoBridgeERC20TokenEnabled, ERC20Token []common.Address) (event.Subscription, error) {
+
 	var ERC20TokenRule []interface{}
 	for _, ERC20TokenItem := range ERC20Token {
 		ERC20TokenRule = append(ERC20TokenRule, ERC20TokenItem)
@@ -1637,6 +1671,7 @@ type MezoBridgeInitialized struct {
 //
 // Solidity: event Initialized(uint64 version)
 func (_MezoBridge *MezoBridgeFilterer) FilterInitialized(opts *bind.FilterOpts) (*MezoBridgeInitializedIterator, error) {
+
 	logs, sub, err := _MezoBridge.contract.FilterLogs(opts, "Initialized")
 	if err != nil {
 		return nil, err
@@ -1648,6 +1683,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterInitialized(opts *bind.FilterOpts) 
 //
 // Solidity: event Initialized(uint64 version)
 func (_MezoBridge *MezoBridgeFilterer) WatchInitialized(opts *bind.WatchOpts, sink chan<- *MezoBridgeInitialized) (event.Subscription, error) {
+
 	logs, sub, err := _MezoBridge.contract.WatchLogs(opts, "Initialized")
 	if err != nil {
 		return nil, err
@@ -1770,6 +1806,7 @@ type MezoBridgeMinERC20AmountUpdated struct {
 //
 // Solidity: event MinERC20AmountUpdated(address indexed ERC20Token, uint256 newMinERC20Amount)
 func (_MezoBridge *MezoBridgeFilterer) FilterMinERC20AmountUpdated(opts *bind.FilterOpts, ERC20Token []common.Address) (*MezoBridgeMinERC20AmountUpdatedIterator, error) {
+
 	var ERC20TokenRule []interface{}
 	for _, ERC20TokenItem := range ERC20Token {
 		ERC20TokenRule = append(ERC20TokenRule, ERC20TokenItem)
@@ -1786,6 +1823,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterMinERC20AmountUpdated(opts *bind.Fi
 //
 // Solidity: event MinERC20AmountUpdated(address indexed ERC20Token, uint256 newMinERC20Amount)
 func (_MezoBridge *MezoBridgeFilterer) WatchMinERC20AmountUpdated(opts *bind.WatchOpts, sink chan<- *MezoBridgeMinERC20AmountUpdated, ERC20Token []common.Address) (event.Subscription, error) {
+
 	var ERC20TokenRule []interface{}
 	for _, ERC20TokenItem := range ERC20Token {
 		ERC20TokenRule = append(ERC20TokenRule, ERC20TokenItem)
@@ -1912,6 +1950,7 @@ type MezoBridgeMinTBTCAmountUpdated struct {
 //
 // Solidity: event MinTBTCAmountUpdated(uint256 minTBTCAmount)
 func (_MezoBridge *MezoBridgeFilterer) FilterMinTBTCAmountUpdated(opts *bind.FilterOpts) (*MezoBridgeMinTBTCAmountUpdatedIterator, error) {
+
 	logs, sub, err := _MezoBridge.contract.FilterLogs(opts, "MinTBTCAmountUpdated")
 	if err != nil {
 		return nil, err
@@ -1923,6 +1962,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterMinTBTCAmountUpdated(opts *bind.Fil
 //
 // Solidity: event MinTBTCAmountUpdated(uint256 minTBTCAmount)
 func (_MezoBridge *MezoBridgeFilterer) WatchMinTBTCAmountUpdated(opts *bind.WatchOpts, sink chan<- *MezoBridgeMinTBTCAmountUpdated) (event.Subscription, error) {
+
 	logs, sub, err := _MezoBridge.contract.WatchLogs(opts, "MinTBTCAmountUpdated")
 	if err != nil {
 		return nil, err
@@ -2045,6 +2085,7 @@ type MezoBridgeOwnershipTransferStarted struct {
 //
 // Solidity: event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner)
 func (_MezoBridge *MezoBridgeFilterer) FilterOwnershipTransferStarted(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*MezoBridgeOwnershipTransferStartedIterator, error) {
+
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -2065,6 +2106,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterOwnershipTransferStarted(opts *bind
 //
 // Solidity: event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner)
 func (_MezoBridge *MezoBridgeFilterer) WatchOwnershipTransferStarted(opts *bind.WatchOpts, sink chan<- *MezoBridgeOwnershipTransferStarted, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -2196,6 +2238,7 @@ type MezoBridgeOwnershipTransferred struct {
 //
 // Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
 func (_MezoBridge *MezoBridgeFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*MezoBridgeOwnershipTransferredIterator, error) {
+
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -2216,6 +2259,7 @@ func (_MezoBridge *MezoBridgeFilterer) FilterOwnershipTransferred(opts *bind.Fil
 //
 // Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
 func (_MezoBridge *MezoBridgeFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *MezoBridgeOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)

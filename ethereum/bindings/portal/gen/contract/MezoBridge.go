@@ -106,6 +106,7 @@ func NewMezoBridge(
 
 // Transaction submission.
 func (mb *MezoBridge) AcceptOwnership(
+
 	transactionOptions ...chainutil.TransactionOptions,
 ) (*types.Transaction, error) {
 	mbLogger.Debug(
@@ -1483,6 +1484,7 @@ func (mb *MezoBridge) InitializeBTCBridgingGasEstimate(
 
 // Transaction submission.
 func (mb *MezoBridge) RenounceOwnership(
+
 	transactionOptions ...chainutil.TransactionOptions,
 ) (*types.Transaction, error) {
 	mbLogger.Debug(
@@ -2034,6 +2036,7 @@ func (mb *MezoBridge) Bridge() (common.Address, error) {
 	result, err := mb.contract.Bridge(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2073,6 +2076,7 @@ func (mb *MezoBridge) BtcDeposits(
 		mb.callerOptions,
 		arg0,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2115,6 +2119,7 @@ func (mb *MezoBridge) ERC20Tokens(
 		mb.callerOptions,
 		arg0,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2154,6 +2159,7 @@ func (mb *MezoBridge) ERC20TokensCount() (*big.Int, error) {
 	result, err := mb.contract.ERC20TokensCount(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2190,6 +2196,7 @@ func (mb *MezoBridge) MAXERC20TOKENS() (*big.Int, error) {
 	result, err := mb.contract.MAXERC20TOKENS(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2226,6 +2233,7 @@ func (mb *MezoBridge) MinTBTCAmount() (*big.Int, error) {
 	result, err := mb.contract.MinTBTCAmount(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2262,6 +2270,7 @@ func (mb *MezoBridge) Owner() (common.Address, error) {
 	result, err := mb.contract.Owner(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2298,6 +2307,7 @@ func (mb *MezoBridge) PendingOwner() (common.Address, error) {
 	result, err := mb.contract.PendingOwner(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2334,6 +2344,7 @@ func (mb *MezoBridge) SATOSHIMULTIPLIER() (*big.Int, error) {
 	result, err := mb.contract.SATOSHIMULTIPLIER(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2370,6 +2381,7 @@ func (mb *MezoBridge) Sequence() (*big.Int, error) {
 	result, err := mb.contract.Sequence(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2406,6 +2418,7 @@ func (mb *MezoBridge) TbtcToken() (common.Address, error) {
 	result, err := mb.contract.TbtcToken(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,
@@ -2442,6 +2455,7 @@ func (mb *MezoBridge) TbtcVault() (common.Address, error) {
 	result, err := mb.contract.TbtcVault(
 		mb.callerOptions,
 	)
+
 	if err != nil {
 		return result, mb.errorResolver.ResolveError(
 			err,

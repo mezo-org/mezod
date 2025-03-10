@@ -200,8 +200,7 @@ func (_Validatorpool *ValidatorpoolTransactorRaw) Transact(opts *bind.TransactOp
 func (_Validatorpool *ValidatorpoolCaller) Application(opts *bind.CallOpts, operator common.Address) (struct {
 	ConsPubKey  [32]byte
 	Description Description
-}, error,
-) {
+}, error) {
 	var out []interface{}
 	err := _Validatorpool.contract.Call(opts, &out, "application", operator)
 
@@ -217,6 +216,7 @@ func (_Validatorpool *ValidatorpoolCaller) Application(opts *bind.CallOpts, oper
 	outstruct.Description = *abi.ConvertType(out[1], new(Description)).(*Description)
 
 	return *outstruct, err
+
 }
 
 // Application is a free data retrieval call binding the contract method 0x8bd2cc11.
@@ -225,8 +225,7 @@ func (_Validatorpool *ValidatorpoolCaller) Application(opts *bind.CallOpts, oper
 func (_Validatorpool *ValidatorpoolSession) Application(operator common.Address) (struct {
 	ConsPubKey  [32]byte
 	Description Description
-}, error,
-) {
+}, error) {
 	return _Validatorpool.Contract.Application(&_Validatorpool.CallOpts, operator)
 }
 
@@ -236,8 +235,7 @@ func (_Validatorpool *ValidatorpoolSession) Application(operator common.Address)
 func (_Validatorpool *ValidatorpoolCallerSession) Application(operator common.Address) (struct {
 	ConsPubKey  [32]byte
 	Description Description
-}, error,
-) {
+}, error) {
 	return _Validatorpool.Contract.Application(&_Validatorpool.CallOpts, operator)
 }
 
@@ -247,6 +245,7 @@ func (_Validatorpool *ValidatorpoolCallerSession) Application(operator common.Ad
 func (_Validatorpool *ValidatorpoolCaller) Applications(opts *bind.CallOpts) ([]common.Address, error) {
 	var out []interface{}
 	err := _Validatorpool.contract.Call(opts, &out, "applications")
+
 	if err != nil {
 		return *new([]common.Address), err
 	}
@@ -254,6 +253,7 @@ func (_Validatorpool *ValidatorpoolCaller) Applications(opts *bind.CallOpts) ([]
 	out0 := *abi.ConvertType(out[0], new([]common.Address)).(*[]common.Address)
 
 	return out0, err
+
 }
 
 // Applications is a free data retrieval call binding the contract method 0x7ce5e82f.
@@ -276,6 +276,7 @@ func (_Validatorpool *ValidatorpoolCallerSession) Applications() ([]common.Addre
 func (_Validatorpool *ValidatorpoolCaller) CandidateOwner(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _Validatorpool.contract.Call(opts, &out, "candidateOwner")
+
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -283,6 +284,7 @@ func (_Validatorpool *ValidatorpoolCaller) CandidateOwner(opts *bind.CallOpts) (
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
+
 }
 
 // CandidateOwner is a free data retrieval call binding the contract method 0xc105ea2b.
@@ -305,6 +307,7 @@ func (_Validatorpool *ValidatorpoolCallerSession) CandidateOwner() (common.Addre
 func (_Validatorpool *ValidatorpoolCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _Validatorpool.contract.Call(opts, &out, "owner")
+
 	if err != nil {
 		return *new(common.Address), err
 	}
@@ -312,6 +315,7 @@ func (_Validatorpool *ValidatorpoolCaller) Owner(opts *bind.CallOpts) (common.Ad
 	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
+
 }
 
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
@@ -334,6 +338,7 @@ func (_Validatorpool *ValidatorpoolCallerSession) Owner() (common.Address, error
 func (_Validatorpool *ValidatorpoolCaller) Privileges(opts *bind.CallOpts) ([]Privilege, error) {
 	var out []interface{}
 	err := _Validatorpool.contract.Call(opts, &out, "privileges")
+
 	if err != nil {
 		return *new([]Privilege), err
 	}
@@ -341,6 +346,7 @@ func (_Validatorpool *ValidatorpoolCaller) Privileges(opts *bind.CallOpts) ([]Pr
 	out0 := *abi.ConvertType(out[0], new([]Privilege)).(*[]Privilege)
 
 	return out0, err
+
 }
 
 // Privileges is a free data retrieval call binding the contract method 0x2dea97ba.
@@ -363,8 +369,7 @@ func (_Validatorpool *ValidatorpoolCallerSession) Privileges() ([]Privilege, err
 func (_Validatorpool *ValidatorpoolCaller) Validator(opts *bind.CallOpts, operator common.Address) (struct {
 	ConsPubKey  [32]byte
 	Description Description
-}, error,
-) {
+}, error) {
 	var out []interface{}
 	err := _Validatorpool.contract.Call(opts, &out, "validator", operator)
 
@@ -380,6 +385,7 @@ func (_Validatorpool *ValidatorpoolCaller) Validator(opts *bind.CallOpts, operat
 	outstruct.Description = *abi.ConvertType(out[1], new(Description)).(*Description)
 
 	return *outstruct, err
+
 }
 
 // Validator is a free data retrieval call binding the contract method 0x223b3b7a.
@@ -388,8 +394,7 @@ func (_Validatorpool *ValidatorpoolCaller) Validator(opts *bind.CallOpts, operat
 func (_Validatorpool *ValidatorpoolSession) Validator(operator common.Address) (struct {
 	ConsPubKey  [32]byte
 	Description Description
-}, error,
-) {
+}, error) {
 	return _Validatorpool.Contract.Validator(&_Validatorpool.CallOpts, operator)
 }
 
@@ -399,8 +404,7 @@ func (_Validatorpool *ValidatorpoolSession) Validator(operator common.Address) (
 func (_Validatorpool *ValidatorpoolCallerSession) Validator(operator common.Address) (struct {
 	ConsPubKey  [32]byte
 	Description Description
-}, error,
-) {
+}, error) {
 	return _Validatorpool.Contract.Validator(&_Validatorpool.CallOpts, operator)
 }
 
@@ -410,6 +414,7 @@ func (_Validatorpool *ValidatorpoolCallerSession) Validator(operator common.Addr
 func (_Validatorpool *ValidatorpoolCaller) Validators(opts *bind.CallOpts) ([]common.Address, error) {
 	var out []interface{}
 	err := _Validatorpool.contract.Call(opts, &out, "validators")
+
 	if err != nil {
 		return *new([]common.Address), err
 	}
@@ -417,6 +422,7 @@ func (_Validatorpool *ValidatorpoolCaller) Validators(opts *bind.CallOpts) ([]co
 	out0 := *abi.ConvertType(out[0], new([]common.Address)).(*[]common.Address)
 
 	return out0, err
+
 }
 
 // Validators is a free data retrieval call binding the contract method 0xca1e7819.
@@ -439,6 +445,7 @@ func (_Validatorpool *ValidatorpoolCallerSession) Validators() ([]common.Address
 func (_Validatorpool *ValidatorpoolCaller) ValidatorsByPrivilege(opts *bind.CallOpts, privilegeId uint8) ([]common.Address, error) {
 	var out []interface{}
 	err := _Validatorpool.contract.Call(opts, &out, "validatorsByPrivilege", privilegeId)
+
 	if err != nil {
 		return *new([]common.Address), err
 	}
@@ -446,6 +453,7 @@ func (_Validatorpool *ValidatorpoolCaller) ValidatorsByPrivilege(opts *bind.Call
 	out0 := *abi.ConvertType(out[0], new([]common.Address)).(*[]common.Address)
 
 	return out0, err
+
 }
 
 // ValidatorsByPrivilege is a free data retrieval call binding the contract method 0x617177f5.
@@ -728,6 +736,7 @@ type ValidatorpoolApplicationApproved struct {
 //
 // Solidity: event ApplicationApproved(address indexed operator)
 func (_Validatorpool *ValidatorpoolFilterer) FilterApplicationApproved(opts *bind.FilterOpts, operator []common.Address) (*ValidatorpoolApplicationApprovedIterator, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -744,6 +753,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterApplicationApproved(opts *bin
 //
 // Solidity: event ApplicationApproved(address indexed operator)
 func (_Validatorpool *ValidatorpoolFilterer) WatchApplicationApproved(opts *bind.WatchOpts, sink chan<- *ValidatorpoolApplicationApproved, operator []common.Address) (event.Subscription, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -872,6 +882,7 @@ type ValidatorpoolApplicationSubmitted struct {
 //
 // Solidity: event ApplicationSubmitted(address indexed operator, bytes32 indexed consPubKey, (string,string,string,string,string) description)
 func (_Validatorpool *ValidatorpoolFilterer) FilterApplicationSubmitted(opts *bind.FilterOpts, operator []common.Address, consPubKey [][32]byte) (*ValidatorpoolApplicationSubmittedIterator, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -892,6 +903,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterApplicationSubmitted(opts *bi
 //
 // Solidity: event ApplicationSubmitted(address indexed operator, bytes32 indexed consPubKey, (string,string,string,string,string) description)
 func (_Validatorpool *ValidatorpoolFilterer) WatchApplicationSubmitted(opts *bind.WatchOpts, sink chan<- *ValidatorpoolApplicationSubmitted, operator []common.Address, consPubKey [][32]byte) (event.Subscription, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -1021,6 +1033,7 @@ type ValidatorpoolApplicationsCleaned struct {
 //
 // Solidity: event ApplicationsCleaned()
 func (_Validatorpool *ValidatorpoolFilterer) FilterApplicationsCleaned(opts *bind.FilterOpts) (*ValidatorpoolApplicationsCleanedIterator, error) {
+
 	logs, sub, err := _Validatorpool.contract.FilterLogs(opts, "ApplicationsCleaned")
 	if err != nil {
 		return nil, err
@@ -1032,6 +1045,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterApplicationsCleaned(opts *bin
 //
 // Solidity: event ApplicationsCleaned()
 func (_Validatorpool *ValidatorpoolFilterer) WatchApplicationsCleaned(opts *bind.WatchOpts, sink chan<- *ValidatorpoolApplicationsCleaned) (event.Subscription, error) {
+
 	logs, sub, err := _Validatorpool.contract.WatchLogs(opts, "ApplicationsCleaned")
 	if err != nil {
 		return nil, err
@@ -1154,6 +1168,7 @@ type ValidatorpoolOwnershipTransferStarted struct {
 //
 // Solidity: event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner)
 func (_Validatorpool *ValidatorpoolFilterer) FilterOwnershipTransferStarted(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*ValidatorpoolOwnershipTransferStartedIterator, error) {
+
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -1174,6 +1189,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterOwnershipTransferStarted(opts
 //
 // Solidity: event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner)
 func (_Validatorpool *ValidatorpoolFilterer) WatchOwnershipTransferStarted(opts *bind.WatchOpts, sink chan<- *ValidatorpoolOwnershipTransferStarted, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -1305,6 +1321,7 @@ type ValidatorpoolOwnershipTransferred struct {
 //
 // Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
 func (_Validatorpool *ValidatorpoolFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*ValidatorpoolOwnershipTransferredIterator, error) {
+
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -1325,6 +1342,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterOwnershipTransferred(opts *bi
 //
 // Solidity: event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
 func (_Validatorpool *ValidatorpoolFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *ValidatorpoolOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
 	var previousOwnerRule []interface{}
 	for _, previousOwnerItem := range previousOwner {
 		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
@@ -1456,6 +1474,7 @@ type ValidatorpoolPrivilegeAdded struct {
 //
 // Solidity: event PrivilegeAdded(address indexed operator, uint8 indexed privilegeId)
 func (_Validatorpool *ValidatorpoolFilterer) FilterPrivilegeAdded(opts *bind.FilterOpts, operator []common.Address, privilegeId []uint8) (*ValidatorpoolPrivilegeAddedIterator, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -1476,6 +1495,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterPrivilegeAdded(opts *bind.Fil
 //
 // Solidity: event PrivilegeAdded(address indexed operator, uint8 indexed privilegeId)
 func (_Validatorpool *ValidatorpoolFilterer) WatchPrivilegeAdded(opts *bind.WatchOpts, sink chan<- *ValidatorpoolPrivilegeAdded, operator []common.Address, privilegeId []uint8) (event.Subscription, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -1607,6 +1627,7 @@ type ValidatorpoolPrivilegeRemoved struct {
 //
 // Solidity: event PrivilegeRemoved(address indexed operator, uint8 indexed privilegeId)
 func (_Validatorpool *ValidatorpoolFilterer) FilterPrivilegeRemoved(opts *bind.FilterOpts, operator []common.Address, privilegeId []uint8) (*ValidatorpoolPrivilegeRemovedIterator, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -1627,6 +1648,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterPrivilegeRemoved(opts *bind.F
 //
 // Solidity: event PrivilegeRemoved(address indexed operator, uint8 indexed privilegeId)
 func (_Validatorpool *ValidatorpoolFilterer) WatchPrivilegeRemoved(opts *bind.WatchOpts, sink chan<- *ValidatorpoolPrivilegeRemoved, operator []common.Address, privilegeId []uint8) (event.Subscription, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -1757,6 +1779,7 @@ type ValidatorpoolValidatorJoined struct {
 //
 // Solidity: event ValidatorJoined(address indexed operator)
 func (_Validatorpool *ValidatorpoolFilterer) FilterValidatorJoined(opts *bind.FilterOpts, operator []common.Address) (*ValidatorpoolValidatorJoinedIterator, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -1773,6 +1796,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterValidatorJoined(opts *bind.Fi
 //
 // Solidity: event ValidatorJoined(address indexed operator)
 func (_Validatorpool *ValidatorpoolFilterer) WatchValidatorJoined(opts *bind.WatchOpts, sink chan<- *ValidatorpoolValidatorJoined, operator []common.Address) (event.Subscription, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -1899,6 +1923,7 @@ type ValidatorpoolValidatorKicked struct {
 //
 // Solidity: event ValidatorKicked(address indexed operator)
 func (_Validatorpool *ValidatorpoolFilterer) FilterValidatorKicked(opts *bind.FilterOpts, operator []common.Address) (*ValidatorpoolValidatorKickedIterator, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -1915,6 +1940,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterValidatorKicked(opts *bind.Fi
 //
 // Solidity: event ValidatorKicked(address indexed operator)
 func (_Validatorpool *ValidatorpoolFilterer) WatchValidatorKicked(opts *bind.WatchOpts, sink chan<- *ValidatorpoolValidatorKicked, operator []common.Address) (event.Subscription, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -2041,6 +2067,7 @@ type ValidatorpoolValidatorLeft struct {
 //
 // Solidity: event ValidatorLeft(address indexed operator)
 func (_Validatorpool *ValidatorpoolFilterer) FilterValidatorLeft(opts *bind.FilterOpts, operator []common.Address) (*ValidatorpoolValidatorLeftIterator, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
@@ -2057,6 +2084,7 @@ func (_Validatorpool *ValidatorpoolFilterer) FilterValidatorLeft(opts *bind.Filt
 //
 // Solidity: event ValidatorLeft(address indexed operator)
 func (_Validatorpool *ValidatorpoolFilterer) WatchValidatorLeft(opts *bind.WatchOpts, sink chan<- *ValidatorpoolValidatorLeft, operator []common.Address) (event.Subscription, error) {
+
 	var operatorRule []interface{}
 	for _, operatorItem := range operator {
 		operatorRule = append(operatorRule, operatorItem)
