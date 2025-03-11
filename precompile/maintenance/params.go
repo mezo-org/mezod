@@ -71,7 +71,7 @@ func (m *setChainFeeSplitterAddressMethod) Run(
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
-	params.ChainFeeSplitterAddress = chainFeeSplitterAddress.String()
+	params.ChainFeeSplitterAddress = chainFeeSplitterAddress.Hex()
 	err = m.evmKeeper.SetParams(context.SdkCtx(), params)
 	if err != nil {
 		return nil, err
