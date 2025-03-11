@@ -37,12 +37,13 @@ func (suite *KeeperTestSuite) TestEndBlockWithZeroChainFeeSplitterAddress() {
 	// Configure chain fee splitter address to zero address
 	params := suite.app.EvmKeeper.GetParams(suite.ctx)
 	params.ChainFeeSplitterAddress = common.Address{}.Hex() // zero address
-	suite.app.EvmKeeper.SetParams(suite.ctx, params)
+	err := suite.app.EvmKeeper.SetParams(suite.ctx, params)
+	suite.Require().NoError(err)
 
 	coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(42))
 
 	// Set balance to non-zero
-	err := addBalanceToFeeCollector(suite, coinAmount)
+	err = addBalanceToFeeCollector(suite, coinAmount)
 	suite.Require().NoError(err)
 
 	err = suite.app.EvmKeeper.EndBlock(suite.ctx)
@@ -52,15 +53,16 @@ func (suite *KeeperTestSuite) TestEndBlockWithZeroChainFeeSplitterAddress() {
 func (suite *KeeperTestSuite) TestEndBlockSuccessfulTransfer() {
 	// Set a valid chain fee splitter address
 	targetAddress := common.HexToAddress("0x1234567890AbcdEF1234567890aBcdef12345678")
-	suite.app.EvmKeeper.SetParams(suite.ctx, evmtypes.Params{
+	err := suite.app.EvmKeeper.SetParams(suite.ctx, evmtypes.Params{
 		EvmDenom:                suite.app.EvmKeeper.GetParams(suite.ctx).EvmDenom,
 		ChainFeeSplitterAddress: targetAddress.Hex(),
 	})
+	suite.Require().NoError(err)
 
 	coinAmount := sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(42))
 
 	// Set balance to non-zero
-	err := addBalanceToFeeCollector(suite, coinAmount)
+	err = addBalanceToFeeCollector(suite, coinAmount)
 	suite.Require().NoError(err)
 
 	err = suite.app.EvmKeeper.EndBlock(suite.ctx)
@@ -81,7 +83,8 @@ func addBalanceToFeeCollector(suite *KeeperTestSuite, coinAmount sdk.Coin) error
 	err := suite.app.BankKeeper.MintCoins(suite.ctx, evmtypes.ModuleName, amount)
 	suite.Require().NoError(err)
 	// Send coins to FeeCollector
-	suite.app.BankKeeper.SendCoinsFromModuleToModule(suite.ctx, evmtypes.ModuleName, authtypes.FeeCollectorName, amount)
+	err = suite.app.BankKeeper.SendCoinsFromModuleToModule(suite.ctx, evmtypes.ModuleName, authtypes.FeeCollectorName, amount)
+	suite.Require().NoError(err)
 
 	return err
 }
