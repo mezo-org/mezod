@@ -126,5 +126,5 @@ func (m *getFeeChainSplitterAddressMethod) Run(
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
 
-	return precompile.MethodOutputs{params.ChainFeeSplitterAddress}, nil
+	return precompile.MethodOutputs{common.HexToAddress(params.ChainFeeSplitterAddress)}, nil
 }
