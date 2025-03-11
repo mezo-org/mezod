@@ -52,6 +52,17 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 	bloom := ethtypes.BytesToBloom(k.GetBlockBloomTransient(infCtx).Bytes())
 	k.EmitBlockBloomEvent(infCtx, bloom)
 
+	err := transferFundsToChainFeeSplitter(k, sdkCtx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Move entire balance of the fee collector module account to the chain fee splitter
+// contract.
+func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) (error) {
 	feeCollectorAddr := authtypes.NewModuleAddress(authtypes.FeeCollectorName)
 	balance := k.bankKeeper.GetBalance(sdkCtx, feeCollectorAddr, k.GetParams(sdkCtx).EvmDenom)
 	if balance.IsZero() {
@@ -79,6 +90,5 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 	if err != nil {
 		return errorsmod.Wrap(err, "failed to send chain fee to chain fee splitter contract")
 	}
-
 	return nil
 }
