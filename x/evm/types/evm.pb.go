@@ -48,8 +48,8 @@ type Params struct {
 	// max_precompiles_calls_per_execution defines the amount of precompiles
 	// calls a transaction can do when it's executed.
 	MaxPrecompilesCallsPerExecution uint32 `protobuf:"varint,9,opt,name=max_precompiles_calls_per_execution,json=maxPrecompilesCallsPerExecution,proto3" json:"max_precompiles_calls_per_execution,omitempty"`
-	// chain_fee_splitter_address defines the address of the chain fee splitter
-	// contract.
+	// chain_fee_splitter_address defines the hex-encoded EVM address of the chain
+	// fee splitter contract.
 	ChainFeeSplitterAddress string `protobuf:"bytes,10,opt,name=chain_fee_splitter_address,json=chainFeeSplitterAddress,proto3" json:"chain_fee_splitter_address,omitempty"`
 }
 

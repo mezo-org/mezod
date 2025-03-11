@@ -61,7 +61,7 @@ func (m *setChainFeeSplitterAddressMethod) Run(
 		return nil, fmt.Errorf("value argument must be a valid address")
 	}
 
-	// This method assumes some restriction logic which can be defined
+	// This method is restricted to the validator pool owner
 	err := m.poaKeeper.CheckOwner(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
