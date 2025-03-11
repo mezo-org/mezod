@@ -62,10 +62,12 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 
 // Move entire balance of the fee collector module account to the chain fee splitter
 // contract.
-func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) (error) {
+func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) error {
 	feeCollectorAddr := authtypes.NewModuleAddress(authtypes.FeeCollectorName)
 	balance := k.bankKeeper.GetBalance(sdkCtx, feeCollectorAddr, k.GetParams(sdkCtx).EvmDenom)
 	if balance.IsZero() {
+		sdkCtx.Logger().Info("fee collector balance is zero, skipping transfer to chain fee splitter")
+
 		return nil
 	}
 
@@ -75,6 +77,8 @@ func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) (error) {
 	// In case of zero address, fees are still being collected in the fee collector
 	// module account.
 	if chainFeeSplitterAddress == (common.Address{}) {
+		sdkCtx.Logger().Info("chain fee splitter address is zero, skipping transfer to chain fee splitter")
+
 		return nil
 	}
 
@@ -90,5 +94,7 @@ func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) (error) {
 	if err != nil {
 		return errorsmod.Wrap(err, "failed to send chain fee to chain fee splitter contract")
 	}
+	sdkCtx.Logger().Info("chain fee transferred to chain fee splitter contract", "amount", balance, "address", chainFeeSplitterAddress)
+
 	return nil
 }
