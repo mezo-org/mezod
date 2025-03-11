@@ -31,4 +31,10 @@ interface IMaintenance {
      * @dev Must be called by contract owner.
      */
     function setFeeChainSplitterAddress(address feeChainSplitterAddress) external returns (bool);
+
+    /**
+     * @notice Gets the fee chain splitter address.
+     * @return The fee chain splitter address.
+     */
+    function getFeeChainSplitterAddress() external view returns (address);
 }

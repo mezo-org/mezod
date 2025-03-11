@@ -41,7 +41,7 @@ task('maintenance:getPrecompileByteCode', '')
   })
 
 task('maintenance:setFeeChainSplitterAddress', 'Sets the fee chain splitter address')
-  .addParam('signer', 'The signer address (msg.sender)')
+  .addParam('signer', 'The owner address (msg.sender)')
   .addParam('address', 'Address of the fee chain splitter contract')
   .setAction(async (taskArguments, hre) => {
     const signer = await hre.ethers.getSigner(taskArguments.signer)

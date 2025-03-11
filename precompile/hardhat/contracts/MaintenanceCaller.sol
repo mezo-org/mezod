@@ -21,4 +21,8 @@ contract MaintenanceCaller is IMaintenance {
     function setFeeChainSplitterAddress(address feeChainSplitterAddress) external returns (bool) {
         return IMaintenance(maintenancePrecompile).setFeeChainSplitterAddress(feeChainSplitterAddress);
     }
+
+    function getFeeChainSplitterAddress() external view returns (address) {
+        return IMaintenance(maintenancePrecompile).getFeeChainSplitterAddress();
+    }
 }

@@ -59,6 +59,25 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "precompile",
+        "type": "address"
+      }
+    ],
+    "name": "getCustomPrecompileByteCode",
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "feeChainSplitterAddress",
         "type": "address"
       }
@@ -75,19 +94,13 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "precompile",
-        "type": "address"
-      }
-    ],
-    "name": "getCustomPrecompileByteCode",
+    "inputs": [],
+    "name": "getFeeChainSplitterAddress",
     "outputs": [
       {
-        "internalType": "bytes",
+        "internalType": "address",
         "name": "",
-        "type": "bytes"
+        "type": "address"
       }
     ],
     "stateMutability": "view",
