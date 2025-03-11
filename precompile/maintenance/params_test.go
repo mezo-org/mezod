@@ -2,7 +2,7 @@ package maintenance_test
 
 import "github.com/ethereum/go-ethereum/common"
 
-func (s *PrecompileTestSuite) TestSetFeeChainSplitterAddress() {
+func (s *PrecompileTestSuite) TestSetChainFeeSplitterAddress() {
 	testcases := []TestCase{
 		{
 			name: "argument count mismatch",
@@ -49,11 +49,11 @@ func (s *PrecompileTestSuite) TestSetFeeChainSplitterAddress() {
 		},
 	}
 
-	s.RunMethodTestCases(testcases, "setFeeChainSplitterAddress")
+	s.RunMethodTestCases(testcases, "setChainFeeSplitterAddress")
 }
 
-func (s *PrecompileTestSuite) TestGetFeeChainSplitterAddress() {
-	// Set the address through setFeeChainSplitterAddress
+func (s *PrecompileTestSuite) TestGetChainFeeSplitterAddress() {
+	// Set the address through setChainFeeSplitterAddress
 	setupTestCase := TestCase{
 		name: "set up: valid set call",
 		run: func() []interface{} {
@@ -64,7 +64,7 @@ func (s *PrecompileTestSuite) TestGetFeeChainSplitterAddress() {
 		as:        s.account1.EvmAddr,
 		basicPass: true,
 	}
-	s.RunMethodTestCases([]TestCase{setupTestCase}, "setFeeChainSplitterAddress")
+	s.RunMethodTestCases([]TestCase{setupTestCase}, "setChainFeeSplitterAddress")
 
 	testcases := []TestCase{
 		{
@@ -85,5 +85,5 @@ func (s *PrecompileTestSuite) TestGetFeeChainSplitterAddress() {
 		},
 	}
 
-	s.RunMethodTestCases(testcases, "getFeeChainSplitterAddress")
+	s.RunMethodTestCases(testcases, "getChainFeeSplitterAddress")
 }

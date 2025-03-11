@@ -97,8 +97,8 @@ func newPrecompileMethods(
 		methods = append(methods, newSetPrecompileByteCodeMethod(poaKeeper, evmKeeper))
 	}
 
-	methods = append(methods, newSetFeeChainSplitterAddressMethod(poaKeeper, evmKeeper))
-	methods = append(methods, newGetFeeChainSplitterAddressMethod(evmKeeper))
+	methods = append(methods, newSetChainFeeSplitterAddressMethod(poaKeeper, evmKeeper))
+	methods = append(methods, newGetChainFeeSplitterAddressMethod(evmKeeper))
 
 	return methods
 }

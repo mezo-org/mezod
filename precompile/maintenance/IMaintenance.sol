@@ -26,15 +26,15 @@ interface IMaintenance {
     function setPrecompileByteCode(address precompile, bytes calldata code) external returns (bool);
 
     /**
-     * @notice Sets the fee chain splitter address
-     * @param feeChainSplitterAddress The new fee chain splitter address
+     * @notice Sets the chain fee splitter address
+     * @param chainFeeSplitterAddress The new chain fee splitter address
      * @dev Must be called by contract owner.
      */
-    function setFeeChainSplitterAddress(address feeChainSplitterAddress) external returns (bool);
+    function setChainFeeSplitterAddress(address chainFeeSplitterAddress) external returns (bool);
 
     /**
-     * @notice Gets the fee chain splitter address.
-     * @return The fee chain splitter address.
+     * @notice Gets the chain fee splitter address.
+     * @return The chain fee splitter address.
      */
-    function getFeeChainSplitterAddress() external view returns (address);
+    function getChainFeeSplitterAddress() external view returns (address);
 }

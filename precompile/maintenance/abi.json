@@ -78,11 +78,11 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "feeChainSplitterAddress",
+        "name": "chainFeeSplitterAddress",
         "type": "address"
       }
     ],
-    "name": "setFeeChainSplitterAddress",
+    "name": "setChainFeeSplitterAddress",
     "outputs": [
       {
         "internalType": "bool",
@@ -95,7 +95,7 @@
   },
   {
     "inputs": [],
-    "name": "getFeeChainSplitterAddress",
+    "name": "getChainFeeSplitterAddress",
     "outputs": [
       {
         "internalType": "address",

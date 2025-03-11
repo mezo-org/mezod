@@ -18,11 +18,11 @@ contract MaintenanceCaller is IMaintenance {
         return IMaintenance(maintenancePrecompile).setPrecompileByteCode(precompile, code);
     }
 
-    function setFeeChainSplitterAddress(address feeChainSplitterAddress) external returns (bool) {
-        return IMaintenance(maintenancePrecompile).setFeeChainSplitterAddress(feeChainSplitterAddress);
+    function setChainFeeSplitterAddress(address chainFeeSplitterAddress) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setChainFeeSplitterAddress(chainFeeSplitterAddress);
     }
 
-    function getFeeChainSplitterAddress() external view returns (address) {
-        return IMaintenance(maintenancePrecompile).getFeeChainSplitterAddress();
+    function getChainFeeSplitterAddress() external view returns (address) {
+        return IMaintenance(maintenancePrecompile).getChainFeeSplitterAddress();
     }
 }

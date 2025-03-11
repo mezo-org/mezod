@@ -7,46 +7,46 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 )
 
-// SetFeeChainSplitterAddressMethodName is the name of the setFeeChainSplitterAddress method.
+// SetChainFeeSplitterAddressMethodName is the name of the setChainFeeSplitterAddress method.
 // It matches the name of the method in the contract ABI.
-const SetFeeChainSplitterAddressMethodName = "setFeeChainSplitterAddress"
+const SetChainFeeSplitterAddressMethodName = "setChainFeeSplitterAddress"
 
 // Define a structure for the new method
-type setFeeChainSplitterAddressMethod struct {
+type setChainFeeSplitterAddressMethod struct {
 	poaKeeper PoaKeeper
 	evmKeeper EvmKeeper
 }
 
 // Function to create a new instance of the method
-func newSetFeeChainSplitterAddressMethod(poaKeeper PoaKeeper, evmKeeper EvmKeeper) *setFeeChainSplitterAddressMethod {
-	return &setFeeChainSplitterAddressMethod{
+func newSetChainFeeSplitterAddressMethod(poaKeeper PoaKeeper, evmKeeper EvmKeeper) *setChainFeeSplitterAddressMethod {
+	return &setChainFeeSplitterAddressMethod{
 		poaKeeper: poaKeeper,
 		evmKeeper: evmKeeper,
 	}
 }
 
 // Implementing the MethodName function
-func (m *setFeeChainSplitterAddressMethod) MethodName() string {
-	return "setFeeChainSplitterAddress"
+func (m *setChainFeeSplitterAddressMethod) MethodName() string {
+	return "setChainFeeSplitterAddress"
 }
 
 // Implementing the MethodType function
-func (m *setFeeChainSplitterAddressMethod) MethodType() precompile.MethodType {
+func (m *setChainFeeSplitterAddressMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
 // Fallback to the default gas calculation.
-func (m *setFeeChainSplitterAddressMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *setChainFeeSplitterAddressMethod) RequiredGas(_ []byte) (uint64, bool) {
 	return 0, false
 }
 
 // This method is not payable
-func (m *setFeeChainSplitterAddressMethod) Payable() bool {
+func (m *setChainFeeSplitterAddressMethod) Payable() bool {
 	return false
 }
 
 // Implementing the Run function to handle logic
-func (m *setFeeChainSplitterAddressMethod) Run(
+func (m *setChainFeeSplitterAddressMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
@@ -55,8 +55,8 @@ func (m *setFeeChainSplitterAddressMethod) Run(
 		return nil, err
 	}
 
-	// Validate and extract the fee chain splitter address
-	feeChainSplitterAddress, ok := inputs[0].(common.Address)
+	// Validate and extract the chain fee splitter address
+	chainFeeSplitterAddress, ok := inputs[0].(common.Address)
 	if !ok {
 		return nil, fmt.Errorf("value argument must be a valid address")
 	}
@@ -71,7 +71,7 @@ func (m *setFeeChainSplitterAddressMethod) Run(
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
-	params.ChainFeeSplitterAddress = feeChainSplitterAddress.String()
+	params.ChainFeeSplitterAddress = chainFeeSplitterAddress.String()
 	err = m.evmKeeper.SetParams(context.SdkCtx(), params)
 	if err != nil {
 		return nil, err
@@ -80,43 +80,43 @@ func (m *setFeeChainSplitterAddressMethod) Run(
 	return precompile.MethodOutputs{true}, nil
 }
 
-// GetFeeChainSplitterAddressMethodName is the name of the getFeeChainSplitterAddress method.
+// GetChainFeeSplitterAddressMethodName is the name of the getChainFeeSplitterAddress method.
 // It matches the name of the method in the contract ABI.
-const GetFeeChainSplitterAddressMethodName = "getFeeChainSplitterAddress"
+const GetChainFeeSplitterAddressMethodName = "getChainFeeSplitterAddress"
 
-// getFeeChainSplitterAddressMethod is the implementation of the getFeeChainSplitterAddress
-// method that gets the fee chain splitter address.
-// The method returns the fee chain splitter address.
-type getFeeChainSplitterAddressMethod struct {
+// getChainFeeSplitterAddressMethod is the implementation of the getChainFeeSplitterAddress
+// method that gets the chain fee splitter address.
+// The method returns the chain fee splitter address.
+type getChainFeeSplitterAddressMethod struct {
 	evmKeeper EvmKeeper
 }
 
-func newGetFeeChainSplitterAddressMethod(
+func newGetChainFeeSplitterAddressMethod(
 	evmKeeper EvmKeeper,
-) *getFeeChainSplitterAddressMethod {
-	return &getFeeChainSplitterAddressMethod{
+) *getChainFeeSplitterAddressMethod {
+	return &getChainFeeSplitterAddressMethod{
 		evmKeeper: evmKeeper,
 	}
 }
 
-func (m *getFeeChainSplitterAddressMethod) MethodName() string {
-	return GetFeeChainSplitterAddressMethodName
+func (m *getChainFeeSplitterAddressMethod) MethodName() string {
+	return GetChainFeeSplitterAddressMethodName
 }
 
-func (m *getFeeChainSplitterAddressMethod) MethodType() precompile.MethodType {
+func (m *getChainFeeSplitterAddressMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (m *getFeeChainSplitterAddressMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (m *getChainFeeSplitterAddressMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (m *getFeeChainSplitterAddressMethod) Payable() bool {
+func (m *getChainFeeSplitterAddressMethod) Payable() bool {
 	return false
 }
 
-func (m *getFeeChainSplitterAddressMethod) Run(
+func (m *getChainFeeSplitterAddressMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
