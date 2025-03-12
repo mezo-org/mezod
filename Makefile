@@ -208,6 +208,7 @@ benchmark:
 ###                                Linting                                  ###
 ###############################################################################
 
+# golangci-lint config covers both linting and formatting.
 lint:
 	golangci-lint run --out-format=tab
 
@@ -215,20 +216,6 @@ lint-fix:
 	golangci-lint run --fix --out-format=tab --issues-exit-code=0
 
 .PHONY: lint lint-fix
-
-format: 
-	find . -name "*.go" -type f \
-	  -not -name "*.pb.go" \
-	  -not -name "*.pb.gw.go" \
-	  -not -path "*/gen/*" | xargs gofumpt -l
-
-format-fix:
-	find . -name "*.go" -type f \
-	  -not -name "*.pb.go" \
-	  -not -name "*.pb.gw.go" \
-	  -not -path "*/gen/*" | xargs gofumpt -l -w
-
-.PHONY: format format-fix
 
 format-markdown:
 	markdownlint '**/*.md' --config .markdownlint.yml

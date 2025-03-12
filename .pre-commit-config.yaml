@@ -5,14 +5,12 @@ repos:
       - id: check-added-large-files
   - repo: local
     hooks:
-      - id: go-format
-        name: 'format go'
-        # gofumpt does not return error exit code now, so we need to workaround
-        # it with `test -z`. See https://github.com/mvdan/gofumpt/issues/114.
-        entry: /usr/bin/env bash -c 'test -z "$(make -s format)"'
+      - id: go-lint
+        name: 'lint go'
+        entry: /usr/bin/env bash -c 'make lint'
         files: '\.go$'
         language: script
-        description: "Format Go code"
+        description: "Lint and format Go code"
       - id: markdown-format
         name: 'format markdown'
         entry: /usr/bin/env bash -c 'make format-markdown'
