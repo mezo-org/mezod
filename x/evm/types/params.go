@@ -41,6 +41,10 @@ var (
 	// DefaultMaxPrecompilesCallsPerExecution defines the default amount of precompiles
 	// call per transaction execution allowed.
 	DefaultMaxPrecompilesCallsPerExecution = 10
+	// ChainFeeSplitterAddress defines the address of the fee splitter contract deployed
+	// on Mezo. It will receive the fees from 'fee_collector' account collected from Mezo
+	// transactions.
+	DefaultChainFeeSplitterAddress = ""
 )
 
 // AvailableExtraEIPs define the list of all EIPs that can be enabled by the
@@ -75,6 +79,7 @@ func DefaultParams() Params {
 		StorageRootStrategy:             uint32(DefaultStorageRootStrategy),
 		PrecompilesVersions:             DefaultPrecompilesVersions,
 		MaxPrecompilesCallsPerExecution: uint32(DefaultMaxPrecompilesCallsPerExecution),
+		ChainFeeSplitterAddress:         DefaultChainFeeSplitterAddress,
 	}
 }
 
