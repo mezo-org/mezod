@@ -3,3 +3,17 @@ repos:
     rev: 31903eabdb97f5a3375fb1ea419ff782de64d7e7
     hooks:
       - id: check-added-large-files
+  - repo: local
+    hooks:
+      - id: go-lint
+        name: 'lint go'
+        entry: /usr/bin/env bash -c 'make lint'
+        files: '\.go$'
+        language: script
+        description: "Lint and format Go code"
+      - id: markdown-format
+        name: 'format markdown'
+        entry: /usr/bin/env bash -c 'make format-markdown'
+        files: '\.md'
+        language: script
+        description: "Format Markdown files"
