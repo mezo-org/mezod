@@ -208,6 +208,7 @@ benchmark:
 ###                                Linting                                  ###
 ###############################################################################
 
+# golangci-lint config covers both linting and formatting.
 lint:
 	golangci-lint run --out-format=tab
 
@@ -216,10 +217,11 @@ lint-fix:
 
 .PHONY: lint lint-fix
 
-format:
-	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" -not -path "./client/docs/statik/statik.go" -not -name '*.pb.go' | xargs gofumpt -w -l
+format-markdown:
+	markdownlint '**/*.md' --config .markdownlint.yml
 
-.PHONY: format
+format-markdown-fix:
+	markdownlint '**/*.md' --config .markdownlint.yml --fix
 
 ###############################################################################
 ###                                Protobuf                                 ###

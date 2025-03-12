@@ -550,8 +550,8 @@ func (ale *assetsLockedExtractor) CanonicalEvents(
 		// addVote assumes the given event is valid and does not perform
 		// any validation over it. We ensure validity by calling
 		// validateAssetsLockedEvents above.
-		for _, event := range voteExtension.AssetsLockedEvents {
-			voteCounter.addVote(&event, valVP, isBridgeVal)
+		for i := range voteExtension.AssetsLockedEvents {
+			voteCounter.addVote(&voteExtension.AssetsLockedEvents[i], valVP, isBridgeVal)
 		}
 	}
 
