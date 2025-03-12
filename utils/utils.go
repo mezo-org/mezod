@@ -26,7 +26,6 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/crypto/types/multisig"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/bech32"
 	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
@@ -98,14 +97,4 @@ func GetMezoAddressFromBech32(address string) (sdk.AccAddress, error) {
 	}
 
 	return sdk.AccAddress(addressBz), nil
-}
-
-func GetBech32AccountFromMezoAddress(address sdk.AccAddress) (string, error) {
-	bech32Prefix := sdk.GetConfig().GetBech32AccountAddrPrefix()
-	bech32Address, err := bech32.ConvertAndEncode(bech32Prefix, address)
-	if err != nil {
-		return "", err
-	}
-
-	return bech32Address, nil
 }

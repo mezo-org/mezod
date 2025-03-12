@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/utils"
 )
 
 // SetChainFeeSplitterAddressMethodName is the name of the setChainFeeSplitterAddress method.
@@ -14,17 +13,15 @@ const SetChainFeeSplitterAddressMethodName = "setChainFeeSplitterAddress"
 
 // Define a structure for the new method
 type setChainFeeSplitterAddressMethod struct {
-	poaKeeper  PoaKeeper
-	evmKeeper  EvmKeeper
-	bankKeeper BankKeeper
+	poaKeeper PoaKeeper
+	evmKeeper EvmKeeper
 }
 
 // Function to create a new instance of the method
-func newSetChainFeeSplitterAddressMethod(poaKeeper PoaKeeper, evmKeeper EvmKeeper, bankKeeper BankKeeper) *setChainFeeSplitterAddressMethod {
+func newSetChainFeeSplitterAddressMethod(poaKeeper PoaKeeper, evmKeeper EvmKeeper) *setChainFeeSplitterAddressMethod {
 	return &setChainFeeSplitterAddressMethod{
-		poaKeeper:  poaKeeper,
-		evmKeeper:  evmKeeper,
-		bankKeeper: bankKeeper,
+		poaKeeper: poaKeeper,
+		evmKeeper: evmKeeper,
 	}
 }
 
@@ -71,19 +68,6 @@ func (m *setChainFeeSplitterAddressMethod) Run(
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	chainFeeSplitterBech32, err := utils.GetBech32AccountFromMezoAddress(
-		precompile.TypesConverter.Address.ToSDK(chainFeeSplitterAddress),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if the given address is on the blocked list of addresses
-	blockedAddrs := m.bankKeeper.GetBlockedAddresses()
-	if blocked, exists := blockedAddrs[chainFeeSplitterBech32]; exists && blocked {
-		return nil, fmt.Errorf("address is on the blocked list")
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
