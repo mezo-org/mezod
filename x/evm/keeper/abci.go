@@ -48,23 +48,20 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 	bloom := ethtypes.BytesToBloom(k.GetBlockBloomTransient(infCtx).Bytes())
 	k.EmitBlockBloomEvent(infCtx, bloom)
 
-	err := transferFundsToChainFeeSplitter(k, sdkCtx)
-	if err != nil {
-		return err
-	}
+	transferFundsToChainFeeSplitter(k, sdkCtx)
 
 	return nil
 }
 
 // Move entire balance of the fee collector module account to the chain fee splitter
 // contract.
-func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) error {
+func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) {
 	feeCollectorAddr := authtypes.NewModuleAddress(authtypes.FeeCollectorName)
 	balance := k.bankKeeper.GetBalance(sdkCtx, feeCollectorAddr, k.GetParams(sdkCtx).EvmDenom)
 	if balance.IsZero() {
 		sdkCtx.Logger().Info("fee collector balance is zero, skipping transfer to chain fee splitter")
 
-		return nil
+		return
 	}
 
 	chainFeeSplitterAddress := common.HexToAddress(k.GetParams(sdkCtx).ChainFeeSplitterAddress)
@@ -74,8 +71,8 @@ func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) error {
 	// module account.
 	if chainFeeSplitterAddress == (common.Address{}) {
 		sdkCtx.Logger().Info("chain fee splitter address is zero, skipping transfer to chain fee splitter")
-
-		return nil
+	
+		return
 	}
 
 	chainFeeSplitterAddressBytes := chainFeeSplitterAddress.Bytes()
@@ -84,18 +81,16 @@ func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) error {
 	if err := sdk.VerifyAddressFormat(chainFeeSplitterAddressBytes); err != nil {
 		sdkCtx.Logger().Error("invalid chain fee splitter address", "error", err)
 
-		return nil
+		return
 	}
 
 	// Transfer chain fee to the chain fee splitter contract
 	err := k.bankKeeper.SendCoinsFromModuleToAccount(sdkCtx, authtypes.FeeCollectorName, chainFeeSplitterAddressBytes, sdk.NewCoins(balance))
 	if err != nil {
 		sdkCtx.Logger().Error("failed to send chain fee to the chain fee splitter address", "error", err)
-
-		return nil
+	
+		return
 	}
 
 	sdkCtx.Logger().Info("chain fee transferred to chain fee splitter contract", "amount", balance, "address", chainFeeSplitterAddress)
-
-	return nil
 }
