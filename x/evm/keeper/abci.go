@@ -71,7 +71,7 @@ func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) {
 	// module account.
 	if chainFeeSplitterAddress == (common.Address{}) {
 		sdkCtx.Logger().Info("chain fee splitter address is zero, skipping transfer to chain fee splitter")
-	
+
 		return
 	}
 
@@ -88,7 +88,7 @@ func transferFundsToChainFeeSplitter(k *Keeper, sdkCtx sdk.Context) {
 	err := k.bankKeeper.SendCoinsFromModuleToAccount(sdkCtx, authtypes.FeeCollectorName, chainFeeSplitterAddressBytes, sdk.NewCoins(balance))
 	if err != nil {
 		sdkCtx.Logger().Error("failed to send chain fee to the chain fee splitter address", "error", err)
-	
+
 		return
 	}
 
