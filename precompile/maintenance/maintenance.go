@@ -23,9 +23,10 @@ const EvmAddress = evmtypes.MaintenancePrecompileAddress
 func NewPrecompileVersionMap(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
+	bankKeeper BankKeeper,
 ) (*precompile.VersionMap, error) {
 	// v1 is just the EVM settings.
-	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, &Settings{
+	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, bankKeeper, &Settings{
 		EVM:         true,
 		Precompiles: false,
 	})
@@ -34,7 +35,7 @@ func NewPrecompileVersionMap(
 	}
 
 	// v2 is the EVM settings and the precompiles settings.
-	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, &Settings{
+	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, bankKeeper, &Settings{
 		EVM:         true,
 		Precompiles: true,
 	})
@@ -60,6 +61,7 @@ type Settings struct {
 func NewPrecompile(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
+	bankKeeper BankKeeper,
 	settings *Settings,
 ) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
@@ -73,7 +75,7 @@ func NewPrecompile(
 		EvmByteCode,
 	)
 
-	methods := newPrecompileMethods(poaKeeper, evmKeeper, settings)
+	methods := newPrecompileMethods(poaKeeper, evmKeeper, bankKeeper, settings)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -84,6 +86,7 @@ func NewPrecompile(
 func newPrecompileMethods(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
+	bankKeeper BankKeeper,
 	settings *Settings,
 ) []precompile.Method {
 	var methods []precompile.Method
@@ -97,7 +100,7 @@ func newPrecompileMethods(
 		methods = append(methods, newSetPrecompileByteCodeMethod(poaKeeper, evmKeeper))
 	}
 
-	methods = append(methods, newSetChainFeeSplitterAddressMethod(poaKeeper, evmKeeper))
+	methods = append(methods, newSetChainFeeSplitterAddressMethod(poaKeeper, evmKeeper, bankKeeper))
 	methods = append(methods, newGetChainFeeSplitterAddressMethod(evmKeeper))
 
 	return methods
@@ -115,4 +118,8 @@ type EvmKeeper interface {
 	IsCustomPrecompile(address common.Address) bool
 	GetAccount(ctx sdk.Context, addr common.Address) *statedb.Account
 	SetAccount(ctx sdk.Context, addr common.Address, account statedb.Account) error
+}
+
+type BankKeeper interface {
+	GetBlockedAddresses() map[string]bool
 }

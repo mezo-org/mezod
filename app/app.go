@@ -913,7 +913,7 @@ func customEvmPrecompiles(
 	}
 
 	// Maintenance precompile.
-	maintenanceVersionMap, err := maintenance.NewPrecompileVersionMap(poaKeeper, &evmKeeper)
+	maintenanceVersionMap, err := maintenance.NewPrecompileVersionMap(poaKeeper, &evmKeeper, bankKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create maintenance precompile: [%w]", err)
 	}

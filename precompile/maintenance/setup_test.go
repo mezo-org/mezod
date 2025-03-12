@@ -52,10 +52,11 @@ type Key struct {
 type PrecompileTestSuite struct {
 	suite.Suite
 
-	app       *app.Mezo
-	poaKeeper *FakePoaKeeper
-	evmKeeper *FakeEvmKeeper
-	ctx       sdk.Context
+	app        *app.Mezo
+	poaKeeper  *FakePoaKeeper
+	evmKeeper  *FakeEvmKeeper
+	bankKeeper *FakeBankKeeper
+	ctx        sdk.Context
 
 	account1, account2 Key
 
@@ -116,6 +117,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 			maintenancePrecompile, err := maintenance.NewPrecompile(
 				s.poaKeeper,
 				s.evmKeeper,
+				s.bankKeeper,
 				&maintenance.Settings{
 					EVM:         true,
 					Precompiles: true,
@@ -175,6 +177,19 @@ type FakeEvmKeeper struct {
 	params     evmtypes.Params
 	accountMap map[common.Address]statedb.Account
 	codeMap    map[common.Hash][]byte
+}
+
+type FakeBankKeeper struct {
+	blockedAddrs map[string]bool
+}
+
+func NewFakeBankKeeper() *FakeBankKeeper {
+	return &FakeBankKeeper{
+		blockedAddrs: make(map[string]bool),
+	}
+}
+func (k *FakeBankKeeper) GetBlockedAddresses() map[string]bool {
+	return k.blockedAddrs
 }
 
 func NewFakePoaKeeper(owner sdk.AccAddress) *FakePoaKeeper {
