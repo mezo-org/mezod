@@ -11,11 +11,12 @@ import (
 	"github.com/mezo-org/mezod/app/upgrades/v0_4"
 	"github.com/mezo-org/mezod/app/upgrades/v0_5"
 	"github.com/mezo-org/mezod/app/upgrades/v0_6"
+	"github.com/mezo-org/mezod/app/upgrades/v0_7"
 )
 
 var (
 	Upgrades = []upgrades.Upgrade{v0_3.Upgrade}
-	Forks    = []upgrades.Fork{v0_3.Fork, v0_4.Fork, v0_5.Fork, v0_6.Fork}
+	Forks    = []upgrades.Fork{v0_3.Fork, v0_4.Fork, v0_5.Fork, v0_6.Fork, v0_7.Fork}
 )
 
 // BeginBlockForks is intended to be run in a chain upgrade.
