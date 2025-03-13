@@ -174,6 +174,7 @@ for full version information.
 | `v0.4.0` | 1745000 | Hard fork upgrade without state migrations | Update EVM storage root strategy (fix for Mezo Passport create2 problem) and introduce EVM observability for the BTC bridge.                                                            |
 | `v0.5.0` | 2213000 | Hard fork upgrade without state migrations | On-chain precompile versioning. New Upgrade and PriceOracle precompiles and upgrade of the existing Maintenance precompile.                                                             |
 | `v0.6.0` | 2563000 | Hard fork upgrade without state migrations | Introduce the ERC20 bridge and the BTC supply assertion.                                                                                                                                |
+| `v0.7.0` | 3078794 | Hard fork upgrade without state migrations | Fix security issues in the EVM state DB. Introduce proper reverts for precompiles. Add chain fee splitter support. Disable Cosmos transactions.                                                                                                                                 |
 
 ### Mainnet
 
