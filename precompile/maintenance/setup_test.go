@@ -117,8 +117,9 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 				s.poaKeeper,
 				s.evmKeeper,
 				&maintenance.Settings{
-					EVM:         true,
-					Precompiles: true,
+					EVM:              true,
+					Precompiles:      true,
+					ChainFeeSplitter: true,
 				},
 			)
 			s.Require().NoError(err)
