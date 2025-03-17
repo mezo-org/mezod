@@ -113,12 +113,13 @@ The development team will conduct the following actions to improve the incident
 response practices. Most of them were already planned and put on the roadmap before
 the incident. Those are:
 
-- (Already planned) Build a set of emergency procedures and escalation policies
-  that will cover various failure scenarios that could happen on a live chain.
+- (Already planned) Build a set of emergency procedures, runbooks, escalation policies,
+  and tooling that will cover chain halts and other failure scenarios that could happen
+  on a live chain.
 - (Already planned) Spin up a chain monitoring system with alerting capabilities
   to ensure failures are flagged early and escalated automatically.
-- Conduct trial runs of the mentioned emergency procedures on Matsnet
-  to practice muscles before the mainnet launch.  
+- (Already planned) Conduct trial runs of the mentioned emergency procedures on
+  Matsnet to practice muscles before the mainnet launch.  
 - Build a status page acting as a frontend for the planned monitoring system
   that will show the health of the chain and uptime of specific validators.
 - Optimize the release planning process to release changes more often,
