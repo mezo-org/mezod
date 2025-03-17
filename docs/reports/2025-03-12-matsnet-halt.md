@@ -113,17 +113,19 @@ The development team will conduct the following actions to improve the incident
 response practices. Most of them were already planned and put on the roadmap before
 the incident. Those are:
 
-- (Already planned) Build a set of emergency procedures, runbooks, escalation policies,
-  and tooling that will cover chain halts and other failure scenarios that could happen
-  on a live chain.
+- (Already planned) Set up clear escalation policies, on-call rotations, and pager tooling
+  to quickly notify relevant parties in the event of an incident.
 - (Already planned) Spin up a chain monitoring system with alerting capabilities
-  to ensure failures are flagged early and escalated automatically.
+  to ensure known (e.g. chain halt) and unknown failures are flagged early and escalated
+  automatically.
+- (Already planned) Build a set of emergency procedures and associated runbooks for
+  quick reference in emergencies.
 - (Already planned) Conduct trial runs of the mentioned emergency procedures on
   Matsnet to practice muscles before the mainnet launch.  
 - Build a status page acting as a frontend for the planned monitoring system
   that will show the health of the chain and uptime of specific validators.
-- Optimize the release planning process to release changes more often,
-  without unnecessary delays.  
+- Optimize the release planning process to release changes more often, without
+  unnecessary delays.  
 
 [evmos]: https://evmos.org
 [gpl]: https://www.gnu.org/licenses/gpl-3.0.html
