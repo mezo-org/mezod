@@ -27,6 +27,7 @@ import (
 
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
+	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 )
 
 // QueryClient defines a gRPC Client used for:
@@ -36,7 +37,9 @@ import (
 type QueryClient struct {
 	tx.ServiceClient
 	evmtypes.QueryClient
+
 	FeeMarket feemarkettypes.QueryClient
+	Oracle    oracletypes.QueryClient
 }
 
 // NewQueryClient creates a new gRPC query client
@@ -45,6 +48,7 @@ func NewQueryClient(clientCtx client.Context) *QueryClient {
 		ServiceClient: tx.NewServiceClient(clientCtx),
 		QueryClient:   evmtypes.NewQueryClient(clientCtx),
 		FeeMarket:     feemarkettypes.NewQueryClient(clientCtx),
+		Oracle:        oracletypes.NewQueryClient(clientCtx),
 	}
 }
 

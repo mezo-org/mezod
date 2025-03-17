@@ -102,3 +102,9 @@ type OneFeeHistory struct {
 	Reward               []*big.Int // each element of the array will have the tip provided to miners for the percentile given
 	GasUsedRatio         float64    // the ratio of gas used to the gas limit for each block
 }
+
+type EstimateCostResult struct {
+	UsdCost   *big.Int `json:"usdCost"`
+	BtcCost   *big.Int `json:"btcCost"`
+	Precision uint64   `json:"precision"`
+}
