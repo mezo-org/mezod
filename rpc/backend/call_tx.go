@@ -405,14 +405,14 @@ func rescalePrecision(inputValue *big.Int, actualDecimals, targetDecimals uint64
 			inputValue,
 			new(big.Int).Exp(big.NewInt(10), big.NewInt(deltaDecimals), nil),
 		)
-	} else {
-		// Adjust to the desired precision down: inputValue / 10^|deltaDecimals|.
-		deltaDecimalsAbs := new(big.Int).Abs(big.NewInt(deltaDecimals))
-		return new(big.Int).Div(
-			inputValue,
-			new(big.Int).Exp(big.NewInt(10), deltaDecimalsAbs, nil),
-		)
 	}
+
+	// Adjust to the desired precision down: inputValue / 10^|deltaDecimals|.
+	deltaDecimalsAbs := new(big.Int).Abs(big.NewInt(deltaDecimals))
+	return new(big.Int).Div(
+		inputValue,
+		new(big.Int).Exp(big.NewInt(10), deltaDecimalsAbs, nil),
+	)
 }
 
 // DoCall performs a simulated call operation through the evmtypes. It returns the

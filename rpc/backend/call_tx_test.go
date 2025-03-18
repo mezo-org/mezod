@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"time"
 
 	sdkmath "cosmossdk.io/math"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -15,6 +15,8 @@ import (
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
+	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -218,7 +220,7 @@ func (suite *BackendTestSuite) TestResend() {
 				_, err = RegisterBlockResults(client, 1)
 				suite.Require().NoError(err)
 				RegisterBaseFee(queryClient, baseFee)
-				RegisterEstimateGas(queryClient, callArgs)
+				RegisterEstimateGas(queryClient, callArgs, 0)
 				RegisterParams(queryClient, &header, 1)
 				RegisterParamsWithoutHeader(queryClient, 1)
 				RegisterUnconfirmedTxsError(client, nil)
@@ -248,7 +250,7 @@ func (suite *BackendTestSuite) TestResend() {
 				_, err = RegisterBlockResults(client, 1)
 				suite.Require().NoError(err)
 				RegisterBaseFee(queryClient, baseFee)
-				RegisterEstimateGas(queryClient, callArgs)
+				RegisterEstimateGas(queryClient, callArgs, 0)
 				RegisterParams(queryClient, &header, 1)
 				RegisterParamsWithoutHeader(queryClient, 1)
 				RegisterUnconfirmedTxsEmpty(client, nil)
@@ -521,4 +523,182 @@ func (suite *BackendTestSuite) TestGasPrice() {
 			}
 		})
 	}
+}
+
+func (suite *BackendTestSuite) TestEstimateCost() {
+	from, to := utiltx.GenerateAddress(), utiltx.GenerateAddress()
+	chainID := (*hexutil.Big)(suite.backend.chainID)
+	value := (*hexutil.Big)(big.NewInt(10000000))
+	blockNum := rpctypes.NewBlockNumber(big.NewInt(1))
+	baseFee := sdkmath.NewInt(80)
+	gas := uint64(500_000)
+	btcPrice := sdkmath.NewInt(8500000000)
+	btcPriceDecimals := uint64(5)
+
+	args := evmtypes.TransactionArgs{
+		From:    &from,
+		To:      &to,
+		Value:   value,
+		ChainID: chainID,
+	}
+
+	testCases := []struct {
+		name         string
+		registerMock func()
+		args         evmtypes.TransactionArgs
+		blockNum     *rpctypes.BlockNumber
+		expResult    *rpctypes.EstimateCostResult
+		expError     string
+		expPass      bool
+	}{
+		{
+			name: "fail - failed to estimate gas",
+			registerMock: func() {
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+
+				_, err := RegisterBlock(client, blockNum.Int64(), nil)
+				suite.Require().NoError(err)
+				RegisterEstimateGasError(queryClient, args)
+			},
+			args:      args,
+			blockNum:  &blockNum,
+			expResult: nil,
+			expError:  "failed to estimate gas",
+			expPass:   false,
+		},
+		{
+			name: "fail - failed to get gas price",
+			registerMock: func() {
+				var header metadata.MD
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+				feeMarketClient := suite.backend.queryClient.FeeMarket.(*mocks.FeeMarketQueryClient)
+
+				_, err := RegisterBlock(client, blockNum.Int64(), nil)
+				suite.Require().NoError(err)
+				RegisterEstimateGas(queryClient, args, gas)
+				RegisterParams(queryClient, &header, blockNum.Int64())
+				RegisterFeeMarketParamsError(feeMarketClient, blockNum.Int64())
+				_, err = RegisterBlockResults(client, blockNum.Int64())
+				suite.Require().NoError(err)
+				RegisterBaseFee(queryClient, baseFee)
+			},
+			args:      args,
+			blockNum:  &blockNum,
+			expResult: nil,
+			expError:  "failed to get gas price",
+			expPass:   false,
+		},
+		{
+			name: "fail - failed to get BTC price",
+			registerMock: func() {
+				var header metadata.MD
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+				feeMarketClient := suite.backend.queryClient.FeeMarket.(*mocks.FeeMarketQueryClient)
+				oracleClient := suite.backend.queryClient.Oracle.(*mocks.OracleQueryClient)
+
+				_, err := RegisterBlock(client, blockNum.Int64(), nil)
+				suite.Require().NoError(err)
+				RegisterEstimateGas(queryClient, args, gas)
+				RegisterParams(queryClient, &header, blockNum.Int64())
+				RegisterFeeMarketParams(feeMarketClient, blockNum.Int64())
+				_, err = RegisterBlockResults(client, blockNum.Int64())
+				suite.Require().NoError(err)
+				RegisterBaseFee(queryClient, baseFee)
+				RegisterGetPriceError(oracleClient, "BTC/USD")
+			},
+			args:      args,
+			blockNum:  &blockNum,
+			expResult: nil,
+			expError:  "failed to get BTC/USD price",
+			expPass:   false,
+		},
+		{
+			name: "pass - successful cost estimation",
+			registerMock: func() {
+				var header metadata.MD
+				client := suite.backend.clientCtx.Client.(*mocks.Client)
+				queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+				feeMarketClient := suite.backend.queryClient.FeeMarket.(*mocks.FeeMarketQueryClient)
+				oracleClient := suite.backend.queryClient.Oracle.(*mocks.OracleQueryClient)
+
+				_, err := RegisterBlock(client, blockNum.Int64(), nil)
+				suite.Require().NoError(err)
+				RegisterEstimateGas(queryClient, args, gas)
+				RegisterParams(queryClient, &header, blockNum.Int64())
+				RegisterFeeMarketParams(feeMarketClient, blockNum.Int64())
+				_, err = RegisterBlockResults(client, blockNum.Int64())
+				suite.Require().NoError(err)
+				RegisterBaseFee(queryClient, baseFee)
+				RegisterGetPrice(oracleClient, "BTC/USD", btcPrice, btcPriceDecimals)
+			},
+			args:     args,
+			blockNum: &blockNum,
+			expResult: &rpctypes.EstimateCostResult{
+				// btcPriceDecimalsDelta = 18 - btcPriceDecimals
+				// usdCost = (btcCost * btcPrice * 10^btcPriceDecimalsDelta) / 10^18
+				//
+				// btcPriceDecimalsDelta = 18 - 5 = 13
+				// usdCost = (btcCost * btcPrice * 10^13) / 10^18 = (45000000 abtc * 8500000000 * 10^13) / 10^18 = 3825000000000
+				UsdCost: big.NewInt(3825000000000),
+				// btcCost = gas * gasPrice
+				// gasPrice = baseFee + suggestedGasTipCap
+				// suggestedGasTipCap = baseFee * ((elasticityMultiplier - 1) / baseFeeChangeDenominator)
+				//
+				// baseFee = 80
+				// elasticityMultiplier = 2 (default)
+				// baseFeeChangeDenominator = 8 (default)
+				// suggestedGasTipCap = 80 * ((2 - 1) / 8) = 10
+				// gasPrice = 80 + 10 = 90
+				// btcCost = 500_000 * 90 = 45000000
+				BtcCost:   big.NewInt(45000000),
+				Precision: 18,
+			},
+			expError: "",
+			expPass:  true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			suite.SetupTest() // reset test and queries
+			tc.registerMock()
+
+			result, err := suite.backend.EstimateCost(tc.args, tc.blockNum)
+
+			if tc.expPass {
+				suite.Require().NoError(err)
+				suite.Require().Equal(tc.expResult.Precision, result.Precision)
+				suite.Require().Equal(tc.expResult.BtcCost, result.BtcCost)
+				suite.Require().Equal(tc.expResult.UsdCost, result.UsdCost)
+			} else {
+				suite.Require().ErrorContains(err, tc.expError)
+			}
+		})
+	}
+}
+
+// RegisterGetPrice registers a mock response for the GetPrice call
+func RegisterGetPrice(oracleClient *mocks.OracleQueryClient, currencyPair string, price sdkmath.Int, decimals uint64) {
+	oracleClient.On("GetPrice", rpctypes.ContextWithHeight(1), &oracletypes.GetPriceRequest{
+		CurrencyPair: currencyPair,
+	}, mock.Anything).Return(&oracletypes.GetPriceResponse{
+		Price: &oracletypes.QuotePrice{
+			Price:          price,
+			BlockTimestamp: time.Now(),
+			BlockHeight:    100,
+		},
+		Nonce:    0,
+		Decimals: decimals,
+		Id:       1,
+	}, nil)
+}
+
+// RegisterGetPriceError registers an error response for the GetPrice call
+func RegisterGetPriceError(oracleClient *mocks.OracleQueryClient, currencyPair string) {
+	oracleClient.On("GetPrice", rpctypes.ContextWithHeight(1), &oracletypes.GetPriceRequest{
+		CurrencyPair: currencyPair,
+	}, mock.Anything).Return(nil, fmt.Errorf("failed to get price"))
 }
