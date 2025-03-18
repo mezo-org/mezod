@@ -21,7 +21,7 @@ up to the London fork. For more information about London fork please see
 - **Returns**: `String` - The current client version.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### web3_sha3
@@ -32,7 +32,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],
 - **Returns**: `String` - The SHA3 result of the given data.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"web3_sha3","params":["0x68656c6c6f20776f726c64"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"web3_sha3","params":["0x68656c6c6f20776f726c64"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### net_version
@@ -42,7 +42,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"web3_sha3","params":["0x68656c6c
 - **Returns**: `String` - The current network ID.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### net_listening
@@ -52,7 +52,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}
 - **Returns**: `Boolean` - `true` if listening, `false` otherwise.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### net_peerCount
@@ -62,7 +62,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":
 - **Returns**: `String` - Number of connected peers.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"net_peerCount","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"net_peerCount","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_protocolVersion
@@ -72,7 +72,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"net_peerCount","params":[],"id":
 - **Returns**: `String` - The Ethereum protocol version.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_protocolVersion","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_protocolVersion","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_syncing
@@ -83,7 +83,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_protocolVersion","params":[]
     - `Object | Boolean` - An object with sync status or `false`.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_coinbase
@@ -94,7 +94,7 @@ This address is where any mining rewards will be sent if the node is mining.
 - **Returns**: `String` - Coinbase address.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_chainId
@@ -104,7 +104,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1
 - **Returns**: `String` - Chain ID.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_gasPrice
@@ -114,7 +114,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}
 - **Returns**: `String` - The current gas price in wei.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_accounts
@@ -124,7 +124,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":1
 - **Returns**: `Array` - Array of addresses.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_blockNumber
@@ -134,7 +134,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_accounts","params":[],"id":1
 - **Returns**: `String` - The block number.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getBalance
@@ -146,7 +146,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id
 - **Returns**: `String` - The balance in abtc, as a hexadecimal.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getStorageAt
@@ -159,7 +159,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x050
 - **Returns**: `String` - The value at this storage position.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","0x0","latest"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","0x0","latest"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getTransactionCount
@@ -171,7 +171,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["0x0
 - **Returns**: `String` - The transaction count as a hexadecimal number.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionCount","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionCount","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getBlockTransactionCountByHash
@@ -183,7 +183,7 @@ matching the given block hash.
 - **Returns**: `String` - The number of transactions in the block as a hexadecimal.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByHash","params":["0x41175c10b68dd0bfa27f2533a23979445a5d643427e0ffd1870d11806f31b291"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByHash","params":["0x41175c10b68dd0bfa27f2533a23979445a5d643427e0ffd1870d11806f31b291"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getBlockTransactionCountByNumber
@@ -194,7 +194,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByHa
 - **Returns**: `String` - The number of transactions in the block as a hexadecimal.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByNumber","params":["0x1"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByNumber","params":["0x1"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getCode
@@ -207,7 +207,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByNu
 it indicates the address is likely an externally owned account rather than a contract account.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_sign
@@ -219,7 +219,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x0504d8
 - **Returns**: `String` - The signature.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sign","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","0xdeadbeef"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sign","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","0xdeadbeef"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_sendTransaction
@@ -241,7 +241,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sign","params":["0x0504d82ef
 - **Returns**: `String` - The transaction hash.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{see above}],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{see above}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_sendRawTransaction
@@ -252,7 +252,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{
 - **Returns**: `String` - The transaction hash.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_call
@@ -276,7 +276,7 @@ functions.
 - **Returns**: `String` - The return value of the executed contract.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_estimateGas
@@ -290,7 +290,27 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}]
 - **Returns**: `String` - The estimated gas amount.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{see above}],"id":1}'
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{"from":"0xFF3014B077D307E7B0bf262d072B25dbE19E2Be3","to":"0xd3CdA913deB6f67967B99D67aCDFa1712C293601","value":"0x186a0"}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
+```
+
+#### eth_estimateCost
+
+- **Description**: Estimates the cost necessary to execute a transaction.
+- **Parameters**:
+    Object:
+    - `from`: DATA, 20 Bytes - The address the transaction is send from.
+    - `to`: DATA, 20 Bytes - (optional when creating new contract) The address the transaction is directed to.
+    - `value`: QUANTITY - value sent with this transaction
+- **Returns**:
+    Object:
+    - `precision` - The precision cost values are presented with.
+    - `usdCost` - Estimated USD cost presented using `precision`. Divide by `10^precision`
+                  to obtain the base USD value.
+    - `btcCost` - Estimated BTC cost presented using `precision`. Divide by `10^precision`
+                  to obtain the base BTC value.
+
+```bash
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateCost","params":[{"from":"0xFF3014B077D307E7B0bf262d072B25dbE19E2Be3","to":"0xd3CdA913deB6f67967B99D67aCDFa1712C293601","value":"0x186a0"}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getBlockByHash
@@ -302,7 +322,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{see 
 - **Returns**: `Object` - Block information.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0x8d80d1a8ac12c5e57c17c580afbb4c03987649934b60ce04ec89fcd336e3a186", true],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0x8d80d1a8ac12c5e57c17c580afbb4c03987649934b60ce04ec89fcd336e3a186", true],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getBlockByNumber
@@ -314,7 +334,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0
 - **Returns**: `Object` - Block information.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x1b4", true],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x1b4", true],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getTransactionByHash
@@ -325,7 +345,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":[
 - **Returns**: `Object` - Transaction information.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getTransactionByBlockHashAndIndex
@@ -337,7 +357,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","param
 - **Returns**: `Object` - Transaction information.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockHashAndIndex","params":["0x8d80d1a8ac12c5e57c17c580afbb4c03987649934b60ce04ec89fcd336e3a186", "0x0"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockHashAndIndex","params":["0x8d80d1a8ac12c5e57c17c580afbb4c03987649934b60ce04ec89fcd336e3a186", "0x0"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getTransactionByBlockNumberAndIndex
@@ -349,7 +369,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockHashAnd
 - **Returns**: `Object` - Transaction information.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockNumberAndIndex","params":["0x1b4", "0x0"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockNumberAndIndex","params":["0x1b4", "0x0"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getTransactionReceipt
@@ -360,7 +380,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByBlockNumberA
 - **Returns**: `Object` - Transaction receipt.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0x1758f2ad26d448ecdcc2f225432c520bc77c03194536e76f6776f8c5dabce9a9"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0x1758f2ad26d448ecdcc2f225432c520bc77c03194536e76f6776f8c5dabce9a9"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getLogs
@@ -382,7 +402,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","para
 - **Returns**: `Array` - Array of log objects.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock": "0x1", "toBlock": "0x2"}],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock": "0x1", "toBlock": "0x2"}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_newFilter
@@ -393,7 +413,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlo
 - **Returns**: `String` - Filter ID.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newFilter","params":[{"fromBlock": "0x1", "toBlock": "0x2"}],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newFilter","params":[{"fromBlock": "0x1", "toBlock": "0x2"}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_newBlockFilter
@@ -403,7 +423,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newFilter","params":[{"fromB
 - **Returns**: `String` - A filter ID.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newBlockFilter","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newBlockFilter","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_newPendingTransactionFilter
@@ -413,7 +433,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newBlockFilter","params":[],
 - **Returns**: `String` - A filter ID.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newPendingTransactionFilter","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newPendingTransactionFilter","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_uninstallFilter
@@ -424,7 +444,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_newPendingTransactionFilter"
 - **Returns**: `Boolean` - `true` if the filter was successfully uninstalled.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_uninstallFilter","params":["0x1"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_uninstallFilter","params":["0x1"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getFilterChanges
@@ -435,7 +455,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_uninstallFilter","params":["
 - **Returns**: `Array` - An array of logs that have occurred since the last poll.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x1"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x1"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getFilterLogs
@@ -446,7 +466,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterChanges","params":[
 - **Returns**: `Array` - An array of log objects that match the filter, providing historical log data.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterLogs","params":["0x1"],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterLogs","params":["0x1"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### eth_getProof
@@ -459,7 +479,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterLogs","params":["0x
 - **Returns**: `Object` - An object containing the account details, storage proof, and relevant Merkle proofs.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getProof","params":["0x1234567890123456789012345678901234567890",["0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000001"],`"latest"`],"id":1}' -H "Content-type:application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getProof","params":["0x1234567890123456789012345678901234567890",["0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000001"],`"latest"`],"id":1}' -H "Content-type:application/json" https://rpc.test.mezo.org
 ```
 
 ## Not supported methods
@@ -496,7 +516,7 @@ Due to the nature of PoA consensus, the following methods might revert or return
 - **Returns**: `Object` - Detailed information about the transaction execution, such as step-by-step state changes.
 
 ```bash
-curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "method": "debug_traceTransaction", "params": ["0x14bd9cd554b725129a6c86f916490f52060644dc9627414bf9c62e1889130bf1", {"disableMemory": true, "disableStorage": false, "disableStack": false}], "id": 1}' http://mezo-node-0.test.mezo.org:8545
+curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "method": "debug_traceTransaction", "params": ["0x14bd9cd554b725129a6c86f916490f52060644dc9627414bf9c62e1889130bf1", {"disableMemory": true, "disableStorage": false, "disableStack": false}], "id": 1}' https://rpc.test.mezo.org
 ```
 
 #### debug_traceBlockByNumber
@@ -509,7 +529,7 @@ curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "met
 step-by-step state changes.
 
 ```bash
-curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "method": "debug_traceBlockByNumber", "params": ["0x29C7C", {"tracer": "callTracer"}], "id": 1}'  http://mezo-node-0.test.mezo.org:8545
+curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "method": "debug_traceBlockByNumber", "params": ["0x29C7C", {"tracer": "callTracer"}], "id": 1}'  https://rpc.test.mezo.org
 ```
 
 ## TxPool Methods
@@ -522,7 +542,7 @@ curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "met
 detailed transaction data.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_content","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_content","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### txpool_inspect
@@ -534,7 +554,7 @@ transaction pool.
 transactions with sender addresses and brief details.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_inspect","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_inspect","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 #### txpool_status
@@ -545,7 +565,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_inspect","params":[],"id"
 each state.
 
 ```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_status","params":[],"id":1}' -H "Content-Type: application/json" http://mezo-node-0.test.mezo.org:8545
+curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_status","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
 ## personal namespace
