@@ -127,6 +127,9 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	total_supply=$(echo "${#KEYS[@]} * 100000000000000000000000000" | bc)
 	jq -r --arg total_supply "$total_supply" '.app_state["bank"]["supply"][0]["amount"]=$total_supply' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
+	max_gas=10000000 # 10m
+	jq -r --arg max_gas "$max_gas" '.consensus["params"]["block"]["max_gas"]=$max_gas' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+
 	# Generate the validator.
 	mezod genesis genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
 
