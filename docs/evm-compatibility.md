@@ -12,7 +12,11 @@ Mezo offers EVM compatibility, supporting all Ethereum features
 up to the London fork. For more information about London fork please see
 [here](https://ethereum.org/en/history/#london).
 
-## Ethereum JSON-RPC endpoints
+## EVM JSON-RPC API reference
+
+The `mezod` node exposes the following JSON-RPC API. The reference is split into specific namespaces.
+
+### `web3` namespace
 
 #### web3_clientVersion
 
@@ -34,6 +38,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],
 ```bash
 curl -X POST --data '{"jsonrpc":"2.0","method":"web3_sha3","params":["0x68656c6c6f20776f726c64"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
+
+### `net` namespace
 
 #### net_version
 
@@ -64,6 +70,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":
 ```bash
 curl -X POST --data '{"jsonrpc":"2.0","method":"net_peerCount","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
+
+### `eth` namespace
 
 #### eth_protocolVersion
 
@@ -293,26 +301,6 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}]
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{"from":"0xFF3014B077D307E7B0bf262d072B25dbE19E2Be3","to":"0xd3CdA913deB6f67967B99D67aCDFa1712C293601","value":"0x186a0"}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
-#### eth_estimateCost
-
-- **Description**: Estimates the cost necessary to execute a transaction.
-- **Parameters**:
-    Object:
-    - `from`: DATA, 20 Bytes - The address the transaction is send from.
-    - `to`: DATA, 20 Bytes - (optional when creating new contract) The address the transaction is directed to.
-    - `value`: QUANTITY - value sent with this transaction
-- **Returns**:
-    Object:
-    - `decimals` - The decimals cost values are presented with.
-    - `usdCost` - Estimated USD cost presented using `decimals`. Divide by `10^decimals`
-                  to obtain the base USD value.
-    - `btcCost` - Estimated BTC cost presented using `decimals`. Divide by `10^decimals`
-                  to obtain the base BTC value.
-
-```bash
-curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateCost","params":[{"from":"0xFF3014B077D307E7B0bf262d072B25dbE19E2Be3","to":"0xd3CdA913deB6f67967B99D67aCDFa1712C293601","value":"0x186a0"}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
-```
-
 #### eth_getBlockByHash
 
 - **Description**: Returns information about a block by hash.
@@ -482,7 +470,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getFilterLogs","params":["0x
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getProof","params":["0x1234567890123456789012345678901234567890",["0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000001"],`"latest"`],"id":1}' -H "Content-type:application/json" https://rpc.test.mezo.org
 ```
 
-## Not supported methods
+### `eth` namespace - not supported methods
 
 Due to the nature of PoA consensus, the following methods might revert or return empty results.
 
@@ -504,7 +492,7 @@ Due to the nature of PoA consensus, the following methods might revert or return
 
 #### eth_mining
 
-## Debug namespace
+### `debug` namespace
 
 #### debug_traceTransaction
 
@@ -532,7 +520,7 @@ step-by-step state changes.
 curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "method": "debug_traceBlockByNumber", "params": ["0x29C7C", {"tracer": "callTracer"}], "id": 1}'  https://rpc.test.mezo.org
 ```
 
-## TxPool Methods
+### `txpool` namespace
 
 #### txpool_content
 
@@ -568,8 +556,32 @@ each state.
 curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_status","params":[],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
-## personal namespace
+### `personal` namespace
 
-`personal` namespace is exposed, however it has been
+The `personal` namespace is exposed, however it has been
 [deprecated](https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-personal).
 It will be removed in the future releases and any usage is discouraged.
+
+### `mezo` namespace
+
+The `mezo` namespace is a custom one that exposes additional methods.
+
+#### mezo_estimateCost
+
+- **Description**: Estimates the cost necessary to execute a transaction.
+- **Parameters**:
+    Object:
+    - `from`: DATA, 20 Bytes - The address the transaction is send from.
+    - `to`: DATA, 20 Bytes - (optional when creating new contract) The address the transaction is directed to.
+    - `value`: QUANTITY - value sent with this transaction
+- **Returns**:
+    Object:
+    - `decimals` - The decimals cost values are presented with.
+    - `usdCost` - Estimated USD cost presented using `decimals`. Divide by `10^decimals`
+                  to obtain the base USD value.
+    - `btcCost` - Estimated BTC cost presented using `decimals`. Divide by `10^decimals`
+                  to obtain the base BTC value.
+
+```bash
+curl -X POST --data '{"jsonrpc":"2.0","method":"mezo_estimateCost","params":[{"from":"0xFF3014B077D307E7B0bf262d072B25dbE19E2Be3","to":"0xd3CdA913deB6f67967B99D67aCDFa1712C293601","value":"0x186a0"}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
+```
