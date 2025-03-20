@@ -653,8 +653,8 @@ func (suite *BackendTestSuite) TestEstimateCost() {
 				// suggestedGasTipCap = 80 * ((2 - 1) / 8) = 10
 				// gasPrice = 80 + 10 = 90
 				// btcCost = 500_000 * 90 = 45000000
-				BtcCost:   big.NewInt(45000000),
-				Precision: 18,
+				BtcCost:  big.NewInt(45000000),
+				Decimals: 18,
 			},
 			expError: "",
 			expPass:  true,
@@ -670,7 +670,7 @@ func (suite *BackendTestSuite) TestEstimateCost() {
 
 			if tc.expPass {
 				suite.Require().NoError(err)
-				suite.Require().Equal(tc.expResult.Precision, result.Precision)
+				suite.Require().Equal(tc.expResult.Decimals, result.Decimals)
 				suite.Require().Equal(tc.expResult.BtcCost, result.BtcCost)
 				suite.Require().Equal(tc.expResult.UsdCost, result.UsdCost)
 			} else {
