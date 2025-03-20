@@ -374,10 +374,10 @@ func (b *Backend) EstimateCost(args evmtypes.TransactionArgs, blockNrOptional *r
 		return nil, fmt.Errorf("failed to get BTC/USD price: %w", err)
 	}
 
-	targetPrecision := uint64(18)
+	targetDecimals := uint64(18)
 
 	// Rescale the USD price of BTC from its current precision to 1e18 precision.
-	btcPrice := rescalePrecision(btcPriceRes.Price.Price.BigInt(), btcPriceRes.Decimals, targetPrecision)
+	btcPrice := rescalePrecision(btcPriceRes.Price.Price.BigInt(), btcPriceRes.Decimals, targetDecimals)
 
 	// We multiply btcCost (1e18) by btcPrice (1e18) and we get usdCost (1e36).
 	// We need to divide usdCost by 1e18 to get the right target precision.
@@ -386,13 +386,13 @@ func (b *Backend) EstimateCost(args evmtypes.TransactionArgs, blockNrOptional *r
 			btcCost,
 			btcPrice,
 		),
-		new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(targetPrecision)), nil),
+		new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(targetDecimals)), nil),
 	)
 
 	return &rpctypes.EstimateCostResult{
-		UsdCost:   usdCost,
-		BtcCost:   btcCost,
-		Precision: targetPrecision,
+		UsdCost:  usdCost,
+		BtcCost:  btcCost,
+		Decimals: targetDecimals,
 	}, nil
 }
 
@@ -400,14 +400,14 @@ func rescalePrecision(inputValue *big.Int, actualDecimals, targetDecimals uint64
 	deltaDecimals := int64(targetDecimals - actualDecimals)
 
 	if deltaDecimals >= 0 {
-		// Adjust to the desired precision up: inputValue * 10^deltaDecimals.
+		// Adjust to the desired decimals up: inputValue * 10^deltaDecimals.
 		return new(big.Int).Mul(
 			inputValue,
 			new(big.Int).Exp(big.NewInt(10), big.NewInt(deltaDecimals), nil),
 		)
 	}
 
-	// Adjust to the desired precision down: inputValue / 10^|deltaDecimals|.
+	// Adjust to the desired decimals down: inputValue / 10^|deltaDecimals|.
 	deltaDecimalsAbs := new(big.Int).Abs(big.NewInt(deltaDecimals))
 	return new(big.Int).Div(
 		inputValue,

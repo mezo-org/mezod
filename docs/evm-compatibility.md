@@ -303,10 +303,10 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{"fro
     - `value`: QUANTITY - value sent with this transaction
 - **Returns**:
     Object:
-    - `precision` - The precision cost values are presented with.
-    - `usdCost` - Estimated USD cost presented using `precision`. Divide by `10^precision`
+    - `decimals` - The decimals cost values are presented with.
+    - `usdCost` - Estimated USD cost presented using `decimals`. Divide by `10^decimals`
                   to obtain the base USD value.
-    - `btcCost` - Estimated BTC cost presented using `precision`. Divide by `10^precision`
+    - `btcCost` - Estimated BTC cost presented using `decimals`. Divide by `10^decimals`
                   to obtain the base BTC value.
 
 ```bash

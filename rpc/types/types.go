@@ -104,7 +104,7 @@ type OneFeeHistory struct {
 }
 
 type EstimateCostResult struct {
-	UsdCost   *big.Int `json:"usdCost"`
-	BtcCost   *big.Int `json:"btcCost"`
-	Precision uint64   `json:"precision"`
+	UsdCost  *big.Int `json:"usdCost"`
+	BtcCost  *big.Int `json:"btcCost"`
+	Decimals uint64   `json:"decimals"`
 }
