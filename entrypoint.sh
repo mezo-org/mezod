@@ -101,7 +101,7 @@ customize_configuration() {
     -v "grpc-web.enable=true" \
     -v "json-rpc.enable=true" \
     -v "json-rpc.address=0.0.0.0:8545" \
-    -v "json-rpc.api=eth,txpool,personal,net,debug,web3" \
+    -v "json-rpc.api=eth,txpool,personal,net,debug,web3,mezo" \
     -v "json-rpc.ws-address=0.0.0.0:8546" \
     -v "json-rpc.metrics-address=0.0.0.0:6065" \
     -v "pruning=nothing"
