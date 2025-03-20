@@ -181,6 +181,7 @@ func runERC20(
 				chainID,
 				&total,
 				tokenAddress,
+				i,
 			)
 		}()
 	}
@@ -198,6 +199,7 @@ func runERC20One(
 	chainID *big.Int,
 	total *atomic.Int64,
 	tokenAddress common.Address,
+	index int,
 ) {
 	// Load your private key
 	privateKey, err := crypto.HexToECDSA(privKeyRaw)
@@ -234,7 +236,7 @@ func runERC20One(
 	value := big.NewInt(1)
 
 	for {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(rateLimit)
 
 		// Create an auth transactor
 		auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
@@ -256,7 +258,14 @@ func runERC20One(
 		// Execute the transfer
 		tx, err := token.Transfer(auth, toAddress, value)
 		if err != nil {
-			log.Fatalf("Failed to execute transfer: %v", err)
+			log.Printf("Failed to execute transfer: index(%v), %v", index, err)
+			// most errors are about nonce
+			nonce, err = client.PendingNonceAt(context.Background(), fromAddress)
+			if err != nil {
+				log.Fatalf("Failed to get nonce: %v", err)
+			}
+
+			continue
 		}
 
 		// Print the transaction hash
@@ -268,9 +277,7 @@ func runERC20One(
 			if err != nil {
 				log.Fatalf("failed waiting for transaction: %v", err)
 			}
-
-			fmt.Printf("GAS USED: %v\n", receipt.GasUsed)
-
+			_ = receipt
 		}
 
 		// time.Sleep(3000 * time.Millisecond)

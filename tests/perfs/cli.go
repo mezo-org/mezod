@@ -21,6 +21,7 @@ var (
 	cnt            uint
 	waitForReceipt bool
 	accountsStore  string
+	rateLimit      time.Duration
 
 	// aggregation only
 	fromBlock uint
@@ -112,6 +113,7 @@ func commonFlags() {
 		fs.StringVar(&mnemonic, "mnemonic", "", "mnemonic of the wallet")
 		fs.StringVar(&privKey, "privkey", "", "the private key to use")
 		fs.BoolVar(&waitForReceipt, "wait_for_receipt", true, "wait for the mezo receipt")
+		fs.DurationVar(&rateLimit, "rate", 100*time.Millisecond, "rate at which to send transactions")
 	}
 
 	// flags for all commands with wallets
