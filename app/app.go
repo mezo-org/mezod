@@ -415,6 +415,7 @@ func NewMezo(
 		keys[bridgetypes.StoreKey],
 		app.BankKeeper,
 		app.EvmKeeper,
+		app.BlockedAddrs(),
 	)
 
 	precompiles, err := customEvmPrecompiles(

@@ -97,6 +97,20 @@ func (k Keeper) AcceptAssetsLocked(
 		}
 
 		if bytes.Equal(event.TokenBytes(), sourceBTCToken) {
+			// in cases of BTC mint, we need to ensure that
+			// the funds are not sent to a blocked address first,
+			// in case they are blocked, then not minting should happen,
+			// the funds will be locked in the bridge.
+			if _, ok := k.blockedAddrs[recipient.String()]; ok {
+				ctx.Logger().Warn(
+					"BTC deposit recipient is a blocked address; "+
+						"AssetsLocked event skipped",
+					"eventSequence", event.Sequence,
+				)
+
+				continue
+			}
+
 			err = k.mintBTC(ctx, recipient, event.Amount)
 			if err != nil {
 				return fmt.Errorf(
