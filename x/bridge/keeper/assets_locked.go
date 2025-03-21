@@ -96,6 +96,19 @@ func (k Keeper) AcceptAssetsLocked(
 			return fmt.Errorf("failed to parse recipient address: %w", err)
 		}
 
+		// We need to ensure that the funds are not sent to a blocked address first.
+		// In case the address is blocked, no minting should happen, and the funds should
+		// remain locked in the bridge.
+		if _, ok := k.blockedAddrs[recipient.String()]; ok {
+			ctx.Logger().Warn(
+				"deposit recipient is a blocked address; "+
+					"AssetsLocked event skipped",
+				"eventSequence", event.Sequence,
+			)
+
+			continue
+		}
+
 		if bytes.Equal(event.TokenBytes(), sourceBTCToken) {
 			err = k.mintBTC(ctx, recipient, event.Amount)
 			if err != nil {
