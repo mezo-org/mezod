@@ -279,8 +279,7 @@ func TestAcceptAssetsLocked(t *testing.T) {
 			},
 			events: types.AssetsLockedEvents{
 				// Sequence tip is 10, so the expected start is 11.
-				// Use an arbitrary token whose mapping is not set.
-				mockEvent(11, testBlockedAddress, 1, "0x96c1493e5a9efa5C7572D98b5e9544B17bD9AE72"),
+				mockEvent(11, testBlockedAddress, 1, testSourceERC20Token1),
 			},
 			errContains: "", // This case shouldn't lead to an error.
 			postCheckFn: func(ctx sdk.Context, k Keeper) {

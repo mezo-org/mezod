@@ -24,14 +24,14 @@ func NewKeeper(
 	storeKey storetypes.StoreKey,
 	bankKeeper types.BankKeeper,
 	evmKeeper types.EvmKeeper,
-	blockAddrs map[string]bool,
+	blockedAddrs map[string]bool,
 ) Keeper {
 	return Keeper{
 		cdc:          cdc,
 		storeKey:     storeKey,
 		bankKeeper:   bankKeeper,
 		evmKeeper:    evmKeeper,
-		blockedAddrs: blockAddrs,
+		blockedAddrs: blockedAddrs,
 	}
 }
 
