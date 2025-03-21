@@ -264,6 +264,44 @@ func TestAcceptAssetsLocked(t *testing.T) {
 			},
 		},
 		{
+			name:         "ERC20 using blocked address as recipient",
+			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
+			evmKeeperFn: func(ctx sdk.Context) *mockEvmKeeper {
+				evmKeeper := newMockEvmKeeper()
+
+				evmKeeper.On(
+					"ExecuteContractCall",
+					ctx,
+					mock.Anything,
+				).Return(&evmtypes.MsgEthereumTxResponse{}, nil)
+
+				return evmKeeper
+			},
+			events: types.AssetsLockedEvents{
+				// Sequence tip is 10, so the expected start is 11.
+				// Use an arbitrary token whose mapping is not set.
+				mockEvent(11, testBlockedAddress, 1, "0x96c1493e5a9efa5C7572D98b5e9544B17bD9AE72"),
+			},
+			errContains: "", // This case shouldn't lead to an error.
+			postCheckFn: func(ctx sdk.Context, k Keeper) {
+				// The EVM state change should not have been executed.
+				k.evmKeeper.(*mockEvmKeeper).AssertNotCalled(
+					t,
+					"ExecuteContractCall",
+					mock.Anything,
+					mock.Anything,
+				)
+
+				// The sequence tip should have been updated as the event
+				// was skipped.
+				require.EqualValues(
+					t,
+					math.NewInt(11),
+					k.GetAssetsLockedSequenceTip(ctx),
+				)
+			},
+		},
+		{
 			name:         "ERC20 mapping not found",
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
 			evmKeeperFn: func(ctx sdk.Context) *mockEvmKeeper {
