@@ -27,6 +27,7 @@ import (
 	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/debug"
 	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/eth"
 	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/eth/filters"
+	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/mezo"
 	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/miner"
 	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/net"
 	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/personal"
@@ -52,6 +53,7 @@ const (
 	TxPoolNamespace   = "txpool"
 	DebugNamespace    = "debug"
 	MinerNamespace    = "miner"
+	MezoNamespace     = "mezo"
 
 	apiVersion = "1.0"
 )
@@ -167,6 +169,23 @@ func init() {
 					Version:   apiVersion,
 					Service:   miner.NewPrivateAPI(serverCtx, evmBackend),
 					Public:    false,
+				},
+			}
+		},
+		MezoNamespace: func(
+			serverCtx *server.Context,
+			clientCtx client.Context,
+			_ *rpcclient.WSClient,
+			allowUnprotectedTxs bool,
+			indexer types.EVMTxIndexer,
+		) []rpc.API {
+			evmBackend := backend.NewBackend(serverCtx, serverCtx.Logger, clientCtx, allowUnprotectedTxs, indexer)
+			return []rpc.API{
+				{
+					Namespace: MezoNamespace,
+					Version:   apiVersion,
+					Service:   mezo.NewPublicAPI(serverCtx.Logger, evmBackend),
+					Public:    true,
 				},
 			}
 		},

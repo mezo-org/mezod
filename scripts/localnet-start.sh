@@ -43,7 +43,7 @@ echo "starting node $NODE_NAME with home directory $NODE_HOMEDIR"
 # start the mezod binary
 ./build/mezod start --home "$NODE_HOMEDIR" \
   --chain-id=$LOCALNET_CHAIN_ID \
-  --json-rpc.api="eth,web3,net,debug,miner,txpool,personal" \
+  --json-rpc.api="eth,web3,net,debug,miner,txpool,personal,mezo" \
   --json-rpc.enable
 
 echo "node $NODE_NAME started."
