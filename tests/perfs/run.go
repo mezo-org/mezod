@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"math/rand/v2"
 	"slices"
 	"sync/atomic"
 	"time"
@@ -17,6 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/mezo-org/mezod/tests/perfs/token"
 	"golang.org/x/exp/maps"
+)
+
+var (
+	ongoingTotalTxs atomic.Int64
 )
 
 func runNative(
@@ -39,21 +44,22 @@ func runNative(
 	accountsAddress := maps.Keys(accounts.Accounts)
 	slices.Sort(accountsAddress)
 
-	var total atomic.Int64
+	go aggregateBlockDataParallel()
+	time.Sleep(10 * time.Second) // wait to get a few blocks first to see baseline
+
 	var stop atomic.Bool
 	stop.Store(false)
-	go aggregateBlockDataParallel()
 
+	startedAt := time.Now()
 	for i := 0; i < cnt; i++ {
 		address := accountsAddress[i]
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		go func() {
 			runNativeOne(
 				client,
 				accounts.Accounts[address],
 				destination,
 				chainID,
-				&total,
 				&stop,
 			)
 		}()
@@ -61,11 +67,11 @@ func runNative(
 
 	// just run it for a while
 	time.Sleep(runTime)
+	timeTaken := time.Since(startedAt)
+	fmt.Printf("total transaction sent: %v in: %v\n", ongoingTotalTxs.Load(), timeTaken)
 	stop.Store(true)
 	log.Printf("stopping wallets")
 	time.Sleep(1 * time.Minute)
-
-	fmt.Printf("total transaction sent: %v\n", total.Load())
 }
 
 func runNativeOne(
@@ -73,7 +79,6 @@ func runNativeOne(
 	privKeyRaw string,
 	toAddress common.Address,
 	chainID *big.Int,
-	total *atomic.Int64,
 	stop *atomic.Bool,
 ) {
 	// Load your private key
@@ -103,7 +108,7 @@ func runNativeOne(
 	value := big.NewInt(1)
 
 	for !stop.Load() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(rateLimit)
 		// ask every time, price might change over time
 		gasPrice, err := client.SuggestGasPrice(context.Background())
 		if err != nil {
@@ -135,6 +140,11 @@ func runNativeOne(
 		err = client.SendTransaction(context.Background(), signedTx)
 		if err != nil {
 			log.Printf("Failed to send transaction: %v", err)
+			// most errors are about nonce
+			nonce, err = client.PendingNonceAt(context.Background(), fromAddress)
+			if err != nil {
+				log.Printf("Failed to get nonce: %v", err)
+			}
 			continue
 		}
 
@@ -151,7 +161,7 @@ func runNativeOne(
 
 		// time.Sleep(3000 * time.Millisecond)
 		nonce += 1
-		total.Add(1)
+		ongoingTotalTxs.Add(1)
 	}
 }
 
@@ -176,28 +186,40 @@ func runERC20(
 	accountsAddress := maps.Keys(accounts.Accounts)
 	slices.Sort(accountsAddress)
 
-	var total atomic.Int64
+	var stop atomic.Bool
+	stop.Store(false)
+	go aggregateBlockDataParallel()
+	time.Sleep(10 * time.Second) // wait to get a few blocks first to see baseline
 
+	startedAt := time.Now()
 	for i := 0; i < cnt; i++ {
 		address := accountsAddress[i]
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(30 * time.Millisecond)
 		go func() {
 			runERC20One(
 				client,
 				accounts.Accounts[address],
 				destination,
 				chainID,
-				&total,
 				tokenAddress,
 				i,
+				&stop,
 			)
 		}()
 	}
 
 	// just run it for a while
 	time.Sleep(runTime)
+	timeTaken := time.Since(startedAt)
+	fmt.Printf("total transaction sent: %v in: %v\n", ongoingTotalTxs.Load(), timeTaken)
+	stop.Store(true)
+	log.Printf("stopping wallets")
+	time.Sleep(1 * time.Minute) // cooldown
 
-	fmt.Printf("total transaction sent: %v\n", total.Load())
+}
+
+func randRange(min, max int) int {
+	return rand.IntN(max-min) + min
 }
 
 func runERC20One(
@@ -205,9 +227,9 @@ func runERC20One(
 	privKeyRaw string,
 	toAddress common.Address,
 	chainID *big.Int,
-	total *atomic.Int64,
 	tokenAddress common.Address,
 	index int,
+	stop *atomic.Bool,
 ) {
 	// Load your private key
 	privateKey, err := crypto.HexToECDSA(privKeyRaw)
@@ -243,8 +265,14 @@ func runERC20One(
 
 	value := big.NewInt(1)
 
-	for {
-		time.Sleep(rateLimit)
+	for !stop.Load() {
+		if rateLimit == 0 {
+			time.Sleep(
+				time.Duration(randRange(0, 1000)) * time.Millisecond,
+			)
+		} else {
+			time.Sleep(rateLimit)
+		}
 
 		// Create an auth transactor
 		auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
@@ -290,6 +318,6 @@ func runERC20One(
 
 		// time.Sleep(3000 * time.Millisecond)
 		nonce += 1
-		total.Add(1)
+		ongoingTotalTxs.Add(1)
 	}
 }

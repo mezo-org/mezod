@@ -19,6 +19,8 @@ var (
 	tendermintEndpoint = func(baseURL string) string {
 		return fmt.Sprintf("%v/num_unconfirmed_txs", baseURL)
 	}
+
+	totalTxsSentAtBlock = []int64{}
 )
 
 type UnconfirmedTxs struct {
@@ -56,8 +58,12 @@ func aggregateBlockDataParallel() {
 	if err != nil {
 		log.Fatalf("Failed to get latest block: %v", err)
 	}
+	totalTxsSentAtBlock = append(totalTxsSentAtBlock, 0)
 
-	blocks := []BlockAndBacklog{{Block: latestBlock, Backlog: &UnconfirmedTxs{}}}
+	backlog := UnconfirmedTxs{}
+	backlog.Result.NTxs = "0"
+	backlog.Result.Total = "0"
+	blocks := []BlockAndBacklog{{Block: latestBlock, Backlog: &backlog}}
 	for {
 		// wait a little
 		time.Sleep(1 * time.Second)
@@ -88,7 +94,16 @@ type BlockAndBacklog struct {
 
 func writeBlocks(blocks []BlockAndBacklog) {
 	records := [][]string{
-		{"height", "timestamp", "timeTaken", "size (bytes)", "transactionsCount", "transactionBacklog", "gasLimit", "gasUsed", "baseFeePerGas"},
+		{"blockIndex", "height", "timestamp", "timeTaken", "size (bytes)", "transactionsCount", "transactionBacklog", "gasLimit", "gasUsed", "baseFeePerGas", "totalTxSent", "totalConfirmedTx"},
+	}
+
+	totalTxsSentAtBlock = append(totalTxsSentAtBlock, ongoingTotalTxs.Load())
+
+	totalInBlocks := []int{}
+	ongoing := 0
+	for _, b := range blocks {
+		ongoing += b.Block.Transactions().Len()
+		totalInBlocks = append(totalInBlocks, ongoing)
 	}
 
 	for i, block := range blocks {
@@ -102,6 +117,7 @@ func writeBlocks(blocks []BlockAndBacklog) {
 
 		records = append(records,
 			[]string{
+				fmt.Sprintf("%v", i),
 				fmt.Sprintf("%v", block.Block.NumberU64()),
 				fmt.Sprintf("%v", block.Block.Time()),
 				timeTaken.String(),
@@ -111,6 +127,8 @@ func writeBlocks(blocks []BlockAndBacklog) {
 				fmt.Sprintf("%v", block.Block.GasLimit()),
 				fmt.Sprintf("%v", block.Block.GasUsed()),
 				block.Block.BaseFee().String(),
+				fmt.Sprintf("%v", totalTxsSentAtBlock[i]),
+				fmt.Sprintf("%v", totalInBlocks[i]),
 			},
 		)
 	}
