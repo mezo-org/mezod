@@ -287,6 +287,8 @@ func runERC20One(
 			continue
 		}
 
+		gasPrice.Mul(gasPrice, big.NewInt(2))
+
 		auth.Nonce = big.NewInt(int64(nonce))
 		auth.GasPrice = gasPrice
 		auth.GasLimit = gasLimit
