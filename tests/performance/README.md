@@ -1,5 +1,21 @@
 # Performances tests
 
+## Overview
+
+This package contains a collection of tools and utilities to execute performances testing
+against a Mezo network.
+
+A command line binary is provided with the following functionalities:
+- generate accounts
+- topup the accounts with the native asset
+- create ERC20 accounts
+- topup the account with the ERC20 asset
+- run load tests for:
+ - native transfers
+ - precompile transfers
+ - ERC20 transfers
+- aggregate blocks metrics
+
 ## Some values being modified accross runs
 
 `max gas per block`: (.consensus.params.block.max_gas in the genesis file), this is set by default
