@@ -16,7 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/mezo-org/mezod/tests/perfs/token"
+	token "github.com/mezo-org/mezod/tests/performance/bindings"
 	"golang.org/x/exp/maps"
 )
 

@@ -1,4 +1,4 @@
-# mezo perf tests
+# Performances tests
 
 ## Some values being modified accross runs
 
@@ -33,7 +33,7 @@ These are use to specify which dev account to use to run the perf tests. Usually
 machine, the following should work:
 
 ```
-perfs <command> -localkey=<PATH_TO_HOME>/.localnode/dev0_key_seed.json
+performance <command> -localkey=<PATH_TO_HOME>/.localnode/dev0_key_seed.json
 ```
 
 ## Deploy an erc20 token for the test
@@ -42,7 +42,7 @@ The following command will deploy a new erc20 token (base ERC20 from open zeppel
 dev deployer. The deployer account is the one specified by via the localkey / mnemonic or privkey.
 
 ```
-perfs deploy_token -localkey "../mezod/.localnode/dev0_key_seed.json"
+performance deploy_token -localkey "../mezod/.localnode/dev0_key_seed.json"
 ```
 
 The address of the deployed token is returned, take not of this for later.
@@ -54,19 +54,19 @@ The following commands takes a count argument which is the number of accounts to
 ### Generate and topup account with gas/native funds
 
 ```
-perfs generate -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
+performance generate -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
 ```
 
 ### Topup with native funds
 
 ```
-perfs topup -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
+performance topup -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
 ```
 
 ### Topup with erc20 funds
 
 ```
-perfs topup_erc20 -address=<TOKEN_ADDRESS> -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
+performance topup_erc20 -address=<TOKEN_ADDRESS> -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
 ```
 
 ## Run tests
@@ -83,7 +83,7 @@ This execute a native transfer (transfering value as part of the transation), an
  to another.
 
 ```
-perfs run_native -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
+performance run_native -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
 ```
 
 ### Run ERC20 precompile transfer
@@ -91,7 +91,7 @@ perfs run_native -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0
 This execute a native transfer via the erc20 precompile.
 
 ```
-perfs run_erc20_precompile -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
+performance run_erc20_precompile -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
 ```
 
 ### Run ERC20 transfer
@@ -99,7 +99,7 @@ perfs run_erc20_precompile -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.loca
 This execute actual ERC20 transfer, the token needs to be deployed, and topup_erc20 ran before.
 
 ```
-perfs run_erc20 -address=<TOKEN_ADDRESS> -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
+performance run_erc20 -address=<TOKEN_ADDRESS> -count=<NUMBER_OF_ADDRESSES> -localkey=../mezod/.localnode/dev0_key_seed.json
 
 
 ## Aggregate results

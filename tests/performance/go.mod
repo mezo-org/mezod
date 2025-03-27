@@ -1,4 +1,4 @@
-module github.com/mezo-org/mezod/tests/perfs
+module github.com/mezo-org/mezod/tests/performance
 
 go 1.23.4
 
