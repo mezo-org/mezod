@@ -149,7 +149,6 @@ Note that only the mezod node was running on the server, and 100% of the perform
 We used three transaction categories, each representing different levels of
 computational complexity and gas consumption patterns:
 
-
 - Native transfers: The most basic transactions type. These operations involve moving
   the native currency from one address to another without invoking any smart contract call.
   Native transfers represent the baseline for blockchain performance as they require minimal and known
@@ -214,8 +213,6 @@ The scripts used to run these tests are available in the mezod repository
 [here](https://github.com/mezo-org/mezod/tree/main/tests/perfs).
 
 ### Tests results
-
-
 
 [EIP-1559]: https://eips.ethereum.org/EIPS/eip-1559
 [EVMOS]: https://evmos.org
