@@ -99,10 +99,10 @@ it accounts for gas consumption:
 
 While Ethereum charges based on the actual computational resources used during execution (with
 an upfront maximum specified by the user's gasLimit), Mezo implements a minimum gas consumption
-rule. Specifically, Mezo will consume at least half of the gasLimit specified in a transaction,
-regardless of the actual execution cost.
-F
-or example, if a user specifies a gasLimit of 100,000 for a transaction that actually requires
+rule. Specifically, Mezo will consume at least a factor of the gasLimit specified in a transaction,
+regardless of the actual execution cost (by default this is set to half the gasLimit specified
+in the transaction).
+For example, if a user specifies a gasLimit of 100,000 for a transaction that actually requires
 only 30,000 gas to execute:
 
 - On Ethereum: The user would be charged for 30,000 gas (the actual cost)
