@@ -115,6 +115,7 @@ func runNativeOne(
 			log.Printf("Failed to suggest gas price: %v", err)
 			continue
 		}
+		gasPrice.Mul(gasPrice, big.NewInt(50))
 
 		// Create the transaction
 		var txData = &types.DynamicFeeTx{
@@ -287,7 +288,7 @@ func runERC20One(
 			continue
 		}
 
-		gasPrice.Mul(gasPrice, big.NewInt(2))
+		gasPrice.Mul(gasPrice, big.NewInt(100))
 
 		auth.Nonce = big.NewInt(int64(nonce))
 		auth.GasPrice = gasPrice
