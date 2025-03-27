@@ -181,8 +181,8 @@ The following metrics have been observed while running the perfomances tests:
 - Gas consumed per block: This measurement reveals how efficiently the block space
   is being used and whether transactions are optimally packed into blocks. Consistent
   gaps between max gas and consumed gas might indicate opportunities to decrease max
-  gas limits, while blocks consistently reaching the maximum suggest potential c
-  ongestion issues that might require parameter adjustments.
+  gas limits, while blocks consistently reaching the maximum suggest potential
+  congestion issues that might require parameter adjustments.
 
 - Mempool unconfirmed transaction: The count of pending transactions awaiting to be
   added in blocks indicates of network congestion. A growing mempool backlog
@@ -213,6 +213,195 @@ The scripts used to run these tests are available in the mezod repository
 [here](https://github.com/mezo-org/mezod/tree/main/tests/performance).
 
 ### Tests results
+
+All tests are run for a period of 3 minutes, with bots sending transactions in a
+constant flow to the node. Note that for all these transactions, the gasLimit
+per transaction was set to:
+
+- Native transfers: 21,000 gas
+- ERC20 precompile transfers: 25,000 gas
+- ERC20 transfers: 25,000 gas
+
+For both the native and ERC20 precompile transfers, the entire gas allocation
+would be consumed. For the ERC20 transfers, between 21,000 and 24,000 gas was
+used, with the remainder being refunded. This behavior is the reason for the
+differences in transaction count per block across the different transaction
+types.
+
+#### Regarding the mempool size
+
+We have run some version of the tests with the CometBFT mempool set to a size
+of 10,000 and 5,000. However the results didn't teach us anything relevant
+if only the fact that it takes longer to empty out the a full mempool with a
+bigger size.
+
+For these reason, all following tests are run using a mempool of 10,000
+transaction.
+
+#### Performances comparison of the transactions
+
+The following charts show execution at maximum capacity of the block, without
+too much congestion on the node. The node consistently produces full blocks,
+and the backlog is balanced - large enough to fill the next block but not
+excessive.
+
+We can easily see the natural increase in gas price. As soon as the flow of
+transactions reduces, the gas price is affected and lowered.
+The number of transactions in each block is similar, with a maximum of 476 for
+native transfers and 400 for the others.
+
+These charts show the blocks of 10M gas for the three transfer types under
+similar loads as described previously.
+
+##### Native transfers
+
+![10m txs](./assets/10m_native_txs.png)
+![10m gas](./assets/10m_native_gas.png)
+
+##### ERC20 precompile transfers
+
+![10m txs](./assets/10m_precompile_txs.png)
+![10m gas](./assets/10m_precompile_gas.png)
+
+##### ERC20 transfers
+
+![10m txs](./assets/10m_erc20_txs.png)
+![10m gas](./assets/10m_erc20_gas.png)
+
+Note: because the results for the three transaction kind can be appreciated
+in the previous charts, the following will focus only in comparing the load
+of the node with different block gas size for an ERC20 transfer.
+
+#### 10m gas per blocks
+
+##### Under low stress
+
+The charts in the previous section are relevant for the node behaviour under
+low stress.
+
+We can observe that the block time remains stable at 3 seconds consistently. The
+node processes the mempool backlog in a regular pattern, and its size never
+exceeds the amount of transactions that can fit in a block.
+
+The network processes around 400 transactions per block, which amounts to a
+total of approximately 24,000 transactions across 180 seconds.
+
+##### Under high stress
+
+The total number of transactions sent was 31,000 over 180 seconds.
+
+In the following chart, we can see block production remains as stable as in the
+previous charts (with two small peaks at 4 seconds per block).
+
+In general, the node performs in the same range as under lighter loads; however,
+we can observe that the gas price reached much higher peaks. This is due to the
+high backlog (over 6,000). After the test stopped sending transactions, the node
+had to continue processing the backlog for several seconds, creating fully filled
+blocks for longer and impacting the gas price.
+
+![10m txs](./assets/10m_high_txs.png)
+![10m gas](./assets/10m_high_gas.png)
+
+#### 12.5m gas per blocks
+
+At 12.5M gas per block, the network can process around 500 transactions per block.
+
+Because the results are similar for both high and low load, they will be covered
+together.
+
+The total number of transactions sent was 31,000 over 180 seconds for the lowest
+load and 41,000 for the highest.
+
+In the following chart, we can see block production remains as stable as in the
+previous charts (with one peak at 4 seconds per block for low load and
+four peaks for high load).
+
+In general, the node performs in the same range under both loads; however,
+we can observe that the gas price reached much higher peaks. This is due to the
+high backlog (over 6,000). After the test stopped sending transactions, the node
+had to continue processing the backlog for several seconds, creating fully filled
+blocks for longer and impacting the gas price.
+
+##### Under low stress
+
+![12.5m txs](./assets/125m_low_txs.png)
+![12.5m gas](./assets/125m_low_gas.png)
+
+##### Under high stress
+
+![12.5m txs](./assets/125m_high_txs.png)
+![12.5m gas](./assets/125m_high_gas.png)
+
+#### 15m gas per blocks
+
+At 15m gas per block, the network can process around 600 transactions per blocks.
+
+##### Under low stress
+
+At low stress, the node processed 34,000 transactions in total, which equates to
+188 transactions per second over 180 seconds.
+
+The time taken to produce blocks remained stable, and the mempool size slowly
+increased as the node was able to execute transactions sufficiently quickly.
+
+The gas price increased steadily over time to support the transaction volume.
+
+The node was running close to 100% CPU utilization, but we did not observe any
+significant slowdown.
+
+![15m txs](./assets/15m_low_txs.png)
+![15m gas](./assets/15m_low_gas.png)
+
+##### Under high stress
+
+At higher stress, the node processed 39,000 transactions in total, which equates
+to 216 transactions per second over 180 seconds.
+
+At this rate, the mempool keeps growing continuously, and the time taken to
+process blocks becomes less stable, with frequent peaks at 4 seconds and
+occasional peaks at 5 seconds.
+
+![15m txs](./assets/15m_high_txs.png)
+![15m gas](./assets/15m_high_gas.png)
+
+#### 17.5m gas per blocks
+
+At 17.5m gas per block, the network can process around 700 transactions per blocks.
+
+##### Under low stress
+
+In the following, the node processed 44,000 transactions in 180 seconds (an average
+of 244 transactions per second).
+
+The time taken to produce blocks remained stable, and the mempool size slowly
+increased as the node was able to execute transactions sufficiently quickly.
+
+The gas price increased steadily over time to support the transaction volume.
+
+The node was running close to 100% CPU utilization, but we did not observe any
+significant slowdown.
+
+![175m gas block txs](./assets/175m_low_txs.png)
+![175m gas block gas](./assets/175m_low_gas.png)
+
+##### Under higher stress
+
+Here we sent a lot more transactions straight away, filling up the mempool rather
+quickly. The first effect observed is the increased time taken to execute each
+block (as high as 8 seconds per block), which is related to the time spent
+running (re)checkTx on transactions.
+
+We can also observe a negative effect on the gas price, which does not increase
+as quickly over the same period. This is due to a lower number of blocks being
+produced.
+
+Because of this, the node can't prune transactions from the backlog as quickly
+and reduce the load on the mempool.
+
+Over this period, the node was able to process only 30,000 transactions.
+
+![175m gas block txs](./assets/175m_high_txs.png)
+![175m gas block gas](./assets/175m_high_gas.png)
 
 [EIP-1559]: https://eips.ethereum.org/EIPS/eip-1559
 [EVMOS]: https://evmos.org
