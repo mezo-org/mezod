@@ -6,14 +6,15 @@ This package contains a collection of tools and utilities to execute performance
 against a Mezo network.
 
 A command line binary is provided with the following functionalities:
+
 - generate accounts
 - topup the accounts with the native asset
 - create ERC20 accounts
 - topup the account with the ERC20 asset
 - run load tests for:
- - native transfers
- - precompile transfers
- - ERC20 transfers
+    - native transfers
+    - precompile transfers
+    - ERC20 transfers
 - aggregate blocks metrics
 
 ## Some values being modified accross runs
