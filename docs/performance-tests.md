@@ -210,7 +210,7 @@ The following metrics have been observed while running the perfomances tests:
 ### Scripts
 
 The scripts used to run these tests are available in the mezod repository
-[here](https://github.com/mezo-org/mezod/tree/main/tests/perfs).
+[here](https://github.com/mezo-org/mezod/tree/main/tests/performance).
 
 ### Tests results
 
