@@ -13,7 +13,7 @@ contract MezoTransfers {
     // BTC ERC-20 token address on Mezo
     address private constant precompile = 0x7b7C000000000000000000000000000000000000;
     address private constant testbedPrecompile = 0x7b7c100000000000000000000000000000000000;
-    uint256 public balanceTracker;
+    uint256 public balanceTracker = 1;
 
     /// @notice Transfers native BTC and then ERC-20 Token from the contract
     ///         which was previously funded.
@@ -176,16 +176,17 @@ contract MezoTransfers {
         require(sent, "Native transfer failed");
     }
 
-    /// @notice Update the storage variable, facilitate the transfer of ERC20 and
+    /// @notice Update the storage variable, pull ERC20 from sender and
     ///         then reset the storage variable to its original value.
-    function storageStateTransition(address recipient, uint256 amount) external {
+    function stateChangeThenPullERC20(uint256 amount, bool resetStateChange) external {
         balanceTracker = 42; // This is an arbitrary value for testing purposes only.
 
         // Transfer ERC-20.
-        bool success = IBTC(precompile).transferFrom(msg.sender, recipient, amount);
-        require(success, "ERC-20 transfer failed");
+        IBTC(precompile).transferFrom(msg.sender, address(this), amount);
 
-        balanceTracker = 0; // Reset the storage variable to its original value.
+        if (resetStateChange) {
+            balanceTracker = 1; // Reset the storage variable to its original value.
+        }
     }
 
     /// @notice Calls multiple precompile in order to reach the maximum
@@ -220,6 +221,15 @@ contract MezoTransfers {
         require(success, "Transfer using transfer failed");
         // this will revert
         IBTC(precompile).transfer(recipient, tenthBalance);
+    }
+
+    /// @notice Doing a single precompile call that transfers funds and reverts.
+    function revertingInPrecompile(address recipient) external {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No balance to transfer");
+
+        // Transfer with revert now.
+        ITestbed(testbedPrecompile).transferWithRevert(recipient, balance);
     }
 
     /// @notice Transfers ERC-20 Token from the contract
