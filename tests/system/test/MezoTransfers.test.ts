@@ -507,9 +507,8 @@ describe("MezoTransfers", function () {
     });
   });
 
-  describe("storageStateTransition", function () {
+  describe("stateChangeThenPullERC20", function () {
     let initialContractBalance: any;
-    let initialRecipientBalance: any;
     let initialSenderBalance: any;
     let amount: any;
     let gasCost: any;
@@ -526,25 +525,88 @@ describe("MezoTransfers", function () {
 
       initialContractBalance = await ethers.provider.getBalance(mezoTransfersAddress);
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
-      initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
 
-      const tx = await mezoTransfers.connect(senderSigner).storageStateTransition(recipientAddress, amount);
+      const tx = await mezoTransfers.connect(senderSigner).stateChangeThenPullERC20(amount, true);
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * receipt.gasPrice;
     });
 
     it("should verify sender balance deduction", async function () {
+      const expectedBalance = initialSenderBalance - amount - gasCost;
+
+      // Just in case, verify native and ERC-20 balances equivalence.
       const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
-      expect(initialSenderBalance - amount - gasCost).to.equal(currentSenderNativeBalance);
+      const currentSenderERC20Balance = await btcErc20Token.balanceOf(senderAddress);
+
+      expect(currentSenderNativeBalance).to.equal(expectedBalance);
+      expect(currentSenderERC20Balance).to.equal(expectedBalance);
     });
 
-    it("should verify recipient native balance is zero before the call", async function () {
-      expect(initialRecipientBalance).to.equal(0);
+    it("should verify MezoTransfers contract has zero balance before the call", async function () {
+      expect(initialContractBalance).to.equal(0);
     });
 
-    it("should verify recipient native balance increased after the call", async function () {
-      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
-      expect(currentRecipientNativeBalance).to.equal(amount);
+    it("should verify MezoTransfers contract balance increased after the call", async function () {
+      // Just in case, verify native and ERC-20 balances equivalence.
+      const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      const currentContractERC20Balance = await btcErc20Token.balanceOf(mezoTransfersAddress);
+
+      expect(currentContractNativeBalance).to.equal(amount);
+      expect(currentContractERC20Balance).to.equal(amount);
+    });
+
+    it("should verify balanceTracker storage variable was unchanged", async function () {
+      const balanceTracker = await mezoTransfers.balanceTracker();
+      expect(balanceTracker).to.equal(1); // 1 is the original value of the storage variable.
+    });
+  });
+
+  describe("stateChangeThenRevertingPullERC20", function () {
+    let initialContractBalance: any;
+    let initialSenderBalance: any;
+    let amount: any;
+    let mezoTransfersAddress: any;
+    let tx: any;
+    let receipt: any;
+
+    before(async function () {
+      await fixture();
+
+      amount = ethers.parseEther("2");
+      mezoTransfersAddress = await mezoTransfers.getAddress();
+
+      // Deliberately omit the call where sender approves the MezoTransfers contract to pull ERC-20 BTC.
+      // This will cause the IBTC(precompile).transferFrom call to revert.
+
+      initialContractBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+
+      try {
+        // The second argument is false, so the storage variable is not reset by the contractlogic.
+        // This is needed to ensure the only way to reset the storage variable is through a tx revert.
+        tx = await mezoTransfers.connect(senderSigner).stateChangeThenPullERC20(amount, false, {gasLimit: 1000000});
+        await tx.wait();
+      } catch (error) {
+        expect((error as Error).message).to.contain("execution reverted");
+      }
+
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+    });
+
+    it("should verify the transaction reverted", async function () {
+      expect(receipt!.status).to.equal(0);
+    });
+
+    it("should verify sender balance decreased by gas cost only", async function () {
+      const gasCost = receipt!.gasUsed * receipt!.gasPrice;
+      const expectedBalance = initialSenderBalance - gasCost;
+
+      // Just in case, verify native and ERC-20 balances equivalence.
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      const currentSenderERC20Balance = await btcErc20Token.balanceOf(senderAddress);
+
+      expect(currentSenderNativeBalance).to.equal(expectedBalance);
+      expect(currentSenderERC20Balance).to.equal(expectedBalance);
     });
 
     it("should verify MezoTransfers contract has zero balance before the call", async function () {
@@ -552,13 +614,17 @@ describe("MezoTransfers", function () {
     });
 
     it("should verify MezoTransfers contract has zero balance after the call", async function () {
-      const currentContractBalance = await ethers.provider.getBalance(mezoTransfersAddress);
-      expect(currentContractBalance).to.equal(0);
+      // Just in case, verify native and ERC-20 balances equivalence.
+      const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      const currentContractERC20Balance = await btcErc20Token.balanceOf(mezoTransfersAddress);
+
+      expect(currentContractNativeBalance).to.equal(0);
+      expect(currentContractERC20Balance).to.equal(0);
     });
 
     it("should verify balanceTracker storage variable was unchanged", async function () {
       const balanceTracker = await mezoTransfers.balanceTracker();
-      expect(balanceTracker).to.equal(0);
+      expect(balanceTracker).to.equal(1); // 1 is the original value of the storage variable.
     });
   });
 
@@ -740,6 +806,50 @@ describe("MezoTransfers", function () {
       const mezoTransfersAddress = await mezoTransfers.getAddress();
       const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
       expect(currentContractNativeBalance).to.equal(0);
+    });
+  });
+
+  describe("revertingInPrecompile", function () {
+    let initialRecipientBalance: any;
+    let tokenAmount: any;
+
+    before(async function () {
+      await fixture();
+
+      tokenAmount = ethers.parseEther("8");
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+
+      const transferTx = await btcErc20Token.connect(senderSigner).transfer(mezoTransfersAddress, tokenAmount);
+      await transferTx.wait();
+
+      initialRecipientBalance = await ethers.provider.getBalance(recipientAddress);
+
+      try {
+        const tx = await mezoTransfers.connect(senderSigner).revertingInPrecompile(recipientAddress, {gasLimit: 10000000});
+        await tx.wait();
+      } catch (err) {}
+    });
+
+    it("should verify initial recipient balance is zero", async function () {
+      expect(initialRecipientBalance).to.equal(0);
+    });
+
+    it("should verify current recipient balance is zero", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      const currentRecipientERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
+
+      expect(currentRecipientNativeBalance).to.equal(0n);
+      expect(currentRecipientERC20Balance).to.equal(0n);
+    });
+
+    it("should verify MezoTransfers contract has full balance", async function () {
+      const mezoTransfersAddress = await mezoTransfers.getAddress();
+
+      const currentContractNativeBalance = await ethers.provider.getBalance(mezoTransfersAddress);
+      const currentContractERC20Balance = await btcErc20Token.balanceOf(mezoTransfersAddress);
+
+      expect(currentContractNativeBalance).to.equal(tokenAmount);
+      expect(currentContractERC20Balance).to.equal(tokenAmount);
     });
   });
 

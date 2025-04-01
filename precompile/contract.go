@@ -150,6 +150,15 @@ func (c *Contract) Run(
 
 	sdkCtx, ctxCheckpoint := stateDB.CacheContext()
 
+	// Register the cached context checkpoint to the stateDB BEFORE running the method.
+	// In case this call errors out, the EVM will revert the cached ctx to this checkpoint.
+	//
+	// Note this may error out if this precompile call exceeds the maximum amount of
+	// precompiles calls per execution.
+	if err := stateDB.RegisterCachedCtxCheckpoint(c.Address(), ctxCheckpoint); err != nil {
+		return nil, fmt.Errorf("failed to register cached context checkpoint: [%w]", err)
+	}
+
 	// Capture the initial values of gas config to restore them after execution.
 	kvGasConfig, transientKVGasConfig := sdkCtx.KVGasConfig(), sdkCtx.TransientKVGasConfig()
 	// Use a zero gas config for Cosmos SDK operations to avoid extra costs
@@ -206,7 +215,7 @@ func (c *Contract) Run(
 
 	// Commit any draft changes to the EVM state DB before running the method.
 	if err := stateDB.CommitCacheContext(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to commit cache context: [%w]", err)
 	}
 
 	methodInputs, err := methodABI.Inputs.Unpack(methodInputArgs)
@@ -224,20 +233,14 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("failed to pack method output args: [%w]", err)
 	}
 
-	// now if nothing failed, we executed the journal entries against the stateDB
-	if err := c.syncJournalEntries(runCtx.journal, c.Address(), ctxCheckpoint, stateDB); err != nil {
-		return nil, err
-	}
+	// If nothing failed, we execute the journal entries related to balance changes
+	// against the stateDB.
+	c.syncJournalEntries(runCtx.journal, stateDB)
 
 	return methodOutputArgs, nil
 }
 
-func (c *Contract) syncJournalEntries(
-	journal *StateDBJournal,
-	address common.Address,
-	cachedCtxCheckpoint *statedb.CachedCtxCheckpoint,
-	stateDB *statedb.StateDB,
-) error {
+func (c *Contract) syncJournalEntries(journal *StateDBJournal, stateDB *statedb.StateDB) {
 	for _, v := range journal.entries {
 		if v.isSub {
 			stateDB.SubBalance(v.Address, v.Amount, v.TracingReason)
@@ -248,12 +251,6 @@ func (c *Contract) syncJournalEntries(
 	}
 
 	journal.entries = nil
-
-	// finally we register the checkpoint.
-	// NOTE: this needs to be done last as it may be returning an error
-	// if we have exceeded the maximum amount of precompiles call per execution.
-	// always returns this last
-	return stateDB.RegisterCachedCtxCheckpoint(address, cachedCtxCheckpoint)
 }
 
 // parseCallInput extracts the method ID and input arguments from the given
