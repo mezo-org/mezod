@@ -12,7 +12,7 @@ import (
 var (
 	ethereumSidecarGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "ethereum_sidecar_is_running",
+			Name: "mezo_ethereum_sidecar_is_running",
 			Help: "the version of the ethereum sidecar",
 		},
 		[]string{"moniker", "network", "version"},
@@ -20,7 +20,7 @@ var (
 
 	connectSidecarGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "connect_sidecar_is_running",
+			Name: "mezo_connect_sidecar_is_running",
 			Help: "the version of the connect sidecar",
 		},
 		[]string{"moniker", "network", "version"},
@@ -28,7 +28,7 @@ var (
 
 	mezodVersionGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "mezod_version",
+			Name: "mezo_mezod_version",
 			Help: "the mezod version of a node",
 		},
 		[]string{"moniker", "network", "version"},
@@ -38,6 +38,14 @@ var (
 		prometheus.GaugeOpts{
 			Name: "mezo_latest_block",
 			Help: "the latest block processed by a node",
+		},
+		[]string{"moniker", "network"},
+	)
+
+	mezoLatestTimestampGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "mezo_latest_timestamp",
+			Help: "the latest timestamps at which a node processed a block",
 		},
 		[]string{"moniker", "network"},
 	)
