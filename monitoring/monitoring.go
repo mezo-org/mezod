@@ -39,6 +39,9 @@ func Start(configPath string) {
 		log.Fatalf("error: empty config")
 	}
 
+	log.Printf("monitoring network %v", config.NetworkID)
+	log.Printf("poll rate %v", config.PollRate.Duration)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	for _, c := range config.Nodes {
@@ -47,7 +50,7 @@ func Start(configPath string) {
 		log.Printf("starting monitoring for %v", c.Moniker)
 
 		// start the job
-		go run(ctx, &wg, config.PollRate.Duration, c)
+		go run(ctx, &wg, config.PollRate.Duration, config.NetworkID, c)
 	}
 
 	log.Printf("monitoring %v nodes", len(config.Nodes))
@@ -70,6 +73,7 @@ func run(
 	ctx context.Context,
 	wg *sync.WaitGroup,
 	pollRate time.Duration,
+	networkID string,
 	config NodeConfig,
 ) {
 	c, err := rpc.DialContext(ctx, config.RPCURL)
@@ -82,9 +86,10 @@ func run(
 		select {
 		case <-ctx.Done():
 			wg.Done()
+			log.Printf("job terminated for %v", config.Moniker)
 			return
 		case <-ticker.C:
-			if err := pollData(ctx, c, config.Moniker, config.NetworkID); err != nil {
+			if err := pollData(ctx, c, config.Moniker, networkID); err != nil {
 				log.Printf("error polling data for %v: %v", config.Moniker, err)
 			}
 		}
@@ -100,16 +105,17 @@ func pollData(ctx context.Context, client *rpc.Client, moniker, networkID string
 		return err
 	}
 
-	if err := latestBlock(ctx, client, moniker, networkID); err != nil {
+	if err := latestBlockAndTimestamp(ctx, client, moniker, networkID); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func latestBlock(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
+func latestBlockAndTimestamp(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
 	result := struct {
-		Number string `json:"number"`
+		Number    string `json:"number"`
+		Timestamp string `json:"timestamp"`
 	}{}
 	err := client.CallContext(ctx, &result, ethGetBlockByNumberEndpoint, "latest", false)
 	if err != nil {
@@ -120,8 +126,13 @@ func latestBlock(ctx context.Context, client *rpc.Client, moniker, networkID str
 	if err != nil {
 		return err
 	}
-
 	mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(float64(latestBlock))
+
+	ts, err := strconv.ParseUint(strings.TrimPrefix(result.Timestamp, "0x"), 16, 64)
+	if err != nil {
+		return err
+	}
+	mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(float64(ts))
 
 	return nil
 }
