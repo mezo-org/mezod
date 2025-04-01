@@ -6,9 +6,7 @@ import (
 	"github.com/mezo-org/mezod/monitoring"
 )
 
-var (
-	configPath string
-)
+var configPath string
 
 func init() {
 	flag.StringVar(&configPath, "config", "config.json", "a path to the configuration file")
