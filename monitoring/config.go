@@ -6,15 +6,15 @@ import (
 )
 
 type Config struct {
-	PollRate Duration     `json:"poll_rate"`
-	Nodes    []NodeConfig `json:"nodes"`
+	PollRate  Duration     `json:"poll_rate"`
+	Nodes     []NodeConfig `json:"nodes"`
+	NetworkID string       `json:"network"`
 }
 
 type NodeConfig struct {
-	RPCURL    string `json:"rpc_url"`
-	CometURL  string `json:"comet_url"`
-	Moniker   string `json:"moniker"`
-	NetworkID string `json:"network_id"`
+	RPCURL   string `json:"rpc_url"`
+	CometURL string `json:"comet_url"`
+	Moniker  string `json:"moniker"`
 }
 
 type Duration struct {
