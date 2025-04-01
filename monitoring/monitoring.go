@@ -35,7 +35,7 @@ func Start(configPath string) {
 		log.Fatalf("error: unmarshalling config file: %v", err)
 	}
 
-	if len(config.Nodes) <= 0 {
+	if len(config.Nodes) == 0 {
 		log.Fatalf("error: empty config")
 	}
 
@@ -72,9 +72,6 @@ func run(
 	pollRate time.Duration,
 	config NodeConfig,
 ) {
-
-	defer func() { wg.Done() }()
-
 	c, err := rpc.DialContext(ctx, config.RPCURL)
 	if err != nil {
 		log.Fatalf("error: couldn't connect to %v at %v: %v", config.Moniker, config.RPCURL, err)
@@ -84,6 +81,7 @@ func run(
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Done()
 			return
 		case <-ticker.C:
 			if err := pollData(ctx, c, config.Moniker, config.NetworkID); err != nil {

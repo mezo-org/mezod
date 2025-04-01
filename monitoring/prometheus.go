@@ -1,6 +1,7 @@
 package monitoring
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -44,5 +45,9 @@ var (
 
 func startPrometheus() {
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(":2112", nil)
+
+	err := http.ListenAndServe(":2112", nil) //nolint:gosec
+	if err != nil {
+		log.Fatalf("error: couldn't start http server: %v", err)
+	}
 }
