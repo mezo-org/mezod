@@ -88,6 +88,12 @@ func RunServer(
 		)
 	}
 
+	logger.Info(
+		"Sidecar server resolved MezoBridge contract and Ethereum network",
+		"mezo_bridge_address", mezoBridgeAddress,
+		"ethereum_network", network,
+	)
+
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
 
