@@ -141,6 +141,9 @@ build-docker:
 build-docker-linux:
 	$(DOCKER) buildx build --platform linux/amd64 --tag ${DOCKER_IMAGE}:${DOCKER_TAG} .
 
+build-docker-monitoring:
+	$(DOCKER) build -t mezo-monitoring -f Dockerfile.monitoring .
+
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
 
