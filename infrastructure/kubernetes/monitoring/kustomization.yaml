@@ -16,8 +16,10 @@ resources:
   - scrapping/configmap.yaml
   - ingress.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: mezo-monitoring
-  app.kubernetes.io/managed-by: kustomize
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/part-of: mezo-monitoring
+    app.kubernetes.io/managed-by: kustomize
 
 namespace: monitoring
