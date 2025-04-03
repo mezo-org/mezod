@@ -2,10 +2,11 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 COPY . .
-RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux go build -o monitoring ./cmd/monitoring
 
-FROM alpine:latest
+RUN go mod download && \
+    CGO_ENABLED=0 GOOS=linux go build -o monitoring ./cmd/monitoring
+
+FROM alpine:3.21.3
 
 # Add ca certificates and timezone data
 RUN apk --no-cache add ca-certificates tzdata
@@ -15,4 +16,3 @@ WORKDIR /
 COPY --from=builder /app/monitoring .
 
 ENTRYPOINT ["./monitoring"]
-#CMD["-config", "config.json"]
