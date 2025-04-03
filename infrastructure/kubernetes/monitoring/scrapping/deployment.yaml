@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapping
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrapping
+  template:
+    metadata:
+      labels:
+        app: scrapping
+    spec:
+      containers:
+      - name: mezo-monitoring
+        image: mezo-monitoring:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 2112
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi

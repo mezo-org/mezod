@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scrapping-config
+  namespace: monitoring
+data:
+  config.json: |
+    {
+      "poll_rate": "2s",
+      "network": "mezo_31611-1",
+      "nodes": [
+        {
+          "rpc_url": "http://mezo-node-0.test.mezo.org:8545",
+          "moniker": "mezo-node-0"
+        },
+        {
+          "rpc_url": "http://mezo-node-1.test.mezo.org:8545",
+          "moniker": "mezo-node-1"
+        },
+        {
+          "rpc_url": "http://mezo-node-2.test.mezo.org:8545",
+          "moniker": "mezo-node-2"
+        },
+        {
+          "rpc_url": "http://mezo-node-3.test.mezo.org:8545",
+          "moniker": "mezo-node-3"
+        },
+        {
+          "rpc_url": "http://mezo-node-4.test.mezo.org:8545",
+          "moniker": "mezo-node-4"
+        }
+      ]
+    }
