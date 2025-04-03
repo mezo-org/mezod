@@ -17,9 +17,9 @@ resources:
   - ingress.yaml
 
 labels:
-- includeSelectors: true
-  pairs:
-    app.kubernetes.io/part-of: mezo-monitoring
-    app.kubernetes.io/managed-by: kustomize
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/part-of: mezo-monitoring
+      app.kubernetes.io/managed-by: kustomize
 
 namespace: monitoring
