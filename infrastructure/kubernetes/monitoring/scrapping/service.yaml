@@ -7,6 +7,6 @@ spec:
   selector:
     app: scrapping
   ports:
-  - port: 2112
-    targetPort: 2112
+    - port: 2112
+      targetPort: 2112
   type: ClusterIP
