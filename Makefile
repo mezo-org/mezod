@@ -309,15 +309,6 @@ localnode-bin-start:
 ###                       Contract bindings generation                      ###
 ###############################################################################
 
-# bindings_environment determines the network type that should be used for contract
-# binding generation. The default value is mainnet.
-ifndef bindings_environment
-# TODO: Once we are production ready, this has to be changed to mainnet.
-override bindings_environment = sepolia
-endif
-
-export bindings_environment
-
 # List of NPM packages for which to generate bindings - expand if needed.
 npm_packages := @mezo-org/contracts
 

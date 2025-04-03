@@ -1,4 +1,4 @@
-root_dir := $(realpath ../../../..)
+root_dir := $(realpath ../../../../..)
 artifacts_dir := ${root_dir}/tmp/contracts/${npm_package_name}/deployments/${bindings_environment}
 
 $(info Package              ${npm_package_name})
@@ -11,7 +11,9 @@ contract_files = $(addprefix contract/,$(addsuffix .go,${required_contracts}))
 # Files containing addresses extracted from the artifacts.
 address_files = $(addprefix _address/,${required_contracts})
 
-all: clean check_artifacts ${address_files} gen_contract_go
+all: gen_address gen_contract_go
+
+gen_address: clean check_artifacts ${address_files}
 
 clean:
 	$(info Cleaning up for ${npm_package_name})
