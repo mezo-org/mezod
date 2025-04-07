@@ -119,8 +119,11 @@ func latestBlockAndTimestamp(ctx context.Context, client *rpc.Client, moniker, n
 	}{}
 	err := client.CallContext(ctx, &result, ethGetBlockByNumberEndpoint, "latest", false)
 	if err != nil {
+		mezodUpGauge.WithLabelValues(moniker, networkID).Set(0)
 		return fmt.Errorf("couldn't call %v for %v: %v", ethGetBlockByNumberEndpoint, moniker, err)
 	}
+
+	mezodUpGauge.WithLabelValues(moniker, networkID).Set(1)
 
 	latestBlock, err := strconv.ParseUint(strings.TrimPrefix(result.Number, "0x"), 16, 64)
 	if err != nil {
