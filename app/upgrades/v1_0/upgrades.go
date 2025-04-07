@@ -10,7 +10,7 @@ import (
 	"github.com/mezo-org/mezod/app/upgrades"
 )
 
-func CreateUpgradeHandler(
+func CreateUpgradeHandlerRC0(
 	mm *module.Manager,
 	configurator module.Configurator,
 	keepers *upgrades.Keepers,
@@ -20,7 +20,23 @@ func CreateUpgradeHandler(
 		_ upgradetypes.Plan,
 		fromVM module.VersionMap,
 	) (module.VersionMap, error) {
-		sdk.UnwrapSDKContext(ctx).Logger().Info("running v1.0.0 upgrade handler")
+		sdk.UnwrapSDKContext(ctx).Logger().Info("running v1.0.0-rc0 upgrade handler")
+
+		return mm.RunMigrations(ctx, configurator, fromVM)
+	}
+}
+
+func CreateUpgradeHandlerRC1(
+	mm *module.Manager,
+	configurator module.Configurator,
+	keepers *upgrades.Keepers,
+) upgradetypes.UpgradeHandler {
+	return func(
+		ctx context.Context,
+		_ upgradetypes.Plan,
+		fromVM module.VersionMap,
+	) (module.VersionMap, error) {
+		sdk.UnwrapSDKContext(ctx).Logger().Info("running v1.0.0-rc1 upgrade handler")
 
 		return mm.RunMigrations(ctx, configurator, fromVM)
 	}
