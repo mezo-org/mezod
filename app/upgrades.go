@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	Upgrades = []upgrades.Upgrade{v0_3.Upgrade, v1_0.Upgrade}
+	Upgrades = []upgrades.Upgrade{v0_3.Upgrade, v1_0.UpgradeRC0, v1_0.UpgradeRC1}
 	Forks    = []upgrades.Fork{v0_3.Fork, v0_4.Fork, v0_5.Fork, v0_6.Fork, v0_7.Fork}
 )
 
