@@ -180,7 +180,8 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v0.5.0` | 2213000 | Hard fork upgrade without chain halt | On-chain precompile versioning. New Upgrade and PriceOracle precompiles and upgrade of the existing Maintenance precompile.                                                             |
 | `v0.6.0` | 2563000 | Hard fork upgrade without chain halt | Introduce the ERC20 bridge and the BTC supply assertion.                                                                                                                                |
 | `v0.7.0` | 3078794 | Hard fork upgrade without chain halt | Fix security issues in the EVM state DB. Introduce proper reverts for precompiles. Add chain fee splitter support. Disable Cosmos transactions.                                         |
-| `v1.0.0` | 3569000 | Hard fork upgrade with chain halt    | Patch for a DoS vector in the bridge. Fix for the precompile revert mechanism                                                                                                           |
+| `v1.0.0-rc0` | 3569000 | Planned upgrade with chain halt    | Patch for a DoS vector in the bridge. Fix for the precompile revert mechanism.                                                                                                           |
+| `v1.0.0-rc1` | 3712500 | Planned upgrade with chain halt    | Patch for mixed precompile addresses.                                                                                                           |
 
 ### Mainnet
 
