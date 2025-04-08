@@ -4,7 +4,6 @@ metadata:
   name: grafana
   namespace: monitoring
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: grafana
@@ -19,28 +18,11 @@ spec:
           ports:
             - containerPort: 3000
           env:
-            - name: GF_SECURITY_ADMIN_USER
-              valueFrom:
-                secretKeyRef:
-                  name: grafana-secret
-                  key: admin-user
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: grafana-secret
-                  key: admin-password
             - name: GF_INSTALL_PLUGINS
               value: "grafana-clock-panel,grafana-simple-json-datasource"
           volumeMounts:
             - name: grafana-data
               mountPath: /var/lib/grafana
-          resources:
-            limits:
-              cpu: 300m
-              memory: 512Mi
-            requests:
-              cpu: 100m
-              memory: 256Mi
       volumes:
         - name: grafana-data
           persistentVolumeClaim:
