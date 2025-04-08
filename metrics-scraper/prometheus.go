@@ -15,7 +15,7 @@ var (
 			Name: "ethereum_sidecar_connectivity",
 			Help: "the version of the ethereum sidecar",
 		},
-		[]string{"moniker", "network", "sidecar_version"},
+		[]string{"moniker", "chain_id", "sidecar_version"},
 	)
 
 	connectSidecarGauge = promauto.NewGaugeVec(
@@ -23,7 +23,7 @@ var (
 			Name: "connect_sidecar_connectivity",
 			Help: "the version of the connect sidecar",
 		},
-		[]string{"moniker", "network", "sidecar_version"},
+		[]string{"moniker", "chain_id", "sidecar_version"},
 	)
 
 	mezodVersionGauge = promauto.NewGaugeVec(
@@ -31,7 +31,7 @@ var (
 			Name: "mezod_version",
 			Help: "the mezod version of a node",
 		},
-		[]string{"moniker", "network", "version"},
+		[]string{"moniker", "chain_id", "version"},
 	)
 
 	mezoLatestBlockGauge = promauto.NewGaugeVec(
@@ -39,7 +39,7 @@ var (
 			Name: "latest_block",
 			Help: "the latest block processed by a node",
 		},
-		[]string{"moniker", "network"},
+		[]string{"moniker", "chain_id"},
 	)
 
 	mezoLatestTimestampGauge = promauto.NewGaugeVec(
@@ -47,7 +47,7 @@ var (
 			Name: "latest_timestamp",
 			Help: "the latest timestamps at which a node processed a block",
 		},
-		[]string{"moniker", "network"},
+		[]string{"moniker", "chain_id"},
 	)
 
 	mezodUpGauge = promauto.NewGaugeVec(
@@ -55,7 +55,7 @@ var (
 			Name: "up",
 			Help: "the state of the node 1 for up, 0 for down",
 		},
-		[]string{"moniker", "network"},
+		[]string{"moniker", "chain_id"},
 	)
 )
 
