@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/mezo-org/mezod/monitoring"
+	metricsscraper "github.com/mezo-org/mezod/metrics-scraper"
 )
 
 var configPath string
@@ -15,5 +15,5 @@ func init() {
 func main() {
 	flag.Parse()
 
-	monitoring.Start(configPath)
+	metricsscraper.Start(configPath)
 }

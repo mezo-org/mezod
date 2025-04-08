@@ -141,12 +141,11 @@ build-docker:
 build-docker-linux:
 	$(DOCKER) buildx build --platform linux/amd64 --tag ${DOCKER_IMAGE}:${DOCKER_TAG} .
 
-
 build-docker-linux-local:
 	$(DOCKER) buildx build --platform linux/amd64 --tag local/mezod .
 
-build-docker-monitoring:
-	$(DOCKER) build -t mezo-monitoring -f Dockerfile.monitoring .
+build-docker-metrics-scraper:
+	$(DOCKER) build -t metrics-scraper -f Dockerfile.metrics-scraper .
 
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
