@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: scrapping-config
+  name: metrics-scraper-config
   namespace: monitoring
 data:
   config.json: |

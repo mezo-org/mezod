@@ -11,15 +11,15 @@ resources:
   - grafana/deployment.yaml
   - grafana/service.yaml
   # - grafana/config.yaml
-  - scrapping/deployment.yaml
-  - scrapping/service.yaml
-  - scrapping/configmap.yaml
+  - metrics-scraper/deployment.yaml
+  - metrics-scraper/service.yaml
+  - metrics-scraper/configmap.yaml
   - ingress.yaml
 
 labels:
   - includeSelectors: true
     pairs:
-      app.kubernetes.io/part-of: mezo-monitoring
+      app.kubernetes.io/part-of: monitoring
       app.kubernetes.io/managed-by: kustomize
 
 namespace: monitoring

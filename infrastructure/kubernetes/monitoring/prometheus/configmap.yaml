@@ -10,6 +10,6 @@ data:
       evaluation_interval: 2s
 
     scrape_configs:
-      - job_name: 'scrapping'
+      - job_name: 'metrics-scraper'
         static_configs:
-          - targets: ['scrapping:2112']
+          - targets: ['metrics-scraper:2112']
