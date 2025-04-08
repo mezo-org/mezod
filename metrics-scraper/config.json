@@ -1,6 +1,6 @@
 {
     "poll_rate": "2s",
-    "network": "mezo_31611-1",
+    "chain_id": "mezo_31611-1",
     "nodes": [
 	{
 	    "rpc_url": "http://mezo-node-0.test.mezo.org:8545",

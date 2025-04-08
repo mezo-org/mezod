@@ -39,7 +39,7 @@ func Start(configPath string) {
 		log.Fatalf("error: empty config")
 	}
 
-	log.Printf("monitoring network %v", config.NetworkID)
+	log.Printf("monitoring network %v", config.ChainID)
 	log.Printf("poll rate %v", config.PollRate.Duration)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -50,7 +50,7 @@ func Start(configPath string) {
 		log.Printf("starting monitoring for %v", c.Moniker)
 
 		// start the job
-		go run(ctx, &wg, config.PollRate.Duration, config.NetworkID, c)
+		go run(ctx, &wg, config.PollRate.Duration, config.ChainID, c)
 	}
 
 	log.Printf("monitoring %v nodes", len(config.Nodes))
