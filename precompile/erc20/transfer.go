@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
+	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
 )
 
 const (
@@ -22,17 +23,20 @@ const (
 type TransferMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
+	evmKeeper   evmkeeper.Keeper
 	denom       string
 }
 
 func NewTransferMethod(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
+	evmKeeper evmkeeper.Keeper,
 	denom string,
 ) *TransferMethod {
 	return &TransferMethod{
 		bankKeeper:  bankKeeper,
 		authzkeeper: authzkeeper,
+		evmKeeper:   evmKeeper,
 		denom:       denom,
 	}
 }
@@ -77,23 +81,26 @@ func (tm *TransferMethod) Run(
 		amount = big.NewInt(0)
 	}
 
-	return transfer(context, tm.bankKeeper, tm.authzkeeper, tm.denom, from, to, amount)
+	return transfer(context, tm.bankKeeper, tm.authzkeeper, tm.evmKeeper, tm.denom, from, to, amount)
 }
 
 type TransferFromMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
+	evmKeeper   evmkeeper.Keeper
 	denom       string
 }
 
 func NewTransferFromMethod(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
+	evmKeeper evmkeeper.Keeper,
 	denom string,
 ) *TransferFromMethod {
 	return &TransferFromMethod{
 		bankKeeper:  bankKeeper,
 		authzkeeper: authzkeeper,
+		evmKeeper:   evmKeeper,
 		denom:       denom,
 	}
 }
@@ -141,13 +148,14 @@ func (tfm *TransferFromMethod) Run(
 		amount = big.NewInt(0)
 	}
 
-	return transfer(context, tfm.bankKeeper, tfm.authzkeeper, tfm.denom, from, to, amount)
+	return transfer(context, tfm.bankKeeper, tfm.authzkeeper, tfm.evmKeeper, tfm.denom, from, to, amount)
 }
 
 func transfer(
 	context *precompile.RunContext,
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
+	evmKeeper evmkeeper.Keeper,
 	denom string,
 	from, to common.Address,
 	amount *big.Int,
@@ -197,16 +205,24 @@ func transfer(
 		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
 	}
 
-	balanceDelta, overflow := uint256.FromBig(amount)
-	if overflow {
-		return nil, fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", amount)
-	}
+	if denom == evmKeeper.GetParams(context.SdkCtx()).EvmDenom {
+		// If this precompile is tied to the native gas token of the EVM layer,
+		// we MUST use the journal to propagate balance changes back to the
+		// EVM stateDB. This is absolutely CRITICAL to properly sync state
+		// changes between the Cosmos SDK and EVM layers.
+		//
+		// On the other hand, this MUST NOT be done if the precompile is tied to
+		// a non-gas ERC20 token to ensure its transfers do not affect the
+		// balances of the EVM native gas token for the from/to addresses.
+		balanceDelta, overflow := uint256.FromBig(amount)
+		if overflow {
+			return nil, fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", amount)
+		}
 
-	j := context.Journal()
-	// update our from and to balance by setting properly the state
-	// in the state DB
-	j.SubBalance(from, balanceDelta, tracing.BalanceChangeTransfer)
-	j.AddBalance(to, balanceDelta, tracing.BalanceChangeTransfer)
+		journal := context.Journal()
+		journal.SubBalance(from, balanceDelta, tracing.BalanceChangeTransfer)
+		journal.AddBalance(to, balanceDelta, tracing.BalanceChangeTransfer)
+	}
 
 	return precompile.MethodOutputs{true}, nil
 }
