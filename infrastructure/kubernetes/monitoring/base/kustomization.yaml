@@ -14,7 +14,6 @@ resources:
   - metrics-scraper/deployment.yaml
   - metrics-scraper/service.yaml
   - metrics-scraper/configmap.yaml
-  - ingress.yaml
 
 labels:
   - includeSelectors: true

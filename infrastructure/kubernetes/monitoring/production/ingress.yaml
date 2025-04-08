@@ -4,11 +4,8 @@ metadata:
   name: monitoring
   namespace: monitoring
   annotations:
-    # kubernetes.io/ingress.class: "gce"
-    # # The static IP has to be created with the following command:
-    # # `gcloud compute addresses create keep-monitoring-ingress --global`
-    # kubernetes.io/ingress.global-static-ip-name: "keep-monitoring-ingress"
-    # networking.gke.io/managed-certificates: monitoring-cert
+    kubernetes.io/ingress.global-static-ip-name: "mezo-production-monitoring-hub-external-ip"
+    ingress.gcp.kubernetes.io/pre-shared-cert: "mezo-production-monitoring-hub-ssl-certificate"
 spec:
   rules:
     - http:
