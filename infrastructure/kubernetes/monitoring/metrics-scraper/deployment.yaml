@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: scrapping
+  name: metrics-scraper
   namespace: monitoring
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: scrapping
+      app: metrics-scraper
   template:
     metadata:
       labels:
-        app: scrapping
+        app: metrics-scraper
     spec:
       containers:
-        - name: mezo-monitoring
-          image: mezo-monitoring:latest
+        - name: metrics-scraper
+          image: metrics-scraper:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 2112
