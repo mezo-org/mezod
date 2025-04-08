@@ -14,6 +14,7 @@ import (
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/precompile/erc20"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
@@ -262,7 +263,7 @@ func (s *PrecompileTestSuite) TestEmitApprovalEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			ae := btctoken.NewApprovalEvent(tc.owner, tc.spender, tc.amount)
+			ae := erc20.NewApprovalEvent(tc.owner, tc.spender, tc.amount)
 			args := ae.Arguments()
 
 			s.Require().Len(args, 3)
