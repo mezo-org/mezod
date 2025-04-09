@@ -18,8 +18,6 @@ import (
 )
 
 func (s *TestSuite) TestApprove() {
-	amount := int64(100)
-
 	testcases := []struct {
 		name        string
 		run         func() []interface{}
@@ -63,7 +61,7 @@ func (s *TestSuite) TestApprove() {
 			name: "approve without existing authorization",
 			run: func() []interface{} {
 				return []interface{}{
-					s.account1.EvmAddr, big.NewInt(amount),
+					s.account1.EvmAddr, big.NewInt(100),
 				}
 			},
 			basicPass: true,
@@ -71,21 +69,21 @@ func (s *TestSuite) TestApprove() {
 				s.requireSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin(s.denom, amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
 				)
 			},
 		},
 		{
-			name: "approve with existing authorization",
+			name: "approve more with existing single-denom authorization",
 			run: func() []interface{} {
 				s.setupSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin(s.denom, int64(1))),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 1)),
 				)
 
 				return []interface{}{
-					s.account1.EvmAddr, big.NewInt(amount),
+					s.account1.EvmAddr, big.NewInt(100),
 				}
 			},
 			basicPass: true,
@@ -93,17 +91,145 @@ func (s *TestSuite) TestApprove() {
 				s.requireSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin(s.denom, amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
 				)
 			},
 		},
 		{
-			name: "delete existing authorization",
+			name: "approve less with existing single-denom authorization",
 			run: func() []interface{} {
 				s.setupSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin(s.denom, amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 1000)),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
+				)
+			},
+		},
+		{
+			name: "approve same with existing single-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
+				)
+			},
+		},
+		{
+			name: "approve more with existing multi-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 1),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+			},
+		},
+		{
+			name: "approve less with existing multi-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 1000),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+			},
+		},
+		{
+			name: "approve same with existing multi-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+			},
+		},
+		{
+			name: "delete existing single-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
 				)
 
 				return []interface{}{
@@ -119,6 +245,31 @@ func (s *TestSuite) TestApprove() {
 				authzs, err := unpackGrantAuthzs(grants.Grants)
 				s.Require().NoError(err, "expected no error unpacking the authorization")
 				s.Require().Len(authzs, 0, "expected grant to be deleted")
+			},
+		},
+		{
+			name: "delete existing multi-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, common.Big0,
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin("otherdenom", 2)),
+				)
 			},
 		},
 	}

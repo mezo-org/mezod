@@ -15,12 +15,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const (
-	PermitTypehash = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
-	amount         = int64(100)
-)
+const PermitTypehash = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
 
 func (s *TestSuite) TestPermit() {
+	amount := int64(100)
+
 	// TODO: Remove the skip once the flakiness is fixed.
 	s.T().Skip("This test is flaky and needs to be fixed. See https://linear.app/thesis-co/issue/TET-93/flaky-unit-test-of-the-btc-permit-method")
 

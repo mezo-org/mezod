@@ -57,7 +57,10 @@ func (s *TestSuite) TestAllowance() {
 				s.setupSendAuthz(
 					precompile.TypesConverter.Address.ToSDK(s.account1.EvmAddr),
 					precompile.TypesConverter.Address.ToSDK(s.account2.EvmAddr),
-					sdk.NewCoins(sdk.NewCoin(s.denom, sdkmath.NewInt(42))),
+					sdk.NewCoins(
+						sdk.NewCoin(s.denom, sdkmath.NewInt(42)),
+						sdk.NewCoin("otherdenom", sdkmath.NewInt(77)),
+					).Sort(),
 				)
 
 				return []interface{}{s.account2.EvmAddr, s.account1.EvmAddr}
