@@ -192,6 +192,13 @@ func updateAuthorization(
 		return fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 
+	// Sort the spend limit to ensure the isSorted invariant is maintained for all
+	// below operations made on the spend limit. This is not strictly required if
+	// the authorization is managed only by this precompile function
+	// (the spend limit is sorted upon update) but may save us in case the
+	// authorization is ever modified somewhere else.
+	sendAuthz.SpendLimit = sendAuthz.SpendLimit.Sort()
+
 	currentAmount := sendAuthz.SpendLimit.AmountOfNoDenomValidation(denom)
 	deltaAmount := targetAmount.Sub(currentAmount)
 
