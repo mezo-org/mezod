@@ -18,6 +18,11 @@ cp ../btctoken/IBTC.sol ./interfaces/
 # Adjust imports in IBTC.sol
 sed -i '' 's|../erc20/|./solidity/|g' ./interfaces/IBTC.sol
 
+# Copy MEZO Token interface
+cp ../mezotoken/IMEZO.sol ./interfaces/
+# Adjust imports in IMEZO.sol
+sed -i '' 's|../erc20/|./solidity/|g' ./interfaces/IMEZO.sol
+
 # Copy Validator Pool interface
 cp ../validatorpool/IValidatorPool.sol ./interfaces/
 
