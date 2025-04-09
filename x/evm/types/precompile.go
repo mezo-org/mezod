@@ -47,6 +47,7 @@ const (
 // the consensus.
 var DefaultPrecompilesVersions = []*PrecompileVersionInfo{
 	{BTCTokenPrecompileAddress, BTCTokenPrecompileLatestVersion},
+	{MEZOTokenPrecompileAddress, MEZOTokenPrecompileLatestVersion},
 	{ValidatorPoolPrecompileAddress, ValidatorPoolPrecompileLatestVersion},
 	{AssetsBridgePrecompileAddress, AssetsBridgePrecompileLatestVersion},
 	{MaintenancePrecompileAddress, MaintenancePrecompileLatestVersion},
