@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
@@ -58,7 +57,7 @@ func (s *PrecompileTestSuite) TestAllowance() {
 				s.setupSendAuthz(
 					precompile.TypesConverter.Address.ToSDK(s.account1.EvmAddr),
 					precompile.TypesConverter.Address.ToSDK(s.account2.EvmAddr),
-					sdk.NewCoins(sdk.NewCoin("abtc", sdkmath.NewInt(42))),
+					sdk.NewCoins(sdk.NewCoin(s.denom, sdkmath.NewInt(42))),
 				)
 
 				return []interface{}{s.account2.EvmAddr, s.account1.EvmAddr}
@@ -75,20 +74,16 @@ func (s *PrecompileTestSuite) TestAllowance() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["allowance"]
+			method := s.erc20Precompile.Abi.Methods["allowance"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -107,7 +102,7 @@ func (s *PrecompileTestSuite) TestAllowance() {
 			vmContract.Input = append([]byte{0xdd, 0x62, 0xed, 0x3e}, methodInputArgs...)
 			vmContract.CallerAddress = s.account2.EvmAddr
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
 				return

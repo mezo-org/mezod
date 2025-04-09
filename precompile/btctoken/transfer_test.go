@@ -12,7 +12,6 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/erc20"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -128,20 +127,16 @@ func (s *PrecompileTestSuite) TestTransfer() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["transfer"]
+			method := s.erc20Precompile.Abi.Methods["transfer"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -160,7 +155,7 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			vmContract.Input = append([]byte{0xa9, 0x05, 0x9c, 0xbb}, methodInputArgs...)
 			vmContract.CallerAddress = s.account1.EvmAddr
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
 				return
@@ -311,20 +306,16 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["transferFrom"]
+			method := s.erc20Precompile.Abi.Methods["transferFrom"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -347,7 +338,7 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 				vmContract.CallerAddress = s.account2.EvmAddr
 			}
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil {
 
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")

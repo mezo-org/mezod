@@ -13,7 +13,6 @@ import (
 	"github.com/mezo-org/mezod/app"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/erc20"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
@@ -72,7 +71,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 				s.requireSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, amount)),
 				)
 			},
 		},
@@ -82,7 +81,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 				s.setupSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", int64(1))),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, int64(1))),
 				)
 
 				return []interface{}{
@@ -94,7 +93,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 				s.requireSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, amount)),
 				)
 			},
 		},
@@ -104,7 +103,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 				s.setupSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, amount)),
 				)
 
 				return []interface{}{
@@ -130,20 +129,16 @@ func (s *PrecompileTestSuite) TestApprove() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["approve"]
+			method := s.erc20Precompile.Abi.Methods["approve"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -162,7 +157,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 			vmContract.Input = append([]byte{0x09, 0x5e, 0xa7, 0xb3}, methodInputArgs...)
 			vmContract.CallerAddress = s.account2.EvmAddr
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			s.Require().NoError(err, "expected no error")
 
 			out, err := method.Outputs.Unpack(output)

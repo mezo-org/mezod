@@ -2,25 +2,15 @@ package btctoken_test
 
 import (
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
 
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
-const (
-	Name     = "BTC"
-	Symbol   = "BTC"
-	Decimals = uint8(18)
-)
-
 func (s *PrecompileTestSuite) setup() {
-	bankKeeper := s.app.BankKeeper
-	authzKeeper := s.app.AuthzKeeper
-	evmKeeper := *s.app.EvmKeeper
-	btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+	erc20Precompile, err := s.precompileFactoryFn(s.app)
 	s.Require().NoError(err)
-	s.btcTokenPrecompile = btcTokenPrecompile
+	s.erc20Precompile = erc20Precompile
 }
 
 func (s *PrecompileTestSuite) runTest(input []byte, expected interface{}, methodName string) {
@@ -30,10 +20,10 @@ func (s *PrecompileTestSuite) runTest(input []byte, expected interface{}, method
 
 	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
 	vmContract.Input = input
-	output, err := s.btcTokenPrecompile.Run(evm, vmContract, true)
+	output, err := s.erc20Precompile.Run(evm, vmContract, true)
 	s.Require().NoError(err)
 
-	method := s.btcTokenPrecompile.Abi.Methods[methodName]
+	method := s.erc20Precompile.Abi.Methods[methodName]
 
 	out, err := method.Outputs.Unpack(output)
 	s.Require().NoError(err)
@@ -42,15 +32,15 @@ func (s *PrecompileTestSuite) runTest(input []byte, expected interface{}, method
 
 func (s *PrecompileTestSuite) TestName() {
 	s.setup()
-	s.runTest([]byte{0x06, 0xfd, 0xde, 0x03}, Name, "name")
+	s.runTest([]byte{0x06, 0xfd, 0xde, 0x03}, s.name, "name")
 }
 
 func (s *PrecompileTestSuite) TestSymbol() {
 	s.setup()
-	s.runTest([]byte{0x95, 0xd8, 0x9b, 0x41}, Symbol, "symbol")
+	s.runTest([]byte{0x95, 0xd8, 0x9b, 0x41}, s.symbol, "symbol")
 }
 
 func (s *PrecompileTestSuite) TestDecimals() {
 	s.setup()
-	s.runTest([]byte{0x31, 0x3c, 0xe5, 0x67}, Decimals, "decimals")
+	s.runTest([]byte{0x31, 0x3c, 0xe5, 0x67}, s.decimals, "decimals")
 }

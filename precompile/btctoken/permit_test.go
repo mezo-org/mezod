@@ -7,7 +7,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -20,26 +19,6 @@ const (
 	PermitTypehash = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
 	amount         = int64(100)
 )
-
-var ChainID = "mezo_31612-1"
-
-// keccak256(encode(
-//
-//			keccak256(
-//				"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-//			),
-//			keccak256(BTC),
-//			keccak256(1),
-//			31612,
-//			0x7b7C000000000000000000000000000000000000
-//		)
-//	)
-//
-// Same in hex: f98315225d67e6d98b18f0a6b73bf711423ff8310bd350400db36e876c5cddf4
-var DomainSeparator = []byte{
-	249, 131, 21, 34, 93, 103, 230, 217, 139, 24, 240, 166, 183, 59, 247, 17,
-	66, 63, 248, 49, 11, 211, 80, 64, 13, 179, 110, 135, 108, 92, 221, 244,
-}
 
 func (s *PrecompileTestSuite) TestPermit() {
 	// TODO: Remove the skip once the flakiness is fixed.
@@ -263,7 +242,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 				s.requireSendAuthz(
 					s.account2.SdkAddr,
 					s.account1.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, amount)),
 				)
 			},
 		},
@@ -293,7 +272,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 				s.requireSendAuthz(
 					s.account2.SdkAddr,
 					s.account1.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, amount)),
 				)
 			},
 		},
@@ -306,13 +285,9 @@ func (s *PrecompileTestSuite) TestPermit() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, ChainID)
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			// Default nonce for the tests starts with zero. Then we can increment it
 			// by one to check the permit function with different nonces.
@@ -323,7 +298,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 					methodInputs = tc.run(nonce)
 				}
 
-				method := s.btcTokenPrecompile.Abi.Methods["permit"]
+				method := s.erc20Precompile.Abi.Methods["permit"]
 				var methodInputArgs []byte
 				methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -342,7 +317,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 				vmContract.Input = append([]byte{0xd5, 0x05, 0xac, 0xcf}, methodInputArgs...)
 				vmContract.CallerAddress = s.account2.EvmAddr
 
-				output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+				output, err := s.erc20Precompile.Run(evm, vmContract, false)
 				if err != nil && tc.errContains != "" {
 					s.Require().ErrorContains(err, tc.errContains, "expected different error message")
 					return
@@ -410,7 +385,7 @@ func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender c
 	hashedMessage := crypto.Keccak256Hash(message)
 
 	var DomainSeparatorBytes32 [32]byte
-	copy(DomainSeparatorBytes32[:], DomainSeparator[:32])
+	copy(DomainSeparatorBytes32[:], s.domainSeparator[:32])
 
 	encodedData := append([]byte("\x19\x01"), DomainSeparatorBytes32[:]...)
 	encodedData = append(encodedData, hashedMessage.Bytes()...)
@@ -468,20 +443,16 @@ func (s *PrecompileTestSuite) TestNonce() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			evmKeeper := *s.app.EvmKeeper
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, ChainID)
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["nonce"]
+			method := s.erc20Precompile.Abi.Methods["nonce"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 			if tc.basicPass {
@@ -499,7 +470,7 @@ func (s *PrecompileTestSuite) TestNonce() {
 			vmContract.Input = append([]byte{0x70, 0xae, 0x92, 0xd2}, methodInputArgs...)
 			vmContract.CallerAddress = s.account1.EvmAddr
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
 				return
@@ -548,20 +519,16 @@ func (s *PrecompileTestSuite) TestDomainSeparator() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			evmKeeper := *s.app.EvmKeeper
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, ChainID)
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["DOMAIN_SEPARATOR"]
+			method := s.erc20Precompile.Abi.Methods["DOMAIN_SEPARATOR"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 			if tc.basicPass {
@@ -579,7 +546,7 @@ func (s *PrecompileTestSuite) TestDomainSeparator() {
 			vmContract.Input = append([]byte{0x36, 0x44, 0xe5, 0x15}, methodInputArgs...)
 			vmContract.CallerAddress = s.account1.EvmAddr
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
 				return
@@ -589,7 +556,7 @@ func (s *PrecompileTestSuite) TestDomainSeparator() {
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
 			var expectedDomainSeparator [32]byte
-			copy(expectedDomainSeparator[:], DomainSeparator)
+			copy(expectedDomainSeparator[:], s.domainSeparator)
 			s.Require().NoError(err)
 			s.Require().Equal(expectedDomainSeparator, out[0], "expected different value")
 		})
@@ -630,20 +597,16 @@ func (s *PrecompileTestSuite) TestPermitTypehash() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			evmKeeper := *s.app.EvmKeeper
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, ChainID)
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["PERMIT_TYPEHASH"]
+			method := s.erc20Precompile.Abi.Methods["PERMIT_TYPEHASH"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 			if tc.basicPass {
@@ -661,7 +624,7 @@ func (s *PrecompileTestSuite) TestPermitTypehash() {
 			vmContract.Input = append([]byte{0x30, 0xad, 0xf8, 0x1f}, methodInputArgs...)
 			vmContract.CallerAddress = s.account1.EvmAddr
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
 				return

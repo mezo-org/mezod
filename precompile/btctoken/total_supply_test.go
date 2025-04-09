@@ -6,8 +6,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/app"
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
-	"github.com/mezo-org/mezod/utils"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -32,7 +30,7 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 				// Mint more coins to the evm module
 				err := app.BankKeeper.MintCoins(
 					ctx, evmtypes.ModuleName,
-					sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})
+					sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(42))})
 				s.Require().NoError(err)
 			},
 		},
@@ -49,22 +47,19 @@ func (s *PrecompileTestSuite) TestTotalSupply() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function totalSupply()'
 			vmContract.Input = []byte{0x18, 0x16, 0x0d, 0xdd}
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, true)
+			output, err := s.erc20Precompile.Run(evm, vmContract, true)
 			s.Require().NoError(err)
 
-			method := s.btcTokenPrecompile.Abi.Methods["totalSupply"]
+			method := s.erc20Precompile.Abi.Methods["totalSupply"]
 
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
