@@ -47,6 +47,7 @@ func TestPrecompileTestSuite(t *testing.T) {
 		Decimals,
 		DomainSeparator,
 		precompileFactoryFn,
+		true,
 	)
 
 	suite.Run(t, suiteInstance)

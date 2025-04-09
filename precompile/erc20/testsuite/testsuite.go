@@ -45,6 +45,9 @@ type TestSuite struct {
 	domainSeparator     []byte
 	precompileFactoryFn func(*app.Mezo) (*precompile.Contract, error)
 
+	// Must be true only for the precompile tied to the EVM native gas token.
+	ensureEVMBalanceChange bool
+
 	erc20Precompile *precompile.Contract
 }
 
@@ -53,14 +56,16 @@ func New(
 	decimals uint8,
 	domainSeparator []byte,
 	precompileFactoryFn func(*app.Mezo) (*precompile.Contract, error),
+	ensureEVMBalanceChange bool,
 ) *TestSuite {
 	return &TestSuite{
-		denom:               denom,
-		name:                name,
-		symbol:              symbol,
-		decimals:            decimals,
-		domainSeparator:     domainSeparator,
-		precompileFactoryFn: precompileFactoryFn,
+		denom:                  denom,
+		name:                   name,
+		symbol:                 symbol,
+		decimals:               decimals,
+		domainSeparator:        domainSeparator,
+		precompileFactoryFn:    precompileFactoryFn,
+		ensureEVMBalanceChange: ensureEVMBalanceChange,
 	}
 }
 
