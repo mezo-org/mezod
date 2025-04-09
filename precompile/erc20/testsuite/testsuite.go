@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/app"
@@ -37,6 +38,7 @@ type TestSuite struct {
 	ctx sdk.Context
 
 	account1, account2 Key
+	initialDenomSupply sdkmath.Int
 
 	denom               string
 	name                string
@@ -85,4 +87,6 @@ func (s *TestSuite) SetupTest() {
 		1, time.Now().UTC(), "mezo_31612-1", consAddress, nil, nil,
 	)
 	s.ctx = s.app.BaseApp.NewContextLegacy(false, header)
+
+	s.initialDenomSupply = s.app.BankKeeper.GetSupply(s.ctx, s.denom).Amount
 }

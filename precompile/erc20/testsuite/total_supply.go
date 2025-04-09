@@ -16,16 +16,13 @@ import (
 func (s *TestSuite) TestTotalSupply() {
 	testcases := map[string]struct {
 		run      func(sdk.Context, *app.Mezo)
-		expTotal *big.Int
+		expTotal sdkmath.Int
 	}{
-		// This is minted by the existing test_helpers.go file for the generated
-		// account in the Setup() function. 10^14 is minted to the genesis account
-		// resulting in 100000000000000 of the existing total coins.
 		"existing total supply - no coins minted": {
-			expTotal: big.NewInt(100000000000000),
+			expTotal: s.initialDenomSupply,
 		},
 		"add to total supply - mint more coins": {
-			expTotal: big.NewInt(100000000000042),
+			expTotal: s.initialDenomSupply.AddRaw(42),
 			run: func(ctx sdk.Context, app *app.Mezo) {
 				// Mint more coins to the evm module
 				err := app.BankKeeper.MintCoins(
@@ -63,7 +60,7 @@ func (s *TestSuite) TestTotalSupply() {
 
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
-			s.Require().Equal(tc.expTotal, out[0], "expected different value")
+			s.Require().True(tc.expTotal.Equal(sdkmath.NewIntFromBigInt(out[0].(*big.Int))), "expected different value")
 		})
 	}
 }
