@@ -1,4 +1,4 @@
-package btctoken_test
+package testsuite
 
 import (
 	"github.com/mezo-org/mezod/precompile"
@@ -7,13 +7,13 @@ import (
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
-func (s *PrecompileTestSuite) setup() {
+func (s *TestSuite) setupMetadataTest() {
 	erc20Precompile, err := s.precompileFactoryFn(s.app)
 	s.Require().NoError(err)
 	s.erc20Precompile = erc20Precompile
 }
 
-func (s *PrecompileTestSuite) runTest(input []byte, expected interface{}, methodName string) {
+func (s *TestSuite) runMetadataTest(input []byte, expected interface{}, methodName string) {
 	evm := &vm.EVM{
 		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 	}
@@ -30,17 +30,17 @@ func (s *PrecompileTestSuite) runTest(input []byte, expected interface{}, method
 	s.Require().Equal(expected, out[0], "expected different result")
 }
 
-func (s *PrecompileTestSuite) TestName() {
-	s.setup()
-	s.runTest([]byte{0x06, 0xfd, 0xde, 0x03}, s.name, "name")
+func (s *TestSuite) TestName() {
+	s.setupMetadataTest()
+	s.runMetadataTest([]byte{0x06, 0xfd, 0xde, 0x03}, s.name, "name")
 }
 
-func (s *PrecompileTestSuite) TestSymbol() {
-	s.setup()
-	s.runTest([]byte{0x95, 0xd8, 0x9b, 0x41}, s.symbol, "symbol")
+func (s *TestSuite) TestSymbol() {
+	s.setupMetadataTest()
+	s.runMetadataTest([]byte{0x95, 0xd8, 0x9b, 0x41}, s.symbol, "symbol")
 }
 
-func (s *PrecompileTestSuite) TestDecimals() {
-	s.setup()
-	s.runTest([]byte{0x31, 0x3c, 0xe5, 0x67}, s.decimals, "decimals")
+func (s *TestSuite) TestDecimals() {
+	s.setupMetadataTest()
+	s.runMetadataTest([]byte{0x31, 0x3c, 0xe5, 0x67}, s.decimals, "decimals")
 }

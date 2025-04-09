@@ -1,4 +1,4 @@
-package btctoken_test
+package testsuite
 
 import (
 	"math/big"
@@ -13,7 +13,7 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-func (s *PrecompileTestSuite) TestTotalSupply() {
+func (s *TestSuite) TestTotalSupply() {
 	testcases := map[string]struct {
 		run      func(sdk.Context, *app.Mezo)
 		expTotal *big.Int

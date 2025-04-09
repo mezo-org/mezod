@@ -1,4 +1,4 @@
-package btctoken_test
+package testsuite
 
 import (
 	"math/big"
@@ -17,7 +17,7 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-func (s *PrecompileTestSuite) TestTransfer() {
+func (s *TestSuite) TestTransfer() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}
@@ -177,7 +177,7 @@ func (s *PrecompileTestSuite) TestTransfer() {
 	}
 }
 
-func (s *PrecompileTestSuite) TestTransferFrom() {
+func (s *TestSuite) TestTransferFrom() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}
@@ -361,7 +361,7 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 	}
 }
 
-func (s *PrecompileTestSuite) TestEmitTransferEvent() {
+func (s *TestSuite) TestEmitTransferEvent() {
 	testcases := []struct {
 		name   string
 		from   common.Address

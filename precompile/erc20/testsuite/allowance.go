@@ -1,4 +1,4 @@
-package btctoken_test
+package testsuite
 
 import (
 	"math/big"
@@ -14,7 +14,7 @@ import (
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
-func (s *PrecompileTestSuite) TestAllowance() {
+func (s *TestSuite) TestAllowance() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}

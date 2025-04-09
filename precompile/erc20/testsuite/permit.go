@@ -1,4 +1,4 @@
-package btctoken_test
+package testsuite
 
 import (
 	"math/big"
@@ -20,7 +20,7 @@ const (
 	amount         = int64(100)
 )
 
-func (s *PrecompileTestSuite) TestPermit() {
+func (s *TestSuite) TestPermit() {
 	// TODO: Remove the skip once the flakiness is fixed.
 	s.T().Skip("This test is flaky and needs to be fixed. See https://linear.app/thesis-co/issue/TET-93/flaky-unit-test-of-the-btc-permit-method")
 
@@ -342,7 +342,7 @@ func (s *PrecompileTestSuite) TestPermit() {
 	}
 }
 
-func sign(digest common.Hash, s *PrecompileTestSuite) ([32]byte, [32]byte, uint8) {
+func sign(digest common.Hash, s *TestSuite) ([32]byte, [32]byte, uint8) {
 	signature, err := crypto.Sign(digest.Bytes(), s.account1.Priv)
 	if err != nil {
 		s.Require().NoError(err)
@@ -357,7 +357,7 @@ func sign(digest common.Hash, s *PrecompileTestSuite) ([32]byte, [32]byte, uint8
 	return rComponent, sComponent, v
 }
 
-func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender common.Address, amount, nonce, deadline int64) common.Hash {
+func buildDigest(s *TestSuite, permitTypehash string, owner, spender common.Address, amount, nonce, deadline int64) common.Hash {
 	var PermitTypehashBytes32 [32]byte
 	copy(PermitTypehashBytes32[:], crypto.Keccak256([]byte(permitTypehash))[:32])
 
@@ -393,7 +393,7 @@ func buildDigest(s *PrecompileTestSuite, permitTypehash string, owner, spender c
 	return crypto.Keccak256Hash(encodedData)
 }
 
-func (s *PrecompileTestSuite) TestNonce() {
+func (s *TestSuite) TestNonce() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}
@@ -485,7 +485,7 @@ func (s *PrecompileTestSuite) TestNonce() {
 	}
 }
 
-func (s *PrecompileTestSuite) TestDomainSeparator() {
+func (s *TestSuite) TestDomainSeparator() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}
@@ -563,7 +563,7 @@ func (s *PrecompileTestSuite) TestDomainSeparator() {
 	}
 }
 
-func (s *PrecompileTestSuite) TestPermitTypehash() {
+func (s *TestSuite) TestPermitTypehash() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}

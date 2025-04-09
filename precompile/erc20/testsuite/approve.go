@@ -1,4 +1,4 @@
-package btctoken_test
+package testsuite
 
 import (
 	"math/big"
@@ -17,7 +17,7 @@ import (
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
-func (s *PrecompileTestSuite) TestApprove() {
+func (s *TestSuite) TestApprove() {
 	amount := int64(100)
 
 	testcases := []struct {
@@ -177,7 +177,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 
 // Check that athorization exists for a given grantee and granter
 // for a given amount.
-func (s *PrecompileTestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
+func (s *TestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
 	authzKeeper := s.app.AuthzKeeper
 	grants, err := authzKeeper.GranteeGrants(s.ctx, &authz.QueryGranteeGrantsRequest{
 		Grantee: grantee.String(),
@@ -198,7 +198,7 @@ func (s *PrecompileTestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, 
 }
 
 // Sets up a send authorization for a given grantee and granter.
-func (s *PrecompileTestSuite) setupSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
+func (s *TestSuite) setupSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
 	authzKeeper := s.app.AuthzKeeper
 	expiration := s.ctx.BlockTime().Add(time.Hour * 24 * 365)
 	sendAuthz := banktypes.NewSendAuthorization(amount, nil)
@@ -240,7 +240,7 @@ func unpackGrantAuthzs(grantAuthzs []*authz.GrantAuthorization) ([]authz.Authori
 	return auths, nil
 }
 
-func (s *PrecompileTestSuite) TestEmitApprovalEvent() {
+func (s *TestSuite) TestEmitApprovalEvent() {
 	testcases := []struct {
 		name    string
 		owner   common.Address
