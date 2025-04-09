@@ -84,6 +84,25 @@ queries, transfers, approvals.
 See [IBTC](https://github.com/mezo-org/mezod/blob/main/precompile/btctoken/IBTC.sol)
 interface for a list of methods.
 
+### MEZO Token Precompile
+
+#### Overview
+
+The MEZO Token precompile provides an interface for interacting with Mezo's
+ERC20 MEZO token. It enables standard ERC-20 token operations such as balance
+queries, transfers, approvals.
+
+#### Address
+
+```
+0x7b7c000000000000000000000000000000000001
+```
+
+#### Methods
+
+See [IMEZO](https://github.com/mezo-org/mezod/blob/main/precompile/mezotoken/IMEZO.sol)
+interface for a list of methods.
+
 ### Validator Pool Precompile
 
 #### Overview
