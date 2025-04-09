@@ -100,6 +100,7 @@ queries, transfers, approvals.
 
 #### Methods
 
+<!-- markdown-link-check-disable-next-line -->
 See [IMEZO](https://github.com/mezo-org/mezod/blob/main/precompile/mezotoken/IMEZO.sol)
 interface for a list of methods.
 
