@@ -1,4 +1,4 @@
-package btctoken
+package erc20
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
-	evm "github.com/mezo-org/mezod/x/evm/types"
+	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
 )
 
 const (
@@ -20,39 +20,45 @@ const (
 	TransferFromMethodName = "transferFrom"
 )
 
-type transferMethod struct {
+type TransferMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
+	evmKeeper   evmkeeper.Keeper
+	denom       string
 }
 
-func newTransferMethod(
+func NewTransferMethod(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
-) *transferMethod {
-	return &transferMethod{
+	evmKeeper evmkeeper.Keeper,
+	denom string,
+) *TransferMethod {
+	return &TransferMethod{
 		bankKeeper:  bankKeeper,
 		authzkeeper: authzkeeper,
+		evmKeeper:   evmKeeper,
+		denom:       denom,
 	}
 }
 
-func (tm *transferMethod) MethodName() string {
+func (tm *TransferMethod) MethodName() string {
 	return TransferMethodName
 }
 
-func (tm *transferMethod) MethodType() precompile.MethodType {
+func (tm *TransferMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (tm *transferMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (tm *TransferMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (tm *transferMethod) Payable() bool {
+func (tm *TransferMethod) Payable() bool {
 	return false
 }
 
-func (tm *transferMethod) Run(
+func (tm *TransferMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
@@ -75,42 +81,48 @@ func (tm *transferMethod) Run(
 		amount = big.NewInt(0)
 	}
 
-	return transfer(context, tm.bankKeeper, tm.authzkeeper, from, to, amount)
+	return transfer(context, tm.bankKeeper, tm.authzkeeper, tm.evmKeeper, tm.denom, from, to, amount)
 }
 
-type transferFromMethod struct {
+type TransferFromMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
+	evmKeeper   evmkeeper.Keeper
+	denom       string
 }
 
-func newTransferFromMethod(
+func NewTransferFromMethod(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
-) *transferFromMethod {
-	return &transferFromMethod{
+	evmKeeper evmkeeper.Keeper,
+	denom string,
+) *TransferFromMethod {
+	return &TransferFromMethod{
 		bankKeeper:  bankKeeper,
 		authzkeeper: authzkeeper,
+		evmKeeper:   evmKeeper,
+		denom:       denom,
 	}
 }
 
-func (tfm *transferFromMethod) MethodName() string {
+func (tfm *TransferFromMethod) MethodName() string {
 	return TransferFromMethodName
 }
 
-func (tfm *transferFromMethod) MethodType() precompile.MethodType {
+func (tfm *TransferFromMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (tfm *transferFromMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (tfm *TransferFromMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (tfm *transferFromMethod) Payable() bool {
+func (tfm *TransferFromMethod) Payable() bool {
 	return false
 }
 
-func (tfm *transferFromMethod) Run(
+func (tfm *TransferFromMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
@@ -136,16 +148,24 @@ func (tfm *transferFromMethod) Run(
 		amount = big.NewInt(0)
 	}
 
-	return transfer(context, tfm.bankKeeper, tfm.authzkeeper, from, to, amount)
+	return transfer(context, tfm.bankKeeper, tfm.authzkeeper, tfm.evmKeeper, tfm.denom, from, to, amount)
 }
 
-func transfer(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, from, to common.Address, amount *big.Int) (precompile.MethodOutputs, error) {
+func transfer(
+	context *precompile.RunContext,
+	bankKeeper bankkeeper.Keeper,
+	authzkeeper authzkeeper.Keeper,
+	evmKeeper evmkeeper.Keeper,
+	denom string,
+	from, to common.Address,
+	amount *big.Int,
+) (precompile.MethodOutputs, error) {
 	if amount.Sign() > 0 {
 		sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert amount: [%w]", err)
 		}
-		coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}}
+		coins := sdk.Coins{{Denom: denom, Amount: sdkAmount}}
 
 		msg := banktypes.NewMsgSend(from.Bytes(), to.Bytes(), coins)
 
@@ -185,16 +205,24 @@ func transfer(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, auth
 		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
 	}
 
-	balanceDelta, overflow := uint256.FromBig(amount)
-	if overflow {
-		return nil, fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", amount)
-	}
+	if denom == evmKeeper.GetParams(context.SdkCtx()).EvmDenom {
+		// If this precompile is tied to the native gas token of the EVM layer,
+		// we MUST use the journal to propagate balance changes back to the
+		// EVM stateDB. This is absolutely CRITICAL to properly sync state
+		// changes between the Cosmos SDK and EVM layers.
+		//
+		// On the other hand, this MUST NOT be done if the precompile is tied to
+		// a non-gas ERC20 token to ensure its transfers do not affect the
+		// balances of the EVM native gas token for the from/to addresses.
+		balanceDelta, overflow := uint256.FromBig(amount)
+		if overflow {
+			return nil, fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", amount)
+		}
 
-	j := context.Journal()
-	// update our from and to balance by setting properly the state
-	// in the state DB
-	j.SubBalance(from, balanceDelta, tracing.BalanceChangeTransfer)
-	j.AddBalance(to, balanceDelta, tracing.BalanceChangeTransfer)
+		journal := context.Journal()
+		journal.SubBalance(from, balanceDelta, tracing.BalanceChangeTransfer)
+		journal.AddBalance(to, balanceDelta, tracing.BalanceChangeTransfer)
+	}
 
 	return precompile.MethodOutputs{true}, nil
 }

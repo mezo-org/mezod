@@ -1,21 +1,18 @@
-package btctoken_test
+package testsuite
 
 import (
 	"math/big"
 
-	sdkmath "cosmossdk.io/math"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/vm"
-
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
+
+	sdkmath "cosmossdk.io/math"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-func (s *PrecompileTestSuite) TestAllowance() {
+func (s *TestSuite) TestBalance() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}
@@ -26,45 +23,41 @@ func (s *PrecompileTestSuite) TestAllowance() {
 		{
 			name: "invalid number of arguments",
 			run: func() []interface{} {
-				return []interface{}{1}
+				return []interface{}{1, 1}
 			},
 			errContains: "argument count mismatch",
 		},
 		{
-			name: "invalid owner address",
+			name: "check zero balance",
 			run: func() []interface{} {
-				return []interface{}{"invalid address", s.account1.EvmAddr}
-			},
-			errContains: "cannot use string as type array as argument",
-		},
-		{
-			name: "invalid spender address",
-			run: func() []interface{} {
-				return []interface{}{s.account1.EvmAddr, "invalid address"}
-			},
-			errContains: "cannot use string as type array as argument",
-		},
-		{
-			name: "no allowance authorization exist",
-			run: func() []interface{} {
-				return []interface{}{s.account1.EvmAddr, s.account2.EvmAddr}
+				return []interface{}{s.account1.EvmAddr}
 			},
 			basicPass:     true,
-			expectedValue: common.Big0,
+			expectedValue: big.NewInt(0),
 		},
 		{
-			name: "allowance exists for spender",
+			name: "check non-zero balance",
 			run: func() []interface{} {
-				s.setupSendAuthz(
-					precompile.TypesConverter.Address.ToSDK(s.account1.EvmAddr),
-					precompile.TypesConverter.Address.ToSDK(s.account2.EvmAddr),
-					sdk.NewCoins(sdk.NewCoin("abtc", sdkmath.NewInt(42))),
+				// Mint some coins to the module account and then send to the address
+				err := s.app.BankKeeper.MintCoins(
+					s.ctx,
+					evmtypes.ModuleName,
+					sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(1e18))},
 				)
+				s.Require().NoError(err, "failed to mint coins")
 
-				return []interface{}{s.account2.EvmAddr, s.account1.EvmAddr}
+				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(
+					s.ctx,
+					evmtypes.ModuleName,
+					s.account1.EvmAddr.Bytes(),
+					sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(1000000000000))},
+				)
+				s.Require().NoError(err, "failed to send coins from module to account")
+
+				return []interface{}{s.account1.EvmAddr}
 			},
 			basicPass:     true,
-			expectedValue: big.NewInt(42),
+			expectedValue: big.NewInt(1000000000000),
 		},
 	}
 
@@ -75,20 +68,16 @@ func (s *PrecompileTestSuite) TestAllowance() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["allowance"]
+			method := s.erc20Precompile.Abi.Methods["balanceOf"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -103,11 +92,10 @@ func (s *PrecompileTestSuite) TestAllowance() {
 			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
-			// In this case a function signature is 'function allowance(address owner, address spender)'
-			vmContract.Input = append([]byte{0xdd, 0x62, 0xed, 0x3e}, methodInputArgs...)
-			vmContract.CallerAddress = s.account2.EvmAddr
+			// In this case a function signature is 'function balanceOf(address)'
+			vmContract.Input = append([]byte{0x70, 0xa0, 0x82, 0x31}, methodInputArgs...)
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
 				return

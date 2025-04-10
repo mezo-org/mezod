@@ -7,9 +7,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   console.log(`deployer is ${deployer}`)
 
-  console.log("Deploying MezoTransfers contract...")
+  console.log("Deploying BTCTransfers contract...")
 
-  await deployments.deploy("MezoTransfers", {
+  await deployments.deploy("BTCTransfers", {
     from: deployer,
     args: [],
     log: true,
@@ -19,4 +19,4 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func
 
-func.tags = ["MezoTransfers"]
+func.tags = ["BTCTransfers"]

@@ -1,49 +1,51 @@
-package btctoken
+package erc20
 
 import (
 	"fmt"
 
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/mezo-org/mezod/precompile"
-	evm "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // TotalSupplyMethodName is the name of the totalSupply method. It matches the name
 // of the method in the contract ABI.
 const TotalSupplyMethodName = "totalSupply"
 
-// totalSupplyMethod is the implementation of the totalSupply method that returns
-// the total supply of the BTC tokens in existence.
-type totalSupplyMethod struct {
+// TotalSupplyMethod is the implementation of the totalSupply method that returns
+// the total supply of the ERC20 tokens in existence.
+type TotalSupplyMethod struct {
 	bankKeeper bankkeeper.Keeper
+	denom      string
 }
 
-func newTotalSupplyMethod(
+func NewTotalSupplyMethod(
 	bankKeeper bankkeeper.Keeper,
-) *totalSupplyMethod {
-	return &totalSupplyMethod{
+	denom string,
+) *TotalSupplyMethod {
+	return &TotalSupplyMethod{
 		bankKeeper: bankKeeper,
+		denom:      denom,
 	}
 }
 
-func (tsm *totalSupplyMethod) MethodName() string {
+func (tsm *TotalSupplyMethod) MethodName() string {
 	return TotalSupplyMethodName
 }
 
-func (tsm *totalSupplyMethod) MethodType() precompile.MethodType {
+func (tsm *TotalSupplyMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (tsm *totalSupplyMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (tsm *TotalSupplyMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (tsm *totalSupplyMethod) Payable() bool {
+func (tsm *TotalSupplyMethod) Payable() bool {
 	return false
 }
 
-func (tsm *totalSupplyMethod) Run(
+func (tsm *TotalSupplyMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
@@ -51,9 +53,9 @@ func (tsm *totalSupplyMethod) Run(
 		return nil, err
 	}
 
-	supply := tsm.bankKeeper.GetSupply(context.SdkCtx(), evm.DefaultEVMDenom)
+	supply := tsm.bankKeeper.GetSupply(context.SdkCtx(), tsm.denom)
 	if supply.Amount.IsNil() {
-		return nil, fmt.Errorf("failed to get the supply amount of the BTC token")
+		return nil, fmt.Errorf("failed to get the supply amount of the %s token", tsm.denom)
 	}
 
 	return precompile.MethodOutputs{

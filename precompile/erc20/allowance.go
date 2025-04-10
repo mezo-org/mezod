@@ -1,4 +1,4 @@
-package btctoken
+package erc20
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
-	evm "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // AllowanceMethodName is the name of the Allowance method that should match the
@@ -19,37 +18,40 @@ const (
 	AllowanceMethodName = "allowance"
 )
 
-type allowanceMethod struct {
+type AllowanceMethod struct {
 	authzkeeper authzkeeper.Keeper
+	denom       string
 }
 
-func newAllowanceMethod(
+func NewAllowanceMethod(
 	authzkeeper authzkeeper.Keeper,
-) *allowanceMethod {
-	return &allowanceMethod{
+	denom string,
+) *AllowanceMethod {
+	return &AllowanceMethod{
 		authzkeeper: authzkeeper,
+		denom:       denom,
 	}
 }
 
-func (am *allowanceMethod) MethodName() string {
+func (am *AllowanceMethod) MethodName() string {
 	return AllowanceMethodName
 }
 
-func (am *allowanceMethod) MethodType() precompile.MethodType {
+func (am *AllowanceMethod) MethodType() precompile.MethodType {
 	return precompile.Read
 }
 
-func (am *allowanceMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (am *AllowanceMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (am *allowanceMethod) Payable() bool {
+func (am *AllowanceMethod) Payable() bool {
 	return false
 }
 
 // Run returns the allowance of the spender for the owner.
-func (am *allowanceMethod) Run(
+func (am *AllowanceMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
@@ -81,7 +83,12 @@ func (am *allowanceMethod) Run(
 	}
 
 	var allowance sdkmath.Int
-	authorization, _ := am.authzkeeper.GetAuthorization(context.SdkCtx(), precompile.TypesConverter.Address.ToSDK(spender), precompile.TypesConverter.Address.ToSDK(owner), SendMsgURL)
+	authorization, _ := am.authzkeeper.GetAuthorization(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(spender),
+		precompile.TypesConverter.Address.ToSDK(owner),
+		SendMsgURL,
+	)
 	if authorization == nil {
 		allowance = sdkmath.ZeroInt()
 	} else {
@@ -92,7 +99,7 @@ func (am *allowanceMethod) Run(
 			)
 		}
 
-		allowance = sendAuth.SpendLimit.AmountOfNoDenomValidation(evm.DefaultEVMDenom)
+		allowance = sendAuth.SpendLimit.AmountOfNoDenomValidation(am.denom)
 	}
 
 	return precompile.MethodOutputs{

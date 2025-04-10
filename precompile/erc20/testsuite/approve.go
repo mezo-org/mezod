@@ -1,4 +1,4 @@
-package btctoken_test
+package testsuite
 
 import (
 	"math/big"
@@ -13,13 +13,11 @@ import (
 	"github.com/mezo-org/mezod/app"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/precompile/erc20"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
-func (s *PrecompileTestSuite) TestApprove() {
-	amount := int64(100)
-
+func (s *TestSuite) TestApprove() {
 	testcases := []struct {
 		name        string
 		run         func() []interface{}
@@ -63,7 +61,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 			name: "approve without existing authorization",
 			run: func() []interface{} {
 				return []interface{}{
-					s.account1.EvmAddr, big.NewInt(amount),
+					s.account1.EvmAddr, big.NewInt(100),
 				}
 			},
 			basicPass: true,
@@ -71,21 +69,21 @@ func (s *PrecompileTestSuite) TestApprove() {
 				s.requireSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
 				)
 			},
 		},
 		{
-			name: "approve with existing authorization",
+			name: "approve more with existing single-denom authorization",
 			run: func() []interface{} {
 				s.setupSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", int64(1))),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 1)),
 				)
 
 				return []interface{}{
-					s.account1.EvmAddr, big.NewInt(amount),
+					s.account1.EvmAddr, big.NewInt(100),
 				}
 			},
 			basicPass: true,
@@ -93,17 +91,145 @@ func (s *PrecompileTestSuite) TestApprove() {
 				s.requireSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
 				)
 			},
 		},
 		{
-			name: "delete existing authorization",
+			name: "approve less with existing single-denom authorization",
 			run: func() []interface{} {
 				s.setupSendAuthz(
 					s.account1.SdkAddr,
 					s.account2.SdkAddr,
-					sdk.NewCoins(sdk.NewInt64Coin("abtc", amount)),
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 1000)),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
+				)
+			},
+		},
+		{
+			name: "approve same with existing single-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
+				)
+			},
+		},
+		{
+			name: "approve more with existing multi-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 1),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+			},
+		},
+		{
+			name: "approve less with existing multi-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 1000),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+			},
+		},
+		{
+			name: "approve same with existing multi-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, big.NewInt(100),
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+			},
+		},
+		{
+			name: "delete existing single-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin(s.denom, 100)),
 				)
 
 				return []interface{}{
@@ -121,6 +247,31 @@ func (s *PrecompileTestSuite) TestApprove() {
 				s.Require().Len(authzs, 0, "expected grant to be deleted")
 			},
 		},
+		{
+			name: "delete existing multi-denom authorization",
+			run: func() []interface{} {
+				s.setupSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(
+						sdk.NewInt64Coin(s.denom, 100),
+						sdk.NewInt64Coin("otherdenom", 2),
+					).Sort(),
+				)
+
+				return []interface{}{
+					s.account1.EvmAddr, common.Big0,
+				}
+			},
+			basicPass: true,
+			postCheck: func() {
+				s.requireSendAuthz(
+					s.account1.SdkAddr,
+					s.account2.SdkAddr,
+					sdk.NewCoins(sdk.NewInt64Coin("otherdenom", 2)),
+				)
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -129,20 +280,16 @@ func (s *PrecompileTestSuite) TestApprove() {
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
-
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["approve"]
+			method := s.erc20Precompile.Abi.Methods["approve"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -161,7 +308,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 			vmContract.Input = append([]byte{0x09, 0x5e, 0xa7, 0xb3}, methodInputArgs...)
 			vmContract.CallerAddress = s.account2.EvmAddr
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			s.Require().NoError(err, "expected no error")
 
 			out, err := method.Outputs.Unpack(output)
@@ -181,7 +328,7 @@ func (s *PrecompileTestSuite) TestApprove() {
 
 // Check that athorization exists for a given grantee and granter
 // for a given amount.
-func (s *PrecompileTestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
+func (s *TestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
 	authzKeeper := s.app.AuthzKeeper
 	grants, err := authzKeeper.GranteeGrants(s.ctx, &authz.QueryGranteeGrantsRequest{
 		Grantee: grantee.String(),
@@ -202,7 +349,7 @@ func (s *PrecompileTestSuite) requireSendAuthz(grantee, granter sdk.AccAddress, 
 }
 
 // Sets up a send authorization for a given grantee and granter.
-func (s *PrecompileTestSuite) setupSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
+func (s *TestSuite) setupSendAuthz(grantee, granter sdk.AccAddress, amount sdk.Coins) {
 	authzKeeper := s.app.AuthzKeeper
 	expiration := s.ctx.BlockTime().Add(time.Hour * 24 * 365)
 	sendAuthz := banktypes.NewSendAuthorization(amount, nil)
@@ -244,7 +391,7 @@ func unpackGrantAuthzs(grantAuthzs []*authz.GrantAuthorization) ([]authz.Authori
 	return auths, nil
 }
 
-func (s *PrecompileTestSuite) TestEmitApprovalEvent() {
+func (s *TestSuite) TestEmitApprovalEvent() {
 	testcases := []struct {
 		name    string
 		owner   common.Address
@@ -262,7 +409,7 @@ func (s *PrecompileTestSuite) TestEmitApprovalEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			ae := btctoken.NewApprovalEvent(tc.owner, tc.spender, tc.amount)
+			ae := erc20.NewApprovalEvent(tc.owner, tc.spender, tc.amount)
 			args := ae.Arguments()
 
 			s.Require().Len(args, 3)

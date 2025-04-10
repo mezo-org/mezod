@@ -1,4 +1,4 @@
-package btctoken
+package erc20
 
 import (
 	"fmt"
@@ -12,7 +12,6 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
-	evm "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // ApproveMethodName is the name of the approve method that should match the name
@@ -27,47 +26,50 @@ var SendMsgURL = sdk.MsgTypeURL(&banktypes.MsgSend{})
 
 // Sets a `value` amount of tokens as the allowance of `spender` over the
 // caller's tokens.
-type approveMethod struct {
+type ApproveMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
+	denom       string
 }
 
-func newApproveMethod(
+func NewApproveMethod(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
-) *approveMethod {
-	return &approveMethod{
+	denom string,
+) *ApproveMethod {
+	return &ApproveMethod{
 		bankKeeper:  bankKeeper,
 		authzkeeper: authzkeeper,
+		denom:       denom,
 	}
 }
 
-func (am *approveMethod) MethodName() string {
+func (am *ApproveMethod) MethodName() string {
 	return ApproveMethodName
 }
 
-func (am *approveMethod) MethodType() precompile.MethodType {
+func (am *ApproveMethod) MethodType() precompile.MethodType {
 	return precompile.Write
 }
 
-func (am *approveMethod) RequiredGas(_ []byte) (uint64, bool) {
+func (am *ApproveMethod) RequiredGas(_ []byte) (uint64, bool) {
 	// Fallback to the default gas calculation.
 	return 0, false
 }
 
-func (am *approveMethod) Payable() bool {
+func (am *ApproveMethod) Payable() bool {
 	return false
 }
 
 // Approve sets the given amount as the allowance of the spender address over
-// BTC coin. It returns a boolean value when the operation succeeded.
+// the ERC20 token. It returns a boolean value when the operation succeeded.
 //
 // The Approve method handles the following cases:
 // 1. no authorization, amount 0 -> return error
 // 2. no authorization, amount positive -> create a new authorization
 // 3. authorization exists, amount 0 -> delete authorization
 // 4. authorization exists, amount positive -> update authorization
-func (am *approveMethod) Run(
+func (am *ApproveMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
@@ -96,7 +98,7 @@ func (am *approveMethod) Run(
 
 	authorization, expiration := am.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
 
-	err := handleAuthorization(authorization, spender, amount, context, granter, expiration, am.authzkeeper)
+	err := handleAuthorization(am.denom, authorization, spender, amount, context, granter, expiration, am.authzkeeper)
 	if err != nil {
 		return nil, err
 	}
@@ -119,32 +121,46 @@ func (am *approveMethod) Run(
 // no authorization, amount positive -> create a new authorization
 // authorization exists, amount 0 -> delete authorization
 // authorization exists, amount positive -> update authorization
-func handleAuthorization(authorization authz.Authorization, spender common.Address, amount *big.Int, context *precompile.RunContext, granter common.Address, expiration *time.Time, authzkeeper authzkeeper.Keeper) error {
+func handleAuthorization(
+	denom string,
+	authorization authz.Authorization,
+	spender common.Address,
+	amount *big.Int,
+	context *precompile.RunContext,
+	granter common.Address,
+	expiration *time.Time,
+	authzkeeper authzkeeper.Keeper,
+) error {
 	var err error
 
 	if authorization == nil {
 		if amount.Sign() == 0 {
 			err = fmt.Errorf("no existing approvals, cannot approve 0")
 		} else {
-			err = createAuthorization(context.SdkCtx(), spender, granter, amount, authzkeeper)
+			err = createAuthorization(context.SdkCtx(), denom, spender, granter, amount, authzkeeper)
 		}
 	} else {
-		if amount.Sign() == 0 {
-			err = authzkeeper.DeleteGrant(context.SdkCtx(), spender.Bytes(), granter.Bytes(), SendMsgURL)
-		} else {
-			err = updateAuthorization(context.SdkCtx(), spender, granter, amount, authorization, expiration, authzkeeper)
-		}
+		// updateAuthorization updates or deletes the authorization, depending on the amount.
+		err = updateAuthorization(context.SdkCtx(), denom, spender, granter, amount, authorization, expiration, authzkeeper)
 	}
 	return err
 }
 
-func createAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int, authzkeeper authzkeeper.Keeper) error {
+func createAuthorization(
+	ctx sdk.Context,
+	denom string,
+	grantee, granter common.Address,
+	amount *big.Int,
+	authzkeeper authzkeeper.Keeper,
+) error {
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
 		return fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 
-	coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}}
+	// Single-coin spend limit is always sorted so no need to sort explicitly.
+	// The isSorted invariant is maintained for future updates.
+	coins := sdk.Coins{{Denom: denom, Amount: sdkAmount}}
 
 	expiration := ctx.BlockTime().Add(ApprovalExpiration)
 
@@ -156,20 +172,60 @@ func createAuthorization(ctx sdk.Context, grantee, granter common.Address, amoun
 	return authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), authorization, &expiration)
 }
 
-func updateAuthorization(ctx sdk.Context, grantee, granter common.Address, amount *big.Int, authorization authz.Authorization, expiration *time.Time, authzkeeper authzkeeper.Keeper) error {
+func updateAuthorization(
+	ctx sdk.Context,
+	denom string,
+	grantee, granter common.Address,
+	amount *big.Int,
+	authorization authz.Authorization,
+	expiration *time.Time,
+	authzkeeper authzkeeper.Keeper,
+) error {
 	sendAuthz, ok := authorization.(*banktypes.SendAuthorization)
 	if !ok {
 		return fmt.Errorf("unknown authorization type")
 	}
 
-	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
+	// Caller ensures targetAmount is >= 0.
+	targetAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
 		return fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 
-	sendAuthz.SpendLimit[0] = sdk.Coin{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}
+	// Sort the spend limit to ensure the isSorted invariant is maintained for all
+	// below operations made on the spend limit. This is not strictly required if
+	// the authorization is managed only by this precompile function
+	// (the spend limit is sorted upon update) but may save us in case the
+	// authorization is ever modified somewhere else.
+	sendAuthz.SpendLimit = sendAuthz.SpendLimit.Sort()
+
+	currentAmount := sendAuthz.SpendLimit.AmountOfNoDenomValidation(denom)
+	deltaAmount := targetAmount.Sub(currentAmount)
+
+	switch deltaAmount.Sign() {
+	case 1:
+		deltaCoins := sdk.Coins{{Denom: denom, Amount: deltaAmount}}
+		sendAuthz.SpendLimit = sendAuthz.SpendLimit.Add(deltaCoins...)
+	case -1:
+		deltaCoins := sdk.Coins{{Denom: denom, Amount: deltaAmount.Neg()}}
+		sendAuthz.SpendLimit = sendAuthz.SpendLimit.Sub(deltaCoins...)
+	default:
+		// No change so do nothing.
+		return nil
+	}
+
+	// Sort the updated spend limit to ensure the isSorted invariant is maintained for future updates.
+	sendAuthz.SpendLimit = sendAuthz.SpendLimit.Sort()
+
+	if sendAuthz.SpendLimit.IsZero() {
+		// If the spend limit is zero, short-circuit and delete the authorization.
+		// This is necessary as a send authorization with zero spend limit is invalid
+		// and will not pass the ValidateBasic check.
+		return authzkeeper.DeleteGrant(ctx, grantee.Bytes(), granter.Bytes(), SendMsgURL)
+	}
+
 	if err := sendAuthz.ValidateBasic(); err != nil {
-		return err
+		return fmt.Errorf("failed to validate new spend authorization: [%w]", err)
 	}
 
 	return authzkeeper.SaveGrant(ctx, grantee.Bytes(), granter.Bytes(), sendAuthz, expiration)
@@ -181,7 +237,7 @@ func isZeroAddress(address common.Address) bool {
 
 // ApprovalEvent is the implementation of the Approval event that contains
 // the following arguments:
-// - owner (indexed): the address of BTC owner,
+// - owner (indexed): the address of ERC20 owner,
 // - to (indexed): the address of spender,
 // - amount (non-indexed): the amount of tokens approved.
 type ApprovalEvent struct {

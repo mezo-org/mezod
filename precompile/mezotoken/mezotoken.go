@@ -1,9 +1,10 @@
-package btctoken
+package mezotoken
 
 import (
 	"embed"
 	"fmt"
 
+	"github.com/mezo-org/mezod/utils"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
@@ -19,17 +20,17 @@ import (
 var filesystem embed.FS
 
 const (
-	// EvmAddress is the EVM address of the BTC token precompile. Token address is
+	// EvmAddress is the EVM address of the MEZO token precompile. Token address is
 	// prefixed with 0x7b7c which was used to derive Mezo chain ID. This prefix is
 	// used to avoid potential collisions with EVM native precompiles.
-	EvmAddress = evmtypes.BTCTokenPrecompileAddress
+	EvmAddress = evmtypes.MEZOTokenPrecompileAddress
 
 	Decimals = uint8(18)
-	Symbol   = "BTC"
-	Name     = "BTC"
+	Symbol   = "MEZO"
+	Name     = "MEZO"
 )
 
-// NewPrecompileVersionMap creates a new version map for the BTC token precompile.
+// NewPrecompileVersionMap creates a new version map for the MEZO token precompile.
 func NewPrecompileVersionMap(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
@@ -43,14 +44,18 @@ func NewPrecompileVersionMap(
 
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
-			0:                                        contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
-			evmtypes.BTCTokenPrecompileLatestVersion: contractV1,
+			evmtypes.MEZOTokenPrecompileLatestVersion: contractV1,
 		},
 	), nil
 }
 
-// NewPrecompile creates a new BTC token precompile.
-func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, evmkeeper evmkeeper.Keeper, id string) (*precompile.Contract, error) {
+// NewPrecompile creates a new MEZO token precompile.
+func NewPrecompile(
+	bankKeeper bankkeeper.Keeper,
+	authzkeeper authzkeeper.Keeper,
+	evmkeeper evmkeeper.Keeper,
+	id string,
+) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load abi file: [%w]", err)
@@ -62,14 +67,14 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 	}
 
 	evmAddress := common.HexToAddress(EvmAddress)
-	denom := evmtypes.DefaultEVMDenom
+	denom := utils.MezoDenom
 
 	domainSeparator, err := erc20.BuildDomainSeparator(chainID, Name, "1", evmAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build domain separator: [%w]", err)
 	}
 
-	nonceKey := evmtypes.PrecompileBTCNonceKey()
+	nonceKey := evmtypes.PrecompileMEZONonceKey()
 
 	contract := precompile.NewContract(
 		contractAbi,
@@ -83,8 +88,8 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 	return contract, nil
 }
 
-// newPrecompileMethods builds the list of methods for the BTC token precompile.
-// All methods returned by this function are registered in the BTC token precompile.
+// newPrecompileMethods builds the list of methods for the MEZO token precompile.
+// All methods returned by this function are registered in the MEZO token precompile.
 func newPrecompileMethods(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,

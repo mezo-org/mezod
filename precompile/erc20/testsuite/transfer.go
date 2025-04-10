@@ -1,4 +1,4 @@
-package btctoken_test
+package testsuite
 
 import (
 	"math/big"
@@ -6,18 +6,17 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/mezo-org/mezod/utils"
 
 	sdkmath "cosmossdk.io/math"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/precompile/erc20"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-func (s *PrecompileTestSuite) TestTransfer() {
+func (s *TestSuite) TestTransfer() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}
@@ -62,13 +61,13 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			name: "not enough balance",
 			run: func() []interface{} {
 				// Mint some coins to the module account and then send to the from address
-				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(1e18))})
+				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(1e18))})
 				s.Require().NoError(err, "failed to mint coins")
-				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})
+				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(42))})
 				s.Require().NoError(err, "failed to send coins from module to account")
 
 				return []interface{}{
-					s.account1.EvmAddr, big.NewInt(43),
+					s.account2.EvmAddr, big.NewInt(43),
 				}
 			},
 			basicPass:   true,
@@ -78,9 +77,9 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			name: "transfer zero amount",
 			run: func() []interface{} {
 				// Mint some coins to the module account and then send to the from address
-				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(1e18))})
+				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(1e18))})
 				s.Require().NoError(err, "failed to mint coins")
-				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})
+				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(42))})
 				s.Require().NoError(err, "failed to send coins from module to account")
 
 				return []interface{}{
@@ -90,8 +89,8 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			basicPass: true,
 			postCheck: func() {
 				// Check the balance of the two accounts
-				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, utils.BaseDenom)
-				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, utils.BaseDenom)
+				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, s.denom)
+				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, s.denom)
 				s.Require().Equal(sdkmath.NewInt(42), acc1.Amount)
 				s.Require().Equal(sdkmath.NewInt(0), acc2.Amount)
 			},
@@ -100,9 +99,9 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			name: "successful transfer",
 			run: func() []interface{} {
 				// Mint some coins to the module account and then send to the from address
-				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(1e18))})
+				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(1e18))})
 				s.Require().NoError(err, "failed to mint coins")
-				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})
+				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(42))})
 				s.Require().NoError(err, "failed to send coins from module to account")
 
 				return []interface{}{
@@ -112,8 +111,8 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			basicPass: true,
 			postCheck: func() {
 				// Check the balance of the two accounts
-				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, utils.BaseDenom)
-				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, utils.BaseDenom)
+				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, s.denom)
+				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, s.denom)
 				s.Require().Equal(sdkmath.NewInt(2), acc1.Amount)
 				s.Require().Equal(sdkmath.NewInt(40), acc2.Amount)
 			},
@@ -124,23 +123,23 @@ func (s *PrecompileTestSuite) TestTransfer() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, s.app.EvmKeeper, statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
+			getEVMBalance := func(address common.Address) sdkmath.Int {
+				return sdkmath.NewIntFromBigInt(evm.StateDB.GetBalance(address).ToBig())
+			}
 
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["transfer"]
+			method := s.erc20Precompile.Abi.Methods["transfer"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -159,7 +158,13 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			vmContract.Input = append([]byte{0xa9, 0x05, 0x9c, 0xbb}, methodInputArgs...)
 			vmContract.CallerAddress = s.account1.EvmAddr
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			// Capture EVM balances of the from/to addresses before the transfer.
+			// This must be done in this particular place to capture the balance
+			// changes made in the test setup.
+			initialEVMBalanceFrom := getEVMBalance(vmContract.CallerAddress)
+			initialEVMBalanceTo := getEVMBalance(methodInputs[0].(common.Address))
+
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
 				return
@@ -169,6 +174,25 @@ func (s *PrecompileTestSuite) TestTransfer() {
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
 			s.Require().Equal(true, out[0], "expected different value")
+
+			evmBalanceFrom := getEVMBalance(vmContract.CallerAddress)
+			evmBalanceTo := getEVMBalance(methodInputs[0].(common.Address))
+
+			if s.ensureEVMBalanceChange {
+				// We ensure Cosmos balance changes made by the precompile are propagated
+				// back to the EVM stateDB. This is the case for the EVM native gas token.
+				// We expect that the `from` account balance decreased by the amount transferred
+				// and the `to` account balance increased by the same amount.
+				amountTransferred := sdkmath.NewIntFromBigInt(methodInputs[1].(*big.Int))
+
+				s.Require().True(evmBalanceFrom.Equal(initialEVMBalanceFrom.Sub(amountTransferred)), "expected evm balance from decrease")
+				s.Require().True(evmBalanceTo.Equal(initialEVMBalanceTo.Add(amountTransferred)), "expected evm balance to increase")
+			} else {
+				// If we do not expect balance changes to be propagated to the EVM,
+				// we ensure that the EVM balances are unchanged.
+				s.Require().True(evmBalanceFrom.Equal(initialEVMBalanceFrom), "expected evm balance from to be unchanged")
+				s.Require().True(evmBalanceTo.Equal(initialEVMBalanceTo), "expected evm balance to be unchanged")
+			}
 
 			// we call  the statedb commit here to simulate end of transaction
 			// processing and flush the cache context
@@ -181,7 +205,7 @@ func (s *PrecompileTestSuite) TestTransfer() {
 	}
 }
 
-func (s *PrecompileTestSuite) TestTransferFrom() {
+func (s *TestSuite) TestTransferFrom() {
 	testcases := []struct {
 		name          string
 		run           func() []interface{}
@@ -235,9 +259,9 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 			name: "owner is spender - pass",
 			run: func() []interface{} {
 				// Mint some coins to the module account and then send to the from address
-				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(1e18))})
+				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(1e18))})
 				s.Require().NoError(err, "failed to mint coins")
-				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})
+				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(42))})
 				s.Require().NoError(err, "failed to send coins from module to account")
 
 				return []interface{}{
@@ -248,8 +272,8 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 			isCallerOwner: true,
 			postCheck: func() {
 				// Check the balance of the two accounts
-				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, utils.BaseDenom)
-				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, utils.BaseDenom)
+				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, s.denom)
+				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, s.denom)
 				s.Require().Equal(sdkmath.NewInt(2), acc1.Amount)
 				s.Require().Equal(sdkmath.NewInt(40), acc2.Amount)
 			},
@@ -258,9 +282,9 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 			name: "owner is not a spender - not enough allowance",
 			run: func() []interface{} {
 				// Mint some coins to the module account and then send to the from address
-				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(1e18))})
+				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(1e18))})
 				s.Require().NoError(err, "failed to mint coins")
-				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))})
+				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(42))})
 				s.Require().NoError(err, "failed to send coins from module to account")
 
 				return []interface{}{
@@ -275,9 +299,9 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 			name: "owner is not a spender - successful transferFrom",
 			run: func() []interface{} {
 				// Mint some coins to the module account and then send to the from address
-				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(1e18))})
+				err := s.app.BankKeeper.MintCoins(s.ctx, evmtypes.ModuleName, sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(1e18))})
 				s.Require().NoError(err, "failed to mint coins")
-				amount := sdk.Coins{sdk.NewCoin(utils.BaseDenom, sdkmath.NewInt(42))}
+				amount := sdk.Coins{sdk.NewCoin(s.denom, sdkmath.NewInt(42))}
 				err = s.app.BankKeeper.SendCoinsFromModuleToAccount(s.ctx, evmtypes.ModuleName, s.account1.EvmAddr.Bytes(), amount)
 				s.Require().NoError(err, "failed to send coins from module to account")
 
@@ -295,8 +319,8 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 			isCallerOwner: false,
 			postCheck: func() {
 				// Check the balance of the two accounts
-				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, utils.BaseDenom)
-				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, utils.BaseDenom)
+				acc1 := s.app.BankKeeper.GetBalance(s.ctx, s.account1.SdkAddr, s.denom)
+				acc2 := s.app.BankKeeper.GetBalance(s.ctx, s.account2.SdkAddr, s.denom)
 				s.Require().Equal(sdkmath.NewInt(1), acc1.Amount)
 				s.Require().Equal(sdkmath.NewInt(41), acc2.Amount)
 			},
@@ -307,23 +331,23 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 		s.Run(tc.name, func() {
 			s.SetupTest()
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
+				StateDB: statedb.New(s.ctx, s.app.EvmKeeper, statedb.TxConfig{}),
 			}
 
-			bankKeeper := s.app.BankKeeper
-			authzKeeper := s.app.AuthzKeeper
-			evmKeeper := *s.app.EvmKeeper
+			getEVMBalance := func(address common.Address) sdkmath.Int {
+				return sdkmath.NewIntFromBigInt(evm.StateDB.GetBalance(address).ToBig())
+			}
 
-			btcTokenPrecompile, err := btctoken.NewPrecompile(bankKeeper, authzKeeper, evmKeeper, "mezo_31612-1")
+			erc20Precompile, err := s.precompileFactoryFn(s.app)
 			s.Require().NoError(err)
-			s.btcTokenPrecompile = btcTokenPrecompile
+			s.erc20Precompile = erc20Precompile
 
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
 			}
 
-			method := s.btcTokenPrecompile.Abi.Methods["transferFrom"]
+			method := s.erc20Precompile.Abi.Methods["transferFrom"]
 			var methodInputArgs []byte
 			methodInputArgs, err = method.Inputs.Pack(methodInputs...)
 
@@ -346,7 +370,13 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 				vmContract.CallerAddress = s.account2.EvmAddr
 			}
 
-			output, err := s.btcTokenPrecompile.Run(evm, vmContract, false)
+			// Capture EVM balances of the from/to addresses before the transfer.
+			// This must be done in this particular place to capture the balance
+			// changes made in the test setup.
+			initialEVMBalanceFrom := getEVMBalance(methodInputs[0].(common.Address))
+			initialEVMBalanceTo := getEVMBalance(methodInputs[1].(common.Address))
+
+			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil {
 
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
@@ -357,6 +387,25 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
 			s.Require().Equal(true, out[0], "expected different value")
+
+			evmBalanceFrom := getEVMBalance(methodInputs[0].(common.Address))
+			evmBalanceTo := getEVMBalance(methodInputs[1].(common.Address))
+
+			if s.ensureEVMBalanceChange {
+				// We ensure Cosmos balance changes made by the precompile are propagated
+				// back to the EVM stateDB. This is the case for the EVM native gas token.
+				// We expect that the `from` account balance decreased by the amount transferred
+				// and the `to` account balance increased by the same amount.
+				amountTransferred := sdkmath.NewIntFromBigInt(methodInputs[2].(*big.Int))
+
+				s.Require().True(evmBalanceFrom.Equal(initialEVMBalanceFrom.Sub(amountTransferred)), "expected evm balance from decrease")
+				s.Require().True(evmBalanceTo.Equal(initialEVMBalanceTo.Add(amountTransferred)), "expected evm balance to increase")
+			} else {
+				// If we do not expect balance changes to be propagated to the EVM,
+				// we ensure that the EVM balances are unchanged.
+				s.Require().True(evmBalanceFrom.Equal(initialEVMBalanceFrom), "expected evm balance from to be unchanged")
+				s.Require().True(evmBalanceTo.Equal(initialEVMBalanceTo), "expected evm balance to be unchanged")
+			}
 
 			// we call  the statedb commit here to simulate end of transaction
 			// processing and flush the cache context
@@ -369,7 +418,7 @@ func (s *PrecompileTestSuite) TestTransferFrom() {
 	}
 }
 
-func (s *PrecompileTestSuite) TestEmitTransferEvent() {
+func (s *TestSuite) TestEmitTransferEvent() {
 	testcases := []struct {
 		name   string
 		from   common.Address
@@ -387,7 +436,7 @@ func (s *PrecompileTestSuite) TestEmitTransferEvent() {
 	for _, tc := range testcases {
 		tc := tc
 		s.Run(tc.name, func() {
-			ae := btctoken.NewTransferEvent(tc.from, tc.to, tc.amount)
+			ae := erc20.NewTransferEvent(tc.from, tc.to, tc.amount)
 			args := ae.Arguments()
 
 			s.Require().Len(args, 3)

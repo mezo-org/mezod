@@ -4,8 +4,7 @@ pragma solidity ^0.8.20;
 
 import "../erc20/IERC20WithPermit.sol";
 
-/// @title  IBTC
-/// @notice Interface for the BTC token.
-interface IBTC is IERC20WithPermit {
+/// @title  IMEZO
+/// @notice Interface for the MEZO token.
+interface IMEZO is IERC20WithPermit {
 }
-
