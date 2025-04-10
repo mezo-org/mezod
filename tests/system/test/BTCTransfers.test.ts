@@ -1,4 +1,4 @@
-import { BTCTransfers } from '../typechain-types/contracts/BTCTransfers';
+import { BTCTransfers } from '../typechain-types/BTCTransfers.sol/BTCTransfers';
 import { expect } from "chai";
 import hre from "hardhat";
 import { ethers } from "hardhat"
