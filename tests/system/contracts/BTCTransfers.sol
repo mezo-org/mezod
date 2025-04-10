@@ -7,9 +7,9 @@ interface ITestbed {
     function transferWithRevert(address to, uint256 value) external returns (bool);
 }
 
-/// @title MezoTransfers
+/// @title BTCTransfers
 /// @notice Handles various transfer scenarios for Mezo native token - BTC.
-contract MezoTransfers {
+contract BTCTransfers {
     // BTC ERC-20 token address on Mezo
     address private constant precompile = 0x7b7C000000000000000000000000000000000000;
     address private constant testbedPrecompile = 0x7b7c100000000000000000000000000000000000;
