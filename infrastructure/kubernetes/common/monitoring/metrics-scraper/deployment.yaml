@@ -26,3 +26,11 @@ spec:
             requests:
               cpu: 100m
               memory: 128Mi
+          volumeMounts:
+            - name: metrics-scraper-config
+              mountPath: /etc/metrics-scraper/config.json
+              subPath: config.json
+      volumes:
+        - name: metrics-scraper-config
+          configMap:
+            name: metrics-scraper-config
