@@ -26,6 +26,30 @@ func (k Keeper) InitGenesis(ctx sdk.Context, data types.GenesisState) (res []abc
 		res = append(res, validator.ABCIValidatorUpdateAppend())
 	}
 
+	for _, assignment := range data.PrivilegeAssignments {
+		privilege := assignment.GetPrivilege()
+		operatorBech32 := assignment.GetOperatorBech32()
+
+		operator, err := sdk.ValAddressFromBech32(operatorBech32)
+		if err != nil {
+			panic(errorsmod.Wrapf(
+				err,
+				"error converting operator %s to sdk.ValAddress",
+				operatorBech32,
+			))
+		}
+
+		err = k.AddPrivilege(ctx, k.GetOwner(ctx), []sdk.ValAddress{operator}, privilege)
+		if err != nil {
+			panic(errorsmod.Wrapf(
+				err,
+				"error adding privilege %s for operator %s",
+				privilege,
+				operatorBech32,
+			))
+		}
+	}
+
 	return res
 }
 
@@ -33,10 +57,25 @@ func (k Keeper) InitGenesis(ctx sdk.Context, data types.GenesisState) (res []abc
 // to a genesis file, which can be imported again
 // with InitGenesis
 func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
+	privilegeAssignments := make([]types.ValidatorPrivilegeAssignment, 0)
+	for _, privilege := range k.getAllPrivileges(ctx) {
+		operators := k.GetValidatorsOperatorsByPrivilege(ctx, privilege)
+		for _, operator := range operators {
+			privilegeAssignments = append(
+				privilegeAssignments,
+				types.ValidatorPrivilegeAssignment{
+					OperatorBech32: operator.String(),
+					Privilege:      privilege,
+				},
+			)
+		}
+	}
+
 	return &types.GenesisState{
-		Params:     k.GetParams(ctx),
-		Owner:      k.GetOwner(ctx).String(),
-		Validators: k.GetAllValidators(ctx),
+		Params:               k.GetParams(ctx),
+		Owner:                k.GetOwner(ctx).String(),
+		Validators:           k.GetAllValidators(ctx),
+		PrivilegeAssignments: privilegeAssignments,
 	}
 }
 

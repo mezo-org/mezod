@@ -468,6 +468,12 @@ func initGenesisFiles(
 	// Set the first validator as the initial owner.
 	poaGenState.Owner = sdk.AccAddress(validators[0].GetOperator()).String()
 	poaGenState.Validators = validators
+	poaGenState.PrivilegeAssignments = []poatypes.ValidatorPrivilegeAssignment{
+		{
+			OperatorBech32: validators[0].GetOperator().String(),
+			Privilege:      bridgetypes.ValidatorPrivilege,
+		},
+	}
 	appGenState[poatypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&poaGenState)
 
 	var bridgeGenState bridgetypes.GenesisState
