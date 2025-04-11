@@ -10,10 +10,20 @@ resources:
   - grafana/pvc.yaml
   - grafana/deployment.yaml
   - grafana/service.yaml
-  # - grafana/config.yaml
   - metrics-scraper/deployment.yaml
   - metrics-scraper/service.yaml
-  - metrics-scraper/configmap.yaml
+
+configMapGenerator:
+  - name: grafana-config
+    files:
+      - grafana/config/grafana.ini
+      - grafana/config/dashboards.yaml
+      - grafana/config/datasources.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    note: generated
 
 labels:
   - includeSelectors: true
