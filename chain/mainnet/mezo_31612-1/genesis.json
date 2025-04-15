@@ -227,10 +227,10 @@
       "owner": "mezo1jr94z044k6p34pmnj2hx6s9e4xmrz4wgg56ln5",
       "validators": [
         {
-          "operator_bech32": "TODO_PUT_OPERATOR_VAL1",
-          "cons_pub_key_bech32": "TODO_PUT_CONSPUB_VAL1",
+          "operator_bech32": "mezovaloper16c35xww08dkapvqv3fmv2f4zgjyvk47ujeds70",
+          "cons_pub_key_bech32": "mezovalconspub1zcjduepqzzjk65qwqhyp6n7ysekvxnrmf57wxzhgk7vwnp708zcp6y8hwtjs2vyu2p",
           "description": {
-            "moniker": "TODO_PUT_MONIKER_VAL1",
+            "moniker": "boar-validator-1",
             "identity": "",
             "website": "",
             "security_contact": "",
@@ -238,10 +238,10 @@
           }
         },
         {
-          "operator_bech32": "TODO_PUT_OPERATOR_VAL2",
-          "cons_pub_key_bech32": "TODO_PUT_CONSPUB_VAL2",
+          "operator_bech32": "mezovaloper16ptx2cfrh6njl6gnnwkq2wdc757c2qj8crkkwj",
+          "cons_pub_key_bech32": "mezovalconspub1zcjduepqs2xlr850qgp9sdmvf9d8wp4murwsjkpajzew4nmhv27374td5smsvxxgau",
           "description": {
-            "moniker": "TODO_PUT_MONIKER_VAL2",
+            "moniker": "Validation Cloud",
             "identity": "",
             "website": "",
             "security_contact": "",
@@ -249,10 +249,10 @@
           }
         },
         {
-          "operator_bech32": "TODO_PUT_OPERATOR_VAL3",
-          "cons_pub_key_bech32": "TODO_PUT_CONSPUB_VAL3",
+          "operator_bech32": "mezovaloper183nasqstlz4824p0vh5p2tm5pp47w8eqmlt2yc",
+          "cons_pub_key_bech32": "mezovalconspub1zcjduepqmxfn93wn28r2nfjsce0d6d5y98maqmsdu0xx23uay4y2ksfztm2qy9r6pm",
           "description": {
-            "moniker": "TODO_PUT_MONIKER_VAL3",
+            "moniker": "Imperator.co",
             "identity": "",
             "website": "",
             "security_contact": "",
@@ -262,7 +262,7 @@
       ],
       "privilege_assignments": [
         {
-          "operator_bech32": "TODO_PUT_OPERATOR_VAL1",
+          "operator_bech32": "mezovaloper16c35xww08dkapvqv3fmv2f4zgjyvk47ujeds70",
           "privilege": "bridge"
         }
       ]
