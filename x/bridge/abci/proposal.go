@@ -614,11 +614,12 @@ func (alvc *assetsLockedVoteCounter) addVote(
 	if index := slices.IndexFunc(
 		alvc.voteInfoMap[sequenceKey],
 		func(v *assetsLockedVoteInfo) bool {
-			// It's enough to compare the recipient and the amount.
+			// We compare the token, recipient and amount.
 			// The sequence number is used as the votesInfo map key hence
 			// it is the same for all items in the given value slice.
 			return event.Recipient == v.event.Recipient &&
-				event.Amount.Equal(v.event.Amount)
+				event.Amount.Equal(v.event.Amount) &&
+				event.Token == v.event.Token
 		},
 	); index >= 0 {
 		alvc.voteInfoMap[sequenceKey][index].add(vp, isBridgeVal)
