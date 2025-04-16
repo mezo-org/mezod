@@ -1,6 +1,7 @@
 package abci
 
 import (
+	"bytes"
 	"fmt"
 	"slices"
 
@@ -619,7 +620,7 @@ func (alvc *assetsLockedVoteCounter) addVote(
 			// it is the same for all items in the given value slice.
 			return event.Recipient == v.event.Recipient &&
 				event.Amount.Equal(v.event.Amount) &&
-				event.Token == v.event.Token
+				bytes.Equal(event.TokenBytes(), v.event.TokenBytes())
 		},
 	); index >= 0 {
 		alvc.voteInfoMap[sequenceKey][index].add(vp, isBridgeVal)

@@ -1051,7 +1051,7 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			errContains:    "",
 		},
 		{
-			name:     "GHSA-2hq6-q2xv-9jgv - ensure the token address is included in the comparison",
+			name:     "no canonical sequence - different token for same sequence",
 			valStore: newMockValidatorStore("val1Bridge", "val2Bridge", "val3Bridge", "val4Bridge"),
 			voteExtensionDecomposerFn: func() *mockVoteExtensionDecomposer {
 				return newMockVoteExtensionDecomposer().withReturnInputMode()
