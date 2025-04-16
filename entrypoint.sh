@@ -57,6 +57,7 @@ customize_configuration() {
   # FILE: client.toml
   #
   mezod toml set "$CLIENT_CONFIG_FILE" \
+    --home="${MEZOD_HOME}" \
     -v "chain-id=${MEZOD_CHAIN_ID}" \
     -v "keyring-backend=file"
 
@@ -64,7 +65,7 @@ customize_configuration() {
   if [ -f "$MEZOD_CUSTOM_CONF_CLIENT_TOML" ]; then
     echo "External customizations for client.toml..."
     while IFS= read -r line; do
-      mezod toml set $CLIENT_CONFIG_FILE -v $line
+      mezod toml set $CLIENT_CONFIG_FILE --home="${MEZOD_HOME}" -v $line
     done < "$MEZOD_CUSTOM_CONF_CLIENT_TOML"
   fi
 
@@ -72,6 +73,7 @@ customize_configuration() {
   # FILE: config.toml
   #
   mezod toml set "$CONFIG_FILE" \
+    --home="${MEZOD_HOME}" \
     -v "moniker=${MEZOD_MONIKER}" \
     -v "p2p.laddr=tcp://0.0.0.0:${MEZOD_PORT_P2P}" \
     -v "p2p.external_address=${PUBLIC_IP}:${MEZOD_PORT_P2P}" \
@@ -83,7 +85,7 @@ customize_configuration() {
   if [ -f "$MEZOD_CUSTOM_CONF_CONFIG_TOML" ]; then
     echo "External customizations for config.toml..."
     while IFS= read -r line; do
-      mezod toml set $CONFIG_FILE -v $line
+      mezod toml set $CONFIG_FILE --home="${MEZOD_HOME}" -v $line
     done < "$MEZOD_CUSTOM_CONF_CONFIG_TOML"
   fi
 
@@ -91,6 +93,7 @@ customize_configuration() {
   # FILE: app.toml
   #
   mezod toml set "$APP_CONFIG_FILE" \
+    --home="${MEZOD_HOME}" \
     -v "ethereum-sidecar.client.server-address=${MEZOD_ETHEREUM_SIDECAR_SERVER:-ethereum-sidecar:7500}" \
     -v "oracle.oracle_address=${MEZOD_ORACLE_ORACLE_ADDRESS:-connect-sidecar:8080}" \
     -v "oracle.enabled=true" \
@@ -110,7 +113,7 @@ customize_configuration() {
   if [ -f "$MEZOD_CUSTOM_CONF_APP_TOML" ]; then
     echo "External customizations for app.toml..."
     while IFS= read -r line; do
-      mezod toml set $APP_CONFIG_FILE -v $line
+      mezod toml set $APP_CONFIG_FILE --home="${MEZOD_HOME}" -v $line
     done < "$MEZOD_CUSTOM_CONF_APP_TOML"
   fi
 
@@ -136,7 +139,7 @@ init_genval() {
 }
 
 get_validator_info() {
-  validator_addr_bech="$(echo "${KEYRING_PASSWORD}" | mezod --home="${MEZOD_HOME}" keys show "${KEYRING_NAME}" --address)"
+  validator_addr_bech="$(echo "${KEYRING_PASSWORD}" | mezod --home="${MEZOD_HOME}" keys show "${KEYRING_NAME}" --keyring-backend=file --address)"
   validator_addr="$(mezod --home="${MEZOD_HOME}" keys parse "${validator_addr_bech}" | grep bytes | awk '{print "0x"$2}')"
   echo "Validator address: ${validator_addr}"
 
