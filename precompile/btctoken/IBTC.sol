@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.20;
 
-import "./solidity/IERC20WithPermit.sol";
+import "../erc20/IERC20WithPermit.sol";
 
 /// @title  IBTC
 /// @notice Interface for the BTC token.

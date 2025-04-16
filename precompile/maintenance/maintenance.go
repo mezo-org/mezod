@@ -26,8 +26,9 @@ func NewPrecompileVersionMap(
 ) (*precompile.VersionMap, error) {
 	// v1 is just the EVM settings.
 	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, &Settings{
-		EVM:         true,
-		Precompiles: false,
+		EVM:              true,
+		Precompiles:      false,
+		ChainFeeSplitter: false,
 	})
 	if err != nil {
 		return nil, err
@@ -35,8 +36,19 @@ func NewPrecompileVersionMap(
 
 	// v2 is the EVM settings and the precompiles settings.
 	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, &Settings{
-		EVM:         true,
-		Precompiles: true,
+		EVM:              true,
+		Precompiles:      true,
+		ChainFeeSplitter: false,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// v3 is the EVM settings, the precompiles settings and the chain fee splitter settings.
+	contractV3, err := NewPrecompile(poaKeeper, evmKeeper, &Settings{
+		EVM:              true,
+		Precompiles:      true,
+		ChainFeeSplitter: true,
 	})
 	if err != nil {
 		return nil, err
@@ -46,14 +58,16 @@ func NewPrecompileVersionMap(
 		map[int]*precompile.Contract{
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
 			1: contractV1,
-			evmtypes.MaintenancePrecompileLatestVersion: contractV2,
+			2: contractV2,
+			evmtypes.MaintenancePrecompileLatestVersion: contractV3,
 		},
 	), nil
 }
 
 type Settings struct {
-	EVM         bool // enable methods related to the evm
-	Precompiles bool // enable methods related to the precompiles
+	EVM              bool // enable methods related to the evm
+	Precompiles      bool // enable methods related to the precompiles
+	ChainFeeSplitter bool // enable methods related to the chain fee splitter
 }
 
 // NewPrecompile creates a new maintenance precompile.
@@ -95,6 +109,11 @@ func newPrecompileMethods(
 
 	if settings.Precompiles {
 		methods = append(methods, newSetPrecompileByteCodeMethod(poaKeeper, evmKeeper))
+	}
+
+	if settings.ChainFeeSplitter {
+		methods = append(methods, newSetChainFeeSplitterAddressMethod(poaKeeper, evmKeeper))
+		methods = append(methods, newGetChainFeeSplitterAddressMethod(evmKeeper))
 	}
 
 	return methods

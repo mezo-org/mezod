@@ -17,4 +17,12 @@ contract MaintenanceCaller is IMaintenance {
     function setPrecompileByteCode(address precompile, bytes calldata code) external returns (bool) {
         return IMaintenance(maintenancePrecompile).setPrecompileByteCode(precompile, code);
     }
+
+    function setChainFeeSplitterAddress(address chainFeeSplitterAddress) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setChainFeeSplitterAddress(chainFeeSplitterAddress);
+    }
+
+    function getChainFeeSplitterAddress() external view returns (address) {
+        return IMaintenance(maintenancePrecompile).getChainFeeSplitterAddress();
+    }
 }

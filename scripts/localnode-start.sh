@@ -56,7 +56,9 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# If keys exist they should be deleted
 	for KEY in "${KEYS[@]}"; do
-		mezod keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR"
+		KEYS_ADD_OUT=$(mezod keys add "$KEY" --keyring-backend $KEYRING --key-type $KEYALGO --home "$HOMEDIR" --output=json)
+		MNEMONIC=$(echo $KEYS_ADD_OUT | jq -r '.mnemonic')
+		echo '{"secret":"'$MNEMONIC'"}' > $HOMEDIR/"$KEY"_key_seed.json
 	done
 
 	# Set moniker and chain-id for Mezo (Moniker can be anything, chain-id must be an integer)
@@ -69,8 +71,10 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 	# Set the required x/bridge parameters.
 	# A single node cannot bridge anyway (both bridge and non-bridge validators
 	# are required). We set the source_btc_token to 0x0 just to bypass the check
-	# in the bridge module genesis validation.
+	# in the bridge module genesis validation. Moreover, we set the initial
+	# BTC balance to satisfy the supply invariant.
 	jq '.app_state["bridge"]["source_btc_token"]="'"0x0000000000000000000000000000000000000000"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+	jq '.app_state["bridge"]["initial_btc_supply"]="'"300000000000000000000000000"'"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Change parameter token denominations to abtc
 	jq '.app_state["crisis"]["constant_fee"]["denom"]="abtc"' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
@@ -116,12 +120,15 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# Allocate genesis accounts (cosmos formatted addresses)
 	for KEY in "${KEYS[@]}"; do
-		mezod genesis add-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
+		mezod genesis add-account "$KEY" 100000000000000000000000000abtc,100000000000000000000000000amezo --keyring-backend $KEYRING --home "$HOMEDIR"
 	done
 
 	# bc is required to add these big numbers
 	total_supply=$(echo "${#KEYS[@]} * 100000000000000000000000000" | bc)
 	jq -r --arg total_supply "$total_supply" '.app_state["bank"]["supply"][0]["amount"]=$total_supply' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+
+	max_gas=10000000 # 10m
+	jq -r --arg max_gas "$max_gas" '.consensus["params"]["block"]["max_gas"]=$max_gas' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Generate the validator.
 	mezod genesis genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
@@ -138,4 +145,4 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 fi
 
 # Start the node (remove the --pruning=nothing flag if historical queries are not needed)
-mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --home "$HOMEDIR"
+mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3,mezo --api.enable --enable-testbed-precompile --home "$HOMEDIR"

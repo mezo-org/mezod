@@ -56,3 +56,12 @@ message HistoricalInfo {
   // valset contains the active validator set at the block.
   repeated Validator valset = 2 [ (gogoproto.nullable) = false ];
 }
+
+// ValidatorPrivilegeAssignment is the assignment of a privilege to a validator.
+message ValidatorPrivilegeAssignment {
+  // operator_bech32 is the Cosmos SDK address (bech32) identifying the
+  // validator.
+  string operator_bech32 = 1;
+  // privilege is the name of the privilege.
+  string privilege = 2;
+}

@@ -20,6 +20,7 @@ import (
 	"sort"
 
 	errorsmod "cosmossdk.io/errors"
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/stateless"
@@ -52,8 +53,10 @@ var _ vm.StateDB = &StateDB{}
 // * Contracts
 // * Accounts
 type StateDB struct {
-	keeper Keeper
-	ctx    sdk.Context
+	keeper     Keeper
+	ctx        sdk.Context
+	cachedCtx  sdk.Context
+	flushCache func()
 
 	// Journal of state modifications. This is the backbone of
 	// Snapshot and RevertToSnapshot.
@@ -83,18 +86,33 @@ type StateDB struct {
 	witness *stateless.Witness
 
 	storageRootStrategy types.StorageRootStrategy
+
+	// This counter is use to keep track of how many time
+	// a precompile have been called during this execution. This
+	// is implemented as a counter limit against abusing the use
+	// of precompile as part of a single smart contract call. We
+	// are added because every time a precompile contract is call,
+	// a new copy of the state of the context is made, so we want
+	// to prevent it eating up too much memory at once and any possible
+	// attack related to this.
+	// For backward compatibility a maxPrecompilesCallsPerExecution set to 0
+	// means there's no limits.
+	ongoingPrecompilesCallsCounter uint
+
+	maxPrecompilesCallsPerExecution uint
 }
 
 // New creates a new state from a given trie.
 func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 	return &StateDB{
-		keeper:              keeper,
-		ctx:                 ctx,
-		stateObjects:        make(map[common.Address]*stateObject),
-		journal:             newJournal(),
-		accessList:          newAccessList(),
-		txConfig:            txConfig,
-		storageRootStrategy: keeper.GetStorageRootStrategy(ctx),
+		keeper:                          keeper,
+		ctx:                             ctx,
+		stateObjects:                    make(map[common.Address]*stateObject),
+		journal:                         newJournal(),
+		accessList:                      newAccessList(),
+		txConfig:                        txConfig,
+		storageRootStrategy:             keeper.GetStorageRootStrategy(ctx),
+		maxPrecompilesCallsPerExecution: keeper.GetMaxPrecompilesCallsPerExecution(ctx),
 	}
 }
 
@@ -528,6 +546,27 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 	}
 }
 
+// RegisterCachedContextCheckpoint ... Register a cached context checkpoint
+// in the journal entries.
+func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxCheckpoint *CachedCtxCheckpoint) error {
+	// add the cache ctx checkpoint to the journal,
+	// this cannot realistically fail
+	s.getOrNewStateObject(addr).RegisterCachedCtxCheckpoint(cachedCtxCheckpoint)
+
+	// here we increment the state DB counter of precompile calls.
+	// we are doing it here because we are registering a cached context checkpoint.
+	// a cached checkpoint context is registered every time a precompile is executed.
+	s.ongoingPrecompilesCallsCounter++
+
+	// for backward compatibility when maxPrecompilesCallsPerExecution == 0
+	// we do not have any check, the first assertion bypass the check.
+	if s.maxPrecompilesCallsPerExecution > 0 && s.ongoingPrecompilesCallsCounter > s.maxPrecompilesCallsPerExecution {
+		return fmt.Errorf("transaction have exceeded the maximum number of precompile calls per execution, max allowed: %v, attempted: %v", s.maxPrecompilesCallsPerExecution, s.ongoingPrecompilesCallsCounter)
+	}
+
+	return nil
+}
+
 // SetNonce sets the nonce of account.
 func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
 	stateObject := s.getOrNewStateObject(addr)
@@ -613,29 +652,77 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 
 // Commit writes the dirty states to keeper
 // the StateDB object should be discarded after committed.
-func (s *StateDB) Commit() error {
+func (s *StateDB) commit(ctx sdk.Context) error {
 	for _, addr := range s.journal.sortedDirties() {
 		obj := s.stateObjects[addr]
 		if obj.selfDestructed {
-			if err := s.keeper.DeleteAccount(s.ctx, obj.Address()); err != nil {
+			if err := s.keeper.DeleteAccount(ctx, obj.Address()); err != nil {
 				return errorsmod.Wrap(err, "failed to delete account")
 			}
 		} else {
 			if obj.code != nil && obj.dirtyCode {
-				s.keeper.SetCode(s.ctx, obj.CodeHash(), obj.code)
+				s.keeper.SetCode(ctx, obj.CodeHash(), obj.code)
 			}
-			if err := s.keeper.SetAccount(s.ctx, obj.Address(), obj.account); err != nil {
+			if err := s.keeper.SetAccount(ctx, obj.Address(), obj.account); err != nil {
 				return errorsmod.Wrap(err, "failed to set account")
 			}
 			for _, key := range obj.dirtyStorage.SortedKeys() {
-				value := obj.dirtyStorage[key]
-				// Skip noop changes, persist actual changes
-				if value == obj.originStorage[key] {
-					continue
-				}
-				s.keeper.SetState(s.ctx, obj.Address(), key, value.Bytes())
+				s.keeper.SetState(ctx, obj.Address(), key, obj.dirtyStorage[key].Bytes())
 			}
 		}
 	}
 	return nil
+}
+
+func (s *StateDB) Commit() error {
+	// if this is set, this means a cache context
+	// existed as well, let's flush it first
+	if s.flushCache != nil {
+		s.flushCache()
+	}
+
+	return s.commit(s.ctx)
+}
+
+func (s *StateDB) CommitCacheContext() error {
+	return s.commit(s.cachedCtx)
+}
+
+type CachedCtxCheckpoint struct {
+	ms     storetypes.CacheMultiStore
+	events sdk.Events
+}
+
+func (ccc *CachedCtxCheckpoint) Revert(stateDB *StateDB) {
+	// first we load back the state in the context
+	stateDB.cachedCtx = stateDB.cachedCtx.WithMultiStore(ccc.ms)
+	// then replace the flush cache function
+	// we write our own flushCache function here which will be used at the
+	// time of rollback.
+	stateDB.flushCache = func() {
+		// we capture  the events and the actual context
+		stateDB.ctx.EventManager().EmitEvents(ccc.events)
+
+		// and we capture the copy of the cache multistore
+		// at time of creation
+		ccc.ms.Write()
+	}
+}
+
+func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {
+	// here we create a cache context on the very first
+	// call to this function
+	if s.flushCache == nil {
+		s.cachedCtx, s.flushCache = s.ctx.CacheContext()
+	}
+
+	ccp := CachedCtxCheckpoint{
+		// we do a copy of the state here so we can just hot swap it later on?
+		ms: s.cachedCtx.MultiStore().(storetypes.CacheMultiStore).Clone(),
+		// we copy the events from the cache context, just to restore them
+		// the same way later.
+		events: s.cachedCtx.EventManager().Events(),
+	}
+
+	return s.cachedCtx, &ccp
 }

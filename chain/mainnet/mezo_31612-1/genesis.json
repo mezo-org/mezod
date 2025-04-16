@@ -1,1 +1,296 @@
-[]
+{
+  "app_name": "mezod",
+  "app_version": "1.0.0-rc2",
+  "genesis_time": "2025-04-14T08:50:53.767481Z",
+  "chain_id": "mezo_31612-1",
+  "initial_height": 1,
+  "app_hash": null,
+  "app_state": {
+    "auth": {
+      "params": {
+        "max_memo_characters": "256",
+        "tx_sig_limit": "7",
+        "tx_size_cost_per_byte": "10",
+        "sig_verify_cost_ed25519": "590",
+        "sig_verify_cost_secp256k1": "1000"
+      },
+      "accounts": [
+        {
+          "@type": "/ethermint.types.v1.EthAccount",
+          "base_account": {
+            "address": "mezo188vx087k295fxdlx7f4wkznmghajnf0maysxpe",
+            "pub_key": null,
+            "account_number": "0",
+            "sequence": "0"
+          },
+          "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        },
+        {
+          "@type": "/ethermint.types.v1.EthAccount",
+          "base_account": {
+            "address": "mezo1qcjuy52698gf7xaymfdg00guh3nnse6chm0s2t",
+            "pub_key": null,
+            "account_number": "1",
+            "sequence": "0"
+          },
+          "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        },
+        {
+          "@type": "/ethermint.types.v1.EthAccount",
+          "base_account": {
+            "address": "mezo14ugypmyfn2whx4dhsw4jwflk2x5fx2vkvmjrzk",
+            "pub_key": null,
+            "account_number": "2",
+            "sequence": "0"
+          },
+          "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        },
+        {
+          "@type": "/ethermint.types.v1.EthAccount",
+          "base_account": {
+            "address": "mezo1lgrfdvcj38gwcwr0qv4ytdfcygc0mg6slsj3yt",
+            "pub_key": null,
+            "account_number": "3",
+            "sequence": "0"
+          },
+          "code_hash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        }
+      ]
+    },
+    "authz": {
+      "authorization": []
+    },
+    "bank": {
+      "params": {
+        "send_enabled": [],
+        "default_send_enabled": true
+      },
+      "balances": [
+        {
+          "address": "mezo1qcjuy52698gf7xaymfdg00guh3nnse6chm0s2t",
+          "coins": [
+            {
+              "denom": "amezo",
+              "amount": "200000000000000000000000000"
+            }
+          ]
+        },
+        {
+          "address": "mezo188vx087k295fxdlx7f4wkznmghajnf0maysxpe",
+          "coins": [
+            {
+              "denom": "amezo",
+              "amount": "300000000000000000000000000"
+            }
+          ]
+        },
+        {
+          "address": "mezo14ugypmyfn2whx4dhsw4jwflk2x5fx2vkvmjrzk",
+          "coins": [
+            {
+              "denom": "amezo",
+              "amount": "400000000000000000000000000"
+            }
+          ]
+        },
+        {
+          "address": "mezo1lgrfdvcj38gwcwr0qv4ytdfcygc0mg6slsj3yt",
+          "coins": [
+            {
+              "denom": "amezo",
+              "amount": "100000000000000000000000000"
+            }
+          ]
+        }
+      ],
+      "supply": [
+        {
+          "denom": "amezo",
+          "amount": "1000000000000000000000000000"
+        }
+      ],
+      "denom_metadata": [],
+      "send_enabled": []
+    },
+    "bridge": {
+      "params": {
+        "max_erc20_tokens_mappings": 20,
+        "btc_supply_assertion_enabled": true
+      },
+      "assets_locked_sequence_tip": "0",
+      "source_btc_token": "0x18084fbA666a33d37592fA2633fD49a74DD93a88",
+      "erc20_tokens_mappings": [],
+      "initial_btc_supply": "0"
+    },
+    "crisis": {
+      "constant_fee": {
+        "denom": "abtc",
+        "amount": "1000"
+      }
+    },
+    "evm": {
+      "accounts": [],
+      "params": {
+        "evm_denom": "abtc",
+        "enable_create": true,
+        "enable_call": true,
+        "extra_eips": [],
+        "chain_config": {
+          "homestead_block": "0",
+          "dao_fork_block": "0",
+          "dao_fork_support": true,
+          "eip150_block": "0",
+          "eip150_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "eip155_block": "0",
+          "eip158_block": "0",
+          "byzantium_block": "0",
+          "constantinople_block": "0",
+          "petersburg_block": "0",
+          "istanbul_block": "0",
+          "muir_glacier_block": "0",
+          "berlin_block": "0",
+          "london_block": "0",
+          "arrow_glacier_block": "0",
+          "gray_glacier_block": "0",
+          "merge_netsplit_block": "0",
+          "shanghai_time": "0",
+          "cancun_time": "0"
+        },
+        "allow_unprotected_txs": true,
+        "storage_root_strategy": 1,
+        "precompiles_versions": [
+          {
+            "precompile_address": "0x7b7c000000000000000000000000000000000000",
+            "version": 1
+          },
+          {
+            "precompile_address": "0x7b7c000000000000000000000000000000000001",
+            "version": 1
+          },
+          {
+            "precompile_address": "0x7b7c000000000000000000000000000000000011",
+            "version": 1
+          },
+          {
+            "precompile_address": "0x7b7c000000000000000000000000000000000012",
+            "version": 2
+          },
+          {
+            "precompile_address": "0x7b7c000000000000000000000000000000000013",
+            "version": 3
+          },
+          {
+            "precompile_address": "0x7b7c000000000000000000000000000000000014",
+            "version": 1
+          },
+          {
+            "precompile_address": "0x7b7c000000000000000000000000000000000015",
+            "version": 1
+          }
+        ],
+        "max_precompiles_calls_per_execution": 10,
+        "chain_fee_splitter_address": ""
+      }
+    },
+    "feemarket": {
+      "params": {
+        "no_base_fee": false,
+        "base_fee_change_denominator": 8,
+        "elasticity_multiplier": 2,
+        "enable_height": "0",
+        "base_fee": "48000000",
+        "min_gas_price": "24000000.000000000000000000",
+        "min_gas_multiplier": "0.500000000000000000"
+      },
+      "block_gas": "0"
+    },
+    "marketmap": {
+      "market_map": {
+        "markets": {}
+      },
+      "last_updated": "0",
+      "params": {
+        "market_authorities": [
+          "mezo10d07y265gmmuvt4z0w9aw880jnsr700jdl5p9z"
+        ],
+        "admin": "mezo10d07y265gmmuvt4z0w9aw880jnsr700jdl5p9z"
+      }
+    },
+    "oracle": {
+      "currency_pair_genesis": [],
+      "next_id": "0"
+    },
+    "poa": {
+      "params": {
+        "max_validators": 150
+      },
+      "owner": "mezo1jr94z044k6p34pmnj2hx6s9e4xmrz4wgg56ln5",
+      "validators": [
+        {
+          "operator_bech32": "mezovaloper16c35xww08dkapvqv3fmv2f4zgjyvk47ujeds70",
+          "cons_pub_key_bech32": "mezovalconspub1zcjduepqzzjk65qwqhyp6n7ysekvxnrmf57wxzhgk7vwnp708zcp6y8hwtjs2vyu2p",
+          "description": {
+            "moniker": "boar-validator-1",
+            "identity": "",
+            "website": "",
+            "security_contact": "",
+            "details": ""
+          }
+        },
+        {
+          "operator_bech32": "mezovaloper16ptx2cfrh6njl6gnnwkq2wdc757c2qj8crkkwj",
+          "cons_pub_key_bech32": "mezovalconspub1zcjduepqs2xlr850qgp9sdmvf9d8wp4murwsjkpajzew4nmhv27374td5smsvxxgau",
+          "description": {
+            "moniker": "Validation Cloud",
+            "identity": "",
+            "website": "",
+            "security_contact": "",
+            "details": ""
+          }
+        },
+        {
+          "operator_bech32": "mezovaloper183nasqstlz4824p0vh5p2tm5pp47w8eqmlt2yc",
+          "cons_pub_key_bech32": "mezovalconspub1zcjduepqmxfn93wn28r2nfjsce0d6d5y98maqmsdu0xx23uay4y2ksfztm2qy9r6pm",
+          "description": {
+            "moniker": "Imperator.co",
+            "identity": "",
+            "website": "",
+            "security_contact": "",
+            "details": ""
+          }
+        }
+      ],
+      "privilege_assignments": [
+        {
+          "operator_bech32": "mezovaloper16c35xww08dkapvqv3fmv2f4zgjyvk47ujeds70",
+          "privilege": "bridge"
+        }
+      ]
+    },
+    "upgrade": {}
+  },
+  "consensus": {
+    "params": {
+      "block": {
+        "max_bytes": "22020096",
+        "max_gas": "10000000"
+      },
+      "evidence": {
+        "max_age_num_blocks": "100000",
+        "max_age_duration": "172800000000000",
+        "max_bytes": "1048576"
+      },
+      "validator": {
+        "pub_key_types": [
+          "ed25519"
+        ]
+      },
+      "version": {
+        "app": "0"
+      },
+      "abci": {
+        "vote_extensions_enable_height": "1"
+      }
+    }
+  }
+}

@@ -21,27 +21,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"time"
 
-	"github.com/mezo-org/mezod/precompile/priceoracle"
-
-	"github.com/mezo-org/mezod/precompile/maintenance"
-
 	"github.com/cosmos/cosmos-sdk/runtime"
 	authcodec "github.com/cosmos/cosmos-sdk/x/auth/codec"
 
-	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/precompile/assetsbridge"
-	"github.com/mezo-org/mezod/precompile/btctoken"
-	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
-	"github.com/mezo-org/mezod/precompile/validatorpool"
-
-	"github.com/gorilla/mux"
-	"github.com/rakyll/statik/fs"
 	"github.com/spf13/cast"
 
 	"cosmossdk.io/log"
@@ -103,6 +90,15 @@ import (
 	ethante "github.com/mezo-org/mezod/app/ante/evm"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/precompile/assetsbridge"
+	"github.com/mezo-org/mezod/precompile/btctoken"
+	"github.com/mezo-org/mezod/precompile/maintenance"
+	"github.com/mezo-org/mezod/precompile/mezotoken"
+	"github.com/mezo-org/mezod/precompile/priceoracle"
+	"github.com/mezo-org/mezod/precompile/testbed"
+	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
+	"github.com/mezo-org/mezod/precompile/validatorpool"
 	srvflags "github.com/mezo-org/mezod/server/flags"
 	mezotypes "github.com/mezo-org/mezod/types"
 
@@ -112,9 +108,6 @@ import (
 	"github.com/mezo-org/mezod/x/feemarket"
 	feemarketkeeper "github.com/mezo-org/mezod/x/feemarket/keeper"
 	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
-
-	// unnamed import of statik for swagger UI support
-	_ "github.com/mezo-org/mezod/client/docs/statik"
 
 	"github.com/mezo-org/mezod/app/ante"
 	"github.com/mezo-org/mezod/x/bridge"
@@ -423,9 +416,11 @@ func NewMezo(
 		keys[bridgetypes.StoreKey],
 		app.BankKeeper,
 		app.EvmKeeper,
+		app.BlockedAddrs(),
 	)
 
 	precompiles, err := customEvmPrecompiles(
+		logger,
 		app.BankKeeper,
 		app.AuthzKeeper,
 		app.PoaKeeper,
@@ -434,6 +429,7 @@ func NewMezo(
 		oraclekeeper.NewQueryServer(app.OracleKeeper),
 		app.BridgeKeeper,
 		bApp.ChainID(),
+		cast.ToBool(appOpts.Get(srvflags.EnableTestbedPrecompile)),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to build custom EVM precompiles: [%s]", err))
@@ -830,7 +826,9 @@ func (app *Mezo) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfi
 
 	// register swagger API from root so that other applications can override easily
 	if apiConfig.Swagger {
-		RegisterSwaggerAPI(clientCtx, apiSvr.Router)
+		app.Logger().Warn(
+			"api.swagger config key is enabled but the mechanism is currently not supported",
+		)
 	}
 }
 
@@ -868,17 +866,6 @@ func (app *Mezo) GetTxConfig() client.TxConfig {
 	return cfg.TxConfig
 }
 
-// RegisterSwaggerAPI registers swagger route with API Server
-func RegisterSwaggerAPI(_ client.Context, rtr *mux.Router) {
-	statikFS, err := fs.New()
-	if err != nil {
-		panic(err)
-	}
-
-	staticServer := http.FileServer(statikFS)
-	rtr.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/", staticServer))
-}
-
 // initParamsKeeper init params keeper and its subspaces
 func initParamsKeeper(
 	appCodec codec.BinaryCodec, legacyAmino *codec.LegacyAmino, key, tkey storetypes.StoreKey,
@@ -894,8 +881,9 @@ func initParamsKeeper(
 	return paramsKeeper
 }
 
-// customEvmPrecompiles builds custom precompiles of the EVM module.
+// baseCustomEvmPrecompiles builds custom precompiles of the EVM module.
 func customEvmPrecompiles(
+	logger log.Logger,
 	bankKeeper bankkeeper.Keeper,
 	authzKeeper authzkeeper.Keeper,
 	poaKeeper poakeeper.Keeper,
@@ -904,6 +892,7 @@ func customEvmPrecompiles(
 	oracleQueryServer oracletypes.QueryServer,
 	bridgeKeeper bridgekeeper.Keeper,
 	chainID string,
+	enableTestbedPrecompile bool,
 ) ([]*precompile.VersionMap, error) {
 	// BTC token precompile.
 	btcTokenVersionMap, err := btctoken.NewPrecompileVersionMap(
@@ -915,6 +904,20 @@ func customEvmPrecompiles(
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to create BTC token precompile: [%w]",
+			err,
+		)
+	}
+
+	// MEZO token precompile.
+	mezoTokenVersionMap, err := mezotoken.NewPrecompileVersionMap(
+		bankKeeper,
+		authzKeeper,
+		evmKeeper,
+		chainID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to create MEZO token precompile: [%w]",
 			err,
 		)
 	}
@@ -949,12 +952,36 @@ func customEvmPrecompiles(
 		return nil, fmt.Errorf("failed to create price oracle precompile: [%w]", err)
 	}
 
-	return []*precompile.VersionMap{
+	pvmap := []*precompile.VersionMap{
 		btcTokenVersionMap,
+		mezoTokenVersionMap,
 		validatorPoolVersionMap,
 		maintenanceVersionMap,
 		assetsBridgeVersionMap,
 		upgradeVersionMap,
 		priceOracleVersionMap,
-	}, nil
+	}
+
+	// This is  the localnet chainID, we will load this specific
+	// precompile only when running system tests.
+	if chainID == "mezo_31611-10" && enableTestbedPrecompile {
+		logger.Warn("loading testbed precompiles")
+
+		testBedVersionMap, err := testbed.NewPrecompileVersionMap(
+			bankKeeper,
+			authzKeeper,
+			evmKeeper,
+			chainID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to create testbed precompile: [%w]",
+				err,
+			)
+		}
+
+		pvmap = append(pvmap, testBedVersionMap)
+	}
+
+	return pvmap, nil
 }

@@ -318,17 +318,17 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 		{
 			name:         "a MsgGrant with MsgEthereumTx typeURL on the authorization field is blocked",
 			msgs:         []sdk.Msg{newMsgGrant(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))},
-			expectedCode: sdkerrors.ErrUnauthorized.ABCICode(),
+			expectedCode: sdkerrors.ErrUnknownRequest.ABCICode(),
 		},
 		{
 			name:         "a MsgGrant with MsgCreateVestingAccount typeURL on the authorization field is blocked",
 			msgs:         []sdk.Msg{newMsgGrant(sdk.MsgTypeURL(&sdkvesting.MsgCreateVestingAccount{}))},
-			expectedCode: sdkerrors.ErrUnauthorized.ABCICode(),
+			expectedCode: sdkerrors.ErrUnknownRequest.ABCICode(),
 		},
 		{
 			name:         "a MsgGrant with MsgEthereumTx typeURL on the authorization field included on EIP712 tx is blocked",
 			msgs:         []sdk.Msg{newMsgGrant(sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}))},
-			expectedCode: sdkerrors.ErrUnauthorized.ABCICode(),
+			expectedCode: sdkerrors.ErrUnknownExtensionOptions.ABCICode(),
 			isEIP712:     true,
 		},
 		{
@@ -346,7 +346,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 					},
 				),
 			},
-			expectedCode: sdkerrors.ErrUnauthorized.ABCICode(),
+			expectedCode: sdkerrors.ErrUnknownRequest.ABCICode(),
 		},
 		{
 			name: "a MsgExec with nested MsgExec messages that has invalid messages is blocked",
@@ -359,7 +359,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 					},
 				),
 			},
-			expectedCode: sdkerrors.ErrUnauthorized.ABCICode(),
+			expectedCode: sdkerrors.ErrUnknownRequest.ABCICode(),
 		},
 		{
 			name: "a MsgExec with more nested MsgExec messages than allowed and with valid messages is blocked",
@@ -376,7 +376,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 					},
 				),
 			},
-			expectedCode: sdkerrors.ErrUnauthorized.ABCICode(),
+			expectedCode: sdkerrors.ErrUnknownRequest.ABCICode(),
 		},
 		{
 			name: "two MsgExec messages NOT containing a blocked msg but between the two have more nesting than the allowed. Then, is blocked",
@@ -404,7 +404,7 @@ func (suite *AnteTestSuite) TestRejectMsgsInAuthz() {
 					},
 				),
 			},
-			expectedCode: sdkerrors.ErrUnauthorized.ABCICode(),
+			expectedCode: sdkerrors.ErrUnknownRequest.ABCICode(),
 		},
 	}
 

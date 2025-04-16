@@ -115,3 +115,7 @@ func (k MockKeeper) Clone() *MockKeeper {
 func (k MockKeeper) GetStorageRootStrategy(_ sdk.Context) types.StorageRootStrategy {
 	return types.StorageRootStrategyEmptyHash
 }
+
+func (k MockKeeper) GetMaxPrecompilesCallsPerExecution(_ sdk.Context) uint {
+	return 10
+}

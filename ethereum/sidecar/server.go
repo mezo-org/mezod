@@ -17,8 +17,7 @@ import (
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
-	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen"
-	"github.com/mezo-org/mezod/ethereum/bindings/portal/gen/abi"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	"github.com/mezo-org/mezod/version"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -61,7 +60,7 @@ type Server struct {
 	lastFinalizedBlockMutex sync.RWMutex
 	lastFinalizedBlock      *big.Int
 
-	bridgeContract *abi.MezoBridge
+	bridgeContract *portal.MezoBridge
 
 	chain *ethconnect.BaseChain
 
@@ -79,12 +78,21 @@ func RunServer(
 	batchSize uint64,
 	requestsPerMinute uint64,
 ) {
-	if gen.MezoBridgeAddress == "" {
+	network := ethconnect.NetworkFromString(ethereumNetwork)
+	mezoBridgeAddress := portal.MezoBridgeAddress(network)
+
+	if mezoBridgeAddress == "" {
 		panic(
 			"cannot get address of the MezoBridge contract on Ethereum; " +
 				"make sure you run 'make bindings' before building the binary",
 		)
 	}
+
+	logger.Info(
+		"Sidecar server resolved MezoBridge contract and Ethereum network",
+		"mezo_bridge_address", mezoBridgeAddress,
+		"ethereum_network", network,
+	)
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
@@ -92,16 +100,16 @@ func RunServer(
 	var err error
 	// Connect to the Ethereum network
 	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
-		Network:           ethconnect.NetworkFromString(ethereumNetwork),
+		Network:           network,
 		URL:               providerURL,
-		ContractAddresses: map[string]string{mezoBridgeName: gen.MezoBridgeAddress},
+		ContractAddresses: map[string]string{mezoBridgeName: mezoBridgeAddress},
 	})
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to the Ethereum network: %v", err))
 	}
 
 	// Initialize the MezoBridge contract instance.
-	bridgeContract, err := initializeBridgeContract(common.HexToAddress(gen.MezoBridgeAddress), chain.Client())
+	bridgeContract, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain.Client())
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
@@ -305,14 +313,14 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 func (s *Server) fetchABIEvents(
 	startBlock uint64,
 	endBlock uint64,
-) ([]*abi.MezoBridgeAssetsLocked, error) {
+) ([]*portal.MezoBridgeAssetsLocked, error) {
 	s.logger.Info(
 		"fetching AssetsLocked events from range",
 		"startBlock", startBlock,
 		"endBlock", endBlock,
 	)
 
-	abiEvents := make([]*abi.MezoBridgeAssetsLocked, 0)
+	abiEvents := make([]*portal.MezoBridgeAssetsLocked, 0)
 
 	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute))
 	defer ticker.Stop()
@@ -470,8 +478,8 @@ func (s *Server) AssetsLockedEvents(
 func initializeBridgeContract(
 	address common.Address,
 	client ethutil.EthereumClient,
-) (*abi.MezoBridge, error) {
-	bridgeContract, err := abi.NewMezoBridge(address, client)
+) (*portal.MezoBridge, error) {
+	bridgeContract, err := portal.NewMezoBridge(address, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach to MezoBridge contract. %v", err)
 	}

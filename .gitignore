@@ -25,23 +25,17 @@ tools/bin/*
 docs/_build
 docs/tutorial
 docs/node_modules
-docs/assets
 docs/modules
 docs/cosmos-sdk
 docs/ethermint
 docs/ibc-go
 dist
-tools-stamp
-docs-tools-stamp
-proto-tools-stamp
 golangci-lint
 keyring_test_cosmos
 ./**/dist
 secret.yml
 artifacts/*
-tmp-swagger-gen
 github.com/
-# vue/
 
 # Local docker volume mappings
 localnet-setup
@@ -89,10 +83,6 @@ dependency-graph.png
 
 # Node.js
 **/node_modules
-
-
-# OpenZeppelin contracts
-contracts/@openzeppelin/*
 
 # Directory for storing temporary data (e.g. fetched npm packages)
 tmp/

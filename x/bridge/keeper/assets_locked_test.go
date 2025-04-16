@@ -206,6 +206,101 @@ func TestAcceptAssetsLocked(t *testing.T) {
 			errContains: "failed to send coins",
 		},
 		{
+			name: "BTC mint to blocked address as recipient",
+			bankKeeperFn: func(ctx sdk.Context) *mockBankKeeper {
+				bankKeeper := newMockBankKeeper()
+
+				bankKeeper.On(
+					"MintCoins",
+					ctx,
+					types.ModuleName,
+					sdk.NewCoins(
+						sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(1)),
+					),
+				).Return(nil)
+
+				bankKeeper.On(
+					"SendCoinsFromModuleToAccount",
+					ctx,
+					types.ModuleName,
+					mock.Anything,
+					mock.Anything,
+				).Return(nil)
+
+				return bankKeeper
+			},
+			evmKeeperFn: func(_ sdk.Context) *mockEvmKeeper {
+				return newMockEvmKeeper()
+			},
+			events: types.AssetsLockedEvents{
+				// Sequence tip is 10, so the expected start is 11.
+				mockEvent(11, testBlockedAddress, 1, testSourceBTCToken),
+			},
+			errContains: "", // This case shouldn't lead to an error.
+			postCheckFn: func(ctx sdk.Context, k Keeper) {
+				// The bank state change should not have been executed.
+				k.bankKeeper.(*mockBankKeeper).AssertNotCalled(
+					t,
+					"MintCoins",
+					mock.Anything,
+					mock.Anything,
+				)
+
+				// The bank state change should not have been executed.
+				k.bankKeeper.(*mockBankKeeper).AssertNotCalled(
+					t,
+					"SendCoinsFromModuleToAccount",
+					mock.Anything,
+					mock.Anything,
+				)
+
+				// The sequence tip should have been updated as the event
+				// was skipped.
+				require.EqualValues(
+					t,
+					math.NewInt(11),
+					k.GetAssetsLockedSequenceTip(ctx),
+				)
+			},
+		},
+		{
+			name:         "ERC20 using blocked address as recipient",
+			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
+			evmKeeperFn: func(ctx sdk.Context) *mockEvmKeeper {
+				evmKeeper := newMockEvmKeeper()
+
+				evmKeeper.On(
+					"ExecuteContractCall",
+					ctx,
+					mock.Anything,
+				).Return(&evmtypes.MsgEthereumTxResponse{}, nil)
+
+				return evmKeeper
+			},
+			events: types.AssetsLockedEvents{
+				// Sequence tip is 10, so the expected start is 11.
+				mockEvent(11, testBlockedAddress, 1, testSourceERC20Token1),
+			},
+			errContains: "", // This case shouldn't lead to an error.
+			postCheckFn: func(ctx sdk.Context, k Keeper) {
+				// The EVM state change should not have been executed.
+				k.evmKeeper.(*mockEvmKeeper).AssertNotCalled(
+					t,
+					"ExecuteContractCall",
+					mock.Anything,
+					mock.Anything,
+				)
+
+				// The sequence tip should have been updated as the event
+				// was skipped.
+				require.EqualValues(
+					t,
+					math.NewInt(11),
+					k.GetAssetsLockedSequenceTip(ctx),
+				)
+			},
+		},
+		{
 			name:         "ERC20 mapping not found",
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
 			evmKeeperFn: func(ctx sdk.Context) *mockEvmKeeper {

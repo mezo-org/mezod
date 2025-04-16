@@ -33,6 +33,7 @@ import (
 	"github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/pkg/errors"
+	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -337,6 +338,81 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 		return 0, err
 	}
 	return hexutil.Uint64(res.Gas), nil
+}
+
+// EstimateCost returns an estimate of cost for the given smart contract call.
+func (b *Backend) EstimateCost(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber) (*rpctypes.EstimateCostResult, error) {
+	gas, err := b.EstimateGas(args, blockNrOptional)
+	if err != nil {
+		return nil, fmt.Errorf("failed to estimate gas: %w", err)
+	}
+
+	// Take the gas price as BTC in 1e18 precision (abtc).
+	gasPrice, err := b.GasPrice()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	// Calculate the cost of the gas in BTC in 1e18 precision.
+	btcCost := new(big.Int).Mul(
+		big.NewInt(int64(gas)),
+		gasPrice.ToInt(),
+	)
+
+	blockNr := rpctypes.EthPendingBlockNumber
+	if blockNrOptional != nil {
+		blockNr = *blockNrOptional
+	}
+
+	btcPriceRes, err := b.queryClient.Oracle.GetPrice(
+		rpctypes.ContextWithHeight(blockNr.Int64()),
+		&oracletypes.GetPriceRequest{
+			CurrencyPair: "BTC/USD",
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get BTC/USD price: %w", err)
+	}
+
+	targetDecimals := uint64(18)
+
+	// Rescale the USD price of BTC from its current precision to 1e18 precision.
+	btcPrice := rescalePrecision(btcPriceRes.Price.Price.BigInt(), btcPriceRes.Decimals, targetDecimals)
+
+	// We multiply btcCost (1e18) by btcPrice (1e18) and we get usdCost (1e36).
+	// We need to divide usdCost by 1e18 to get the right target precision.
+	usdCost := new(big.Int).Div(
+		new(big.Int).Mul(
+			btcCost,
+			btcPrice,
+		),
+		new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(targetDecimals)), nil),
+	)
+
+	return &rpctypes.EstimateCostResult{
+		UsdCost:  usdCost,
+		BtcCost:  btcCost,
+		Decimals: targetDecimals,
+	}, nil
+}
+
+func rescalePrecision(inputValue *big.Int, actualDecimals, targetDecimals uint64) *big.Int {
+	deltaDecimals := int64(targetDecimals - actualDecimals)
+
+	if deltaDecimals >= 0 {
+		// Adjust to the desired decimals up: inputValue * 10^deltaDecimals.
+		return new(big.Int).Mul(
+			inputValue,
+			new(big.Int).Exp(big.NewInt(10), big.NewInt(deltaDecimals), nil),
+		)
+	}
+
+	// Adjust to the desired decimals down: inputValue / 10^|deltaDecimals|.
+	deltaDecimalsAbs := new(big.Int).Abs(big.NewInt(deltaDecimals))
+	return new(big.Int).Div(
+		inputValue,
+		new(big.Int).Exp(big.NewInt(10), deltaDecimalsAbs, nil),
+	)
 }
 
 // DoCall performs a simulated call operation through the evmtypes. It returns the

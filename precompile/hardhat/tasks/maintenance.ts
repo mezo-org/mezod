@@ -39,3 +39,21 @@ task('maintenance:getPrecompileByteCode', '')
     const code = await hre.ethers.provider.getCode(taskArguments.precompile)
     console.log(code)
   })
+
+task('maintenance:setChainFeeSplitterAddress', 'Sets the chain fee splitter address')
+  .addParam('signer', 'The owner address (msg.sender)')
+  .addParam('address', 'Address of the chain fee splitter contract')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setChainFeeSplitterAddress(taskArguments.address)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('maintenance:getChainFeeSplitterAddress', 'Gets the chain fee splitter address')
+  .setAction(async (taskArguments, hre) => {
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const address = await maintenance.getChainFeeSplitterAddress()
+    console.log(address)
+  })

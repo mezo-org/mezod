@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	storetypes "cosmossdk.io/store/types"
+	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -231,7 +233,10 @@ func TestContract_Run(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			sdkCtx := sdk.Context{}
+			// sdkCtx := sdk.Context{}
+			sdkCtx := testutil.DefaultContext(
+				storetypes.NewKVStoreKey(t.Name()+"_TestCacheContext"),
+				storetypes.NewTransientStoreKey("transient_"+t.Name()))
 
 			evm := &vm.EVM{
 				StateDB: statedb.New(sdkCtx, statedb.NewMockKeeper(), statedb.TxConfig{}),

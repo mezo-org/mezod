@@ -10,7 +10,9 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
@@ -22,6 +24,49 @@ type Contract struct {
 	address  common.Address
 	bytecode string
 	methods  map[string]Method
+}
+
+type StateDBJournal struct {
+	entries []journalEntry
+}
+
+type journalEntry struct {
+	Address       common.Address
+	Amount        *uint256.Int
+	TracingReason tracing.BalanceChangeReason
+	isSub         bool
+}
+
+func (c *StateDBJournal) AddBalance(
+	address common.Address,
+	amount *uint256.Int,
+	tracingReason tracing.BalanceChangeReason,
+) {
+	c.entries = append(
+		c.entries,
+		journalEntry{
+			Address:       address,
+			Amount:        amount,
+			TracingReason: tracingReason,
+			isSub:         false,
+		},
+	)
+}
+
+func (c *StateDBJournal) SubBalance(
+	address common.Address,
+	amount *uint256.Int,
+	tracingReason tracing.BalanceChangeReason,
+) {
+	c.entries = append(
+		c.entries,
+		journalEntry{
+			Address:       address,
+			Amount:        amount,
+			TracingReason: tracingReason,
+			isSub:         true,
+		},
+	)
 }
 
 // NewContract creates a new precompiled contract with the given ABI and address.
@@ -103,7 +148,16 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("cannot get state DB from EVM")
 	}
 
-	sdkCtx := stateDB.GetContext()
+	sdkCtx, ctxCheckpoint := stateDB.CacheContext()
+
+	// Register the cached context checkpoint to the stateDB BEFORE running the method.
+	// In case this call errors out, the EVM will revert the cached ctx to this checkpoint.
+	//
+	// Note this may error out if this precompile call exceeds the maximum amount of
+	// precompiles calls per execution.
+	if err := stateDB.RegisterCachedCtxCheckpoint(c.Address(), ctxCheckpoint); err != nil {
+		return nil, fmt.Errorf("failed to register cached context checkpoint: [%w]", err)
+	}
 
 	// Capture the initial values of gas config to restore them after execution.
 	kvGasConfig, transientKVGasConfig := sdkCtx.KVGasConfig(), sdkCtx.TransientKVGasConfig()
@@ -160,8 +214,8 @@ func (c *Contract) Run(
 	}
 
 	// Commit any draft changes to the EVM state DB before running the method.
-	if err := stateDB.Commit(); err != nil {
-		return nil, err
+	if err := stateDB.CommitCacheContext(); err != nil {
+		return nil, fmt.Errorf("failed to commit cache context: [%w]", err)
 	}
 
 	methodInputs, err := methodABI.Inputs.Unpack(methodInputArgs)
@@ -179,7 +233,24 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("failed to pack method output args: [%w]", err)
 	}
 
+	// If nothing failed, we execute the journal entries related to balance changes
+	// against the stateDB.
+	c.syncJournalEntries(runCtx.journal, stateDB)
+
 	return methodOutputArgs, nil
+}
+
+func (c *Contract) syncJournalEntries(journal *StateDBJournal, stateDB *statedb.StateDB) {
+	for _, v := range journal.entries {
+		if v.isSub {
+			stateDB.SubBalance(v.Address, v.Amount, v.TracingReason)
+			continue
+		}
+
+		stateDB.AddBalance(v.Address, v.Amount, v.TracingReason)
+	}
+
+	journal.entries = nil
 }
 
 // parseCallInput extracts the method ID and input arguments from the given
@@ -236,6 +307,7 @@ type RunContext struct {
 	evm          *vm.EVM
 	contract     *vm.Contract
 	eventEmitter *EventEmitter
+	journal      *StateDBJournal
 }
 
 // NewRunContext creates a new run context with the given EVM, contract, and
@@ -251,7 +323,12 @@ func NewRunContext(
 		evm:          evm,
 		contract:     contract,
 		eventEmitter: eventEmitter,
+		journal:      &StateDBJournal{},
 	}
+}
+
+func (rc *RunContext) Journal() *StateDBJournal {
+	return rc.journal
 }
 
 // SdkCtx returns the Cosmos SDK context associated with the run context.
