@@ -1051,6 +1051,39 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 			errContains:    "",
 		},
 		{
+			name:     "no canonical sequence - different token for same sequence",
+			valStore: newMockValidatorStore("val1Bridge", "val2Bridge", "val3Bridge", "val4Bridge"),
+			voteExtensionDecomposerFn: func() *mockVoteExtensionDecomposer {
+				return newMockVoteExtensionDecomposer().withReturnInputMode()
+			},
+			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
+				otherToken := "0x9395499f006821Fc5E22979fafEecD9f5C70E173"
+
+				// Set of events the first half of validators are voting on.
+				events1 := []bridgetypes.AssetsLockedEvent{
+					mockEvent(201, recipient1, 100, token),
+				}
+
+				// Set of events the second half of validators are voting on.
+				events2 := []bridgetypes.AssetsLockedEvent{
+					mockEvent(201, recipient1, 100, otherToken),
+				}
+
+				return []cmtabci.ExtendedVoteInfo{
+					mockVoteExtension("val1Bridge", 100, tmproto.BlockIDFlagCommit, events1...),
+					mockVoteExtension("val2Bridge", 100, tmproto.BlockIDFlagCommit, events1...),
+					mockVoteExtension("val3Bridge", 100, tmproto.BlockIDFlagCommit, events2...),
+					mockVoteExtension("val4Bridge", 100, tmproto.BlockIDFlagCommit, events2...),
+					mockVoteExtension("val5NonBridge", 100, tmproto.BlockIDFlagCommit, events1...),
+					mockVoteExtension("val6NonBridge", 100, tmproto.BlockIDFlagCommit, events1...),
+					mockVoteExtension("val7NonBridge", 100, tmproto.BlockIDFlagCommit, events2...),
+					mockVoteExtension("val8NonBridge", 100, tmproto.BlockIDFlagCommit, events2...),
+				}
+			},
+			expectedEvents: bridgetypes.AssetsLockedEvents{},
+			errContains:    "",
+		},
+		{
 			name:     "no canonical sequence - bridge validators not supporting",
 			valStore: newMockValidatorStore("val1Bridge", "val2Bridge", "val3Bridge", "val4Bridge"),
 			voteExtensionDecomposerFn: func() *mockVoteExtensionDecomposer {
