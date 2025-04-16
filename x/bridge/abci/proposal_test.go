@@ -1057,6 +1057,7 @@ func (s *AssetsLockedExtractorTestSuite) TestCanonicalEvents() {
 				return newMockVoteExtensionDecomposer().withReturnInputMode()
 			},
 			reqVoteExtensionsFn: func() []cmtabci.ExtendedVoteInfo {
+				// #nosec G101 for potential hardcoded credentials
 				otherToken := "0x9395499f006821Fc5E22979fafEecD9f5C70E173"
 
 				// Set of events the first half of validators are voting on.
