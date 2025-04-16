@@ -1,0 +1,79 @@
+name: Release Binary
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]-+rc[0-9]+'  # release candidate
+      - 'v[0-9]+.[0-9]+.[0-9]+'  # release
+
+jobs:
+  client-build-publish:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 🏧 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22
+  
+      - name: 🏭 Generate bindings and build client
+        run: make bindings && make build
+
+      - name: 📦 Archive client binary
+        run: |
+          tar -czvf linux-amd64.tar.gz -C build .
+
+      - name: 🔐 Authenticate to Google Cloud
+        if: contains(github.ref_name, '-rc')
+        id: gcp_auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: 🔐 Login to Google Artifact Registry
+        if: contains(github.ref_name, '-rc')
+        uses: docker/login-action@v3
+        with:
+          registry: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-binary-public/mezod
+          username: oauth2accesstoken
+          password: ${{ steps.gcp_auth.outputs.access_token }}
+
+      - name: 🛠️ Set up Cloud SDK
+        if: contains(github.ref_name, '-rc')
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: 🚀 Upload archive to Generic Artifact Registry
+        if: contains(github.ref_name, '-rc')
+        run: |
+          gcloud artifacts generic upload \
+            --project=mezo-test-420708 \
+            --location=us-central1 \
+            --repository=mezo-staging-binary-public \
+            --package=mezod \
+            --version=${{ github.ref_name }} \
+            --source=linux-amd64.tar.gz
+
+      - name: 🧾 Create checksum of the client binary
+        if: "!contains(github.ref_name, '-rc')"
+        run: |
+          sha256sum linux-amd64.tar.gz > linux-amd64.sha256
+
+      - name: Create draft GitHub release
+        if: "!contains(github.ref_name, '-rc')"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: false
+          draft: true
+          prerelease: false
+          token: ${{ github.token }}
+          files: |
+            ./linux-amd64.tar.gz
+            ./linux-amd64.sha256
