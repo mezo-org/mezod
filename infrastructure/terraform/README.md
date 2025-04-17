@@ -5,7 +5,7 @@ Each sub-directory contains Terraform configuration for a single GCP project rep
 the given Mezo environment. This general guide applies to all environments. Please consult
 README files in each sub-directory for environment-specific instructions.
 
-### Prerequisites
+## Prerequisites
 
 - The `mezo-<environment>` GCP project. The GCP project ID should be set in the `.env` file
 - Service account with email `terraform@<project-id>.iam.gserviceaccount.com` (**Editor** role assigned)
@@ -18,7 +18,7 @@ README files in each sub-directory for environment-specific instructions.
   to the vault holding SSL certificates (see template files living in the 
   `ssl-certificates` directory for details) for the project
 
-### Authentication
+## Authentication
 
 Terraform impersonates the service account `terraform@<project-id>.iam.gserviceaccount.com` 
 to perform operations on the GCP project. This is configured through the
@@ -31,7 +31,7 @@ authenticate by doing:
 gcloud auth application-default login
 ```
 
-### Terraform state
+## Terraform state
 
 Terraform requires a GCP bucket named `mezo-<environment>-terraform-backend-bucket` to 
 store its state. If the bucket already exists, you can skip this step. Otherwise, you can 
@@ -40,7 +40,7 @@ create it by moving to the `mezo-<environment>/remote-state` directory and invok
 terraform init && terraform apply
 ```
 
-### Create and modify infrastructure resources
+## Create and modify infrastructure resources
 
 To create (or modify) the infrastructure resources, move to the `mezo-<environment>` root 
 directory and follow the steps below.
@@ -64,12 +64,12 @@ directory and follow the steps below.
     terraform apply
     ```
 
-### Supplementary non-managed resources
+## Supplementary non-managed resources
 
 The `mezo-<environment>` GCP projects may require some supplementary resources that are 
 not managed by Terraform at the moment.
 
-#### Cloudflare
+### Cloudflare
 
 Cloudflare is used as DNS provider for all domains used in the projects.
 Domains are managed manually in the Cloudflare dashboard.
