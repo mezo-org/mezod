@@ -1,0 +1,92 @@
+# This file is used to override the default values in the Blockscout chart.
+# See: https://github.com/blockscout/helm-charts/blob/main/charts/blockscout-stack/values.yaml
+
+config:
+  network:
+    id: 31612
+    name: Mezo
+    shortname: Mezo
+    currency:
+      name: Bitcoin
+      symbol: BTC
+      decimals: 18
+  account:
+    enabled: false # This is false by default but disable it explicitly. As long as this feature is disable, Redis is not needed.
+  testnet: false
+  prometheus:
+    enabled: false # This won't be needed for now.
+
+blockscout:
+  ingress:
+    enabled: true
+    hostname: api.explorer.mezo.org
+    annotations:
+      kubernetes.io/ingress.global-static-ip-name: mezo-production-blockscout-api-external-ip
+      ingress.gcp.kubernetes.io/pre-shared-cert: mezo-production-explorer-ssl-certificate
+  readinessProbe:
+    params:
+      # The default config sets timeoutSeconds > periodSeconds which is faulty.
+      periodSeconds: 30
+      timeoutSeconds: 10
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 8192Mi
+    requests:
+      cpu: 2000m
+      memory: 4096Mi
+  env:
+    # TODO: Current RPC is temporary. Replace for mainnet and add a fallback.
+    ETHEREUM_JSONRPC_VARIANT: geth
+    ETHEREUM_JSONRPC_HTTP_URL: http://35.208.243.34:8545
+    ETHEREUM_JSONRPC_WS_URL: ws://35.208.243.34:8546
+    ETHEREUM_JSONRPC_TRACE_URL: http://35.208.243.34:8545
+    # ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: 
+    # ETHEREUM_JSONRPC_FALLBACK_WS_URL: 
+    # ETHEREUM_JSONRPC_FALLBACK_TRACE_URL: 
+    NETWORK: Mezo
+    SUBNETWORK: Mainnet
+    BLOCKSCOUT_PROTOCOL: https
+    SECRET_KEY_BASE: K4rV3pnwzqGMRZNbyWKryw6Co4qcvm9LvZhUpuf4qftDTsZMjzz4pzgVPZcUXMtf # Just an arbitrary 64-char string
+    POOL_SIZE: 80 # Increased from the default value of 50 based on the original Blockscout Docker Compose config
+    ECTO_USE_SSL: false # Switched off based on the original Blockscout Docker Compose config
+    CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
+    CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
+    INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
+    CACHE_ADDRESS_TRANSACTIONS_COUNTER_PERIOD: 5m
+  extraEnv:
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: postgresql
+          key: postgres-password # Created automatically by the Bitnami PostgreSQL chart
+    - name: DATABASE_URL
+      value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgresql.default.svc.cluster.local:5432/blockscout
+
+frontend:
+  ingress:
+    enabled: true
+    hostname: explorer.mezo.org
+    annotations:
+      kubernetes.io/ingress.global-static-ip-name: mezo-production-blockscout-app-external-ip
+      ingress.gcp.kubernetes.io/pre-shared-cert: mezo-production-explorer-ssl-certificate
+  readinessProbe:
+    params:
+      # The default config sets timeoutSeconds > periodSeconds which is faulty.
+      periodSeconds: 30
+      timeoutSeconds: 10
+  env:
+    NEXT_PUBLIC_API_PROTOCOL: https
+    NEXT_PUBLIC_APP_PROTOCOL: https
+    NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL: wss
+    NEXT_PUBLIC_API_SPEC_URL: https://raw.githubusercontent.com/blockscout/blockscout-api-v2-swagger/main/swagger.yaml
+    NEXT_PUBLIC_AD_BANNER_PROVIDER: none # Disable banner ads
+    NEXT_PUBLIC_AD_TEXT_PROVIDER: none # Disable text ads
+    NEXT_PUBLIC_NETWORK_CURRENCY_WEI_NAME: aBTC
+    NEXT_PUBLIC_HOMEPAGE_PLATE_BACKGROUND: '#ff004d'
+    NEXT_PUBLIC_COLOR_THEME_DEFAULT: light
+    NEXT_PUBLIC_NETWORK_LOGO: https://mezo.org/assets/mezo-vsve-pvk.svg
+    NEXT_PUBLIC_NETWORK_ICON: https://mezo.org/assets/mezo-favicon-h-eecjcq.svg
+
+stats:
+  enabled: false # This won't be needed for now.
