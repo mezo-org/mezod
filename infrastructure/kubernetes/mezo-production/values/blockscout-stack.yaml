@@ -17,6 +17,8 @@ config:
     enabled: false # This won't be needed for now.
 
 blockscout:
+  image:
+    tag: 6.9.2
   ingress:
     enabled: true
     hostname: api.explorer.mezo.org
@@ -64,6 +66,8 @@ blockscout:
       value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgresql.default.svc.cluster.local:5432/blockscout
 
 frontend:
+  image:
+    tag: v1.33.1
   ingress:
     enabled: true
     hostname: explorer.mezo.org
