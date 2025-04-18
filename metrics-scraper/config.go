@@ -12,9 +12,8 @@ type Config struct {
 }
 
 type NodeConfig struct {
-	RPCURL   string `json:"rpc_url"`
-	CometURL string `json:"comet_url"`
-	Moniker  string `json:"moniker"`
+	RPCURL  string `json:"rpc_url"`
+	Moniker string `json:"moniker"`
 }
 
 type Duration struct {
