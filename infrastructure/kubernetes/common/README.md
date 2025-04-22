@@ -1,6 +1,6 @@
 # Kubernetes: mezo-staging/monitoring
 
-This module contains Kubernetes deployments for the monitoring of the mezo staging nodes.
+This module contains Kubernetes deployments for monitoring the mezo staging nodes.
 
 ### Prerequisites
 
@@ -13,8 +13,8 @@ This module contains Kubernetes deployments for the monitoring of the mezo stagi
 
 #### Grafana
 
-Secrets are use to set the default user and password to log in
-the grafana UI. Here are the required entries:
+Secrets are used to set the default user and password to log in to
+the Grafana UI. Here are the required entries:
 - admin-password
 - admin-user
 
@@ -25,9 +25,9 @@ kubectl create secret generic -n monitoring grafana-secret \
   --from-literal=admin-password=<STAGING_PASSWORD>
 ```
 
-#### Metrics scrapper
+#### Metrics Scraper
 
-One secret is used to set the configuration of the metrics scrapper service, to
+One secret is used to set the configuration of the metrics scraper service. To
 create it, use the following command:
 ```Shell
 kubectl create secret generic metrics-scraper-config -n monitoring \
@@ -36,14 +36,14 @@ kubectl create secret generic metrics-scraper-config -n monitoring \
 
 ### Static IP for the metrics-scraper service
 
-The metrics scraper service requires a static IP which is to be allow listed
-by node operator so the service can access them, it is pinned to
-`mezo-<environment>-monitoring-external-ip` which is created as part of the
-mezo-staging terraform configuration.
+The metrics scraper service requires a static IP which is to be allowlisted
+by node operators so the service can access them. It is pinned to
+`mezo-<environment>-monitoring-external-ip`, which is created as part of the
+mezo-staging Terraform configuration.
 
 ### Ingresses
 
-`monitoring` defines one ingress resources (ingress.yaml), It is pinned to the
+`monitoring` defines one ingress resource (ingress.yaml). It is pinned to the
   `mezo-<environment>-monitoring-hub-external-ip` static global IP and uses
   `mezo-<environment>-monitoring-hub-ssl-certificate` SSL certificate, both created by
   the `mezo-<environment>` Terraform module.
