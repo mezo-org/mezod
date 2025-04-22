@@ -28,9 +28,8 @@ spec:
               memory: 128Mi
           volumeMounts:
             - name: metrics-scraper-config
-              mountPath: /etc/metrics-scraper/config.json
-              subPath: config.json
+              mountPath: /etc/metrics-scraper
       volumes:
         - name: metrics-scraper-config
-          configMap:
-            name: metrics-scraper-config
+          secret:
+            secretName: metrics-scraper-config

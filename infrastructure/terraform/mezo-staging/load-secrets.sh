@@ -5,7 +5,7 @@
 ## Load SSL certificates.
 
 CERT_DIR=./ssl-certificates
-CERT_NAMES=("mezo-staging-explorer" "mezo-staging-rpc" "mezo-staging-rpc-ws" "mezo-staging-safe")
+CERT_NAMES=("mezo-staging-explorer" "mezo-staging-rpc" "mezo-staging-rpc-ws" "mezo-staging-safe" "mezo-staging-monitoring-hub")
 
 for CERT_NAME in "${CERT_NAMES[@]}"; do
   op inject -i $CERT_DIR/$CERT_NAME.crt.tpl -o $CERT_DIR/$CERT_NAME.crt

@@ -7,15 +7,11 @@ resources:
 
 patches:
   - path: metrics-scraper/service-patch.yaml
-  - path: grafana/deployement-patch.yaml
 
 configMapGenerator:
   - name: grafana-dashboards-mezo
     files:
       - grafana/dashboards/mezo-nodes-public.json
-  - name: metrics-scraper-config
-    files:
-      - metrics-scraper/config/config.json
 
 generatorOptions:
   disableNameSuffixHash: true
