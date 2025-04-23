@@ -7,6 +7,11 @@ metadata:
     kubernetes.io/ingress.global-static-ip-name: "mezo-production-monitoring-hub-external-ip"
     ingress.gcp.kubernetes.io/pre-shared-cert: "mezo-production-monitoring-hub-ssl-certificate"
 spec:
+  defaultBackend:
+    service:
+      name: grafana
+      port:
+        number: 3000
   rules:
     - http:
         paths:
