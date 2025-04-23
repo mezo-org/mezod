@@ -9,6 +9,15 @@ This module contains Kubernetes deployments for monitoring the Mezo nodes.
 - `gcloud` installed and authorized to access the `mezo-<environment>` GCP project
 - `kubectl` tool installed
 
+### Monitoring namespace
+
+All the kubernetes monitoring infrastructure lives inside the `monitoring`
+namespace. Before starting, you need to create the namespace using the
+following command:
+```Shell
+kubectl create namespace monitoring
+```
+
 ### Secrets
 
 #### Grafana
