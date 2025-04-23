@@ -3,6 +3,7 @@ package metricsscraper
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -69,6 +70,38 @@ func Start(configPath string) {
 	wg.Wait()
 }
 
+// tryConnect, try to connect to the node forever until it works
+// it'll stop when it acquire a connection or it's asked to stop
+func tryConnect(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	config NodeConfig,
+) (c *rpc.Client, err error) {
+	c, err = rpc.DialContext(ctx, config.RPCURL)
+	if err == nil {
+		// no errors, let's start polling
+		return
+	}
+
+	ticker := time.NewTicker(5 * time.Second) // arbitrarily retry every 5 seconds
+	for {
+		select {
+		case <-ctx.Done():
+			wg.Done()
+			log.Printf("job terminated for %v", config.Moniker)
+			return
+		case <-ticker.C:
+			c, err = rpc.DialContext(ctx, config.RPCURL)
+			if err != nil {
+				log.Printf("error: couldn't connect to %v at %v: %v", config.Moniker, config.RPCURL, err)
+				continue
+			}
+
+			return
+		}
+	}
+}
+
 func run(
 	ctx context.Context,
 	wg *sync.WaitGroup,
@@ -76,9 +109,11 @@ func run(
 	networkID string,
 	config NodeConfig,
 ) {
-	c, err := rpc.DialContext(ctx, config.RPCURL)
+
+	c, err := tryConnect(ctx, wg, config)
 	if err != nil {
-		log.Fatalf("error: couldn't connect to %v at %v: %v", config.Moniker, config.RPCURL, err)
+		// only case this happen is that the context been cancelled
+		return
 	}
 
 	ticker := time.NewTicker(pollRate)
@@ -91,25 +126,28 @@ func run(
 		case <-ticker.C:
 			if err := pollData(ctx, c, config.Moniker, networkID); err != nil {
 				log.Printf("error polling data for %v: %v", config.Moniker, err)
+			} else {
+				log.Printf("data polled successfully for: %v", config.Moniker)
 			}
 		}
 	}
 }
 
 func pollData(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
+	errs := []error{}
 	if err := sidecarsVersion(ctx, client, moniker, networkID); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	if err := nodeVersion(ctx, client, moniker, networkID); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	if err := latestBlockAndTimestamp(ctx, client, moniker, networkID); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func latestBlockAndTimestamp(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
@@ -117,33 +155,46 @@ func latestBlockAndTimestamp(ctx context.Context, client *rpc.Client, moniker, n
 		Number    string `json:"number"`
 		Timestamp string `json:"timestamp"`
 	}{}
+
 	err := client.CallContext(ctx, &result, ethGetBlockByNumberEndpoint, "latest", false)
 	if err != nil {
 		mezodUpGauge.WithLabelValues(moniker, networkID).Set(0)
+		// set latest block to 0 for error
+		mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(0)
+		// set latest timestamp to 0 for error
+		mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(0)
 		return fmt.Errorf("couldn't call %v for %v: %v", ethGetBlockByNumberEndpoint, moniker, err)
 	}
 
 	mezodUpGauge.WithLabelValues(moniker, networkID).Set(1)
 
+	errs := []error{}
 	latestBlock, err := strconv.ParseUint(strings.TrimPrefix(result.Number, "0x"), 16, 64)
 	if err != nil {
-		return err
+		// set latest block to 0 for error
+		mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(0)
+		errs = append(errs, fmt.Errorf("invalid latestBlock: %v", err))
+	} else {
+		mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(float64(latestBlock))
 	}
-	mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(float64(latestBlock))
 
 	ts, err := strconv.ParseUint(strings.TrimPrefix(result.Timestamp, "0x"), 16, 64)
 	if err != nil {
-		return err
+		// set latest timestamp to 0 for error
+		mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(0)
+		errs = append(errs, fmt.Errorf("invalid timestamp: %v", err))
+	} else {
+		mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(float64(ts))
 	}
-	mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(float64(ts))
-
-	return nil
+	return errors.Join(errs...)
 }
 
 func nodeVersion(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
 	var result string
 	err := client.CallContext(ctx, &result, web3ClientVersionEndpoint)
 	if err != nil {
+		// set it to a valid semver showing nicely there's an error
+		mezodVersionGauge.WithLabelValues(moniker, networkID, "0.0.0-unknown").Set(1)
 		return fmt.Errorf("couldn't call %v for %v: %v", web3ClientVersionEndpoint, moniker, err)
 	}
 
@@ -151,6 +202,8 @@ func nodeVersion(ctx context.Context, client *rpc.Client, moniker, networkID str
 	// Mezod/<VERSION>/amd64/go1.22.8
 	segments := strings.Split(result, "/")
 	if len(segments) != 4 {
+		// set it to a valid semver showing nicely there's an error
+		mezodVersionGauge.WithLabelValues(moniker, networkID, "0.0.0-unknown").Set(1)
 		return fmt.Errorf("invalid version string, expected 4 segments, got %v: %v", len(segments), result)
 	}
 
@@ -163,12 +216,14 @@ func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID
 	result := map[string]net.SidecarInfos{}
 	err := client.CallContext(ctx, &result, netSidecarsEndpoint)
 	if err != nil {
-		return fmt.Errorf("couldn't call %v for %v: %v", netSidecarsEndpoint, moniker, err)
+		// just format nicely the error, and continue execution
+		// so the prometheus variable are still set to defaults
+		err = fmt.Errorf("couldn't call %v for %v: %v", netSidecarsEndpoint, moniker, err)
 	}
 
 	var (
-		ethereumVersion, ethereumIsRunning = "unknow", 0.
-		connectVersion, connectIsRunning   = "unknow", 0.
+		ethereumVersion, ethereumIsRunning = "0.0.0-unknow", 0.
+		connectVersion, connectIsRunning   = "0.0.0-unknow", 0.
 	)
 
 	if ethereumSidecar, ok := result["ethereum"]; ok {
@@ -187,5 +242,5 @@ func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID
 	}
 	connectSidecarGauge.WithLabelValues(moniker, networkID, connectVersion).Set(connectIsRunning)
 
-	return nil
+	return err
 }
