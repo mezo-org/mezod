@@ -88,13 +88,13 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P09205B1DD12FB1C6"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "sum by(chain_id) (sum by(moniker) (up{chain_id=\"mezo_31611-1\"}))",
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "Nodes Up"
         }
       ],
       "title": "Nodes Up",
@@ -198,7 +198,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P09205B1DD12FB1C6"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "builder",
           "expr": "min by(moniker) (ethereum_sidecar_connectivity{chain_id=\"mezo_31611-1\"})",
@@ -206,7 +206,7 @@
           "interval": "",
           "legendFormat": "{{chain_address}}",
           "range": true,
-          "refId": "Discovered Keep Nodes"
+          "refId": "Ethereum sidecar connectivity"
         }
       ],
       "title": "Ethereum sidecar connectivity",
@@ -310,7 +310,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P09205B1DD12FB1C6"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "min by(moniker) (connect_sidecar_connectivity{chain_id=\"mezo_31611-1\"})",
@@ -318,7 +318,7 @@
           "interval": "",
           "legendFormat": "{{chain_address}}",
           "range": true,
-          "refId": "Discovered Keep Nodes"
+          "refId": "Connect sidecar connectivity"
         }
       ],
       "title": "Connect sidecar connectivity",
@@ -386,14 +386,14 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "P09205B1DD12FB1C6"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "min by(moniker) (up{chain_id=\"mezo_31611-1\"})",
           "interval": "",
           "legendFormat": "{{chain_address}}",
           "range": true,
-          "refId": "A"
+          "refId": "Uptime"
         }
       ],
       "title": "Uptime (experimental)",
