@@ -145,7 +145,7 @@ build-docker-linux-local:
 	$(DOCKER) buildx build --platform linux/amd64 --tag local/mezod .
 
 build-docker-metrics-scraper:
-	$(DOCKER) build -t metrics-scraper -f Dockerfile.metrics-scraper .
+	$(DOCKER) buildx build --platform linux/amd64 -t metrics-scraper -f Dockerfile.metrics-scraper .
 
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)

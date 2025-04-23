@@ -1,1 +1,1 @@
-op://Mezo DevOps/SSL_crt_monitoring-hub.test.mezo.org/notes
+op://Mezo DevOps/SSL_key_monitoring-hub.test.mezo.org/notes
