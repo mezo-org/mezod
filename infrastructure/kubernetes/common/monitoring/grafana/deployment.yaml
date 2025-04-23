@@ -13,11 +13,17 @@ spec:
       labels:
         app: grafana
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
       containers:
         - name: grafana
           image: grafana/grafana:latest
           ports:
-            - containerPort: 3000
+            - name: grafana
+              containerPort: 3000
           env:
             - name: GF_SECURITY_ADMIN_USER
               valueFrom:
@@ -31,6 +37,17 @@ spec:
                   key: admin-password
             - name: GF_INSTALL_PLUGINS
               value: "grafana-clock-panel,grafana-simple-json-datasource"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: grafana
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 2
+          livenessProbe:
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: grafana    
           resources:
             limits:
               cpu: 300m
