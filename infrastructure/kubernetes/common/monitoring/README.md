@@ -46,17 +46,15 @@ kubectl create secret generic metrics-scraper-config -n monitoring \
 Here's an example of the configuration:
 ```
 {
-    "poll_rate": "2s",
-    "chain_id": "mezo_31611-1",
-    "nodes": [
-	{
-	    "rpc_url": "http://<MEZO_RPC_URL>:8545",
-	    "moniker": "<MEZO_NODE_MONIKER>"
-	},
-	...
-	]
+  "poll_rate": "2s",
+  "chain_id": "mezo_31611-1",
+  "nodes": [
+    {
+      "rpc_url": "http://<MEZO_RPC_URL>:8545",
+      "moniker": "<MEZO_NODE_MONIKER>"
+    }
+  ]
 }
-
 ```
 
 Moreover you can find the Go struct definition of the config in the following
