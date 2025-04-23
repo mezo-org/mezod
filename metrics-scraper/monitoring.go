@@ -222,8 +222,8 @@ func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID
 	}
 
 	var (
-		ethereumVersion, ethereumIsRunning = "0.0.0-unknow", 0.
-		connectVersion, connectIsRunning   = "0.0.0-unknow", 0.
+		ethereumVersion, ethereumIsRunning = "0.0.0-unknown", 0.
+		connectVersion, connectIsRunning   = "0.0.0-unknown", 0.
 	)
 
 	if ethereumSidecar, ok := result["ethereum"]; ok {
