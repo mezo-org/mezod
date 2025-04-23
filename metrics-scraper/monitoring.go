@@ -109,10 +109,9 @@ func run(
 	networkID string,
 	config NodeConfig,
 ) {
-
 	c, err := tryConnect(ctx, wg, config)
 	if err != nil {
-		// only case this happen is that the context been cancelled
+		// only case this happen is that the context been canceled
 		return
 	}
 
