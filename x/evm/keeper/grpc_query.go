@@ -51,7 +51,9 @@ var _ types.QueryServer = Keeper{}
 
 const (
 	defaultTraceTimeout = 5 * time.Second
-	defaultMaxPredecessors = 100
+	// TODO: consider making it settable on node start-up
+	defaultMaxPredecessors      = 20
+	defaultTxPredecessorTimeout = 1 * time.Second
 )
 
 // Account implements the Query/Account gRPC method
@@ -444,7 +446,7 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		return nil, status.Errorf(codes.InvalidArgument, "output limit cannot be negative, got %d", req.TraceConfig.Limit)
 	}
 
-	if (len(req.Predecessors) > defaultMaxPredecessors) {
+	if len(req.Predecessors) > defaultMaxPredecessors {
 		return nil, status.Errorf(codes.ResourceExhausted, "too many predecessor transactions, got %d, max %d", len(req.Predecessors), defaultMaxPredecessors)
 	}
 
@@ -472,22 +474,57 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 	for i, tx := range req.Predecessors {
-		ethTx := tx.AsTransaction()
-		msg, err := core.TransactionToMessage(ethTx, signer, cfg.BaseFee)
+		// Process each predecessor in a closure for easier context cancellation.
+		// If the closure returns `nil`, it means that processing the predecessor
+		// succeeded or was skipped. If error is returned, return from the whole
+		// request.
+		err := func() error {
+			ethTx := tx.AsTransaction()
+			msg, err := core.TransactionToMessage(ethTx, signer, cfg.BaseFee)
+			if err != nil {
+				return nil
+			}
+			txConfig.TxHash = ethTx.Hash()
+			txConfig.TxIndex = uint(i)
+
+			tracer, err := types.NewNoopTracer()
+			if err != nil {
+				return status.Error(codes.Internal, err.Error())
+			}
+
+			// Handle timeouts and RPC cancellations
+			deadlineCtx, cancel := context.WithTimeout(
+				ctx.Context(),
+				defaultTxPredecessorTimeout,
+			)
+			defer cancel()
+
+			go func() {
+				<-deadlineCtx.Done()
+				if errors.Is(deadlineCtx.Err(), context.DeadlineExceeded) {
+					tracer.Stop(errors.New("predecessor execution timeout"))
+				}
+			}()
+
+			rsp, err := k.ApplyMessageWithConfig(
+				ctx,
+				WrapMessageWithSource(*msg, ethTx),
+				tracer,
+				true,
+				cfg,
+				txConfig,
+			)
+			if err != nil {
+				return nil
+			}
+
+			txConfig.LogIndex += uint(len(rsp.Logs))
+			return nil
+		}()
+
 		if err != nil {
-			continue
+			return nil, err
 		}
-		txConfig.TxHash = ethTx.Hash()
-		txConfig.TxIndex = uint(i)
-		tracer, err := types.NewNoopTracer()
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		rsp, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, ethTx), tracer, true, cfg, txConfig)
-		if err != nil {
-			continue
-		}
-		txConfig.LogIndex += uint(len(rsp.Logs))
 	}
 
 	tx := req.Msg.AsTransaction()
