@@ -113,6 +113,7 @@ variable "global_external_ip_addresses" {
     "mezo-staging-rpc-ws-external-ip",
     "mezo-staging-safe-external-ip",
     "mezo-staging-monitoring-external-ip",
+    "mezo-staging-monitoring-hub-external-ip",
   ]
 }
 
