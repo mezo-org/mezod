@@ -1,6 +1,6 @@
-# Kubernetes: mezo-staging/monitoring
+# Kubernetes: monitoring
 
-This module contains Kubernetes deployments for monitoring the mezo staging nodes.
+This module contains Kubernetes deployments for monitoring the Mezo nodes.
 
 ### Prerequisites
 
@@ -21,8 +21,8 @@ the Grafana UI. Here are the required entries:
 Use `kubectl` to create the secrets or apply changes:
 ```Shell
 kubectl create secret generic -n monitoring grafana-secret \
-  --from-literal=admin-user=<STAGING_USER> \
-  --from-literal=admin-password=<STAGING_PASSWORD>
+  --from-literal=admin-user=<USER> \
+  --from-literal=admin-password=<PASSWORD>
 ```
 
 #### Metrics Scraper
@@ -34,16 +34,37 @@ kubectl create secret generic metrics-scraper-config -n monitoring \
   --from-file=config.json=<PATH_TO_CONFIG>
 ```
 
+Here's an example of the configuration:
+```
+{
+    "poll_rate": "2s",
+    "chain_id": "mezo_31611-1",
+    "nodes": [
+	{
+	    "rpc_url": "http://<MEZO_RPC_URL>:8545",
+	    "moniker": "<MEZO_NODE_MONIKER>"
+	},
+	...
+	]
+}
+
+```
+
+Moreover you can find the Go struct definition of the config in the following
+file: https://github.com/mezo-org/mezod/blob/main/metrics-scraper/config.go
+
 ### Static IP for the metrics-scraper service
 
 The metrics scraper service requires a static IP which is to be allowlisted
 by node operators so the service can access them. It is pinned to
 `mezo-<environment>-monitoring-external-ip`, which is created as part of the
-mezo-staging Terraform configuration.
+mezo-<environment> Terraform configuration.
 
 ### Ingresses
 
-`monitoring` defines one ingress resource (ingress.yaml). It is pinned to the
-  `mezo-<environment>-monitoring-hub-external-ip` static global IP and uses
-  `mezo-<environment>-monitoring-hub-ssl-certificate` SSL certificate, both created by
-  the `mezo-<environment>` Terraform module.
+`monitoring` defines one ingress resource (ingress.yaml), which  creates an external
+access point for Grafana. This allows external users to securely access the Grafana
+monitoring dashboard through HTTPS at the path "/grafana". It is pinned to the
+`mezo-<environment>-monitoring-hub-external-ip` static global IP and uses
+`mezo-<environment>-monitoring-hub-ssl-certificate` SSL certificate, both created by
+the `mezo-<environment>` Terraform module.

@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: metrics-scraper
-          image: metrics-scraper:latest
-          imagePullPolicy: IfNotPresent
+          image: mezo/metrics-scraper:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 2112
           resources:
