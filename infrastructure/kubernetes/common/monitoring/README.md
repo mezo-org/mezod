@@ -60,6 +60,9 @@ by node operators so the service can access them. It is pinned to
 `mezo-<environment>-monitoring-external-ip`, which is created as part of the
 mezo-<environment> Terraform configuration.
 
+Node operators will need to allowlist this IP on their EVM JSON-RPC port
+(the default being 8545).
+
 ### Ingresses
 
 `monitoring` defines one ingress resource (ingress.yaml), which  creates an external
