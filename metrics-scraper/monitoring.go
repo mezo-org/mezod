@@ -254,7 +254,7 @@ func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID
 	}
 
 	if ethereumSidecar, ok := result["ethereum"]; ok {
-		var isConnected float64 = 0
+		var isConnected float64
 		if ethereumSidecar.Connected {
 			isConnected = 1
 		}
@@ -262,7 +262,7 @@ func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID
 	}
 
 	if connectSidecar, ok := result["connect"]; ok {
-		var isConnected float64 = 0
+		var isConnected float64
 		if connectSidecar.Connected {
 			isConnected = 1
 		}
