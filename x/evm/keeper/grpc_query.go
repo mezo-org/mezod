@@ -51,9 +51,10 @@ var _ types.QueryServer = Keeper{}
 
 const (
 	defaultTraceTimeout = 5 * time.Second
-	// TODO: consider making it settable on node start-up
-	defaultMaxPredecessors      = 20
-	defaultTxPredecessorTimeout = 1 * time.Second
+	// TODO: consider making the variables settable on node start-up
+	defaultMaxPredecessorTxs        = 20
+	defaultTxPredecessorTimeout     = 1 * time.Second
+	defaultMaxTxPredecessorGasLimit = 10_000_000
 )
 
 // Account implements the Query/Account gRPC method
@@ -446,8 +447,8 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		return nil, status.Errorf(codes.InvalidArgument, "output limit cannot be negative, got %d", req.TraceConfig.Limit)
 	}
 
-	if len(req.Predecessors) > defaultMaxPredecessors {
-		return nil, status.Errorf(codes.ResourceExhausted, "too many predecessor transactions, got %d, max %d", len(req.Predecessors), defaultMaxPredecessors)
+	if len(req.Predecessors) > defaultMaxPredecessorTxs {
+		return nil, status.Errorf(codes.ResourceExhausted, "too many predecessor transactions, got %d, max %d", len(req.Predecessors), defaultMaxPredecessorTxs)
 	}
 
 	// minus one to get the context of block beginning
@@ -484,6 +485,16 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 			if err != nil {
 				return nil
 			}
+
+			if msg.GasLimit > defaultMaxTxPredecessorGasLimit {
+				return status.Errorf(
+					codes.ResourceExhausted,
+					"gas limit in predecessor tx too high, got %d, max %d",
+					msg.GasLimit,
+					defaultMaxTxPredecessorGasLimit,
+				)
+			}
+
 			txConfig.TxHash = ethTx.Hash()
 			txConfig.TxIndex = uint(i)
 
