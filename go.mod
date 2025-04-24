@@ -2,7 +2,7 @@ module github.com/mezo-org/mezod
 
 go 1.22.11
 
-toolchain go1.23.4
+toolchain go1.22.5
 
 require (
 	cosmossdk.io/api v0.7.6
