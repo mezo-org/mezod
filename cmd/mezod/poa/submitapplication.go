@@ -174,7 +174,8 @@ func getConsensusPublicKey(clientCtx clientSdk.Context, config *sdk.Config) ([32
 	}
 
 	var consPubKeyArray [32]byte
-	copy(consPubKeyArray[:], consPubKeyBytes[:32])
+	startIndex := len(consPubKeyBytes) - 32
+	copy(consPubKeyArray[:], consPubKeyBytes[startIndex:])
 	return consPubKeyArray, nil
 }
 
