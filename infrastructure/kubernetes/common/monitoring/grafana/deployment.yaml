@@ -37,6 +37,10 @@ spec:
                   key: admin-password
             - name: GF_INSTALL_PLUGINS
               value: "grafana-clock-panel,grafana-simple-json-datasource"
+            - name: GF_SERVER_ROOT_URL
+              value: "https://%(domain)s/grafana/"
+            - name: GF_SERVER_SERVE_FROM_SUB_PATH
+              value: "true"
           readinessProbe:
             httpGet:
               path: /api/health

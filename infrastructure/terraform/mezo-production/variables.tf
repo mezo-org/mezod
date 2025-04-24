@@ -93,7 +93,6 @@ variable "global_external_ip_addresses" {
   default = [
     "mezo-production-blockscout-api-external-ip",
     "mezo-production-blockscout-app-external-ip",
-    "mezo-production-monitoring-external-ip",
     "mezo-production-monitoring-hub-external-ip",
   ]
 }

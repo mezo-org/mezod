@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: metrics-scraper
-  namespace: monitoring
-  annotations:
-    kubernetes.io/ingress.global-static-ip-name: "mezo-production-monitoring-external-ip"
-    kubernetes.io/ingress.class: "gce"

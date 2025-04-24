@@ -78,3 +78,25 @@ monitoring dashboard through HTTPS at the path "/grafana". It is pinned to the
 `mezo-<environment>-monitoring-hub-external-ip` static global IP and uses
 `mezo-<environment>-monitoring-hub-ssl-certificate` SSL certificate, both created by
 the `mezo-<environment>` Terraform module.
+
+### Add a node to the monitoring
+
+The monitoring system does not automatically discover new nodes yet. That said, 
+new nodes must be added to the monitoring system manually. This can be done by 
+running the `add-node.sh` script on the desired environment.
+
+First, switch to the desired environment by setting the right `kubectl` context:
+```Shell
+kubectl config use-context <context-name>
+```
+
+You can use `kubectl config get-contexts` to list the available contexts. If you don't
+see the context you need, you have to download cluster credentials using the
+`gcloud container clusters get-credentials` command.
+
+Then, run the `add-node.sh` script:
+```Shell
+./add-node.sh <rpc_url> <moniker>
+```
+where `<rpc_url>` is the EVM JSON-RPC URL of the node and `<moniker>` is the moniker that
+will be displayed in the monitoring dashboard.

@@ -6,7 +6,7 @@ resources:
   - ingress.yaml
 
 patches:
-  - path: metrics-scraper/service-patch.yaml
+  - path: grafana/deployement-patch.yaml
 
 configMapGenerator:
   - name: grafana-dashboards-mezo
