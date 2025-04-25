@@ -51,10 +51,8 @@ var _ types.QueryServer = Keeper{}
 
 const (
 	defaultTraceTimeout = 5 * time.Second
-	// TODO: consider making the variables settable on node start-up
-	defaultMaxPredecessorTxs        = 20
-	defaultTxPredecessorTimeout     = 1 * time.Second
-	defaultMaxTxPredecessorGasLimit = 10_000_000
+	maxPredecessorsTxs  = 50
+	maxTxGasLimit       = 10_000_000
 )
 
 // Account implements the Query/Account gRPC method
@@ -447,8 +445,14 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		return nil, status.Errorf(codes.InvalidArgument, "output limit cannot be negative, got %d", req.TraceConfig.Limit)
 	}
 
-	if len(req.Predecessors) > defaultMaxPredecessorTxs {
-		return nil, status.Errorf(codes.ResourceExhausted, "too many predecessor transactions, got %d, max %d", len(req.Predecessors), defaultMaxPredecessorTxs)
+	// Prevent processing transactions with too many predecessors to avoid DoS.
+	if len(req.Predecessors) > maxPredecessorsTxs {
+		return nil, status.Errorf(
+			codes.ResourceExhausted,
+			"too many predecessor transactions, got %d, max %d",
+			len(req.Predecessors),
+			maxPredecessorsTxs,
+		)
 	}
 
 	// minus one to get the context of block beginning
@@ -475,67 +479,34 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 	for i, tx := range req.Predecessors {
-		// Process each predecessor in a closure for easier context cancellation.
-		// If the closure returns `nil`, it means that processing the predecessor
-		// succeeded or was skipped. If error is returned, return from the whole
-		// request.
-		err := func() error {
-			ethTx := tx.AsTransaction()
-			msg, err := core.TransactionToMessage(ethTx, signer, cfg.BaseFee)
-			if err != nil {
-				return nil
-			}
-
-			if msg.GasLimit > defaultMaxTxPredecessorGasLimit {
-				return status.Errorf(
-					codes.ResourceExhausted,
-					"gas limit in predecessor tx too high, got %d, max %d",
-					msg.GasLimit,
-					defaultMaxTxPredecessorGasLimit,
-				)
-			}
-
-			txConfig.TxHash = ethTx.Hash()
-			txConfig.TxIndex = uint(i)
-
-			tracer, err := types.NewNoopTracer()
-			if err != nil {
-				return status.Error(codes.Internal, err.Error())
-			}
-
-			// Handle timeouts and RPC cancellations
-			deadlineCtx, cancel := context.WithTimeout(
-				ctx.Context(),
-				defaultTxPredecessorTimeout,
-			)
-			defer cancel()
-
-			go func() {
-				<-deadlineCtx.Done()
-				if errors.Is(deadlineCtx.Err(), context.DeadlineExceeded) {
-					tracer.Stop(errors.New("predecessor execution timeout"))
-				}
-			}()
-
-			rsp, err := k.ApplyMessageWithConfig(
-				ctx,
-				WrapMessageWithSource(*msg, ethTx),
-				tracer,
-				true,
-				cfg,
-				txConfig,
-			)
-			if err != nil {
-				return nil
-			}
-
-			txConfig.LogIndex += uint(len(rsp.Logs))
-			return nil
-		}()
-
+		ethTx := tx.AsTransaction()
+		msg, err := core.TransactionToMessage(ethTx, signer, cfg.BaseFee)
 		if err != nil {
-			return nil, err
+			continue
 		}
+
+		// Prevent processing transactions with extremely high gas limit to
+		// avoid DoS.
+		if msg.GasLimit > maxTxGasLimit {
+			return nil, status.Errorf(
+				codes.ResourceExhausted,
+				"gas limit in predecessor tx too high, got %d, max %d",
+				msg.GasLimit,
+				maxTxGasLimit,
+			)
+		}
+
+		txConfig.TxHash = ethTx.Hash()
+		txConfig.TxIndex = uint(i)
+		tracer, err := types.NewNoopTracer()
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		rsp, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, ethTx), tracer, true, cfg, txConfig)
+		if err != nil {
+			continue
+		}
+		txConfig.LogIndex += uint(len(rsp.Logs))
 	}
 
 	tx := req.Msg.AsTransaction()
@@ -650,6 +621,17 @@ func (k *Keeper) traceTx(
 	msg, err := core.TransactionToMessage(tx, signer, cfg.BaseFee)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())
+	}
+
+	// Prevent processing transactions with extremely high gas limit to
+	// avoid DoS.
+	if msg.GasLimit > maxTxGasLimit {
+		return nil, 0, status.Errorf(
+			codes.ResourceExhausted,
+			"gas limit in tx too high, got %d, max %d",
+			msg.GasLimit,
+			maxTxGasLimit,
+		)
 	}
 
 	if traceConfig == nil {
