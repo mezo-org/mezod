@@ -3,6 +3,7 @@ package metricsscraper
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -69,6 +70,37 @@ func Start(configPath string) {
 	wg.Wait()
 }
 
+// tryConnect, try to connect to the node forever until it works
+// it'll stop when it acquire a connection or it's asked to stop
+func tryConnect(
+	ctx context.Context,
+	pollRate time.Duration,
+	config NodeConfig,
+) (*rpc.Client, bool) {
+	c, err := rpc.DialContext(ctx, config.RPCURL)
+	if err == nil {
+		// no errors, let's start polling
+		return c, true
+	}
+
+	ticker := time.NewTicker(pollRate)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Printf("job terminated for %v", config.Moniker)
+			return nil, false
+		case <-ticker.C:
+			c, err = rpc.DialContext(ctx, config.RPCURL)
+			if err != nil {
+				log.Printf("error: couldn't connect to %v at %v: %v", config.Moniker, config.RPCURL, err)
+				continue
+			}
+
+			return c, true
+		}
+	}
+}
+
 func run(
 	ctx context.Context,
 	wg *sync.WaitGroup,
@@ -76,116 +108,168 @@ func run(
 	networkID string,
 	config NodeConfig,
 ) {
-	c, err := rpc.DialContext(ctx, config.RPCURL)
-	if err != nil {
-		log.Fatalf("error: couldn't connect to %v at %v: %v", config.Moniker, config.RPCURL, err)
+	defer wg.Done()
+
+	c, ok := tryConnect(ctx, pollRate, config)
+	if !ok {
+		// only case this happen is that the context been canceled
+		return
 	}
 
 	ticker := time.NewTicker(pollRate)
 	for {
 		select {
 		case <-ctx.Done():
-			wg.Done()
 			log.Printf("job terminated for %v", config.Moniker)
 			return
 		case <-ticker.C:
 			if err := pollData(ctx, c, config.Moniker, networkID); err != nil {
 				log.Printf("error polling data for %v: %v", config.Moniker, err)
+			} else {
+				log.Printf("data polled successfully for: %v", config.Moniker)
 			}
 		}
 	}
 }
 
 func pollData(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
+	errs := []error{}
 	if err := sidecarsVersion(ctx, client, moniker, networkID); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	if err := nodeVersion(ctx, client, moniker, networkID); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	if err := latestBlockAndTimestamp(ctx, client, moniker, networkID); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
-	return nil
+	if len(errs) > 0 {
+		mezodUpGauge.WithLabelValues(moniker, networkID).Set(0)
+	} else {
+		mezodUpGauge.WithLabelValues(moniker, networkID).Set(1)
+	}
+
+	return errors.Join(errs...)
 }
 
-func latestBlockAndTimestamp(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
+func latestBlockAndTimestamp(ctx context.Context, client *rpc.Client, moniker, networkID string) (err error) {
+	defer func() {
+		if err != nil {
+			// set latest block to 0 for error
+			mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(0)
+			// set latest timestamp to 0 for error
+			mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(0)
+		}
+	}()
+
 	result := struct {
 		Number    string `json:"number"`
 		Timestamp string `json:"timestamp"`
 	}{}
-	err := client.CallContext(ctx, &result, ethGetBlockByNumberEndpoint, "latest", false)
-	if err != nil {
-		mezodUpGauge.WithLabelValues(moniker, networkID).Set(0)
-		return fmt.Errorf("couldn't call %v for %v: %v", ethGetBlockByNumberEndpoint, moniker, err)
-	}
 
-	mezodUpGauge.WithLabelValues(moniker, networkID).Set(1)
+	err = client.CallContext(ctx, &result, ethGetBlockByNumberEndpoint, "latest", false)
+	if err != nil {
+		err = fmt.Errorf("couldn't call %v for %v: %v", ethGetBlockByNumberEndpoint, moniker, err)
+		return
+	}
 
 	latestBlock, err := strconv.ParseUint(strings.TrimPrefix(result.Number, "0x"), 16, 64)
 	if err != nil {
-		return err
+		err = fmt.Errorf("invalid latestBlock: %v", err)
+		return
 	}
-	mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(float64(latestBlock))
 
 	ts, err := strconv.ParseUint(strings.TrimPrefix(result.Timestamp, "0x"), 16, 64)
 	if err != nil {
-		return err
+		err = fmt.Errorf("invalid timestamp: %v", err)
+		return
 	}
-	mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(float64(ts))
 
-	return nil
+	mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(float64(ts))
+	mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(float64(latestBlock))
+
+	return
 }
 
-func nodeVersion(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
+func nodeVersion(ctx context.Context, client *rpc.Client, moniker, networkID string) (err error) {
+	defer func() {
+		if err != nil {
+			// set it to a valid semver showing nicely there's an error
+			mezodVersionGauge.WithLabelValues(moniker, networkID, "0.0.0-unknown").Set(1)
+		}
+	}()
+
+	// always remove the previous metrics to ensure that there's no duplicates when
+	// the labels version changes
+	mezodVersionGauge.DeletePartialMatch(map[string]string{
+		"moniker":  moniker,
+		"chain_id": networkID,
+	})
+
 	var result string
-	err := client.CallContext(ctx, &result, web3ClientVersionEndpoint)
+	err = client.CallContext(ctx, &result, web3ClientVersionEndpoint)
 	if err != nil {
-		return fmt.Errorf("couldn't call %v for %v: %v", web3ClientVersionEndpoint, moniker, err)
+		err = fmt.Errorf("couldn't call %v for %v: %v", web3ClientVersionEndpoint, moniker, err)
+		return
 	}
 
 	// here we expect the following pattern:
 	// Mezod/<VERSION>/amd64/go1.22.8
 	segments := strings.Split(result, "/")
 	if len(segments) != 4 {
-		return fmt.Errorf("invalid version string, expected 4 segments, got %v: %v", len(segments), result)
+		err = fmt.Errorf("invalid version string, expected 4 segments, got %v: %v", len(segments), result)
+		return
 	}
 
 	mezodVersionGauge.WithLabelValues(moniker, networkID, segments[1]).Set(1)
 
-	return nil
+	return
 }
 
-func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID string) error {
-	result := map[string]net.SidecarInfos{}
-	err := client.CallContext(ctx, &result, netSidecarsEndpoint)
-	if err != nil {
-		return fmt.Errorf("couldn't call %v for %v: %v", netSidecarsEndpoint, moniker, err)
-	}
+func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID string) (err error) {
+	defer func() {
+		if err != nil {
+			ethereumSidecarGauge.WithLabelValues(moniker, networkID, "0.0.0-unknown").Set(0)
+			connectSidecarGauge.WithLabelValues(moniker, networkID, "0.0.0-unknown").Set(0)
+		}
+	}()
 
-	var (
-		ethereumVersion, ethereumIsRunning = "unknow", 0.
-		connectVersion, connectIsRunning   = "unknow", 0.
-	)
+	// always remove the previous metrics to ensure that there's no duplicates when
+	// the labels version changes
+	ethereumSidecarGauge.DeletePartialMatch(map[string]string{
+		"moniker":  moniker,
+		"chain_id": networkID,
+	})
+	connectSidecarGauge.DeletePartialMatch(map[string]string{
+		"moniker":  moniker,
+		"chain_id": networkID,
+	})
+
+	result := map[string]net.SidecarInfos{}
+	err = client.CallContext(ctx, &result, netSidecarsEndpoint)
+	if err != nil {
+		err = fmt.Errorf("couldn't call %v for %v: %v", netSidecarsEndpoint, moniker, err)
+		return
+	}
 
 	if ethereumSidecar, ok := result["ethereum"]; ok {
+		var isConnected float64
 		if ethereumSidecar.Connected {
-			ethereumIsRunning = 1
+			isConnected = 1
 		}
-		ethereumVersion = ethereumSidecar.Version
+		ethereumSidecarGauge.WithLabelValues(moniker, networkID, ethereumSidecar.Version).Set(isConnected)
 	}
-	ethereumSidecarGauge.WithLabelValues(moniker, networkID, ethereumVersion).Set(ethereumIsRunning)
 
 	if connectSidecar, ok := result["connect"]; ok {
+		var isConnected float64
 		if connectSidecar.Connected {
-			connectIsRunning = 1
+			isConnected = 1
 		}
-		connectVersion = connectSidecar.Version
+		connectSidecarGauge.WithLabelValues(moniker, networkID, connectSidecar.Version).Set(isConnected)
 	}
-	connectSidecarGauge.WithLabelValues(moniker, networkID, connectVersion).Set(connectIsRunning)
 
-	return nil
+	return
 }

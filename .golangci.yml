@@ -32,6 +32,8 @@ linters:
     - gomodguard
 
 linters-settings:
+  nakedret:
+    max-func-lines: 50
   dogsled:
     max-blank-identifiers: 3
   golint:
