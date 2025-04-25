@@ -172,25 +172,26 @@ func latestBlockAndTimestamp(ctx context.Context, client *rpc.Client, moniker, n
 
 	err = client.CallContext(ctx, &result, ethGetBlockByNumberEndpoint, "latest", false)
 	if err != nil {
-		return fmt.Errorf("couldn't call %v for %v: %v", ethGetBlockByNumberEndpoint, moniker, err)
+		err = fmt.Errorf("couldn't call %v for %v: %v", ethGetBlockByNumberEndpoint, moniker, err)
+		return
 	}
 
-	errs := []error{}
 	latestBlock, err := strconv.ParseUint(strings.TrimPrefix(result.Number, "0x"), 16, 64)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("invalid latestBlock: %v", err))
-	} else {
-		mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(float64(latestBlock))
+		err = fmt.Errorf("invalid latestBlock: %v", err)
+		return
 	}
 
 	ts, err := strconv.ParseUint(strings.TrimPrefix(result.Timestamp, "0x"), 16, 64)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("invalid timestamp: %v", err))
-	} else {
-		mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(float64(ts))
+		err = fmt.Errorf("invalid timestamp: %v", err)
+		return
 	}
 
-	return errors.Join(errs...)
+	mezoLatestTimestampGauge.WithLabelValues(moniker, networkID).Set(float64(ts))
+	mezoLatestBlockGauge.WithLabelValues(moniker, networkID).Set(float64(latestBlock))
+
+	return
 }
 
 func nodeVersion(ctx context.Context, client *rpc.Client, moniker, networkID string) (err error) {
@@ -211,19 +212,21 @@ func nodeVersion(ctx context.Context, client *rpc.Client, moniker, networkID str
 	var result string
 	err = client.CallContext(ctx, &result, web3ClientVersionEndpoint)
 	if err != nil {
-		return fmt.Errorf("couldn't call %v for %v: %v", web3ClientVersionEndpoint, moniker, err)
+		err = fmt.Errorf("couldn't call %v for %v: %v", web3ClientVersionEndpoint, moniker, err)
+		return
 	}
 
 	// here we expect the following pattern:
 	// Mezod/<VERSION>/amd64/go1.22.8
 	segments := strings.Split(result, "/")
 	if len(segments) != 4 {
-		return fmt.Errorf("invalid version string, expected 4 segments, got %v: %v", len(segments), result)
+		err = fmt.Errorf("invalid version string, expected 4 segments, got %v: %v", len(segments), result)
+		return
 	}
 
 	mezodVersionGauge.WithLabelValues(moniker, networkID, segments[1]).Set(1)
 
-	return nil
+	return
 }
 
 func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID string) (err error) {
@@ -248,9 +251,8 @@ func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID
 	result := map[string]net.SidecarInfos{}
 	err = client.CallContext(ctx, &result, netSidecarsEndpoint)
 	if err != nil {
-		// just format nicely the error, and continue execution
-		// so the prometheus variable are still set to defaults
-		return fmt.Errorf("couldn't call %v for %v: %v", netSidecarsEndpoint, moniker, err)
+		err = fmt.Errorf("couldn't call %v for %v: %v", netSidecarsEndpoint, moniker, err)
+		return
 	}
 
 	if ethereumSidecar, ok := result["ethereum"]; ok {
@@ -269,5 +271,5 @@ func sidecarsVersion(ctx context.Context, client *rpc.Client, moniker, networkID
 		connectSidecarGauge.WithLabelValues(moniker, networkID, connectSidecar.Version).Set(isConnected)
 	}
 
-	return err
+	return
 }
