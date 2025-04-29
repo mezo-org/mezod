@@ -144,4 +144,22 @@ describe("TestERC20", function () {
       ).to.be.revertedWithCustomError(testERC20, "ZeroAddressMinter")
     })
   })
+
+  describe("Ownership Transfer", function () {
+    it("should allow owner to transfer contract ownership", async function () {
+      const { testERC20, owner, user1 } = await loadFixture(fixture)
+      
+      await testERC20.connect(owner).transferOwnership(user1.address)
+      await testERC20.connect(user1).acceptOwnership()
+      expect(await testERC20.owner()).to.equal(user1.address)
+    })
+
+    it("should not allow non-owner to transfer contract ownership", async function () {
+      const { testERC20, user1 } = await loadFixture(fixture)
+      
+      await expect(
+        testERC20.connect(user1).transferOwnership(user1.address)
+      ).to.be.reverted
+    })
+  })
 }) 
