@@ -18,6 +18,8 @@ const (
 	AllowanceMethodName = "allowance"
 )
 
+// AllowanceMethod is a precompile method that allows users to check
+// how much a spender is allowed to spend on behalf of an owner.
 type AllowanceMethod struct {
 	authzkeeper authzkeeper.Keeper
 	denom       string
