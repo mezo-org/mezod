@@ -23,8 +23,14 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0,
     },
+    minter: {
+      default: 1,
+      testnet: "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5",
+      mainnet: "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5",
+    },
+    
   },
-  defaultNetwork: 'testnet',
+  defaultNetwork: 'hardhat',
   networks: {
     testnet: {
       chainId: 31611,

@@ -6,14 +6,14 @@ const tokenName = "TestERC20"
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { ethers, getNamedAccounts, deployments, helpers, network } = hre
-  const { deployer } = await getNamedAccounts()
+  const { deployer, minter } = await getNamedAccounts()
   const { log } = deployments
 
   const tokenSymbol = "TEST42"
-  const initialMinter = "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5" // x/bridge module account
 
   console.log(`deployer is ${deployer}`)
   console.log(`Deploying ${tokenName} contract...`)
+  console.log(`Network name: ${network.name}`)
 
   const TestERC20 = await deployments.getOrNull(tokenName)
   const isValidDeployment =
@@ -29,7 +29,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         initializerArgs: [
           tokenName,
           tokenSymbol,
-          initialMinter,
+          minter,
         ],
         factoryOpts: { signer: await ethers.getSigner(deployer) },
         proxyOpts: {

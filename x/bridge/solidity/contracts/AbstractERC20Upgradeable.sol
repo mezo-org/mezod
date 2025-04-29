@@ -4,9 +4,8 @@ pragma solidity 0.8.29;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-abstract contract AbstractERC20Upgradeable is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeable, Ownable2StepUpgradeable {
+abstract contract AbstractERC20Upgradeable is ERC20Upgradeable, ERC20BurnableUpgradeable, Ownable2StepUpgradeable {
     /// @dev The address of the minter.
     address public minter;
 
