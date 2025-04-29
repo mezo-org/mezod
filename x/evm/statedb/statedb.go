@@ -656,7 +656,7 @@ func (s *StateDB) commit(ctx sdk.Context) error {
 	for _, addr := range s.journal.sortedDirties() {
 		obj := s.stateObjects[addr]
 		if obj.selfDestructed {
-			if err := s.keeper.DeleteAccount(ctx, obj.Address()); err != nil {
+			if err := s.keeper.DeleteAccount(ctx, obj.Address(), obj.Balance().ToBig()); err != nil {
 				return errorsmod.Wrap(err, "failed to delete account")
 			}
 		} else {

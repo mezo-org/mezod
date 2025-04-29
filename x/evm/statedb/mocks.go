@@ -88,7 +88,7 @@ func (k MockKeeper) SetCode(_ sdk.Context, codeHash []byte, code []byte) {
 	k.Codes[common.BytesToHash(codeHash)] = code
 }
 
-func (k MockKeeper) DeleteAccount(_ sdk.Context, addr common.Address) error {
+func (k MockKeeper) DeleteAccount(_ sdk.Context, addr common.Address, _ *big.Int) error {
 	if addr == errAddress {
 		return errors.New("mock db error")
 	}

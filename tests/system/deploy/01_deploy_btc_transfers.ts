@@ -15,6 +15,14 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     log: true,
     waitConfirmations: 1,
   })
+
+  console.log("Deploying OtherSpender contract...")
+  await deployments.deploy("OtherSpender", {
+    from: deployer,
+    args: [],
+    log: true,
+    waitConfirmations: 1,
+  })
 }
 
 export default func
