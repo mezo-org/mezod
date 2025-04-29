@@ -1,5 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config"
+import "@keep-network/hardhat-helpers"
 import "@nomicfoundation/hardhat-toolbox"
+import "@openzeppelin/hardhat-upgrades"
 import "hardhat-deploy"
 import * as dotenv from "dotenv";
 
@@ -8,7 +10,7 @@ dotenv.config();
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: '0.8.20',
+    version: '0.8.29',
     settings: {
       optimizer: {
         enabled: true,
@@ -28,11 +30,13 @@ const config: HardhatUserConfig = {
       chainId: 31611,
       url: process.env.TESTNET_RPC_URL || "",
       accounts: process.env.TESTNET_PRIVATE_KEY ? [process.env.TESTNET_PRIVATE_KEY] : [],
+      tags: ['verify'],
     },
     mainnet: {
       chainId: 31612,
       url: process.env.MAINNET_RPC_URL || "",
       accounts: process.env.MAINNET_PRIVATE_KEY ? [process.env.MAINNET_PRIVATE_KEY] : [],
+      tags: ['verify'],
     }
   },
   etherscan: {

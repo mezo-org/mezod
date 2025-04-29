@@ -1,25 +1,68 @@
-import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { DeployFunction } from "hardhat-deploy/types"
+import type { HardhatRuntimeEnvironment } from "hardhat/types"
+import waitForTransaction from "../helpers/deploy-helpers"
+
+const tokenName = "TestERC20"
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
-  const { getNamedAccounts, deployments } = hre
+  const { ethers, getNamedAccounts, deployments, helpers, network } = hre
   const { deployer } = await getNamedAccounts()
+  const { log } = deployments
+
+  const tokenSymbol = "TEST42"
+  const initialMinter = "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5" // x/bridge module account
 
   console.log(`deployer is ${deployer}`)
+  console.log(`Deploying ${tokenName} contract...`)
 
-  console.log("Deploying MyERC20 contract...")
+  const TestERC20 = await deployments.getOrNull(tokenName)
+  const isValidDeployment =
+    TestERC20 && helpers.address.isValid(TestERC20.address)
 
-  // TODO:
-  // THIS IS JUST A TEST ERC20 CONTRACT. REPLACE IT WITH REAL MAPPED ERC20(s)
-  // Deploy as upgradable proxy - deployProxy()
-  await deployments.deploy("TestERC20", {
-    from: deployer,
-    args: [],
-    log: true,
-    waitConfirmations: 1,
-  })
+  if (isValidDeployment) {
+    log(`Using ${tokenName} at ${TestERC20.address}`)
+  } else {
+    const [_, testERC20Deployment] = await helpers.upgrades.deployProxy(
+      tokenName,
+      {
+        contractName: tokenName,
+        initializerArgs: [
+          tokenName,
+          tokenSymbol,
+          initialMinter,
+        ],
+        factoryOpts: { signer: await ethers.getSigner(deployer) },
+        proxyOpts: {
+          kind: "transparent",
+        },
+      },
+    )
+
+    if (
+      testERC20Deployment.transactionHash
+    ) {
+      const confirmationsByChain: Record<string, number> = {
+        mainnet: 3,
+        testnet: 3,
+      }
+  
+      await waitForTransaction(
+        hre,
+        testERC20Deployment.transactionHash,
+        confirmationsByChain[network.name],
+      )
+
+      // TODO: fix verification for proxy admin.
+      if (hre.network.tags.verify) {
+        await hre.run("verify", {
+          address: testERC20Deployment.address,
+          constructorArgsParams: testERC20Deployment.args,
+        })
+      }
+    }
+  }
 }
 
 export default func
 
-func.tags = ["TestERC20"]
+func.tags = [tokenName]

@@ -12,10 +12,12 @@
     "deploy": "npm run prepare:env && hardhat deploy"
   },
   "devDependencies": {
+    "@keep-network/hardhat-helpers": "0.7.2",
     "@nomicfoundation/hardhat-ethers": "^3.0.5",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
     "@openzeppelin/hardhat-upgrades": "^3.0.1",
     "dotenv-safer": "^1.0.0",
+    "ethers": "^6.9.2",
     "hardhat": "^2.19.4",
     "hardhat-deploy": "^0.11.45"
   },
