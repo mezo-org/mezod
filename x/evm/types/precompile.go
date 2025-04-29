@@ -6,6 +6,11 @@ const (
 )
 
 const (
+	MEZOTokenPrecompileAddress       = "0x7b7c000000000000000000000000000000000001"
+	MEZOTokenPrecompileLatestVersion = 1
+)
+
+const (
 	ValidatorPoolPrecompileAddress       = "0x7b7c000000000000000000000000000000000011"
 	ValidatorPoolPrecompileLatestVersion = 1
 )
@@ -17,7 +22,7 @@ const (
 
 const (
 	MaintenancePrecompileAddress       = "0x7b7c000000000000000000000000000000000013"
-	MaintenancePrecompileLatestVersion = 2
+	MaintenancePrecompileLatestVersion = 3
 )
 
 const (
@@ -42,6 +47,7 @@ const (
 // the consensus.
 var DefaultPrecompilesVersions = []*PrecompileVersionInfo{
 	{BTCTokenPrecompileAddress, BTCTokenPrecompileLatestVersion},
+	{MEZOTokenPrecompileAddress, MEZOTokenPrecompileLatestVersion},
 	{ValidatorPoolPrecompileAddress, ValidatorPoolPrecompileLatestVersion},
 	{AssetsBridgePrecompileAddress, AssetsBridgePrecompileLatestVersion},
 	{MaintenancePrecompileAddress, MaintenancePrecompileLatestVersion},

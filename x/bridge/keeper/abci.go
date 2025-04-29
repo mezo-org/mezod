@@ -51,7 +51,7 @@ func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
 		)
 	}
 
-	k.Logger(sdkCtx).Debug("safe BTC supply state",
+	k.Logger(sdkCtx).Info("safe BTC supply state",
 		"totalSupply", totalSupply.String(),
 		"totalMinted", totalMinted.String(),
 		"totalBurnt", totalBurnt.String(),

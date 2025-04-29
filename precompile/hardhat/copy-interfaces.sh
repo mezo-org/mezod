@@ -4,11 +4,24 @@
 # in `.gitignore` to prevent the duplicates getting committed.
 
 # Create interfaces dir if it doesn't already exist
-mkdir -p ./interfaces
+mkdir -p ./interfaces/solidity
 
-# Copy BTC Token interfaces
+# Copy ERC20 interfaces to the solidity sub-directory.
+# This is done due to legacy reasons, in order to not change
+# the BTCCaller contract bytecode.
+cp ../erc20/IERC20.sol ./interfaces/solidity/
+cp ../erc20/IERC20Metadata.sol ./interfaces/solidity/
+cp ../erc20/IERC20WithPermit.sol ./interfaces/solidity/
+
+# Copy BTC Token interface
 cp ../btctoken/IBTC.sol ./interfaces/
-cp -R ../btctoken/solidity ./interfaces/
+# Adjust imports in IBTC.sol
+sed -i '' 's|../erc20/|./solidity/|g' ./interfaces/IBTC.sol
+
+# Copy MEZO Token interface
+cp ../mezotoken/IMEZO.sol ./interfaces/
+# Adjust imports in IMEZO.sol
+sed -i '' 's|../erc20/|./solidity/|g' ./interfaces/IMEZO.sol
 
 # Copy Validator Pool interface
 cp ../validatorpool/IValidatorPool.sol ./interfaces/

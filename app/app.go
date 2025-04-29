@@ -94,6 +94,7 @@ import (
 	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	"github.com/mezo-org/mezod/precompile/btctoken"
 	"github.com/mezo-org/mezod/precompile/maintenance"
+	"github.com/mezo-org/mezod/precompile/mezotoken"
 	"github.com/mezo-org/mezod/precompile/priceoracle"
 	"github.com/mezo-org/mezod/precompile/testbed"
 	upgradelocal "github.com/mezo-org/mezod/precompile/upgrade"
@@ -415,6 +416,7 @@ func NewMezo(
 		keys[bridgetypes.StoreKey],
 		app.BankKeeper,
 		app.EvmKeeper,
+		app.BlockedAddrs(),
 	)
 
 	precompiles, err := customEvmPrecompiles(
@@ -906,6 +908,20 @@ func customEvmPrecompiles(
 		)
 	}
 
+	// MEZO token precompile.
+	mezoTokenVersionMap, err := mezotoken.NewPrecompileVersionMap(
+		bankKeeper,
+		authzKeeper,
+		evmKeeper,
+		chainID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to create MEZO token precompile: [%w]",
+			err,
+		)
+	}
+
 	// Validator pool precompile.
 	validatorPoolVersionMap, err := validatorpool.NewPrecompileVersionMap(poaKeeper)
 	if err != nil {
@@ -938,6 +954,7 @@ func customEvmPrecompiles(
 
 	pvmap := []*precompile.VersionMap{
 		btcTokenVersionMap,
+		mezoTokenVersionMap,
 		validatorPoolVersionMap,
 		maintenanceVersionMap,
 		assetsBridgeVersionMap,

@@ -52,6 +52,7 @@ const (
 // prefix bytes for the precompile store
 const (
 	prefixPrecompileBTC = iota + 1
+	prefixPrecompileMEZO
 )
 
 // prefix bytes for the precompile state
@@ -89,6 +90,11 @@ func AddressStorageExtensionPrefix(address common.Address) []byte {
 // PrecompileBTCNonceKey returns the key under which the nonce of the BTC precompile is stored.
 func PrecompileBTCNonceKey() []byte {
 	return []byte{prefixPrecompileBTC, prefixNonce}
+}
+
+// PrecompileMEZONonceKey returns the key under which the nonce of the MEZO precompile is stored.
+func PrecompileMEZONonceKey() []byte {
+	return []byte{prefixPrecompileMEZO, prefixNonce}
 }
 
 // StateKey defines the full key under which an account state is stored.

@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-scraper
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-scraper
+  template:
+    metadata:
+      labels:
+        app: metrics-scraper
+    spec:
+      containers:
+        - name: metrics-scraper
+          image: mezo/metrics-scraper:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 2112
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: metrics-scraper-config
+              mountPath: /etc/metrics-scraper
+      volumes:
+        - name: metrics-scraper-config
+          secret:
+            secretName: metrics-scraper-config

@@ -39,8 +39,6 @@ func LoadConfig(chainID string) (Config, error) {
 	//nolint:gocritic
 	if utils.IsMainnet(chainID) {
 		baseDir = mainnetPath
-		// TODO: Remove panic once mainnet is supported.
-		panic("mainnet is not supported yet")
 	} else if utils.IsTestnet(chainID) {
 		baseDir = testnetPath
 	} else {

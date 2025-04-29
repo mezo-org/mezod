@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monitoring
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "mezo-production-monitoring-hub-external-ip"
+    ingress.gcp.kubernetes.io/pre-shared-cert: "mezo-production-monitoring-hub-ssl-certificate"
+spec:
+  defaultBackend:
+    service:
+      name: grafana
+      port:
+        number: 3000
+  rules:
+    - http:
+        paths:
+          - path: "/grafana"
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+---

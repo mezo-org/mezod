@@ -20,6 +20,8 @@ import (
 //nolint:gosec
 const testSourceBTCToken = "0x517f2982701695D4E52f1ECFBEf3ba31Df470161"
 
+const testBlockedAddress = "mezo10d07y265gmmuvt4z0w9aw880jnsr700jdl5p9z"
+
 func mockContext() (sdk.Context, Keeper) {
 	logger := log.NewNopLogger()
 
@@ -29,7 +31,7 @@ func mockContext() (sdk.Context, Keeper) {
 	cdc := codec.NewProtoCodec(registry)
 
 	// Create the keeper
-	keeper := NewKeeper(cdc, keys[types.StoreKey], newMockBankKeeper(), newMockEvmKeeper())
+	keeper := NewKeeper(cdc, keys[types.StoreKey], newMockBankKeeper(), newMockEvmKeeper(), map[string]bool{testBlockedAddress: true})
 
 	// Create multiStore in memory
 	db := dbm.NewMemDB()
