@@ -141,6 +141,12 @@ build-docker:
 build-docker-linux:
 	$(DOCKER) buildx build --platform linux/amd64 --tag ${DOCKER_IMAGE}:${DOCKER_TAG} .
 
+build-docker-linux-local:
+	$(DOCKER) buildx build --platform linux/amd64 --tag local/mezod .
+
+build-docker-metrics-scraper:
+	$(DOCKER) buildx build --platform linux/amd64 -t metrics-scraper -f Dockerfile.metrics-scraper .
+
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
 
@@ -308,15 +314,6 @@ localnode-bin-start:
 ###############################################################################
 ###                       Contract bindings generation                      ###
 ###############################################################################
-
-# bindings_environment determines the network type that should be used for contract
-# binding generation. The default value is mainnet.
-ifndef bindings_environment
-# TODO: Once we are production ready, this has to be changed to mainnet.
-override bindings_environment = sepolia
-endif
-
-export bindings_environment
 
 # List of NPM packages for which to generate bindings - expand if needed.
 npm_packages := @mezo-org/contracts

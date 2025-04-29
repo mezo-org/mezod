@@ -4,6 +4,7 @@ import '@nomicfoundation/hardhat-toolbox'
 // import precompile tasks
 import './tasks/validatorpool'
 import './tasks/btctoken'
+import './tasks/mezotoken'
 import './tasks/util'
 import './tasks/maintenance'
 import './tasks/upgrade'

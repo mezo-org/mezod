@@ -12,10 +12,11 @@ import (
 )
 
 type Keeper struct {
-	cdc        codec.Codec
-	storeKey   storetypes.StoreKey
-	bankKeeper types.BankKeeper
-	evmKeeper  types.EvmKeeper
+	cdc          codec.Codec
+	storeKey     storetypes.StoreKey
+	bankKeeper   types.BankKeeper
+	evmKeeper    types.EvmKeeper
+	blockedAddrs map[string]bool
 }
 
 func NewKeeper(
@@ -23,12 +24,14 @@ func NewKeeper(
 	storeKey storetypes.StoreKey,
 	bankKeeper types.BankKeeper,
 	evmKeeper types.EvmKeeper,
+	blockedAddrs map[string]bool,
 ) Keeper {
 	return Keeper{
-		cdc:        cdc,
-		storeKey:   storeKey,
-		bankKeeper: bankKeeper,
-		evmKeeper:  evmKeeper,
+		cdc:          cdc,
+		storeKey:     storeKey,
+		bankKeeper:   bankKeeper,
+		evmKeeper:    evmKeeper,
+		blockedAddrs: blockedAddrs,
 	}
 }
 

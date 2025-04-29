@@ -120,12 +120,15 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 
 	# Allocate genesis accounts (cosmos formatted addresses)
 	for KEY in "${KEYS[@]}"; do
-		mezod genesis add-account "$KEY" 100000000000000000000000000abtc --keyring-backend $KEYRING --home "$HOMEDIR"
+		mezod genesis add-account "$KEY" 100000000000000000000000000abtc,100000000000000000000000000amezo --keyring-backend $KEYRING --home "$HOMEDIR"
 	done
 
 	# bc is required to add these big numbers
 	total_supply=$(echo "${#KEYS[@]} * 100000000000000000000000000" | bc)
 	jq -r --arg total_supply "$total_supply" '.app_state["bank"]["supply"][0]["amount"]=$total_supply' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
+
+	max_gas=10000000 # 10m
+	jq -r --arg max_gas "$max_gas" '.consensus["params"]["block"]["max_gas"]=$max_gas' "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"
 
 	# Generate the validator.
 	mezod genesis genval "${KEYS[0]}" --keyring-backend $KEYRING --chain-id $CHAINID --home "$HOMEDIR"
@@ -142,4 +145,4 @@ if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
 fi
 
 # Start the node (remove the --pruning=nothing flag if historical queries are not needed)
-mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3 --api.enable --enable-testbed-precompile --home "$HOMEDIR"
+mezod start --metrics "$TRACE" --log_level $LOGLEVEL --minimum-gas-prices=0.0001abtc --json-rpc.api eth,txpool,personal,net,debug,web3,mezo --api.enable --enable-testbed-precompile --home "$HOMEDIR"

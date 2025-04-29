@@ -55,6 +55,7 @@ import (
 	"github.com/mezo-org/mezod/crypto/hd"
 	"github.com/mezo-org/mezod/server/config"
 	srvflags "github.com/mezo-org/mezod/server/flags"
+	"github.com/mezo-org/mezod/utils"
 
 	mezotypes "github.com/mezo-org/mezod/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -338,7 +339,10 @@ func initTestnetFiles(
 
 		balance, _ := sdkmath.NewIntFromString("100000000000000000000000000")
 		totalBalanceMinted = totalBalanceMinted.Add(balance)
-		coins := sdk.NewCoins(sdk.NewCoin(cmdcfg.BaseDenom, balance))
+		coins := sdk.NewCoins(
+			sdk.NewCoin(cmdcfg.BaseDenom, balance),
+			sdk.NewCoin(utils.MezoDenom, balance),
+		)
 
 		genBalances = append(
 			genBalances,
@@ -464,6 +468,12 @@ func initGenesisFiles(
 	// Set the first validator as the initial owner.
 	poaGenState.Owner = sdk.AccAddress(validators[0].GetOperator()).String()
 	poaGenState.Validators = validators
+	poaGenState.PrivilegeAssignments = []poatypes.ValidatorPrivilegeAssignment{
+		{
+			OperatorBech32: validators[0].GetOperator().String(),
+			Privilege:      bridgetypes.ValidatorPrivilege,
+		},
+	}
 	appGenState[poatypes.ModuleName] = clientCtx.Codec.MustMarshalJSON(&poaGenState)
 
 	var bridgeGenState bridgetypes.GenesisState

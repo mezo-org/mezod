@@ -34,8 +34,11 @@ const (
 	MainnetChainID = "mezo_31612"
 	// TestnetChainID defines the Mezo EIP155 chain ID for testnet
 	TestnetChainID = "mezo_31611"
-	// BaseDenom defines the Mezo mainnet denomination
+	// BaseDenom defines the BTC token denomination. The equation is 1 BTC = 10^18 abtc.
+	// This is the base and gas token of the chain.
 	BaseDenom = "abtc"
+	// MezoDenom defines the MEZO token denomination. The equation is 1 MEZO = 10^18 amezo.
+	MezoDenom = "amezo"
 )
 
 // IsMainnet returns true if the chain-id has the Mezo mainnet EIP155 chain prefix.

@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../common/monitoring
+  - ingress.yaml
+
+patches:
+  - path: grafana/deployement-patch.yaml
+
+configMapGenerator:
+  - name: grafana-dashboards-mezo
+    files:
+      - grafana/dashboards/mezo-nodes-public.json
+
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    note: generated
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/part-of: staging
+
+namespace: monitoring

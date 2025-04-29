@@ -51,6 +51,8 @@ var _ types.QueryServer = Keeper{}
 
 const (
 	defaultTraceTimeout = 5 * time.Second
+	maxPredecessorsTxs  = 50
+	maxTxGasLimit       = 10_000_000
 )
 
 // Account implements the Query/Account gRPC method
@@ -443,6 +445,16 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		return nil, status.Errorf(codes.InvalidArgument, "output limit cannot be negative, got %d", req.TraceConfig.Limit)
 	}
 
+	// Prevent processing transactions with too many predecessors to avoid DoS.
+	if len(req.Predecessors) > maxPredecessorsTxs {
+		return nil, status.Errorf(
+			codes.ResourceExhausted,
+			"too many predecessor transactions, got %d, max %d",
+			len(req.Predecessors),
+			maxPredecessorsTxs,
+		)
+	}
+
 	// minus one to get the context of block beginning
 	contextHeight := req.BlockNumber - 1
 	if contextHeight < 1 {
@@ -472,6 +484,18 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		if err != nil {
 			continue
 		}
+
+		// Prevent processing transactions with extremely high gas limit to
+		// avoid DoS.
+		if msg.GasLimit > maxTxGasLimit {
+			return nil, status.Errorf(
+				codes.ResourceExhausted,
+				"gas limit in predecessor tx too high, got %d, max %d",
+				msg.GasLimit,
+				maxTxGasLimit,
+			)
+		}
+
 		txConfig.TxHash = ethTx.Hash()
 		txConfig.TxIndex = uint(i)
 		tracer, err := types.NewNoopTracer()
@@ -597,6 +621,17 @@ func (k *Keeper) traceTx(
 	msg, err := core.TransactionToMessage(tx, signer, cfg.BaseFee)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())
+	}
+
+	// Prevent processing transactions with extremely high gas limit to
+	// avoid DoS.
+	if msg.GasLimit > maxTxGasLimit {
+		return nil, 0, status.Errorf(
+			codes.ResourceExhausted,
+			"gas limit in tx too high, got %d, max %d",
+			msg.GasLimit,
+			maxTxGasLimit,
+		)
 	}
 
 	if traceConfig == nil {
