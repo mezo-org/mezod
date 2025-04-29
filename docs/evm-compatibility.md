@@ -9,7 +9,7 @@ Ethereum.
 ## EVM forks
 
 Mezo offers EVM compatibility, supporting all Ethereum features
-up to the London fork. For more information about London fork please see
+up to the London fork. For more information about the London fork, please see
 [here](https://ethereum.org/en/history/#london).
 
 ## EVM JSON-RPC API reference
@@ -107,7 +107,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1
 
 #### eth_chainId
 
-- **Description**: Returns the client’s chian ID.
+- **Description**: Returns the client’s chain ID.
 - **Parameters**: None.
 - **Returns**: `String` - Chain ID.
 
@@ -147,7 +147,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id
 
 #### eth_getBalance
 
-- **Description**: Returns the balance of the account of given address.
+- **Description**: Returns the balance of the account at the given address.
 - **Parameters**:
     - `String` - Address to check for balance.
     - `String` - Block number.
