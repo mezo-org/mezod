@@ -11,6 +11,7 @@ describe("BTCTransfers", function () {
   const { deployments } = hre;
   let btcErc20Token: any;
   let btcTransfers: BTCTransfers;
+  let otherSpender: string;
   let signers: any;
   let senderSigner: any;
   let senderAddress: string;
@@ -20,10 +21,159 @@ describe("BTCTransfers", function () {
     await deployments.fixture();
     btcErc20Token = new hre.ethers.Contract(precompileAddress, abi, ethers.provider);
     btcTransfers = await getDeployedContract("BTCTransfers");
+    otherSpender = await(await getDeployedContract("OtherSpender")).getAddress();
     signers = await ethers.getSigners();
     senderSigner = signers[0];
     senderAddress = senderSigner.address;
     recipientAddress = ethers.Wallet.createRandom().address;
+  });
+
+  describe("basicSpendTo0", function () {
+    let initialSenderBalance: any;
+    let initialRecipientBalance: any;
+    let tokenAmount: any;
+    let gasCost: any;
+
+    before(async function () {
+      await fixture();
+
+      tokenAmount = ethers.parseEther("8");
+      const btcTransfersAddress = await btcTransfers.getAddress();
+
+      const transferTx = await btcErc20Token.connect(senderSigner).transfer(btcTransfersAddress, tokenAmount);
+      await transferTx.wait();
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+      initialRecipientBalance = await ethers.provider.getBalance(otherSpender);
+
+      const tx = await btcTransfers.connect(senderSigner).basicSpendTo0(otherSpender);
+      const receipt = await tx.wait();
+      gasCost = receipt.gasUsed * receipt.gasPrice;
+    });
+
+    it("should verify initial recipient balance is zero", async function () {
+	expect(initialRecipientBalance).to.equal(0);
+    });
+
+    it("should verify current recipient balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(otherSpender);
+      expect(currentRecipientNativeBalance).to.equal(tokenAmount / 2n);
+    });
+
+    it("should verify native and BTC ERC20 balance equivalence", async function () {
+      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
+
+      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
+    });
+
+    it("should verify BTCTransfers contract has half balance", async function () {
+      const btcTransfersAddress = await btcTransfers.getAddress();
+      const currentContractNativeBalance = await ethers.provider.getBalance(btcTransfersAddress);
+      expect(currentContractNativeBalance).to.equal(tokenAmount / 2n);
+    });
+  });
+
+  describe("basicSendThenSpendAndReturn", function () {
+    let initialSenderBalance: any;
+    let initialRecipientBalance: any;
+    let tokenAmount: any;
+    let gasCost: any;
+
+    before(async function () {
+      await fixture();
+
+      tokenAmount = ethers.parseEther("8");
+      const btcTransfersAddress = await btcTransfers.getAddress();
+
+      const transferTx = await btcErc20Token.connect(senderSigner).transfer(btcTransfersAddress, tokenAmount);
+      await transferTx.wait();
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+      initialRecipientBalance = await ethers.provider.getBalance(otherSpender);
+
+      const tx = await btcTransfers.connect(senderSigner).basicSendThenSpendAndReturn(otherSpender);
+      const receipt = await tx.wait();
+      gasCost = receipt.gasUsed * receipt.gasPrice;
+    });
+
+    it("should verify initial recipient balance is zero", async function () {
+      expect(initialRecipientBalance).to.equal(0);
+    });
+
+    it("should verify current recipient balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(otherSpender);
+      expect(currentRecipientNativeBalance).to.equal(0n);
+    });
+
+    it("should verify native and BTC ERC20 balance equivalence", async function () {
+      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
+
+      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
+    });
+
+    it("should verify BTCTransfers contract has full balance", async function () {
+      const btcTransfersAddress = await btcTransfers.getAddress();
+      const currentContractNativeBalance = await ethers.provider.getBalance(btcTransfersAddress);
+      expect(currentContractNativeBalance).to.equal(tokenAmount);
+    });
+  });
+
+  describe("basicSendThenSpendThenSendAndReturn", function () {
+    let initialSenderBalance: any;
+    let initialRecipientBalance: any;
+    let tokenAmount: any;
+    let gasCost: any;
+
+    before(async function () {
+      await fixture();
+
+      tokenAmount = ethers.parseEther("8");
+      const btcTransfersAddress = await btcTransfers.getAddress();
+
+      const transferTx = await btcErc20Token.connect(senderSigner).transfer(btcTransfersAddress, tokenAmount);
+      await transferTx.wait();
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+      initialRecipientBalance = await ethers.provider.getBalance(otherSpender);
+
+
+      const tx = await btcTransfers.connect(senderSigner).basicSendThenSpendThenSendAndReturn(otherSpender);
+      const receipt = await tx.wait();
+      gasCost = receipt.gasUsed * receipt.gasPrice;
+    });
+
+    it("should verify initial recipient balance is zero", async function () {
+      expect(initialRecipientBalance).to.equal(0);
+    });
+
+    it("should verify current recipient balance", async function () {
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(otherSpender);
+      expect(currentRecipientNativeBalance).to.equal(tokenAmount / 4n);
+    });
+
+    it("should verify native and BTC ERC20 balance equivalence", async function () {
+      const currentSenderBTCERC20Balance = await btcErc20Token.balanceOf(senderAddress);
+      const currentSenderNativeBalance = await ethers.provider.getBalance(senderAddress);
+      expect(currentSenderNativeBalance).to.equal(currentSenderBTCERC20Balance);
+
+      const currentRecipientBTCERC20Balance = await btcErc20Token.balanceOf(recipientAddress);
+      const currentRecipientNativeBalance = await ethers.provider.getBalance(recipientAddress);
+      expect(currentRecipientNativeBalance).to.equal(currentRecipientBTCERC20Balance);
+    });
+
+    it("should verify BTCTransfers contract has 3/4 of balance", async function () {
+      const btcTransfersAddress = await btcTransfers.getAddress();
+      const currentContractNativeBalance = await ethers.provider.getBalance(btcTransfersAddress);
+      expect(currentContractNativeBalance).to.equal(tokenAmount / 4n * 3n);
+    });
   });
 
   describe("nativeThenERC20", function () {

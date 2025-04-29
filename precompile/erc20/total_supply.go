@@ -7,8 +7,8 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 )
 
-// TotalSupplyMethodName is the name of the totalSupply method. It matches the name
-// of the method in the contract ABI.
+// TotalSupplyMethodName is the name of the totalSupply method.
+// It matches the name of the method in the contract ABI.
 const TotalSupplyMethodName = "totalSupply"
 
 // TotalSupplyMethod is the implementation of the totalSupply method that returns

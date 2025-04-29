@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
@@ -24,6 +23,8 @@ const (
 	PermitTypehash            = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
 )
 
+// PermitMethod is a precompile method that allows users to approve a spender to
+// spend their tokens with a signature.
 type PermitMethod struct {
 	bankKeeper      bankkeeper.Keeper
 	authzkeeper     authzkeeper.Keeper
@@ -78,7 +79,7 @@ func (am *PermitMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {
-	timestamp := time.Now().Unix() // Unix time in seconds
+	timestamp := context.SdkCtx().BlockTime().Unix() // Unix time in seconds
 
 	if err := precompile.ValidateMethodInputsCount(inputs, 7); err != nil {
 		return nil, err

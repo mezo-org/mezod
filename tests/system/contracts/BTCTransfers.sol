@@ -7,6 +7,20 @@ interface ITestbed {
     function transferWithRevert(address to, uint256 value) external returns (bool);
 }
 
+contract OtherSpender {
+    function spend(address recipient) external {
+        selfdestruct(payable(recipient));
+    }
+}
+
+interface IERC20 {
+    function transfer(address to, uint256 value) external returns (bool);
+}
+
+interface IOtherSpender {
+    function spend(address recipient) external;
+}
+
 /// @title BTCTransfers
 /// @notice Handles various transfer scenarios for Mezo native token - BTC.
 contract BTCTransfers {
@@ -14,6 +28,38 @@ contract BTCTransfers {
     address private constant precompile = 0x7b7C000000000000000000000000000000000000;
     address private constant testbedPrecompile = 0x7b7c100000000000000000000000000000000000;
     uint256 public balanceTracker = 1;
+
+    function basicSpendTo0(address recipient) external payable {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
+
+        uint256 halfBalance = balance / 2;
+
+	IOtherSpender(recipient).spend(address(0));
+	IBTC(precompile).transfer(recipient, halfBalance);
+    }
+
+    function basicSendThenSpendAndReturn(address recipient) external payable {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
+
+        uint256 quarterBalance = balance / 4;
+
+	IBTC(precompile).transfer(recipient, quarterBalance);
+	IOtherSpender(recipient).spend(address(this));
+    }
+
+    function basicSendThenSpendThenSendAndReturn(address recipient) external payable {
+        uint256 balance = IBTC(precompile).balanceOf(address(this));
+        require(balance > 0, "No balance to transfer");
+
+        uint256 quarterBalance = balance / 4;
+
+	IBTC(precompile).transfer(recipient, quarterBalance);
+	IOtherSpender(recipient).spend(address(this));
+	IBTC(precompile).transfer(recipient, quarterBalance);
+    }
+
 
     /// @notice Transfers native BTC and then ERC-20 Token from the contract
     ///         which was previously funded.
