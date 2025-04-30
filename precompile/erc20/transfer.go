@@ -20,6 +20,8 @@ const (
 	TransferFromMethodName = "transferFrom"
 )
 
+// TransferMethod is a precompile method that allows users to transfer tokens
+// from their account to another account.
 type TransferMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper
@@ -84,6 +86,8 @@ func (tm *TransferMethod) Run(
 	return transfer(context, tm.bankKeeper, tm.authzkeeper, tm.evmKeeper, tm.denom, from, to, amount)
 }
 
+// TransferFromMethod is a precompile method that allows users to pull tokens
+// from an account using the allowance mechanism.
 type TransferFromMethod struct {
 	bankKeeper  bankkeeper.Keeper
 	authzkeeper authzkeeper.Keeper

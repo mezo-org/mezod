@@ -944,23 +944,33 @@ func (suite *KeeperTestSuite) TestDeleteAccount() {
 	contractAddr := suite.DeployTestContract(suite.T(), suite.address, supply)
 
 	testCases := []struct {
-		name   string
-		addr   common.Address
-		expErr bool
+		name          string
+		addr          common.Address
+		expectBalance *big.Int
+		expErr        bool
 	}{
+		{
+			"remove deployed contract - with balance",
+			suite.address,
+			big.NewInt(42),
+			false,
+		},
 		{
 			"remove address",
 			suite.address,
+			big.NewInt(0),
 			false,
 		},
 		{
 			"remove unexistent address - returns nil error",
 			common.HexToAddress("unexistent_address"),
+			big.NewInt(0),
 			false,
 		},
 		{
 			"remove deployed contract",
 			contractAddr,
+			big.NewInt(0),
 			false,
 		},
 	}
@@ -968,13 +978,13 @@ func (suite *KeeperTestSuite) TestDeleteAccount() {
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
 			suite.SetupTest()
-			err := suite.app.EvmKeeper.DeleteAccount(suite.ctx, tc.addr)
+			err := suite.app.EvmKeeper.DeleteAccount(suite.ctx, tc.addr, tc.expectBalance)
 			if tc.expErr {
 				suite.Require().Error(err)
 			} else {
 				suite.Require().NoError(err)
 				balance := suite.app.EvmKeeper.GetBalance(suite.ctx, tc.addr)
-				suite.Require().Equal(new(big.Int), balance)
+				suite.Require().Equal(tc.expectBalance, balance)
 			}
 		})
 	}
