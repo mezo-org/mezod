@@ -38,11 +38,11 @@ blockscout:
       cpu: 2000m
       memory: 4096Mi
   env:
-    # TODO: Current RPC is temporary. Replace for mainnet and add a fallback.
+    # TODO: Current RPC is temporary. See: https://linear.app/thesis-co/issue/TET-894/internal-load-balancer-for-the-block-explorer
     ETHEREUM_JSONRPC_VARIANT: geth
-    ETHEREUM_JSONRPC_HTTP_URL: http://35.208.243.34:8545
-    ETHEREUM_JSONRPC_WS_URL: ws://35.208.243.34:8546
-    ETHEREUM_JSONRPC_TRACE_URL: http://35.208.243.34:8545
+    ETHEREUM_JSONRPC_HTTP_URL: http://35.208.7.218:8545
+    ETHEREUM_JSONRPC_WS_URL: ws://35.208.7.218:8546
+    ETHEREUM_JSONRPC_TRACE_URL: http://35.208.7.218:8545
     # ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: 
     # ETHEREUM_JSONRPC_FALLBACK_WS_URL: 
     # ETHEREUM_JSONRPC_FALLBACK_TRACE_URL: 
