@@ -59,7 +59,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
 	mezoclient "github.com/mezo-org/mezod/client"
-	"github.com/mezo-org/mezod/client/debug"
 	"github.com/mezo-org/mezod/encoding"
 	"github.com/mezo-org/mezod/ethereum/eip712"
 	ethsidecar "github.com/mezo-org/mezod/ethereum/sidecar"
@@ -71,7 +70,6 @@ import (
 	cmdcfg "github.com/mezo-org/mezod/cmd/config"
 	mezokr "github.com/mezo-org/mezod/crypto/keyring"
 
-	rosettacmd "github.com/cosmos/rosetta/cmd"
 	escli "github.com/mezo-org/mezod/ethereum/sidecar/cli"
 )
 
@@ -139,7 +137,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		escli.NewEthereumSidecarCmd(),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		NewTestnetCmd(app.ModuleBasics),
-		debug.Cmd(),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(a.newApp, app.DefaultNodeHome),
 		poa.NewCmd(),
@@ -162,14 +159,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	if err != nil {
 		panic(err)
 	}
-
-	// add rosetta
-	rootCmd.AddCommand(
-		rosettacmd.RosettaCommand(
-			encodingConfig.InterfaceRegistry,
-			encodingConfig.Codec,
-		),
-	)
 
 	return rootCmd, encodingConfig
 }

@@ -226,7 +226,7 @@ func (k *Keeper) SetCode(ctx sdk.Context, codeHash, code []byte) {
 // - remove code
 // - remove states
 // - remove auth account
-func (k *Keeper) DeleteAccount(ctx sdk.Context, addr common.Address) error {
+func (k *Keeper) DeleteAccount(ctx sdk.Context, addr common.Address, balance *big.Int) error {
 	cosmosAddr := sdk.AccAddress(addr.Bytes())
 	acct := k.accountKeeper.GetAccount(ctx, cosmosAddr)
 	if acct == nil {
@@ -240,7 +240,7 @@ func (k *Keeper) DeleteAccount(ctx sdk.Context, addr common.Address) error {
 	}
 
 	// clear balance
-	if err := k.SetBalance(ctx, addr, new(big.Int)); err != nil {
+	if err := k.SetBalance(ctx, addr, balance); err != nil {
 		return err
 	}
 

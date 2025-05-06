@@ -3,7 +3,7 @@
 #
 # Build layer
 #
-FROM golang:1.22.8-bullseye AS build
+FROM golang:1.22.11-bullseye AS build
 
 WORKDIR /go/src/github.com/mezo-org/mezod
 
