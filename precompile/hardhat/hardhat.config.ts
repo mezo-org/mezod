@@ -61,6 +61,11 @@ const config: HardhatUserConfig = {
       url: 'http://mezo-node-0.test.mezo.org:8545',
       chainId: 31611,
       accounts: getPrivKeys()
+    },
+    mezo_mainnet: {
+      url: 'http://35.208.243.34:8545',
+      chainId: 31612,
+      accounts: getPrivKeys()
     }
   }
 }

@@ -1,0 +1,28 @@
+{
+  "name": "@mezo-org/bridge",
+  "version": "0.0.1",
+  "license": "GPL-3.0",
+  "scripts": {
+    "clean": "hardhat clean && rm -rf cache/ artifacts/ typechain-types/",
+    "build": "hardhat compile",
+    "prepare:env": "cp -n .env.example .env || true",
+    "test": "npm run prepare:env && hardhat test",
+    "test:upgrades": "npm run prepare:env && NODE_ENV=upgrades-test hardhat test ./test/upgrades/*.test.ts --network mainnet_fork",
+    "node": "hardhat node",
+    "deploy": "npm run prepare:env && hardhat deploy"
+  },
+  "devDependencies": {
+    "@keep-network/hardhat-helpers": "0.7.2",
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.0.1",
+    "dotenv-safer": "^1.0.0",
+    "ethers": "^6.9.2",
+    "hardhat": "^2.19.4",
+    "hardhat-deploy": "^0.11.45"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2"
+  }
+}
