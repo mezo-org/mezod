@@ -37,6 +37,7 @@ abstract contract AbstractERC20Upgradeable is ERC20Upgradeable, ERC20BurnableUpg
         address initialMinter
     ) public initializer {
         __ERC20_init(name, symbol);
+        __ERC20Burnable_init();
         __Ownable_init(_msgSender());
         
         if (initialMinter == address(0)) {
