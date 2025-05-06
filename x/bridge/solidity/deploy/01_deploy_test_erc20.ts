@@ -66,3 +66,5 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 export default func
 
 func.tags = [tokenName]
+func.skip = async (hre: HardhatRuntimeEnvironment): Promise<boolean> =>
+  hre.network.name !== "hardhat"
