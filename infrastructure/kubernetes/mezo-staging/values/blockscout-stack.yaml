@@ -17,6 +17,8 @@ config:
     enabled: false # This won't be needed for now.
 
 blockscout:
+  image:
+    tag: 6.9.2
   ingress:
     enabled: true
     hostname: api.explorer.test.mezo.org
@@ -53,6 +55,8 @@ blockscout:
     CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
     INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
     CACHE_ADDRESS_TRANSACTIONS_COUNTER_PERIOD: 5m
+    COIN: BTC
+    EXCHANGE_RATES_COINGECKO_COIN_ID: bitcoin
   extraEnv:
     - name: POSTGRES_PASSWORD
       valueFrom:
@@ -63,6 +67,8 @@ blockscout:
       value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgresql.default.svc.cluster.local:5432/blockscout
 
 frontend:
+  image:
+    tag: v1.33.1
   ingress:
     enabled: true
     hostname: explorer.test.mezo.org
@@ -86,6 +92,8 @@ frontend:
     NEXT_PUBLIC_COLOR_THEME_DEFAULT: light
     NEXT_PUBLIC_NETWORK_LOGO: https://mezo.org/assets/mezo-vsve-pvk.svg
     NEXT_PUBLIC_NETWORK_ICON: https://mezo.org/assets/mezo-favicon-h-eecjcq.svg
+    NEXT_PUBLIC_VIEWS_TX_HIDDEN_FIELDS: '["burnt_fees"]'
+    NEXT_PUBLIC_NETWORK_VERIFICATION_TYPE: validation
 
 stats:
   enabled: false # This won't be needed for now.
