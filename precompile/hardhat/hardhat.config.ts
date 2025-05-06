@@ -1,6 +1,7 @@
 import { vars, HardhatUserConfig } from 'hardhat/config'
 import { ethers } from 'ethers'
 import '@nomicfoundation/hardhat-toolbox'
+import * as dotenv from "dotenv";
 // import precompile tasks
 import './tasks/validatorpool'
 import './tasks/btctoken'
@@ -37,6 +38,9 @@ function getPrivKeys (): string[] {
 
   return keys
 }
+
+// Load .env file
+dotenv.config();
 
 const config: HardhatUserConfig = {
   solidity: {
