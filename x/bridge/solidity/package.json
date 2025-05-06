@@ -1,7 +1,7 @@
 {
-  "name": "@mezo-org/bridge",
-  "version": "0.0.1",
-  "license": "GPL-3.0",
+  "name": "@mezo-org/mezod-solidity",
+  "version": "1.0.0",
+  "license": "LGPL-3.0",
   "scripts": {
     "clean": "hardhat clean && rm -rf cache/ artifacts/ typechain-types/",
     "build": "hardhat compile",

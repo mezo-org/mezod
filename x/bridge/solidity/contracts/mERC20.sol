@@ -1,13 +1,15 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: LGPL-3.0
 pragma solidity 0.8.29;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 
-abstract contract AbstractERC20Upgradeable is ERC20Upgradeable, ERC20BurnableUpgradeable, Ownable2StepUpgradeable {
+abstract contract mERC20 is ERC20Upgradeable, ERC20BurnableUpgradeable, Ownable2StepUpgradeable {
     /// @dev The address of the minter.
     address public minter;
+    /// @dev The number of decimals of the token.
+    uint8 private _decimals;
 
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting down storage in the inheritance chain.
@@ -32,20 +34,23 @@ abstract contract AbstractERC20Upgradeable is ERC20Upgradeable, ERC20BurnableUpg
 
     /// @dev Initializes the contract.
     function initialize(
-        string memory name,
-        string memory symbol,
-        address initialMinter
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimalsArg,
+        address _minter
     ) public initializer {
-        __ERC20_init(name, symbol);
+        __ERC20_init(_name, _symbol);
         __ERC20Burnable_init();
         __Ownable_init(_msgSender());
+
+        _decimals = _decimalsArg;
         
-        if (initialMinter == address(0)) {
+        if (_minter == address(0)) {
             revert ZeroAddressMinter();
         }
 
-        minter = initialMinter;
-        emit MinterChanged(address(0), initialMinter);
+        minter = _minter;
+        emit MinterChanged(address(0), _minter);
     }
 
     /// @dev Throws if called by any account other than the minter.
@@ -69,5 +74,9 @@ abstract contract AbstractERC20Upgradeable is ERC20Upgradeable, ERC20BurnableUpg
     /// @dev Mints `amount` tokens and assigns them to `account`.
     function mint(address account, uint256 amount) public onlyMinter {
         _mint(account, amount);
+    }
+
+    function decimals() public view override returns (uint8) {
+        return _decimals;
     }
 }
