@@ -3,7 +3,8 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types"
 
 // ethereum -> mezo mappings
 const mappings: Record<string, string> = {
-    "SolvBTC": "mSolvBTC"
+    "SolvBTC": "mSolvBTC",
+    "T": "mT"
 }
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
@@ -16,7 +17,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         const isValidDeployment = ethereumTokenDeployment && helpers.address.isValid(ethereumTokenDeployment.address)
 
         if (!isValidDeployment) {
-            log(`${ethereumToken} deployment artifact for ethereum not found; skipping...`)
+            log(`skipping mapping creation for ${ethereumToken} -> ${mezoToken}; deployment artifact for ethereum not found`)
             continue
         }
 
@@ -25,7 +26,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         log(`creating mapping: ${ethereumToken}/${ethereumTokenDeployment.address} -> ${mezoToken}/${mezoTokenDeployment.address}`)
         
         const existingMapping = (await read("AssetsBridge", "getERC20TokenMapping", ethereumTokenDeployment.address)).mezoToken
-        if (existingMapping !== ethers.constants.AddressZero) {
+        if (existingMapping !== ethers.ZeroAddress) {
             if (existingMapping === mezoTokenDeployment.address) {
                 log("mapping already exists; skipping...")
             } else {
@@ -39,7 +40,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
             continue
         }
         
-        const tx = await execute(
+        await execute(
             "AssetsBridge",
             { from: poaOwner, log: true },
             "createERC20TokenMapping",
@@ -47,8 +48,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
             mezoTokenDeployment.address
         )
 
-        const receipt = await tx.wait()
-        log(`mapping created; tx: ${receipt.transactionHash}`)
+        log("mapping created")
     }
 }
 

@@ -8,6 +8,11 @@ import * as dotenv from "dotenv";
 // Load .env file
 dotenv.config();
 
+function parseCommaDelimitedString(input: string): string[] {
+  if (!input) return [];
+  return input.split(',').map(item => item.trim());
+}
+
 const config: HardhatUserConfig = {
   solidity: {
     version: '0.8.29',
@@ -44,7 +49,7 @@ const config: HardhatUserConfig = {
     testnet: {
       chainId: 31611,
       url: process.env.TESTNET_RPC_URL || "",
-      accounts: process.env.TESTNET_PRIVATE_KEY ? [process.env.TESTNET_PRIVATE_KEY] : [],
+      accounts: parseCommaDelimitedString(process.env.TESTNET_PRIVATE_KEY as string),
       tags: ['verify'],
       companionNetworks: {
         ethereum: 'ethereumSepolia'
@@ -53,7 +58,7 @@ const config: HardhatUserConfig = {
     mainnet: {
       chainId: 31612,
       url: process.env.MAINNET_RPC_URL || "",
-      accounts: process.env.MAINNET_PRIVATE_KEY ? [process.env.MAINNET_PRIVATE_KEY] : [],
+      accounts: parseCommaDelimitedString(process.env.MAINNET_PRIVATE_KEY as string),
       tags: ['verify'],
       companionNetworks: {
         ethereum: 'ethereumMainnet'
