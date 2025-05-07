@@ -12,11 +12,12 @@ export function mERC20DeployFunctionFactory(
     const { deployer, governance, minter } = await getNamedAccounts()
     const { log } = deployments
 
+    console.log(`Deploying ${tokenContract} contract...`)
+
+    console.log(`Network name: ${network.name}`)
     console.log(`Deployer is ${deployer}`)
     console.log(`Governance is ${governance}`)
     console.log(`Minter is ${minter}`)
-    console.log(`Deploying ${tokenContract} contract...`)
-    console.log(`Network name: ${network.name}`)
 
     const existingDeployment = await deployments.getOrNull(tokenContract)
     const isValidDeployment = existingDeployment &&
@@ -39,6 +40,9 @@ export function mERC20DeployFunctionFactory(
           proxyOpts: {
             kind: "transparent",
             initialOwner: governance,
+            // The below option is necessary to deploy distinct contract implementations 
+            // in case multiple token contracts extending mERC20.sol have the same bytecode.
+            redeployImplementation: "always"
           },
         },
       )
@@ -61,10 +65,11 @@ export function mERC20DeployFunctionFactory(
 
         // TODO: fix verification for proxy admin.
         if (hre.network.tags.verify) {
-          await hre.run("verify", {
-            address: deployment.address,
-            constructorArgsParams: deployment.args
-          })
+          const fqn = tokenContract.toLowerCase().includes("test") ? 
+              `contracts/test/${tokenContract}.sol:${tokenContract}` : 
+              `contracts/${tokenContract}.sol:${tokenContract}`
+
+          await helpers.etherscan.verify(deployment, fqn)  
         }
       }
     }

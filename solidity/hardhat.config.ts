@@ -33,7 +33,11 @@ const config: HardhatUserConfig = {
       testnet: "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5", // x/bridge module account
       mainnet: "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5", // x/bridge module account`
     },
-    
+    poaOwner: {
+      default: 3,
+      testnet: "0x0504d82Efb7Db7A8C05e8df8Cea575d8C9f48bb2",
+      mainnet: "0x123694886DBf5Ac94DDA07135349534536D14cAf"
+    }
   },
   defaultNetwork: 'hardhat',
   networks: {
@@ -42,13 +46,35 @@ const config: HardhatUserConfig = {
       url: process.env.TESTNET_RPC_URL || "",
       accounts: process.env.TESTNET_PRIVATE_KEY ? [process.env.TESTNET_PRIVATE_KEY] : [],
       tags: ['verify'],
+      companionNetworks: {
+        ethereum: 'ethereumSepolia'
+      }
     },
     mainnet: {
       chainId: 31612,
       url: process.env.MAINNET_RPC_URL || "",
       accounts: process.env.MAINNET_PRIVATE_KEY ? [process.env.MAINNET_PRIVATE_KEY] : [],
       tags: ['verify'],
-    }
+      companionNetworks: {
+        ethereum: 'ethereumMainnet'
+      }
+    },
+    ethereumSepolia: {
+      url: process.env.ETHEREUM_SEPOLIA_RPC_URL || "",
+      chainId: 11155111,
+    },
+    ethereumMainnet: {
+      url: process.env.ETHEREUM_MAINNET_RPC_URL || "",
+      chainId: 1,
+    },
+  },
+  external: {
+    deployments: {
+      testnet: ["./external/testnet"],
+      mainnet: ["./external/mainnet"],
+      ethereumSepolia: ["./external/ethereum-sepolia"],
+      ethereumMainnet: ["./external/ethereum-mainnet"],
+    },
   },
   etherscan: {
     apiKey: {
