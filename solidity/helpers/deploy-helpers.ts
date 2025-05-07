@@ -1,6 +1,72 @@
+import type { DeployFunction } from "hardhat-deploy/types"
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 
-export default async function waitForTransaction(
+export function mERC20DeployFunctionFactory(tokenName: string, tokenSymbol: string, decimals: number): DeployFunction {
+  return async (hre: HardhatRuntimeEnvironment) => {
+    const { ethers, getNamedAccounts, deployments, helpers, network } = hre
+    const { deployer, governance, minter } = await getNamedAccounts()
+    const { log } = deployments
+
+    console.log(`Deployer is ${deployer}`)
+    console.log(`Governance is ${governance}`)
+    console.log(`Minter is ${minter}`)
+    console.log(`Deploying ${tokenName} contract...`)
+    console.log(`Network name: ${network.name}`)
+
+    const existingDeployment = await deployments.getOrNull(tokenName)
+    const isValidDeployment = existingDeployment &&
+      helpers.address.isValid(existingDeployment.address)
+
+    if (isValidDeployment) {
+      log(`Using ${tokenName} at ${existingDeployment.address}`)
+    } else {
+      const [_, deployment] = await helpers.upgrades.deployProxy(
+        tokenName,
+        {
+          contractName: tokenName,
+          initializerArgs: [
+            tokenName,
+            tokenSymbol,
+            decimals,
+            minter,
+          ],
+          factoryOpts: { signer: await ethers.getSigner(deployer) },
+          proxyOpts: {
+            kind: "transparent",
+            initialOwner: governance,
+          },
+        },
+      )
+
+      await helpers.ownable.transferOwnership(tokenName, governance, deployer)
+
+      if (
+        deployment.transactionHash
+      ) {
+        const confirmationsByChain: Record<string, number> = {
+          mainnet: 3,
+          testnet: 3,
+        }
+
+        await waitForTransaction(
+          hre,
+          deployment.transactionHash,
+          confirmationsByChain[network.name],
+        )
+
+        // TODO: fix verification for proxy admin.
+        if (hre.network.tags.verify) {
+          await hre.run("verify", {
+            address: deployment.address,
+            constructorArgsParams: deployment.args
+          })
+        }
+      }
+    }
+  }
+}
+
+async function waitForTransaction(
   hre: HardhatRuntimeEnvironment,
   txHash: string,
   confirmations: number = 1,

@@ -8,6 +8,7 @@ describe("mTestERC20", function () {
   const { deployments } = hre;
   let mTestERC20: any;
   let owner: any;
+  let governance: any;
   let minter: any;
   let user1: any;
   let user2: any;
@@ -16,13 +17,14 @@ describe("mTestERC20", function () {
     await deployments.fixture();
     const signers = await ethers.getSigners();
     owner = signers[0];
-    minter = signers[1];
-    user1 = signers[2];
-    user2 = signers[3];
+    governance = signers[1];
+    minter = signers[2];
+    user1 = signers[3];
+    user2 = signers[4];
 
     mTestERC20 = await getDeployedContract("mTestERC20");
 
-    return { mTestERC20, owner, minter, user1, user2 }
+    return { mTestERC20, owner, governance, minter, user1, user2 }
   }
 
   describe("Initialization", function () {
@@ -147,11 +149,11 @@ describe("mTestERC20", function () {
 
   describe("Ownership Transfer", function () {
     it("should allow owner to transfer contract ownership", async function () {
-      const { mTestERC20, owner, user1 } = await loadFixture(fixture)
+      const { mTestERC20, owner, governance } = await loadFixture(fixture)
       
-      await mTestERC20.connect(owner).transferOwnership(user1.address)
-      await mTestERC20.connect(user1).acceptOwnership()
-      expect(await mTestERC20.owner()).to.equal(user1.address)
+      await mTestERC20.connect(owner).transferOwnership(governance.address)
+      await mTestERC20.connect(governance).acceptOwnership()
+      expect(await mTestERC20.owner()).to.equal(governance.address)
     })
 
     it("should not allow non-owner to transfer contract ownership", async function () {
