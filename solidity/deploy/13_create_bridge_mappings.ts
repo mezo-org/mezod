@@ -4,7 +4,9 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types"
 // ethereum -> mezo mappings
 const mappings: Record<string, string> = {
     "SolvBTC": "mSolvBTC",
-    "T": "mT"
+    "T": "mT",
+    "xSolvBTC": "mxSolvBTC",
+    "USDC": "mUSDC"
 }
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
