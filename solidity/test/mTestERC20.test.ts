@@ -30,8 +30,8 @@ describe("mTestERC20", function () {
   describe("Initialization", function () {
     it("should set the correct name and symbol", async function () {
       const { mTestERC20 } = await loadFixture(fixture)
-      expect(await mTestERC20.name()).to.equal("mTestERC20")
-      expect(await mTestERC20.symbol()).to.equal("TEST42")
+      expect(await mTestERC20.name()).to.equal("Test Token")
+      expect(await mTestERC20.symbol()).to.equal("TEST")
     })
 
     it("should set the correct minter", async function () {

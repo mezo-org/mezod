@@ -1,7 +1,12 @@
 import type { DeployFunction } from "hardhat-deploy/types"
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 
-export function mERC20DeployFunctionFactory(tokenName: string, tokenSymbol: string, decimals: number): DeployFunction {
+export function mERC20DeployFunctionFactory(
+  tokenContract: string, 
+  tokenName: string, 
+  tokenSymbol: string, 
+  decimals: number
+): DeployFunction {
   return async (hre: HardhatRuntimeEnvironment) => {
     const { ethers, getNamedAccounts, deployments, helpers, network } = hre
     const { deployer, governance, minter } = await getNamedAccounts()
@@ -10,20 +15,20 @@ export function mERC20DeployFunctionFactory(tokenName: string, tokenSymbol: stri
     console.log(`Deployer is ${deployer}`)
     console.log(`Governance is ${governance}`)
     console.log(`Minter is ${minter}`)
-    console.log(`Deploying ${tokenName} contract...`)
+    console.log(`Deploying ${tokenContract} contract...`)
     console.log(`Network name: ${network.name}`)
 
-    const existingDeployment = await deployments.getOrNull(tokenName)
+    const existingDeployment = await deployments.getOrNull(tokenContract)
     const isValidDeployment = existingDeployment &&
       helpers.address.isValid(existingDeployment.address)
 
     if (isValidDeployment) {
-      log(`Using ${tokenName} at ${existingDeployment.address}`)
+      log(`Using ${tokenContract} at ${existingDeployment.address}`)
     } else {
       const [_, deployment] = await helpers.upgrades.deployProxy(
-        tokenName,
+        tokenContract,
         {
-          contractName: tokenName,
+          contractName: tokenContract,
           initializerArgs: [
             tokenName,
             tokenSymbol,
@@ -38,7 +43,7 @@ export function mERC20DeployFunctionFactory(tokenName: string, tokenSymbol: stri
         },
       )
 
-      await helpers.ownable.transferOwnership(tokenName, governance, deployer)
+      await helpers.ownable.transferOwnership(tokenContract, governance, deployer)
 
       if (
         deployment.transactionHash
