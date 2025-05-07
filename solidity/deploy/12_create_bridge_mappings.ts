@@ -6,7 +6,13 @@ const mappings: Record<string, string> = {
     "SolvBTC": "mSolvBTC",
     "T": "mT",
     "xSolvBTC": "mxSolvBTC",
-    "USDC": "mUSDC"
+    "USDC": "mUSDC",
+    "USDT": "mUSDT",
+    "USDe": "mUSDe",
+    "FBTC": "mFBTC",
+    "cbBTC": "mcbBTC",
+    "DAI": "mDAI",
+    "swBTC": "mswBTC"
 }
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
