@@ -1,5 +1,5 @@
 {
-  "name": "@mezo-org/mezod-solidity",
+  "name": "@mezo-org/mezod-contracts",
   "version": "1.0.0",
   "license": "LGPL-3.0",
   "scripts": {
@@ -24,5 +24,10 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mezo-org/mezod.git",
+    "directory": "solidity"
   }
 }
