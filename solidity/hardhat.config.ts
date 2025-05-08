@@ -23,10 +23,15 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0,
     },
-    minter: {
+    governance: {
       default: 1,
-      testnet: "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5",
-      mainnet: "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5",
+      testnet: "0x6e80164ea60673d64d5d6228beb684a1274bb017", // testertesting.eth
+      mainnet: "0x98D8899c3030741925BE630C710A98B57F397C7a"  // mezo multisig
+    },
+    minter: {
+      default: 2,
+      testnet: "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5", // x/bridge module account
+      mainnet: "0x17F29B073143D8cd97b5bBe492bDEffEC1C5feE5", // x/bridge module account`
     },
     
   },

@@ -1,7 +1,7 @@
 {
-  "name": "@mezo-org/bridge",
-  "version": "0.0.1",
-  "license": "GPL-3.0",
+  "name": "@mezo-org/mezod-contracts",
+  "version": "1.0.0",
+  "license": "LGPL-3.0",
   "scripts": {
     "clean": "hardhat clean && rm -rf cache/ artifacts/ typechain-types/",
     "build": "hardhat compile",
@@ -24,5 +24,10 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mezo-org/mezod.git",
+    "directory": "solidity"
   }
 }

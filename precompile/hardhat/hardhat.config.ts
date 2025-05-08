@@ -1,6 +1,7 @@
 import { vars, HardhatUserConfig } from 'hardhat/config'
 import { ethers } from 'ethers'
 import '@nomicfoundation/hardhat-toolbox'
+import * as dotenv from "dotenv";
 // import precompile tasks
 import './tasks/validatorpool'
 import './tasks/btctoken'
@@ -38,6 +39,9 @@ function getPrivKeys (): string[] {
   return keys
 }
 
+// Load .env file
+dotenv.config();
+
 const config: HardhatUserConfig = {
   solidity: {
     version: '0.8.24',
@@ -57,15 +61,15 @@ const config: HardhatUserConfig = {
       accounts: getPrivKeys(),
       gas: 'auto'
     },
-    mezo_testnet: {
-      url: 'http://mezo-node-0.test.mezo.org:8545',
+    testnet: {
       chainId: 31611,
-      accounts: getPrivKeys()
+      url: process.env.TESTNET_RPC_URL || "",
+      accounts: process.env.TESTNET_PRIVATE_KEY ? [process.env.TESTNET_PRIVATE_KEY] : [],
     },
-    mezo_mainnet: {
-      url: 'http://35.208.243.34:8545',
+    mainnet: {
       chainId: 31612,
-      accounts: getPrivKeys()
+      url: process.env.MAINNET_RPC_URL || "",
+      accounts: process.env.MAINNET_PRIVATE_KEY ? [process.env.MAINNET_PRIVATE_KEY] : [],
     }
   }
 }
