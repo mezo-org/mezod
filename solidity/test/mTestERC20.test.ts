@@ -164,4 +164,11 @@ describe("mTestERC20", function () {
       ).to.be.reverted
     })
   })
+
+  describe("Decimals", function () {
+    it("should return the correct number of decimals", async function () {
+      const { mTestERC20 } = await loadFixture(fixture)
+      expect(await mTestERC20.decimals()).to.equal(8) // 8 is the decimals for the mTestERC20 token
+    })
+  })
 }) 
