@@ -17,6 +17,15 @@ This Helm release defines a Blockscout explorer for the mainnet chain.
 The release creates two stateful sets, for the app and the API, and
 exposes them using distinct ingress resources.
 
+Before applying the Blockscout stack, create the following secret
+(only if it does not exist yet):
+
+```shell
+kubectl create secret generic blockscout-stack -n default \
+  --from-literal=ETHEREUM_JSONRPC_HTTP_URL=<mezo-rpc-http> \
+  --from-literal=ETHEREUM_JSONRPC_WS_URL=<mezo-rpc-ws>
+```
+
 ### Postgres database
 
 This Helm release defines a Postgres database that is used as
