@@ -38,14 +38,10 @@ blockscout:
       cpu: 2000m
       memory: 4096Mi
   env:
-    # TODO: Current RPC is temporary. See: https://linear.app/thesis-co/issue/TET-894/internal-load-balancer-for-the-block-explorer
     ETHEREUM_JSONRPC_VARIANT: geth
-    ETHEREUM_JSONRPC_HTTP_URL: http://35.208.7.218:8545
-    ETHEREUM_JSONRPC_WS_URL: ws://35.208.7.218:8546
-    ETHEREUM_JSONRPC_TRACE_URL: http://35.208.7.218:8545
-    # ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: 
-    # ETHEREUM_JSONRPC_FALLBACK_WS_URL: 
-    # ETHEREUM_JSONRPC_FALLBACK_TRACE_URL: 
+    ETHEREUM_JSONRPC_HTTP_URL: secretref+k8s://v1/Secret/default/blockscout-stack/ETHEREUM_JSONRPC_HTTP_URL
+    ETHEREUM_JSONRPC_WS_URL: secretref+k8s://v1/Secret/default/blockscout-stack/ETHEREUM_JSONRPC_WS_URL
+    ETHEREUM_JSONRPC_TRACE_URL: secretref+k8s://v1/Secret/default/blockscout-stack/ETHEREUM_JSONRPC_HTTP_URL # Use the HTTP URL for tracing as well
     NETWORK: Mezo
     SUBNETWORK: Mainnet
     BLOCKSCOUT_PROTOCOL: https
@@ -56,6 +52,7 @@ blockscout:
     CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
     INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
     CACHE_ADDRESS_TRANSACTIONS_COUNTER_PERIOD: 5m
+    COIN_BALANCE_ON_DEMAND_FETCHER_THRESHOLD: 5m
     COIN: BTC
     EXCHANGE_RATES_COINGECKO_COIN_ID: bitcoin
   extraEnv:
