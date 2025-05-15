@@ -73,6 +73,11 @@ type Backend interface {
 	RPCBlockRangeCap() int32
 }
 
+const (
+	// A maximum amount of addresses allowed when filtering an eth_getLogs call
+	defaultMaxAddressesFilter = 10
+)
+
 // consider a filter inactive if it has not been polled for within deadline
 var deadline = 5 * time.Minute
 
@@ -526,6 +531,10 @@ func (api *PublicFilterAPI) NewFilter(criteria filters.FilterCriteria) (rpc.ID, 
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getlogs
 func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit filters.FilterCriteria) ([]*ethtypes.Log, error) {
+	if len(crit.Addresses) > defaultMaxAddressesFilter {
+		return nil, fmt.Errorf("max number of addresses exceeded (max allowed %v)", defaultMaxAddressesFilter)
+	}
+
 	var filter *Filter
 	if crit.BlockHash != nil {
 		// Block filter requested, construct a single-shot filter
