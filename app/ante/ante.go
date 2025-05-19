@@ -39,6 +39,9 @@ func NewAnteHandler(options HandlerOptions) sdk.AnteHandler {
 			if len(opts) > 0 {
 				switch typeURL := opts[0].GetTypeUrl(); typeURL {
 				case "/ethermint.evm.v1.ExtensionOptionsEthereumTx":
+					if len(tx.GetMsgs()) != 1 {
+						return ctx, errorsmod.Wrapf(errortypes.ErrNotSupported, "cannot submit more than one transaction at a time")
+					}
 					// handle as *evmtypes.MsgEthereumTx
 					anteHandler = newEVMAnteHandler(options)
 				default:
