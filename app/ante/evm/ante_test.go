@@ -7,11 +7,14 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	kmultisig "github.com/cosmos/cosmos-sdk/crypto/keys/multisig"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
+	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethparams "github.com/ethereum/go-ethereum/params"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
@@ -1050,4 +1053,41 @@ func (suite *AnteTestSuite) TestAnteHandlerWithParams() {
 		})
 	}
 	suite.evmParamsOption = nil
+}
+
+func (suite *AnteTestSuite) TestAnteWithMulitpleSdkMsgs() {
+	clientCtx := suite.clientCtx
+	builder, ok := clientCtx.TxConfig.NewTxBuilder().(authtx.ExtensionOptionsTxBuilder)
+	if !ok {
+		suite.Fail("not a valid ExtensionOptionsTxBuilder")
+	}
+
+	option, err := codectypes.NewAnyWithValue(&evmtypes.ExtensionOptionsEthereumTx{})
+	if err != nil {
+		suite.Fail("not a valid ExtensionOptionsTxBuilder")
+	}
+
+	builder.SetExtensionOptions(option)
+
+	evmTxParams := &evmtypes.EvmTxArgs{
+		ChainID:  big.NewInt(1),
+		Nonce:    0,
+		To:       &common.Address{},
+		Amount:   big.NewInt(0),
+		GasLimit: 210000000000000,
+		GasPrice: big.NewInt(1000000000),
+		Input:    []byte{},
+	}
+
+	msg := evmtypes.NewTx(evmTxParams)
+	msgs := []sdk.Msg{
+		msg, msg, // 2 transactions
+	}
+
+	_ = builder.SetMsgs(msgs...)
+	tx := builder.GetTx().(sdk.Tx)
+	_, err = suite.anteHandler(suite.ctx, tx, false)
+	if suite.Error(err, "expected error") {
+		suite.EqualError(err, "cannot submit more than one transaction at a time: feature not supported")
+	}
 }
