@@ -135,7 +135,7 @@ func handleAuthorization(
 
 	if authorization == nil {
 		if amount.Sign() == 0 {
-			err = fmt.Errorf("no existing approvals, cannot approve 0")
+			err = nil // this is not an error to comply with the ERC20 std behaviour.
 		} else {
 			err = createAuthorization(context.SdkCtx(), denom, spender, granter, amount, authzkeeper)
 		}

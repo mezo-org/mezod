@@ -28,6 +28,65 @@ describe("BTCTransfers", function () {
     recipientAddress = ethers.Wallet.createRandom().address;
   });
 
+
+  describe("approveZeroBeforeUserHaveEverApproved", function () {
+    let receipt: any;
+    let tx: any;
+
+    before(async function () {
+      await fixture();
+
+      // we do a first approve, before the user ever
+      // tried to approve for an actual amount
+      tx =  await btcErc20Token.connect(senderSigner)
+        .approve(otherSpender, 0, {gasLimit: 1000000});
+      await tx.wait();
+
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+    });
+
+    it("should verify the transaction didn't revert", async function () {
+	expect(receipt!.status).to.equal(1);
+    });
+  });
+
+  describe("multipleApproveInARow", function () {
+    let receipt1: any;
+    let receipt2: any;
+    let receipt3: any;
+    let tx1: any;
+    let tx2: any;
+    let tx3: any;
+
+    before(async function () {
+      await fixture();
+
+      // here we try to first do an approve,
+      // then reset it with 0,
+      // then approve again with 0, before this would
+      // panic
+      tx1 =  await btcErc20Token.connect(senderSigner)
+        .approve(otherSpender, 10, {gasLimit: 1000000});
+      await tx1.wait();
+      tx2 =  await btcErc20Token.connect(senderSigner)
+        .approve(otherSpender, 0, {gasLimit: 1000000});
+      await tx2.wait();
+      tx3 =  await btcErc20Token.connect(senderSigner)
+	.approve(otherSpender, 0, {gasLimit: 1000000});
+      await tx3.wait();
+
+      receipt1 = await ethers.provider.getTransactionReceipt(tx1.hash);
+      receipt2 = await ethers.provider.getTransactionReceipt(tx2.hash);
+      receipt3 = await ethers.provider.getTransactionReceipt(tx3.hash);
+    });
+
+    it("should verify the transactions didn't revert", async function () {
+	expect(receipt1!.status).to.equal(1);
+	expect(receipt2!.status).to.equal(1);
+	expect(receipt3!.status).to.equal(1);
+    });
+  });
+
   describe("basicSpendTo0", function () {
     let initialSenderBalance: any;
     let initialRecipientBalance: any;
