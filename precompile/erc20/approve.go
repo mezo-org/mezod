@@ -117,7 +117,7 @@ func (am *ApproveMethod) Run(
 	return precompile.MethodOutputs{true}, nil
 }
 
-// no authorization, amount 0 -> error
+// no authorization, amount 0 -> noop
 // no authorization, amount positive -> create a new authorization
 // authorization exists, amount 0 -> delete authorization
 // authorization exists, amount positive -> update authorization
@@ -135,7 +135,7 @@ func handleAuthorization(
 
 	if authorization == nil {
 		if amount.Sign() == 0 {
-			err = nil // this is not an error to comply with the ERC20 std behaviour.
+			err = nil // this is not an error to comply with the ERC20 std behavior.
 		} else {
 			err = createAuthorization(context.SdkCtx(), denom, spender, granter, amount, authzkeeper)
 		}
