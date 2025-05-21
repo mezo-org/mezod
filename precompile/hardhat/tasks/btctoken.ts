@@ -116,11 +116,21 @@ task(
     console.log(domainSeparator)
   })
 
+// Deprecated as it is not compatible with EIP-2612.
+// Should be removed in the future.
 task('btcToken:nonce', 'Returns the current nonce for EIP2612 permission for the provided token owner')
   .addParam('owner', 'Recipient account')
   .setAction(async (taskArguments, hre) => {
     const btctoken = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
     const nonce = await btctoken.nonce(taskArguments.owner)
+    console.log(nonce)
+  })
+
+task('btcToken:nonces', 'Returns the current nonce for EIP2612 permission for the provided token owner')
+  .addParam('owner', 'Recipient account')
+  .setAction(async (taskArguments, hre) => {
+    const btctoken = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const nonce = await btctoken.nonces(taskArguments.owner)
     console.log(nonce)
   })
 
@@ -157,7 +167,7 @@ task('btcToken:PERMIT_SIGNATURE', 'Returns a signature that can be used with `pe
         const btctoken = new hre.ethers.Contract(precompileAddress, abi, signer)
         const domainSeparator = await btctoken.DOMAIN_SEPARATOR()
         const typehash = await btctoken.PERMIT_TYPEHASH()
-        const nonce = await btctoken.nonce(signer.address)
+        const nonce = await btctoken.nonces(signer.address)
         // Encode data
         const abiCoder = new hre.ethers.AbiCoder()
         const message = abiCoder.encode(
