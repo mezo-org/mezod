@@ -29,12 +29,6 @@ contract BTCTransfers {
     address private constant testbedPrecompile = 0x7b7c100000000000000000000000000000000000;
     uint256 public balanceTracker = 1;
 
-
-    function approveZeroDoesntReverts(address recipient) external payable {
-        bool ok = IBTC(precompile).approve(recipient, 0);
-	require(ok);
-    }
-
     function basicSpendTo0(address recipient) external payable {
         uint256 balance = IBTC(precompile).balanceOf(address(this));
         require(balance > 0, "No balance to transfer");
