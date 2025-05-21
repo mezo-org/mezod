@@ -2,6 +2,7 @@ package erc20
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -209,7 +210,7 @@ func (am *PermitMethod) incrementNonce(address common.Address, ctx sdk.Context) 
 	// Increment nonce by 1 so that the signature can be used once over the message
 	nonceBigInt.Add(nonceBigInt, big.NewInt(1))
 	// Set the new nonce value
-	am.evmkeeper.SetStateExtension(ctx, address, common.HexToHash(string(key)), nonceBigInt.Bytes())
+	am.evmkeeper.SetStateExtension(ctx, address, common.HexToHash(hex.EncodeToString(key)), nonceBigInt.Bytes())
 
 	return nil
 }
@@ -323,7 +324,7 @@ func getNonce(key []byte, evmkeeper evmkeeper.Keeper, address common.Address, ct
 	if len(key) > 32 {
 		return common.Hash{}, nil, fmt.Errorf("key %s is longer than 32 bytes", key)
 	}
-	nonce := evmkeeper.GetStateExtension(ctx, address, common.HexToHash(string(key)))
+	nonce := evmkeeper.GetStateExtension(ctx, address, common.HexToHash(hex.EncodeToString(key)))
 	if len(nonce) == 0 {
 		return common.Hash{}, nil, fmt.Errorf("failed to get nonce for address %s", address.Hex())
 	}
