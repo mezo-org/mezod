@@ -61,10 +61,8 @@ describe("BTCTransfers", function () {
     before(async function () {
       await fixture();
 
-      // here we try to first do an approve,
-      // then reset it with 0,
-      // then approve again with 0, before this would
-      // panic
+      // Here we try to first do an approve, then reset it with 0, then approve again with 0.
+      // All transactions should pass.
       tx1 =  await btcErc20Token.connect(senderSigner)
         .approve(otherSpender, 10, {gasLimit: 1000000});
       await tx1.wait();
