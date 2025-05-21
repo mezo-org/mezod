@@ -1,6 +1,7 @@
 package testsuite
 
 import (
+	"encoding/hex"
 	"math/big"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 
 	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -16,6 +18,23 @@ import (
 )
 
 const PermitTypehash = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+
+func (s *TestSuite) TestPermitHashCollision() {
+	btcNonceKey := evmtypes.PrecompileBTCNonceKey()
+	mezoNonceKey := evmtypes.PrecompileMEZONonceKey()
+
+	// this the previous implementation of the hash
+	// for the nonceKey, they collide which would corrupt
+	// storage
+	btcHash := common.HexToHash(string(btcNonceKey))
+	mezoHash := common.HexToHash(string(mezoNonceKey))
+	s.Equal(btcHash, mezoHash)
+
+	// new implementation produce different hashes
+	btcHash = common.HexToHash(hex.EncodeToString(btcNonceKey))
+	mezoHash = common.HexToHash(hex.EncodeToString(mezoNonceKey))
+	s.NotEqual(btcHash, mezoHash)
+}
 
 func (s *TestSuite) TestPermit() {
 	amount := int64(100)
