@@ -1,6 +1,7 @@
 package erc20
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -90,8 +91,13 @@ func (am *ApproveMethod) Run(
 	if !ok {
 		return nil, fmt.Errorf("invalid amount: %v", inputs[1])
 	}
-	if amount == nil || amount.Sign() < 0 {
-		amount = big.NewInt(0)
+
+	if amount == nil {
+		return nil, errors.New("amount is required")
+	}
+
+	if amount.Sign() < 0 {
+		return nil, errors.New("amount cannot be negative")
 	}
 
 	granter := context.MsgSender()
@@ -117,7 +123,7 @@ func (am *ApproveMethod) Run(
 	return precompile.MethodOutputs{true}, nil
 }
 
-// no authorization, amount 0 -> error
+// no authorization, amount 0 -> noop
 // no authorization, amount positive -> create a new authorization
 // authorization exists, amount 0 -> delete authorization
 // authorization exists, amount positive -> update authorization
@@ -135,7 +141,7 @@ func handleAuthorization(
 
 	if authorization == nil {
 		if amount.Sign() == 0 {
-			err = fmt.Errorf("no existing approvals, cannot approve 0")
+			err = nil // this is not an error to comply with the ERC20 std behavior.
 		} else {
 			err = createAuthorization(context.SdkCtx(), denom, spender, granter, amount, authzkeeper)
 		}
