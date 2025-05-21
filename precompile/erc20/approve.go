@@ -1,6 +1,7 @@
 package erc20
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -90,8 +91,13 @@ func (am *ApproveMethod) Run(
 	if !ok {
 		return nil, fmt.Errorf("invalid amount: %v", inputs[1])
 	}
-	if amount == nil || amount.Sign() < 0 {
-		amount = big.NewInt(0)
+
+	if amount == nil {
+		return nil, errors.New("amount is required")
+	}
+
+	if amount.Sign() < 0 {
+		return nil, errors.New("amount cannot be negative")
 	}
 
 	granter := context.MsgSender()
