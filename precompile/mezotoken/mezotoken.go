@@ -110,6 +110,7 @@ func newPrecompileMethods(
 		erc20.NewAllowanceMethod(authzkeeper, denom),
 		erc20.NewPermitMethod(bankKeeper, authzkeeper, evmkeeper, denom, domainSeparator, nonceKey),
 		erc20.NewNonceMethod(evmkeeper, nonceKey),
+		erc20.NewNoncesMethod(evmkeeper, nonceKey),
 		erc20.NewDomainSeparatorMethod(domainSeparator),
 		erc20.NewPermitTypehashMethod(),
 	}
