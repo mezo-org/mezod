@@ -19,7 +19,8 @@ import (
 
 const (
 	PermitMethodName          = "permit"
-	NonceMethodName           = "nonce"
+	NonceMethodName           = "nonce" // Deprecated. Should be removed in the future.
+	NoncesMethodName          = "nonces"
 	DomainSeparatorMethodName = "DOMAIN_SEPARATOR"
 	PermitTypehashMethodName  = "PERMIT_TYPEHASH"
 	PermitTypehash            = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
@@ -337,6 +338,8 @@ func getNonce(key []byte, evmkeeper evmkeeper.Keeper, address common.Address, ct
 	return nonce, key, nil
 }
 
+// This method is deprecated as it is not compatible with EIP-2612.
+// Should be removed in the future.
 type NonceMethod struct {
 	evmkeeper evmkeeper.Keeper
 	nonceKey  []byte
@@ -371,6 +374,63 @@ func (nm *NonceMethod) Payable() bool {
 
 // Returns the nonce of the given account.
 func (nm *NonceMethod) Run(
+	context *precompile.RunContext,
+	inputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
+		return nil, err
+	}
+
+	account, ok := inputs[0].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("account argument must be common.Address")
+	}
+
+	nonce, _, err := getNonce(nm.nonceKey, nm.evmkeeper, account, context.SdkCtx())
+	if err != nil {
+		return nil, err
+	}
+
+	return precompile.MethodOutputs{
+		new(big.Int).SetBytes(nonce.Bytes()),
+	}, nil
+}
+
+// Returns the nonce of the given account, compatible with EIP-2612.
+type NoncesMethod struct {
+	evmkeeper evmkeeper.Keeper
+	nonceKey  []byte
+}
+
+func NewNoncesMethod(
+	evmkeeper evmkeeper.Keeper,
+	nonceKey []byte,
+) *NoncesMethod {
+	return &NoncesMethod{
+		evmkeeper: evmkeeper,
+		nonceKey:  nonceKey,
+	}
+}
+
+func (nm *NoncesMethod) MethodName() string {
+	return NoncesMethodName
+}
+
+func (nm *NoncesMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (nm *NoncesMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (nm *NoncesMethod) Payable() bool {
+	return false
+}
+
+// Returns the nonce of the given account.
+func (nm *NoncesMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, error) {

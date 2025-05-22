@@ -116,11 +116,21 @@ task(
     console.log(domainSeparator)
   })
 
+// Deprecated as it is not compatible with EIP-2612.
+// Should be removed in the future.
 task('mezoToken:nonce', 'Returns the current nonce for EIP2612 permission for the provided token owner')
   .addParam('owner', 'Recipient account')
   .setAction(async (taskArguments, hre) => {
     const mezotoken = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
     const nonce = await mezotoken.nonce(taskArguments.owner)
+    console.log(nonce)
+  })
+
+task('mezoToken:nonces', 'Returns the current nonce for EIP2612 permission for the provided token owner')
+  .addParam('owner', 'Recipient account')
+  .setAction(async (taskArguments, hre) => {
+    const mezotoken = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const nonce = await mezotoken.nonces(taskArguments.owner)
     console.log(nonce)
   })
 
@@ -157,7 +167,7 @@ task('mezoToken:PERMIT_SIGNATURE', 'Returns a signature that can be used with `p
         const mezotoken = new hre.ethers.Contract(precompileAddress, abi, signer)
         const domainSeparator = await mezotoken.DOMAIN_SEPARATOR()
         const typehash = await mezotoken.PERMIT_TYPEHASH()
-        const nonce = await mezotoken.nonce(signer.address)
+        const nonce = await mezotoken.nonces(signer.address)
         // Encode data
         const abiCoder = new hre.ethers.AbiCoder()
         const message = abiCoder.encode(
