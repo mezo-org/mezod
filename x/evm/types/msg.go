@@ -366,7 +366,11 @@ func (msg *MsgEthereumTx) GetFrom() sdk.AccAddress {
 func (msg MsgEthereumTx) AsTransaction() *ethtypes.Transaction {
 	txData, err := UnpackTxData(msg.Data)
 	if err != nil {
-		return nil
+		// At that point, transaction should always be a valid ethereum transaction
+		// if AsTransaction return nil, this would mean that something very wrong
+		// happened up the line, and we should never have reached this point.
+		// We panic to leave time to operators to investigate the issue.
+		panic("invalid transaction format")
 	}
 
 	return ethtypes.NewTx(txData.AsEthereumData())
