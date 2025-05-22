@@ -28,7 +28,6 @@ describe("BTCTransfers", function () {
     recipientAddress = ethers.Wallet.createRandom().address;
   });
 
-
   describe("approveZeroBeforeUserHaveEverApproved", function () {
     let receipt: any;
     let tx: any;
