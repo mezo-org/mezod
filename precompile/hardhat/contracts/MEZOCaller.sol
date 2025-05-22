@@ -58,8 +58,14 @@ contract MEZOCaller is IMEZO {
         return IMEZO(precompile).DOMAIN_SEPARATOR();
     }
 
+    // Deprecated as it is not compatible with EIP-2612.
+    // Should be removed in the future.
     function nonce(address owner) external view returns (uint256) {
         return IMEZO(precompile).nonce(owner);
+    }
+
+    function nonces(address owner) external view returns (uint256) {
+        return IMEZO(precompile).nonces(owner);
     }
 
     function PERMIT_TYPEHASH() external pure returns (bytes32) {
