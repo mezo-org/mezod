@@ -94,6 +94,68 @@ describe("MEZOTransfers", function () {
     });
   });
 
+  describe("multipleApproveAreHandledProperlyByTheCore", function () {
+    let receipt: any;
+    let tx: any;
+    let receipient = ethers.Wallet.createRandom().address;
+
+    before(async function () {
+      await fixture();
+    });
+
+    it("should allow approving BTC for the receipient", async function () {
+      tx =  await btcErc20Token.connect(sender)
+        .approve(receipient, 10, {gasLimit: 1000000});
+      await tx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      expect(receipt!.status).to.equal(1);
+      const currentApproval = await btcErc20Token.allowance(sender.address, receipient);
+      expect(currentApproval).to.equal(10);
+    });
+
+    it("should allow approving MEZO for the receipient", async function () {
+      tx =  await mezoErc20Token.connect(sender)
+        .approve(receipient, 10, {gasLimit: 1000000});
+      await tx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      expect(receipt!.status).to.equal(1);
+      const currentApproval = await mezoErc20Token.allowance(sender.address, receipient);
+      expect(currentApproval).to.equal(10);
+    });
+
+    it("should allow to update the approved amount of MEZO for the receipient", async function () {
+      tx =  await mezoErc20Token.connect(sender)
+        .approve(receipient, 15, {gasLimit: 1000000});
+      await tx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      expect(receipt!.status).to.equal(1);
+      const currentApproval = await mezoErc20Token.allowance(sender.address, receipient);
+      expect(currentApproval).to.equal(15);
+    });
+
+    it("should allow revoking the approved amount of BTC for the receipient", async function () {
+      tx =  await btcErc20Token.connect(sender)
+        .approve(receipient, 0, {gasLimit: 1000000});
+      await tx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      expect(receipt!.status).to.equal(1);
+      const currentApproval = await btcErc20Token.allowance(sender.address, receipient);
+      expect(currentApproval).to.equal(0);
+    });
+
+    it("should allow revoking the approved amount of MEZO for the receipient", async function () {
+      // one first approve for a given value.
+      tx =  await mezoErc20Token.connect(sender)
+        .approve(receipient, 0, {gasLimit: 1000000});
+      await tx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      expect(receipt!.status).to.equal(1);
+      const currentApproval = await mezoErc20Token.allowance(sender.address, receipient);
+      expect(currentApproval).to.equal(0);
+    });
+  });
+
+
   describe("transferAllMEZO", function () {
     let mezoTransfersAddress: string;
     let mezoAmount: any;
@@ -284,7 +346,7 @@ describe("MEZOTransfers", function () {
     let mezoTransfersAddress: string;
     let mezoAmount: any;
     let btcAmount: any;
-    
+
     let initialSenderMEZOBalance: any;
     let initialSenderBTCBalance: any;
     let initialRecipientMEZOBalance: any;
@@ -353,7 +415,7 @@ describe("MEZOTransfers", function () {
     let mezoTransfersAddress: string;
     let mezoAmount: any;
     let btcAmount: any;
-    
+
     let initialSenderMEZOBalance: any;
     let initialSenderBTCBalance: any;
     let initialContractMEZOBalance: any;
