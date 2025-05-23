@@ -103,14 +103,25 @@ func (c *Contract) Address() common.Address {
 func (c *Contract) RequiredGas(input []byte) uint64 {
 	methodID, methodInputArgs, err := c.parseCallInput(input)
 	if err != nil {
-		// Panic is unacceptable here, return 0 instead.
-		return 0
+		// Panic is unacceptable here. Instead, we charge the user for the
+		// maximum gas we can, this being: a Write method, and the full
+		// size of all the inputs passed to the method (method ID + inputs).
+		return DefaultRequiredGas(
+			store.KVGasConfig(),
+			Write,
+			input,
+		)
 	}
-
 	method, _, err := c.methodByID(methodID)
 	if err != nil {
-		// Panic is unacceptable here, return 0 instead.
-		return 0
+		// Panic is unacceptable here. Instead, we charge the user for the
+		// maximum gas we can, this being: a Write method, and the full
+		// size of all the inputs passed to the method (method ID + inputs).
+		return DefaultRequiredGas(
+			store.KVGasConfig(),
+			Write,
+			input,
+		)
 	}
 
 	requiredGas, ok := method.RequiredGas(methodInputArgs)
