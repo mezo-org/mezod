@@ -23,7 +23,8 @@ Before applying the Blockscout stack, create the following secret
 ```shell
 kubectl create secret generic blockscout-stack -n default \
   --from-literal=ETHEREUM_JSONRPC_HTTP_URL=<mezo-rpc-http> \
-  --from-literal=ETHEREUM_JSONRPC_WS_URL=<mezo-rpc-ws>
+  --from-literal=ETHEREUM_JSONRPC_WS_URL=<mezo-rpc-ws> \
+  --from-literal=WALLET_CONNECT_PROJECT_ID=<wallet-connect-project-id>
 ```
 
 ### Postgres database

@@ -4,8 +4,8 @@
 config:
   network:
     id: 31611
-    name: Mezo
-    shortname: Mezo
+    name: Mezo Testnet
+    shortname: Mezo Testnet
     currency:
       name: Bitcoin
       symbol: BTC
@@ -45,8 +45,7 @@ blockscout:
     ETHEREUM_JSONRPC_FALLBACK_HTTP_URL: http://public-mezo-node-1.default.svc.cluster.local:8545
     ETHEREUM_JSONRPC_FALLBACK_WS_URL: ws://public-mezo-node-1.default.svc.cluster.local:8546
     ETHEREUM_JSONRPC_FALLBACK_TRACE_URL: http://public-mezo-node-1.default.svc.cluster.local:8545
-    NETWORK: Mezo
-    SUBNETWORK: Testnet
+    NETWORK: Mezo Testnet
     BLOCKSCOUT_PROTOCOL: https
     SECRET_KEY_BASE: K4rV3pnwzqGMRZNbyWKryw6Co4qcvm9LvZhUpuf4qftDTsZMjzz4pzgVPZcUXMtf # Just an arbitrary 64-char string
     POOL_SIZE: 80 # Increased from the default value of 50 based on the original Blockscout Docker Compose config
@@ -94,6 +93,8 @@ frontend:
     NEXT_PUBLIC_NETWORK_ICON: https://mezo.org/assets/mezo-favicon-h-eecjcq.svg
     NEXT_PUBLIC_VIEWS_TX_HIDDEN_FIELDS: '["burnt_fees"]'
     NEXT_PUBLIC_NETWORK_VERIFICATION_TYPE: validation
+    NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: secretref+k8s://v1/Secret/default/blockscout-stack/WALLET_CONNECT_PROJECT_ID
+    NEXT_PUBLIC_NETWORK_RPC_URL: https://rpc.test.mezo.org
 
 stats:
   enabled: false # This won't be needed for now.
