@@ -574,6 +574,9 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 		// valid pseudo-transaction, we must decrement the index.
 		adjustedIndex := uint(idx)
 		if pseudoTxResult != nil {
+			// Notice that we can safely decrement the transaction index variable.
+			// Due to the earlier check for pseudo-transaction, we are sure the
+			// passed index is positive.
 			adjustedIndex--
 		}
 
@@ -614,12 +617,15 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 		// Tendermint indexer, find the transaction by iterating over the block's
 		// Eth messages. If the block contains a pseudo-transaction, we must
 		// adjust the index.
-		i := int(idx) // #nosec G701
+		i := uint(idx) // #nosec G701
 		if pseudoTxResult != nil {
+			// Notice that we can safely decrement the transaction index variable.
+			// Due to the earlier check for pseudo-transaction, we are sure the
+			// passed index is positive.
 			i--
 		}
 		ethMsgs := b.EthMsgsFromTendermintBlock(block, blockRes)
-		if i >= len(ethMsgs) {
+		if i >= uint(len(ethMsgs)) {
 			b.logger.Debug("block txs index out of bound", "index", i)
 			return nil, nil
 		}
