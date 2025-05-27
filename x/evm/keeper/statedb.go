@@ -245,10 +245,20 @@ func (k *Keeper) DeleteAccount(ctx sdk.Context, addr common.Address, balance *bi
 	}
 
 	// clear storage
-	k.ForEachStorage(ctx, addr, func(key, _ common.Hash) bool {
+	store := ctx.KVStore(k.storeKey)
+	prefix := types.AddressStoragePrefix(addr)
+	iterator := storetypes.KVStorePrefixIterator(store, prefix)
+
+	var keys []common.Hash
+	for ; iterator.Valid(); iterator.Next() {
+		key := common.BytesToHash(iterator.Key())
+		keys = append(keys, key)
+	}
+	iterator.Close()
+
+	for _, key := range keys {
 		k.SetState(ctx, addr, key, nil)
-		return true
-	})
+	}
 
 	// remove auth account
 	k.accountKeeper.RemoveAccount(ctx, acct)
