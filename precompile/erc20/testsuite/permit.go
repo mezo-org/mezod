@@ -39,9 +39,6 @@ func (s *TestSuite) TestPermitHashCollision() {
 func (s *TestSuite) TestPermit() {
 	amount := int64(100)
 
-	// TODO: Remove the skip once the flakiness is fixed.
-	s.T().Skip("This test is flaky and needs to be fixed. See https://linear.app/thesis-co/issue/TET-93/flaky-unit-test-of-the-btc-permit-method")
-
 	testcases := []struct {
 		name        string
 		run         func(nonce int64) []interface{}
@@ -254,7 +251,7 @@ func (s *TestSuite) TestPermit() {
 					s.account1.EvmAddr, s.account2.EvmAddr, big.NewInt(amount), big.NewInt(deadline), v, rComponent, sComponent,
 				}
 			},
-			runs:      1,
+			runs:      10,
 			basicPass: true,
 			postCheck: func() {
 				s.requireSendAuthz(
