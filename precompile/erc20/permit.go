@@ -167,7 +167,7 @@ func (am *PermitMethod) Run(
 	}
 
 	// Concatenate r, s, and v to form the full signature
-	signature := append(r.Bytes(), append(s.Bytes(), v)...)
+	signature := append(rComponent[:], append(sComponent[:], v)...)
 
 	// Recover the public key from the signature
 	recoveredPubKey, err := crypto.SigToPub(digest, signature)
