@@ -1,7 +1,7 @@
 name: Lint
 # The workflow runs linting checks on the repository for both Go code and
 # Markdown files, based on the names of the files being changed. The Markdown
-# linting is done according to rules specified in the `.markdownlint.yml` and 
+# linting is done according to rules specified in the `.markdownlint.yml` and
 # `.markdownlintignore` files.
 on:
   pull_request:
@@ -26,10 +26,10 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - uses: golangci/golangci-lint-action@v6.1.0
+      - uses: golangci/golangci-lint-action@v6.5.1
         with:
           install-mode: goinstall
-          version: 3298c104802d118670a487b330ddd3761f7afe20 # Commit hash of 1.60.1
+          version: v1.64.8
           args: --timeout 10m
           github-token: ${{ secrets.github_token }}
         # Check only if there are differences in the source code

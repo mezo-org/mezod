@@ -77,8 +77,8 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 
 			// Observe which users define a gas limit >> gas used. Note, that
 			// gas_limit and gas_used are always > 0
-			gasLimit := sdkmath.LegacyNewDec(int64(tx.Gas()))
-			gasRatio, err := gasLimit.QuoInt64(int64(response.GasUsed)).Float64()
+			gasLimit := sdkmath.LegacyNewDec(int64(tx.Gas()))                     //nolint:gosec
+			gasRatio, err := gasLimit.QuoInt64(int64(response.GasUsed)).Float64() //nolint:gosec
 			if err == nil {
 				telemetry.SetGaugeWithLabels(
 					[]string{"tx", "msg", "ethereum_tx", "gas_limit", "per", "gas_used"},

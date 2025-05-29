@@ -72,7 +72,7 @@ func (m *LatestRoundDataMethod) Run(
 
 	targetDecimals := uint64(Decimals)
 	actualDecimals := priceData.Decimals
-	deltaDecimals := int64(targetDecimals - actualDecimals)
+	deltaDecimals := int64(targetDecimals - actualDecimals) //nolint:gosec
 
 	var answer *big.Int
 	if deltaDecimals >= 0 {

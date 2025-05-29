@@ -98,7 +98,7 @@ func (ee *EventEmitter) Emit(event Event) error {
 		Address:     ee.address,
 		Topics:      topics,
 		Data:        data,
-		BlockNumber: uint64(ee.sdkCtx.BlockHeight()),
+		BlockNumber: uint64(ee.sdkCtx.BlockHeight()), //nolint:gosec
 	})
 
 	return nil

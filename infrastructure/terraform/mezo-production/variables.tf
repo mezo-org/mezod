@@ -83,7 +83,9 @@ variable "external_ip_addresses" {
   type = list(string)
   description = "External IP addresses reserved for the project"
 
-  default = []
+  default = [
+    "mezo-production-rpc-node-external-ip"
+  ]
 }
 
 variable "global_external_ip_addresses" {

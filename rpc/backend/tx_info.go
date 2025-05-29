@@ -83,7 +83,7 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 				if i > math.MaxInt32 {
 					return nil, errors.New("tx index overflow")
 				}
-				res.EthTxIndex = int32(i) //#nosec G701 -- checked for int overflow already
+				res.EthTxIndex = int32(i) //nolint:gosec // checked for int overflow already
 				break
 			}
 		}
@@ -99,8 +99,8 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 		b.logger.Error("failed to fetch Base Fee from prunned block. Check node prunning configuration", "height", blockRes.Height, "error", err)
 	}
 
-	height := uint64(res.Height)    //#nosec G701 -- checked for int overflow already
-	index := uint64(res.EthTxIndex) //#nosec G701 -- checked for int overflow already
+	height := uint64(res.Height)    //nolint:gosec // checked for int overflow already
+	index := uint64(res.EthTxIndex) //nolint:gosec // checked for int overflow already
 	return rpctypes.NewTransactionFromMsg(
 		msg,
 		common.BytesToHash(block.BlockID.Hash.Bytes()),
@@ -119,9 +119,9 @@ func (b *Backend) getPseudoTransaction(
 	error,
 ) {
 	blockHash := common.BytesToHash(blockResult.BlockID.Hash.Bytes())
-	blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(txResult.Height)))
+	blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(txResult.Height))) //nolint:gosec
 	to := common.HexToAddress(assetsbridge.EvmAddress)
-	index := hexutil.Uint64(txResult.EthTxIndex)
+	index := hexutil.Uint64(txResult.EthTxIndex) //nolint:gosec
 	chainID := (*hexutil.Big)(b.chainID)
 	zero := (*hexutil.Big)(new(big.Int).SetUint64(0))
 
@@ -267,7 +267,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		return nil, nil
 	}
 	for _, txResult := range blockRes.TxsResults[0:res.TxIndex] {
-		cumulativeGasUsed += uint64(txResult.GasUsed) // #nosec G701 -- checked for int overflow already
+		cumulativeGasUsed += uint64(txResult.GasUsed) //nolint:gosec // checked for int overflow already
 	}
 	cumulativeGasUsed += res.CumulativeGasUsed
 
@@ -310,7 +310,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		msgs := b.EthMsgsFromTendermintBlock(resBlock, blockRes)
 		for i := range msgs {
 			if msgs[i].Hash == hexTx {
-				res.EthTxIndex = int32(i) // #nosec G701
+				res.EthTxIndex = int32(i) //nolint:gosec
 				break
 			}
 		}
@@ -336,8 +336,8 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		// Inclusion information: These fields provide information about the inclusion of the
 		// transaction corresponding to this receipt.
 		"blockHash":        common.BytesToHash(resBlock.Block.Header.Hash()).Hex(),
-		"blockNumber":      hexutil.Uint64(res.Height),
-		"transactionIndex": hexutil.Uint64(res.EthTxIndex),
+		"blockNumber":      hexutil.Uint64(res.Height),     //nolint:gosec
+		"transactionIndex": hexutil.Uint64(res.EthTxIndex), //nolint:gosec
 
 		// sender and receiver (contract or EOA) addreses
 		"from": from,
@@ -388,8 +388,8 @@ func (b *Backend) getPseudoTransactionReceipt(
 
 		// Inclusion information.
 		"blockHash":        common.BytesToHash(blockResult.Block.Header.Hash()).Hex(),
-		"blockNumber":      hexutil.Uint64(txResult.Height),
-		"transactionIndex": hexutil.Uint64(txResult.EthTxIndex),
+		"blockNumber":      hexutil.Uint64(txResult.Height),     //nolint:gosec
+		"transactionIndex": hexutil.Uint64(txResult.EthTxIndex), //nolint:gosec
 
 		// Sender and receiver (contract or EOA) addresses.
 		"from": common.Address{},
@@ -565,7 +565,7 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 			// The custom indexer is set. It stores both pseudo-transactions
 			// and regular transactions. We do not have to adjust the index
 			// when querying the custom indexer.
-			return b.indexer.GetByBlockAndIndex(block.Block.Height, int32(idx))
+			return b.indexer.GetByBlockAndIndex(block.Block.Height, int32(idx)) //nolint:gosec
 		}
 
 		// If the custom indexer is not set, query the Tendermint indexer.
@@ -586,7 +586,7 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 		)
 
 		txResult, err := b.queryTendermintTxIndexer(query, func(txs *rpctypes.ParsedTxs) *rpctypes.ParsedTx {
-			return txs.GetTxByTxIndex(int(adjustedIndex)) // #nosec G701 -- checked for int overflow already
+			return txs.GetTxByTxIndex(int(adjustedIndex)) //nolint:gosec
 		})
 		if err != nil {
 			return nil, errorsmod.Wrapf(err, "GetTransactionByBlockAndIndex %d %d", block.Block.Height, adjustedIndex)
@@ -639,8 +639,8 @@ func (b *Backend) GetTransactionByBlockAndIndex(block *tmrpctypes.ResultBlock, i
 		b.logger.Error("failed to fetch Base Fee from prunned block. Check node prunning configuration", "height", block.Block.Height, "error", err)
 	}
 
-	height := uint64(block.Block.Height) // #nosec G701 -- checked for int overflow already
-	index := uint64(idx)                 // #nosec G701 -- checked for int overflow already
+	height := uint64(block.Block.Height) //nolint:gosec // checked for int overflow already
+	index := uint64(idx)                 //nolint:gosec // checked for int overflow already
 	return rpctypes.NewTransactionFromMsg(
 		msg,
 		common.BytesToHash(block.Block.Hash()),
