@@ -756,7 +756,7 @@ func (suite *KeeperTestSuite) TestEstimateGas() {
 			rsp, err := suite.queryClient.EstimateGas(suite.ctx, &req)
 			if tc.expPass {
 				suite.Require().NoError(err)
-				suite.Require().Equal(int64(tc.expGas), int64(rsp.Gas))
+				suite.Require().Equal(int64(tc.expGas), int64(rsp.Gas)) //nolint:gosec
 			} else {
 				suite.Require().Error(err)
 			}

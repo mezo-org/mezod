@@ -78,7 +78,7 @@ func DefaultParams() Params {
 		AllowUnprotectedTxs:             DefaultAllowUnprotectedTxs,
 		StorageRootStrategy:             uint32(DefaultStorageRootStrategy),
 		PrecompilesVersions:             DefaultPrecompilesVersions,
-		MaxPrecompilesCallsPerExecution: uint32(DefaultMaxPrecompilesCallsPerExecution),
+		MaxPrecompilesCallsPerExecution: uint32(DefaultMaxPrecompilesCallsPerExecution), //nolint:gosec
 		ChainFeeSplitterAddress:         DefaultChainFeeSplitterAddress,
 	}
 }
