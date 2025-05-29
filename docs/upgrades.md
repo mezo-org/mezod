@@ -185,6 +185,7 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 
 ### Mainnet
 
-| Version  | Block   | Type                                 | Details                                                                                                                                                                                 |
-|----------|---------|--------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `v1.0.0` | 1       | N/A                                  | Initial genesis version.                                                                                                                                                                |
+| Version  | Block   | Type                                 | Details                                                                       |
+|----------|---------|--------------------------------------|-------------------------------------------------------------------------------|
+| `v1.0.0` | 1       | N/A                                  | Initial genesis version.                                                      |
+| `v2.0.0` | 706500  | Planned upgrade with chain halt      | [v2.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v2.0.0) |
