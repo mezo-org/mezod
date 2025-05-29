@@ -27,7 +27,7 @@ jobs:
 
       - name: 📦 Archive client binary
         run: |
-          tar -czvf linux-amd64.tar.gz -C build .
+          tar -czvf linux-amd64.tar.gz -C build mezod
 
       - name: 🔐 Authenticate to Google Cloud
         if: contains(github.ref_name, '-rc')
