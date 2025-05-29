@@ -322,7 +322,7 @@ func (s *Server) fetchABIEvents(
 
 	abiEvents := make([]*portal.MezoBridgeAssetsLocked, 0)
 
-	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute))
+	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute)) //nolint:gosec
 	defer ticker.Stop()
 
 	iterator, err := s.bridgeContract.FilterAssetsLocked(
