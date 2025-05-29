@@ -80,7 +80,7 @@ func (k Keeper) CreateERC20TokenMapping(
 		return types.ErrAlreadyMapping
 	}
 
-	existingMappingsCount := uint32(len(k.GetERC20TokensMappings(ctx)))
+	existingMappingsCount := uint32(len(k.GetERC20TokensMappings(ctx))) //nolint:gosec
 	maxMappingsCount := k.GetParams(ctx).MaxErc20TokensMappings
 
 	if existingMappingsCount >= maxMappingsCount {

@@ -1,0 +1,37 @@
+labels:
+  app: mezo
+  type: rpc-node
+
+service:
+  public:
+    enabled: false
+  private:
+    enabled: false
+
+env:
+  PUBLIC_IP: "34.42.199.9" # mezo-production-rpc-node-external-ip defined in the mezo-production terraform module
+  MEZOD_MONIKER: "mezo-rpc-node"
+  MEZOD_JSON_RPC_ENABLE_INDEXER: true
+
+customConfigs:
+  enabled: true
+  appTomlTxt: |
+    pruning=nothing
+  clientTomlTxt: ""
+  configTomlTxt: ""  
+
+secrets:
+  credentials: "mezo-rpc-node" # created manually
+
+storage:
+  className: "premium-rwo"
+  size: "500Gi"
+  useDataSource:
+    enabled: false      
+
+resources:
+  requests:
+    cpu: "2000m"
+    memory: "8096Mi"      
+
+maintenanceMode: false

@@ -189,7 +189,7 @@ func (b *Backend) GetBlockTransactionCount(block *tmrpctypes.ResultBlock) *hexut
 	// `EthMsgsFromTendermintBlock` function below. We do not have to worry
 	// about such a transaction being counted twice.
 	ethMsgs := b.EthMsgsFromTendermintBlock(block, blockRes)
-	n := hexutil.Uint(numPseudoTxs + len(ethMsgs))
+	n := hexutil.Uint(numPseudoTxs + len(ethMsgs)) //nolint:gosec
 	return &n
 }
 
@@ -203,7 +203,7 @@ func (b *Backend) TendermintBlockByNumber(blockNum rpctypes.BlockNumber) (*tmrpc
 		if err != nil {
 			return nil, err
 		}
-		height = int64(n) //#nosec G701 -- checked for int overflow already
+		height = int64(n) //nolint:gosec // checked for int overflow already
 	}
 	resBlock, err := b.clientCtx.Client.Block(b.ctx, &height)
 	if err != nil {
@@ -445,14 +445,14 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		}
 
 		tx := ethMsg.AsTransaction()
-		height := uint64(block.Height) //#nosec G701 -- checked for int overflow already
-		index := uint64(txIndex)       //#nosec G701 -- checked for int overflow already
+		height := uint64(block.Height) //nolint:gosec // checked for int overflow already
+		index := uint64(txIndex)       //nolint:gosec // checked for int overflow already
 
 		// If there is a pseudo-transaction present in the block, we need to
 		// increase the index by `1` as the pseudo-transaction should be
 		// considered the first transaction in the block.
 		if pseudoTxResult != nil {
-			index = uint64(txIndex) + 1
+			index = uint64(txIndex) + 1 //nolint:gosec
 		}
 
 		rpcTx, err := rpctypes.NewRPCTransaction(
@@ -514,7 +514,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 			// block gas limit has exceeded, other txs must have failed with same reason.
 			break
 		}
-		gasUsed += uint64(txsResult.GetGasUsed()) // #nosec G701 -- checked for int overflow already
+		gasUsed += uint64(txsResult.GetGasUsed()) //nolint:gosec // checked for int overflow already
 	}
 
 	formattedBlock := rpctypes.FormatBlock(
