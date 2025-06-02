@@ -164,6 +164,7 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 // SubscribeLogs creates a subscription that will write all logs matching the
 // given criteria to the given logs channel. Default value for the from and to
 // block is "latest". If the fromBlock > toBlock an error is returned.
+
 func (es *EventSystem) SubscribeLogs(crit filters.FilterCriteria) (*Subscription, pubsub.UnsubscribeFunc, error) {
 	if len(crit.Addresses) > defaultMaxAddressesFilter {
 		return nil, nil, fmt.Errorf("max number of addresses exceeded (max allowed %v)", defaultMaxAddressesFilter)
@@ -207,7 +208,32 @@ func (es *EventSystem) subscribeLogs(crit filters.FilterCriteria) (*Subscription
 		installed: make(chan struct{}, 1),
 		err:       make(chan error, 1),
 	}
-	return es.subscribe(sub)
+
+	return es.subscribeWithCleanup(sub)
+}
+
+func (es *EventSystem) subscribeWithCleanup(sub *Subscription) (*Subscription, pubsub.UnsubscribeFunc, error) {
+	sub, fn, err := es.subscribe(sub)
+	if err != nil {
+		return sub, fn, err
+	}
+
+	// wrap the unsubscribe func into our own, so we can do extra
+	// cleaning up of the subscription (e.g: add the call to
+	// Subscription.Unsubscribe, which cancel infinite loops
+	// in charge of installing / uninstalling the sub.
+	// This will down the line close the err channel, which
+	// will be caught in the channels listening for error,
+	// finally exiting the subscription properly.
+	fnW := func() {
+		// first we unsubscribe
+		sub.Unsubscribe(es)
+		// then we just continue with clearing up the inner
+		// tendermint channels.
+		fn()
+	}
+
+	return sub, fnW, err
 }
 
 // SubscribeNewHeads subscribes to new block headers events.
@@ -221,7 +247,7 @@ func (es EventSystem) SubscribeNewHeads() (*Subscription, pubsub.UnsubscribeFunc
 		installed: make(chan struct{}, 1),
 		err:       make(chan error, 1),
 	}
-	return es.subscribe(sub)
+	return es.subscribeWithCleanup(sub)
 }
 
 // SubscribePendingTxs subscribes to new pending transactions events from the mempool.
@@ -235,7 +261,7 @@ func (es EventSystem) SubscribePendingTxs() (*Subscription, pubsub.UnsubscribeFu
 		installed: make(chan struct{}, 1),
 		err:       make(chan error, 1),
 	}
-	return es.subscribe(sub)
+	return es.subscribeWithCleanup(sub)
 }
 
 type filterIndex map[filters.Type]map[rpc.ID]*Subscription
