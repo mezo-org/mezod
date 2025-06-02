@@ -41,6 +41,16 @@ spec:
               value: "https://%(domain)s/grafana/"
             - name: GF_SERVER_SERVE_FROM_SUB_PATH
               value: "true"
+            - name: GF_AUTH_GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-auth-google
+                  key: client-id
+            - name: GF_AUTH_GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-auth-google
+                  key: client-secret
           readinessProbe:
             httpGet:
               path: /api/health
@@ -51,7 +61,7 @@ spec:
           livenessProbe:
             initialDelaySeconds: 30
             tcpSocket:
-              port: grafana    
+              port: grafana
           resources:
             limits:
               cpu: 300m
