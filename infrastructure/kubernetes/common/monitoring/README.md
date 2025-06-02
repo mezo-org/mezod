@@ -18,7 +18,7 @@ following command:
 kubectl create namespace monitoring
 ```
 
-### Setup google Oauth login
+### Setup Google OAuth login
 
 First, create an OAuth application in Google Cloud Console:
 - Go to Google Cloud Console
@@ -87,9 +87,8 @@ file: https://github.com/mezo-org/mezod/blob/main/metrics-scraper/config.go
 ### Static IP for the metrics-scraper service
 
 The metrics scraper service requires a static IP which is to be allowlisted
-by node operators so the service can access them. It is pinned to
-`mezo-<environment>-monitoring-external-ip`, which is created as part of the
-mezo-<environment> Terraform configuration.
+by node operators so the service can access them. It is the IP of the Cloud NAT,
+which is created as part of the `mezo-<environment>` Terraform configuration.
 
 Node operators will need to allowlist this IP on their EVM JSON-RPC port
 (the default being 8545).
