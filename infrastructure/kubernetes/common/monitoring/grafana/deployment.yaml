@@ -44,12 +44,12 @@ spec:
             - name: GF_AUTH_GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: grafana-auth-google
+                  name: grafana-auth-google-secret
                   key: client-id
             - name: GF_AUTH_GOOGLE_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: grafana-auth-google
+                  name: grafana-auth-google-secret
                   key: client-secret
           readinessProbe:
             httpGet:
