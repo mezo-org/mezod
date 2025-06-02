@@ -18,6 +18,17 @@ following command:
 kubectl create namespace monitoring
 ```
 
+### Setup google Oauth login
+
+First, create an OAuth application in Google Cloud Console:
+- Go to Google Cloud Console
+- Navigate to APIs & Services > Credentials
+- Click Create Credentials > OAuth 2.0 Client IDs
+- Set Application type to Web application
+- Add your authorized redirect URIs: `https://<GRAFANA_DOMAIN>/grafana/login/google`
+
+Save and note down the Client ID and Client Secret.
+
 ### Secrets
 
 #### Grafana
