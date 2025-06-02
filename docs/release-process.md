@@ -20,6 +20,12 @@ Next, determine the optional suffix:
 - If the release is a candidate release intended to be rolled out on the Testnet chain only,
   the version number should be suffixed with `-rcN`, where `N` is the release candidate number.
 
+Ideally, new releases should be rolled out as candidate releases on the Testnet chain first.
+Once they are tested and promoted to stable releases, they can be rolled out on the Mainnet chain.
+In justified cases, the candidate release phase and even the Testnet rollout can be skipped, and
+the given release may be rolled out on Mainnet directly, as a stable release.
+Always use your best judgement when deciding about the release strategy.
+
 ## Prepare the release
 
 ### Major releases with consensus breaking changes
