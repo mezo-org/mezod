@@ -18,12 +18,23 @@ following command:
 kubectl create namespace monitoring
 ```
 
+### Setup Google OAuth login
+
+First, create an OAuth application in Google Cloud Console:
+- Go to Google Cloud Console
+- Navigate to APIs & Services > Credentials
+- Click Create Credentials > OAuth 2.0 Client IDs
+- Set Application type to Web application
+- Add your authorized redirect URIs: `https://<GRAFANA_DOMAIN>/grafana/login/google`
+
+Save and note down the Client ID and Client Secret.
+
 ### Secrets
 
 #### Grafana
 
 Secrets are used to set the default user and password to log in to
-the Grafana UI. Here are the required entries:
+the Grafana UI. Here are the required entries under grafana-secret:
 - admin-password
 - admin-user
 
@@ -32,6 +43,19 @@ Use `kubectl` to create the secrets or apply changes:
 kubectl create secret generic -n monitoring grafana-secret \
   --from-literal=admin-user=<USER> \
   --from-literal=admin-password=<PASSWORD>
+
+```
+
+And under grafana-auth-google-secret:
+- client-id
+- secret-id
+
+Use `kubectl` to create the secrets or apply changes:
+```Shell
+kubectl create secret generic -n monitoring grafana-auth-google-secret \
+  --from-literal=client-id=<CLIENT_ID> \
+  --from-literal=client-secret=<CLIENT_SECRET>
+
 ```
 
 #### Metrics Scraper
@@ -63,9 +87,8 @@ file: https://github.com/mezo-org/mezod/blob/main/metrics-scraper/config.go
 ### Static IP for the metrics-scraper service
 
 The metrics scraper service requires a static IP which is to be allowlisted
-by node operators so the service can access them. It is pinned to
-`mezo-<environment>-monitoring-external-ip`, which is created as part of the
-mezo-<environment> Terraform configuration.
+by node operators so the service can access them. It is the IP of the Cloud NAT,
+which is created as part of the `mezo-<environment>` Terraform configuration.
 
 Node operators will need to allowlist this IP on their EVM JSON-RPC port
 (the default being 8545).
@@ -81,8 +104,8 @@ the `mezo-<environment>` Terraform module.
 
 ### Add a node to the monitoring
 
-The monitoring system does not automatically discover new nodes yet. That said, 
-new nodes must be added to the monitoring system manually. This can be done by 
+The monitoring system does not automatically discover new nodes yet. That said,
+new nodes must be added to the monitoring system manually. This can be done by
 running the `add-node.sh` script on the desired environment.
 
 First, switch to the desired environment by setting the right `kubectl` context:
