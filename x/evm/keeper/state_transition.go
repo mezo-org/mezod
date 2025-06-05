@@ -65,8 +65,8 @@ func (k *Keeper) NewEVM(
 		Coinbase:    cfg.CoinBase,
 		GasLimit:    mezotypes.BlockGasLimit(ctx),
 		BlockNumber: big.NewInt(ctx.BlockHeight()),
-		Time:        uint64(ctx.BlockHeader().Time.Unix()),
-		Difficulty:  big.NewInt(0), // unused. Only required in PoW context
+		Time:        uint64(ctx.BlockHeader().Time.Unix()), //nolint:gosec
+		Difficulty:  big.NewInt(0),                         // unused. Only required in PoW context
 		BaseFee:     cfg.BaseFee,
 		Random:      nil, // not supported
 	}
@@ -91,7 +91,7 @@ func (k *Keeper) NewEVM(
 	// can call NewEVM concurrently. Each goroutine must work with its own
 	// copy of the global map to avoid the `concurrent map writes` fatal error.
 	precompiles := maps.Clone(
-		vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix()))),
+		vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix()))), //nolint:gosec
 	)
 	// Add custom precompiles into the mix. Note that if a custom precompile
 	// uses the same address as a default precompile, the custom one will be used.
@@ -430,7 +430,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
-	if rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())); rules.IsBerlin {
+	if rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())); rules.IsBerlin { //nolint:gosec
 		stateDB.Prepare(rules, msg.From, evm.Context.Coinbase, msg.To, evm.ActivePrecompiles(rules), msg.AccessList)
 	}
 
@@ -482,7 +482,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	// calculate a minimum amount of gas to be charged to sender if GasLimit
 	// is considerably higher than GasUsed to stay more aligned with Tendermint gas mechanics
 	// for more info https://github.com/mezo/ethermint/issues/1085
-	gasLimit := sdkmath.LegacyNewDec(int64(msg.GasLimit))
+	gasLimit := sdkmath.LegacyNewDec(int64(msg.GasLimit)) //nolint:gosec
 	minGasMultiplier := k.GetMinGasMultiplier(ctx)
 	minimumGasUsed := gasLimit.Mul(minGasMultiplier)
 
@@ -490,7 +490,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 		return nil, errorsmod.Wrapf(types.ErrGasOverflow, "message gas limit < leftover gas (%d < %d)", msg.GasLimit, leftoverGas)
 	}
 
-	gasUsed = sdkmath.LegacyMaxDec(minimumGasUsed, sdkmath.LegacyNewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
+	gasUsed = sdkmath.LegacyMaxDec(minimumGasUsed, sdkmath.LegacyNewDec(int64(temporaryGasUsed))).TruncateInt().Uint64() //nolint:gosec
 
 	// reset leftoverGas, to be used by the tracer
 	leftoverGas = msg.GasLimit - gasUsed

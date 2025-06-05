@@ -31,7 +31,7 @@ func (k *Keeper) ExecuteContractCall(
 	}
 
 	// Set the gas cap to the block's max gas limit.
-	gasCap := uint64(consensusParamsResponse.GetParams().GetBlock().MaxGas)
+	gasCap := uint64(consensusParamsResponse.GetParams().GetBlock().MaxGas) //nolint:gosec
 
 	msg := core.Message{
 		To:                call.To(),

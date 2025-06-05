@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: public-mezo-rpc-node
+  labels:
+    app: mezo
+    type: rpc-node
+    app.kubernetes.io/name: mezo-rpc-node
+spec:
+  type: LoadBalancer
+  loadBalancerIP: "34.42.199.9" # mezo-production-rpc-node-external-ip defined in the mezo-production terraform module
+  allocateLoadBalancerNodePorts: false
+  ports:
+    - name: p2p
+      port: 26656
+      targetPort: p2p
+  selector:
+    app.kubernetes.io/name: mezo-rpc-node
+  
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: private-mezo-rpc-node
+  labels:
+    app: mezo
+    type: rpc-node
+    app.kubernetes.io/name: mezo-rpc-node
+spec:
+  type: ClusterIP
+  ports:
+    - name: rpc
+      port: 26657
+      targetPort: rpc
+    - name: api
+      port: 1317
+      targetPort: api
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+    - name: json-rpc
+      port: 8545
+      targetPort: json-rpc
+    - name: json-rpc-ws
+      port: 8546
+      targetPort: json-rpc-ws
+  selector:
+    app.kubernetes.io/name: mezo-rpc-node

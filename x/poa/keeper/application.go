@@ -97,7 +97,7 @@ func (k Keeper) ApproveApplication(
 
 // checkMaxValidators checks if the maximum number of validators is reached.
 func (k Keeper) checkMaxValidators(ctx sdk.Context) error {
-	validatorsCount := uint32(len(k.GetAllValidators(ctx)))
+	validatorsCount := uint32(len(k.GetAllValidators(ctx))) //nolint:gosec
 	maxValidators := k.GetParams(ctx).MaxValidators
 
 	if validatorsCount >= maxValidators {

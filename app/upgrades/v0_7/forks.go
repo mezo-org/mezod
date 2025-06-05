@@ -75,7 +75,7 @@ func setMaxPrecompilesCallsPerExecution(ctx sdk.Context, evmKeeper *keeper.Keepe
 		params.MaxPrecompilesCallsPerExecution,
 	)
 
-	params.MaxPrecompilesCallsPerExecution = uint32(evmtypes.DefaultMaxPrecompilesCallsPerExecution)
+	params.MaxPrecompilesCallsPerExecution = uint32(evmtypes.DefaultMaxPrecompilesCallsPerExecution) //nolint:gosec
 
 	err := evmKeeper.SetParams(ctx, params)
 	if err != nil {

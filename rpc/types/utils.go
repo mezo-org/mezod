@@ -71,7 +71,7 @@ func EthHeaderFromTendermint(header tmtypes.Header, bloom ethtypes.Bloom, baseFe
 		txHash = common.BytesToHash(header.DataHash)
 	}
 
-	time := uint64(header.Time.UTC().Unix()) // #nosec G701
+	time := uint64(header.Time.UTC().Unix()) //nolint:gosec
 	return &ethtypes.Header{
 		ParentHash:  common.BytesToHash(header.LastBlockID.Hash.Bytes()),
 		UncleHash:   ethtypes.EmptyUncleHash,
@@ -100,7 +100,7 @@ func BlockMaxGasFromConsensusParams(goCtx context.Context, clientCtx client.Cont
 	}
 
 	resConsParams, err := rpcClient.ConsensusParams(goCtx, &blockHeight)
-	defaultGasLimit := int64(^uint32(0)) // #nosec G701
+	defaultGasLimit := int64(^uint32(0)) //nolint:gosec
 	if err != nil {
 		return defaultGasLimit, err
 	}
@@ -131,7 +131,7 @@ func FormatBlock(
 	}
 
 	result := map[string]interface{}{
-		"number":           hexutil.Uint64(header.Height),
+		"number":           hexutil.Uint64(header.Height), //nolint:gosec
 		"hash":             hexutil.Bytes(header.Hash()),
 		"parentHash":       common.BytesToHash(header.LastBlockID.Hash.Bytes()),
 		"nonce":            ethtypes.BlockNonce{},   // PoW specific
@@ -142,10 +142,10 @@ func FormatBlock(
 		"mixHash":          common.Hash{},
 		"difficulty":       (*hexutil.Big)(big.NewInt(0)),
 		"extraData":        "0x",
-		"size":             hexutil.Uint64(size),
-		"gasLimit":         hexutil.Uint64(gasLimit), // Static gas limit
+		"size":             hexutil.Uint64(size),     //nolint:gosec
+		"gasLimit":         hexutil.Uint64(gasLimit), //nolint:gosec // Static gas limit
 		"gasUsed":          (*hexutil.Big)(gasUsed),
-		"timestamp":        hexutil.Uint64(header.Time.Unix()),
+		"timestamp":        hexutil.Uint64(header.Time.Unix()), //nolint:gosec
 		"transactionsRoot": transactionsRoot,
 		"receiptsRoot":     ethtypes.EmptyRootHash,
 
@@ -258,9 +258,9 @@ func BaseFeeFromEvents(events []abci.Event) *big.Int {
 
 // CheckTxFee is an internal function used to check whether the fee of
 // the given transaction is _reasonable_(under the cap).
-func CheckTxFee(gasPrice *big.Int, gas uint64, cap float64) error {
+func CheckTxFee(gasPrice *big.Int, gas uint64, feeCap float64) error {
 	// Short circuit if there is no cap for transaction fee at all.
-	if cap == 0 {
+	if feeCap == 0 {
 		return nil
 	}
 	totalfee := new(big.Float).SetInt(new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gas)))
@@ -270,8 +270,8 @@ func CheckTxFee(gasPrice *big.Int, gas uint64, cap float64) error {
 	feeEth := new(big.Float).Quo(totalfee, oneToken)
 	// no need to check error from parsing
 	feeFloat, _ := feeEth.Float64()
-	if feeFloat > cap {
-		return fmt.Errorf("tx fee (%.2f ether) exceeds the configured cap (%.2f ether)", feeFloat, cap)
+	if feeFloat > feeCap {
+		return fmt.Errorf("tx fee (%.2f ether) exceeds the configured cap (%.2f ether)", feeFloat, feeCap)
 	}
 	return nil
 }

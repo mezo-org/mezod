@@ -355,7 +355,7 @@ func (b *Backend) EstimateCost(args evmtypes.TransactionArgs, blockNrOptional *r
 
 	// Calculate the cost of the gas in BTC in 1e18 precision.
 	btcCost := new(big.Int).Mul(
-		big.NewInt(int64(gas)),
+		big.NewInt(int64(gas)), //nolint:gosec
 		gasPrice.ToInt(),
 	)
 
@@ -397,7 +397,7 @@ func (b *Backend) EstimateCost(args evmtypes.TransactionArgs, blockNrOptional *r
 }
 
 func rescalePrecision(inputValue *big.Int, actualDecimals, targetDecimals uint64) *big.Int {
-	deltaDecimals := int64(targetDecimals - actualDecimals)
+	deltaDecimals := int64(targetDecimals - actualDecimals) //nolint:gosec
 
 	if deltaDecimals >= 0 {
 		// Adjust to the desired decimals up: inputValue * 10^deltaDecimals.

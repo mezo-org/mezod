@@ -887,7 +887,7 @@ func buildRPCPseudoTx(
 	chainID *big.Int,
 ) (*rpctypes.RPCTransaction, error) {
 	blockHash := common.BytesToHash(block.Hash())
-	blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(block.Height)))
+	blockNumber := (*hexutil.Big)(new(big.Int).SetUint64(uint64(block.Height))) //nolint:gosec
 	index := hexutil.Uint64(0)
 	to := common.HexToAddress(assetsbridge.EvmAddress)
 	zero := (*hexutil.Big)(new(big.Int).SetUint64(0))
@@ -940,7 +940,7 @@ func buildPseudoTxReceipt(
 		"contractAddress":   nil,
 		"gasUsed":           hexutil.Uint64(0),
 		"blockHash":         common.BytesToHash(block.Header.Hash()).Hex(),
-		"blockNumber":       hexutil.Uint64(block.Height),
+		"blockNumber":       hexutil.Uint64(block.Height), //nolint:gosec
 		"transactionIndex":  hexutil.Uint64(0),
 		"from":              common.Address{},
 		"to":                common.HexToAddress(assetsbridge.EvmAddress),

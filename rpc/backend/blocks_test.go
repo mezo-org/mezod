@@ -1135,8 +1135,8 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint() {
 
 			var expBlock map[string]interface{}
 			header := tc.resBlock.Block.Header
-			gasLimit := int64(^uint32(0)) // for `MaxGas = -1` (DefaultConsensusParams)
-			gasUsed := new(big.Int).SetUint64(uint64(tc.blockRes.TxsResults[0].GasUsed))
+			gasLimit := int64(^uint32(0))                                                // for `MaxGas = -1` (DefaultConsensusParams)
+			gasUsed := new(big.Int).SetUint64(uint64(tc.blockRes.TxsResults[0].GasUsed)) //nolint:gosec
 
 			root := common.Hash{}.Bytes()
 			receipt := ethtypes.NewReceipt(root, false, gasUsed.Uint64())
@@ -1149,7 +1149,7 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint() {
 					rpcTx, err := ethrpc.NewRPCTransaction(
 						msgEthereumTx.AsTransaction(),
 						common.BytesToHash(header.Hash()),
-						uint64(header.Height),
+						uint64(header.Height), //nolint:gosec
 						uint64(0),
 						tc.baseFee,
 						suite.backend.chainID,
@@ -1246,8 +1246,8 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint_PsuedoTx() {
 			suite.Require().NoError(err)
 
 			header := resBlock.Block.Header
-			gasLimit := int64(^uint32(0)) // for `MaxGas = -1` (DefaultConsensusParams)
-			gasUsed := new(big.Int).SetUint64(uint64(blockRes.TxsResults[0].GasUsed))
+			gasLimit := int64(^uint32(0))                                             // for `MaxGas = -1` (DefaultConsensusParams)
+			gasUsed := new(big.Int).SetUint64(uint64(blockRes.TxsResults[0].GasUsed)) //nolint:gosec
 
 			root := common.Hash{}.Bytes()
 			receipt := ethtypes.NewReceipt(root, false, gasUsed.Uint64())
