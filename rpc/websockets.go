@@ -252,8 +252,7 @@ func (s *websocketsServer) readLoop(wsConn *wsConn) {
 				continue
 			}
 
-			subID := rpc.NewID()
-			unsubFn, err := s.api.subscribe(wsConn, subID, params)
+			unsubFn, subID, err := s.api.subscribe(wsConn, "", params)
 			if err != nil {
 				s.sendErrResponse(wsConn, err.Error())
 				continue
@@ -370,10 +369,10 @@ func newPubSubAPI(clientCtx client.Context, logger log.Logger, tmWSClient *rpccl
 	}
 }
 
-func (api *pubSubAPI) subscribe(wsConn *wsConn, subID rpc.ID, params []interface{}) (pubsub.UnsubscribeFunc, error) {
+func (api *pubSubAPI) subscribe(wsConn *wsConn, subID rpc.ID, params []interface{}) (pubsub.UnsubscribeFunc, rpc.ID, error) {
 	method, ok := params[0].(string)
 	if !ok {
-		return nil, errors.New("invalid parameters")
+		return nil, "", errors.New("invalid parameters")
 	}
 
 	switch method {
@@ -390,14 +389,14 @@ func (api *pubSubAPI) subscribe(wsConn *wsConn, subID rpc.ID, params []interface
 	case "syncing":
 		return api.subscribeSyncing(wsConn, subID)
 	default:
-		return nil, errors.Errorf("unsupported method %s", method)
+		return nil, "", errors.Errorf("unsupported method %s", method)
 	}
 }
 
-func (api *pubSubAPI) subscribeNewHeads(wsConn *wsConn, subID rpc.ID) (pubsub.UnsubscribeFunc, error) {
+func (api *pubSubAPI) subscribeNewHeads(wsConn *wsConn, subID rpc.ID) (pubsub.UnsubscribeFunc, rpc.ID, error) {
 	sub, unsubFn, err := api.events.SubscribeNewHeads()
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating block filter")
+		return nil, "", errors.Wrap(err, "error creating block filter")
 	}
 
 	// TODO: use events
@@ -450,7 +449,7 @@ func (api *pubSubAPI) subscribeNewHeads(wsConn *wsConn, subID rpc.ID) (pubsub.Un
 		}
 	}()
 
-	return unsubFn, nil
+	return unsubFn, sub.ID(), nil
 }
 
 func try(fn func(), l log.Logger, desc string) {
@@ -470,7 +469,7 @@ func try(fn func(), l log.Logger, desc string) {
 	fn()
 }
 
-func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interface{}) (pubsub.UnsubscribeFunc, error) {
+func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interface{}) (pubsub.UnsubscribeFunc, rpc.ID, error) {
 	crit := filters.FilterCriteria{}
 
 	if extra != nil {
@@ -478,7 +477,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 		if !ok {
 			err := errors.New("invalid criteria")
 			api.logger.Debug("invalid criteria", "type", fmt.Sprintf("%T", extra))
-			return nil, err
+			return nil, "", err
 		}
 
 		if params["address"] != nil {
@@ -487,7 +486,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 			if !isString && !isSlice {
 				err := errors.New("invalid addresses; must be address or array of addresses")
 				api.logger.Debug("invalid addresses", "type", fmt.Sprintf("%T", params["address"]))
-				return nil, err
+				return nil, "", err
 			}
 
 			if ok {
@@ -501,7 +500,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 					if !ok {
 						err := errors.New("invalid address")
 						api.logger.Debug("invalid address", "type", fmt.Sprintf("%T", addr))
-						return nil, err
+						return nil, "", err
 					}
 
 					crit.Addresses = append(crit.Addresses, common.HexToAddress(address))
@@ -514,7 +513,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 			if !ok {
 				err := errors.Errorf("invalid topics: %s", topics)
 				api.logger.Error("invalid topics", "type", fmt.Sprintf("%T", topics))
-				return nil, err
+				return nil, "", err
 			}
 
 			crit.Topics = make([][]common.Hash, len(topics))
@@ -539,7 +538,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 				// in case we don't have list, but a single topic value
 				if topic, ok := subtopics.(string); ok {
 					if err := addCritTopic(topicIdx, topic); err != nil {
-						return nil, err
+						return nil, "", err
 					}
 
 					continue
@@ -550,7 +549,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 				if !ok {
 					err := errors.New("invalid subtopics")
 					api.logger.Error("invalid subtopic", "type", fmt.Sprintf("%T", subtopics))
-					return nil, err
+					return nil, "", err
 				}
 
 				subtopicsCollect := make([]common.Hash, len(subtopicsList))
@@ -559,7 +558,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 					if !ok {
 						err := errors.Errorf("invalid subtopic: %s", subtopic)
 						api.logger.Error("invalid subtopic", "type", fmt.Sprintf("%T", subtopic))
-						return nil, err
+						return nil, "", err
 					}
 
 					subtopicsCollect[idx] = common.HexToHash(tstr)
@@ -573,7 +572,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 	sub, unsubFn, err := api.events.SubscribeLogs(crit)
 	if err != nil {
 		api.logger.Error("failed to subscribe logs", "error", err.Error())
-		return nil, err
+		return nil, "", err
 	}
 
 	go func() {
@@ -631,13 +630,13 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, subID rpc.ID, extra interfac
 		}
 	}()
 
-	return unsubFn, nil
+	return unsubFn, sub.ID(), nil
 }
 
-func (api *pubSubAPI) subscribePendingTransactions(wsConn *wsConn, subID rpc.ID) (pubsub.UnsubscribeFunc, error) {
+func (api *pubSubAPI) subscribePendingTransactions(wsConn *wsConn, subID rpc.ID) (pubsub.UnsubscribeFunc, rpc.ID, error) {
 	sub, unsubFn, err := api.events.SubscribePendingTxs()
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating block filter: %s")
+		return nil, "", errors.Wrap(err, "error creating block filter: %s")
 	}
 
 	go func() {
@@ -689,11 +688,11 @@ func (api *pubSubAPI) subscribePendingTransactions(wsConn *wsConn, subID rpc.ID)
 		}
 	}()
 
-	return unsubFn, nil
+	return unsubFn, sub.ID(), nil
 }
 
-func (api *pubSubAPI) subscribeSyncing(_ *wsConn, _ rpc.ID) (pubsub.UnsubscribeFunc, error) {
-	return nil, errors.New("syncing subscription is not implemented")
+func (api *pubSubAPI) subscribeSyncing(_ *wsConn, _ rpc.ID) (pubsub.UnsubscribeFunc, rpc.ID, error) {
+	return nil, "", errors.New("syncing subscription is not implemented")
 }
 
 // copy from github.com/ethereum/go-ethereum/rpc/json.go
