@@ -14,6 +14,7 @@ configMapGenerator:
     files:
       - grafana/dashboards/mezo-nodes-public.json
       - grafana/dashboards/mezo-nodes-private.json
+      - grafana/dashboards/mezo-portal.json
 
 generatorOptions:
   disableNameSuffixHash: true
