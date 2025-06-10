@@ -11,6 +11,9 @@ resources:
   - grafana/service.yaml
   - metrics-scraper/deployment.yaml
   - metrics-scraper/service.yaml
+  - blackbox-exporter/deployment.yaml
+  - blackbox-exporter/service.yaml
+  - blackbox-exporter/configmap.yaml
 
 configMapGenerator:
   - name: grafana-config
