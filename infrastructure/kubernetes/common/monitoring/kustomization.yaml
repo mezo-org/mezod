@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - prometheus/pvc.yaml
-  - prometheus/configmap.yaml
   - prometheus/deployment.yaml
   - prometheus/service.yaml
   - grafana/pvc.yaml

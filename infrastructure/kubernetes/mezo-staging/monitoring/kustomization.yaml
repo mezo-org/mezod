@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../common/monitoring
+  - prometheus/configmap.yaml
   - ingress.yaml
 
 patches:

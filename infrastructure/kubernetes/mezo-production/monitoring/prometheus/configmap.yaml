@@ -13,3 +13,8 @@ data:
       - job_name: 'metrics-scraper'
         static_configs:
           - targets: ['metrics-scraper:2112']
+      - job_name: 'api-metrics'
+        metrics_path: /api/v2/metrics
+        static_configs:
+          - targets: ['api.mezo.org']
+
