@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../common/monitoring
+  - prometheus/configmap.yaml
   - ingress.yaml
 
 patches:
@@ -12,6 +13,7 @@ configMapGenerator:
   - name: grafana-dashboards-mezo
     files:
       - grafana/dashboards/mezo-nodes-public.json
+      - grafana/dashboards/mezo-portal.json
 
 generatorOptions:
   disableNameSuffixHash: true

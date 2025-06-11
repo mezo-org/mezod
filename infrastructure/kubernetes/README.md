@@ -20,7 +20,7 @@ Use `gcloud` to get credentials for the cluster and automatically
 configure `kubectl`:
 
 ```shell
-gcloud container clusters get-credentials mezo-<environment>-gke-cluster --region=us-central1
+gcloud container clusters get-credentials --project <google_cloud_project_id> mezo-<environment>-gke-cluster --region=us-central1
 ```
 
 Verify that everything went as expected and `kubectl` points to the correct cluster:
