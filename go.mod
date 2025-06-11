@@ -38,7 +38,7 @@ require (
 	github.com/influxdata/influxdb v1.8.3
 	github.com/influxdata/influxdb-client-go/v2 v2.4.0
 	github.com/ipfs/go-log v1.0.5
-	github.com/keep-network/keep-common v1.7.1-0.20240424094333-bd36cd25bb74
+	github.com/keep-network/keep-common v1.8.0
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.1
 	github.com/onsi/ginkgo/v2 v2.9.0
 	github.com/onsi/gomega v1.27.2
@@ -273,6 +273,9 @@ replace (
 	github.com/ethereum/go-ethereum => github.com/mezo-org/go-ethereum v1.14.8-mezo2
 	// Security Advisory https://github.com/advisories/GHSA-h395-qcrw-5vmq
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.7
+	// use mezo-org fork of keep-common
+	github.com/keep-network/keep-common => github.com/mezo-org/keep-common v1.8.0
 
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
+
 )
