@@ -64,6 +64,16 @@ task(
 )
 
 task(
+  'assetsBridge:getCurrentSequenceTip',
+  'Returns the current assets lock sequence tip the bridge',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result: string = await bridge.getCurrentSequenceTip()
+    console.log(result)
+  }
+)
+
+task(
   'assetsBridge:getSourceBTCToken',
   'Returns the address of the BTC token on the source chain',
   async (_, hre) => {

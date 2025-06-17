@@ -4,13 +4,13 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 )
 
-// GetCurrentSequenceTipMethodName is the name of the getSourceBTCToken method.
+// GetCurrentSequenceTipMethodName is the name of the getCurrentSequenceTip method.
 // It matches the name of the method in the contract ABI.
 //
 //nolint:gosec
 const GetCurrentSequenceTipMethodName = "getCurrentSequenceTip"
 
-// GetSourceBTCTokenMethod is the implementation of the getSourceBTCToken method.
+// GetCurrentSequenceTipMethod is the implementation of the getCurrentSequenceTip method.
 type GetCurrentSequenceTipMethod struct {
 	bridgeKeeper BridgeKeeper
 }
@@ -46,9 +46,9 @@ func (m *GetCurrentSequenceTipMethod) Run(
 		return nil, err
 	}
 
-	currentSequenceTip := m.bridgeKeeper.GetAssetsLockedSequenceTip(context.SdkCtx())
-
 	return precompile.MethodOutputs{
-		precompile.TypesConverter.BigInt.FromSDK(currentSequenceTip),
+		precompile.TypesConverter.BigInt.FromSDK(
+			m.bridgeKeeper.GetAssetsLockedSequenceTip(context.SdkCtx()),
+		),
 	}, nil
 }
