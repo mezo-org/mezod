@@ -17,7 +17,7 @@ const (
 
 const (
 	AssetsBridgePrecompileAddress       = "0x7b7c000000000000000000000000000000000012"
-	AssetsBridgePrecompileLatestVersion = 2
+	AssetsBridgePrecompileLatestVersion = 3
 )
 
 const (

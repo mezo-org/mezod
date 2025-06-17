@@ -96,4 +96,10 @@ interface IAssetsBridge {
      *      to the Mezo native denomination - BTC.
      */
     function getSourceBTCToken() external view returns (address);
+
+    /**
+     * @notice Returns the current asset lock sequence tip of the bridge.
+     * @return The current asset lock sequence tip of the bridge.
+     */
+    function getCurrentSequenceTip() external view returns (uint256);
 }

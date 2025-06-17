@@ -2,11 +2,13 @@ package assetsbridge_test
 
 import (
 	"bytes"
+	"math/big"
 	"slices"
 	"testing"
 	"time"
 
 	errorsmod "cosmossdk.io/errors"
+	"cosmossdk.io/math"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -125,6 +127,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 					Observability:   true,
 					BTCManagement:   true,
 					ERC20Management: true,
+					SequenceTipView: true,
 				},
 			)
 			s.Require().NoError(err)
@@ -163,6 +166,12 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 			out, err := method.Outputs.Unpack(output)
 			s.Require().NoError(err)
 			for i, expected := range tc.output {
+				if expected, ok := expected.(*big.Int); ok {
+					out, _ := out[i].(*big.Int)
+					// if this is big.Int, compare them differently
+					s.Require().True(expected.Cmp(out) == 0, "expected different value")
+					continue
+				}
 				s.Require().Equal(expected, out[i], "expected different value")
 			}
 
@@ -196,12 +205,14 @@ func (k *FakePoaKeeper) CheckOwner(_ sdk.Context, sender sdk.AccAddress) error {
 type FakeBridgeKeeper struct {
 	sourceBTCToken      []byte
 	erc20TokensMappings []*bridgetypes.ERC20TokenMapping
+	currentSequenceTip  math.Int
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 	return &FakeBridgeKeeper{
 		sourceBTCToken:      sourceBTCToken,
 		erc20TokensMappings: make([]*bridgetypes.ERC20TokenMapping, 0),
+		currentSequenceTip:  math.NewIntFromBigInt(big.NewInt(0)),
 	}
 }
 
@@ -237,6 +248,14 @@ func (k *FakeBridgeKeeper) DeleteERC20TokenMapping(
 
 func (k *FakeBridgeKeeper) GetERC20TokensMappings(_ sdk.Context) []*bridgetypes.ERC20TokenMapping {
 	return k.erc20TokensMappings
+}
+
+func (k *FakeBridgeKeeper) GetAssetsLockedSequenceTip(_ sdk.Context) math.Int {
+	return k.currentSequenceTip
+}
+
+func (k *FakeBridgeKeeper) setAssetsLockedSequenceTip(newValue math.Int) {
+	k.currentSequenceTip = newValue
 }
 
 func (k *FakeBridgeKeeper) GetERC20TokenMapping(

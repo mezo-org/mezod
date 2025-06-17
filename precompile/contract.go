@@ -268,6 +268,7 @@ func (c *Contract) syncJournalEntries(journal *StateDBJournal, stateDB *statedb.
 // input byte slice. The method ID is expected to be the first 4 bytes of the
 // input. If the input is shorter than 4 bytes, an error is returned.
 func (c *Contract) parseCallInput(input []byte) ([]byte, []byte, error) {
+	fmt.Printf("")
 	// We expect a proper method call. In any other case, prevent the bounds
 	// out of range panic and return an error.
 	if len(input) < methodIDByteLength {

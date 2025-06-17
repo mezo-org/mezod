@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -35,6 +36,7 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 			Observability:   true,
 			BTCManagement:   false,
 			ERC20Management: false,
+			SequenceTipView: false,
 		},
 	)
 	if err != nil {
@@ -49,6 +51,22 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 			Observability:   true,
 			BTCManagement:   true,
 			ERC20Management: true,
+			SequenceTipView: false,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// v3 is BTC observability, BTC management, and ERC20 management, sequence tip view
+	contractV3, err := NewPrecompile(
+		poaKeeper,
+		bridgeKeeper,
+		&Settings{
+			Observability:   true,
+			BTCManagement:   true,
+			ERC20Management: true,
+			SequenceTipView: true,
 		},
 	)
 	if err != nil {
@@ -59,7 +77,8 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 		map[int]*precompile.Contract{
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
 			1: contractV1,
-			evmtypes.AssetsBridgePrecompileLatestVersion: contractV2,
+			2: contractV2,
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV3,
 		},
 	), nil
 }
@@ -68,6 +87,7 @@ type Settings struct {
 	Observability   bool // enable methods related to the bridge observability
 	BTCManagement   bool // enable methods related to the BTC bridging management
 	ERC20Management bool // enable methods related to the ERC20 bridging management
+	SequenceTipView bool // enable the method to expose the sequence tip
 }
 
 // NewPrecompile creates a new Assets Bridge precompile.
@@ -105,6 +125,10 @@ func NewPrecompile(
 		methods = append(methods, newGetMaxERC20TokensMappingsMethod(bridgeKeeper))
 	}
 
+	if settings.SequenceTipView {
+		methods = append(methods, newGetCurrentSequenceTipMethod(bridgeKeeper))
+	}
+
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -138,6 +162,7 @@ type PoaKeeper interface {
 }
 
 type BridgeKeeper interface {
+	GetAssetsLockedSequenceTip(ctx sdk.Context) math.Int
 	GetSourceBTCToken(ctx sdk.Context) []byte
 	CreateERC20TokenMapping(ctx sdk.Context, sourceToken, mezoToken []byte) error
 	DeleteERC20TokenMapping(ctx sdk.Context, sourceToken []byte) error
