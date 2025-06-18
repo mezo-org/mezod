@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 5,
   "links": [],
   "panels": [
     {
@@ -104,7 +104,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.1",
+      "pluginVersion": "12.0.2",
       "targets": [
         {
           "disableTextWrap": false,
@@ -204,7 +204,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.1",
+      "pluginVersion": "12.0.2",
       "targets": [
         {
           "disableTextWrap": false,
@@ -305,7 +305,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.1",
+      "pluginVersion": "12.0.2",
       "targets": [
         {
           "datasource": {
@@ -415,7 +415,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.1",
+      "pluginVersion": "12.0.2",
       "targets": [
         {
           "datasource": {
@@ -471,12 +471,12 @@
     "list": []
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-5d",
     "to": "now"
   },
   "timepicker": {},
-  "timezone": "browser",
+  "timezone": "utc",
   "title": "Mezo Portal",
   "uid": "c70dce24-e318-4126-be8a-25d2a207a08d",
-  "version": 19
+  "version": 4
 }
