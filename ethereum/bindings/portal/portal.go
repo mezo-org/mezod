@@ -35,8 +35,9 @@ func MezoBridgeAddress(network ethconfig.Network) string {
 }
 
 type (
-	MezoBridge             = mainnetabi.MezoBridge
-	MezoBridgeAssetsLocked = mainnetabi.MezoBridgeAssetsLocked
+	MezoBridge                     = mainnetabi.MezoBridge
+	MezoBridgeAssetsLocked         = mainnetabi.MezoBridgeAssetsLocked
+	MezoBridgeAssetsLockedIterator = mainnetabi.MezoBridgeAssetsLockedIterator
 )
 
 var NewMezoBridge = mainnetabi.NewMezoBridge
