@@ -58,7 +58,7 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 		return nil, err
 	}
 
-	// v3 is BTC observability, BTC management, and ERC20 management, sequence tip view
+	// v3 is BTC observability, BTC management, ERC20 management, and sequence tip view
 	contractV3, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
