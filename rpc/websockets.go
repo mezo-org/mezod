@@ -185,14 +185,27 @@ func (w *wsConn) ReadMessage() (messageType int, p []byte, err error) {
 	return w.conn.ReadMessage()
 }
 
+type subContext struct {
+	sub     *rpcfilters.Subscription
+	unsubFn pubsub.UnsubscribeFunc
+}
+
+func (s *subContext) Cleanup(es *rpcfilters.EventSystem) {
+	// first call unsubscribe
+	s.sub.Unsubscribe(es)
+	// then the unsub fn
+	s.unsubFn()
+
+}
+
 func (s *websocketsServer) readLoop(wsConn *wsConn) {
 	// subscriptions of current connection
-	subscriptions := make(map[rpc.ID]pubsub.UnsubscribeFunc)
+	subCtxs := make(map[rpc.ID]subContext)
 	defer func() {
 		// cancel all subscriptions when connection closed
 		// #nosec G705
-		for _, unsubFn := range subscriptions {
-			unsubFn()
+		for _, subCtx := range subCtxs {
+			subCtx.Cleanup(s.api.events)
 		}
 	}()
 
@@ -252,17 +265,20 @@ func (s *websocketsServer) readLoop(wsConn *wsConn) {
 				continue
 			}
 
-			unsubFn, subID, err := s.api.subscribe(wsConn, params)
+			unsubFn, sub, err := s.api.subscribe(wsConn, params)
 			if err != nil {
 				s.sendErrResponse(wsConn, err.Error())
 				continue
 			}
-			subscriptions[subID] = unsubFn
+			subCtxs[sub.ID()] = subContext{
+				sub:     sub,
+				unsubFn: unsubFn,
+			}
 
 			res := &SubscriptionResponseJSON{
 				Jsonrpc: "2.0",
 				ID:      connID,
-				Result:  subID,
+				Result:  sub.ID(),
 			}
 
 			if err := wsConn.WriteJSON(res); err != nil {
@@ -281,10 +297,10 @@ func (s *websocketsServer) readLoop(wsConn *wsConn) {
 			}
 
 			subID := rpc.ID(id)
-			unsubFn, ok := subscriptions[subID]
+			subCtx, ok := subCtxs[subID]
 			if ok {
-				delete(subscriptions, subID)
-				unsubFn()
+				delete(subCtxs, subID)
+				subCtx.Cleanup(s.api.events)
 			}
 
 			res := &SubscriptionResponseJSON{
@@ -369,10 +385,10 @@ func newPubSubAPI(clientCtx client.Context, logger log.Logger, tmWSClient *rpccl
 	}
 }
 
-func (api *pubSubAPI) subscribe(wsConn *wsConn, params []interface{}) (pubsub.UnsubscribeFunc, rpc.ID, error) {
+func (api *pubSubAPI) subscribe(wsConn *wsConn, params []interface{}) (pubsub.UnsubscribeFunc, *rpcfilters.Subscription, error) {
 	method, ok := params[0].(string)
 	if !ok {
-		return nil, "", errors.New("invalid parameters")
+		return nil, nil, errors.New("invalid parameters")
 	}
 
 	switch method {
@@ -389,14 +405,14 @@ func (api *pubSubAPI) subscribe(wsConn *wsConn, params []interface{}) (pubsub.Un
 	case "syncing":
 		return api.subscribeSyncing(wsConn)
 	default:
-		return nil, "", errors.Errorf("unsupported method %s", method)
+		return nil, nil, errors.Errorf("unsupported method %s", method)
 	}
 }
 
-func (api *pubSubAPI) subscribeNewHeads(wsConn *wsConn) (pubsub.UnsubscribeFunc, rpc.ID, error) {
+func (api *pubSubAPI) subscribeNewHeads(wsConn *wsConn) (pubsub.UnsubscribeFunc, *rpcfilters.Subscription, error) {
 	sub, unsubFn, err := api.events.SubscribeNewHeads()
 	if err != nil {
-		return nil, "", errors.Wrap(err, "error creating block filter")
+		return nil, nil, errors.Wrap(err, "error creating block filter")
 	}
 
 	// TODO: use events
@@ -450,7 +466,7 @@ func (api *pubSubAPI) subscribeNewHeads(wsConn *wsConn) (pubsub.UnsubscribeFunc,
 		}
 	}()
 
-	return unsubFn, sub.ID(), nil
+	return unsubFn, sub, nil
 }
 
 func try(fn func(), l log.Logger, desc string) {
@@ -470,7 +486,7 @@ func try(fn func(), l log.Logger, desc string) {
 	fn()
 }
 
-func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.UnsubscribeFunc, rpc.ID, error) {
+func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.UnsubscribeFunc, *rpcfilters.Subscription, error) {
 	crit := filters.FilterCriteria{}
 
 	if extra != nil {
@@ -478,7 +494,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 		if !ok {
 			err := errors.New("invalid criteria")
 			api.logger.Debug("invalid criteria", "type", fmt.Sprintf("%T", extra))
-			return nil, "", err
+			return nil, nil, err
 		}
 
 		if params["address"] != nil {
@@ -487,7 +503,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 			if !isString && !isSlice {
 				err := errors.New("invalid addresses; must be address or array of addresses")
 				api.logger.Debug("invalid addresses", "type", fmt.Sprintf("%T", params["address"]))
-				return nil, "", err
+				return nil, nil, err
 			}
 
 			if ok {
@@ -501,7 +517,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 					if !ok {
 						err := errors.New("invalid address")
 						api.logger.Debug("invalid address", "type", fmt.Sprintf("%T", addr))
-						return nil, "", err
+						return nil, nil, err
 					}
 
 					crit.Addresses = append(crit.Addresses, common.HexToAddress(address))
@@ -514,7 +530,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 			if !ok {
 				err := errors.Errorf("invalid topics: %s", topics)
 				api.logger.Error("invalid topics", "type", fmt.Sprintf("%T", topics))
-				return nil, "", err
+				return nil, nil, err
 			}
 
 			crit.Topics = make([][]common.Hash, len(topics))
@@ -539,7 +555,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 				// in case we don't have list, but a single topic value
 				if topic, ok := subtopics.(string); ok {
 					if err := addCritTopic(topicIdx, topic); err != nil {
-						return nil, "", err
+						return nil, nil, err
 					}
 
 					continue
@@ -550,7 +566,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 				if !ok {
 					err := errors.New("invalid subtopics")
 					api.logger.Error("invalid subtopic", "type", fmt.Sprintf("%T", subtopics))
-					return nil, "", err
+					return nil, nil, err
 				}
 
 				subtopicsCollect := make([]common.Hash, len(subtopicsList))
@@ -559,7 +575,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 					if !ok {
 						err := errors.Errorf("invalid subtopic: %s", subtopic)
 						api.logger.Error("invalid subtopic", "type", fmt.Sprintf("%T", subtopic))
-						return nil, "", err
+						return nil, nil, err
 					}
 
 					subtopicsCollect[idx] = common.HexToHash(tstr)
@@ -573,7 +589,7 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 	sub, unsubFn, err := api.events.SubscribeLogs(crit)
 	if err != nil {
 		api.logger.Error("failed to subscribe logs", "error", err.Error())
-		return nil, "", err
+		return nil, nil, err
 	}
 
 	subID := sub.ID()
@@ -633,13 +649,13 @@ func (api *pubSubAPI) subscribeLogs(wsConn *wsConn, extra interface{}) (pubsub.U
 		}
 	}()
 
-	return unsubFn, sub.ID(), nil
+	return unsubFn, sub, nil
 }
 
-func (api *pubSubAPI) subscribePendingTransactions(wsConn *wsConn) (pubsub.UnsubscribeFunc, rpc.ID, error) {
+func (api *pubSubAPI) subscribePendingTransactions(wsConn *wsConn) (pubsub.UnsubscribeFunc, *rpcfilters.Subscription, error) {
 	sub, unsubFn, err := api.events.SubscribePendingTxs()
 	if err != nil {
-		return nil, "", errors.Wrap(err, "error creating block filter: %s")
+		return nil, nil, errors.Wrap(err, "error creating block filter: %s")
 	}
 
 	subID := sub.ID()
@@ -693,11 +709,11 @@ func (api *pubSubAPI) subscribePendingTransactions(wsConn *wsConn) (pubsub.Unsub
 		}
 	}()
 
-	return unsubFn, sub.ID(), nil
+	return unsubFn, sub, nil
 }
 
-func (api *pubSubAPI) subscribeSyncing(_ *wsConn) (pubsub.UnsubscribeFunc, rpc.ID, error) {
-	return nil, "", errors.New("syncing subscription is not implemented")
+func (api *pubSubAPI) subscribeSyncing(_ *wsConn) (pubsub.UnsubscribeFunc, *rpcfilters.Subscription, error) {
+	return nil, nil, errors.New("syncing subscription is not implemented")
 }
 
 // copy from github.com/ethereum/go-ethereum/rpc/json.go
