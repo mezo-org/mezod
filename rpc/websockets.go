@@ -195,7 +195,6 @@ func (s *subContext) Cleanup(es *rpcfilters.EventSystem) {
 	s.sub.Unsubscribe(es)
 	// then the unsub fn
 	s.unsubFn()
-
 }
 
 func (s *websocketsServer) readLoop(wsConn *wsConn) {
