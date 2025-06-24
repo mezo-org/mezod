@@ -30,6 +30,10 @@ contract AssetsBridgeCaller is IAssetsBridge {
         return IAssetsBridge(precompile).getMaxERC20TokensMappings();
     }
 
+    function getCurrentSequenceTip() external view returns (uint256) {
+        return IAssetsBridge(precompile).getCurrentSequenceTip();
+    }
+
     function getSourceBTCToken() external view returns (address) {
         return IAssetsBridge(precompile).getSourceBTCToken();
     }
