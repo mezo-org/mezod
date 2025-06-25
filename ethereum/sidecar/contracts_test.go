@@ -1,4 +1,4 @@
-package local
+package sidecar
 
 import (
 	"math/big"
@@ -6,17 +6,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
-	"github.com/mezo-org/mezod/ethereum/sidecar/chain"
 )
 
-func NewBridgeContract() *BridgeContract {
-	return &BridgeContract{
+func NewLocalBridgeContract() *LocalBridgeContract {
+	return &LocalBridgeContract{
 		events: make([]*portal.MezoBridgeAssetsLocked, 0),
 	}
 }
 
-type BridgeContract struct {
+type LocalBridgeContract struct {
 	mutex  sync.RWMutex
 	events []*portal.MezoBridgeAssetsLocked
 	// queue of errors that will be returned on subsequent calls
@@ -24,12 +24,12 @@ type BridgeContract struct {
 	errors []error
 }
 
-func (m *BridgeContract) FilterAssetsLocked(
+func (m *LocalBridgeContract) FilterAssetsLocked(
 	_ *bind.FilterOpts,
 	_ []*big.Int,
 	_ []common.Address,
 	_ []common.Address,
-) (chain.AssetsLockedIterator, error) {
+) (ethereum.AssetsLockedIterator, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -44,42 +44,42 @@ func (m *BridgeContract) FilterAssetsLocked(
 		return nil, err
 	}
 
-	return &AssetsLockedIterator{
+	return &LocalAssetsLockedIterator{
 		events: m.events,
 		index:  -1,
 	}, nil
 }
 
-func (m *BridgeContract) SetEvents(events []*portal.MezoBridgeAssetsLocked) {
+func (m *LocalBridgeContract) SetEvents(events []*portal.MezoBridgeAssetsLocked) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.events = events
 }
 
-func (m *BridgeContract) SetErrors(errors []error) {
+func (m *LocalBridgeContract) SetErrors(errors []error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.errors = errors
 }
 
-type AssetsLockedIterator struct {
+type LocalAssetsLockedIterator struct {
 	events []*portal.MezoBridgeAssetsLocked
 	index  int
 }
 
-func (m *AssetsLockedIterator) Next() bool {
+func (m *LocalAssetsLockedIterator) Next() bool {
 	m.index++
 	return m.index < len(m.events)
 }
 
-func (m *AssetsLockedIterator) Error() error {
+func (m *LocalAssetsLockedIterator) Error() error {
 	return nil
 }
 
-func (m *AssetsLockedIterator) Close() error {
+func (m *LocalAssetsLockedIterator) Close() error {
 	return nil
 }
 
-func (m *AssetsLockedIterator) Event() *portal.MezoBridgeAssetsLocked {
+func (m *LocalAssetsLockedIterator) Event() *portal.MezoBridgeAssetsLocked {
 	return m.events[m.index]
 }

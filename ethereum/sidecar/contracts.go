@@ -1,12 +1,12 @@
-package ethereum
+package sidecar
 
 import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
-	"github.com/mezo-org/mezod/ethereum/sidecar/chain"
 )
 
 func NewBridgeContract(
@@ -26,7 +26,7 @@ func (r *BridgeContract) FilterAssetsLocked(
 	sequenceNumber []*big.Int,
 	recipient []common.Address,
 	token []common.Address,
-) (chain.AssetsLockedIterator, error) {
+) (ethereum.AssetsLockedIterator, error) {
 	iter, err := r.delegate.FilterAssetsLocked(opts, sequenceNumber, recipient, token)
 	if err != nil {
 		return nil, err

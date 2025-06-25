@@ -18,8 +18,6 @@ import (
 	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
-	"github.com/mezo-org/mezod/ethereum/sidecar/chain"
-	"github.com/mezo-org/mezod/ethereum/sidecar/chain/ethereum"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	"github.com/mezo-org/mezod/version"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -69,7 +67,7 @@ type Server struct {
 	lastFinalizedBlockMutex sync.RWMutex
 	lastFinalizedBlock      *big.Int
 
-	bridgeContract chain.BridgeContract
+	bridgeContract ethconnect.BridgeContract
 
 	chain *ethconnect.BaseChain
 
@@ -128,7 +126,7 @@ func RunServer(
 		grpcServer:         grpc.NewServer(),
 		events:             make([]bridgetypes.AssetsLockedEvent, 0),
 		lastFinalizedBlock: new(big.Int),
-		bridgeContract:     ethereum.NewBridgeContract(bridgeContract),
+		bridgeContract:     NewBridgeContract(bridgeContract),
 		chain:              chain,
 		batchSize:          batchSize,
 		requestsPerMinute:  requestsPerMinute,
@@ -340,7 +338,6 @@ func (s *Server) fetchABIEvents(
 			End:   &endBlock,
 		}, nil, nil, nil,
 	)
-
 	if err != nil {
 		s.logger.Warn(
 			"failed to fetch AssetsLocked events from the entire range; "+
