@@ -44,6 +44,13 @@ var (
 	// daily mark, that would give 50 days of cached events which should be more than
 	// enough.
 	cachedEventsLimit = 500000
+
+	// errSequenceGap is the error reported when there is a gap between
+	// sequences of events.
+	errSequenceGap = fmt.Errorf("sequence gap between events")
+
+	// errInvalidEvents is the error reported when events are invalid.
+	errInvalidEvents = fmt.Errorf("invalid AssetsLocked events")
 )
 
 // Server observes events emitted by the Mezo `MezoBridge` contract on the
@@ -60,7 +67,7 @@ type Server struct {
 	lastFinalizedBlockMutex sync.RWMutex
 	lastFinalizedBlock      *big.Int
 
-	bridgeContract *portal.MezoBridge
+	bridgeContract ethconnect.BridgeContract
 
 	chain *ethconnect.BaseChain
 
@@ -119,7 +126,7 @@ func RunServer(
 		grpcServer:         grpc.NewServer(),
 		events:             make([]bridgetypes.AssetsLockedEvent, 0),
 		lastFinalizedBlock: new(big.Int),
-		bridgeContract:     bridgeContract,
+		bridgeContract:     NewBridgeContract(bridgeContract),
 		chain:              chain,
 		batchSize:          batchSize,
 		requestsPerMinute:  requestsPerMinute,
@@ -294,12 +301,12 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		lastEvent := s.events[len(s.events)-1]
 		firstEvent := bufferedEvents[0]
 		if !lastEvent.Sequence.Add(sdkmath.NewInt(1)).Equal(firstEvent.Sequence) {
-			return fmt.Errorf("sequence gap between events: [%w]", err)
+			return errSequenceGap
 		}
 	}
 
 	if !bridgetypes.AssetsLockedEvents(bufferedEvents).IsValid() {
-		return fmt.Errorf("invalid AssetsLocked events: [%w]", err)
+		return errInvalidEvents
 	}
 
 	s.events = append(s.events, bufferedEvents...)
@@ -370,14 +377,14 @@ func (s *Server) fetchABIEvents(
 			}
 
 			for batchIterator.Next() {
-				abiEvents = append(abiEvents, batchIterator.Event)
+				abiEvents = append(abiEvents, batchIterator.Event())
 			}
 
 			batchStartBlock = batchEndBlock + 1
 		}
 	} else {
 		for iterator.Next() {
-			abiEvents = append(abiEvents, iterator.Event)
+			abiEvents = append(abiEvents, iterator.Event())
 		}
 	}
 
