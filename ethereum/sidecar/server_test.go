@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/cmd/config"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
-	"github.com/mezo-org/mezod/ethereum/sidecar/chain/local"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,12 +22,12 @@ import (
 
 func TestFetchABIEvents(t *testing.T) {
 	onchainErr := fmt.Errorf("onchain failure")
-	chain := local.NewBridgeContract()
+	bridgeContract := NewLocalBridgeContract()
 
 	server := &Server{
 		logger:            log.NewNopLogger(),
 		events:            make([]bridgetypes.AssetsLockedEvent, 0),
-		bridgeContract:    chain,
+		bridgeContract:    bridgeContract,
 		batchSize:         3,
 		requestsPerMinute: uint64(600),
 	}
@@ -120,9 +119,8 @@ func TestFetchABIEvents(t *testing.T) {
 
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
-			fmt.Println()
-			chain.SetErrors(test.onchainErrors)
-			chain.SetEvents(test.onchainEvents)
+			bridgeContract.SetErrors(test.onchainErrors)
+			bridgeContract.SetEvents(test.onchainEvents)
 
 			events, err := server.fetchABIEvents(test.startBlock, test.endBlock)
 
@@ -140,12 +138,12 @@ func TestFetchABIEvents(t *testing.T) {
 }
 
 func TestFetchFinalizedEvents(t *testing.T) {
-	chain := local.NewBridgeContract()
+	bitcoinBridge := NewLocalBridgeContract()
 
 	server := &Server{
 		logger:            log.NewNopLogger(),
 		events:            []bridgetypes.AssetsLockedEvent{},
-		bridgeContract:    chain,
+		bridgeContract:    bitcoinBridge,
 		batchSize:         3,
 		requestsPerMinute: uint64(600),
 	}
@@ -308,8 +306,8 @@ func TestFetchFinalizedEvents(t *testing.T) {
 
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
-			chain.SetErrors(test.onchainErrors)
-			chain.SetEvents(test.onchainEvents)
+			bitcoinBridge.SetErrors(test.onchainErrors)
+			bitcoinBridge.SetEvents(test.onchainEvents)
 
 			server.events = test.serversEvents
 
