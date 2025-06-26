@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 2s
+      evaluation_interval: 2s
+
+    scrape_configs:
+      - job_name: 'metrics-scraper'
+        static_configs:
+          - targets: ['metrics-scraper:2112']
+      - job_name: 'api-metrics'
+        metrics_path: /api/v2/metrics
+        static_configs:
+          - targets: ['api.mezo.org']
+      - job_name: 'blackbox'
+        metrics_path: /probe
+        params:
+          module: [http_2xx]  # Look for a HTTP 200 response.
+        static_configs: 
+          - targets:
+            - https://mezo.org
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: blackbox-exporter:9115 
+      - job_name: 'balance-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['balance-exporter:9115']

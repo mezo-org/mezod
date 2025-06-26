@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: balance-exporter-config
+  namespace: monitoring
+data:
+  addresses.txt: |
+    testertesting:0x6e80164ea60673D64d5d6228beb684a1274Bb017
