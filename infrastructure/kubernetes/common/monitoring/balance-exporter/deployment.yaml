@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: balance-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: balance-exporter
+  template:
+    metadata:
+      labels:
+        app: balance-exporter
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      containers:
+        - name: balance-exporter
+          # TODO: Use the mezo/balance-exporter image once it is published
+          image: nkuba/balance-exporter
+          ports:
+            - containerPort: 9115
+          volumeMounts:
+            - name: balance-exporter-config
+              mountPath: /etc/balance-exporter
+          env:
+            - name: PORT
+              value: "9115"
+            - name: ADDRESSES_FILE
+              value: /etc/balance-exporter/addresses.txt
+            - name: PREFIX
+              value: mezo_
+            - name: CHAIN_RPC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rpc-url
+                  key: MEZO
+
+      volumes:
+        - name: balance-exporter-config
+          configMap:
+            name: balance-exporter-config
