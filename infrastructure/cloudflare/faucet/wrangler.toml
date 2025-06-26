@@ -30,5 +30,5 @@ kv_namespaces = [
 MEZO_API_URL = "https://rpc.test.mezo.org"
 AMOUNT_BTC = "0.001"
 REQUEST_DELAY_SECONDS = "86400" # 24 hours
-PUBLIC_ACCESS = "false"
+PUBLIC_ACCESS = "true"
 PUBLIC_ACCESS_REDIRECT = "https://mezo.org"
