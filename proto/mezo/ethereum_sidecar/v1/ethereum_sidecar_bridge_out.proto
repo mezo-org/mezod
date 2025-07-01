@@ -1,0 +1,40 @@
+syntax = "proto3";
+package mezo.ethereum_sidecar.v1;
+
+import "gogoproto/gogo.proto";
+import "mezo/bridge/v1/bridge.proto";
+
+option go_package = "github.com/mezo-org/mezod/ethereum/sidecar/types";
+
+// EthereumSidecarBridgeOutService defines the Ethereum sidecar bridge out
+// service.
+service EthereumSidecarBridgeOutService {
+  // AssetsUnlockedEntries returns AssetsUnlocked entries within a sequence
+  // range.
+  rpc AssetsUnlockedEntries(AssetsUnlockedEntriesRequest)
+      returns (AssetsUnlockedEntriesResponse);
+}
+
+// AssetsUnlockedEntriesRequest is the request type for the
+// AssetsUnlockedEntries query.
+message AssetsUnlockedEntriesRequest {
+  // sequence_start is the start of the sequence range (inclusive). If null,
+  // unbounded on the lower side.
+  string sequence_start = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  // sequence_end is the end of the sequence range (exclusive). If null,
+  // unbounded on the upper side.
+  string sequence_end = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+// AssetsUnlockedEntriesResponse is the response type for the
+// AssetsUnlockedEntries query.
+message AssetsUnlockedEntriesResponse {
+  // entries contains a list of AssetsUnlocked.
+  repeated mezo.bridge.v1.AssetsUnlocked entries = 1;
+}
