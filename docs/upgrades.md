@@ -182,6 +182,7 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v0.7.0` | 3078794 | Hard fork upgrade without chain halt | Fix security issues in the EVM state DB. Introduce proper reverts for precompiles. Add chain fee splitter support. Disable Cosmos transactions.                                         |
 | `v1.0.0-rc0` | 3569000 | Planned upgrade with chain halt    | Patch for a DoS vector in the bridge. Fix for the precompile revert mechanism.                                                                                                           |
 | `v1.0.0-rc1` | 3712500 | Planned upgrade with chain halt    | Patch for mixed precompile addresses.                                                                                                           |
+| `v2.0.2` | 5559500 | Planned upgrade with chain halt    | Bring back parity with mainnet.                                                                                                           |
 
 ### Mainnet
 
