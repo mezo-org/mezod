@@ -76,7 +76,7 @@ func (k Keeper) AssetUnlocked(
 		}
 	}
 
-	if len(targetToken) <= 0 {
+	if len(targetToken) == 0 {
 		return nil, fmt.Errorf("unknown token %v", token)
 	}
 

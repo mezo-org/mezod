@@ -12,7 +12,6 @@ import (
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
-	"github.com/mezo-org/mezod/x/bridge/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -27,7 +26,7 @@ const BridgeOutMethodName = "bridgeOut"
 type BridgeOutMethod struct {
 	bridgeKeeper BridgeKeeper
 	bankKeeper   bankkeeper.Keeper
-	evmKeeper    types.EvmKeeper
+	evmKeeper    bridgetypes.EvmKeeper
 }
 
 func newBridgeOutMethod(bridgeKeeper BridgeKeeper) *BridgeOutMethod {
@@ -90,16 +89,20 @@ func (m *BridgeOutMethod) execute(
 	}
 
 	if assetUnlocked != nil {
-		context.EventEmitter().Emit(
+		err := context.EventEmitter().Emit(
 			NewAssetUnlockedEvent(
 				context.MsgSender(),
 				common.HexToAddress(assetUnlocked.Token),
 				assetUnlocked.Recipient,
-				uint8(assetUnlocked.Chain),
+				uint8(assetUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
 				assetUnlocked.Sequence.BigInt(),
 				assetUnlocked.Amount.BigInt(),
 			),
 		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to emit AssetUnlocked event: [%w]", err)
+		}
+
 	}
 
 	return precompile.MethodOutputs{err == nil}, err
@@ -220,7 +223,7 @@ func (m *BridgeOutMethod) isAmountSpendableByBridge(
 		return fmt.Errorf("ERC20 allowance call reverted")
 	}
 
-	allowance, err := extractBalanceOfFromEVMResult(resp.Ret)
+	allowance, err := extractAllowanceFromEVMResult(resp.Ret)
 	if err != nil {
 		return fmt.Errorf("unable to unpack EVM result: %v", err)
 	}
@@ -353,13 +356,13 @@ func (m *BridgeOutMethod) extractInputs(inputs precompile.MethodInputs) (*bridge
 }
 
 func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient []byte, rawInput interface{}) error {
-	if len(recipient) <= 0 {
+	if len(recipient) == 0 {
 		return fmt.Errorf("recipient can't be empty: %v", rawInput)
 	}
 
 	switch chain {
 	case TargetChainEthereum:
-		// here we just check the lenght
+		// here we just check the length
 		if len(recipient) != 20 {
 			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", rawInput)
 		}
