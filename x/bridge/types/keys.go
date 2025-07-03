@@ -35,6 +35,9 @@ var (
 	BTCMintedKey = []byte{0x50}
 
 	BTCBurntKey = []byte{0x60}
+
+	// AssetsUnlockedSequenceTipKey is a standalone key for the assets unlocked sequence tip.
+	AssetsUnlockedSequenceTipKey = []byte{0x70}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
