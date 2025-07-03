@@ -35,4 +35,12 @@ message GenesisState {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
+
+  // assets_unlocked_sequence_tip is the current sequence tip for the AssetUnlocked
+  // events. The tip denotes the sequence number of the last event processed by
+  // the x/bridge module.
+  string assets_unlocked_sequence_tip = 6 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
 }
