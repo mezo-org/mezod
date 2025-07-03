@@ -1,8 +1,9 @@
-image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/mezod
+image: mezo/mezod
 # tag: ""
 
 env:
   NETWORK: testnet
+  MEZOD_CHAIN_ID: mezo_31611-1
   PUBLIC_IP: "34.170.77.124" # mezo-staging-node-3-external-ip
   MEZOD_MONIKER: "mezo-node-3"
 
