@@ -4,6 +4,7 @@ import (
 	"google.golang.org/grpc/encoding"
 
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
@@ -43,6 +44,12 @@ func NewEthereumSidecarCmd() *cobra.Command {
 			defaultServerBatchSize,
 			defaultServerRequestsPerMinute,
 		))
+
+	cmd.Flags().String(
+		flags.FlagKeyringDir,
+		"",
+		"The client Keyring directory; if omitted, the default 'home' directory will be used",
+	)
 
 	return cmd
 }

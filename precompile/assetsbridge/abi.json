@@ -215,5 +215,71 @@
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "type": "function",
+    "name": "bridgeOut",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "name": "chain",
+        "type": "uint8"
+      },
+      {
+        "name": "recipient",
+        "type": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "AssetUnlocked",
+    "type": "event",
+    "anonymous": false,
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "name": "recipient",
+        "type": "bytes",
+        "indexed": true
+      },
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": false
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "chain",
+        "type": "uint8",
+        "indexed": false
+      },
+      {
+        "name": "sequenceNumber",
+        "type": "uint256",
+        "indexed": false
+      }
+    ]
   }
 ]
