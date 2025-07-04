@@ -1,11 +1,22 @@
-image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/mezod
+image: mezo/mezod
 # tag: ""
 
 env:
   NETWORK: testnet
+  MEZOD_CHAIN_ID: mezo_31611-1
   PUBLIC_IP: "34.134.59.27" # mezo-staging-node-0-external-ip
   MEZOD_MONIKER: "mezo-node-0"
   MEZOD_JSON_RPC_ENABLE_INDEXER: true
+
+customConfigs:
+  enabled: true
+  appTomlTxt: ""
+  clientTomlTxt: ""
+  configTomlTxt: |
+    statesync.enable=true
+    statesync.rpc_servers=mezo-node-3.test.mezo.org:26657,mezo-node-3.test.mezo.org:26657
+    statesync.trust_height=5554501
+    statesync.trust_hash=1A5227D45C4EF9F0B39C2815DD40D85032403EA81ABF112FAEC757BAC29F36E8    
 
 secrets:
   credentials: "mezo-node-0" # created manually
