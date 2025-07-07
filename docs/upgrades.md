@@ -183,6 +183,7 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v1.0.0-rc0` | 3569000 | Planned upgrade with chain halt    | Patch for a DoS vector in the bridge. Fix for the precompile revert mechanism.                                                                                                           |
 | `v1.0.0-rc1` | 3712500 | Planned upgrade with chain halt    | Patch for mixed precompile addresses.                                                                                                           |
 | `v2.0.2` | 5559500 | Planned upgrade with chain halt    | Bring back parity with mainnet.                                                                                                           |
+| `v3.0.0` | 5695000 | Planned upgrade with chain halt    | [v3.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v3.0.0) |
 
 ### Mainnet
 
@@ -190,3 +191,4 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 |----------|---------|--------------------------------------|-------------------------------------------------------------------------------|
 | `v1.0.0` | 1       | N/A                                  | Initial genesis version.                                                      |
 | `v2.0.0` | 706500  | Planned upgrade with chain halt      | [v2.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v2.0.0) |
+| `v3.0.0` | 1737000 | Planned upgrade with chain halt      | [v3.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v3.0.0) |
