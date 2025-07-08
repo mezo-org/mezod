@@ -37,4 +37,17 @@ interface IMaintenance {
      * @return The chain fee splitter address.
      */
     function getChainFeeSplitterAddress() external view returns (address);
+
+    /**
+     * @notice Sets the minimum gas price of 1 gas unit.
+     * @param minGasPrice The new minimum gas price denominated in abtc (1e18 precision).
+     * @dev Must be called by contract owner.
+     */
+    function setMinGasPrice(uint256 minGasPrice) external returns (bool);
+
+    /**
+     * @notice Gets the minimum gas price of 1 gas unit.
+     * @return The minimum gas price of 1 gas unit denominated in abtc (1e18 precision).
+     */
+    function getMinGasPrice() external view returns (uint256);
 }

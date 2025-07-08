@@ -428,6 +428,7 @@ func NewMezo(
 		*app.UpgradeKeeper,
 		oraclekeeper.NewQueryServer(app.OracleKeeper),
 		app.BridgeKeeper,
+		app.FeeMarketKeeper,
 		bApp.ChainID(),
 		cast.ToBool(appOpts.Get(srvflags.EnableTestbedPrecompile)),
 	)
@@ -891,6 +892,7 @@ func customEvmPrecompiles(
 	upgradeKeeper upgradekeeper.Keeper,
 	oracleQueryServer oracletypes.QueryServer,
 	bridgeKeeper bridgekeeper.Keeper,
+	feemarketKeeper feemarketkeeper.Keeper,
 	chainID string,
 	enableTestbedPrecompile bool,
 ) ([]*precompile.VersionMap, error) {
@@ -929,7 +931,7 @@ func customEvmPrecompiles(
 	}
 
 	// Maintenance precompile.
-	maintenanceVersionMap, err := maintenance.NewPrecompileVersionMap(poaKeeper, &evmKeeper)
+	maintenanceVersionMap, err := maintenance.NewPrecompileVersionMap(poaKeeper, &evmKeeper, feemarketKeeper)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create maintenance precompile: [%w]", err)
 	}

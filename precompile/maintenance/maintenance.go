@@ -9,6 +9,7 @@ import (
 	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 )
 
 //go:embed abi.json
@@ -23,32 +24,48 @@ const EvmAddress = evmtypes.MaintenancePrecompileAddress
 func NewPrecompileVersionMap(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
+	feeMarketKeeper FeeMarketKeeper,
 ) (*precompile.VersionMap, error) {
 	// v1 is just the EVM settings.
-	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, &Settings{
+	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
 		EVM:              true,
 		Precompiles:      false,
 		ChainFeeSplitter: false,
+		GasPrice:         false,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	// v2 is the EVM settings and the precompiles settings.
-	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, &Settings{
+	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
 		EVM:              true,
 		Precompiles:      true,
 		ChainFeeSplitter: false,
+		GasPrice:         false,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	// v3 is the EVM settings, the precompiles settings and the chain fee splitter settings.
-	contractV3, err := NewPrecompile(poaKeeper, evmKeeper, &Settings{
+	contractV3, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
 		EVM:              true,
 		Precompiles:      true,
 		ChainFeeSplitter: true,
+		GasPrice:         false,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// v4 is the EVM settings, the precompiles settings, the chain fee splitter settings,
+	// and the gas price settings.
+	contractV4, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+		EVM:              true,
+		Precompiles:      true,
+		ChainFeeSplitter: true,
+		GasPrice:         true,
 	})
 	if err != nil {
 		return nil, err
@@ -59,7 +76,8 @@ func NewPrecompileVersionMap(
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
 			1: contractV1,
 			2: contractV2,
-			evmtypes.MaintenancePrecompileLatestVersion: contractV3,
+			3: contractV3,
+			evmtypes.MaintenancePrecompileLatestVersion: contractV4,
 		},
 	), nil
 }
@@ -68,12 +86,14 @@ type Settings struct {
 	EVM              bool // enable methods related to the evm
 	Precompiles      bool // enable methods related to the precompiles
 	ChainFeeSplitter bool // enable methods related to the chain fee splitter
+	GasPrice         bool // enable methods related to the gas price
 }
 
 // NewPrecompile creates a new maintenance precompile.
 func NewPrecompile(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
+	feeMarketKeeper FeeMarketKeeper,
 	settings *Settings,
 ) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
@@ -87,7 +107,7 @@ func NewPrecompile(
 		EvmByteCode,
 	)
 
-	methods := newPrecompileMethods(poaKeeper, evmKeeper, settings)
+	methods := newPrecompileMethods(poaKeeper, evmKeeper, feeMarketKeeper, settings)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -98,6 +118,7 @@ func NewPrecompile(
 func newPrecompileMethods(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
+	feeMarketKeeper FeeMarketKeeper,
 	settings *Settings,
 ) []precompile.Method {
 	var methods []precompile.Method
@@ -116,6 +137,11 @@ func newPrecompileMethods(
 		methods = append(methods, newGetChainFeeSplitterAddressMethod(evmKeeper))
 	}
 
+	if settings.GasPrice {
+		methods = append(methods, newSetMinGasPriceMethod(poaKeeper, feeMarketKeeper))
+		methods = append(methods, newGetMinGasPriceMethod(feeMarketKeeper))
+	}
+
 	return methods
 }
 
@@ -131,4 +157,9 @@ type EvmKeeper interface {
 	IsCustomPrecompile(address common.Address) bool
 	GetAccount(ctx sdk.Context, addr common.Address) *statedb.Account
 	SetAccount(ctx sdk.Context, addr common.Address, account statedb.Account) error
+}
+
+type FeeMarketKeeper interface {
+	GetParams(ctx sdk.Context) (params feemarkettypes.Params)
+	SetParams(ctx sdk.Context, params feemarkettypes.Params) error
 }

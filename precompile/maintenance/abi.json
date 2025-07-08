@@ -1,6 +1,32 @@
 [
   {
     "inputs": [],
+    "name": "getChainFeeSplitterAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getMinGasPrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getSupportNonEIP155Txs",
     "outputs": [
       {
@@ -15,12 +41,31 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "chainFeeSplitterAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setChainFeeSplitterAddress",
+    "outputs": [
+      {
         "internalType": "bool",
-        "name": "value",
+        "name": "",
         "type": "bool"
       }
     ],
-    "name": "setSupportNonEIP155Txs",
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "minGasPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMinGasPrice",
     "outputs": [
       {
         "internalType": "bool",
@@ -58,31 +103,12 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "precompile",
-        "type": "address"
+        "internalType": "bool",
+        "name": "value",
+        "type": "bool"
       }
     ],
-    "name": "getCustomPrecompileByteCode",
-    "outputs": [
-      {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "chainFeeSplitterAddress",
-        "type": "address"
-      }
-    ],
-    "name": "setChainFeeSplitterAddress",
+    "name": "setSupportNonEIP155Txs",
     "outputs": [
       {
         "internalType": "bool",
@@ -91,19 +117,6 @@
       }
     ],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getChainFeeSplitterAddress",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   }
 ]
