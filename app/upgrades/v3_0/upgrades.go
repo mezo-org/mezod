@@ -64,6 +64,7 @@ func updateMinGasPrice(sdkCtx sdk.Context, feeMarketKeeper feemarketkeeper.Keepe
 	var newMinGasPrice sdkmath.LegacyDec
 	var err error
 
+	//nolint:gocritic
 	if utils.IsMainnet(chainID) {
 		newMinGasPrice, err = sdkmath.LegacyNewDecFromStr("1300000.000000000000000000")
 		if err != nil {
