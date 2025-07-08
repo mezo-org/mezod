@@ -83,7 +83,6 @@ func updateMinGasPrice(sdkCtx sdk.Context, feeMarketKeeper feemarketkeeper.Keepe
 	err = feeMarketKeeper.SetParams(sdkCtx, params)
 	if err != nil {
 		return err
-
 	}
 
 	sdkCtx.Logger().Info(
