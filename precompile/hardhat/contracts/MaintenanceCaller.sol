@@ -25,4 +25,12 @@ contract MaintenanceCaller is IMaintenance {
     function getChainFeeSplitterAddress() external view returns (address) {
         return IMaintenance(maintenancePrecompile).getChainFeeSplitterAddress();
     }
+
+    function setMinGasPrice(uint256 minGasPrice) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setMinGasPrice(minGasPrice);
+    }
+
+    function getMinGasPrice() external view returns (uint256) {
+        return IMaintenance(maintenancePrecompile).getMinGasPrice();
+    }
 }

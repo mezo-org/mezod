@@ -20,6 +20,7 @@ import (
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
+	feemarkettypes "github.com/mezo-org/mezod/x/feemarket/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -52,10 +53,11 @@ type Key struct {
 type PrecompileTestSuite struct {
 	suite.Suite
 
-	app       *app.Mezo
-	poaKeeper *FakePoaKeeper
-	evmKeeper *FakeEvmKeeper
-	ctx       sdk.Context
+	app             *app.Mezo
+	poaKeeper       *FakePoaKeeper
+	evmKeeper       *FakeEvmKeeper
+	feeMarketKeeper *FakeFeeMarketKeeper
+	ctx             sdk.Context
 
 	account1, account2 Key
 
@@ -98,6 +100,7 @@ func (s *PrecompileTestSuite) SetupTest() {
 	// init fake keeper
 	s.evmKeeper = NewFakeEvmKeeper()
 	s.poaKeeper = NewFakePoaKeeper(s.account1.SdkAddr)
+	s.feeMarketKeeper = NewFakeFeeMarketKeeper()
 
 	// init app
 	s.app = app.Setup(false, nil)
@@ -116,10 +119,12 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 			maintenancePrecompile, err := maintenance.NewPrecompile(
 				s.poaKeeper,
 				s.evmKeeper,
+				s.feeMarketKeeper,
 				&maintenance.Settings{
 					EVM:              true,
 					Precompiles:      true,
 					ChainFeeSplitter: true,
+					GasPrice:         true,
 				},
 			)
 			s.Require().NoError(err)
@@ -242,4 +247,23 @@ func (k *FakeEvmKeeper) SetParams(_ sdk.Context, params evmtypes.Params) error {
 
 func (k *FakeEvmKeeper) IsCustomPrecompile(address common.Address) bool {
 	return address == common.HexToAddress(maintenance.EvmAddress)
+}
+
+type FakeFeeMarketKeeper struct {
+	params feemarkettypes.Params
+}
+
+func NewFakeFeeMarketKeeper() *FakeFeeMarketKeeper {
+	return &FakeFeeMarketKeeper{
+		params: feemarkettypes.DefaultParams(),
+	}
+}
+
+func (k *FakeFeeMarketKeeper) GetParams(_ sdk.Context) (params feemarkettypes.Params) {
+	return k.params
+}
+
+func (k *FakeFeeMarketKeeper) SetParams(_ sdk.Context, params feemarkettypes.Params) error {
+	k.params = params
+	return nil
 }

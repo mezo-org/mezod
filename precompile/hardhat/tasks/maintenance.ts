@@ -57,3 +57,21 @@ task('maintenance:getChainFeeSplitterAddress', 'Gets the chain fee splitter addr
     const address = await maintenance.getChainFeeSplitterAddress()
     console.log(address)
   })
+
+task('maintenance:setMinGasPrice', 'Sets the minimum gas price')
+  .addParam('signer', 'The owner address (msg.sender)')
+  .addParam('price', 'The minimum gas price')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setMinGasPrice(taskArguments.price)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('maintenance:getMinGasPrice', 'Gets the minimum gas price')
+  .setAction(async (taskArguments, hre) => {
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const price = await maintenance.getMinGasPrice()
+    console.log(price)
+  })  
