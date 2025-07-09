@@ -91,6 +91,10 @@ const (
 	EthereumSidecarRequestTimeout = "ethereum-sidecar.client.request-timeout"
 )
 
+const (
+	BridgeOutServerAddress = "bridge-out.server.address"
+)
+
 // Connect oracle sidecar flags
 const (
 	ConnectOracleEnabled        = "oracle.enabled"

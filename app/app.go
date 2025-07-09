@@ -546,6 +546,10 @@ func NewMezo(
 	// Connect ABCI initialization requires the oracle client/metrics to be setup first.
 	app.setABCIExtensions(ethereumSidecarClient)
 
+	// Run bridge-out server
+	// TODO: Uncomment
+	// app.initializeBridgeOutServer(appOpts)
+
 	app.setupUpgradeHandlers()
 
 	if loadLatest {
