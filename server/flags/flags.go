@@ -91,6 +91,7 @@ const (
 	EthereumSidecarRequestTimeout = "ethereum-sidecar.client.request-timeout"
 )
 
+// Bridge-out flags
 const (
 	BridgeOutServerAddress = "bridge-out.server.address"
 )
