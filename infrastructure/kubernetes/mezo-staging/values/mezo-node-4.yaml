@@ -1,5 +1,5 @@
-image: mezo/mezod
-# tag: ""
+image: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-public/mezod
+tag: v3.0.0-rc0
 
 env:
   NETWORK: testnet
