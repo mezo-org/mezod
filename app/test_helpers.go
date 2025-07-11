@@ -118,6 +118,7 @@ func Setup(
 		5,
 		encoding.MakeConfig(ModuleBasics),
 		ethsidecar.NewClientMock(),
+		false,
 		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)
