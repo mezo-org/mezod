@@ -65,6 +65,7 @@ func EthSetupWithDB(isCheckTx bool, patchGenesis func(*Mezo, simapp.GenesisState
 		5,
 		encoding.MakeConfig(ModuleBasics),
 		ethsidecar.NewClientMock(),
+		false,
 		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)
