@@ -37,6 +37,7 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 			BTCManagement:   false,
 			ERC20Management: false,
 			SequenceTipView: false,
+			BridgeOut:       false,
 		},
 	)
 	if err != nil {
@@ -52,6 +53,7 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 			BTCManagement:   true,
 			ERC20Management: true,
 			SequenceTipView: false,
+			BridgeOut:       false,
 		},
 	)
 	if err != nil {
@@ -67,6 +69,7 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 			BTCManagement:   true,
 			ERC20Management: true,
 			SequenceTipView: true,
+			BridgeOut:       true,
 		},
 	)
 	if err != nil {
@@ -88,6 +91,7 @@ type Settings struct {
 	BTCManagement   bool // enable methods related to the BTC bridging management
 	ERC20Management bool // enable methods related to the ERC20 bridging management
 	SequenceTipView bool // enable the method to expose the sequence tip
+	BridgeOut       bool // enable the bridgeOut method
 }
 
 // NewPrecompile creates a new Assets Bridge precompile.
@@ -127,6 +131,10 @@ func NewPrecompile(
 
 	if settings.SequenceTipView {
 		methods = append(methods, newGetCurrentSequenceTipMethod(bridgeKeeper))
+	}
+
+	if settings.BridgeOut {
+		methods = append(methods, newBridgeOutMethod(bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -169,4 +177,11 @@ type BridgeKeeper interface {
 	GetERC20TokensMappings(ctx sdk.Context) []*bridgetypes.ERC20TokenMapping
 	GetERC20TokenMapping(ctx sdk.Context, sourceToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
 	GetParams(ctx sdk.Context) bridgetypes.Params
+	AssetUnlocked(
+		ctx sdk.Context,
+		token []byte,
+		amount math.Int,
+		chain uint8,
+		recipient []byte,
+	) (*bridgetypes.AssetUnlockedEvent, error)
 }

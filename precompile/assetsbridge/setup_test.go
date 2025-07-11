@@ -2,6 +2,7 @@ package assetsbridge_test
 
 import (
 	"bytes"
+	"errors"
 	"math/big"
 	"slices"
 	"testing"
@@ -277,4 +278,14 @@ func (k *FakeBridgeKeeper) GetERC20TokenMapping(
 
 func (k *FakeBridgeKeeper) GetParams(_ sdk.Context) bridgetypes.Params {
 	return bridgetypes.DefaultParams()
+}
+
+func (k *FakeBridgeKeeper) AssetUnlocked(
+	_ sdk.Context,
+	_ []byte,
+	_ math.Int,
+	_ uint8,
+	_ []byte,
+) (*bridgetypes.AssetUnlockedEvent, error) {
+	return nil, errors.New("unimplemented")
 }

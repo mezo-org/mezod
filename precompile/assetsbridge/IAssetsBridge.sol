@@ -44,6 +44,24 @@ interface IAssetsBridge {
     );
 
     /**
+     * @notice Emitted when an existing asset are unlocked from the bridge.
+     * @param from The address bridging out.
+     * @param recipient The address it's bridged out to on the target chain.
+     * @param token The address of the ERC20 token on the target chain.
+     * @param amount The amount bridged out.
+     * @param chain The chain to which the funds are being bridged out to.
+     * @param sequenceNumber the sequence number for the specific AssetUnlocked.
+     */
+    event AssetUnlocked(
+        address indexed from,
+        bytes indexed recipient,
+	address token,
+	uint256 amount,
+	uint8 chain,
+	uint256 sequenceNumber,
+    );
+
+    /**
      * @notice Helper function used to enable bridged assets observability.
      */
     function bridge(AssetsLocked[] memory events) external returns (bool);
@@ -102,4 +120,17 @@ interface IAssetsBridge {
      * @return The current assets locked sequence tip of the bridge.
      */
     function getCurrentSequenceTip() external view returns (uint256);
+
+    /**
+     * @notice Instructs the bridge to withdraw funds for a give recipient.
+     * @param token The address of the ERC20 token on Mezo.
+     * @param amount The amount of the ERC20 token to withdraw.
+     * @param chain The target chain to withdraw to.
+     * @param recipient The target address to send the funds to.
+              On Ethereum: recipient is a 20-byte EVM address
+	      On Bitcoin: recipient is a proper standard-type Bitcoin script
+	      supported by tBTC, i.e. P2PKH, P2WPKH, P2SH or P2WSH
+     * @return True if the call succeeded, false otherwise.
+     */
+    function bridgeOut(address token, uint256 amount, uint8 chain, bytes calldata recipient) external returns (bool);
 }
