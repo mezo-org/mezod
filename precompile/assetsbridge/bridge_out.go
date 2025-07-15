@@ -85,14 +85,14 @@ func (m *BridgeOutMethod) Run(
 }
 
 // execute will execute the burn of the token then send
-// AssetUnlocked events to the bridgeKeeper.
+// AssetsUnlocked events to the bridgeKeeper.
 func (m *BridgeOutMethod) execute(
 	context *precompile.RunContext,
 	inputs *bridgeOutInputs,
 ) (precompile.MethodOutputs, error) {
 	var (
 		err           error
-		assetUnlocked *bridgetypes.AssetUnlockedEvent
+		assetUnlocked *bridgetypes.AssetsUnlockedEvent
 	)
 
 	switch inputs.Chain {
@@ -104,7 +104,7 @@ func (m *BridgeOutMethod) execute(
 
 	if assetUnlocked != nil {
 		err := context.EventEmitter().Emit(
-			NewAssetUnlockedEvent(
+			NewAssetsUnlockedEvent(
 				context.MsgSender(),
 				common.HexToAddress(assetUnlocked.Token),
 				assetUnlocked.Recipient,
@@ -114,7 +114,7 @@ func (m *BridgeOutMethod) execute(
 			),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to emit AssetUnlocked event: [%w]", err)
+			return nil, fmt.Errorf("failed to emit AssetsUnlocked event: [%w]", err)
 		}
 
 	}
@@ -125,7 +125,7 @@ func (m *BridgeOutMethod) execute(
 func (m *BridgeOutMethod) executeEthereum(
 	context *precompile.RunContext,
 	inputs *bridgeOutInputs,
-) (*bridgetypes.AssetUnlockedEvent, error) {
+) (*bridgetypes.AssetsUnlockedEvent, error) {
 	var (
 		sdkCtx          = context.SdkCtx()
 		bridgeAddrBytes = common.HexToAddress(
@@ -154,7 +154,7 @@ func (m *BridgeOutMethod) executeEthereum(
 		return nil, fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
 	}
 
-	assetUnlocked, err := m.bridgeKeeper.AssetUnlocked(
+	assetUnlocked, err := m.bridgeKeeper.AssetsUnlocked(
 		sdkCtx,
 		inputs.Token.Bytes(),
 		sdkAmount,
@@ -164,7 +164,7 @@ func (m *BridgeOutMethod) executeEthereum(
 	if err != nil {
 		// TODO(JEREMY): error happened here, funds might have been
 		// lost, should we panic?
-		return nil, fmt.Errorf("failed to send AssetUnlocked to bridge: %w", err)
+		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
 	}
 
 	return assetUnlocked, nil
@@ -173,7 +173,7 @@ func (m *BridgeOutMethod) executeEthereum(
 func (m *BridgeOutMethod) executeBitcoin(
 	context *precompile.RunContext,
 	inputs *bridgeOutInputs,
-) (*bridgetypes.AssetUnlockedEvent, error) {
+) (*bridgetypes.AssetsUnlockedEvent, error) {
 	// first check the authorization for the
 	// bridge to spend the monies.
 	bridgeAddrBytes := common.HexToAddress(
@@ -216,7 +216,7 @@ func (m *BridgeOutMethod) executeBitcoin(
 		return nil, err
 	}
 
-	assetUnlocked, err := m.bridgeKeeper.AssetUnlocked(
+	assetUnlocked, err := m.bridgeKeeper.AssetsUnlocked(
 		context.SdkCtx(),
 		inputs.Token.Bytes(),
 		sdkAmount,
@@ -226,7 +226,7 @@ func (m *BridgeOutMethod) executeBitcoin(
 	if err != nil {
 		// TODO(JEREMY): error happened here, funds might have been
 		// lost, should we panic?
-		return nil, fmt.Errorf("failed to send AssetUnlocked to bridge: %w", err)
+		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
 	}
 
 	// finally update the journal entries to propagate the changes
@@ -524,19 +524,19 @@ type bridgeOutInputs struct {
 	Recipient []byte
 }
 
-// AssetUnlockedEventName is the name of the AssetUnlocked event. It matches the name
+// AssetsUnlockedEventName is the name of the AssetsUnlocked event. It matches the name
 // of the event in the contract ABI.
-const AssetUnlockedEventName = "AssetUnlocked"
+const AssetsUnlockedEventName = "AssetsUnlocked"
 
-// AssetUnlockedEvent is the implementation of the AssetUnlocked event that contains
+// AssetsUnlockedEvent is the implementation of the AssetsUnlocked event that contains
 // the following arguments:
 // - from (indexed): the address from which the tokens are bridged out,
 // - recipient (indexed): the address to which the tokens are transferred
 // - amount (non-indexed): the amount of tokens transferred
 // - chain (non-indexed): the destination chain
-// - sequenceNumber (non-indexed): the sequenceNumber of this AssetUnlocked
+// - sequenceNumber (non-indexed): the sequenceNumber of this AssetsUnlocked
 // - token (non-indexed): the token being bridged out.
-type AssetUnlockedEvent struct {
+type AssetsUnlockedEvent struct {
 	from, token    common.Address
 	recipient      []byte
 	chain          uint8
@@ -544,14 +544,14 @@ type AssetUnlockedEvent struct {
 	amount         *big.Int
 }
 
-func NewAssetUnlockedEvent(
+func NewAssetsUnlockedEvent(
 	from, token common.Address,
 	recipient []byte,
 	chain uint8,
 	sequenceNumber *big.Int,
 	amount *big.Int,
-) *AssetUnlockedEvent {
-	return &AssetUnlockedEvent{
+) *AssetsUnlockedEvent {
+	return &AssetsUnlockedEvent{
 		from:           from,
 		recipient:      recipient,
 		token:          token,
@@ -561,11 +561,11 @@ func NewAssetUnlockedEvent(
 	}
 }
 
-func (te *AssetUnlockedEvent) EventName() string {
-	return AssetUnlockedEventName
+func (te *AssetsUnlockedEvent) EventName() string {
+	return AssetsUnlockedEventName
 }
 
-func (te *AssetUnlockedEvent) Arguments() []*precompile.EventArgument {
+func (te *AssetsUnlockedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,

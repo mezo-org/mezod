@@ -40,9 +40,9 @@ message AssetsLockedEvent {
   string token = 4;
 }
 
-// AssetUnlockedEvent represents the event where inbound assets are released
+// AssetsUnlockedEvent represents the event where inbound assets are released
 // from the bridge.
-message AssetUnlockedEvent {
+message AssetsUnlockedEvent {
   // sequence is the unique identifier of the event.
   string sequence = 1 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",

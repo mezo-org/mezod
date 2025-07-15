@@ -218,13 +218,13 @@ type BridgeKeeper interface {
 	GetERC20TokensMappings(ctx sdk.Context) []*bridgetypes.ERC20TokenMapping
 	GetERC20TokenMapping(ctx sdk.Context, sourceToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
 	GetParams(ctx sdk.Context) bridgetypes.Params
-	AssetUnlocked(
+	AssetsUnlocked(
 		ctx sdk.Context,
 		token []byte,
 		amount math.Int,
 		chain uint8,
 		recipient []byte,
-	) (*bridgetypes.AssetUnlockedEvent, error)
+	) (*bridgetypes.AssetsUnlockedEvent, error)
 }
 
 type EvmKeeper interface {

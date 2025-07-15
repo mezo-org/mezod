@@ -246,7 +246,7 @@
     "stateMutability": "nonpayable"
   },
   {
-    "name": "AssetUnlocked",
+    "name": "AssetsUnlocked",
     "type": "event",
     "anonymous": false,
     "inputs": [

@@ -43,7 +43,7 @@ type GenesisState struct {
 	// at genesis, this is used only for development / testnet purpose
 	// and should be left set to 0 in an production network.
 	InitialBtcSupply cosmossdk_io_math.Int `protobuf:"bytes,5,opt,name=initial_btc_supply,json=initialBtcSupply,proto3,customtype=cosmossdk.io/math.Int" json:"initial_btc_supply"`
-	// assets_unlocked_sequence_tip is the current sequence tip for the AssetUnlocked
+	// assets_unlocked_sequence_tip is the current sequence tip for the AssetsUnlocked
 	// events. The tip denotes the sequence number of the last event processed by
 	// the x/bridge module.
 	AssetsUnlockedSequenceTip cosmossdk_io_math.Int `protobuf:"bytes,6,opt,name=assets_unlocked_sequence_tip,json=assetsUnlockedSequenceTip,proto3,customtype=cosmossdk.io/math.Int" json:"assets_unlocked_sequence_tip"`
