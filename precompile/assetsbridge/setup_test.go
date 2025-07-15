@@ -289,12 +289,12 @@ func (k *FakeBridgeKeeper) GetParams(_ sdk.Context) bridgetypes.Params {
 	return bridgetypes.DefaultParams()
 }
 
-func (k *FakeBridgeKeeper) AssetUnlocked(
+func (k *FakeBridgeKeeper) AssetsUnlocked(
 	_ sdk.Context,
 	_ []byte,
 	_ math.Int,
 	_ uint8,
 	_ []byte,
-) (*bridgetypes.AssetUnlockedEvent, error) {
+) (*bridgetypes.AssetsUnlockedEvent, error) {
 	return nil, errors.New("unimplemented")
 }

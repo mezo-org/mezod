@@ -50,9 +50,9 @@ interface IAssetsBridge {
      * @param token The address of the ERC20 token on the target chain.
      * @param amount The amount bridged out.
      * @param chain The chain to which the funds are being bridged out to.
-     * @param sequenceNumber the sequence number for the specific AssetUnlocked.
+     * @param sequenceNumber the sequence number for the specific AssetsUnlocked.
      */
-    event AssetUnlocked(
+    event AssetsUnlocked(
         address indexed from,
         bytes indexed recipient,
 	address token,
