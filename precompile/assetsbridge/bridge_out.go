@@ -27,7 +27,7 @@ const BridgeOutMethodName = "bridgeOut"
 // SendMsgURL defines the authorization type for MsgSend
 var SendMsgURL = sdk.MsgTypeURL(&banktypes.MsgSend{})
 
-// BridgeOutMethod is the implementation of the getCurrentSequenceTip method.
+// BridgeOutMethod is the implementation of the bridgeOut method.
 type BridgeOutMethod struct {
 	bridgeKeeper BridgeKeeper
 	bankKeeper   BankKeeper
@@ -297,7 +297,7 @@ func (m *BridgeOutMethod) validate(
 	inputs *bridgeOutInputs,
 ) error {
 	sdkCtx := context.SdkCtx()
-	// first check that the token is eith BTC or a valid ERC20
+	// first check that the token is either BTC or a supported ERC20
 	if !m.isValidToken(sdkCtx, inputs.Token) {
 		return fmt.Errorf("unsupported token: %v", inputs.Token)
 	}
@@ -316,8 +316,8 @@ func (m *BridgeOutMethod) isAmountSpendableByBridge(
 	token common.Address,
 	amount *big.Int,
 ) error {
-	// we use the ERC20 allowance call for either the BTC token
-	// or the ERC20 as both implements the ERC20 interface
+	// We use the ERC20 allowance call for both the BTC token
+	// and ERC20s as both implement the ERC20 interface.
 
 	bridgeAddrBytes := common.HexToAddress(
 		evmtypes.AssetsBridgePrecompileAddress,
@@ -450,8 +450,8 @@ func (m *BridgeOutMethod) extractInputs(inputs precompile.MethodInputs) (*bridge
 		return nil, errors.New("amount is required")
 	}
 
-	if amount.Sign() < 0 {
-		return nil, errors.New("amount cannot be negative")
+	if amount.Sign() <= 0 {
+		return nil, errors.New("amount must be positive")
 	}
 
 	chainRaw, ok := inputs[2].(uint8)
@@ -510,7 +510,7 @@ const (
 )
 
 func (t TargetChain) Validate() (TargetChain, bool) {
-	if t >= TargetChainEthereum && t <= TargetChainBitcoin {
+	if t == TargetChainEthereum || t == TargetChainBitcoin {
 		return t, true
 	}
 
