@@ -94,7 +94,7 @@ const (
 	DefaultEthereumSidecarRequestTimeout = 5 * time.Second
 
 	// DefaultBridgeOutServerAddress is the default server address for handling requests for `AssetsUnlocked` entries from the Ethereum sidecar.
-	DefaultBridgeOutServerAddress = "127.0.0.1:7600"
+	DefaultBridgeOutServerAddress = "0.0.0.0:7600"
 
 	// DefaultConnectOracleEnabled is the default value indicating whether the oracle is enabled.
 	DefaultConnectOracleEnabled = true
