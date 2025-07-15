@@ -53,12 +53,12 @@ interface IAssetsBridge {
      * @param sequenceNumber the sequence number for the specific AssetsUnlocked.
      */
     event AssetsUnlocked(
-        address indexed sender,
+        address from,
         bytes indexed recipient,
-	address token,
-	uint256 amount,
-	uint8 chain,
-	uint256 unlockSequenceNumber,
+        address indexed token,
+        uint256 amount,
+        uint8 chain,
+        uint256 indexed unlockSequenceNumber,
     );
 
     /**
@@ -128,8 +128,8 @@ interface IAssetsBridge {
      * @param chain The target chain to bridge out to.
      * @param recipient The target address to send the funds to.
               On Ethereum: recipient is a 20-byte EVM address
-	      On Bitcoin: recipient is a proper standard-type Bitcoin script
-	      supported by tBTC, i.e. P2PKH, P2WPKH, P2SH or P2WSH
+              On Bitcoin: recipient is a proper standard-type Bitcoin script
+              supported by tBTC, i.e. P2PKH, P2WPKH, P2SH or P2WSH
      * @return True if the call succeeded, false otherwise.
      */
     function bridgeOut(address token, uint256 amount, uint8 chain, bytes calldata recipient) external returns (bool);
