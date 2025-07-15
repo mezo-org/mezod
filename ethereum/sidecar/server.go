@@ -11,6 +11,7 @@ import (
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -59,6 +60,7 @@ var (
 type Server struct {
 	logger log.Logger
 
+	// bridging-in
 	grpcServer *grpc.Server
 
 	eventsMutex sync.RWMutex
@@ -73,6 +75,9 @@ type Server struct {
 
 	batchSize         uint64
 	requestsPerMinute uint64
+
+	// bridging-out
+	bridgeOutClient *BridgeOutClient
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -84,6 +89,9 @@ func RunServer(
 	ethereumNetwork string,
 	batchSize uint64,
 	requestsPerMinute uint64,
+	bridgeOutServerAddress string,
+	bridgeOutRequestTimeout time.Duration,
+	registry codectypes.InterfaceRegistry,
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
 	mezoBridgeAddress := portal.MezoBridgeAddress(network)
@@ -121,6 +129,16 @@ func RunServer(
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
+	bridgeOutClient, err := NewBridgeOutClient(
+		logger,
+		bridgeOutServerAddress,
+		bridgeOutRequestTimeout,
+		registry,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create bridge-out client: %v", err))
+	}
+
 	server := &Server{
 		logger:             logger,
 		grpcServer:         grpc.NewServer(),
@@ -130,6 +148,7 @@ func RunServer(
 		chain:              chain,
 		batchSize:          batchSize,
 		requestsPerMinute:  requestsPerMinute,
+		bridgeOutClient:    bridgeOutClient,
 	}
 
 	go func() {
