@@ -253,7 +253,7 @@
       {
         "name": "from",
         "type": "address",
-        "indexed": true
+        "indexed": false
       },
       {
         "name": "recipient",
@@ -263,7 +263,7 @@
       {
         "name": "token",
         "type": "address",
-        "indexed": false
+        "indexed": true
       },
       {
         "name": "amount",
@@ -276,9 +276,9 @@
         "indexed": false
       },
       {
-        "name": "sequenceNumber",
+        "name": "unlockSequenceNumber",
         "type": "uint256",
-        "indexed": false
+        "indexed": true
       }
     ]
   }
