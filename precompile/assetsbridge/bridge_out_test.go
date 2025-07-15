@@ -286,7 +286,7 @@ type ExtendedFakeBridgeKeeper struct {
 	*FakeBridgeKeeper
 	assetUnlockedCalled  bool
 	assetUnlockedSuccess bool
-	lastAssetsUnlocked    *bridgetypes.AssetsUnlockedEvent
+	lastAssetsUnlocked   *bridgetypes.AssetsUnlockedEvent
 	sequenceNumber       int64
 }
 
