@@ -13,6 +13,10 @@ service EthereumSidecarBridgeOutService {
   // range.
   rpc AssetsUnlockedEntries(AssetsUnlockedEntriesRequest)
       returns (AssetsUnlockedEntriesResponse);
+
+  // AssetsUnlockedSequenceTip returns the assets unlocked sequence tip.
+  rpc AssetsUnlockedSequenceTip(AssetsUnlockedSequenceTipRequest)
+      returns (AssetsUnlockedSequenceTipResponse);
 }
 
 // AssetsUnlockedEntriesRequest is the request type for the
@@ -37,4 +41,18 @@ message AssetsUnlockedEntriesRequest {
 message AssetsUnlockedEntriesResponse {
   // entries contains a list of AssetsUnlocked.
   repeated mezo.bridge.v1.AssetsUnlocked entries = 1;
+}
+
+// AssetsUnlockedSequenceTipRequest is the request type for the
+// AssetsUnlockedSequenceTip query.
+message AssetsUnlockedSequenceTipRequest {}
+
+// AssetsUnlockedSequenceTipResponse is the response type for the
+// AssetsUnlockedSequenceTip query.
+message AssetsUnlockedSequenceTipResponse {
+  // sequence_tip is the current sequence tip for assets unlocked entries.
+  string sequence_tip = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
 }
