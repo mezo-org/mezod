@@ -45,20 +45,20 @@ interface IAssetsBridge {
 
     /**
      * @notice Emitted when an existing asset is unlocked on the Mezo side of the native bridge.
-     * @param from The address bridging out.
+     * @param sender The address bridging out.
      * @param recipient The address it's bridged out to on the target chain.
      * @param token The address of the ERC20 token on the target chain.
      * @param amount The amount bridged out.
      * @param chain The chain to which the funds are being bridged out to.
-     * @param sequenceNumber the sequence number for the specific AssetsUnlocked.
+     * @param unlockSequenceNumber the sequence number for the specific AssetsUnlocked.
      */
     event AssetsUnlocked(
-        address from,
+        uint256 indexed unlockSequenceNumber,
         bytes indexed recipient,
         address indexed token,
+        address sender,
         uint256 amount,
-        uint8 chain,
-        uint256 indexed unlockSequenceNumber,
+        uint8 chain
     );
 
     /**
