@@ -92,7 +92,7 @@ frontend:
     NEXT_PUBLIC_VIEWS_TX_HIDDEN_FIELDS: '["burnt_fees"]'
     NEXT_PUBLIC_NETWORK_VERIFICATION_TYPE: validation
     NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: secretref+k8s://v1/Secret/default/blockscout-stack/WALLET_CONNECT_PROJECT_ID
-    NEXT_PUBLIC_NETWORK_RPC_URL: secretref+k8s://v1/Secret/default/blockscout-stack/ETHEREUM_JSONRPC_HTTP_URL
+    NEXT_PUBLIC_NETWORK_RPC_URL: https://rpc-internal.mezo.org
 
 stats:
   enabled: false # This won't be needed for now.
