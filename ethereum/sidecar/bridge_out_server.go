@@ -101,3 +101,15 @@ func (bos *BridgeOutServer) AssetsUnlockedEntries(
 	// module.
 	return nil, nil
 }
+
+func (bos *BridgeOutServer) AssetsUnlockedSequenceTip(
+	_ context.Context,
+	_ *pb.AssetsUnlockedSequenceTipRequest,
+) (
+	*pb.AssetsUnlockedSequenceTipResponse,
+	error,
+) {
+	// TODO: implement fetching of `AssetsUnlockedSequenceTip` from the `x/bridge`
+	// module.
+	return nil, nil
+}
