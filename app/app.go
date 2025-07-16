@@ -549,7 +549,7 @@ func NewMezo(
 
 	// Run bridge-out server if needed
 	if runBridgeOutServer {
-		app.initializeBridgeOutServer(appOpts)
+		app.initializeBridgeOutServer(appOpts, &app.BridgeKeeper)
 	}
 
 	app.setupUpgradeHandlers()

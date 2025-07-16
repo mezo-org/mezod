@@ -7,6 +7,7 @@ import (
 
 	"cosmossdk.io/log"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
+	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 
 	"google.golang.org/grpc"
 )
@@ -16,7 +17,8 @@ import (
 type BridgeOutServer struct {
 	logger log.Logger
 
-	grpcServer *grpc.Server
+	grpcServer   *grpc.Server
+	bridgeKeeper *bridgekeeper.Keeper
 }
 
 // RunBridgeOutServer initializes the bridge-out sidecar server and starts the
@@ -24,6 +26,7 @@ type BridgeOutServer struct {
 func RunBridgeOutServer(
 	logger log.Logger,
 	grpcAddress string,
+	bridgeKeeper *bridgekeeper.Keeper,
 ) {
 	logger.Info(
 		"starting bridge-out sidecar server",
@@ -31,8 +34,9 @@ func RunBridgeOutServer(
 	)
 
 	server := &BridgeOutServer{
-		logger:     logger,
-		grpcServer: grpc.NewServer(),
+		logger:       logger,
+		grpcServer:   grpc.NewServer(),
+		bridgeKeeper: bridgeKeeper,
 	}
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
@@ -97,8 +101,8 @@ func (bos *BridgeOutServer) AssetsUnlockedEntries(
 	*pb.AssetsUnlockedEntriesResponse,
 	error,
 ) {
-	// TODO: implement fetching of `AssetsUnlocked` entries from the `x/bridge`
-	// module.
+	// TODO: Implement fetching of `AssetsUnlocked` entries from the bridge
+	//       keeper.
 	return nil, nil
 }
 
@@ -109,7 +113,7 @@ func (bos *BridgeOutServer) AssetsUnlockedSequenceTip(
 	*pb.AssetsUnlockedSequenceTipResponse,
 	error,
 ) {
-	// TODO: implement fetching of `AssetsUnlockedSequenceTip` from the `x/bridge`
-	// module.
+	// TODO: Implement fetching of `AssetsUnlockedSequenceTip` from the bridge
+	//       keeper.
 	return nil, nil
 }
