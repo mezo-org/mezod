@@ -537,11 +537,11 @@ const AssetsUnlockedEventName = "AssetsUnlocked"
 // - sequenceNumber (non-indexed): the sequenceNumber of this AssetsUnlocked
 // - token (non-indexed): the token being bridged out.
 type AssetsUnlockedEvent struct {
-	from, token    common.Address
-	recipient      []byte
-	chain          uint8
-	sequenceNumber *big.Int
-	amount         *big.Int
+	sender, token        common.Address
+	recipient            []byte
+	chain                uint8
+	unlockSequenceNumber *big.Int
+	amount               *big.Int
 }
 
 func NewAssetsUnlockedEvent(
@@ -552,12 +552,12 @@ func NewAssetsUnlockedEvent(
 	amount *big.Int,
 ) *AssetsUnlockedEvent {
 	return &AssetsUnlockedEvent{
-		from:           from,
-		recipient:      recipient,
-		token:          token,
-		sequenceNumber: sequenceNumber,
-		amount:         amount,
-		chain:          chain,
+		sender:               from,
+		recipient:            recipient,
+		token:                token,
+		unlockSequenceNumber: sequenceNumber,
+		amount:               amount,
+		chain:                chain,
 	}
 }
 
@@ -568,16 +568,20 @@ func (te *AssetsUnlockedEvent) EventName() string {
 func (te *AssetsUnlockedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
-			Indexed: true,
-			Value:   te.from,
+			Indexed: false,
+			Value:   te.unlockSequenceNumber,
 		},
 		{
 			Indexed: true,
 			Value:   te.recipient,
 		},
 		{
-			Indexed: false,
+			Indexed: true,
 			Value:   te.token,
+		},
+		{
+			Indexed: false,
+			Value:   te.sender,
 		},
 		{
 			Indexed: false,
@@ -586,10 +590,6 @@ func (te *AssetsUnlockedEvent) Arguments() []*precompile.EventArgument {
 		{
 			Indexed: false,
 			Value:   te.chain,
-		},
-		{
-			Indexed: false,
-			Value:   te.sequenceNumber,
 		},
 	}
 }
