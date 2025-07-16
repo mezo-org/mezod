@@ -251,9 +251,9 @@
     "anonymous": false,
     "inputs": [
       {
-        "name": "from",
-        "type": "address",
-        "indexed": false
+        "name": "unlockSequenceNumber",
+        "type": "uint256",
+        "indexed": true
       },
       {
         "name": "recipient",
@@ -266,6 +266,11 @@
         "indexed": true
       },
       {
+        "name": "sender",
+        "type": "address",
+        "indexed": false
+      },
+      {
         "name": "amount",
         "type": "uint256",
         "indexed": false
@@ -274,11 +279,6 @@
         "name": "chain",
         "type": "uint8",
         "indexed": false
-      },
-      {
-        "name": "unlockSequenceNumber",
-        "type": "uint256",
-        "indexed": true
       }
     ]
   }
