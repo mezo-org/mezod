@@ -91,7 +91,7 @@ func (m *BridgeOutMethod) execute(
 	inputs *bridgeOutInputs,
 ) (precompile.MethodOutputs, error) {
 	var (
-		err           error
+		err            error
 		assetsUnlocked *bridgetypes.AssetsUnlockedEvent
 	)
 
@@ -109,7 +109,7 @@ func (m *BridgeOutMethod) execute(
 				common.HexToAddress(assetsUnlocked.Token),
 				assetsUnlocked.Recipient,
 				uint8(assetsUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
-				assetsUnlocked.Sequence.BigInt(),
+				assetsUnlocked.UnlockSequence.BigInt(),
 				assetsUnlocked.Amount.BigInt(),
 			),
 		)

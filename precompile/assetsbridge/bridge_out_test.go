@@ -286,8 +286,8 @@ type ExtendedFakeBridgeKeeper struct {
 	*FakeBridgeKeeper
 	assetsUnlockedCalled  bool
 	assetsUnlockedSuccess bool
-	lastAssetsUnlocked   *bridgetypes.AssetsUnlockedEvent
-	sequenceNumber       int64
+	lastAssetsUnlocked    *bridgetypes.AssetsUnlockedEvent
+	sequenceNumber        int64
 }
 
 func NewExtendedFakeBridgeKeeper(sourceBTCToken []byte) *ExtendedFakeBridgeKeeper {
@@ -311,11 +311,11 @@ func (k *ExtendedFakeBridgeKeeper) AssetsUnlocked(
 	}
 
 	event := &bridgetypes.AssetsUnlockedEvent{
-		Token:     common.BytesToAddress(token).Hex(),
-		Amount:    amount,
-		Chain:     uint32(chain),
-		Recipient: recipient,
-		Sequence:  math.NewInt(k.sequenceNumber),
+		Token:          common.BytesToAddress(token).Hex(),
+		Amount:         amount,
+		Chain:          uint32(chain),
+		Recipient:      recipient,
+		UnlockSequence: math.NewInt(k.sequenceNumber),
 	}
 	k.sequenceNumber++
 	k.lastAssetsUnlocked = event
