@@ -171,6 +171,32 @@ func RunServer(
 		server.logger.Info("gRPC server routine stopped")
 	}()
 
+	go func() {
+		defer cancelCtx()
+		err := server.observeBridgeOutEntries(ctx)
+		if err != nil {
+			server.logger.Error(
+				"bridge-out entries observation routine failed",
+				"err", err,
+			)
+		}
+
+		server.logger.Info("bridge-out entries observation routine stopped")
+	}()
+
+	go func() {
+		defer cancelCtx()
+		err := server.attestBridgeOutEntries(ctx)
+		if err != nil {
+			server.logger.Error(
+				"bridge-out entries attestation routine failed",
+				"err", err,
+			)
+		}
+
+		server.logger.Info("bridge-out entries attestation routine stopped")
+	}()
+
 	<-ctx.Done()
 
 	server.logger.Error("sidecar stopped")
@@ -445,6 +471,18 @@ func (s *Server) startGRPCServer(
 	case <-ctx.Done():
 		return nil
 	}
+}
+
+func (s *Server) observeBridgeOutEntries(ctx context.Context) error {
+	// TODO: Implement
+	<-ctx.Done()
+	return nil
+}
+
+func (s *Server) attestBridgeOutEntries(ctx context.Context) error {
+	// TODO: Implement
+	<-ctx.Done()
+	return nil
 }
 
 // Version return the current version of the ethereum sidecar.
