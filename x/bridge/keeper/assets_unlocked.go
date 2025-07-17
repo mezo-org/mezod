@@ -14,7 +14,7 @@ import (
 )
 
 // GetAssetsUnlockedSequenceTip returns the current sequence tip for the
-// AssetsLocked events. The tip denotes the sequence number of the last event
+// AssetsUnlocked events. The tip denotes the sequence number of the last event
 // processed by the x/bridge module.
 func (k Keeper) GetAssetsUnlockedSequenceTip(ctx sdk.Context) math.Int {
 	bz := ctx.KVStore(k.storeKey).Get(types.AssetsUnlockedSequenceTipKey)
@@ -32,7 +32,7 @@ func (k Keeper) GetAssetsUnlockedSequenceTip(ctx sdk.Context) math.Int {
 	return sequenceTip
 }
 
-// SetAssetsUnlockedSequenceTip sets the current sequence tip for the AssetsLocked
+// SetAssetsUnlockedSequenceTip sets the current sequence tip for the AssetsUnlocked
 // events. The tip denotes the sequence number of the last event processed by
 // the x/bridge module.
 func (k Keeper) setAssetsUnlockedSequenceTip(

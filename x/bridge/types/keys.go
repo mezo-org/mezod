@@ -43,7 +43,7 @@ var (
 	// AssetsUnlockedSequenceTipKey is a standalone key for the assets unlocked sequence tip.
 	AssetsUnlockedSequenceTipKey = []byte{0x70}
 
-	// AssetsUnlockedKey is a standalone key for the assets unlocked.
+	// AssetsUnlockedSequenceKeyPrefix is the key prefix for the assets unlocked sequence.
 	AssetsUnlockedSequenceKeyPrefix = []byte{0x80}
 )
 
