@@ -44,7 +44,7 @@ message AssetsLockedEvent {
 // from the bridge.
 message AssetsUnlockedEvent {
   // sequence is the unique identifier of the event.
-  string sequence = 1 [
+  string unlockSequence = 1 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
