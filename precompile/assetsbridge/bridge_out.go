@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
+	keepbtc "github.com/keep-network/keep-core/pkg/bitcoin"
 	"github.com/mezo-org/mezod/precompile"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -488,14 +487,13 @@ func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient
 
 	switch chain {
 	case TargetChainEthereum:
-		// here we just check the length
+		// here we just check the length, the zero address have been tested before already
 		if len(recipient) != 20 {
 			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", rawInput)
 		}
 	case TargetChainBitcoin:
-		_, err := btcutil.DecodeAddress(string(recipient), &chaincfg.MainNetParams)
-		if err != nil {
-			return fmt.Errorf("invalid recipient address format for Bitcoin (%v): %v", err, rawInput)
+		if keepbtc.GetScriptType(recipient) == keepbtc.NonStandardScript {
+			return fmt.Errorf("invalid recipient address format for Bitcoin: %v", rawInput)
 		}
 	}
 
