@@ -308,17 +308,17 @@ func (m *BridgeOutMethod) validate(
 		return fmt.Errorf("unsupported token: %v", inputs.Token)
 	}
 
-	spenderAddr := context.MsgSender()
-	if err := m.isAmountSpendableByBridge(sdkCtx, spenderAddr, inputs.Token, inputs.Amount); err != nil {
+	owner := context.MsgSender()
+	if err := m.isAmountSpendableByBridge(sdkCtx, owner, inputs.Token, inputs.Amount); err != nil {
 		return err
 	}
 
-	return m.isAmountAvailable(sdkCtx, spenderAddr, inputs.Token, inputs.Amount)
+	return m.isAmountAvailable(sdkCtx, owner, inputs.Token, inputs.Amount)
 }
 
 func (m *BridgeOutMethod) isAmountSpendableByBridge(
 	sdkCtx sdk.Context,
-	spenderAddr common.Address,
+	owner common.Address,
 	token common.Address,
 	amount *big.Int,
 ) error {
@@ -332,7 +332,7 @@ func (m *BridgeOutMethod) isAmountSpendableByBridge(
 	call, err := evmtypes.NewERC20AllowanceCall(
 		bridgeAddrBytes,
 		token.Bytes(),
-		spenderAddr.Bytes(),
+		owner.Bytes(),
 		// spendable by the asset bridge
 		common.HexToAddress(
 			evmtypes.AssetsBridgePrecompileAddress,
@@ -372,7 +372,7 @@ func (m *BridgeOutMethod) isAmountSpendableByBridge(
 
 func (m *BridgeOutMethod) isAmountAvailable(
 	sdkCtx sdk.Context,
-	spenderAddr common.Address,
+	owner common.Address,
 	token common.Address,
 	amount *big.Int,
 ) error {
@@ -386,7 +386,7 @@ func (m *BridgeOutMethod) isAmountAvailable(
 	call, err := evmtypes.NewERC20BalanceOfCall(
 		bridgeAddrBytes,
 		token.Bytes(),
-		spenderAddr.Bytes(),
+		owner.Bytes(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create ERC20 balanceOf call: %w", err)
