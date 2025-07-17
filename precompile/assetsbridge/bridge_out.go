@@ -181,8 +181,7 @@ func (m *BridgeOutMethod) executeBitcoin(
 	context *precompile.RunContext,
 	inputs *bridgeOutInputs,
 ) (*bridgetypes.AssetsUnlockedEvent, error) {
-	// first check the authorization for the
-	// bridge to spend the monies.
+	// first check if the bridge is authorized to spend the funds.
 	bridgeAddrBytes := common.HexToAddress(
 		evmtypes.AssetsBridgePrecompileAddress,
 	).Bytes()
