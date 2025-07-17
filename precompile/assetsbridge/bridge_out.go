@@ -92,11 +92,19 @@ func (m *BridgeOutMethod) execute(
 	var (
 		err            error
 		assetsUnlocked *bridgetypes.AssetsUnlockedEvent
+		isBTC          = bytes.Equal(
+			common.HexToAddress(evmtypes.BTCTokenPrecompileAddress).Bytes(),
+			inputs.Token.Bytes(),
+		)
 	)
 
 	switch inputs.Chain {
 	case TargetChainEthereum:
-		assetsUnlocked, err = m.executeEthereum(context, inputs)
+		if isBTC {
+			assetsUnlocked, err = m.executeBitcoin(context, inputs)
+		} else {
+			assetsUnlocked, err = m.executeEthereum(context, inputs)
+		}
 	case TargetChainBitcoin:
 		assetsUnlocked, err = m.executeBitcoin(context, inputs)
 	}
@@ -297,7 +305,7 @@ func (m *BridgeOutMethod) validate(
 ) error {
 	sdkCtx := context.SdkCtx()
 	// first check that the token is either BTC or a supported ERC20
-	if !m.isValidToken(sdkCtx, inputs.Token) {
+	if !m.isValidToken(sdkCtx, inputs.Token, inputs.Chain) {
 		return fmt.Errorf("unsupported token: %v", inputs.Token)
 	}
 
@@ -477,7 +485,7 @@ func (m *BridgeOutMethod) extractInputs(inputs precompile.MethodInputs) (*bridge
 		return nil, fmt.Errorf("invalid recipient address: %v", inputs[3])
 	}
 
-	if err := m.validateRecipientForChain(chain, recipient, inputs[3]); err != nil {
+	if err := m.validateRecipientForChain(chain, recipient); err != nil {
 		return nil, err
 	}
 
