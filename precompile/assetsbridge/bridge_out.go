@@ -355,7 +355,7 @@ func (m *BridgeOutMethod) isAmountSpendableByBridge(
 		return fmt.Errorf("ERC20 allowance call reverted")
 	}
 
-	allowance, err := extractAllowanceFromEVMResult(resp.Ret)
+	allowance, err := extractBigIntFromEVMResult(resp.Ret)
 	if err != nil {
 		return fmt.Errorf("unable to unpack EVM result: %v", err)
 	}
@@ -405,7 +405,7 @@ func (m *BridgeOutMethod) isAmountAvailable(
 		return fmt.Errorf("ERC20 balanceOf call reverted")
 	}
 
-	balance, err := extractBalanceOfFromEVMResult(resp.Ret)
+	balance, err := extractBigIntFromEVMResult(resp.Ret)
 	if err != nil {
 		return fmt.Errorf("unable to unpack EVM result: %v", err)
 	}
@@ -610,16 +610,7 @@ func (te *AssetsUnlockedEvent) Arguments() []*precompile.EventArgument {
 
 // helpers for extracting data out of the EVM response
 
-func extractBalanceOfFromEVMResult(retData []byte) (*big.Int, error) {
-	if len(retData) != 32 {
-		return nil, fmt.Errorf("invalid return data length")
-	}
-
-	balance := new(big.Int).SetBytes(retData)
-	return balance, nil
-}
-
-func extractAllowanceFromEVMResult(retData []byte) (*big.Int, error) {
+func extractBigIntFromEVMResult(retData []byte) (*big.Int, error) {
 	if len(retData) != 32 {
 		return nil, fmt.Errorf("invalid return data length")
 	}
