@@ -92,25 +92,25 @@ func (m *BridgeOutMethod) execute(
 ) (precompile.MethodOutputs, error) {
 	var (
 		err           error
-		assetUnlocked *bridgetypes.AssetsUnlockedEvent
+		assetsUnlocked *bridgetypes.AssetsUnlockedEvent
 	)
 
 	switch inputs.Chain {
 	case TargetChainEthereum:
-		assetUnlocked, err = m.executeEthereum(context, inputs)
+		assetsUnlocked, err = m.executeEthereum(context, inputs)
 	case TargetChainBitcoin:
-		assetUnlocked, err = m.executeBitcoin(context, inputs)
+		assetsUnlocked, err = m.executeBitcoin(context, inputs)
 	}
 
-	if assetUnlocked != nil {
+	if assetsUnlocked != nil {
 		err := context.EventEmitter().Emit(
 			NewAssetsUnlockedEvent(
 				context.MsgSender(),
-				common.HexToAddress(assetUnlocked.Token),
-				assetUnlocked.Recipient,
-				uint8(assetUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
-				assetUnlocked.Sequence.BigInt(),
-				assetUnlocked.Amount.BigInt(),
+				common.HexToAddress(assetsUnlocked.Token),
+				assetsUnlocked.Recipient,
+				uint8(assetsUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
+				assetsUnlocked.Sequence.BigInt(),
+				assetsUnlocked.Amount.BigInt(),
 			),
 		)
 		if err != nil {
@@ -154,7 +154,7 @@ func (m *BridgeOutMethod) executeEthereum(
 		return nil, fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
 	}
 
-	assetUnlocked, err := m.bridgeKeeper.AssetsUnlocked(
+	assetsUnlocked, err := m.bridgeKeeper.AssetsUnlocked(
 		sdkCtx,
 		inputs.Token.Bytes(),
 		sdkAmount,
@@ -167,7 +167,7 @@ func (m *BridgeOutMethod) executeEthereum(
 		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
 	}
 
-	return assetUnlocked, nil
+	return assetsUnlocked, nil
 }
 
 func (m *BridgeOutMethod) executeBitcoin(
@@ -216,7 +216,7 @@ func (m *BridgeOutMethod) executeBitcoin(
 		return nil, err
 	}
 
-	assetUnlocked, err := m.bridgeKeeper.AssetsUnlocked(
+	assetsUnlocked, err := m.bridgeKeeper.AssetsUnlocked(
 		context.SdkCtx(),
 		inputs.Token.Bytes(),
 		sdkAmount,
@@ -241,7 +241,7 @@ func (m *BridgeOutMethod) executeBitcoin(
 	journal := context.Journal()
 	journal.SubBalance(senderAddr, balanceDelta, tracing.BalanceChangeTransfer)
 
-	return assetUnlocked, nil
+	return assetsUnlocked, nil
 }
 
 func (m *BridgeOutMethod) validateAuthorizationLimits(

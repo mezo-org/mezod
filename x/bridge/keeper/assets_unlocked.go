@@ -49,14 +49,14 @@ func (k Keeper) setAssetsUnlockedSequenceTip(
 
 func (k Keeper) saveAssetsUnlocked(
 	ctx sdk.Context,
-	assetUnlocked *types.AssetsUnlockedEvent,
+	assetsUnlocked *types.AssetsUnlockedEvent,
 ) {
-	bz, err := assetUnlocked.Marshal()
+	bz, err := assetsUnlocked.Marshal()
 	if err != nil {
 		panic(err)
 	}
 
-	ctx.KVStore(k.storeKey).Set(types.GetAssetsUnlockedKey(assetUnlocked.Sequence), bz)
+	ctx.KVStore(k.storeKey).Set(types.GetAssetsUnlockedKey(assetsUnlocked.Sequence), bz)
 }
 
 func (k Keeper) GetAssetsUnlocked(
@@ -65,13 +65,13 @@ func (k Keeper) GetAssetsUnlocked(
 ) *types.AssetsUnlockedEvent {
 	bz := ctx.KVStore(k.storeKey).Get(types.GetAssetsUnlockedKey(sequence))
 
-	var assetUnlocked types.AssetsUnlockedEvent
-	err := assetUnlocked.Unmarshal(bz)
+	var assetsUnlocked types.AssetsUnlockedEvent
+	err := assetsUnlocked.Unmarshal(bz)
 	if err != nil {
 		panic(err)
 	}
 
-	return &assetUnlocked
+	return &assetsUnlocked
 }
 
 func (k Keeper) AssetsUnlocked(
@@ -100,7 +100,7 @@ func (k Keeper) AssetsUnlocked(
 		return nil, fmt.Errorf("unknown token %v", token)
 	}
 
-	assetUnlocked := &types.AssetsUnlockedEvent{
+	assetsUnlocked := &types.AssetsUnlockedEvent{
 		Sequence:  k.GetAssetsUnlockedSequenceTip(ctx),
 		Recipient: recipient,
 		Amount:    amount,
@@ -108,10 +108,10 @@ func (k Keeper) AssetsUnlocked(
 		Chain:     uint32(chain),
 	}
 
-	k.saveAssetsUnlocked(ctx, assetUnlocked)
+	k.saveAssetsUnlocked(ctx, assetsUnlocked)
 	k.setAssetsUnlockedSequenceTip(
-		ctx, assetUnlocked.Sequence.AddRaw(1),
+		ctx, assetsUnlocked.Sequence.AddRaw(1),
 	)
 
-	return assetUnlocked, nil
+	return assetsUnlocked, nil
 }

@@ -284,8 +284,8 @@ func (k *FakeAuthzKeeper) Reset() {
 
 type ExtendedFakeBridgeKeeper struct {
 	*FakeBridgeKeeper
-	assetUnlockedCalled  bool
-	assetUnlockedSuccess bool
+	assetsUnlockedCalled  bool
+	assetsUnlockedSuccess bool
 	lastAssetsUnlocked   *bridgetypes.AssetsUnlockedEvent
 	sequenceNumber       int64
 }
@@ -304,9 +304,9 @@ func (k *ExtendedFakeBridgeKeeper) AssetsUnlocked(
 	chain uint8,
 	recipient []byte,
 ) (*bridgetypes.AssetsUnlockedEvent, error) {
-	k.assetUnlockedCalled = true
+	k.assetsUnlockedCalled = true
 
-	if !k.assetUnlockedSuccess {
+	if !k.assetsUnlockedSuccess {
 		return nil, errors.New("AssetsUnlocked failed")
 	}
 
@@ -324,15 +324,15 @@ func (k *ExtendedFakeBridgeKeeper) AssetsUnlocked(
 }
 
 func (k *ExtendedFakeBridgeKeeper) SetAssetsUnlockedSuccess(success bool) {
-	k.assetUnlockedSuccess = success
+	k.assetsUnlockedSuccess = success
 }
 
 func (k *ExtendedFakeBridgeKeeper) AssetsUnlockedCalled() bool {
-	return k.assetUnlockedCalled
+	return k.assetsUnlockedCalled
 }
 
 func (k *ExtendedFakeBridgeKeeper) Reset() {
-	k.assetUnlockedCalled = false
+	k.assetsUnlockedCalled = false
 	k.lastAssetsUnlocked = nil
 }
 
