@@ -40,10 +40,42 @@ message AssetsLockedEvent {
   string token = 4;
 }
 
-// ERC20TokenMapping defines a mapping between an ERC20 token on the source chain
-// and on the Mezo chain.
+// AssetsUnlocked represents an entry created during a bridge-out operation,
+// where assets are burned on Mezo and will be unlocked on Ethereum or Bitcoin.
+message AssetsUnlocked {
+  // unlock_sequence_number is a cross-chain unique identifier.
+  string unlock_sequence_number = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // recipient is a chain-specific recipient address:
+  // - For Ethereum: 20-byte hex address
+  // - For Bitcoin: raw hex-encoded script supported by tBTC, i.e. P2PKH,
+  // P2WPKH, P2SH or P2WSH.
+  string recipient = 2;
+
+  // token is the hex-encoded address of the bridged-out token:
+  // - For Ethereum: either the tBTC token address or one of the bridgeable
+  // ERC20 tokens addresses.
+  // - For Bitcoin: the tBTC token address
+  string token = 3;
+
+  // amount to be bridged out, in token's native precision.
+  string amount = 4 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // chain is the target chain enum: e.g., 1 = Ethereum, 2 = Bitcoin.
+  uint32 chain = 5;
+}
+
+// ERC20TokenMapping defines a mapping between an ERC20 token on the source
+// chain and on the Mezo chain.
 message ERC20TokenMapping {
-  // source_token is the hex-encoded EVM address of the token on the source chain.
+  // source_token is the hex-encoded EVM address of the token on the source
+  // chain.
   string source_token = 1;
 
   // mezo_token is the hex-encoded EVM address of the token on the Mezo chain.
