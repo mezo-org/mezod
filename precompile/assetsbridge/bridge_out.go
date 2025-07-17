@@ -480,20 +480,20 @@ func (m *BridgeOutMethod) extractInputs(inputs precompile.MethodInputs) (*bridge
 	}, nil
 }
 
-func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient []byte, rawInput interface{}) error {
+func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient []byte) error {
 	if len(recipient) == 0 {
-		return fmt.Errorf("recipient can't be empty: %v", rawInput)
+		return fmt.Errorf("recipient can't be empty")
 	}
 
 	switch chain {
 	case TargetChainEthereum:
 		// here we just check the length, the zero address have been tested before already
 		if len(recipient) != 20 {
-			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", rawInput)
+			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", recipient)
 		}
 	case TargetChainBitcoin:
 		if keepbtc.GetScriptType(recipient) == keepbtc.NonStandardScript {
-			return fmt.Errorf("invalid recipient address format for Bitcoin: %v", rawInput)
+			return fmt.Errorf("invalid recipient address format for Bitcoin: %v", recipient)
 		}
 	}
 
