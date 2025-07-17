@@ -413,16 +413,25 @@ func (m *BridgeOutMethod) isAmountAvailable(
 	return nil
 }
 
-func (m *BridgeOutMethod) isValidToken(sdkCtx sdk.Context, token common.Address) bool {
-	// is it the btc token?
-	btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
-	if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
-		return true
-	}
+func (m *BridgeOutMethod) isValidToken(
+	sdkCtx sdk.Context,
+	token common.Address,
+	chain TargetChain,
+) bool {
+	if chain == TargetChainEthereum { // both BTC and supported ERC20 are valid
+		btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
+		if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
+			return true
+		}
 
-	// is it a registered ERC20?
-	if _, ok := m.bridgeKeeper.GetERC20TokenMapping(sdkCtx, token.Bytes()); ok {
-		return true
+		if _, ok := m.bridgeKeeper.GetERC20TokenMapping(sdkCtx, token.Bytes()); ok {
+			return true
+		}
+	} else if chain == TargetChainBitcoin { // only BTC is valid
+		btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
+		if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
+			return true
+		}
 	}
 
 	return false
