@@ -36,7 +36,7 @@ message GenesisState {
     (gogoproto.nullable) = false
   ];
 
-  // assets_unlocked_sequence_tip is the current sequence tip for the AssetUnlocked
+  // assets_unlocked_sequence_tip is the current sequence tip for the AssetsUnlocked
   // events. The tip denotes the sequence number of the last event processed by
   // the x/bridge module.
   string assets_unlocked_sequence_tip = 6 [
