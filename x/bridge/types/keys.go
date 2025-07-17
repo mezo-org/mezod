@@ -53,7 +53,7 @@ func GetERC20TokenMappingKey(sourceERC20Token []byte) []byte {
 	return append(ERC20TokenMappingKeyPrefix, sourceERC20Token...)
 }
 
-// GetAssetUnlockKey gets the key for an AssetsUnlocked event.
+// GetAssetUnlockedKey gets the key for an AssetsUnlocked event.
 func GetAssetsUnlockedKey(sequence math.Int) []byte {
 	return append(AssetsUnlockedSequenceKeyPrefix, sequence.BigInt().Bytes()...)
 }
