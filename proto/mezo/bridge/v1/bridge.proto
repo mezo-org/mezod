@@ -31,13 +31,35 @@ message AssetsLockedEvent {
   // recipient is the account address to receive the locked assets on Mezo,
   // in Bech32 format.
   string recipient = 2;
-  // amount of assets locked, in 1e18 precision.
+  // amount of assets locked.
   string amount = 3 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
   // token is the hex-encoded EVM address of the bridged token.
   string token = 4;
+}
+
+// AssetsUnlockedEvent represents the event where inbound assets are released
+// from the bridge.
+message AssetsUnlockedEvent {
+  // sequence is the unique identifier of the event.
+  string unlockSequence = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  // recipient is the account address to receive the locked assets on the
+  // target chain.
+  bytes recipient = 2;
+  // amount of assets locked.
+  string amount = 3 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  // token is the hex-encoded EVM address of the bridged token.
+  string token = 4;
+  // chain is the target chain for this unlock event
+  uint32 chain = 5;
 }
 
 // ERC20TokenMapping defines a mapping between an ERC20 token on the source chain
