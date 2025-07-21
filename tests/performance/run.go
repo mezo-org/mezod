@@ -190,7 +190,7 @@ func runERC20(
 	var stop atomic.Bool
 	stop.Store(false)
 	go aggregateBlockDataParallel()
-	time.Sleep(10 * time.Second) // wait to get a few blocks first to see baseline
+	time.Sleep(1 * time.Second) // wait to get a few blocks first to see baseline
 
 	startedAt := time.Now()
 	for i := 0; i < cnt; i++ {
@@ -253,10 +253,7 @@ func runERC20One(
 		log.Fatalf("Failed to get nonce: %v", err)
 	}
 
-	// gasLimit := uint64(65000) // more or less an ERC20 gas requirement
-	// gasLimit := uint64(22000)
-	// gasLimit := uint64(50000)
-	gasLimit := uint64(25000)
+	gasLimit := uint64(50000) // more or less an ERC20 gas requirement
 
 	// Initialize the ERC20 contract
 	token, err := token.NewTokenTransactor(tokenAddress, client)
