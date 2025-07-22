@@ -32,9 +32,9 @@ type GenesisState struct {
 	// events. The tip denotes the sequence number of the last event processed by
 	// the x/bridge module.
 	AssetsLockedSequenceTip cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=assets_locked_sequence_tip,json=assetsLockedSequenceTip,proto3,customtype=cosmossdk.io/math.Int" json:"assets_locked_sequence_tip"`
-	// source_btc_token is the hex-encoded EVM address of the BTC token on the source chain.
-	// AssetsLocked events carrying this token address are directly mapped to the
-	// Mezo native denomination - BTC.
+	// source_btc_token is the hex-encoded EVM address of the BTC token on the
+	// source chain. AssetsLocked events carrying this token address are directly
+	// mapped to the Mezo native denomination - BTC.
 	SourceBtcToken string `protobuf:"bytes,3,opt,name=source_btc_token,json=sourceBtcToken,proto3" json:"source_btc_token,omitempty"`
 	// erc20_tokens_mappings is the list of ERC20 token mappings supported by the
 	// bridge.
@@ -43,9 +43,9 @@ type GenesisState struct {
 	// at genesis, this is used only for development / testnet purpose
 	// and should be left set to 0 in an production network.
 	InitialBtcSupply cosmossdk_io_math.Int `protobuf:"bytes,5,opt,name=initial_btc_supply,json=initialBtcSupply,proto3,customtype=cosmossdk.io/math.Int" json:"initial_btc_supply"`
-	// assets_unlocked_sequence_tip is the current sequence tip for the AssetsUnlocked
-	// events. The tip denotes the sequence number of the last event processed by
-	// the x/bridge module.
+	// assets_unlocked_sequence_tip is the current sequence tip for the
+	// AssetsUnlocked events. The tip denotes the sequence number of the last
+	// event processed by the x/bridge module.
 	AssetsUnlockedSequenceTip cosmossdk_io_math.Int `protobuf:"bytes,6,opt,name=assets_unlocked_sequence_tip,json=assetsUnlockedSequenceTip,proto3,customtype=cosmossdk.io/math.Int" json:"assets_unlocked_sequence_tip"`
 }
 
