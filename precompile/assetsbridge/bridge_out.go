@@ -255,7 +255,7 @@ func (m *BridgeOutMethod) validateAuthorizationLimits(
 	requestedCoins sdk.Coins,
 ) error {
 	if sendAuth.SpendLimit == nil || sendAuth.SpendLimit.Empty() {
-		return fmt.Errorf("no allowance for for %v", requestedCoins[0].Denom)
+		return fmt.Errorf("no allowance for %v", requestedCoins[0].Denom)
 	}
 
 	for _, requestedCoin := range requestedCoins {
@@ -505,7 +505,7 @@ func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient
 	case TargetChainEthereum:
 		// here we just check the length, the zero address have been tested before already
 		if len(recipient) != 20 {
-			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", recipient)
+			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", common.BytesToAddress(recipient))
 		}
 	case TargetChainBitcoin:
 		if keepbtc.GetScriptType(recipient) == keepbtc.NonStandardScript {
