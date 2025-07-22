@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cosmossdk.io/math"
+	"github.com/cosmos/btcutil/base58"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/authz"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -31,9 +32,16 @@ var (
 	bridgeAddress    = common.HexToAddress(evmtypes.AssetsBridgePrecompileAddress)
 
 	ethRecipient      = []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14}
-	btcRecipient      = []byte("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa") // Valid Bitcoin address
+	btcRecipient      = makeValidScript("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
 	invalidBtcAddress = []byte("invalid_btc_address")
 )
+
+// just P2PKH for testing purpose
+func makeValidScript(address string) []byte {
+	recipient, _, _ := base58.CheckDecode(address)
+	recipient = append([]byte{0x76, 0xa9, 0x14}, recipient...)
+	return append(recipient, []byte{0x88, 0xac}...)
+}
 
 type FakeBankKeeper struct {
 	balances map[string]sdk.Coins
@@ -395,20 +403,6 @@ func (s *BridgeOutTestSuite) TestInstantiateAssetBridge() {
 func (s *BridgeOutTestSuite) TestBridgeOutTokenValidation() {
 	testcases := []TestCase{
 		{
-			name: "valid BTC token",
-			run: func() []interface{} {
-				// Setup valid balances and allowances
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetBurnFromSuccess(true)
-				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
-				return []interface{}{testBTCToken, big.NewInt(100), uint8(0), ethRecipient}
-			},
-			as:        s.account1.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{true},
-		},
-		{
 			name: "valid ERC20 token",
 			run: func() []interface{} {
 				// Token is already registered in SetupTest
@@ -661,7 +655,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 
 				// Valid P2PKH address (starts with '1')
-				p2pkhAddress := []byte("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
+				p2pkhAddress := btcRecipient
 
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), p2pkhAddress}
 			},
@@ -688,38 +682,12 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 				s.authzKeeper.SetDispatchSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 
-				// Valid P2SH address (starts with '3')
 				p2shAddress := []byte("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy")
+				recipient, _, _ := base58.CheckDecode(string(p2shAddress))
+				recipient = append([]byte{0xa9, 0x14}, recipient...)
+				recipient = append(recipient, []byte{0x87}...)
 
-				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), p2shAddress}
-			},
-			as:        s.account1.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{true},
-		},
-		{
-			name: "valid Bech32 bitcoin address",
-			run: func() []interface{} {
-				// Setup ERC20 allowance first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-
-				s.authzKeeper.SetAuthorization(
-					s.account1.SdkAddr,
-					sdk.AccAddress(bridgeAddress.Bytes()),
-					assetsbridge.SendMsgURL,
-					&banktypes.SendAuthorization{
-						SpendLimit: sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(1000))),
-					},
-					nil,
-				)
-				s.authzKeeper.SetDispatchSuccess(true)
-				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
-
-				// Valid Bech32 address (starts with 'bc1')
-				bech32Address := []byte("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4")
-
-				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), bech32Address}
+				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), recipient}
 			},
 			as:        s.account1.EvmAddr,
 			basicPass: true,
@@ -972,42 +940,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinAuthorization() {
 func (s *BridgeOutTestSuite) TestBridgeOutBalanceAllowance() {
 	testcases := []TestCase{
 		{
-			name: "insufficient balance",
-			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(50))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "not enough funds",
-		},
-		{
-			name: "insufficient allowance",
-			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(50))
-				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "allowance too low",
-		},
-		{
-			name: "zero allowance",
-			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(0))
-				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "allowance too low",
-		},
-		{
 			name: "exact balance and allowance",
 			run: func() []interface{} {
 				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(100))
@@ -1019,50 +951,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBalanceAllowance() {
 			as:        s.account1.EvmAddr,
 			basicPass: true,
 			output:    []interface{}{true},
-		},
-		// I don't thin balanceOf can revert, but still...
-		{
-			name: "EVM call failure - balanceOf",
-			run: func() []interface{} {
-				// Set allowance to pass but balanceOf to fail
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetCallHandler(func(call evmtypes.ContractCall) (*evmtypes.MsgEthereumTxResponse, error) {
-					data := call.Data()
-
-					// Check if this is a balanceOf call by looking at the method selector
-					if len(data) >= 4 && bytes.Equal(data[:4], []byte{0x70, 0xa0, 0x82, 0x31}) {
-						return &evmtypes.MsgEthereumTxResponse{
-							VmError: "ERC20 balanceOf call reverted",
-						}, nil
-					}
-					// For allowance calls, return success
-					if len(data) >= 4 && bytes.Equal(data[:4], []byte{0xdd, 0x62, 0xed, 0x3e}) {
-						allowanceBytes := make([]byte, 32)
-						copy(allowanceBytes[32-8:], big.NewInt(1000).Bytes())
-						return &evmtypes.MsgEthereumTxResponse{
-							Ret: allowanceBytes,
-						}, nil
-					}
-					return &evmtypes.MsgEthereumTxResponse{}, nil
-				})
-				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "ERC20 balanceOf call reverted",
-		},
-		{
-			name: "EVM call failure - allowance",
-			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetShouldRevert(true, "ERC20 allowance call reverted")
-				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "ERC20 allowance call reverted",
 		},
 	}
 
@@ -1105,35 +993,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 			errContains: "cannot use string as type",
 		},
 		{
-			name: "nil amount",
-			run: func() []interface{} {
-				// Skip nil amount - it causes panic in ABI packing
-				// We can't test nil amount directly
-				// Set no balance/allowance to trigger error
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(0))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(0))
-				return []interface{}{testERC20Token, big.NewInt(1), uint8(0), ethRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "asset bridge allowance too low",
-		},
-		{
-			name: "negative amount",
-			run: func() []interface{} {
-				// Negative amount is caught during input extraction
-				// But we need to set up balance/allowance to avoid that error first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(0))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(0))
-				return []interface{}{testERC20Token, big.NewInt(-100), uint8(0), ethRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "asset bridge allowance too low", // Will fail at allowance check before amount validation
-		},
-		{
 			name: "zero amount",
 			run: func() []interface{} {
 				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
@@ -1142,9 +1001,10 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testERC20Token, big.NewInt(0), uint8(0), ethRecipient}
 			},
-			as:        s.account1.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{true},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "amount must be positive",
 		},
 		{
 			name: "invalid chain type - string instead of uint8",

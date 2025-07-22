@@ -308,115 +308,6 @@ func (m *BridgeOutMethod) validate(
 		return fmt.Errorf("unsupported token: %v", inputs.Token)
 	}
 
-	owner := context.MsgSender()
-	if err := m.isAmountSpendableByBridge(sdkCtx, owner, inputs.Token, inputs.Amount); err != nil {
-		return err
-	}
-
-	return m.isAmountAvailable(sdkCtx, owner, inputs.Token, inputs.Amount)
-}
-
-func (m *BridgeOutMethod) isAmountSpendableByBridge(
-	sdkCtx sdk.Context,
-	owner common.Address,
-	token common.Address,
-	amount *big.Int,
-) error {
-	// We use the ERC20 allowance call for both the BTC token
-	// and ERC20s as both implement the ERC20 interface.
-
-	bridgeAddrBytes := common.HexToAddress(
-		evmtypes.AssetsBridgePrecompileAddress,
-	).Bytes()
-
-	call, err := evmtypes.NewERC20AllowanceCall(
-		bridgeAddrBytes,
-		token.Bytes(),
-		owner.Bytes(),
-		// spendable by the asset bridge
-		common.HexToAddress(
-			evmtypes.AssetsBridgePrecompileAddress,
-		).Bytes(),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create ERC20 allowance call: %w", err)
-	}
-
-	resp, err := m.evmKeeper.ExecuteContractCall(sdkCtx, call)
-	if err != nil {
-		return fmt.Errorf("failed to execute ERC20 allowance call: %w", err)
-	}
-
-	// this would be non empty if the call reverted
-	if len(resp.VmError) > 0 {
-		// TODO(Jeremy): Should we handle the revert properly
-		// to return an error message? For now just returning
-		// a generic error message
-		return fmt.Errorf("ERC20 allowance call reverted")
-	}
-
-	allowance, err := extractBigIntFromEVMResult(resp.Ret)
-	if err != nil {
-		return fmt.Errorf("unable to unpack EVM result: %v", err)
-	}
-
-	// if the amount <= to the balance, then OK
-	// else we do not have enough funds and we need
-	// to return an error
-	if amount.Cmp(allowance) > 0 {
-		return fmt.Errorf("asset bridge allowance too low")
-	}
-
-	return nil
-}
-
-func (m *BridgeOutMethod) isAmountAvailable(
-	sdkCtx sdk.Context,
-	owner common.Address,
-	token common.Address,
-	amount *big.Int,
-) error {
-	// we use the ERC20BalanceOf call for either the BTC token
-	// or the ERC20 as both implements the ERC20 interface
-
-	bridgeAddrBytes := common.HexToAddress(
-		evmtypes.AssetsBridgePrecompileAddress,
-	).Bytes()
-
-	call, err := evmtypes.NewERC20BalanceOfCall(
-		bridgeAddrBytes,
-		token.Bytes(),
-		owner.Bytes(),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create ERC20 balanceOf call: %w", err)
-	}
-
-	resp, err := m.evmKeeper.ExecuteContractCall(sdkCtx, call)
-	if err != nil {
-		return fmt.Errorf("failed to execute ERC20 balanceOf call: %w", err)
-	}
-
-	// this would be non empty if the call reverted
-	if len(resp.VmError) > 0 {
-		// TODO(Jeremy): Should we handle the revert properly
-		// to return an error message? For now just returning
-		// a generic error message
-		return fmt.Errorf("ERC20 balanceOf call reverted")
-	}
-
-	balance, err := extractBigIntFromEVMResult(resp.Ret)
-	if err != nil {
-		return fmt.Errorf("unable to unpack EVM result: %v", err)
-	}
-
-	// if the amount <= to the balance, then OK
-	// else we do not have enough funds and we need
-	// to return an error
-	if amount.Cmp(balance) > 0 {
-		return fmt.Errorf("not enough funds to bridgeOut")
-	}
-
 	return nil
 }
 
@@ -425,7 +316,8 @@ func (m *BridgeOutMethod) isValidToken(
 	token common.Address,
 	chain TargetChain,
 ) bool {
-	if chain == TargetChainEthereum { // both BTC and supported ERC20 are valid
+	switch chain {
+	case TargetChainEthereum:
 		btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
 		if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
 			return true
@@ -434,7 +326,7 @@ func (m *BridgeOutMethod) isValidToken(
 		if _, ok := m.bridgeKeeper.GetERC20TokenMapping(sdkCtx, token.Bytes()); ok {
 			return true
 		}
-	} else if chain == TargetChainBitcoin { // only BTC is valid
+	case TargetChainBitcoin:
 		btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
 		if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
 			return true
@@ -606,15 +498,4 @@ func (te *AssetsUnlockedEvent) Arguments() []*precompile.EventArgument {
 			Value:   te.chain,
 		},
 	}
-}
-
-// helpers for extracting data out of the EVM response
-
-func extractBigIntFromEVMResult(retData []byte) (*big.Int, error) {
-	if len(retData) != 32 {
-		return nil, fmt.Errorf("invalid return data length")
-	}
-
-	balance := new(big.Int).SetBytes(retData)
-	return balance, nil
 }
