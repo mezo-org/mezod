@@ -204,7 +204,7 @@ func (c *ERC20AllowanceCall) Data() []byte {
 	return c.data
 }
 
-// ERC20AllowanceCall represents a burnFrom(address,uin256) call for an ERC20 contract.
+// ERC20BurnFromCall represents a burnFrom(address,uin256) call for an ERC20 contract.
 type ERC20BurnFromCall struct {
 	from, to common.Address
 	data     []byte
