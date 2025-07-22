@@ -43,8 +43,8 @@ var (
 	// AssetsUnlockedSequenceTipKey is a standalone key for the assets unlocked sequence tip.
 	AssetsUnlockedSequenceTipKey = []byte{0x70}
 
-	// AssetsUnlockedSequenceKeyPrefix is the key prefix for the assets unlocked sequence.
-	AssetsUnlockedSequenceKeyPrefix = []byte{0x80}
+	// AssetsUnlockedKeyPrefix is the key prefix for the assets unlocked key.
+	AssetsUnlockedKeyPrefix = []byte{0x80}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
@@ -55,5 +55,5 @@ func GetERC20TokenMappingKey(sourceERC20Token []byte) []byte {
 
 // GetAssetUnlockedKey gets the key for an AssetsUnlocked event.
 func GetAssetsUnlockedKey(sequence math.Int) []byte {
-	return append(AssetsUnlockedSequenceKeyPrefix, sequence.BigInt().Bytes()...)
+	return append(AssetsUnlockedKeyPrefix, sequence.BigInt().Bytes()...)
 }
