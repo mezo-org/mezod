@@ -582,7 +582,7 @@ func (te *AssetsUnlockedEvent) EventName() string {
 func (te *AssetsUnlockedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
-			Indexed: false,
+			Indexed: true,
 			Value:   te.unlockSequenceNumber,
 		},
 		{
