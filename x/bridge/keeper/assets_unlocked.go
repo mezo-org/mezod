@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -81,30 +79,30 @@ func (k Keeper) AssetsUnlocked(
 	chain uint8,
 	recipient []byte,
 ) (*types.AssetsUnlockedEvent, error) {
-	var targetToken common.Address
+	var targetToken string
 	// is it the btc token?
-	btcToken := common.HexToAddress(
+	btcToken := evmtypes.HexAddressToBytes(
 		evmtypes.BTCTokenPrecompileAddress,
 	)
-	if bytes.Equal(btcToken.Bytes(), token) {
-		targetToken = common.BytesToAddress(k.GetSourceBTCToken(ctx))
+	if bytes.Equal(btcToken, token) {
+		targetToken = evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx))
 	} else {
 		if mapping, ok := k.GetERC20TokenMapping(ctx, token); ok {
-			targetToken = common.BytesToAddress(
+			targetToken = evmtypes.BytesToHexAddress(
 				mapping.SourceTokenBytes(),
 			)
 		}
 	}
 
 	if len(targetToken) == 0 {
-		return nil, fmt.Errorf("unknown token %v", common.BytesToAddress(token))
+		return nil, fmt.Errorf("unknown token %v", token)
 	}
 
 	assetsUnlocked := &types.AssetsUnlockedEvent{
 		UnlockSequence: k.GetAssetsUnlockedSequenceTip(ctx),
 		Recipient:      recipient,
 		Amount:         amount,
-		Token:          targetToken.Hex(),
+		Token:          targetToken,
 		Chain:          uint32(chain),
 	}
 
