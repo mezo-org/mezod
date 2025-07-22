@@ -97,7 +97,7 @@ func (k Keeper) AssetsUnlocked(
 	}
 
 	if len(targetToken) == 0 {
-		return nil, fmt.Errorf("unknown token %v", token)
+		return nil, fmt.Errorf("unknown token %v", common.BytesToAddress(token))
 	}
 
 	assetsUnlocked := &types.AssetsUnlockedEvent{
