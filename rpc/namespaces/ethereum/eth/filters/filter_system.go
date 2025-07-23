@@ -124,8 +124,13 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 			eventCh, unsubFn, err := es.eventBus.Subscribe(sub.event)
 			if err != nil {
 				err := errors.Wrapf(err, "failed to subscribe to topic: %s", sub.event)
+				sub.err <- err
 				return nil, nil, err
 			}
+
+			// wrap events in a go routine to prevent blocking
+			es.install <- sub
+			<-sub.installed
 
 			sub.eventCh = eventCh
 			return sub, unsubFn, nil
@@ -247,13 +252,14 @@ func (es *EventSystem) eventLoop() {
 	for {
 		select {
 		case f := <-es.install:
+			es.logger.Debug("installing subscription", "subId", f.ID())
 			es.indexMux.Lock()
 			es.index[f.typ][f.id] = f
 			ch := make(chan coretypes.ResultEvent)
 			if err := es.eventBus.AddTopic(f.event, ch); err != nil {
 				// Just a log here, error can be that we already have created
 				// the topic
-				es.logger.Error("failed to add event topic to event bus", "topic", f.event, "error", err.Error())
+				es.logger.Debug("failed to add event topic to event bus", "topic", f.event, "error", err.Error())
 			} else {
 				// topic didn't exists, add it to the map
 				es.topicChans[f.event] = ch
@@ -261,6 +267,7 @@ func (es *EventSystem) eventLoop() {
 			es.indexMux.Unlock()
 			close(f.installed)
 		case f := <-es.uninstall:
+			es.logger.Debug("uninstalling subscription", "subId", f.ID())
 			es.indexMux.Lock()
 			delete(es.index[f.typ], f.id)
 
@@ -275,6 +282,8 @@ func (es *EventSystem) eventLoop() {
 
 			// remove topic only when channel is not used by other subscriptions
 			if !channelInUse {
+				es.logger.Debug("topic not used by any channel", "query", f.event)
+
 				if err := es.tmWSClient.Unsubscribe(es.ctx, f.event); err != nil {
 					es.logger.Error("failed to unsubscribe from query", "query", f.event, "error", err.Error())
 				}
