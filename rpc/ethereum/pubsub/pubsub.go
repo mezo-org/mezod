@@ -99,7 +99,7 @@ func (m *memEventBus) Subscribe(name string) (<-chan coretypes.ResultEvent, Unsu
 		return nil, nil, errors.Errorf("topic not found: %s", name)
 	}
 
-	ch := make(chan coretypes.ResultEvent, 10000)
+	ch := make(chan coretypes.ResultEvent, 1000)
 	m.subscribersMux.Lock()
 	defer m.subscribersMux.Unlock()
 

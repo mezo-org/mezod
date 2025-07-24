@@ -204,6 +204,7 @@ func (s *websocketsServer) readLoop(wsConn *wsConn) {
 		// cancel all subscriptions when connection closed
 		// #nosec G705
 		for _, subCtx := range subCtxs {
+			s.logger.Debug("clearing subscription", "subId", subCtx.sub.ID())
 			subCtx.Cleanup(s.api.events)
 		}
 	}()
@@ -283,6 +284,8 @@ func (s *websocketsServer) readLoop(wsConn *wsConn) {
 			if err := wsConn.WriteJSON(res); err != nil {
 				break
 			}
+
+			s.logger.Debug("eth_subscribe", "subId", sub.ID())
 		case "eth_unsubscribe":
 			params, ok := s.getParamsAndCheckValid(msg, wsConn)
 			if !ok {
@@ -311,6 +314,7 @@ func (s *websocketsServer) readLoop(wsConn *wsConn) {
 			if err := wsConn.WriteJSON(res); err != nil {
 				break
 			}
+			s.logger.Debug("eth_unsubscribe", "subId", subID)
 		default:
 			// otherwise, call the usual rpc server to respond
 			if err := s.tcpGetAndSendResponse(wsConn, mb); err != nil {
