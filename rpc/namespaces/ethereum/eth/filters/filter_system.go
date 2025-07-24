@@ -159,6 +159,7 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 
 	eventCh, unsubFn, err := es.eventBus.Subscribe(sub.event)
 	if err != nil {
+		sub.err <- err
 		return nil, nil, errors.Wrapf(err, "failed to subscribe to topic after installed: %s", sub.event)
 	}
 
