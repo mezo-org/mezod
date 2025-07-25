@@ -377,7 +377,7 @@ const AssetsUnlockedEventName = "AssetsUnlocked"
 
 // AssetsUnlockedEvent is the implementation of the AssetsUnlocked event that contains
 // the following arguments:
-// - sequenceNumber (non-indexed): the sequenceNumber of this AssetsUnlocked
+// - unlockSequenceNumber (indexed): the sequenceNumber of this AssetsUnlocked
 // - recipient (indexed): the address to which the tokens are transferred
 // - token (non-indexed): the token being bridged out.
 // - sender (indexed): the address from which the tokens are bridged out,
