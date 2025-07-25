@@ -45,14 +45,14 @@ interface IAssetsBridge {
 
     /**
      * @notice Emitted when an existing asset is unlocked on the Mezo side of the native bridge.
-     * @param sender The address bridging out.
+     * @param unlockSequenceNumber the sequence number for the specific AssetsUnlocked.
      * @param recipient The address it's bridged out to on the target chain.
      * @param token The address of the ERC20 token on the target chain.
+     * @param sender The address bridging out.
      * @param amount The amount bridged out.
      * @param chain The chain to which the funds are being bridged out to, for reference
      *        please see the enum on the MezoBridge contract
      *        https://github.com/thesis/mezo-portal/blob/main/solidity/contracts/MezoBridge.sol#L22-L27
-     * @param unlockSequenceNumber the sequence number for the specific AssetsUnlocked.
      */
     event AssetsUnlocked(
         uint256 indexed unlockSequenceNumber,
