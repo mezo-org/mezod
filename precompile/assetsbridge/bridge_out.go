@@ -199,23 +199,12 @@ func (m *BridgeOutMethod) executeBitcoin(
 		return nil, fmt.Errorf("authorization expired at %v", expiration)
 	}
 
-	sendAuth, ok := authorization.(*banktypes.SendAuthorization)
-	if !ok {
-		return nil, fmt.Errorf(
-			"expected authorization to be a %T", banktypes.SendAuthorization{},
-		)
-	}
-
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(inputs.Amount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 	coins := sdk.Coins{{Denom: evmtypes.DefaultEVMDenom, Amount: sdkAmount}}
 	msg := banktypes.NewMsgSend(bridgeAddrBytes, senderAddr.Bytes(), coins)
-
-	if err := m.validateAuthorizationLimits(sendAuth, coins); err != nil {
-		return nil, fmt.Errorf("authorization validation failed: %w", err)
-	}
 
 	_, err = m.authzKeeper.DispatchActions(context.SdkCtx(), bridgeAddr, []sdk.Msg{msg})
 	if err != nil {
@@ -248,52 +237,6 @@ func (m *BridgeOutMethod) executeBitcoin(
 	journal.SubBalance(senderAddr, balanceDelta, tracing.BalanceChangeTransfer)
 
 	return assetsUnlocked, nil
-}
-
-func (m *BridgeOutMethod) validateAuthorizationLimits(
-	sendAuth *banktypes.SendAuthorization,
-	requestedCoins sdk.Coins,
-) error {
-	if sendAuth.SpendLimit == nil || sendAuth.SpendLimit.Empty() {
-		return fmt.Errorf("no allowance for %v", requestedCoins[0].Denom)
-	}
-
-	for _, requestedCoin := range requestedCoins {
-		allowedAmount := sendAuth.SpendLimit.AmountOf(requestedCoin.Denom)
-		if allowedAmount.IsZero() {
-			return fmt.Errorf("no allowance for %s", requestedCoin.Denom)
-		}
-		if requestedCoin.Amount.GT(allowedAmount) {
-			return fmt.Errorf(
-				"requested amount %s exceeds allowed amount %s for %s",
-				requestedCoin.Amount,
-				allowedAmount,
-				requestedCoin.Denom,
-			)
-		}
-	}
-
-	// Check allowed list if it exists
-	// It shouldn't be set seeing that we don't really use cosmos-sdk
-	// but just in case?
-	if len(sendAuth.AllowList) > 0 {
-		found := false
-		senderAddrStr := sdk.AccAddress(common.HexToAddress(
-			evmtypes.AssetsBridgePrecompileAddress,
-		).Bytes()).String()
-
-		for _, allowedAddr := range sendAuth.AllowList {
-			if allowedAddr == senderAddrStr {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("recipient address not in authorization allow list")
-		}
-	}
-
-	return nil
 }
 
 // validate applies more extensive validation to the inputs, not only
