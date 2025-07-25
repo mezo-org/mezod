@@ -29,20 +29,17 @@ var SendMsgURL = sdk.MsgTypeURL(&banktypes.MsgSend{})
 // BridgeOutMethod is the implementation of the bridgeOut method.
 type BridgeOutMethod struct {
 	bridgeKeeper BridgeKeeper
-	bankKeeper   BankKeeper
 	evmKeeper    EvmKeeper
 	authzKeeper  AuthzKeeper
 }
 
 func newBridgeOutMethod(
 	bridgeKeeper BridgeKeeper,
-	bankKeeper BankKeeper,
 	evmKeeper EvmKeeper,
 	authzKeeper AuthzKeeper,
 ) *BridgeOutMethod {
 	return &BridgeOutMethod{
 		bridgeKeeper: bridgeKeeper,
-		bankKeeper:   bankKeeper,
 		evmKeeper:    evmKeeper,
 		authzKeeper:  authzKeeper,
 	}

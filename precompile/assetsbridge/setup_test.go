@@ -123,14 +123,12 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 
 			// Create dummy keepers for the test - these are minimal implementations
 			// For bridge_out tests, use the more complete implementations in bridge_out_test.go
-			bankKeeper := &FakeBankKeeper{}
 			evmKeeper := &FakeEvmKeeper{}
 			authzKeeper := &FakeAuthzKeeper{}
 
 			assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 				s.poaKeeper,
 				s.bridgeKeeper,
-				bankKeeper,
 				evmKeeper,
 				authzKeeper,
 				&assetsbridge.Settings{
