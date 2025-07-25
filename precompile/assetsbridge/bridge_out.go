@@ -376,18 +376,19 @@ const AssetsUnlockedEventName = "AssetsUnlocked"
 
 // AssetsUnlockedEvent is the implementation of the AssetsUnlocked event that contains
 // the following arguments:
-// - from (indexed): the address from which the tokens are bridged out,
+// - sequenceNumber (non-indexed): the sequenceNumber of this AssetsUnlocked
 // - recipient (indexed): the address to which the tokens are transferred
+// - token (non-indexed): the token being bridged out.
+// - sender (indexed): the address from which the tokens are bridged out,
 // - amount (non-indexed): the amount of tokens transferred
 // - chain (non-indexed): the destination chain
-// - sequenceNumber (non-indexed): the sequenceNumber of this AssetsUnlocked
-// - token (non-indexed): the token being bridged out.
 type AssetsUnlockedEvent struct {
-	sender, token        common.Address
-	recipient            []byte
-	chain                uint8
 	unlockSequenceNumber *big.Int
+	recipient            []byte
+	token                common.Address
+	sender               common.Address
 	amount               *big.Int
+	chain                uint8
 }
 
 func NewAssetsUnlockedEvent(
