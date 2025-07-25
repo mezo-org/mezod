@@ -33,8 +33,15 @@ func (gs GenesisState) Validate() error {
 
 	if gs.AssetsLockedSequenceTip.IsNegative() {
 		return fmt.Errorf(
-			"genesis sequence tip cannot be negative: %s",
+			"genesis assets locked sequence tip cannot be negative: %s",
 			gs.AssetsLockedSequenceTip,
+		)
+	}
+
+	if gs.AssetsUnlockedSequenceTip.IsNegative() {
+		return fmt.Errorf(
+			"genesis assets unlocked sequence tip cannot be negative: %s",
+			gs.AssetsUnlockedSequenceTip,
 		)
 	}
 
