@@ -44,6 +44,26 @@ interface IAssetsBridge {
     );
 
     /**
+     * @notice Emitted when an existing asset is unlocked on the Mezo side of the native bridge.
+     * @param unlockSequenceNumber the sequence number for the specific AssetsUnlocked.
+     * @param recipient The address it's bridged out to on the target chain.
+     * @param token The address of the ERC20 token on the target chain.
+     * @param sender The address bridging out.
+     * @param amount The amount bridged out.
+     * @param chain The chain to which the funds are being bridged out to, for reference
+     *        please see the enum on the MezoBridge contract
+     *        https://github.com/thesis/mezo-portal/blob/main/solidity/contracts/MezoBridge.sol#L22-L27
+     */
+    event AssetsUnlocked(
+        uint256 indexed unlockSequenceNumber,
+        bytes indexed recipient,
+        address indexed token,
+        address sender,
+        uint256 amount,
+        uint8 chain
+    );
+
+    /**
      * @notice Helper function used to enable bridged assets observability.
      */
     function bridge(AssetsLocked[] memory events) external returns (bool);
@@ -102,4 +122,17 @@ interface IAssetsBridge {
      * @return The current assets locked sequence tip of the bridge.
      */
     function getCurrentSequenceTip() external view returns (uint256);
+
+    /**
+     * @notice Initiates the bridge out process by unlocking the given assets on Mezo.
+     * @param token The address of the ERC20 token on Mezo.
+     * @param amount The amount of the ERC20 token to unlock.
+     * @param chain The target chain to bridge out to.
+     * @param recipient The target address to send the funds to.
+              On Ethereum: recipient is a 20-byte EVM address
+              On Bitcoin: recipient is a proper standard-type Bitcoin script
+              supported by tBTC, i.e. P2PKH, P2WPKH, P2SH or P2WSH
+     * @return True if the call succeeded, false otherwise.
+     */
+    function bridgeOut(address token, uint256 amount, uint8 chain, bytes calldata recipient) external returns (bool);
 }

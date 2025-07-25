@@ -1,18 +1,20 @@
 package assetsbridge
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"math/big"
+	"time"
 
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
-	evmtypes "github.com/mezo-org/mezod/x/evm/types"
-
+	"github.com/cosmos/cosmos-sdk/x/authz"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 //go:embed abi.json
@@ -24,7 +26,12 @@ var filesystem embed.FS
 const EvmAddress = evmtypes.AssetsBridgePrecompileAddress
 
 // NewPrecompileVersionMap creates a new version map for the assets bridge precompile.
-func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
+func NewPrecompileVersionMap(
+	poaKeeper PoaKeeper,
+	bridgeKeeper BridgeKeeper,
+	evmKeeper EvmKeeper,
+	authzKeeper AuthzKeeper,
+) (
 	*precompile.VersionMap,
 	error,
 ) {
@@ -32,11 +39,14 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 	contractV1, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
+		evmKeeper,
+		authzKeeper,
 		&Settings{
 			Observability:   true,
 			BTCManagement:   false,
 			ERC20Management: false,
 			SequenceTipView: false,
+			BridgeOut:       false,
 		},
 	)
 	if err != nil {
@@ -47,11 +57,14 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 	contractV2, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
+		evmKeeper,
+		authzKeeper,
 		&Settings{
 			Observability:   true,
 			BTCManagement:   true,
 			ERC20Management: true,
 			SequenceTipView: false,
+			BridgeOut:       false,
 		},
 	)
 	if err != nil {
@@ -62,11 +75,33 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 	contractV3, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
+		evmKeeper,
+		authzKeeper,
 		&Settings{
 			Observability:   true,
 			BTCManagement:   true,
 			ERC20Management: true,
 			SequenceTipView: true,
+			BridgeOut:       false,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// v4 is BTC observability, BTC management, ERC20 management, and sequence tip view,
+	// and bridgeOut method implementation
+	contractV4, err := NewPrecompile(
+		poaKeeper,
+		bridgeKeeper,
+		evmKeeper,
+		authzKeeper,
+		&Settings{
+			Observability:   true,
+			BTCManagement:   true,
+			ERC20Management: true,
+			SequenceTipView: true,
+			BridgeOut:       true,
 		},
 	)
 	if err != nil {
@@ -78,7 +113,8 @@ func NewPrecompileVersionMap(poaKeeper PoaKeeper, bridgeKeeper BridgeKeeper) (
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
 			1: contractV1,
 			2: contractV2,
-			evmtypes.AssetsBridgePrecompileLatestVersion: contractV3,
+			3: contractV3,
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV4,
 		},
 	), nil
 }
@@ -88,12 +124,15 @@ type Settings struct {
 	BTCManagement   bool // enable methods related to the BTC bridging management
 	ERC20Management bool // enable methods related to the ERC20 bridging management
 	SequenceTipView bool // enable the method to expose the sequence tip
+	BridgeOut       bool // enable the bridgeOut method
 }
 
 // NewPrecompile creates a new Assets Bridge precompile.
 func NewPrecompile(
 	poaKeeper PoaKeeper,
 	bridgeKeeper BridgeKeeper,
+	evmKeeper EvmKeeper,
+	authzKeeper AuthzKeeper,
 	settings *Settings,
 ) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
@@ -127,6 +166,10 @@ func NewPrecompile(
 
 	if settings.SequenceTipView {
 		methods = append(methods, newGetCurrentSequenceTipMethod(bridgeKeeper))
+	}
+
+	if settings.BridgeOut {
+		methods = append(methods, newBridgeOutMethod(bridgeKeeper, evmKeeper, authzKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -169,4 +212,36 @@ type BridgeKeeper interface {
 	GetERC20TokensMappings(ctx sdk.Context) []*bridgetypes.ERC20TokenMapping
 	GetERC20TokenMapping(ctx sdk.Context, sourceToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
 	GetParams(ctx sdk.Context) bridgetypes.Params
+	SaveAssetsUnlocked(
+		ctx sdk.Context,
+		token []byte,
+		amount math.Int,
+		chain uint8,
+		recipient []byte,
+	) (*bridgetypes.AssetsUnlockedEvent, error)
+	BurnBTC(
+		ctx sdk.Context,
+		fromAddr []byte,
+		amount math.Int,
+	) error
+}
+
+type EvmKeeper interface {
+	// ExecuteContractCall executes an EVM contract call.
+	ExecuteContractCall(
+		ctx sdk.Context,
+		call evmtypes.ContractCall,
+	) (*evmtypes.MsgEthereumTxResponse, error)
+	// IsContract returns if the account contains contract code.
+	IsContract(ctx sdk.Context, address []byte) bool
+}
+
+type BankKeeper interface {
+	AllBalances(context.Context, *banktypes.QueryAllBalancesRequest) (*banktypes.QueryAllBalancesResponse, error)
+}
+
+type AuthzKeeper interface {
+	GetAuthorization(ctx context.Context, grantee, granter sdk.AccAddress, msgType string) (authz.Authorization, *time.Time)
+	SaveGrant(ctx context.Context, grantee, granter sdk.AccAddress, authorization authz.Authorization, expiration *time.Time) error
+	DeleteGrant(ctx context.Context, grantee, granter sdk.AccAddress, msgType string) error
 }

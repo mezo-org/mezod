@@ -2,6 +2,7 @@ package assetsbridge_test
 
 import (
 	"bytes"
+	"errors"
 	"math/big"
 	"slices"
 	"testing"
@@ -120,9 +121,16 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
+			// Create dummy keepers for the test - these are minimal implementations
+			// For bridge_out tests, use the more complete implementations in bridge_out_test.go
+			evmKeeper := &FakeEvmKeeper{}
+			authzKeeper := &FakeAuthzKeeper{}
+
 			assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 				s.poaKeeper,
 				s.bridgeKeeper,
+				evmKeeper,
+				authzKeeper,
 				&assetsbridge.Settings{
 					Observability:   true,
 					BTCManagement:   true,
@@ -220,6 +228,10 @@ func (k *FakeBridgeKeeper) GetSourceBTCToken(_ sdk.Context) []byte {
 	return k.sourceBTCToken
 }
 
+func (k *FakeBridgeKeeper) BurnBTC(ctx sdk.Context, fromAddr []byte, amount math.Int) error {
+	return nil
+}
+
 func (k *FakeBridgeKeeper) CreateERC20TokenMapping(
 	_ sdk.Context,
 	sourceToken, mezoToken []byte,
@@ -277,4 +289,14 @@ func (k *FakeBridgeKeeper) GetERC20TokenMapping(
 
 func (k *FakeBridgeKeeper) GetParams(_ sdk.Context) bridgetypes.Params {
 	return bridgetypes.DefaultParams()
+}
+
+func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
+	_ sdk.Context,
+	_ []byte,
+	_ math.Int,
+	_ uint8,
+	_ []byte,
+) (*bridgetypes.AssetsUnlockedEvent, error) {
+	return nil, errors.New("unimplemented")
 }

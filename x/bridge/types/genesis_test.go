@@ -16,14 +16,24 @@ func TestGenesisState_Validate(t *testing.T) {
 		errContains string
 	}{
 		{
-			desc: "negative sequence tip",
+			desc: "negative assets locked sequence tip",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
 				genState.AssetsLockedSequenceTip = sdkmath.NewInt(-1)
 				return genState
 			},
 			valid:       false,
-			errContains: "genesis sequence tip cannot be negative",
+			errContains: "genesis assets locked sequence tip cannot be negative",
+		},
+		{
+			desc: "negative assets unlocked sequence tip",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.AssetsUnlockedSequenceTip = sdkmath.NewInt(-1)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis assets unlocked sequence tip cannot be negative",
 		},
 		{
 			desc:        "missing source btc token",

@@ -74,6 +74,15 @@ func (mbk *mockBankKeeper) MintCoins(
 	return args.Error(0)
 }
 
+func (mbk *mockBankKeeper) BurnCoins(
+	ctx context.Context,
+	moduleName string,
+	amt sdk.Coins,
+) error {
+	args := mbk.Called(ctx, moduleName, amt)
+	return args.Error(0)
+}
+
 func (mbk *mockBankKeeper) GetSupply(
 	ctx context.Context,
 	denom string,
@@ -97,6 +106,16 @@ func (mbk *mockBankKeeper) SendCoinsFromModuleToAccount(
 	amt sdk.Coins,
 ) error {
 	args := mbk.Called(ctx, senderModule, recipientAddr, amt)
+	return args.Error(0)
+}
+
+func (mbk *mockBankKeeper) SendCoinsFromAccountToModule(
+	ctx context.Context,
+	senderAddr sdk.AccAddress,
+	recipientModule string,
+	amt sdk.Coins,
+) error {
+	args := mbk.Called(ctx, senderAddr, recipientModule, amt)
 	return args.Error(0)
 }
 
