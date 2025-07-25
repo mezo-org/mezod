@@ -244,6 +244,16 @@ func (m *BridgeOutMethod) validate(
 	inputs *bridgeOutInputs,
 ) error {
 	sdkCtx := context.SdkCtx()
+
+	_, ok := inputs.Chain.Validate()
+	if !ok {
+		return fmt.Errorf("unsupported chain: %v", inputs.Chain)
+	}
+
+	if err := m.validateRecipientForChain(inputs.Chain, inputs.Recipient); err != nil {
+		return err
+	}
+
 	// first check that the token is either BTC or a supported ERC20
 	if !m.isValidToken(sdkCtx, inputs.Token, inputs.Chain) {
 		return fmt.Errorf("unsupported token: %v", inputs.Token)
@@ -307,18 +317,11 @@ func (m *BridgeOutMethod) extractInputs(inputs precompile.MethodInputs) (*bridge
 		return nil, fmt.Errorf("invalid chain: %v", inputs[2])
 	}
 
-	chain, ok := TargetChain(chainRaw).Validate()
-	if !ok {
-		return nil, fmt.Errorf("unsupported chain: %v", inputs[2])
-	}
+	chain := TargetChain(chainRaw)
 
 	recipient, ok := inputs[3].([]byte)
 	if !ok {
 		return nil, fmt.Errorf("invalid recipient address: %v", inputs[3])
-	}
-
-	if err := m.validateRecipientForChain(chain, recipient); err != nil {
-		return nil, err
 	}
 
 	return &bridgeOutInputs{
