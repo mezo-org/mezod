@@ -379,8 +379,8 @@ const AssetsUnlockedEventName = "AssetsUnlocked"
 // the following arguments:
 // - unlockSequenceNumber (indexed): the sequenceNumber of this AssetsUnlocked
 // - recipient (indexed): the address to which the tokens are transferred
-// - token (non-indexed): the token being bridged out.
-// - sender (indexed): the address from which the tokens are bridged out,
+// - token (indexed): the token being bridged out.
+// - sender (non-indexed): the address from which the tokens are bridged out,
 // - amount (non-indexed): the amount of tokens transferred
 // - chain (non-indexed): the destination chain
 type AssetsUnlockedEvent struct {
