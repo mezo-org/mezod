@@ -146,7 +146,7 @@ func (m *AssetsLockedEvent) GetToken() string {
 // AssetsUnlockedEvent represents the event where inbound assets are released
 // from the bridge.
 type AssetsUnlockedEvent struct {
-	// sequence is the unique identifier of the event.
+	// unlock_sequence is the unique identifier of the event.
 	UnlockSequence cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=unlock_sequence,json=unlockSequence,proto3,customtype=cosmossdk.io/math.Int" json:"unlock_sequence"`
 	// recipient is the account address to receive the unlocked assets on the
 	// target chain.
