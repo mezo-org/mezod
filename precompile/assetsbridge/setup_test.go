@@ -228,6 +228,10 @@ func (k *FakeBridgeKeeper) GetSourceBTCToken(_ sdk.Context) []byte {
 	return k.sourceBTCToken
 }
 
+func (k *FakeBridgeKeeper) BurnBTC(ctx sdk.Context, fromAddr []byte, amount math.Int) error {
+	return nil
+}
+
 func (k *FakeBridgeKeeper) CreateERC20TokenMapping(
 	_ sdk.Context,
 	sourceToken, mezoToken []byte,

@@ -33,6 +33,9 @@ type BankKeeper interface {
 	// MintCoins creates new coins and adds them to the module account.
 	MintCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
 
+	// BurnCoins burns coin from the module account.
+	BurnCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
+
 	// GetSupply retrieves the Supply from store
 	GetSupply(ctx context.Context, denom string) sdk.Coin
 
@@ -42,6 +45,15 @@ type BankKeeper interface {
 		ctx context.Context,
 		senderModule string,
 		recipientAddr sdk.AccAddress,
+		amt sdk.Coins,
+	) error
+
+	// SendCoinsFromAccountToModule sends coins from the sender account to the
+	// module account.
+	SendCoinsFromAccountToModule(
+		ctx context.Context,
+		senderAddr sdk.AccAddress,
+		recipientModule string,
 		amt sdk.Coins,
 	) error
 }

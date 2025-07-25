@@ -119,3 +119,28 @@ func (k Keeper) SaveAssetsUnlocked(
 
 	return assetsUnlocked, nil
 }
+
+func (k Keeper) BurnBTC(
+	ctx sdk.Context,
+	fromAddr []byte,
+	amount math.Int,
+) error {
+	coins := sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, amount))
+
+	err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, fromAddr, types.ModuleName, coins)
+	if err != nil {
+		return err
+	}
+
+	err = k.bankKeeper.BurnCoins(ctx, types.ModuleName, coins)
+	if err != nil {
+		return err
+	}
+
+	err = k.IncreaseBTCBurnt(ctx, amount)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

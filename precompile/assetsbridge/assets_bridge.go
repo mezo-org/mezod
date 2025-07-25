@@ -219,6 +219,11 @@ type BridgeKeeper interface {
 		chain uint8,
 		recipient []byte,
 	) (*bridgetypes.AssetsUnlockedEvent, error)
+	BurnBTC(
+		ctx sdk.Context,
+		fromAddr []byte,
+		amount math.Int,
+	) error
 }
 
 type EvmKeeper interface {
@@ -237,5 +242,6 @@ type BankKeeper interface {
 
 type AuthzKeeper interface {
 	GetAuthorization(ctx context.Context, grantee, granter sdk.AccAddress, msgType string) (authz.Authorization, *time.Time)
-	DispatchActions(ctx context.Context, grantee sdk.AccAddress, msgs []sdk.Msg) ([][]byte, error)
+	SaveGrant(ctx context.Context, grantee, granter sdk.AccAddress, authorization authz.Authorization, expiration *time.Time) error
+	DeleteGrant(ctx context.Context, grantee, granter sdk.AccAddress, msgType string) error
 }
