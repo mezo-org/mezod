@@ -110,11 +110,11 @@ func (m *BridgeOutMethod) execute(
 	if assetsUnlocked != nil {
 		err := context.EventEmitter().Emit(
 			NewAssetsUnlockedEvent(
-				context.MsgSender(),
-				common.HexToAddress(assetsUnlocked.Token),
-				assetsUnlocked.Recipient,
-				uint8(assetsUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
 				assetsUnlocked.UnlockSequence.BigInt(),
+				assetsUnlocked.Recipient,
+				common.HexToAddress(assetsUnlocked.Token),
+				context.MsgSender(),
+				uint8(assetsUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
 				assetsUnlocked.Amount.BigInt(),
 			),
 		)
@@ -392,17 +392,18 @@ type AssetsUnlockedEvent struct {
 }
 
 func NewAssetsUnlockedEvent(
-	from, token common.Address,
-	recipient []byte,
-	chain uint8,
 	sequenceNumber *big.Int,
+	recipient []byte,
+	token common.Address,
+	sender common.Address,
+	chain uint8,
 	amount *big.Int,
 ) *AssetsUnlockedEvent {
 	return &AssetsUnlockedEvent{
-		sender:               from,
+		unlockSequenceNumber: sequenceNumber,
 		recipient:            recipient,
 		token:                token,
-		unlockSequenceNumber: sequenceNumber,
+		sender:               sender,
 		amount:               amount,
 		chain:                chain,
 	}
