@@ -167,8 +167,6 @@ func (m *BridgeOutMethod) executeEthereum(
 		inputs.Recipient,
 	)
 	if err != nil {
-		// TODO(JEREMY): error happened here, funds might have been
-		// lost, should we panic?
 		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
 	}
 
@@ -217,8 +215,6 @@ func (m *BridgeOutMethod) executeBitcoin(
 		inputs.Recipient,
 	)
 	if err != nil {
-		// TODO(JEREMY): error happened here, funds might have been
-		// lost, should we panic?
 		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
 	}
 
