@@ -99,18 +99,23 @@ func (k Keeper) AssetsUnlocked(
 		return nil, fmt.Errorf("unknown token %v", hex.EncodeToString(token))
 	}
 
+	// calculate the next unlock sequence
+	nextSequence := k.GetAssetsUnlockedSequenceTip(ctx).AddRaw(1)
+
+	// save it
+	k.setAssetsUnlockedSequenceTip(
+		ctx, nextSequence,
+	)
+
+	// then save the event
 	assetsUnlocked := &types.AssetsUnlockedEvent{
-		UnlockSequence: k.GetAssetsUnlockedSequenceTip(ctx),
+		UnlockSequence: nextSequence,
 		Recipient:      recipient,
 		Amount:         amount,
 		Token:          targetToken,
 		Chain:          uint32(chain),
 	}
-
 	k.saveAssetsUnlocked(ctx, assetsUnlocked)
-	k.setAssetsUnlockedSequenceTip(
-		ctx, assetsUnlocked.UnlockSequence.AddRaw(1),
-	)
 
 	return assetsUnlocked, nil
 }
