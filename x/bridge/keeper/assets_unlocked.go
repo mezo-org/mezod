@@ -73,7 +73,7 @@ func (k Keeper) GetAssetsUnlocked(
 	return &assetsUnlocked
 }
 
-func (k Keeper) AssetsUnlocked(
+func (k Keeper) SaveAssetsUnlocked(
 	ctx sdk.Context,
 	token []byte,
 	amount math.Int,
