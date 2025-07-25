@@ -2,6 +2,7 @@ package assetsbridge
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -337,11 +338,11 @@ func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient
 	case TargetChainEthereum:
 		// here we just check the length, the zero address have been tested before already
 		if len(recipient) != 20 {
-			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", common.BytesToAddress(recipient))
+			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", hex.EncodeToString(recipient))
 		}
 	case TargetChainBitcoin:
 		if keepbtc.GetScriptType(recipient) == keepbtc.NonStandardScript {
-			return fmt.Errorf("invalid recipient address format for Bitcoin: %v", recipient)
+			return fmt.Errorf("invalid recipient address format for Bitcoin: %v", hex.EncodeToString(recipient))
 		}
 	}
 

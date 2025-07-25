@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 
 	"cosmossdk.io/math"
@@ -95,7 +96,7 @@ func (k Keeper) AssetsUnlocked(
 	}
 
 	if len(targetToken) == 0 {
-		return nil, fmt.Errorf("unknown token %v", token)
+		return nil, fmt.Errorf("unknown token %v", hex.EncodeToString(token))
 	}
 
 	assetsUnlocked := &types.AssetsUnlockedEvent{
