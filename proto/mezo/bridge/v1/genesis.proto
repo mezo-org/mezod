@@ -19,9 +19,9 @@ message GenesisState {
     (gogoproto.nullable) = false
   ];
 
-  // source_btc_token is the hex-encoded EVM address of the BTC token on the source chain.
-  // AssetsLocked events carrying this token address are directly mapped to the
-  // Mezo native denomination - BTC.
+  // source_btc_token is the hex-encoded EVM address of the BTC token on the
+  // source chain. AssetsLocked events carrying this token address are directly
+  // mapped to the Mezo native denomination - BTC.
   string source_btc_token = 3;
 
   // erc20_tokens_mappings is the list of ERC20 token mappings supported by the
@@ -36,9 +36,9 @@ message GenesisState {
     (gogoproto.nullable) = false
   ];
 
-  // assets_unlocked_sequence_tip is the current sequence tip for the AssetsUnlocked
-  // events. The tip denotes the sequence number of the last event processed by
-  // the x/bridge module.
+  // assets_unlocked_sequence_tip is the current sequence tip for the
+  // AssetsUnlocked events. The tip denotes the sequence number of the last
+  // event processed by the x/bridge module.
   string assets_unlocked_sequence_tip = 6 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false

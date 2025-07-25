@@ -31,7 +31,8 @@ type GenesisState struct {
 	Owner string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
 	// validators defines the initial list of validators.
 	Validators []Validator `protobuf:"bytes,3,rep,name=validators,proto3" json:"validators"`
-	// privilege_assignments defines the initial list of validator privilege assignments.
+	// privilege_assignments defines the initial list of validator privilege
+	// assignments.
 	PrivilegeAssignments []ValidatorPrivilegeAssignment `protobuf:"bytes,4,rep,name=privilege_assignments,json=privilegeAssignments,proto3" json:"privilege_assignments"`
 }
 
