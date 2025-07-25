@@ -43,7 +43,7 @@ message AssetsLockedEvent {
 // AssetsUnlockedEvent represents the event where inbound assets are released
 // from the bridge.
 message AssetsUnlockedEvent {
-  // sequence is the unique identifier of the event.
+  // unlock_sequence is the unique identifier of the event.
   string unlock_sequence = 1 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
