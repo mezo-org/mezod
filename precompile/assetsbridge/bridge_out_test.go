@@ -279,7 +279,7 @@ func NewExtendedFakeBridgeKeeper(sourceBTCToken []byte) *ExtendedFakeBridgeKeepe
 	}
 }
 
-func (k *ExtendedFakeBridgeKeeper) AssetsUnlocked(
+func (k *ExtendedFakeBridgeKeeper) SaveAssetsUnlocked(
 	_ sdk.Context,
 	token []byte,
 	amount math.Int,

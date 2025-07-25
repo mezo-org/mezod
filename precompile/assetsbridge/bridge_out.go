@@ -159,7 +159,7 @@ func (m *BridgeOutMethod) executeEthereum(
 		return nil, fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
 	}
 
-	assetsUnlocked, err := m.bridgeKeeper.AssetsUnlocked(
+	assetsUnlocked, err := m.bridgeKeeper.SaveAssetsUnlocked(
 		sdkCtx,
 		inputs.Token.Bytes(),
 		sdkAmount,
@@ -207,7 +207,7 @@ func (m *BridgeOutMethod) executeBitcoin(
 		return nil, err
 	}
 
-	assetsUnlocked, err := m.bridgeKeeper.AssetsUnlocked(
+	assetsUnlocked, err := m.bridgeKeeper.SaveAssetsUnlocked(
 		context.SdkCtx(),
 		inputs.Token.Bytes(),
 		sdkAmount,

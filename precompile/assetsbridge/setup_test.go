@@ -287,7 +287,7 @@ func (k *FakeBridgeKeeper) GetParams(_ sdk.Context) bridgetypes.Params {
 	return bridgetypes.DefaultParams()
 }
 
-func (k *FakeBridgeKeeper) AssetsUnlocked(
+func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
 	_ sdk.Context,
 	_ []byte,
 	_ math.Int,
