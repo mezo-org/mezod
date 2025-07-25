@@ -29,7 +29,6 @@ const EvmAddress = evmtypes.AssetsBridgePrecompileAddress
 func NewPrecompileVersionMap(
 	poaKeeper PoaKeeper,
 	bridgeKeeper BridgeKeeper,
-	bankKeeper BankKeeper,
 	evmKeeper EvmKeeper,
 	authzKeeper AuthzKeeper,
 ) (
@@ -40,7 +39,6 @@ func NewPrecompileVersionMap(
 	contractV1, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
-		bankKeeper,
 		evmKeeper,
 		authzKeeper,
 		&Settings{
@@ -59,7 +57,6 @@ func NewPrecompileVersionMap(
 	contractV2, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
-		bankKeeper,
 		evmKeeper,
 		authzKeeper,
 		&Settings{
@@ -78,7 +75,6 @@ func NewPrecompileVersionMap(
 	contractV3, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
-		bankKeeper,
 		evmKeeper,
 		authzKeeper,
 		&Settings{
@@ -98,7 +94,6 @@ func NewPrecompileVersionMap(
 	contractV4, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
-		bankKeeper,
 		evmKeeper,
 		authzKeeper,
 		&Settings{
@@ -136,7 +131,6 @@ type Settings struct {
 func NewPrecompile(
 	poaKeeper PoaKeeper,
 	bridgeKeeper BridgeKeeper,
-	bankKeeper BankKeeper,
 	evmKeeper EvmKeeper,
 	authzKeeper AuthzKeeper,
 	settings *Settings,
@@ -175,7 +169,7 @@ func NewPrecompile(
 	}
 
 	if settings.BridgeOut {
-		methods = append(methods, newBridgeOutMethod(bridgeKeeper, bankKeeper, evmKeeper, authzKeeper))
+		methods = append(methods, newBridgeOutMethod(bridgeKeeper, evmKeeper, authzKeeper))
 	}
 
 	contract.RegisterMethods(methods...)

@@ -43,32 +43,6 @@ func makeValidScript(address string) []byte {
 	return append(recipient, []byte{0x88, 0xac}...)
 }
 
-type FakeBankKeeper struct {
-	balances map[string]sdk.Coins
-}
-
-func NewFakeBankKeeper() *FakeBankKeeper {
-	return &FakeBankKeeper{
-		balances: make(map[string]sdk.Coins),
-	}
-}
-
-func (k *FakeBankKeeper) AllBalances(_ context.Context, req *banktypes.QueryAllBalancesRequest) (*banktypes.QueryAllBalancesResponse, error) {
-	addr := req.Address
-	if coins, ok := k.balances[addr]; ok {
-		return &banktypes.QueryAllBalancesResponse{
-			Balances: coins,
-		}, nil
-	}
-	return &banktypes.QueryAllBalancesResponse{
-		Balances: sdk.Coins{},
-	}, nil
-}
-
-func (k *FakeBankKeeper) SetBalance(addr string, coins sdk.Coins) {
-	k.balances[addr] = coins
-}
-
 type FakeEvmKeeper struct {
 	contracts       map[string]bool
 	callResponses   map[string]*evmtypes.MsgEthereumTxResponse
@@ -347,7 +321,6 @@ func (k *ExtendedFakeBridgeKeeper) Reset() {
 type BridgeOutTestSuite struct {
 	PrecompileTestSuite
 
-	bankKeeper      *FakeBankKeeper
 	evmKeeper       *FakeEvmKeeper
 	authzKeeper     *FakeAuthzKeeper
 	extBridgeKeeper *ExtendedFakeBridgeKeeper
@@ -360,7 +333,6 @@ func TestBridgeOutTestSuite(t *testing.T) {
 func (s *BridgeOutTestSuite) SetupTest() {
 	s.PrecompileTestSuite.SetupTest()
 
-	s.bankKeeper = NewFakeBankKeeper()
 	s.evmKeeper = NewFakeEvmKeeper()
 	s.authzKeeper = NewFakeAuthzKeeper()
 	s.extBridgeKeeper = NewExtendedFakeBridgeKeeper(testBTCToken.Bytes())
@@ -374,7 +346,6 @@ func (s *BridgeOutTestSuite) TestInstantiateAssetBridge() {
 	assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 		s.poaKeeper,
 		s.extBridgeKeeper,
-		s.bankKeeper,
 		s.evmKeeper,
 		s.authzKeeper,
 		&assetsbridge.Settings{
@@ -975,7 +946,6 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 			assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 				s.poaKeeper,
 				s.extBridgeKeeper,
-				s.bankKeeper,
 				s.evmKeeper,
 				s.authzKeeper,
 				&assetsbridge.Settings{
