@@ -113,8 +113,8 @@ func (k Keeper) SaveAssetsUnlocked(
 	assetsUnlocked := &types.AssetsUnlockedEvent{
 		UnlockSequence: nextSequence,
 		Recipient:      recipient,
-		Amount:         amount,
 		Token:          targetToken,
+		Amount:         amount,
 		Chain:          uint32(chain),
 	}
 	k.saveAssetsUnlocked(ctx, assetsUnlocked)

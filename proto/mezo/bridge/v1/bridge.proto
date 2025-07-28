@@ -51,13 +51,13 @@ message AssetsUnlockedEvent {
   // recipient is the account address to receive the unlocked assets on the
   // target chain.
   bytes recipient = 2;
+  // token is the hex-encoded EVM address of the bridged token.
+  string token = 3;
   // amount of assets unlocked, in token-specific precision.
-  string amount = 3 [
+  string amount = 4 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
-  // token is the hex-encoded EVM address of the bridged token.
-  string token = 4;
   // chain is the target chain for this unlock event
   uint32 chain = 5;
 }
