@@ -258,10 +258,11 @@ func NewExtendedFakeBridgeKeeper(sourceBTCToken []byte) *ExtendedFakeBridgeKeepe
 
 func (k *ExtendedFakeBridgeKeeper) SaveAssetsUnlocked(
 	_ sdk.Context,
+	recipient []byte,
 	token []byte,
+	sender []byte,
 	amount math.Int,
 	chain uint8,
-	recipient []byte,
 ) (*bridgetypes.AssetsUnlockedEvent, error) {
 	k.assetsUnlockedCalled = true
 

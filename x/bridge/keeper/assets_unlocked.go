@@ -77,10 +77,11 @@ func (k Keeper) GetAssetsUnlocked(
 
 func (k Keeper) SaveAssetsUnlocked(
 	ctx sdk.Context,
+	recipient []byte,
 	token []byte,
+	sender []byte,
 	amount math.Int,
 	chain uint8,
-	recipient []byte,
 ) (*types.AssetsUnlockedEvent, error) {
 	var targetToken string
 	// is it the btc token?
@@ -114,6 +115,7 @@ func (k Keeper) SaveAssetsUnlocked(
 		UnlockSequence: nextSequence,
 		Recipient:      recipient,
 		Token:          targetToken,
+		Sender:         sender,
 		Amount:         amount,
 		Chain:          uint32(chain),
 	}

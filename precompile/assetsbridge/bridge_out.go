@@ -95,13 +95,13 @@ func (m *BridgeOutMethod) execute(
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
 	}
-
 	assetsUnlocked, err := m.bridgeKeeper.SaveAssetsUnlocked(
 		context.SdkCtx(),
+		inputs.Recipient,
 		inputs.Token.Bytes(),
+		context.MsgSender().Bytes(),
 		sdkAmount,
 		uint8(inputs.Chain),
-		inputs.Recipient,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)

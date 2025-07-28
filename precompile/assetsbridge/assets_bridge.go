@@ -207,10 +207,11 @@ type BridgeKeeper interface {
 	GetParams(ctx sdk.Context) bridgetypes.Params
 	SaveAssetsUnlocked(
 		ctx sdk.Context,
+		recipient []byte,
 		token []byte,
+		sender []byte,
 		amount math.Int,
 		chain uint8,
-		recipient []byte,
 	) (*bridgetypes.AssetsUnlockedEvent, error)
 	BurnBTC(
 		ctx sdk.Context,

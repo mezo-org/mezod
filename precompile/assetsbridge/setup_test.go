@@ -302,9 +302,10 @@ func (k *FakeBridgeKeeper) GetParams(_ sdk.Context) bridgetypes.Params {
 func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
 	_ sdk.Context,
 	_ []byte,
+	_ []byte,
+	_ []byte,
 	_ math.Int,
 	_ uint8,
-	_ []byte,
 ) (*bridgetypes.AssetsUnlockedEvent, error) {
 	return nil, errors.New("unimplemented")
 }
