@@ -198,8 +198,26 @@ func (m *BridgeOutMethod) burnBitcoin(
 	}
 	coin := sdk.Coin{Denom: evmtypes.DefaultEVMDenom, Amount: sdkAmount}
 
-	if err := m.validateAuthorizationLimits(sendAuth, coin); err != nil {
-		return fmt.Errorf("authorization validation failed: %w", err)
+	// now update the authorization to spend for the AssetsBridge
+	msg := banktypes.NewMsgSend(senderAddr.Bytes(), bridgeAddr.Bytes(), sdk.NewCoins(coin))
+	resp, err := sendAuth.Accept(context.SdkCtx(), msg)
+	if err != nil {
+		return fmt.Errorf("couldn't update authorization: %w", err)
+	}
+
+	if resp.Delete {
+		// Authorization fully consumed, delete it
+		err = m.authzKeeper.DeleteGrant(context.SdkCtx(), bridgeAddr, senderAddr, SendMsgURL)
+	} else if resp.Updated != nil {
+		err = m.authzKeeper.SaveGrant(context.SdkCtx(), bridgeAddr, senderAddr, resp.Updated, expiration)
+	}
+
+	if err != nil {
+		return fmt.Errorf("bridge is not authorized to burn BTC: %w", err)
+	}
+
+	if !resp.Accept {
+		return errors.New("bridge is not authorized to burn BTC")
 	}
 
 	if err := m.bridgeKeeper.BurnBTC(
@@ -208,24 +226,6 @@ func (m *BridgeOutMethod) burnBitcoin(
 		sdkAmount,
 	); err != nil {
 		return fmt.Errorf("couldn't burn BTC: %w", err)
-	}
-
-	// now update the authorization to spend for the AssetsBridge
-	msg := banktypes.NewMsgSend(senderAddr.Bytes(), bridgeAddr.Bytes(), sdk.NewCoins(coin))
-	resp, err := sendAuth.Accept(context.SdkCtx(), msg)
-	if err != nil {
-		return fmt.Errorf("couldn't update authorization: %w", err)
-	}
-
-	if resp.Updated != nil {
-		err = m.authzKeeper.SaveGrant(context.SdkCtx(), bridgeAddr, senderAddr, resp.Updated, expiration)
-	} else {
-		// Authorization fully consumed, delete it
-		err = m.authzKeeper.DeleteGrant(context.SdkCtx(), bridgeAddr, senderAddr, SendMsgURL)
-	}
-
-	if err != nil {
-		return fmt.Errorf("couldn't update authorization: %w", err)
 	}
 
 	// finally update the journal entries to propagate the changes
@@ -239,31 +239,6 @@ func (m *BridgeOutMethod) burnBitcoin(
 	// burnt funds
 	journal := context.Journal()
 	journal.SubBalance(common.BytesToAddress(senderAddr.Bytes()), balanceDelta, tracing.BalanceChangeTransfer)
-
-	return nil
-}
-
-func (m *BridgeOutMethod) validateAuthorizationLimits(
-	sendAuth *banktypes.SendAuthorization,
-	requestedCoin sdk.Coin,
-) error {
-	if sendAuth.SpendLimit == nil || sendAuth.SpendLimit.Empty() {
-		return fmt.Errorf("no allowance for %v", requestedCoin.Denom)
-	}
-
-	allowedAmount := sendAuth.SpendLimit.AmountOf(requestedCoin.Denom)
-	if allowedAmount.IsZero() {
-		return fmt.Errorf("no allowance for %s", requestedCoin.Denom)
-	}
-
-	if requestedCoin.Amount.GT(allowedAmount) {
-		return fmt.Errorf(
-			"requested amount %s exceeds allowed amount %s for %s",
-			requestedCoin.Amount,
-			allowedAmount,
-			requestedCoin.Denom,
-		)
-	}
 
 	return nil
 }
