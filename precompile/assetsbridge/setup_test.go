@@ -214,6 +214,8 @@ type FakeBridgeKeeper struct {
 	sourceBTCToken      []byte
 	erc20TokensMappings []*bridgetypes.ERC20TokenMapping
 	currentSequenceTip  math.Int
+
+	burnErr error
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -228,8 +230,12 @@ func (k *FakeBridgeKeeper) GetSourceBTCToken(_ sdk.Context) []byte {
 	return k.sourceBTCToken
 }
 
-func (k *FakeBridgeKeeper) BurnBTC(ctx sdk.Context, fromAddr []byte, amount math.Int) error {
-	return nil
+func (k *FakeBridgeKeeper) BurnBTC(_ sdk.Context, _ []byte, _ math.Int) error {
+	return k.burnErr
+}
+
+func (k *FakeBridgeKeeper) SetBurnError(err error) {
+	k.burnErr = err
 }
 
 func (k *FakeBridgeKeeper) CreateERC20TokenMapping(

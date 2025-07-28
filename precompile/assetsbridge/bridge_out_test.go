@@ -211,11 +211,8 @@ func (k *FakeEvmKeeper) Reset() {
 }
 
 type FakeAuthzKeeper struct {
-	authorizations   map[string]authz.Authorization
-	expirations      map[string]*time.Time
-	dispatchCalled   bool
-	dispatchSuccess  bool
-	lastDispatchMsgs []sdk.Msg
+	authorizations map[string]authz.Authorization
+	expirations    map[string]*time.Time
 }
 
 func NewFakeAuthzKeeper() *FakeAuthzKeeper {
@@ -230,38 +227,18 @@ func (k *FakeAuthzKeeper) GetAuthorization(_ context.Context, grantee, granter s
 	return k.authorizations[key], k.expirations[key]
 }
 
-func (k *FakeAuthzKeeper) DispatchActions(_ context.Context, _ sdk.AccAddress, msgs []sdk.Msg) ([][]byte, error) {
-	k.dispatchCalled = true
-	k.lastDispatchMsgs = msgs
-
-	if !k.dispatchSuccess {
-		return nil, errors.New("dispatch failed")
-	}
-
-	results := make([][]byte, len(msgs))
-	for i := range msgs {
-		results[i] = []byte("success")
-	}
-	return results, nil
-}
-
 func (k *FakeAuthzKeeper) SetAuthorization(granter, grantee sdk.AccAddress, msgType string, auth authz.Authorization, expiration *time.Time) {
 	key := fmt.Sprintf("%s-%s-%s", grantee.String(), granter.String(), msgType)
 	k.authorizations[key] = auth
 	k.expirations[key] = expiration
 }
 
-func (k *FakeAuthzKeeper) SetDispatchSuccess(success bool) {
-	k.dispatchSuccess = success
+func (k *FakeAuthzKeeper) DeleteGrant(_ context.Context, _, _ sdk.AccAddress, _ string) error {
+	return nil
 }
 
-func (k *FakeAuthzKeeper) DispatchCalled() bool {
-	return k.dispatchCalled
-}
-
-func (k *FakeAuthzKeeper) Reset() {
-	k.dispatchCalled = false
-	k.lastDispatchMsgs = nil
+func (k *FakeAuthzKeeper) SaveGrant(_ context.Context, _, _ sdk.AccAddress, _ authz.Authorization, _ *time.Time) error {
+	return nil
 }
 
 type ExtendedFakeBridgeKeeper struct {
@@ -316,6 +293,7 @@ func (k *ExtendedFakeBridgeKeeper) AssetsUnlockedCalled() bool {
 func (k *ExtendedFakeBridgeKeeper) Reset() {
 	k.assetsUnlockedCalled = false
 	k.lastAssetsUnlocked = nil
+	k.burnErr = nil
 }
 
 type BridgeOutTestSuite struct {
@@ -530,7 +508,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 					},
 					nil,
 				)
-				s.authzKeeper.SetDispatchSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
@@ -539,10 +516,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 			basicPass: true,
 			output:    []interface{}{true},
 			postCheck: func() {
-				// Verify dispatch was called
-				s.Require().True(s.authzKeeper.DispatchCalled())
-				s.Require().Len(s.authzKeeper.lastDispatchMsgs, 1)
-
 				// Verify AssetsUnlocked was called
 				s.Require().True(s.extBridgeKeeper.AssetsUnlockedCalled())
 				s.Require().NotNil(s.extBridgeKeeper.lastAssetsUnlocked)
@@ -555,6 +528,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 			name: "transfer failure",
 			run: func() []interface{} {
 				// Setup ERC20 allowance first
+				s.extBridgeKeeper.SetBurnError(errors.New("burn failed"))
 				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
 				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
 
@@ -567,14 +541,13 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 					},
 					nil,
 				)
-				s.authzKeeper.SetDispatchSuccess(false)
 
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
 			},
 			as:          s.account1.EvmAddr,
 			basicPass:   true,
 			revert:      true,
-			errContains: "dispatch failed",
+			errContains: "burn failed",
 		},
 		{
 			name: "AssetsUnlocked failure after transfer",
@@ -592,7 +565,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 					},
 					nil,
 				)
-				s.authzKeeper.SetDispatchSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(false)
 
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
@@ -601,10 +573,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 			basicPass:   true,
 			revert:      true,
 			errContains: "failed to send AssetsUnlocked to bridge",
-			postCheck: func() {
-				// Verify transfer was still called (critical: funds may be lost)
-				s.Require().True(s.authzKeeper.DispatchCalled())
-			},
+			postCheck:   func() {},
 		},
 		{
 			name: "valid P2PKH bitcoin address",
@@ -622,7 +591,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 					},
 					nil,
 				)
-				s.authzKeeper.SetDispatchSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 
 				// Valid P2PKH address (starts with '1')
@@ -650,7 +618,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 					},
 					nil,
 				)
-				s.authzKeeper.SetDispatchSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 
 				p2shAddress := []byte("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy")
@@ -680,7 +647,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 					},
 					nil,
 				)
-				s.authzKeeper.SetDispatchSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 
 				bech32Address := []byte("notvalidaddress")
@@ -690,7 +656,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 			as:          s.account1.EvmAddr,
 			revert:      true,
 			basicPass:   true,
-			errContains: "invalid recipient address format for Bitcoin",
+			errContains: "invalid recipient address for Bitcoin",
 			output:      []interface{}{false},
 		},
 	}
@@ -753,7 +719,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinAuthorization() {
 					},
 					nil,
 				)
-				s.authzKeeper.SetDispatchSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
 			},
@@ -880,7 +845,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 			as:          s.account1.EvmAddr,
 			basicPass:   true,
 			revert:      true,
-			errContains: "invalid recipient address format for Ethereum chain",
+			errContains: "invalid recipient address for Ethereum chain",
 		},
 		{
 			name: "bitcoin recipient - invalid address",
@@ -890,7 +855,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 			as:          s.account1.EvmAddr,
 			basicPass:   true,
 			revert:      true,
-			errContains: "invalid recipient address format for Bitcoin",
+			errContains: "invalid recipient address for Bitcoin",
 		},
 		{
 			name: "valid ethereum inputs",
@@ -919,7 +884,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 					},
 					nil,
 				)
-				s.authzKeeper.SetDispatchSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
 			},
@@ -936,7 +900,6 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 		s.Run(tc.name, func() {
 			// Reset keepers state
 			s.evmKeeper.Reset()
-			s.authzKeeper.Reset()
 			s.extBridgeKeeper.Reset()
 
 			evm := &vm.EVM{

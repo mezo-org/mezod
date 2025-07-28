@@ -229,7 +229,11 @@ func (m *BridgeOutMethod) executeBitcoin(
 		err = m.authzKeeper.SaveGrant(context.SdkCtx(), bridgeAddr, senderAddr, resp.Updated, expiration)
 	} else {
 		// Authorization fully consumed, delete it
-		m.authzKeeper.DeleteGrant(context.SdkCtx(), bridgeAddr, senderAddr, SendMsgURL)
+		err = m.authzKeeper.DeleteGrant(context.SdkCtx(), bridgeAddr, senderAddr, SendMsgURL)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("couldn't update authorization: %w", err)
 	}
 
 	assetsUnlocked, err := m.bridgeKeeper.SaveAssetsUnlocked(
