@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/btcsuite/btcd/txscript"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
-	keepbtc "github.com/keep-network/keep-core/pkg/bitcoin"
 	"github.com/mezo-org/mezod/precompile"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -413,7 +413,7 @@ func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient
 			return fmt.Errorf("invalid recipient address for Ethereum chain: %v", hex.EncodeToString(recipient))
 		}
 	case TargetChainBitcoin:
-		if keepbtc.GetScriptType(recipient) == keepbtc.NonStandardScript {
+		if !isSupportedBitcoinScriptType(recipient) {
 			return fmt.Errorf("invalid recipient address for Bitcoin: %v", hex.EncodeToString(recipient))
 		}
 	}
@@ -512,5 +512,15 @@ func (te *AssetsUnlockedEvent) Arguments() []*precompile.EventArgument {
 			Indexed: false,
 			Value:   te.chain,
 		},
+	}
+}
+
+func isSupportedBitcoinScriptType(script []byte) bool {
+	switch txscript.GetScriptClass(script) {
+	case txscript.PubKeyHashTy, txscript.WitnessV0PubKeyHashTy,
+		txscript.ScriptHashTy, txscript.WitnessV0ScriptHashTy:
+		return true
+	default:
+		return false
 	}
 }
