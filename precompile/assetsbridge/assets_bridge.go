@@ -232,8 +232,6 @@ type EvmKeeper interface {
 		ctx sdk.Context,
 		call evmtypes.ContractCall,
 	) (*evmtypes.MsgEthereumTxResponse, error)
-	// IsContract returns if the account contains contract code.
-	IsContract(ctx sdk.Context, address []byte) bool
 }
 
 type BankKeeper interface {
