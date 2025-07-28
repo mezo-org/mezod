@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -88,9 +87,8 @@ func (m *BridgeOutMethod) execute(
 	inputs *bridgeOutInputs,
 ) (precompile.MethodOutputs, error) {
 	var (
-		err            error
-		assetsUnlocked *bridgetypes.AssetsUnlockedEvent
-		isBTC          = bytes.Equal(
+		err   error
+		isBTC = bytes.Equal(
 			common.HexToAddress(evmtypes.BTCTokenPrecompileAddress).Bytes(),
 			inputs.Token.Bytes(),
 		)
@@ -99,18 +97,34 @@ func (m *BridgeOutMethod) execute(
 	switch inputs.Chain {
 	case TargetChainEthereum:
 		if isBTC {
-			assetsUnlocked, err = m.executeBitcoin(context, inputs)
+			err = m.burnBitcoin(context, inputs)
 		} else {
-			assetsUnlocked, err = m.executeEthereum(context, inputs)
+			err = m.burnERC20(context, inputs)
 		}
 	case TargetChainBitcoin:
-		assetsUnlocked, err = m.executeBitcoin(context, inputs)
+		err = m.burnBitcoin(context, inputs)
 	default:
 		panic(fmt.Sprintf("unreachable, unsupported target chain: %v", inputs.Chain))
 	}
 
 	if err != nil {
 		return precompile.MethodOutputs{false}, err
+	}
+
+	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(inputs.Amount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
+	}
+
+	assetsUnlocked, err := m.bridgeKeeper.SaveAssetsUnlocked(
+		context.SdkCtx(),
+		inputs.Token.Bytes(),
+		sdkAmount,
+		uint8(inputs.Chain),
+		inputs.Recipient,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
 	}
 
 	err = context.EventEmitter().Emit(
@@ -130,10 +144,10 @@ func (m *BridgeOutMethod) execute(
 	return precompile.MethodOutputs{err == nil}, err
 }
 
-func (m *BridgeOutMethod) executeEthereum(
+func (m *BridgeOutMethod) burnERC20(
 	context *precompile.RunContext,
 	inputs *bridgeOutInputs,
-) (*bridgetypes.AssetsUnlockedEvent, error) {
+) error {
 	var (
 		sdkCtx          = context.SdkCtx()
 		bridgeAddrBytes = common.HexToAddress(
@@ -142,11 +156,6 @@ func (m *BridgeOutMethod) executeEthereum(
 		spenderAddr = context.MsgSender()
 	)
 
-	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(inputs.Amount)
-	if err != nil {
-		return nil, fmt.Errorf("unable to convert amount to sdk type: %v", err)
-	}
-
 	call, err := evmtypes.NewERC20BurnFromCall(
 		bridgeAddrBytes,
 		inputs.Token.Bytes(),
@@ -154,32 +163,21 @@ func (m *BridgeOutMethod) executeEthereum(
 		inputs.Amount,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create ERC20 burnFrom call: %w", err)
+		return fmt.Errorf("failed to create ERC20 burnFrom call: %w", err)
 	}
 
 	_, err = m.evmKeeper.ExecuteContractCall(sdkCtx, call)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
+		return fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
 	}
 
-	assetsUnlocked, err := m.bridgeKeeper.SaveAssetsUnlocked(
-		sdkCtx,
-		inputs.Token.Bytes(),
-		sdkAmount,
-		uint8(inputs.Chain),
-		inputs.Recipient,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
-	}
-
-	return assetsUnlocked, nil
+	return nil
 }
 
-func (m *BridgeOutMethod) executeBitcoin(
+func (m *BridgeOutMethod) burnBitcoin(
 	context *precompile.RunContext,
 	inputs *bridgeOutInputs,
-) (*bridgetypes.AssetsUnlockedEvent, error) {
+) error {
 	bridgeAddr := sdk.AccAddress(common.HexToAddress(
 		evmtypes.AssetsBridgePrecompileAddress,
 	).Bytes())
@@ -189,28 +187,28 @@ func (m *BridgeOutMethod) executeBitcoin(
 		context.SdkCtx(), bridgeAddr.Bytes(), senderAddr.Bytes(), SendMsgURL,
 	)
 	if authorization == nil {
-		return nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, senderAddr)
+		return fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, senderAddr)
 	}
 
 	if expiration != nil && expiration.Before(context.SdkCtx().BlockTime()) {
-		return nil, fmt.Errorf("authorization expired at %v", expiration)
+		return fmt.Errorf("authorization expired at %v", expiration)
 	}
 
 	sendAuth, ok := authorization.(*banktypes.SendAuthorization)
 	if !ok {
-		return nil, fmt.Errorf(
+		return fmt.Errorf(
 			"expected authorization to be a %T", banktypes.SendAuthorization{},
 		)
 	}
 
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(inputs.Amount)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
+		return fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 	coins := sdk.Coins{{Denom: evmtypes.DefaultEVMDenom, Amount: sdkAmount}}
 
 	if err := m.validateAuthorizationLimits(sendAuth, coins); err != nil {
-		return nil, fmt.Errorf("authorization validation failed: %w", err)
+		return fmt.Errorf("authorization validation failed: %w", err)
 	}
 
 	if err := m.bridgeKeeper.BurnBTC(
@@ -218,14 +216,14 @@ func (m *BridgeOutMethod) executeBitcoin(
 		senderAddr.Bytes(),
 		sdkAmount,
 	); err != nil {
-		return nil, fmt.Errorf("couldn't burn BTC: %w", err)
+		return fmt.Errorf("couldn't burn BTC: %w", err)
 	}
 
 	// now update the authorization to spend for the AssetsBridge
 	msg := banktypes.NewMsgSend(senderAddr.Bytes(), bridgeAddr.Bytes(), coins)
 	resp, err := sendAuth.Accept(context.SdkCtx(), msg)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't update authorization: %w", err)
+		return fmt.Errorf("couldn't update authorization: %w", err)
 	}
 
 	if resp.Updated != nil {
@@ -236,25 +234,14 @@ func (m *BridgeOutMethod) executeBitcoin(
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("couldn't update authorization: %w", err)
-	}
-
-	assetsUnlocked, err := m.bridgeKeeper.SaveAssetsUnlocked(
-		context.SdkCtx(),
-		inputs.Token.Bytes(),
-		sdkAmount,
-		uint8(inputs.Chain),
-		inputs.Recipient,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
+		return fmt.Errorf("couldn't update authorization: %w", err)
 	}
 
 	// finally update the journal entries to propagate the changes
 	// done to the gas token (BTC in our case)
 	balanceDelta, overflow := uint256.FromBig(inputs.Amount)
 	if overflow {
-		return nil, fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", inputs.Amount)
+		return fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", inputs.Amount)
 	}
 
 	// only one side of the transfer to update here as we
@@ -262,7 +249,7 @@ func (m *BridgeOutMethod) executeBitcoin(
 	journal := context.Journal()
 	journal.SubBalance(common.BytesToAddress(senderAddr.Bytes()), balanceDelta, tracing.BalanceChangeTransfer)
 
-	return assetsUnlocked, nil
+	return nil
 }
 
 func (m *BridgeOutMethod) validateAuthorizationLimits(
