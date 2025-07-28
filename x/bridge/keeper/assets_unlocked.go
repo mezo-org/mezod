@@ -90,7 +90,7 @@ func (k Keeper) SaveAssetsUnlocked(
 	if bytes.Equal(btcToken, token) {
 		targetToken = evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx))
 	} else {
-		if mapping, ok := k.GetERC20TokenMapping(ctx, token); ok {
+		if mapping, ok := k.GetERC20TokenMappingFromMezoToken(ctx, token); ok {
 			targetToken = evmtypes.BytesToHexAddress(
 				mapping.SourceTokenBytes(),
 			)
