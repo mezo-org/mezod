@@ -324,36 +324,42 @@ func (m *BridgeOutMethod) validate(
 	}
 
 	// first check that the token is either BTC or a supported ERC20
-	if !m.isValidToken(sdkCtx, inputs.Token, inputs.Chain) {
-		return fmt.Errorf("unsupported token: %v", inputs.Token)
+	if err := m.validateToken(sdkCtx, inputs.Token, inputs.Chain); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (m *BridgeOutMethod) isValidToken(
+func (m *BridgeOutMethod) validateToken(
 	sdkCtx sdk.Context,
 	token common.Address,
 	chain TargetChain,
-) bool {
+) error {
 	switch chain {
 	case TargetChainEthereum:
 		btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
 		if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
-			return true
+			return nil
 		}
 
 		if _, ok := m.bridgeKeeper.GetERC20TokenMapping(sdkCtx, token.Bytes()); ok {
-			return true
+			return nil
 		}
+
+		return fmt.Errorf("unsupported token: %v for ethereum target chain", token)
+
 	case TargetChainBitcoin:
 		btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
 		if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
-			return true
+			return nil
 		}
-	}
 
-	return false
+		return fmt.Errorf("unsupported token: %v for bitcoin target chain", token)
+
+	default:
+		panic("unreachable")
+	}
 }
 
 // extractInputs extract the inputs from the precompile.MethodInputs and apply
