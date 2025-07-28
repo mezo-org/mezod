@@ -110,6 +110,9 @@ func (k Keeper) SaveAssetsUnlocked(
 		ctx, nextSequence,
 	)
 
+	// timestamp of the current block
+	blockTime := ctx.BlockTime()
+
 	// then save the event
 	assetsUnlocked := &types.AssetsUnlockedEvent{
 		UnlockSequence: nextSequence,
@@ -118,6 +121,7 @@ func (k Keeper) SaveAssetsUnlocked(
 		Sender:         sender,
 		Amount:         amount,
 		Chain:          uint32(chain),
+		BlockTime:      blockTime,
 	}
 	k.saveAssetsUnlocked(ctx, assetsUnlocked)
 
