@@ -50,7 +50,7 @@ func (k Keeper) GetERC20TokenMapping(
 }
 
 // GetERC20TokenMappingFromMezo returns an ERC20 token mapping by the corresponding
-// source token address. The boolean return value indicates if the mapping was found.
+// mezo token address. The boolean return value indicates if the mapping was found.
 func (k Keeper) GetERC20TokenMappingFromMezoToken(
 	ctx sdk.Context,
 	mezoToken []byte,
