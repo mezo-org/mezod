@@ -196,9 +196,9 @@ func (m *BridgeOutMethod) burnBitcoin(
 	if err != nil {
 		return fmt.Errorf("failed to convert amount: [%w]", err)
 	}
-	coins := sdk.Coins{{Denom: evmtypes.DefaultEVMDenom, Amount: sdkAmount}}
+	coin := sdk.Coin{Denom: evmtypes.DefaultEVMDenom, Amount: sdkAmount}
 
-	if err := m.validateAuthorizationLimits(sendAuth, coins); err != nil {
+	if err := m.validateAuthorizationLimits(sendAuth, coin); err != nil {
 		return fmt.Errorf("authorization validation failed: %w", err)
 	}
 
@@ -211,7 +211,7 @@ func (m *BridgeOutMethod) burnBitcoin(
 	}
 
 	// now update the authorization to spend for the AssetsBridge
-	msg := banktypes.NewMsgSend(senderAddr.Bytes(), bridgeAddr.Bytes(), coins)
+	msg := banktypes.NewMsgSend(senderAddr.Bytes(), bridgeAddr.Bytes(), sdk.NewCoins(coin))
 	resp, err := sendAuth.Accept(context.SdkCtx(), msg)
 	if err != nil {
 		return fmt.Errorf("couldn't update authorization: %w", err)
@@ -245,26 +245,24 @@ func (m *BridgeOutMethod) burnBitcoin(
 
 func (m *BridgeOutMethod) validateAuthorizationLimits(
 	sendAuth *banktypes.SendAuthorization,
-	requestedCoins sdk.Coins,
+	requestedCoin sdk.Coin,
 ) error {
 	if sendAuth.SpendLimit == nil || sendAuth.SpendLimit.Empty() {
-		return fmt.Errorf("no allowance for %v", requestedCoins[0].Denom)
+		return fmt.Errorf("no allowance for %v", requestedCoin.Denom)
 	}
 
-	for _, requestedCoin := range requestedCoins {
-		allowedAmount := sendAuth.SpendLimit.AmountOf(requestedCoin.Denom)
-		if allowedAmount.IsZero() {
-			return fmt.Errorf("no allowance for %s", requestedCoin.Denom)
-		}
+	allowedAmount := sendAuth.SpendLimit.AmountOf(requestedCoin.Denom)
+	if allowedAmount.IsZero() {
+		return fmt.Errorf("no allowance for %s", requestedCoin.Denom)
+	}
 
-		if requestedCoin.Amount.GT(allowedAmount) {
-			return fmt.Errorf(
-				"requested amount %s exceeds allowed amount %s for %s",
-				requestedCoin.Amount,
-				allowedAmount,
-				requestedCoin.Denom,
-			)
-		}
+	if requestedCoin.Amount.GT(allowedAmount) {
+		return fmt.Errorf(
+			"requested amount %s exceeds allowed amount %s for %s",
+			requestedCoin.Amount,
+			allowedAmount,
+			requestedCoin.Denom,
+		)
 	}
 
 	// Check allowed list if it exists
