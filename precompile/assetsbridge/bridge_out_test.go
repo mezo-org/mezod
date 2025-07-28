@@ -274,6 +274,7 @@ func (k *ExtendedFakeBridgeKeeper) SaveAssetsUnlocked(
 		Token:          common.BytesToAddress(token).Hex(),
 		Amount:         amount,
 		Chain:          uint32(chain),
+		Sender:         sender,
 		Recipient:      recipient,
 		UnlockSequence: math.NewInt(k.sequenceNumber),
 	}
@@ -456,7 +457,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 		{
 			name: "successful bitcoin bridge",
 			run: func() []interface{} {
-
 				// Setup authorization
 				s.authzKeeper.SetAuthorization(
 					s.account1.SdkAddr,
@@ -619,7 +619,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinAuthorization() {
 		{
 			name: "valid authorization",
 			run: func() []interface{} {
-
 				s.authzKeeper.SetAuthorization(
 					s.account1.SdkAddr,
 					sdk.AccAddress(bridgeAddress.Bytes()),
