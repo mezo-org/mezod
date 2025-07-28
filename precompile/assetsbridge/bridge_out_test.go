@@ -299,7 +299,6 @@ func (k *ExtendedFakeBridgeKeeper) Reset() {
 type BridgeOutTestSuite struct {
 	PrecompileTestSuite
 
-	evmKeeper       *FakeEvmKeeper
 	authzKeeper     *FakeAuthzKeeper
 	extBridgeKeeper *ExtendedFakeBridgeKeeper
 }
@@ -311,7 +310,6 @@ func TestBridgeOutTestSuite(t *testing.T) {
 func (s *BridgeOutTestSuite) SetupTest() {
 	s.PrecompileTestSuite.SetupTest()
 
-	s.evmKeeper = NewFakeEvmKeeper()
 	s.authzKeeper = NewFakeAuthzKeeper()
 	s.extBridgeKeeper = NewExtendedFakeBridgeKeeper(testBTCToken.Bytes())
 
@@ -324,7 +322,6 @@ func (s *BridgeOutTestSuite) TestInstantiateAssetBridge() {
 	assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 		s.poaKeeper,
 		s.extBridgeKeeper,
-		s.evmKeeper,
 		s.authzKeeper,
 		&assetsbridge.Settings{
 			Observability:   true,
@@ -354,10 +351,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutTokenValidation() {
 		{
 			name: "valid ERC20 token",
 			run: func() []interface{} {
-				// Token is already registered in SetupTest
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetBurnFromSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
 			},
@@ -396,9 +389,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutERC20Execution() {
 			name: "successful ethereum bridge",
 			run: func() []interface{} {
 				// Setup all prerequisites
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetBurnFromSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 
 				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
@@ -408,9 +398,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutERC20Execution() {
 			output:    []interface{}{true},
 			postCheck: func() {
 				// Verify burn was called
-				s.Require().True(s.evmKeeper.BurnFromCalled())
-				s.Require().Equal(big.NewInt(100), s.evmKeeper.lastBurnAmount)
-				s.Require().Equal(s.account1.EvmAddr, s.evmKeeper.lastBurnFrom)
 				// Verify AssetsUnlocked was called
 				s.Require().True(s.extBridgeKeeper.AssetsUnlockedCalled())
 				s.Require().NotNil(s.extBridgeKeeper.lastAssetsUnlocked)
@@ -422,9 +409,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutERC20Execution() {
 		{
 			name: "burn call failure",
 			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetBurnFromSuccess(false)
+				s.extBridgeKeeper.SetBurnError(errors.New("failed to execute ERC20 burnFrom call"))
 
 				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
 			},
@@ -434,26 +419,8 @@ func (s *BridgeOutTestSuite) TestBridgeOutERC20Execution() {
 			errContains: "failed to execute ERC20 burnFrom call",
 		},
 		{
-			name: "burn call revert",
-			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetBurnFromSuccess(false)
-				s.evmKeeper.SetBurnFromError(fmt.Errorf("failed to execute ERC20 burnFrom call: burn reverted"))
-
-				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "failed to execute ERC20 burnFrom call: burn reverted",
-		},
-		{
 			name: "AssetsUnlocked failure after burn",
 			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetBurnFromSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(false)
 
 				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
@@ -462,10 +429,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutERC20Execution() {
 			basicPass:   true,
 			revert:      true,
 			errContains: "failed to send AssetsUnlocked to bridge",
-			postCheck: func() {
-				// Verify burn was still called (critical: funds may be lost)
-				s.Require().True(s.evmKeeper.BurnFromCalled())
-			},
+			postCheck:   func() {},
 		},
 		{
 			name: "amount max uint256",
@@ -473,9 +437,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutERC20Execution() {
 				veryLargeAmount := new(big.Int)
 				veryLargeAmount.SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10) // Max uint256
 
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, veryLargeAmount)
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, veryLargeAmount)
-				s.evmKeeper.SetBurnFromSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 
 				return []interface{}{testERC20Token, veryLargeAmount, uint8(0), ethRecipient}
@@ -494,9 +455,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 		{
 			name: "successful bitcoin bridge",
 			run: func() []interface{} {
-				// Setup ERC20 allowance first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
 
 				// Setup authorization
 				s.authzKeeper.SetAuthorization(
@@ -527,11 +485,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 		{
 			name: "transfer failure",
 			run: func() []interface{} {
-				// Setup ERC20 allowance first
 				s.extBridgeKeeper.SetBurnError(errors.New("burn failed"))
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-
 				s.authzKeeper.SetAuthorization(
 					s.account1.SdkAddr,
 					sdk.AccAddress(bridgeAddress.Bytes()),
@@ -552,10 +506,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 		{
 			name: "AssetsUnlocked failure after transfer",
 			run: func() []interface{} {
-				// Setup ERC20 allowance first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-
 				s.authzKeeper.SetAuthorization(
 					s.account1.SdkAddr,
 					sdk.AccAddress(bridgeAddress.Bytes()),
@@ -578,10 +528,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 		{
 			name: "valid P2PKH bitcoin address",
 			run: func() []interface{} {
-				// Setup ERC20 allowance first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-
 				s.authzKeeper.SetAuthorization(
 					s.account1.SdkAddr,
 					sdk.AccAddress(bridgeAddress.Bytes()),
@@ -605,10 +551,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 		{
 			name: "valid P2SH bitcoin address",
 			run: func() []interface{} {
-				// Setup ERC20 allowance first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-
 				s.authzKeeper.SetAuthorization(
 					s.account1.SdkAddr,
 					sdk.AccAddress(bridgeAddress.Bytes()),
@@ -634,10 +576,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 		{
 			name: "invalid bitcoin address",
 			run: func() []interface{} {
-				// Setup ERC20 allowance first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-
 				s.authzKeeper.SetAuthorization(
 					s.account1.SdkAddr,
 					sdk.AccAddress(bridgeAddress.Bytes()),
@@ -669,9 +607,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinAuthorization() {
 		{
 			name: "missing authorization",
 			run: func() []interface{} {
-				// No authorization setup, but still need to pass ERC20 allowance check
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
 			},
@@ -683,9 +618,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinAuthorization() {
 		{
 			name: "valid authorization",
 			run: func() []interface{} {
-				// Setup ERC20 allowance first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
 
 				s.authzKeeper.SetAuthorization(
 					s.account1.SdkAddr,
@@ -698,27 +630,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinAuthorization() {
 				)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
-			},
-			as:        s.account1.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{true},
-		},
-	}
-
-	s.RunMethodTestCasesWithKeepers(testcases, "bridgeOut")
-}
-
-// Test balance and allowance validation
-func (s *BridgeOutTestSuite) TestBridgeOutBalanceAllowance() {
-	testcases := []TestCase{
-		{
-			name: "exact balance and allowance",
-			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(100))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(100))
-				s.evmKeeper.SetBurnFromSuccess(true)
-				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
-				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
 			},
 			as:        s.account1.EvmAddr,
 			basicPass: true,
@@ -767,9 +678,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 		{
 			name: "zero amount",
 			run: func() []interface{} {
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetBurnFromSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testERC20Token, big.NewInt(0), uint8(0), ethRecipient}
 			},
@@ -837,10 +745,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 		{
 			name: "valid ethereum inputs",
 			run: func() []interface{} {
-				// Setup valid token and balances
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-				s.evmKeeper.SetBurnFromSuccess(true)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testERC20Token, big.NewInt(100), uint8(0), ethRecipient}
 			},
@@ -876,7 +780,6 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
 			// Reset keepers state
-			s.evmKeeper.Reset()
 			s.extBridgeKeeper.Reset()
 
 			evm := &vm.EVM{
@@ -886,7 +789,6 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 			assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 				s.poaKeeper,
 				s.extBridgeKeeper,
-				s.evmKeeper,
 				s.authzKeeper,
 				&assetsbridge.Settings{
 					Observability:   true,

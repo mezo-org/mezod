@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 
 	"cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -140,6 +142,30 @@ func (k Keeper) BurnBTC(
 	err = k.IncreaseBTCBurnt(ctx, amount)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (k Keeper) BurnERC20(
+	ctx sdk.Context,
+	token []byte,
+	fromAddr []byte,
+	amount *big.Int,
+) error {
+	call, err := evmtypes.NewERC20BurnFromCall(
+		authtypes.NewModuleAddress(types.ModuleName).Bytes(),
+		token,
+		fromAddr,
+		amount,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create ERC20 burnFrom call: %w", err)
+	}
+
+	_, err = k.evmKeeper.ExecuteContractCall(ctx, call)
+	if err != nil {
+		return fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
 	}
 
 	return nil

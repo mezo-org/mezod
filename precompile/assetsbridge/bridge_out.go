@@ -9,13 +9,11 @@ import (
 
 	"github.com/btcsuite/btcd/txscript"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -31,18 +29,15 @@ var SendMsgURL = sdk.MsgTypeURL(&banktypes.MsgSend{})
 // BridgeOutMethod is the implementation of the bridgeOut method.
 type BridgeOutMethod struct {
 	bridgeKeeper BridgeKeeper
-	evmKeeper    EvmKeeper
 	authzKeeper  AuthzKeeper
 }
 
 func newBridgeOutMethod(
 	bridgeKeeper BridgeKeeper,
-	evmKeeper EvmKeeper,
 	authzKeeper AuthzKeeper,
 ) *BridgeOutMethod {
 	return &BridgeOutMethod{
 		bridgeKeeper: bridgeKeeper,
-		evmKeeper:    evmKeeper,
 		authzKeeper:  authzKeeper,
 	}
 }
@@ -147,26 +142,12 @@ func (m *BridgeOutMethod) burnERC20(
 	inputs *bridgeOutInputs,
 ) error {
 	var (
-		sdkCtx      = context.SdkCtx()
-		spenderAddr = context.MsgSender()
+		sdkCtx   = context.SdkCtx()
+		fromAddr = context.MsgSender()
 	)
 
-	call, err := evmtypes.NewERC20BurnFromCall(
-		authtypes.NewModuleAddress(bridgetypes.ModuleName).Bytes(),
-		inputs.Token.Bytes(),
-		spenderAddr.Bytes(),
-		inputs.Amount,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create ERC20 burnFrom call: %w", err)
-	}
-
-	_, err = m.evmKeeper.ExecuteContractCall(sdkCtx, call)
-	if err != nil {
-		return fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
-	}
-
-	return nil
+	return m.bridgeKeeper.BurnERC20(
+		sdkCtx, inputs.Token.Bytes(), fromAddr.Bytes(), inputs.Amount)
 }
 
 func (m *BridgeOutMethod) burnBitcoin(

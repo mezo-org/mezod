@@ -940,7 +940,6 @@ func customEvmPrecompiles(
 	assetsBridgeVersionMap, err := assetsbridge.NewPrecompileVersionMap(
 		poaKeeper,
 		bridgeKeeper,
-		&evmKeeper,
 		authzKeeper,
 	)
 	if err != nil {

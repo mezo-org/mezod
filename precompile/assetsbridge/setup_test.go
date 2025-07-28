@@ -123,13 +123,11 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 
 			// Create dummy keepers for the test - these are minimal implementations
 			// For bridge_out tests, use the more complete implementations in bridge_out_test.go
-			evmKeeper := &FakeEvmKeeper{}
 			authzKeeper := &FakeAuthzKeeper{}
 
 			assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 				s.poaKeeper,
 				s.bridgeKeeper,
-				evmKeeper,
 				authzKeeper,
 				&assetsbridge.Settings{
 					Observability:   true,
@@ -231,6 +229,10 @@ func (k *FakeBridgeKeeper) GetSourceBTCToken(_ sdk.Context) []byte {
 }
 
 func (k *FakeBridgeKeeper) BurnBTC(_ sdk.Context, _ []byte, _ math.Int) error {
+	return k.burnErr
+}
+
+func (k *FakeBridgeKeeper) BurnERC20(_ sdk.Context, _, _ []byte, _ *big.Int) error {
 	return k.burnErr
 }
 

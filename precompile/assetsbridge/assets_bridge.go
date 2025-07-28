@@ -28,7 +28,6 @@ const EvmAddress = evmtypes.AssetsBridgePrecompileAddress
 func NewPrecompileVersionMap(
 	poaKeeper PoaKeeper,
 	bridgeKeeper BridgeKeeper,
-	evmKeeper EvmKeeper,
 	authzKeeper AuthzKeeper,
 ) (
 	*precompile.VersionMap,
@@ -38,7 +37,6 @@ func NewPrecompileVersionMap(
 	contractV1, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
-		evmKeeper,
 		authzKeeper,
 		&Settings{
 			Observability:   true,
@@ -56,7 +54,6 @@ func NewPrecompileVersionMap(
 	contractV2, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
-		evmKeeper,
 		authzKeeper,
 		&Settings{
 			Observability:   true,
@@ -74,7 +71,6 @@ func NewPrecompileVersionMap(
 	contractV3, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
-		evmKeeper,
 		authzKeeper,
 		&Settings{
 			Observability:   true,
@@ -93,7 +89,6 @@ func NewPrecompileVersionMap(
 	contractV4, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
-		evmKeeper,
 		authzKeeper,
 		&Settings{
 			Observability:   true,
@@ -130,7 +125,6 @@ type Settings struct {
 func NewPrecompile(
 	poaKeeper PoaKeeper,
 	bridgeKeeper BridgeKeeper,
-	evmKeeper EvmKeeper,
 	authzKeeper AuthzKeeper,
 	settings *Settings,
 ) (*precompile.Contract, error) {
@@ -168,7 +162,7 @@ func NewPrecompile(
 	}
 
 	if settings.BridgeOut {
-		methods = append(methods, newBridgeOutMethod(bridgeKeeper, evmKeeper, authzKeeper))
+		methods = append(methods, newBridgeOutMethod(bridgeKeeper, authzKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -223,14 +217,12 @@ type BridgeKeeper interface {
 		fromAddr []byte,
 		amount math.Int,
 	) error
-}
-
-type EvmKeeper interface {
-	// ExecuteContractCall executes an EVM contract call.
-	ExecuteContractCall(
+	BurnERC20(
 		ctx sdk.Context,
-		call evmtypes.ContractCall,
-	) (*evmtypes.MsgEthereumTxResponse, error)
+		token []byte,
+		fromAddr []byte,
+		amount *big.Int,
+	) error
 }
 
 type AuthzKeeper interface {
