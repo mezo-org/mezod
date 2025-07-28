@@ -9,11 +9,13 @@ import (
 
 	"github.com/btcsuite/btcd/txscript"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -149,15 +151,12 @@ func (m *BridgeOutMethod) burnERC20(
 	inputs *bridgeOutInputs,
 ) error {
 	var (
-		sdkCtx          = context.SdkCtx()
-		bridgeAddrBytes = common.HexToAddress(
-			evmtypes.AssetsBridgePrecompileAddress,
-		).Bytes()
+		sdkCtx      = context.SdkCtx()
 		spenderAddr = context.MsgSender()
 	)
 
 	call, err := evmtypes.NewERC20BurnFromCall(
-		bridgeAddrBytes,
+		authtypes.NewModuleAddress(bridgetypes.ModuleName).Bytes(),
 		inputs.Token.Bytes(),
 		spenderAddr.Bytes(),
 		inputs.Amount,
