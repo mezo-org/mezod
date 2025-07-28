@@ -41,5 +41,4 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function getSourceBTCToken() external view returns (address) {
         return IAssetsBridge(precompile).getSourceBTCToken();
     }
-
 }
