@@ -96,23 +96,6 @@ func (m *BridgeOutMethod) execute(
 		)
 	)
 
-	switch inputs.Chain {
-	case TargetChainEthereum:
-		if isBTC {
-			err = m.burnBitcoin(context, inputs)
-		} else {
-			err = m.burnERC20(context, inputs)
-		}
-	case TargetChainBitcoin:
-		err = m.burnBitcoin(context, inputs)
-	default:
-		panic(fmt.Sprintf("unreachable, unsupported target chain: %v", inputs.Chain))
-	}
-
-	if err != nil {
-		return precompile.MethodOutputs{false}, err
-	}
-
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(inputs.Amount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
@@ -141,6 +124,19 @@ func (m *BridgeOutMethod) execute(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to emit AssetsUnlocked event: [%w]", err)
+	}
+
+	switch inputs.Chain {
+	case TargetChainEthereum:
+		if isBTC {
+			err = m.burnBitcoin(context, inputs)
+		} else {
+			err = m.burnERC20(context, inputs)
+		}
+	case TargetChainBitcoin:
+		err = m.burnBitcoin(context, inputs)
+	default:
+		panic(fmt.Sprintf("unreachable, unsupported target chain: %v", inputs.Chain))
 	}
 
 	return precompile.MethodOutputs{err == nil}, err

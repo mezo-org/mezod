@@ -672,6 +672,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinAuthorization() {
 				// No authorization setup, but still need to pass ERC20 allowance check
 				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
 				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
 			},
 			as:          s.account1.EvmAddr,
