@@ -265,27 +265,6 @@ func (m *BridgeOutMethod) validateAuthorizationLimits(
 		)
 	}
 
-	// Check allowed list if it exists
-	// It shouldn't be set seeing that we don't really use cosmos-sdk
-	// but just in case?
-	if len(sendAuth.AllowList) > 0 {
-		found := false
-		senderAddrStr := sdk.AccAddress(common.HexToAddress(
-			evmtypes.AssetsBridgePrecompileAddress,
-		).Bytes()).String()
-
-		for _, allowedAddr := range sendAuth.AllowList {
-			if allowedAddr == senderAddrStr {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return fmt.Errorf("recipient address not in authorization allow list")
-		}
-	}
-
 	return nil
 }
 
