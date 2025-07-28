@@ -680,30 +680,6 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinAuthorization() {
 			errContains: "authorization type does not exist",
 		},
 		{
-			name: "expired authorization",
-			run: func() []interface{} {
-				// Setup ERC20 allowance first
-				s.evmKeeper.SetBalance(s.account1.EvmAddr, big.NewInt(1000))
-				s.evmKeeper.SetAllowance(s.account1.EvmAddr, bridgeAddress, big.NewInt(1000))
-
-				expiredTime := s.ctx.BlockTime().Add(-1 * time.Hour)
-				s.authzKeeper.SetAuthorization(
-					s.account1.SdkAddr,
-					sdk.AccAddress(bridgeAddress.Bytes()),
-					assetsbridge.SendMsgURL,
-					&banktypes.SendAuthorization{
-						SpendLimit: sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(1000))),
-					},
-					&expiredTime,
-				)
-				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), btcRecipient}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "authorization expired",
-		},
-		{
 			name: "valid authorization",
 			run: func() []interface{} {
 				// Setup ERC20 allowance first

@@ -189,10 +189,6 @@ func (m *BridgeOutMethod) burnBitcoin(
 		return fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, senderAddr)
 	}
 
-	if expiration != nil && expiration.Before(context.SdkCtx().BlockTime()) {
-		return fmt.Errorf("authorization expired at %v", expiration)
-	}
-
 	sendAuth, ok := authorization.(*banktypes.SendAuthorization)
 	if !ok {
 		return fmt.Errorf(
