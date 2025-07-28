@@ -90,7 +90,7 @@ type AssetsLockedEvent struct {
 	// recipient is the account address to receive the locked assets on Mezo,
 	// in Bech32 format.
 	Recipient string `protobuf:"bytes,2,opt,name=recipient,proto3" json:"recipient,omitempty"`
-	// amount of assets locked.
+	// amount of assets locked, in token-specific precision.
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,3,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
 	// token is the hex-encoded EVM address of the bridged token.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
@@ -151,7 +151,7 @@ type AssetsUnlockedEvent struct {
 	// recipient is the account address to receive the unlocked assets on the
 	// target chain.
 	Recipient []byte `protobuf:"bytes,2,opt,name=recipient,proto3" json:"recipient,omitempty"`
-	// amount of assets unlocked.
+	// amount of assets unlocked, in token-specific precision.
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,3,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
 	// token is the hex-encoded EVM address of the bridged token.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
