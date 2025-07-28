@@ -10,7 +10,6 @@ import (
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/authz"
-	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -232,10 +231,6 @@ type EvmKeeper interface {
 		ctx sdk.Context,
 		call evmtypes.ContractCall,
 	) (*evmtypes.MsgEthereumTxResponse, error)
-}
-
-type BankKeeper interface {
-	AllBalances(context.Context, *banktypes.QueryAllBalancesRequest) (*banktypes.QueryAllBalancesResponse, error)
 }
 
 type AuthzKeeper interface {
