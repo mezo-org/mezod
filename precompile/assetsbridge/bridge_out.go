@@ -105,6 +105,8 @@ func (m *BridgeOutMethod) execute(
 		}
 	case TargetChainBitcoin:
 		assetsUnlocked, err = m.executeBitcoin(context, inputs)
+	default:
+		panic(fmt.Sprintf("unreachable, unsupported target chain: %v", inputs.Chain))
 	}
 
 	if err != nil {
