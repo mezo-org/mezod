@@ -277,7 +277,7 @@ func (m *BridgeOutMethod) validateToken(
 	case TargetChainBitcoin:
 		return fmt.Errorf("unsupported token: %v for bitcoin target chain", token)
 	default:
-		panic("unreachable")
+		panic("unreachable: unknown chain type")
 	}
 }
 
