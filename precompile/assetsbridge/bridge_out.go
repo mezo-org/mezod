@@ -107,21 +107,22 @@ func (m *BridgeOutMethod) execute(
 		assetsUnlocked, err = m.executeBitcoin(context, inputs)
 	}
 
-	if assetsUnlocked != nil {
-		err := context.EventEmitter().Emit(
-			NewAssetsUnlockedEvent(
-				assetsUnlocked.UnlockSequence.BigInt(),
-				assetsUnlocked.Recipient,
-				common.HexToAddress(assetsUnlocked.Token),
-				context.MsgSender(),
-				uint8(assetsUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
-				assetsUnlocked.Amount.BigInt(),
-			),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to emit AssetsUnlocked event: [%w]", err)
-		}
+	if err != nil {
+		return precompile.MethodOutputs{false}, err
+	}
 
+	err = context.EventEmitter().Emit(
+		NewAssetsUnlockedEvent(
+			assetsUnlocked.UnlockSequence.BigInt(),
+			assetsUnlocked.Recipient,
+			common.HexToAddress(assetsUnlocked.Token),
+			context.MsgSender(),
+			uint8(assetsUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
+			assetsUnlocked.Amount.BigInt(),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit AssetsUnlocked event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{err == nil}, err
