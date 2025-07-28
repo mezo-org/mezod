@@ -344,27 +344,20 @@ func (m *BridgeOutMethod) validateToken(
 	token common.Address,
 	chain TargetChain,
 ) error {
+	btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
+	if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
+		return nil
+	}
+
 	switch chain {
 	case TargetChainEthereum:
-		btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
-		if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
-			return nil
-		}
-
 		if _, ok := m.bridgeKeeper.GetERC20TokenMapping(sdkCtx, token.Bytes()); ok {
 			return nil
 		}
 
 		return fmt.Errorf("unsupported token: %v for ethereum target chain", token)
-
 	case TargetChainBitcoin:
-		btcToken := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
-		if bytes.Equal(btcToken.Bytes(), token.Bytes()) {
-			return nil
-		}
-
 		return fmt.Errorf("unsupported token: %v for bitcoin target chain", token)
-
 	default:
 		panic("unreachable")
 	}
