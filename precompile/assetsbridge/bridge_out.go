@@ -408,13 +408,13 @@ func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient
 
 	switch chain {
 	case TargetChainEthereum:
-		// here we just check the length, the zero address have been tested before already
-		if len(recipient) != 20 {
-			return fmt.Errorf("invalid recipient address format for Ethereum chain: %v", hex.EncodeToString(recipient))
+		// check the length and for the zero address
+		if len(recipient) != 20 || bytes.Equal(recipient, (common.Address{}).Bytes()) {
+			return fmt.Errorf("invalid recipient address for Ethereum chain: %v", hex.EncodeToString(recipient))
 		}
 	case TargetChainBitcoin:
 		if keepbtc.GetScriptType(recipient) == keepbtc.NonStandardScript {
-			return fmt.Errorf("invalid recipient address format for Bitcoin: %v", hex.EncodeToString(recipient))
+			return fmt.Errorf("invalid recipient address for Bitcoin: %v", hex.EncodeToString(recipient))
 		}
 	}
 
