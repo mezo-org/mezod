@@ -227,7 +227,7 @@ func NewERC20BurnFromCall(from, to, address []byte, value *big.Int) (*ERC20BurnF
 		ID:   []byte{0x79, 0xcc, 0x67, 0x90}, // 0x79cc6790 is the function selector for burnFrom(address,uint256)
 		Type: abi.Function,
 		Inputs: []abi.Argument{
-			{Name: "address", Type: addressType},
+			{Name: "account", Type: addressType},
 			{Name: "value", Type: uint256Type},
 		},
 		Outputs: []abi.Argument{},
