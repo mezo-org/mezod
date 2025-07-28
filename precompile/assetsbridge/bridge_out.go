@@ -314,6 +314,14 @@ func (m *BridgeOutMethod) validate(
 ) error {
 	sdkCtx := context.SdkCtx()
 
+	if inputs.Amount == nil {
+		return errors.New("amount is required")
+	}
+
+	if inputs.Amount.Sign() <= 0 {
+		return errors.New("amount must be positive")
+	}
+
 	_, ok := inputs.Chain.Validate()
 	if !ok {
 		return fmt.Errorf("unsupported chain: %v", inputs.Chain)
@@ -377,14 +385,6 @@ func (m *BridgeOutMethod) extractInputs(inputs precompile.MethodInputs) (*bridge
 	amount, ok := inputs[1].(*big.Int)
 	if !ok {
 		return nil, fmt.Errorf("invalid amount: %v", inputs[1])
-	}
-
-	if amount == nil {
-		return nil, errors.New("amount is required")
-	}
-
-	if amount.Sign() <= 0 {
-		return nil, errors.New("amount must be positive")
 	}
 
 	chainRaw, ok := inputs[2].(uint8)
