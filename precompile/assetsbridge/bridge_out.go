@@ -117,8 +117,8 @@ func (m *BridgeOutMethod) execute(
 			assetsUnlocked.Recipient,
 			common.HexToAddress(assetsUnlocked.Token),
 			context.MsgSender(),
-			uint8(assetsUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
 			assetsUnlocked.Amount.BigInt(),
+			uint8(assetsUnlocked.Chain), //nolint:gosec // G115: Safe conversion, Chain is validated elsewhere
 		),
 	)
 	if err != nil {
@@ -473,8 +473,8 @@ func NewAssetsUnlockedEvent(
 	recipient []byte,
 	token common.Address,
 	sender common.Address,
-	chain uint8,
 	amount *big.Int,
+	chain uint8,
 ) *AssetsUnlockedEvent {
 	return &AssetsUnlockedEvent{
 		unlockSequenceNumber: sequenceNumber,
