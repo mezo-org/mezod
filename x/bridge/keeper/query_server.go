@@ -69,7 +69,7 @@ func (qs queryServer) AssetsUnlockedEvents(
 	// If the non-nil start and end of sequence were requested, ensure they are
 	// positive.
 	if (!start.IsNil() && !start.IsPositive()) || (!end.IsNil() && !end.IsPositive()) {
-		return nil, fmt.Errorf("invalid non positive sequence range")
+		return nil, fmt.Errorf("invalid non-positive sequence range")
 	}
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
@@ -99,7 +99,7 @@ func (qs queryServer) AssetsUnlockedEvents(
 		end = math.MinInt(end, sequenceTip.AddRaw(1))
 	}
 
-	for seq := start; seq.LT(end); seq = seq.Add(math.OneInt()) {
+	for seq := start; seq.LT(end); seq = seq.AddRaw(1) {
 		event := qs.keeper.GetAssetsUnlocked(sdkCtx, seq)
 		events = append(events, *event)
 	}

@@ -196,13 +196,15 @@ var xxx_messageInfo_QueryAssetsUnlockedSequenceTipResponse proto.InternalMessage
 // QueryAssetsUnlockedEventsRequest is request type for the
 // Query/AssetsUnlockedEvents RPC method.
 type QueryAssetsUnlockedEventsRequest struct {
-	// sequence_start is the start of the sequence range (inclusive). If nil,
-	// unbounded on the lower side. Notice that it is the underlying pointer that
-	// can be set to nil, not the sequence_start itself.
+	// sequence_start is the start of the sequence range (inclusive). If the
+	// underlying pointer is set to nil, the range is unbounded on the lower side.
+	// Notice that it is the underlying pointer that can be set to nil, not the
+	// sequence_start itself.
 	SequenceStart cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=sequence_start,json=sequenceStart,proto3,customtype=cosmossdk.io/math.Int" json:"sequence_start"`
-	// sequence_end is the end of the sequence range (exclusive). If the nil,
-	// unbounded on the upper side. Notice that it is the underlying pointer that
-	// can be set to nil, not the sequence_end itself.
+	// sequence_end is the end of the sequence range (exclusive). If the
+	// underlying pointer is set to nil, the range is unbounded on the upper side.
+	// Notice that it is the underlying pointer that can be set to nil, not the
+	// sequence_end itself.
 	SequenceEnd cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=sequence_end,json=sequenceEnd,proto3,customtype=cosmossdk.io/math.Int" json:"sequence_end"`
 }
 

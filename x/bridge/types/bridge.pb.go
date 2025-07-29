@@ -163,7 +163,7 @@ type AssetsUnlockedEvent struct {
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,5,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
 	// chain is the target chain for this unlock event
 	Chain uint32 `protobuf:"varint,6,opt,name=chain,proto3" json:"chain,omitempty"`
-	// block_time is the timestamp of the block in which the event was emitted
+	// block_time is the timestamp of the block at which the event was emitted.
 	BlockTime time.Time `protobuf:"bytes,7,opt,name=block_time,json=blockTime,proto3,stdtime" json:"block_time"`
 }
 
