@@ -60,7 +60,7 @@ message AssetsUnlockedEvent {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
-  // chain is the target chain for this unlock event
+  // chain is the target chain for this unlock event.
   uint32 chain = 6;
 }
 

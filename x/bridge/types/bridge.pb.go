@@ -157,7 +157,7 @@ type AssetsUnlockedEvent struct {
 	Sender []byte `protobuf:"bytes,4,opt,name=sender,proto3" json:"sender,omitempty"`
 	// amount of assets unlocked, in token-specific precision.
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,5,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
-	// chain is the target chain for this unlock event
+	// chain is the target chain for this unlock event.
 	Chain uint32 `protobuf:"varint,6,opt,name=chain,proto3" json:"chain,omitempty"`
 }
 
