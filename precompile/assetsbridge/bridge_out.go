@@ -192,9 +192,8 @@ func (m *BridgeOutMethod) burnBitcoin(
 	} else if resp.Updated != nil {
 		err = m.authzKeeper.SaveGrant(context.SdkCtx(), bridgeAddr, senderAddr, resp.Updated, expiration)
 	}
-
 	if err != nil {
-		return fmt.Errorf("bridge is not authorized to burn BTC: %w", err)
+		return fmt.Errorf("couldn't update authorization BTC: %w", err)
 	}
 
 	if !resp.Accept {
