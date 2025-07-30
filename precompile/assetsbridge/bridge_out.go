@@ -183,7 +183,7 @@ func (m *BridgeOutMethod) burnBitcoin(
 	msg := banktypes.NewMsgSend(senderAddr.Bytes(), bridgeAddr.Bytes(), sdk.NewCoins(coin))
 	resp, err := sendAuth.Accept(context.SdkCtx(), msg)
 	if err != nil {
-		return fmt.Errorf("couldn't update authorization: %w", err)
+		return fmt.Errorf("couldn't accept authorization: %w", err)
 	}
 
 	if resp.Delete {
