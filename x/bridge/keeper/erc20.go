@@ -1,6 +1,10 @@
 package keeper
 
 import (
+	"bytes"
+	"encoding/hex"
+	"fmt"
+
 	sdkerrors "cosmossdk.io/errors"
 	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -43,6 +47,28 @@ func (k Keeper) GetERC20TokenMapping(
 	mapping := types.MustUnmarshalERC20TokenMapping(k.cdc, mappingBytes)
 
 	return &mapping, true
+}
+
+// GetERC20TokenMappingFromMezo returns an ERC20 token mapping by the corresponding
+// mezo token address. The boolean return value indicates if the mapping was found.
+func (k Keeper) GetERC20TokenMappingFromMezoToken(
+	ctx sdk.Context,
+	mezoToken []byte,
+) (*types.ERC20TokenMapping, bool) {
+	mappings := k.GetERC20TokensMappings(ctx)
+
+	for _, v := range mappings {
+		token, err := hex.DecodeString(v.MezoToken[2:])
+		if err != nil {
+			// there should never be an error here
+			panic(fmt.Sprintf("invalid mezo token address in state %v: %v", v.MezoToken, err))
+		}
+		if bytes.Equal(token, mezoToken) {
+			return v, true
+		}
+	}
+
+	return nil, false
 }
 
 // CreateERC20TokenMapping creates a new ERC20 token mapping.

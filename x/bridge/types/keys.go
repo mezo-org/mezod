@@ -1,5 +1,9 @@
 package types
 
+import (
+	"cosmossdk.io/math"
+)
+
 const (
 	// ModuleName defines the module name
 	ModuleName = "bridge"
@@ -35,10 +39,21 @@ var (
 	BTCMintedKey = []byte{0x50}
 
 	BTCBurntKey = []byte{0x60}
+
+	// AssetsUnlockedSequenceTipKey is a standalone key for the assets unlocked sequence tip.
+	AssetsUnlockedSequenceTipKey = []byte{0x70}
+
+	// AssetsUnlockedKeyPrefix is the key prefix for the assets unlocked key.
+	AssetsUnlockedKeyPrefix = []byte{0x80}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
 // corresponding source token address.
 func GetERC20TokenMappingKey(sourceERC20Token []byte) []byte {
 	return append(ERC20TokenMappingKeyPrefix, sourceERC20Token...)
+}
+
+// GetAssetsUnlockedKey gets the key for an AssetsUnlocked event.
+func GetAssetsUnlockedKey(unlockSequence math.Int) []byte {
+	return append(AssetsUnlockedKeyPrefix, unlockSequence.BigInt().Bytes()...)
 }

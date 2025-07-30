@@ -90,7 +90,7 @@ type AssetsLockedEvent struct {
 	// recipient is the account address to receive the locked assets on Mezo,
 	// in Bech32 format.
 	Recipient string `protobuf:"bytes,2,opt,name=recipient,proto3" json:"recipient,omitempty"`
-	// amount of assets locked, in 1e18 precision.
+	// amount of assets locked, in token-specific precision.
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,3,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
 	// token is the hex-encoded EVM address of the bridged token.
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
@@ -143,10 +143,90 @@ func (m *AssetsLockedEvent) GetToken() string {
 	return ""
 }
 
-// ERC20TokenMapping defines a mapping between an ERC20 token on the source chain
-// and on the Mezo chain.
+// AssetsUnlockedEvent represents the event where inbound assets are released
+// from the bridge.
+type AssetsUnlockedEvent struct {
+	// unlock_sequence is the unique identifier of the event.
+	UnlockSequence cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=unlock_sequence,json=unlockSequence,proto3,customtype=cosmossdk.io/math.Int" json:"unlock_sequence"`
+	// recipient is the account address to receive the unlocked assets on the
+	// target chain.
+	Recipient []byte `protobuf:"bytes,2,opt,name=recipient,proto3" json:"recipient,omitempty"`
+	// token is the hex-encoded EVM address of the bridged token.
+	Token string `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
+	// sender is the address bridging out.
+	Sender []byte `protobuf:"bytes,4,opt,name=sender,proto3" json:"sender,omitempty"`
+	// amount of assets unlocked, in token-specific precision.
+	Amount cosmossdk_io_math.Int `protobuf:"bytes,5,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
+	// chain is the target chain for this unlock event.
+	Chain uint32 `protobuf:"varint,6,opt,name=chain,proto3" json:"chain,omitempty"`
+}
+
+func (m *AssetsUnlockedEvent) Reset()         { *m = AssetsUnlockedEvent{} }
+func (m *AssetsUnlockedEvent) String() string { return proto.CompactTextString(m) }
+func (*AssetsUnlockedEvent) ProtoMessage()    {}
+func (*AssetsUnlockedEvent) Descriptor() ([]byte, []int) {
+	return fileDescriptor_7905948c23f4425c, []int{2}
+}
+func (m *AssetsUnlockedEvent) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AssetsUnlockedEvent) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AssetsUnlockedEvent.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *AssetsUnlockedEvent) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AssetsUnlockedEvent.Merge(m, src)
+}
+func (m *AssetsUnlockedEvent) XXX_Size() int {
+	return m.Size()
+}
+func (m *AssetsUnlockedEvent) XXX_DiscardUnknown() {
+	xxx_messageInfo_AssetsUnlockedEvent.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AssetsUnlockedEvent proto.InternalMessageInfo
+
+func (m *AssetsUnlockedEvent) GetRecipient() []byte {
+	if m != nil {
+		return m.Recipient
+	}
+	return nil
+}
+
+func (m *AssetsUnlockedEvent) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
+func (m *AssetsUnlockedEvent) GetSender() []byte {
+	if m != nil {
+		return m.Sender
+	}
+	return nil
+}
+
+func (m *AssetsUnlockedEvent) GetChain() uint32 {
+	if m != nil {
+		return m.Chain
+	}
+	return 0
+}
+
+// ERC20TokenMapping defines a mapping between an ERC20 token on the source
+// chain and on the Mezo chain.
 type ERC20TokenMapping struct {
-	// source_token is the hex-encoded EVM address of the token on the source chain.
+	// source_token is the hex-encoded EVM address of the token on the source
+	// chain.
 	SourceToken string `protobuf:"bytes,1,opt,name=source_token,json=sourceToken,proto3" json:"source_token,omitempty"`
 	// mezo_token is the hex-encoded EVM address of the token on the Mezo chain.
 	MezoToken string `protobuf:"bytes,2,opt,name=mezo_token,json=mezoToken,proto3" json:"mezo_token,omitempty"`
@@ -156,7 +236,7 @@ func (m *ERC20TokenMapping) Reset()         { *m = ERC20TokenMapping{} }
 func (m *ERC20TokenMapping) String() string { return proto.CompactTextString(m) }
 func (*ERC20TokenMapping) ProtoMessage()    {}
 func (*ERC20TokenMapping) Descriptor() ([]byte, []int) {
-	return fileDescriptor_7905948c23f4425c, []int{2}
+	return fileDescriptor_7905948c23f4425c, []int{3}
 }
 func (m *ERC20TokenMapping) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -202,39 +282,44 @@ func (m *ERC20TokenMapping) GetMezoToken() string {
 func init() {
 	proto.RegisterType((*Params)(nil), "mezo.bridge.v1.Params")
 	proto.RegisterType((*AssetsLockedEvent)(nil), "mezo.bridge.v1.AssetsLockedEvent")
+	proto.RegisterType((*AssetsUnlockedEvent)(nil), "mezo.bridge.v1.AssetsUnlockedEvent")
 	proto.RegisterType((*ERC20TokenMapping)(nil), "mezo.bridge.v1.ERC20TokenMapping")
 }
 
 func init() { proto.RegisterFile("mezo/bridge/v1/bridge.proto", fileDescriptor_7905948c23f4425c) }
 
 var fileDescriptor_7905948c23f4425c = []byte{
-	// 402 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0xbf, 0xae, 0xd3, 0x30,
-	0x14, 0xc6, 0x63, 0xb8, 0x54, 0xb7, 0xe6, 0x8f, 0x74, 0xad, 0x0b, 0xca, 0x85, 0xdb, 0xb4, 0x74,
-	0xea, 0x42, 0x42, 0x41, 0x0c, 0x65, 0x41, 0x14, 0x65, 0x40, 0x02, 0x09, 0x05, 0x58, 0x58, 0x22,
-	0xc7, 0x39, 0x4a, 0xa3, 0xd6, 0x76, 0xb0, 0x9d, 0xaa, 0xe5, 0x11, 0x98, 0x18, 0x19, 0x79, 0x0d,
-	0xde, 0xa0, 0x63, 0x47, 0xc4, 0x50, 0xa1, 0xf6, 0x45, 0x50, 0x1c, 0x17, 0xd6, 0xbb, 0x1d, 0x7f,
-	0xdf, 0x4f, 0x47, 0x9f, 0xbe, 0x63, 0xfc, 0x80, 0xc3, 0x17, 0x19, 0x65, 0xaa, 0xcc, 0x0b, 0x88,
-	0x96, 0x63, 0x37, 0x85, 0x95, 0x92, 0x46, 0x92, 0x3b, 0x8d, 0x19, 0x3a, 0x69, 0x39, 0xbe, 0x7f,
-	0x5e, 0xc8, 0x42, 0x5a, 0x2b, 0x6a, 0xa6, 0x96, 0x1a, 0x7e, 0x45, 0xb8, 0xf3, 0x8e, 0x2a, 0xca,
-	0x35, 0x99, 0xe0, 0x0b, 0x4e, 0x57, 0x29, 0x28, 0xf6, 0xe4, 0x71, 0x6a, 0xe4, 0x1c, 0x84, 0x4e,
-	0x39, 0xad, 0xaa, 0x52, 0x14, 0xda, 0x47, 0x03, 0x34, 0xba, 0x9d, 0xdc, 0xe3, 0x74, 0x15, 0x37,
-	0xfe, 0x07, 0x6b, 0xbf, 0x75, 0x2e, 0x79, 0x81, 0x2f, 0x33, 0xc3, 0x52, 0x5d, 0x57, 0xd5, 0x62,
-	0x9d, 0x52, 0xad, 0x41, 0x99, 0x52, 0x8a, 0x14, 0x04, 0xcd, 0x16, 0x90, 0xfb, 0xd7, 0x06, 0x68,
-	0x74, 0x9a, 0x5c, 0x64, 0x86, 0xbd, 0xb7, 0xc8, 0xcb, 0x23, 0x11, 0xb7, 0xc0, 0xf3, 0x93, 0xef,
-	0x3f, 0xfa, 0xde, 0xf0, 0x27, 0xc2, 0x67, 0x8d, 0x65, 0xf4, 0x1b, 0xc9, 0xe6, 0x90, 0xc7, 0x4b,
-	0x10, 0x86, 0x4c, 0xf0, 0xa9, 0x86, 0xcf, 0x35, 0x08, 0x06, 0x36, 0x46, 0x77, 0xda, 0xdb, 0xec,
-	0xfa, 0xde, 0xef, 0x5d, 0xff, 0x2e, 0x93, 0x9a, 0x4b, 0xad, 0xf3, 0x79, 0x58, 0xca, 0x88, 0x53,
-	0x33, 0x0b, 0x5f, 0x0b, 0x93, 0xfc, 0xc3, 0xc9, 0x25, 0xee, 0x2a, 0x60, 0x65, 0x55, 0x82, 0x30,
-	0x36, 0x44, 0x37, 0xf9, 0x2f, 0x90, 0x67, 0xb8, 0x43, 0xb9, 0xac, 0x85, 0xf1, 0xaf, 0x5f, 0x65,
-	0xad, 0x83, 0xc9, 0x39, 0xbe, 0x61, 0xdb, 0xf1, 0x4f, 0xec, 0xc2, 0xf6, 0x31, 0xfc, 0x88, 0xcf,
-	0xe2, 0xe4, 0x95, 0x6b, 0xc6, 0x15, 0x43, 0x1e, 0xe2, 0x5b, 0x5a, 0xd6, 0x8a, 0x41, 0xdb, 0x67,
-	0x1b, 0x3f, 0xb9, 0xd9, 0x6a, 0x96, 0x24, 0x3d, 0x8c, 0x9b, 0x43, 0x39, 0xc0, 0x65, 0x6c, 0x14,
-	0x6b, 0x4f, 0xa7, 0x9b, 0x7d, 0x80, 0xb6, 0xfb, 0x00, 0xfd, 0xd9, 0x07, 0xe8, 0xdb, 0x21, 0xf0,
-	0xb6, 0x87, 0xc0, 0xfb, 0x75, 0x08, 0xbc, 0x4f, 0xa3, 0xa2, 0x34, 0xb3, 0x3a, 0x0b, 0x99, 0xe4,
-	0x51, 0xc3, 0x3f, 0x92, 0xaa, 0xb0, 0x43, 0x1e, 0xad, 0x8e, 0x7f, 0xc2, 0xac, 0x2b, 0xd0, 0x59,
-	0xc7, 0x9e, 0xfa, 0xe9, 0xdf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x35, 0x90, 0x61, 0x7e, 0x2f, 0x02,
-	0x00, 0x00,
+	// 468 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x53, 0x31, 0x6f, 0xd3, 0x40,
+	0x18, 0xb5, 0x69, 0x6b, 0xb5, 0x47, 0x28, 0xea, 0x51, 0x2a, 0x17, 0x5a, 0xa7, 0x64, 0xca, 0x82,
+	0x4d, 0x41, 0x0c, 0x65, 0x41, 0x04, 0x05, 0x09, 0x09, 0x24, 0xe4, 0xd2, 0x85, 0xc5, 0x3a, 0x9f,
+	0x3f, 0x39, 0x56, 0x72, 0x77, 0xe6, 0xee, 0x1c, 0xa5, 0xfc, 0x04, 0x26, 0x46, 0x46, 0xfe, 0x06,
+	0xff, 0xa0, 0x63, 0x47, 0xc4, 0x50, 0xa1, 0xe4, 0x3f, 0x30, 0x23, 0xdf, 0x5d, 0x4b, 0x16, 0x24,
+	0xba, 0x7d, 0xdf, 0x7b, 0xcf, 0x9f, 0xde, 0xb3, 0x9f, 0xd1, 0x7d, 0x06, 0x9f, 0x44, 0x92, 0xcb,
+	0xaa, 0x28, 0x21, 0x99, 0x1e, 0xba, 0x29, 0xae, 0xa5, 0xd0, 0x02, 0x6f, 0xb6, 0x64, 0xec, 0xa0,
+	0xe9, 0xe1, 0xbd, 0xed, 0x52, 0x94, 0xc2, 0x50, 0x49, 0x3b, 0x59, 0x55, 0xef, 0xb3, 0x8f, 0x82,
+	0x77, 0x44, 0x12, 0xa6, 0xf0, 0x11, 0xda, 0x65, 0x64, 0x96, 0x81, 0xa4, 0x8f, 0x1f, 0x65, 0x5a,
+	0x8c, 0x81, 0xab, 0x8c, 0x91, 0xba, 0xae, 0x78, 0xa9, 0x42, 0xff, 0xc0, 0xef, 0xdf, 0x4a, 0x77,
+	0x18, 0x99, 0x0d, 0x5b, 0xfe, 0xbd, 0xa1, 0xdf, 0x3a, 0x16, 0x3f, 0x47, 0x7b, 0xb9, 0xa6, 0x99,
+	0x6a, 0xea, 0x7a, 0x72, 0x9a, 0x11, 0xa5, 0x40, 0xea, 0x4a, 0xf0, 0x0c, 0x38, 0xc9, 0x27, 0x50,
+	0x84, 0x37, 0x0e, 0xfc, 0xfe, 0x7a, 0xba, 0x9b, 0x6b, 0x7a, 0x6c, 0x24, 0x2f, 0x2e, 0x15, 0x43,
+	0x2b, 0x78, 0xb6, 0xfa, 0xf5, 0x5b, 0xd7, 0xeb, 0x7d, 0xf7, 0xd1, 0x56, 0x4b, 0x69, 0xf5, 0x46,
+	0xd0, 0x31, 0x14, 0xc3, 0x29, 0x70, 0x8d, 0x8f, 0xd0, 0xba, 0x82, 0x8f, 0x0d, 0x70, 0x0a, 0xc6,
+	0xc6, 0xc6, 0x60, 0xff, 0xec, 0xa2, 0xeb, 0xfd, 0xbc, 0xe8, 0xde, 0xa5, 0x42, 0x31, 0xa1, 0x54,
+	0x31, 0x8e, 0x2b, 0x91, 0x30, 0xa2, 0x47, 0xf1, 0x6b, 0xae, 0xd3, 0x2b, 0x39, 0xde, 0x43, 0x1b,
+	0x12, 0x68, 0x55, 0x57, 0xc0, 0xb5, 0x31, 0xb1, 0x91, 0xfe, 0x05, 0xf0, 0x53, 0x14, 0x10, 0x26,
+	0x1a, 0xae, 0xc3, 0x95, 0xff, 0x39, 0xeb, 0xc4, 0x78, 0x1b, 0xad, 0x99, 0xb7, 0x13, 0xae, 0x9a,
+	0x83, 0x76, 0xe9, 0xfd, 0xf6, 0xd1, 0x1d, 0xeb, 0xfd, 0x84, 0x4f, 0x96, 0xdc, 0xbf, 0x42, 0xb7,
+	0x1b, 0x03, 0x64, 0xd7, 0x0b, 0xb1, 0x69, 0x9f, 0x3a, 0xfe, 0x67, 0x94, 0xce, 0x72, 0x94, 0x2b,
+	0x4f, 0x2b, 0x4b, 0x9e, 0xf0, 0x0e, 0x0a, 0x14, 0xf0, 0x02, 0xa4, 0xb1, 0xda, 0x49, 0xdd, 0xb6,
+	0x14, 0x7c, 0xed, 0x9a, 0xc1, 0xe9, 0x88, 0x54, 0x3c, 0x0c, 0x4c, 0x19, 0xec, 0xd2, 0x3b, 0x41,
+	0x5b, 0xc3, 0xf4, 0xa5, 0xab, 0x84, 0x6b, 0x04, 0x7e, 0x80, 0x3a, 0x4a, 0x34, 0x92, 0x82, 0x2d,
+	0x92, 0x8d, 0x9c, 0xde, 0xb4, 0x98, 0x51, 0xe2, 0x7d, 0x84, 0xda, 0x86, 0x3a, 0x81, 0xfb, 0x38,
+	0x2d, 0x62, 0xe8, 0xc1, 0xe0, 0x6c, 0x1e, 0xf9, 0xe7, 0xf3, 0xc8, 0xff, 0x35, 0x8f, 0xfc, 0x2f,
+	0x8b, 0xc8, 0x3b, 0x5f, 0x44, 0xde, 0x8f, 0x45, 0xe4, 0x7d, 0xe8, 0x97, 0x95, 0x1e, 0x35, 0x79,
+	0x4c, 0x05, 0x4b, 0x5a, 0xfd, 0x43, 0x21, 0x4b, 0x33, 0x14, 0xc9, 0xec, 0xf2, 0x67, 0xd0, 0xa7,
+	0x35, 0xa8, 0x3c, 0x30, 0x1d, 0x7f, 0xf2, 0x27, 0x00, 0x00, 0xff, 0xff, 0xa9, 0xfc, 0x92, 0x0a,
+	0x28, 0x03, 0x00, 0x00,
 }
 
 func (m *Params) Marshal() (dAtA []byte, err error) {
@@ -332,6 +417,75 @@ func (m *AssetsLockedEvent) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *AssetsUnlockedEvent) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AssetsUnlockedEvent) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AssetsUnlockedEvent) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Chain != 0 {
+		i = encodeVarintBridge(dAtA, i, uint64(m.Chain))
+		i--
+		dAtA[i] = 0x30
+	}
+	{
+		size := m.Amount.Size()
+		i -= size
+		if _, err := m.Amount.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintBridge(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x2a
+	if len(m.Sender) > 0 {
+		i -= len(m.Sender)
+		copy(dAtA[i:], m.Sender)
+		i = encodeVarintBridge(dAtA, i, uint64(len(m.Sender)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Token) > 0 {
+		i -= len(m.Token)
+		copy(dAtA[i:], m.Token)
+		i = encodeVarintBridge(dAtA, i, uint64(len(m.Token)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Recipient) > 0 {
+		i -= len(m.Recipient)
+		copy(dAtA[i:], m.Recipient)
+		i = encodeVarintBridge(dAtA, i, uint64(len(m.Recipient)))
+		i--
+		dAtA[i] = 0x12
+	}
+	{
+		size := m.UnlockSequence.Size()
+		i -= size
+		if _, err := m.UnlockSequence.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintBridge(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0xa
+	return len(dAtA) - i, nil
+}
+
 func (m *ERC20TokenMapping) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -412,6 +566,34 @@ func (m *AssetsLockedEvent) Size() (n int) {
 	l = len(m.Token)
 	if l > 0 {
 		n += 1 + l + sovBridge(uint64(l))
+	}
+	return n
+}
+
+func (m *AssetsUnlockedEvent) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = m.UnlockSequence.Size()
+	n += 1 + l + sovBridge(uint64(l))
+	l = len(m.Recipient)
+	if l > 0 {
+		n += 1 + l + sovBridge(uint64(l))
+	}
+	l = len(m.Token)
+	if l > 0 {
+		n += 1 + l + sovBridge(uint64(l))
+	}
+	l = len(m.Sender)
+	if l > 0 {
+		n += 1 + l + sovBridge(uint64(l))
+	}
+	l = m.Amount.Size()
+	n += 1 + l + sovBridge(uint64(l))
+	if m.Chain != 0 {
+		n += 1 + sovBridge(uint64(m.Chain))
 	}
 	return n
 }
@@ -689,6 +871,243 @@ func (m *AssetsLockedEvent) Unmarshal(dAtA []byte) error {
 			}
 			m.Token = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipBridge(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthBridge
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AssetsUnlockedEvent) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowBridge
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AssetsUnlockedEvent: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AssetsUnlockedEvent: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UnlockSequence", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBridge
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBridge
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBridge
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.UnlockSequence.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Recipient", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBridge
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthBridge
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBridge
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Recipient = append(m.Recipient[:0], dAtA[iNdEx:postIndex]...)
+			if m.Recipient == nil {
+				m.Recipient = []byte{}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBridge
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBridge
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBridge
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Token = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sender", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBridge
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthBridge
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBridge
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sender = append(m.Sender[:0], dAtA[iNdEx:postIndex]...)
+			if m.Sender == nil {
+				m.Sender = []byte{}
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBridge
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBridge
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBridge
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Chain", wireType)
+			}
+			m.Chain = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBridge
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Chain |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipBridge(dAtA[iNdEx:])

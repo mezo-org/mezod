@@ -16,6 +16,7 @@ require (
 	github.com/btcsuite/btcd v0.22.2
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cometbft/cometbft v0.38.17
+	github.com/cosmos/btcutil v1.0.5
 	github.com/cosmos/cosmos-db v1.0.2
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5
 	github.com/cosmos/cosmos-sdk v0.50.10
@@ -95,6 +96,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.14.2 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
+	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
@@ -108,7 +110,6 @@ require (
 	github.com/cometbft/cometbft-db v0.14.1 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
-	github.com/cosmos/btcutil v1.0.5 // indirect
 	github.com/cosmos/gogogateway v1.2.0 // indirect
 	github.com/cosmos/iavl v1.2.0 // indirect
 	github.com/cosmos/ibc-go/modules/capability v1.0.1 // indirect

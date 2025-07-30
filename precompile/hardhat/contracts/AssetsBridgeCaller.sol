@@ -18,6 +18,10 @@ contract AssetsBridgeCaller is IAssetsBridge {
         return IAssetsBridge(precompile).deleteERC20TokenMapping(sourceToken);
     }
 
+    function bridgeOut(address token, uint256 amount, uint8 chain, bytes calldata recipient) external returns (bool) {
+        return IAssetsBridge(precompile).bridgeOut(token, amount, chain, recipient);
+    }
+
     function getERC20TokenMapping(address sourceToken) external view returns (ERC20TokenMapping memory) {
         return IAssetsBridge(precompile).getERC20TokenMapping(sourceToken);
     }

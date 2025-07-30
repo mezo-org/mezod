@@ -937,7 +937,11 @@ func customEvmPrecompiles(
 	}
 
 	// Bridge precompile.
-	assetsBridgeVersionMap, err := assetsbridge.NewPrecompileVersionMap(poaKeeper, bridgeKeeper)
+	assetsBridgeVersionMap, err := assetsbridge.NewPrecompileVersionMap(
+		poaKeeper,
+		bridgeKeeper,
+		authzKeeper,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create assets bridge precompile: [%w]", err)
 	}

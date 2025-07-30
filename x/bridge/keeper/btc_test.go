@@ -53,7 +53,7 @@ func TestBTCBurnt(t *testing.T) {
 
 	t.Run("can increase successfully", func(t *testing.T) {
 		// then try to increase, and get it again
-		require.NoError(t, k.IncreaseBTCBurnt(ctx, math.NewInt(10)))
+		require.NotPanics(t, func() { require.NoError(t, k.IncreaseBTCBurnt(ctx, math.NewInt(10))) })
 	})
 
 	t.Run("can get successfully", func(t *testing.T) {

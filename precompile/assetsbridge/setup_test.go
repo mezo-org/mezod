@@ -2,6 +2,7 @@ package assetsbridge_test
 
 import (
 	"bytes"
+	"errors"
 	"math/big"
 	"slices"
 	"testing"
@@ -120,9 +121,14 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
+			// Create dummy keepers for the test - these are minimal implementations
+			// For bridge_out tests, use the more complete implementations in bridge_out_test.go
+			authzKeeper := &FakeAuthzKeeper{}
+
 			assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 				s.poaKeeper,
 				s.bridgeKeeper,
+				authzKeeper,
 				&assetsbridge.Settings{
 					Observability:   true,
 					BTCManagement:   true,
@@ -206,6 +212,8 @@ type FakeBridgeKeeper struct {
 	sourceBTCToken      []byte
 	erc20TokensMappings []*bridgetypes.ERC20TokenMapping
 	currentSequenceTip  math.Int
+
+	burnErr error
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -218,6 +226,18 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 
 func (k *FakeBridgeKeeper) GetSourceBTCToken(_ sdk.Context) []byte {
 	return k.sourceBTCToken
+}
+
+func (k *FakeBridgeKeeper) BurnBTC(_ sdk.Context, _ []byte, _ math.Int) error {
+	return k.burnErr
+}
+
+func (k *FakeBridgeKeeper) BurnERC20(_ sdk.Context, _, _ []byte, _ *big.Int) error {
+	return k.burnErr
+}
+
+func (k *FakeBridgeKeeper) SetBurnError(err error) {
+	k.burnErr = err
 }
 
 func (k *FakeBridgeKeeper) CreateERC20TokenMapping(
@@ -258,6 +278,23 @@ func (k *FakeBridgeKeeper) setAssetsLockedSequenceTip(newValue math.Int) {
 	k.currentSequenceTip = newValue
 }
 
+func (k *FakeBridgeKeeper) GetERC20TokenMappingFromMezoToken(
+	_ sdk.Context,
+	mezoToken []byte,
+) (*bridgetypes.ERC20TokenMapping, bool) {
+	index := slices.IndexFunc(
+		k.erc20TokensMappings,
+		func(m *bridgetypes.ERC20TokenMapping) bool {
+			return bytes.Equal(m.MezoTokenBytes(), mezoToken)
+		},
+	)
+	if index == -1 {
+		return nil, false
+	}
+
+	return k.erc20TokensMappings[index], true
+}
+
 func (k *FakeBridgeKeeper) GetERC20TokenMapping(
 	_ sdk.Context,
 	sourceToken []byte,
@@ -277,4 +314,15 @@ func (k *FakeBridgeKeeper) GetERC20TokenMapping(
 
 func (k *FakeBridgeKeeper) GetParams(_ sdk.Context) bridgetypes.Params {
 	return bridgetypes.DefaultParams()
+}
+
+func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
+	_ sdk.Context,
+	_ []byte,
+	_ []byte,
+	_ []byte,
+	_ math.Int,
+	_ uint8,
+) (*bridgetypes.AssetsUnlockedEvent, error) {
+	return nil, errors.New("unimplemented")
 }

@@ -16,7 +16,7 @@ func TestEndBlock(t *testing.T) {
 	require.NoError(t, k.IncreaseBTCMinted(ctx, math.NewInt(42)))
 
 	// ... BTC burnt
-	require.NoError(t, k.IncreaseBTCBurnt(ctx, math.NewInt(21)))
+	require.NotPanics(t, func() { require.NoError(t, k.IncreaseBTCBurnt(ctx, math.NewInt(21))) })
 
 	t.Run("does not panic when valid state", func(t *testing.T) {
 		// return the same supply so all is fine

@@ -14,6 +14,8 @@ message GenesisState {
   string owner = 2;
   // validators defines the initial list of validators.
   repeated Validator validators = 3 [ (gogoproto.nullable) = false ];
-  // privilege_assignments defines the initial list of validator privilege assignments.
-  repeated ValidatorPrivilegeAssignment privilege_assignments = 4 [ (gogoproto.nullable) = false ];
+  // privilege_assignments defines the initial list of validator privilege
+  // assignments.
+  repeated ValidatorPrivilegeAssignment privilege_assignments = 4
+      [ (gogoproto.nullable) = false ];
 }
