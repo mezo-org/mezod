@@ -268,7 +268,7 @@ func (m *BridgeOutMethod) validateToken(
 
 	switch chain {
 	case TargetChainEthereum:
-		if _, ok := m.bridgeKeeper.GetERC20TokenMapping(sdkCtx, token.Bytes()); ok {
+		if _, ok := m.bridgeKeeper.GetERC20TokenMappingFromMezoToken(sdkCtx, token.Bytes()); ok {
 			return nil
 		}
 

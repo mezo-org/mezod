@@ -204,6 +204,7 @@ type BridgeKeeper interface {
 	DeleteERC20TokenMapping(ctx sdk.Context, sourceToken []byte) error
 	GetERC20TokensMappings(ctx sdk.Context) []*bridgetypes.ERC20TokenMapping
 	GetERC20TokenMapping(ctx sdk.Context, sourceToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
+	GetERC20TokenMappingFromMezoToken(ctx sdk.Context, mezoToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
 	GetParams(ctx sdk.Context) bridgetypes.Params
 	SaveAssetsUnlocked(
 		ctx sdk.Context,
