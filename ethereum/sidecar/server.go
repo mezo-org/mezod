@@ -77,7 +77,7 @@ type Server struct {
 	requestsPerMinute uint64
 
 	// bridging-out
-	// bridgeOutClient *BridgeOutClient
+	bridgeOutClient *BridgeOutClient
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -129,15 +129,15 @@ func RunServer(
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
-	// bridgeOutClient, err := NewBridgeOutClient(
-	// 	logger,
-	// 	bridgeOutServerAddress,
-	// 	bridgeOutRequestTimeout,
-	// 	registry,
-	// )
-	// if err != nil {
-	// 	panic(fmt.Sprintf("failed to create bridge-out client: %v", err))
-	// }
+	bridgeOutClient, err := NewBridgeOutClient(
+		logger,
+		bridgeOutServerAddress,
+		bridgeOutRequestTimeout,
+		registry,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create bridge-out client: %v", err))
+	}
 
 	server := &Server{
 		logger:             logger,
@@ -148,7 +148,7 @@ func RunServer(
 		chain:              chain,
 		batchSize:          batchSize,
 		requestsPerMinute:  requestsPerMinute,
-		// bridgeOutClient:    bridgeOutClient,
+		bridgeOutClient:    bridgeOutClient,
 	}
 
 	go func() {
