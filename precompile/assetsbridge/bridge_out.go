@@ -459,7 +459,8 @@ func newScriptFromVarLenData(varLenData []byte) ([]byte, error) {
 	// Make sure the combined byte length of the script and the byte length
 	// of the CompactSizeUint matches the total byte length of the variable
 	// length data. Otherwise, the input data slice is malformed.
-	if uint64(scriptByteLength)+uint64(compactByteLength) != uint64(len(varLenData)) {
+	//nolint:gosec
+	if scriptByteLength+uint64(compactByteLength) != uint64(len(varLenData)) {
 		return nil, fmt.Errorf("malformed var len data")
 	}
 

@@ -9,7 +9,6 @@ import (
 
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/mezo-org/mezod/cmd/config"
 	"github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -312,9 +311,12 @@ func TestBurnERC20(t *testing.T) {
 				fromAddr := toBytes(recipient1)
 				token, _ := hex.DecodeString(testSourceERC20Token1[2:])
 				amount := big.NewInt(1)
+				bridgeAddrBytes := evmtypes.HexAddressToBytes(
+					evmtypes.AssetsBridgePrecompileAddress,
+				)
 
 				call, err := evmtypes.NewERC20BurnFromCall(
-					authtypes.NewModuleAddress(types.ModuleName).Bytes(),
+					bridgeAddrBytes,
 					token,
 					fromAddr,
 					amount,
@@ -335,7 +337,7 @@ func TestBurnERC20(t *testing.T) {
 			},
 		},
 		{
-			name: "burn erc20 success",
+			name: "burn erc20 failure",
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper {
 				return newMockBankKeeper()
 			},
@@ -345,9 +347,12 @@ func TestBurnERC20(t *testing.T) {
 				fromAddr := toBytes(recipient1)
 				token, _ := hex.DecodeString(testSourceERC20Token1[2:])
 				amount := big.NewInt(1)
+				bridgeAddrBytes := evmtypes.HexAddressToBytes(
+					evmtypes.AssetsBridgePrecompileAddress,
+				)
 
 				call, err := evmtypes.NewERC20BurnFromCall(
-					authtypes.NewModuleAddress(types.ModuleName).Bytes(),
+					bridgeAddrBytes,
 					token,
 					fromAddr,
 					amount,
