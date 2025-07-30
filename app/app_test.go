@@ -60,7 +60,6 @@ func TestMezoExport(t *testing.T) {
 		0,
 		encoding.MakeConfig(ModuleBasics),
 		ethsidecar.NewClientMock(),
-		false,
 		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)
@@ -103,7 +102,6 @@ func TestMezoExport(t *testing.T) {
 		0,
 		encoding.MakeConfig(ModuleBasics),
 		ethsidecar.NewClientMock(),
-		false,
 		simtestutil.NewAppOptionsWithFlagHome(DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 	)

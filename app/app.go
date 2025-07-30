@@ -242,7 +242,6 @@ func NewMezo(
 	invCheckPeriod uint,
 	encodingConfig simappparams.EncodingConfig,
 	ethereumSidecarClient bridgeabci.EthereumSidecarClient,
-	runBridgeOutServer bool,
 	appOpts servertypes.AppOptions,
 	baseAppOptions ...func(*baseapp.BaseApp),
 ) *Mezo {
@@ -546,11 +545,6 @@ func NewMezo(
 	}
 	// Connect ABCI initialization requires the oracle client/metrics to be setup first.
 	app.setABCIExtensions(ethereumSidecarClient)
-
-	// Run bridge-out server if needed
-	if runBridgeOutServer {
-		app.initializeBridgeOutServer(appOpts, &app.BridgeKeeper)
-	}
 
 	app.setupUpgradeHandlers()
 

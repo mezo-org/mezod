@@ -170,7 +170,6 @@ func setupChain(localMinGasPricesStr, chainID string) {
 		5,
 		encoding.MakeConfig(app.ModuleBasics),
 		ethsidecar.NewClientMock(),
-		false,
 		simutils.NewAppOptionsWithFlagHome(app.DefaultNodeHome),
 		baseapp.SetChainID(chainID),
 		baseapp.SetMinGasPrices(localMinGasPricesStr),

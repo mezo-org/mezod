@@ -118,14 +118,4 @@ server-address = "{{ .EthereumSidecar.ServerAddress }}"
 
 # Request timeout defines the timeout for requests to the Ethereum sidecar server.
 request-timeout = "{{ .EthereumSidecar.RequestTimeout }}"
-
-###############################################################################
-###                       Bridge-Out Configuration                          ###
-###############################################################################
-
-[bridge-out.server]
-
-# Address defines the address of the bridge-out server handling requests for
-# AssetsUnlocked entries from the Ethereum sidecar.
-address = "{{ .BridgeOut.ServerAddress }}"
 `

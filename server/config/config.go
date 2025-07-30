@@ -93,9 +93,6 @@ const (
 	// DefaultEthereumSidecarRequestTimeout is the default timeout for requests to the Ethereum sidecar server.
 	DefaultEthereumSidecarRequestTimeout = 5 * time.Second
 
-	// DefaultBridgeOutServerAddress is the default server address for handling requests for `AssetsUnlocked` entries from the Ethereum sidecar.
-	DefaultBridgeOutServerAddress = "0.0.0.0:7600"
-
 	// DefaultConnectOracleEnabled is the default value indicating whether the oracle is enabled.
 	DefaultConnectOracleEnabled = true
 
@@ -130,7 +127,6 @@ type Config struct {
 	JSONRPC         JSONRPCConfig          `mapstructure:"json-rpc"`
 	TLS             TLSConfig              `mapstructure:"tls"`
 	EthereumSidecar EthereumSidecarConfig  `mapstructure:"ethereum-sidecar.client"`
-	BridgeOut       BridgeOutConfig        `mapstructure:"bridge-out.server"`
 	Oracle          oracleconfig.AppConfig `mapstructure:"oracle"`
 }
 
@@ -201,13 +197,6 @@ type EthereumSidecarConfig struct {
 	RequestTimeout time.Duration `mapstructure:"request-timeout"`
 }
 
-// BridgeOutConfig defines the configuration for the bridge-out server
-// handling requests for `AssetsUnlocked` entries from the Ethereum sidecar.
-type BridgeOutConfig struct {
-	// ServerAddress is the address of the bridge-out server.
-	ServerAddress string `mapstructure:"server-address"`
-}
-
 // AppConfig helps to override default appConfig template and configs.
 // return "", nil if no custom configuration is required for the application.
 func AppConfig(denom string) (string, interface{}) {
@@ -237,7 +226,6 @@ func AppConfig(denom string) (string, interface{}) {
 		JSONRPC:         *DefaultJSONRPCConfig(),
 		TLS:             *DefaultTLSConfig(),
 		EthereumSidecar: *DefaultEthereumSidecarConfig(),
-		BridgeOut:       *DefaultBridgeOutConfig(),
 		Oracle:          *DefaultOracleConfig(),
 	}
 
@@ -254,7 +242,6 @@ func DefaultConfig() *Config {
 		JSONRPC:         *DefaultJSONRPCConfig(),
 		TLS:             *DefaultTLSConfig(),
 		EthereumSidecar: *DefaultEthereumSidecarConfig(),
-		BridgeOut:       *DefaultBridgeOutConfig(),
 		Oracle:          *DefaultOracleConfig(),
 	}
 }
@@ -417,21 +404,6 @@ func (c EthereumSidecarConfig) Validate() error {
 	return nil
 }
 
-// DefaultBridgeOutConfig returns the default bridge-out configuration.
-func DefaultBridgeOutConfig() *BridgeOutConfig {
-	return &BridgeOutConfig{
-		ServerAddress: DefaultBridgeOutServerAddress,
-	}
-}
-
-func (c BridgeOutConfig) Validate() error {
-	if c.ServerAddress == "" {
-		return fmt.Errorf("bridge-out server address cannot be empty")
-	}
-
-	return nil
-}
-
 // GetConfig returns a fully parsed Config object.
 func GetConfig(v *viper.Viper) (Config, error) {
 	cfg, err := config.GetConfig(v)
@@ -488,9 +460,6 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			ServerAddress:  v.GetString("ethereum-sidecar.client.server-address"),
 			RequestTimeout: v.GetDuration("ethereum-sidecar.client.request-timeout"),
 		},
-		BridgeOut: BridgeOutConfig{
-			ServerAddress: v.GetString("bridge-out.server.address"),
-		},
 		Oracle: oracleconfig.AppConfig{
 			Enabled:        v.GetBool("oracle.enabled"),
 			OracleAddress:  v.GetString("oracle.oracle_address"),
@@ -527,10 +496,6 @@ func (c Config) ValidateBasic() error {
 
 	if err := c.EthereumSidecar.Validate(); err != nil {
 		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid ethereum sidecar config value: %s", err.Error())
-	}
-
-	if err := c.BridgeOut.Validate(); err != nil {
-		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid bridge-out config value: %s", err.Error())
 	}
 
 	return c.Config.ValidateBasic()

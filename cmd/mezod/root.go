@@ -288,7 +288,6 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 		cast.ToUint(appOpts.Get(sdkserver.FlagInvCheckPeriod)),
 		a.encCfg,
 		ethereumSidecarClient,
-		true,
 		appOpts,
 		baseapp.SetPruning(pruningOpts),
 		baseapp.SetMinGasPrices(cast.ToString(appOpts.Get(sdkserver.FlagMinGasPrices))),
@@ -355,7 +354,6 @@ func (a appCreator) appExport(
 			uint(1),
 			a.encCfg,
 			ethsidecar.NewClientMock(),
-			false,
 			appOpts,
 			baseapp.SetChainID(chainID),
 		)
@@ -374,7 +372,6 @@ func (a appCreator) appExport(
 			uint(1),
 			a.encCfg,
 			ethsidecar.NewClientMock(),
-			false,
 			appOpts,
 			baseapp.SetChainID(chainID),
 		)
