@@ -38,7 +38,7 @@ var (
 // just P2PKH for testing purpose
 func makeValidScript(address string) []byte {
 	recipient, _, _ := base58.CheckDecode(address)
-	recipient = append([]byte{0x76, 0xa9, 0x14}, recipient...)
+	recipient = append([]byte{0x19, 0x76, 0xa9, 0x14}, recipient...)
 	return append(recipient, []byte{0x88, 0xac}...)
 }
 
@@ -397,7 +397,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 
 				p2shAddress := []byte("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy")
 				recipient, _, _ := base58.CheckDecode(string(p2shAddress))
-				recipient = append([]byte{0xa9, 0x14}, recipient...)
+				recipient = append([]byte{0x17, 0xa9, 0x14}, recipient...)
 				recipient = append(recipient, []byte{0x87}...)
 
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), recipient}
@@ -427,7 +427,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 			as:          s.account1.EvmAddr,
 			revert:      true,
 			basicPass:   true,
-			errContains: "invalid recipient address for Bitcoin",
+			errContains: "couldn't get script from var-len data",
 			output:      []interface{}{false},
 		},
 	}
@@ -572,7 +572,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 			as:          s.account1.EvmAddr,
 			basicPass:   true,
 			revert:      true,
-			errContains: "invalid recipient address for Bitcoin",
+			errContains: "couldn't get script from var-len dat",
 		},
 		{
 			name: "valid ethereum inputs",
