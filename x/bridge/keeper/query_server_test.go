@@ -463,3 +463,26 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestAssetsUnlockedEvents_TooManyEventsRequested(t *testing.T) {
+	ctx, k := mockContext()
+	qs := queryServer{k}
+
+	const totalEvents = 10001
+
+	for i := 1; i <= totalEvents; i++ {
+		k.saveAssetsUnlocked(ctx, &bridgetypes.AssetsUnlockedEvent{
+			UnlockSequence: math.NewInt(int64(i)),
+		})
+	}
+
+	k.setAssetsUnlockedSequenceTip(ctx, math.NewInt(totalEvents))
+
+	// Unbounded query: attempt to retrieve all events.
+	req := &bridgetypes.QueryAssetsUnlockedEventsRequest{}
+
+	resp, err := qs.AssetsUnlockedEvents(ctx, req)
+
+	require.Nil(t, resp)
+	require.Equal(t, fmt.Errorf("requested sequence range exceeds 10000"), err)
+}
