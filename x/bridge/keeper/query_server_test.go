@@ -102,7 +102,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x01, 0x11},
 					Amount:         math.NewInt(100),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(1, 0).Unix()),
+					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(2),
@@ -111,7 +111,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x02, 0x22},
 					Amount:         math.NewInt(200),
 					Chain:          2,
-					BlockTime:      uint32(time.Unix(2, 0).Unix()),
+					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 				},
 			},
 			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{},
@@ -124,7 +124,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x01, 0x11},
 						Amount:         math.NewInt(100),
 						Chain:          1,
-						BlockTime:      uint32(time.Unix(1, 0).Unix()),
+						BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 					},
 					{
 						UnlockSequence: math.NewInt(2),
@@ -133,7 +133,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x02, 0x22},
 						Amount:         math.NewInt(200),
 						Chain:          2,
-						BlockTime:      uint32(time.Unix(2, 0).Unix()),
+						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 					},
 				},
 			},
@@ -148,7 +148,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x01, 0x11},
 					Amount:         math.NewInt(100),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(1, 0).Unix()),
+					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(2),
@@ -157,7 +157,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x02, 0x22},
 					Amount:         math.NewInt(200),
 					Chain:          2,
-					BlockTime:      uint32(time.Unix(2, 0).Unix()),
+					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(3),
@@ -166,7 +166,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x03, 0x33},
 					Amount:         math.NewInt(300),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(3, 0).Unix()),
+					BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
 				},
 			},
 			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
@@ -181,7 +181,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x01, 0x11},
 						Amount:         math.NewInt(100),
 						Chain:          1,
-						BlockTime:      uint32(time.Unix(1, 0).Unix()),
+						BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 					},
 					{
 						UnlockSequence: math.NewInt(2),
@@ -190,7 +190,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x02, 0x22},
 						Amount:         math.NewInt(200),
 						Chain:          2,
-						BlockTime:      uint32(time.Unix(2, 0).Unix()),
+						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 					},
 				},
 			},
@@ -205,7 +205,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x01, 0x11},
 					Amount:         math.NewInt(100),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(1, 0).Unix()),
+					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(2),
@@ -214,7 +214,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x02, 0x22},
 					Amount:         math.NewInt(200),
 					Chain:          2,
-					BlockTime:      uint32(time.Unix(2, 0).Unix()),
+					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(3),
@@ -223,7 +223,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x03, 0x33},
 					Amount:         math.NewInt(300),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(3, 0).Unix()),
+					BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
 				},
 			},
 			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
@@ -238,7 +238,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x02, 0x22},
 						Amount:         math.NewInt(200),
 						Chain:          2,
-						BlockTime:      uint32(time.Unix(2, 0).Unix()),
+						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 					},
 					{
 						UnlockSequence: math.NewInt(3),
@@ -247,7 +247,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x03, 0x33},
 						Amount:         math.NewInt(300),
 						Chain:          1,
-						BlockTime:      uint32(time.Unix(3, 0).Unix()),
+						BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
 					},
 				},
 			},
@@ -262,7 +262,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x01, 0x11},
 					Amount:         math.NewInt(100),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(1, 0).Unix()),
+					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(2),
@@ -271,7 +271,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x02, 0x22},
 					Amount:         math.NewInt(200),
 					Chain:          2,
-					BlockTime:      uint32(time.Unix(2, 0).Unix()),
+					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 				},
 			},
 			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
@@ -292,7 +292,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x01, 0x11},
 					Amount:         math.NewInt(100),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(1, 0).Unix()),
+					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(2),
@@ -301,7 +301,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x02, 0x22},
 					Amount:         math.NewInt(200),
 					Chain:          2,
-					BlockTime:      uint32(time.Unix(2, 0).Unix()),
+					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(3),
@@ -310,7 +310,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x03, 0x33},
 					Amount:         math.NewInt(300),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(3, 0).Unix()),
+					BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
 				},
 			},
 			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
@@ -326,7 +326,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x02, 0x22},
 						Amount:         math.NewInt(200),
 						Chain:          2,
-						BlockTime:      uint32(time.Unix(2, 0).Unix()),
+						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 					},
 					{
 						UnlockSequence: math.NewInt(3),
@@ -335,7 +335,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x03, 0x33},
 						Amount:         math.NewInt(300),
 						Chain:          1,
-						BlockTime:      uint32(time.Unix(3, 0).Unix()),
+						BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
 					},
 				},
 			},
@@ -350,7 +350,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x01, 0x11},
 					Amount:         math.NewInt(100),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(1, 0).Unix()),
+					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(2),
@@ -359,7 +359,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x02, 0x22},
 					Amount:         math.NewInt(200),
 					Chain:          2,
-					BlockTime:      uint32(time.Unix(2, 0).Unix()),
+					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(3),
@@ -368,7 +368,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x03, 0x33},
 					Amount:         math.NewInt(300),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(3, 0).Unix()),
+					BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
 				},
 			},
 			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
@@ -384,7 +384,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x02, 0x22},
 						Amount:         math.NewInt(200),
 						Chain:          2,
-						BlockTime:      uint32(time.Unix(2, 0).Unix()),
+						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 					},
 				},
 			},
@@ -399,7 +399,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x01, 0x11},
 					Amount:         math.NewInt(100),
 					Chain:          1,
-					BlockTime:      uint32(time.Unix(1, 0).Unix()),
+					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 				},
 				{
 					UnlockSequence: math.NewInt(2),
@@ -408,7 +408,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					Sender:         []byte{0x02, 0x22},
 					Amount:         math.NewInt(200),
 					Chain:          2,
-					BlockTime:      uint32(time.Unix(2, 0).Unix()),
+					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 				},
 			},
 			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
@@ -424,7 +424,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x01, 0x11},
 						Amount:         math.NewInt(100),
 						Chain:          1,
-						BlockTime:      uint32(time.Unix(1, 0).Unix()),
+						BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 					},
 					{
 						UnlockSequence: math.NewInt(2),
@@ -433,7 +433,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						Sender:         []byte{0x02, 0x22},
 						Amount:         math.NewInt(200),
 						Chain:          2,
-						BlockTime:      uint32(time.Unix(2, 0).Unix()),
+						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
 					},
 				},
 			},
@@ -505,7 +505,7 @@ func TestAssetsUnlockedEvents_MissingEventInSequence(t *testing.T) {
 			Sender:         []byte{0x01, 0x11},
 			Amount:         math.NewInt(100),
 			Chain:          1,
-			BlockTime:      uint32(time.Unix(1, 0).Unix()),
+			BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
 		},
 	)
 	k.saveAssetsUnlocked(
@@ -517,7 +517,7 @@ func TestAssetsUnlockedEvents_MissingEventInSequence(t *testing.T) {
 			Sender:         []byte{0x03, 0x33},
 			Amount:         math.NewInt(300),
 			Chain:          1,
-			BlockTime:      uint32(time.Unix(3, 0).Unix()),
+			BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
 		},
 	)
 
