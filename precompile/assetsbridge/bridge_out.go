@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -183,7 +184,7 @@ func (m *BridgeOutMethod) burnBitcoin(
 	msg := banktypes.NewMsgSend(senderAddr.Bytes(), bridgeAddr.Bytes(), sdk.NewCoins(coin))
 	resp, err := sendAuth.Accept(context.SdkCtx(), msg)
 	if err != nil {
-		return fmt.Errorf("couldn't update authorization: %w", err)
+		return fmt.Errorf("couldn't accept authorization: %w", err)
 	}
 
 	if resp.Delete {
@@ -192,9 +193,8 @@ func (m *BridgeOutMethod) burnBitcoin(
 	} else if resp.Updated != nil {
 		err = m.authzKeeper.SaveGrant(context.SdkCtx(), bridgeAddr, senderAddr, resp.Updated, expiration)
 	}
-
 	if err != nil {
-		return fmt.Errorf("bridge is not authorized to burn BTC: %w", err)
+		return fmt.Errorf("couldn't update authorization BTC: %w", err)
 	}
 
 	if !resp.Accept {
@@ -269,7 +269,7 @@ func (m *BridgeOutMethod) validateToken(
 
 	switch chain {
 	case TargetChainEthereum:
-		if _, ok := m.bridgeKeeper.GetERC20TokenMapping(sdkCtx, token.Bytes()); ok {
+		if _, ok := m.bridgeKeeper.GetERC20TokenMappingFromMezoToken(sdkCtx, token.Bytes()); ok {
 			return nil
 		}
 
@@ -330,7 +330,11 @@ func (m *BridgeOutMethod) validateRecipientForChain(chain TargetChain, recipient
 			return fmt.Errorf("invalid recipient address for Ethereum chain: %v", hex.EncodeToString(recipient))
 		}
 	case TargetChainBitcoin:
-		if !isSupportedBitcoinScriptType(recipient) {
+		script, err := newScriptFromVarLenData(recipient)
+		if err != nil {
+			return fmt.Errorf("couldn't get script from var-len data: %v", err)
+		}
+		if !isSupportedBitcoinScriptType(script) {
 			return fmt.Errorf("invalid recipient address for Bitcoin: %v", hex.EncodeToString(recipient))
 		}
 	}
@@ -440,4 +444,39 @@ func isSupportedBitcoinScriptType(script []byte) bool {
 	default:
 		return false
 	}
+}
+
+// NewScriptFromVarLenData construct a Script instance based on the provided
+// variable length data prepended with a CompactSizeUint.
+func newScriptFromVarLenData(varLenData []byte) ([]byte, error) {
+	// Extract the CompactSizeUint value that holds the byte length of the script.
+	// Also, extract the byte length of the CompactSizeUint itself.
+	scriptByteLength, compactByteLength, err := readCompactSizeUint(varLenData)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read compact size uint: [%v]", err)
+	}
+
+	// Make sure the combined byte length of the script and the byte length
+	// of the CompactSizeUint matches the total byte length of the variable
+	// length data. Otherwise, the input data slice is malformed.
+	//nolint:gosec
+	if scriptByteLength+uint64(compactByteLength) != uint64(len(varLenData)) {
+		return nil, fmt.Errorf("malformed var len data")
+	}
+
+	// Extract the actual script by omitting the leading CompactSizeUint.
+	return varLenData[compactByteLength:], nil
+}
+
+// readCompactSizeUint reads the leading CompactSizeUint from the provided
+// variable length data. Returns the value held by the CompactSizeUint as
+// the first argument and the byte length of the CompactSizeUint as the
+// second one.
+func readCompactSizeUint(varLenData []byte) (uint64, int, error) {
+	csu, err := wire.ReadVarInt(bytes.NewReader(varLenData), 0)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return csu, wire.VarIntSerializeSize(csu), nil
 }

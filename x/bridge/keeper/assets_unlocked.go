@@ -9,7 +9,6 @@ import (
 	"cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -159,8 +158,12 @@ func (k Keeper) BurnERC20(
 	fromAddr []byte,
 	amount *big.Int,
 ) error {
+	bridgeAddrBytes := evmtypes.HexAddressToBytes(
+		evmtypes.AssetsBridgePrecompileAddress,
+	)
+
 	call, err := evmtypes.NewERC20BurnFromCall(
-		authtypes.NewModuleAddress(types.ModuleName).Bytes(),
+		bridgeAddrBytes,
 		token,
 		fromAddr,
 		amount,

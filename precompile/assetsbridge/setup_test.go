@@ -278,6 +278,23 @@ func (k *FakeBridgeKeeper) setAssetsLockedSequenceTip(newValue math.Int) {
 	k.currentSequenceTip = newValue
 }
 
+func (k *FakeBridgeKeeper) GetERC20TokenMappingFromMezoToken(
+	_ sdk.Context,
+	mezoToken []byte,
+) (*bridgetypes.ERC20TokenMapping, bool) {
+	index := slices.IndexFunc(
+		k.erc20TokensMappings,
+		func(m *bridgetypes.ERC20TokenMapping) bool {
+			return bytes.Equal(m.MezoTokenBytes(), mezoToken)
+		},
+	)
+	if index == -1 {
+		return nil, false
+	}
+
+	return k.erc20TokensMappings[index], true
+}
+
 func (k *FakeBridgeKeeper) GetERC20TokenMapping(
 	_ sdk.Context,
 	sourceToken []byte,

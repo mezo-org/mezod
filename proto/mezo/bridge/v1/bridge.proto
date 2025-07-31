@@ -61,7 +61,7 @@ message AssetsUnlockedEvent {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
-  // chain is the target chain for this unlock event
+  // chain is the target chain for this unlock event.
   uint32 chain = 6;
   // block_time is the timestamp of the block at which the event was emitted.
   google.protobuf.Timestamp block_time = 7
