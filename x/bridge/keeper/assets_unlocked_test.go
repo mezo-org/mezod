@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -29,6 +30,8 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 	// AssetsLocked events possible (see AssetsLockedEvent.IsValid).
 	cfg := sdk.GetConfig()
 	config.SetBech32Prefixes(cfg)
+
+	blockTime := uint32(10000)
 
 	toBytes := func(address string) sdk.AccAddress {
 		account, err := sdk.AccAddressFromBech32(address)
@@ -58,6 +61,7 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 				Sender:         toBytes(recipient1),
 				Amount:         math.NewInt(1),
 				Chain:          0,
+				BlockTime:      blockTime,
 			},
 			run: func(ctx sdk.Context, k Keeper) (*types.AssetsUnlockedEvent, error) {
 				token, _ := hex.DecodeString(testMezoERC20Token1[2:])
@@ -76,6 +80,7 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 				Sender:         toBytes(recipient1),
 				Amount:         math.NewInt(1),
 				Chain:          0,
+				BlockTime:      blockTime,
 			},
 			run: func(ctx sdk.Context, k Keeper) (*types.AssetsUnlockedEvent, error) {
 				btcToken := evmtypes.HexAddressToBytes(
@@ -102,6 +107,7 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, k := mockContext()
+			ctx = ctx.WithBlockTime(time.Unix(int64(blockTime), 0).UTC())
 
 			k.bankKeeper = test.bankKeeperFn(ctx)
 			k.evmKeeper = test.evmKeeperFn(ctx)

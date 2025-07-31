@@ -109,8 +109,8 @@ func (k Keeper) SaveAssetsUnlocked(
 		ctx, nextSequence,
 	)
 
-	// timestamp of the current block
-	blockTime := ctx.BlockTime()
+	// UNIX timestamp of the current block in seconds
+	blockTime := uint32(ctx.BlockTime().Unix())
 
 	// then save the event
 	assetsUnlocked := &types.AssetsUnlockedEvent{
