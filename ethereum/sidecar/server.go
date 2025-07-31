@@ -78,6 +78,9 @@ type Server struct {
 
 	// bridging-out
 	bridgeOutClient *BridgeOutClient
+
+	attestationMutex sync.RWMutex
+	attestationQueue []bridgetypes.AssetsUnlockedEvent
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -149,16 +152,20 @@ func RunServer(
 		batchSize:          batchSize,
 		requestsPerMinute:  requestsPerMinute,
 		bridgeOutClient:    bridgeOutClient,
+		attestationQueue:   make([]bridgetypes.AssetsUnlockedEvent, 0),
 	}
 
 	go func() {
 		defer cancelCtx()
-		err := server.observeEvents(ctx)
+		err := server.observeAssetsLockedEvents(ctx)
 		if err != nil {
-			server.logger.Error("event observation routine failed", "err", err)
+			server.logger.Error(
+				"AssetsLocked events observation routine failed",
+				"err", err,
+			)
 		}
 
-		server.logger.Info("event observation routine stopped")
+		server.logger.Info("AssetsLocked events observation routine stopped")
 	}()
 
 	go func() {
@@ -173,28 +180,28 @@ func RunServer(
 
 	go func() {
 		defer cancelCtx()
-		err := server.observeBridgeOutEntries(ctx)
+		err := server.observeAssetsUnlockedEvents(ctx)
 		if err != nil {
 			server.logger.Error(
-				"bridge-out entries observation routine failed",
+				"AssetsUnlocked events observation routine failed",
 				"err", err,
 			)
 		}
 
-		server.logger.Info("bridge-out entries observation routine stopped")
+		server.logger.Info("AssetsUnlocked events observation routine stopped")
 	}()
 
 	go func() {
 		defer cancelCtx()
-		err := server.attestBridgeOutEntries(ctx)
+		err := server.attestAssetsUnlockedEvents(ctx)
 		if err != nil {
 			server.logger.Error(
-				"bridge-out entries attestation routine failed",
+				"AssetsUnlocked events attestation routine failed",
 				"err", err,
 			)
 		}
 
-		server.logger.Info("bridge-out entries attestation routine stopped")
+		server.logger.Info("AssetsUnlocked events attestation routine stopped")
 	}()
 
 	<-ctx.Done()
@@ -202,7 +209,7 @@ func RunServer(
 	server.logger.Error("sidecar stopped")
 }
 
-// observeEvents monitors and processes events from the MezoBridge smart contract.
+// observeAssetsLockedEvents monitors and processes AssetsLocked events from the MezoBridge smart contract.
 //
 //   - Initializes a MezoBridge contract instance using the provided blockchain connection and contract address.
 //   - Retrieves the most recent finalized block number from the blockchain.
@@ -211,7 +218,7 @@ func RunServer(
 //   - Sets up a ticker channel to continuously monitor new finalized blocks.
 //   - On each new block notification from the ticker channel, calls `processEvents` to handle new events
 //     since the last finalized block.
-func (s *Server) observeEvents(ctx context.Context) error {
+func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get the finalized block: [%w]", err)
@@ -473,13 +480,13 @@ func (s *Server) startGRPCServer(
 	}
 }
 
-func (s *Server) observeBridgeOutEntries(ctx context.Context) error {
+func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 	// TODO: Implement
 	<-ctx.Done()
 	return nil
 }
 
-func (s *Server) attestBridgeOutEntries(ctx context.Context) error {
+func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) error {
 	// TODO: Implement
 	<-ctx.Done()
 	return nil
