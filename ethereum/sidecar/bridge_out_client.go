@@ -116,6 +116,40 @@ func (c *BridgeOutClient) GetAssetsUnlockedEntries(
 	return events, nil
 }
 
+func (c *BridgeOutClient) GetAssetsUnlockedSequenceTip(
+	ctx context.Context,
+) (sdkmath.Int, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
+	defer cancel()
+
+	queryClient := bridgetypes.NewQueryClient(c.connection)
+
+	request := &bridgetypes.QueryAssetsUnlockedSequenceTipRequest{}
+
+	response, err := queryClient.AssetsUnlockedSequenceTip(
+		ctxWithTimeout,
+		request,
+	)
+	if err != nil {
+		return sdkmath.Int{}, fmt.Errorf(
+			"failed to get assets unlocked sequence tip [%v]",
+			err,
+		)
+	}
+
+	tip := response.SequenceTip
+	if tip.IsNil() || tip.IsNegative() {
+		return sdkmath.Int{}, fmt.Errorf(
+			"assets unlocked sequence tip is nil or negative",
+		)
+	}
+
+	return tip, nil
+}
+
 func validateAssetsUnlockedEntries(
 	_ sdkmath.Int,
 	_ sdkmath.Int,
