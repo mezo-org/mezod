@@ -484,5 +484,54 @@ func TestAssetsUnlockedEvents_TooManyEventsRequested(t *testing.T) {
 	resp, err := qs.AssetsUnlockedEvents(ctx, req)
 
 	require.Nil(t, resp)
-	require.Equal(t, fmt.Errorf("requested sequence range exceeds 10000"), err)
+	require.EqualError(
+		t,
+		err,
+		"requested sequence range exceeds 10000",
+	)
+}
+
+func TestAssetsUnlockedEvents_MissingEventInSequence(t *testing.T) {
+	ctx, k := mockContext()
+	qs := queryServer{k}
+
+	// Set event for sequence number 1 and 3, omitting 2.
+	k.saveAssetsUnlocked(
+		ctx,
+		&bridgetypes.AssetsUnlockedEvent{
+			UnlockSequence: math.NewInt(1),
+			Recipient:      []byte{0x01, 0x11},
+			Token:          "0x1111111111111111111111111111111111111111",
+			Sender:         []byte{0x01, 0x11},
+			Amount:         math.NewInt(100),
+			Chain:          1,
+			BlockTime:      uint32(time.Unix(1, 0).Unix()),
+		},
+	)
+	k.saveAssetsUnlocked(
+		ctx,
+		&bridgetypes.AssetsUnlockedEvent{
+			UnlockSequence: math.NewInt(3),
+			Recipient:      []byte{0x03, 0x33},
+			Token:          "0x3333333333333333333333333333333333333333",
+			Sender:         []byte{0x03, 0x33},
+			Amount:         math.NewInt(300),
+			Chain:          1,
+			BlockTime:      uint32(time.Unix(3, 0).Unix()),
+		},
+	)
+
+	k.setAssetsUnlockedSequenceTip(ctx, math.NewInt(3))
+
+	// Unbounded query: attempt to retrieve all events.
+	req := &bridgetypes.QueryAssetsUnlockedEventsRequest{}
+
+	resp, err := qs.AssetsUnlockedEvents(ctx, req)
+
+	require.Nil(t, resp)
+	require.EqualError(
+		t,
+		err,
+		"event from requested sequence range not found",
+	)
 }

@@ -107,7 +107,13 @@ func (qs queryServer) AssetsUnlockedEvents(
 	}
 
 	for seq := start; seq.LT(end); seq = seq.AddRaw(1) {
-		event := qs.keeper.GetAssetsUnlocked(sdkCtx, seq)
+		event, found := qs.keeper.GetAssetsUnlocked(sdkCtx, seq)
+		if !found {
+			return nil, fmt.Errorf(
+				"event from requested sequence range not found",
+			)
+		}
+
 		events = append(events, *event)
 	}
 

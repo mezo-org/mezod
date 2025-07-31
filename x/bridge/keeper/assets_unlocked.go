@@ -59,11 +59,19 @@ func (k Keeper) saveAssetsUnlocked(
 	ctx.KVStore(k.storeKey).Set(types.GetAssetsUnlockedKey(assetsUnlocked.UnlockSequence), bz)
 }
 
+// GetAssetsUnlocked gets AssetsUnlocked event for the given sequence number.
+// The returned boolean value indicates whether the record was found in the store.
 func (k Keeper) GetAssetsUnlocked(
 	ctx sdk.Context,
 	sequence math.Int,
-) *types.AssetsUnlockedEvent {
+) (
+	*types.AssetsUnlockedEvent,
+	bool,
+) {
 	bz := ctx.KVStore(k.storeKey).Get(types.GetAssetsUnlockedKey(sequence))
+	if len(bz) == 0 {
+		return nil, false
+	}
 
 	var assetsUnlocked types.AssetsUnlockedEvent
 	err := assetsUnlocked.Unmarshal(bz)
@@ -71,7 +79,7 @@ func (k Keeper) GetAssetsUnlocked(
 		panic(err)
 	}
 
-	return &assetsUnlocked
+	return &assetsUnlocked, true
 }
 
 func (k Keeper) SaveAssetsUnlocked(
