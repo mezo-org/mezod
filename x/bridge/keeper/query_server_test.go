@@ -71,6 +71,17 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 				"invalid non-positive sequence range",
 			),
 		},
+		"sequence start is zero": {
+			events: []bridgetypes.AssetsUnlockedEvent{},
+			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
+				SequenceStart: math.NewInt(0),
+				SequenceEnd:   math.NewInt(2),
+			},
+			expectedResponse: nil,
+			expectedError: fmt.Errorf(
+				"invalid non-positive sequence range",
+			),
+		},
 		"there are no events": {
 			events: []bridgetypes.AssetsUnlockedEvent{},
 			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
@@ -269,6 +280,64 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 			},
 			expectedResponse: &bridgetypes.QueryAssetsUnlockedEventsResponse{
 				Events: []bridgetypes.AssetsUnlockedEvent{},
+			},
+			expectedError: nil,
+		},
+		"sequence end is greater than tip": {
+			events: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: math.NewInt(1),
+					Recipient:      []byte{0x01, 0x11},
+					Token:          "0x1111111111111111111111111111111111111111",
+					Sender:         []byte{0x01, 0x11},
+					Amount:         math.NewInt(100),
+					Chain:          1,
+					BlockTime:      time.Unix(1, 0).UTC(),
+				},
+				{
+					UnlockSequence: math.NewInt(2),
+					Recipient:      []byte{0x02, 0x22},
+					Token:          "0x2222222222222222222222222222222222222222",
+					Sender:         []byte{0x02, 0x22},
+					Amount:         math.NewInt(200),
+					Chain:          2,
+					BlockTime:      time.Unix(2, 0).UTC(),
+				},
+				{
+					UnlockSequence: math.NewInt(3),
+					Recipient:      []byte{0x03, 0x33},
+					Token:          "0x3333333333333333333333333333333333333333",
+					Sender:         []byte{0x03, 0x33},
+					Amount:         math.NewInt(300),
+					Chain:          1,
+					BlockTime:      time.Unix(3, 0).UTC(),
+				},
+			},
+			request: &bridgetypes.QueryAssetsUnlockedEventsRequest{
+				SequenceStart: math.NewInt(2),
+				SequenceEnd:   math.NewInt(5),
+			},
+			expectedResponse: &bridgetypes.QueryAssetsUnlockedEventsResponse{
+				Events: []bridgetypes.AssetsUnlockedEvent{
+					{
+						UnlockSequence: math.NewInt(2),
+						Recipient:      []byte{0x02, 0x22},
+						Token:          "0x2222222222222222222222222222222222222222",
+						Sender:         []byte{0x02, 0x22},
+						Amount:         math.NewInt(200),
+						Chain:          2,
+						BlockTime:      time.Unix(2, 0).UTC(),
+					},
+					{
+						UnlockSequence: math.NewInt(3),
+						Recipient:      []byte{0x03, 0x33},
+						Token:          "0x3333333333333333333333333333333333333333",
+						Sender:         []byte{0x03, 0x33},
+						Amount:         math.NewInt(300),
+						Chain:          1,
+						BlockTime:      time.Unix(3, 0).UTC(),
+					},
+				},
 			},
 			expectedError: nil,
 		},
