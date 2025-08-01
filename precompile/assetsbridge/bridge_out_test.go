@@ -106,7 +106,7 @@ func (k *ExtendedFakeBridgeKeeper) SaveAssetsUnlocked(
 		Token:          common.BytesToAddress(token).Hex(),
 		Amount:         amount,
 		Chain:          uint32(chain),
-		Sender:         sender,
+		Sender:         common.BytesToAddress(sender).Hex(),
 		Recipient:      recipient,
 		UnlockSequence: math.NewInt(k.sequenceNumber),
 	}

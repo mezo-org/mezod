@@ -109,6 +109,8 @@ func (k Keeper) SaveAssetsUnlocked(
 		return nil, fmt.Errorf("unknown token %v", hex.EncodeToString(token))
 	}
 
+	senderAddress := evmtypes.BytesToHexAddress(sender)
+
 	// calculate the next unlock sequence
 	nextSequence := k.GetAssetsUnlockedSequenceTip(ctx).AddRaw(1)
 
@@ -125,7 +127,7 @@ func (k Keeper) SaveAssetsUnlocked(
 		UnlockSequence: nextSequence,
 		Recipient:      recipient,
 		Token:          targetToken,
-		Sender:         sender,
+		Sender:         senderAddress,
 		Amount:         amount,
 		Chain:          uint32(chain),
 		BlockTime:      blockTime,

@@ -19,6 +19,8 @@ import (
 
 const (
 	//nolint:gosec
+	sender = "0xbB0dB15BF623b2a455ecE5aA1746807709A10d3a"
+	//nolint:gosec
 	recipient1 = "mezo12wsc0qgyfwwfj3wrlpgm9q3lmndl2m4qmm34dp"
 	//nolint:gosec
 	recipient2 = "mezo1xqurxvvh8z2xpj6wltq0tajxm47xnv7q6rtvja"
