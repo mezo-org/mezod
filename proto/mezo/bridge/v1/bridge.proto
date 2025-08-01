@@ -2,7 +2,6 @@ syntax = "proto3";
 package mezo.bridge.v1;
 
 import "gogoproto/gogo.proto";
-import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/mezo-org/mezod/x/bridge/types";
 
@@ -61,11 +60,11 @@ message AssetsUnlockedEvent {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
-  // chain is the target chain for this unlock event
+  // chain is the target chain for this unlock event.
   uint32 chain = 6;
-  // block_time is the timestamp of the block at which the event was emitted.
-  google.protobuf.Timestamp block_time = 7
-      [ (gogoproto.nullable) = false, (gogoproto.stdtime) = true ];
+  // block_time is the UNIX timestamp of the block at which the event was
+  // emitted. It is in seconds.
+  uint32 block_time = 7;
 }
 
 // ERC20TokenMapping defines a mapping between an ERC20 token on the source

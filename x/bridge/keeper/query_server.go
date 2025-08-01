@@ -54,6 +54,7 @@ func (qs queryServer) AssetsUnlockedSequenceTip(
 // Notice that storing `AssetsUnlocked` events begins with the unlock sequence
 // of `1`. Additionally, the current assets unlocked sequence tip is always
 // equal to the total number of `AssetsUnlocked` events stored so far.
+// The requested range cannot exceed 10000 events.
 func (qs queryServer) AssetsUnlockedEvents(
 	ctx context.Context,
 	req *types.QueryAssetsUnlockedEventsRequest,
@@ -99,8 +100,20 @@ func (qs queryServer) AssetsUnlockedEvents(
 		end = math.MinInt(end, sequenceTip.AddRaw(1))
 	}
 
+	// Limit the number of events we can retrieve to avoid loading too much data
+	// into memory.
+	if end.Sub(start).GT(math.NewInt(10000)) {
+		return nil, fmt.Errorf("requested sequence range exceeds 10000")
+	}
+
 	for seq := start; seq.LT(end); seq = seq.AddRaw(1) {
-		event := qs.keeper.GetAssetsUnlocked(sdkCtx, seq)
+		event, found := qs.keeper.GetAssetsUnlocked(sdkCtx, seq)
+		if !found {
+			return nil, fmt.Errorf(
+				"event from requested sequence range not found",
+			)
+		}
+
 		events = append(events, *event)
 	}
 

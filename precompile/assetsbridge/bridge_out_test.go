@@ -1,7 +1,6 @@
 package assetsbridge_test
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -39,175 +38,8 @@ var (
 // just P2PKH for testing purpose
 func makeValidScript(address string) []byte {
 	recipient, _, _ := base58.CheckDecode(address)
-	recipient = append([]byte{0x76, 0xa9, 0x14}, recipient...)
+	recipient = append([]byte{0x19, 0x76, 0xa9, 0x14}, recipient...)
 	return append(recipient, []byte{0x88, 0xac}...)
-}
-
-type FakeEvmKeeper struct {
-	contracts       map[string]bool
-	callResponses   map[string]*evmtypes.MsgEthereumTxResponse
-	shouldRevert    bool
-	revertMessage   string
-	balances        map[string]*big.Int
-	allowances      map[string]map[string]*big.Int
-	burnFromCalled  bool
-	burnFromSuccess bool
-	burnFromError   error
-	lastBurnAmount  *big.Int
-	lastBurnFrom    common.Address
-	callHandler     func(evmtypes.ContractCall) (*evmtypes.MsgEthereumTxResponse, error)
-}
-
-func NewFakeEvmKeeper() *FakeEvmKeeper {
-	return &FakeEvmKeeper{
-		contracts:       make(map[string]bool),
-		callResponses:   make(map[string]*evmtypes.MsgEthereumTxResponse),
-		balances:        make(map[string]*big.Int),
-		allowances:      make(map[string]map[string]*big.Int),
-		burnFromSuccess: true,
-	}
-}
-
-func (k *FakeEvmKeeper) ExecuteContractCall(_ sdk.Context, call evmtypes.ContractCall) (*evmtypes.MsgEthereumTxResponse, error) {
-	if k.callHandler != nil {
-		return k.callHandler(call)
-	}
-
-	// Handle different call types based on the method signature
-	data := call.Data()
-
-	// ERC20 balanceOf(address) - 0x70a08231
-	if len(data) >= 4 && bytes.Equal(data[:4], []byte{0x70, 0xa0, 0x82, 0x31}) {
-		if k.shouldRevert {
-			return &evmtypes.MsgEthereumTxResponse{
-				VmError: k.revertMessage,
-			}, nil
-		}
-		if len(data) < 36 {
-			return nil, errors.New("invalid balanceOf call data")
-		}
-		addr := common.BytesToAddress(data[16:36])
-		balance := k.GetBalance(addr)
-
-		// Pack the balance as 32 bytes
-		ret := common.LeftPadBytes(balance.Bytes(), 32)
-		return &evmtypes.MsgEthereumTxResponse{
-			Ret: ret,
-		}, nil
-	}
-
-	// ERC20 allowance(address,address) - 0xdd62ed3e
-	if len(data) >= 4 && bytes.Equal(data[:4], []byte{0xdd, 0x62, 0xed, 0x3e}) {
-		if k.shouldRevert {
-			return &evmtypes.MsgEthereumTxResponse{
-				VmError: k.revertMessage,
-			}, nil
-		}
-		if len(data) < 68 {
-			return nil, errors.New("invalid allowance call data")
-		}
-		owner := common.BytesToAddress(data[16:36])
-		spender := common.BytesToAddress(data[48:68])
-		allowance := k.GetAllowance(owner, spender)
-
-		// Pack the allowance as 32 bytes
-		ret := common.LeftPadBytes(allowance.Bytes(), 32)
-		return &evmtypes.MsgEthereumTxResponse{
-			Ret: ret,
-		}, nil
-	}
-
-	// ERC20 burnFrom(address,uint256) - 0x79cc6790
-	if len(data) >= 4 && bytes.Equal(data[:4], []byte{0x79, 0xcc, 0x67, 0x90}) {
-		if k.shouldRevert {
-			return &evmtypes.MsgEthereumTxResponse{
-				VmError: k.revertMessage,
-			}, nil
-		}
-		if len(data) < 68 {
-			return nil, errors.New("invalid burnFrom call data")
-		}
-		k.burnFromCalled = true
-		k.lastBurnFrom = common.BytesToAddress(data[16:36])
-		k.lastBurnAmount = new(big.Int).SetBytes(data[36:68])
-
-		if k.burnFromError != nil {
-			return nil, k.burnFromError
-		}
-		if !k.burnFromSuccess {
-			return nil, errors.New("burnFrom failed")
-		}
-
-		return &evmtypes.MsgEthereumTxResponse{}, nil
-	}
-
-	return nil, errors.New("unknown contract call")
-}
-
-func (k *FakeEvmKeeper) IsContract(_ sdk.Context, address []byte) bool {
-	return k.contracts[common.BytesToAddress(address).Hex()]
-}
-
-func (k *FakeEvmKeeper) SetContract(address common.Address, isContract bool) {
-	k.contracts[address.Hex()] = isContract
-}
-
-func (k *FakeEvmKeeper) SetBalance(addr common.Address, balance *big.Int) {
-	k.balances[addr.Hex()] = balance
-}
-
-func (k *FakeEvmKeeper) GetBalance(addr common.Address) *big.Int {
-	if balance, ok := k.balances[addr.Hex()]; ok {
-		return balance
-	}
-	return big.NewInt(0)
-}
-
-func (k *FakeEvmKeeper) SetAllowance(owner, spender common.Address, allowance *big.Int) {
-	if k.allowances[owner.Hex()] == nil {
-		k.allowances[owner.Hex()] = make(map[string]*big.Int)
-	}
-	k.allowances[owner.Hex()][spender.Hex()] = allowance
-}
-
-func (k *FakeEvmKeeper) GetAllowance(owner, spender common.Address) *big.Int {
-	if ownerAllowances, ok := k.allowances[owner.Hex()]; ok {
-		if allowance, ok := ownerAllowances[spender.Hex()]; ok {
-			return allowance
-		}
-	}
-	return big.NewInt(0)
-}
-
-func (k *FakeEvmKeeper) SetShouldRevert(shouldRevert bool, message string) {
-	k.shouldRevert = shouldRevert
-	k.revertMessage = message
-}
-
-func (k *FakeEvmKeeper) SetBurnFromSuccess(success bool) {
-	k.burnFromSuccess = success
-}
-
-func (k *FakeEvmKeeper) SetBurnFromError(err error) {
-	k.burnFromError = err
-}
-
-func (k *FakeEvmKeeper) BurnFromCalled() bool {
-	return k.burnFromCalled
-}
-
-func (k *FakeEvmKeeper) SetCallHandler(handler func(evmtypes.ContractCall) (*evmtypes.MsgEthereumTxResponse, error)) {
-	k.callHandler = handler
-}
-
-func (k *FakeEvmKeeper) Reset() {
-	k.burnFromCalled = false
-	k.lastBurnAmount = nil
-	k.lastBurnFrom = common.Address{}
-	k.burnFromError = nil
-	k.callHandler = nil
-	k.shouldRevert = false
-	k.revertMessage = ""
 }
 
 type FakeAuthzKeeper struct {
@@ -565,7 +397,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 
 				p2shAddress := []byte("3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy")
 				recipient, _, _ := base58.CheckDecode(string(p2shAddress))
-				recipient = append([]byte{0xa9, 0x14}, recipient...)
+				recipient = append([]byte{0x17, 0xa9, 0x14}, recipient...)
 				recipient = append(recipient, []byte{0x87}...)
 
 				return []interface{}{testBTCToken, big.NewInt(100), uint8(1), recipient}
@@ -595,7 +427,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutBitcoinExecution() {
 			as:          s.account1.EvmAddr,
 			revert:      true,
 			basicPass:   true,
-			errContains: "invalid recipient address for Bitcoin",
+			errContains: "couldn't get script from var-len data",
 			output:      []interface{}{false},
 		},
 	}
@@ -740,7 +572,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutInputValidation() {
 			as:          s.account1.EvmAddr,
 			basicPass:   true,
 			revert:      true,
-			errContains: "invalid recipient address for Bitcoin",
+			errContains: "couldn't get script from var-len dat",
 		},
 		{
 			name: "valid ethereum inputs",

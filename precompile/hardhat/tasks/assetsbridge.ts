@@ -82,3 +82,27 @@ task(
     console.log(result)
   }
 )
+
+task(
+  'assetsBridge:bridgeOut', 
+  'Initiates the bridge out process by unlocking the given assets on Mezo'
+)
+  .addParam('token', 'The address of the ERC20 token on Mezo')
+  .addParam('amount', 'The amount of the ERC20 token to unlock')
+  .addParam('chain', 'The target chain to bridge out to (uint8)')
+  .addParam('recipient', 'The target address to send the funds to (hex encoded bytes)')
+  .addParam('signer', 'The signer address (msg.sender)')
+  .setAction(
+    async (taskArguments, hre) => {
+      const signer = await hre.ethers.getSigner(taskArguments.signer)
+      const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+      const pending = await bridge.bridgeOut(
+        taskArguments.token,
+        taskArguments.amount,
+        taskArguments.chain,
+        taskArguments.recipient
+      )
+      const confirmed = await pending.wait()
+      console.log(confirmed.hash)
+    } 
+  )

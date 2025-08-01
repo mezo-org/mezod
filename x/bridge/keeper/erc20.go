@@ -58,10 +58,10 @@ func (k Keeper) GetERC20TokenMappingFromMezoToken(
 	mappings := k.GetERC20TokensMappings(ctx)
 
 	for _, v := range mappings {
-		token, err := hex.DecodeString(v.MezoToken)
+		token, err := hex.DecodeString(v.MezoToken[2:])
 		if err != nil {
 			// there should never be an error here
-			panic(fmt.Sprintf("invalid mezo token address in state: %v", v.MezoToken))
+			panic(fmt.Sprintf("invalid mezo token address in state %v: %v", v.MezoToken, err))
 		}
 		if bytes.Equal(token, mezoToken) {
 			return v, true

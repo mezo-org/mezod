@@ -9,7 +9,6 @@ import (
 	"cosmossdk.io/math"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -60,11 +59,19 @@ func (k Keeper) saveAssetsUnlocked(
 	ctx.KVStore(k.storeKey).Set(types.GetAssetsUnlockedKey(assetsUnlocked.UnlockSequence), bz)
 }
 
+// GetAssetsUnlocked gets AssetsUnlocked event for the given sequence number.
+// The returned boolean value indicates whether the record was found in the store.
 func (k Keeper) GetAssetsUnlocked(
 	ctx sdk.Context,
 	sequence math.Int,
-) *types.AssetsUnlockedEvent {
+) (
+	*types.AssetsUnlockedEvent,
+	bool,
+) {
 	bz := ctx.KVStore(k.storeKey).Get(types.GetAssetsUnlockedKey(sequence))
+	if len(bz) == 0 {
+		return nil, false
+	}
 
 	var assetsUnlocked types.AssetsUnlockedEvent
 	err := assetsUnlocked.Unmarshal(bz)
@@ -72,7 +79,7 @@ func (k Keeper) GetAssetsUnlocked(
 		panic(err)
 	}
 
-	return &assetsUnlocked
+	return &assetsUnlocked, true
 }
 
 func (k Keeper) SaveAssetsUnlocked(
@@ -110,8 +117,8 @@ func (k Keeper) SaveAssetsUnlocked(
 		ctx, nextSequence,
 	)
 
-	// timestamp of the current block
-	blockTime := ctx.BlockTime()
+	// UNIX timestamp of the current block in seconds
+	blockTime := uint32(ctx.BlockTime().Unix()) //nolint:gosec
 
 	// then save the event
 	assetsUnlocked := &types.AssetsUnlockedEvent{
@@ -159,8 +166,12 @@ func (k Keeper) BurnERC20(
 	fromAddr []byte,
 	amount *big.Int,
 ) error {
+	bridgeAddrBytes := evmtypes.HexAddressToBytes(
+		evmtypes.AssetsBridgePrecompileAddress,
+	)
+
 	call, err := evmtypes.NewERC20BurnFromCall(
-		authtypes.NewModuleAddress(types.ModuleName).Bytes(),
+		bridgeAddrBytes,
 		token,
 		fromAddr,
 		amount,
