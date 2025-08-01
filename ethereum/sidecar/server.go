@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
+	"cosmossdk.io/math"
 	sdkmath "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -45,6 +46,15 @@ var (
 	// daily mark, that would give 50 days of cached events which should be more than
 	// enough.
 	cachedEventsLimit = 500000
+
+	// bridgeOutLookBackPeriod is the look-back period used when fetching
+	// AssetsUnlocked events from the Mezo chain. It defines how far back we
+	// look when searching for unattested events.
+	bridgeOutLookBackPeriod = 30 * 24 * time.Hour // ~1 month
+
+	// assetsUnlockedBatchSize is the number of AssetsUnlocked events we can
+	// fetch from the Mezo blockchain in one gRPC call.
+	assetsUnlockedBatchSize = 100
 
 	// errSequenceGap is the error reported when there is a gap between
 	// sequences of events.
@@ -484,6 +494,80 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 	// TODO: Implement
 	<-ctx.Done()
 	return nil
+}
+
+// fetchRecentAssetsUnlockedEvents fetches AssetsUnlocked events that entered
+// the Mezo blockchain within the AssetsUnlocked look-back period. These events
+// are considered
+func (s *Server) fetchRecentAssetsUnlockedEvents(ctx context.Context) (
+	[]bridgetypes.AssetsUnlockedEvent,
+	error,
+) {
+	// Fetching events starts from the current sequence tip.
+	sequenceTip, err := s.bridgeOutClient.GetAssetsUnlockedSequenceTip(ctx)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to fetch assets unlocked sequence tip: [%v]",
+			err,
+		)
+	}
+
+	// The sequence tip is zero, meaning no events have been made.
+	if sequenceTip.IsZero() {
+		return []bridgetypes.AssetsUnlockedEvent{}, nil
+	}
+
+	cutOffBlockTime := time.Now().Add(-bridgeOutLookBackPeriod)
+	recentEvents := []bridgetypes.AssetsUnlockedEvent{}
+
+	// Walk backwards from the current sequence tip in windows of at most
+	// `assetsUnlockedBatchSize`.
+	for sequenceTip.IsPositive() {
+		// Sequence end is exclusive. We must add `1`.
+		seqEnd := sequenceTip.AddRaw(1)
+
+		// Sequence start is inclusive. It cannot be lower than `1`.
+		seqStart := sequenceTip.SubRaw(int64(assetsUnlockedBatchSize - 1))
+		if seqStart.LT(math.OneInt()) {
+			seqStart = math.OneInt()
+		}
+
+		events, err := s.bridgeOutClient.GetAssetsUnlockedEvents(
+			ctx,
+			seqStart,
+			seqEnd,
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to fetch AssetsUnlocked events [%s, %s): %w",
+				seqStart.String(), seqEnd.String(), err,
+			)
+		}
+
+		// Empty batch. Nothing more to fetch.
+		if len(events) == 0 {
+			break
+		}
+
+		for i := len(events) - 1; i >= 0; i-- {
+			event := events[i]
+			if event.BlockTime.Before(cutOffBlockTime) {
+				// We found an event older than cut-off time.
+				break
+			}
+			recentEvents = append(recentEvents, event)
+		}
+
+		// If the batch was smaller than the limit or we are at sequence start
+		// of `1`, we fetched all the events ever made.
+		if len(events) < assetsUnlockedBatchSize || seqStart.Equal(math.OneInt()) {
+			break
+		}
+
+		sequenceTip = seqStart.SubRaw(1)
+	}
+
+	return recentEvents, nil
 }
 
 func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) error {
