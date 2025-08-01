@@ -189,7 +189,7 @@ type TLSConfig struct {
 	KeyPath string `mapstructure:"key-path"`
 }
 
-// Defines the configuration for the Ethereum sidecar configuration.
+// EthereumSidecarConfig defines the configuration for the Ethereum sidecar.
 type EthereumSidecarConfig struct {
 	// ServerAddress is the address of the Ethereum sidecar server to connect to.
 	ServerAddress string `mapstructure:"server-address"`
