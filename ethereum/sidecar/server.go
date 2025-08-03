@@ -543,7 +543,7 @@ func (s *Server) fetchRecentAssetsUnlockedEvents(ctx context.Context) (
 	sequenceTip, err := s.bridgeOutClient.GetAssetsUnlockedSequenceTip(ctx)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to fetch assets unlocked sequence tip: [%v]",
+			"failed to fetch assets unlocked sequence tip: [%w]",
 			err,
 		)
 	}
@@ -578,13 +578,24 @@ outer:
 		if err != nil {
 			return nil, fmt.Errorf(
 				"failed to fetch AssetsUnlocked events [%s, %s): %w",
-				seqStart.String(), seqEnd.String(), err,
+				seqStart.String(),
+				seqEnd.String(),
+				err,
 			)
 		}
 
-		// Empty batch. Nothing more to fetch.
-		if len(events) == 0 {
-			break
+		// We know how many events we should receive. Any difference suggests
+		// an error on `mezod` server side (e.g. gaps in stored event database).
+		expectedLength := seqEnd.Sub(seqStart).Int64()
+		if int64(len(events)) != expectedLength {
+			return nil, fmt.Errorf(
+				"fetched unexpected number of AssetsUnlocked events for " +
+					"range [%s, %s); expected %d, got %d",
+					seqStart.String(),
+					seqEnd.String(),
+					expectedLength,
+					len(events),
+			)
 		}
 
 		for i := len(events) - 1; i >= 0; i-- {

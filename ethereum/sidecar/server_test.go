@@ -375,10 +375,12 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 	tests := map[string]struct{
 		mezoEvents     []bridgetypes.AssetsUnlockedEvent
 		expectedEvents []bridgetypes.AssetsUnlockedEvent
+		expectedError  error
 	}{
 		"no events": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{},
+			expectedError: nil,
 		},
 		"single event, within look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -393,6 +395,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9000,
 				},
 			},
+			expectedError: nil,
 		},
 		"number of events one smaller than batch size, within look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -415,6 +418,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9900,
 				},
 			},
+			expectedError: nil,
 		},
 		"number of events equal to batch size, within look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -445,6 +449,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9900,
 				},
 			},
+			expectedError: nil,
 		},
 		"number of events exceeds batch size, within look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -483,6 +488,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9900,
 				},
 			},
+			expectedError: nil,
 		},
 		"number of events equal two batch sizes, within look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -537,6 +543,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9900,
 				},
 			},
+			expectedError: nil,
 		},
 		"number of events exceeds two batch sizes, within look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -599,6 +606,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9900,
 				},
 			},
+			expectedError: nil,
 		},
 		"single event, outside look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -608,6 +616,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{},
+			expectedError: nil,
 		},
 		"event from first batch outside look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -638,6 +647,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9900,
 				},
 			},
+			expectedError: nil,
 		},
 		"event from second batch outside look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -684,6 +694,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9900,
 				},
 			},
+			expectedError: nil,
 		},
 		"event from third batch outside look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
@@ -742,6 +753,28 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					BlockTime: 9900,
 				},
 			},
+			expectedError: nil,
+		},
+		"corrupted fetched data": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9300,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9400,
+				},
+				// Event with sequence `3` missing on purpose.
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9500,
+				},
+			},
+			expectedEvents: nil,
+			expectedError: fmt.Errorf(
+				"fetched unexpected number of AssetsUnlocked events for range [2, 5); expected 3, got 2",
+			),
 		},
 	}
 
@@ -762,9 +795,6 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			}
 
 			actualEvents, err := server.fetchRecentAssetsUnlockedEvents(ctx)
-			if err != nil {
-				panic(err)
-			}
 
 			if !reflect.DeepEqual(test.expectedEvents, actualEvents) {
 				t.Errorf(
@@ -773,6 +803,7 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 					actualEvents,
 				)
 			}
+			require.Equal(t, err, test.expectedError)
 		})
 	}
 }
