@@ -10,13 +10,13 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
 
-func NewLocalBridgeContract() *LocalBridgeContract {
-	return &LocalBridgeContract{
+func newLocalBridgeContract() *localBridgeContract {
+	return &localBridgeContract{
 		events: make([]*portal.MezoBridgeAssetsLocked, 0),
 	}
 }
 
-type LocalBridgeContract struct {
+type localBridgeContract struct {
 	mutex  sync.RWMutex
 	events []*portal.MezoBridgeAssetsLocked
 	// queue of errors that will be returned on subsequent calls
@@ -24,62 +24,62 @@ type LocalBridgeContract struct {
 	errors []error
 }
 
-func (m *LocalBridgeContract) FilterAssetsLocked(
+func (lbc *localBridgeContract) FilterAssetsLocked(
 	_ *bind.FilterOpts,
 	_ []*big.Int,
 	_ []common.Address,
 	_ []common.Address,
 ) (ethereum.AssetsLockedIterator, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	lbc.mutex.Lock()
+	defer lbc.mutex.Unlock()
 
 	var err error
-	if len(m.errors) > 0 {
-		err = m.errors[0]
+	if len(lbc.errors) > 0 {
+		err = lbc.errors[0]
 		// pop first error
-		m.errors = m.errors[1:]
+		lbc.errors = lbc.errors[1:]
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &LocalAssetsLockedIterator{
-		events: m.events,
+	return &localAssetsLockedIterator{
+		events: lbc.events,
 		index:  -1,
 	}, nil
 }
 
-func (m *LocalBridgeContract) SetEvents(events []*portal.MezoBridgeAssetsLocked) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	m.events = events
+func (lbc *localBridgeContract) SetEvents(events []*portal.MezoBridgeAssetsLocked) {
+	lbc.mutex.Lock()
+	defer lbc.mutex.Unlock()
+	lbc.events = events
 }
 
-func (m *LocalBridgeContract) SetErrors(errors []error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	m.errors = errors
+func (lbc *localBridgeContract) SetErrors(errors []error) {
+	lbc.mutex.Lock()
+	defer lbc.mutex.Unlock()
+	lbc.errors = errors
 }
 
-type LocalAssetsLockedIterator struct {
+type localAssetsLockedIterator struct {
 	events []*portal.MezoBridgeAssetsLocked
 	index  int
 }
 
-func (m *LocalAssetsLockedIterator) Next() bool {
-	m.index++
-	return m.index < len(m.events)
+func (laci *localAssetsLockedIterator) Next() bool {
+	laci.index++
+	return laci.index < len(laci.events)
 }
 
-func (m *LocalAssetsLockedIterator) Error() error {
+func (laci *localAssetsLockedIterator) Error() error {
 	return nil
 }
 
-func (m *LocalAssetsLockedIterator) Close() error {
+func (laci *localAssetsLockedIterator) Close() error {
 	return nil
 }
 
-func (m *LocalAssetsLockedIterator) Event() *portal.MezoBridgeAssetsLocked {
-	return m.events[m.index]
+func (laci *localAssetsLockedIterator) Event() *portal.MezoBridgeAssetsLocked {
+	return laci.events[laci.index]
 }

@@ -17,18 +17,20 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
-type BridgeOutClient struct {
+// BridgeOutGrpcClient enables gRPC communication with mezod validator node needed
+// for bridge-out process.
+type BridgeOutGrpcClient struct {
 	mutex          sync.Mutex
 	requestTimeout time.Duration
 	connection     *grpc.ClientConn
 }
 
-func NewBridgeOutClient(
+func NewBridgeOutGrpcClient(
 	logger log.Logger,
 	serverAddress string,
 	requestTimeout time.Duration,
 	registry types.InterfaceRegistry,
-) (*BridgeOutClient, error) {
+) (*BridgeOutGrpcClient, error) {
 	connection, err := grpc.NewClient(
 		serverAddress,
 		// TODO: Consider using TLS protocol so that the Mezo node and Ethereum
@@ -45,7 +47,7 @@ func NewBridgeOutClient(
 		)
 	}
 
-	c := &BridgeOutClient{
+	c := &BridgeOutGrpcClient{
 		requestTimeout: requestTimeout,
 		connection:     connection,
 	}
@@ -59,7 +61,7 @@ func NewBridgeOutClient(
 		)
 		defer cancel()
 
-		_, err := c.GetAssetsUnlockedEntries(
+		_, err := c.GetAssetsUnlockedEvents(
 			ctxWithTimeout,
 			sdkmath.NewInt(1),
 			sdkmath.NewInt(2),
@@ -80,7 +82,10 @@ func NewBridgeOutClient(
 	return c, nil
 }
 
-func (c *BridgeOutClient) GetAssetsUnlockedEntries(
+// GetAssetsUnlockedEvents gets the AssetsUnlocked events from the Mezo chain.
+// The requested range of events is inclusive on the lower side and exclusive
+// on the upper side.
+func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 	ctx context.Context,
 	sequenceStart sdkmath.Int,
 	sequenceEnd sdkmath.Int,
@@ -116,7 +121,11 @@ func (c *BridgeOutClient) GetAssetsUnlockedEntries(
 	return events, nil
 }
 
-func (c *BridgeOutClient) GetAssetsUnlockedSequenceTip(
+// GetAssetsUnlockedSequenceTip gets the assets unlocked sequence tip from the
+// Mezo chain. The returned sequence tip is equal to the number of AssetsUnlocked
+// events made so far. It is also equal to the value of the unlock sequence
+// in the newest AssetsUnlocked event.
+func (c *BridgeOutGrpcClient) GetAssetsUnlockedSequenceTip(
 	ctx context.Context,
 ) (sdkmath.Int, error) {
 	c.mutex.Lock()

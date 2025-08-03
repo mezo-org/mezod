@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"reflect"
 	"testing"
+	"time"
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
@@ -22,7 +23,7 @@ import (
 
 func TestFetchABIEvents(t *testing.T) {
 	onchainErr := fmt.Errorf("onchain failure")
-	bridgeContract := NewLocalBridgeContract()
+	bridgeContract := newLocalBridgeContract()
 
 	server := &Server{
 		logger:            log.NewNopLogger(),
@@ -138,7 +139,7 @@ func TestFetchABIEvents(t *testing.T) {
 }
 
 func TestFetchFinalizedEvents(t *testing.T) {
-	bitcoinBridge := NewLocalBridgeContract()
+	bitcoinBridge := newLocalBridgeContract()
 
 	server := &Server{
 		logger:            log.NewNopLogger(),
@@ -350,4 +351,428 @@ func TestAssetsLockedEvents(t *testing.T) {
 	assert.Equal(t, int64(2), resp.Events[1].Sequence.Int64())
 	assert.Equal(t, "token1", resp.Events[0].Token)
 	assert.Equal(t, "token2", resp.Events[1].Token)
+}
+
+func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
+	// Mock function always returning 10000 seconds since Unix epoch as the
+	// current time.
+	mockTimeFunc := func() time.Time {
+		return time.Unix(10_000, 0)
+	}
+
+	// Look back period of 1000 seconds. In combination with the mock time
+	// function above, it determines that the cut-off time for AssetsUnlocked
+	// events will be a block time of 9000 (10000 - 1000). If we encounter
+	// an event older than that we will stop fetching events immediately
+	// without including that event.
+	lookBackPeriod := 1_000 * time.Second
+
+	// Events will be fetched in batches of 3.
+	batchSize := 3
+
+	// Events used in tests only need have unlock sequence and block time set.
+	// Others fields omitted.
+	tests := map[string]struct{
+		mezoEvents     []bridgetypes.AssetsUnlockedEvent
+		expectedEvents []bridgetypes.AssetsUnlockedEvent
+	}{
+		"no events": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{},
+		},
+		"single event, within look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9000, // on the border of look back period
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9000,
+				},
+			},
+		},
+		"number of events one smaller than batch size, within look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9900,
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9900,
+				},
+			},
+		},
+		"number of events equal to batch size, within look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9900,
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9900,
+				},
+			},
+		},
+		"number of events exceeds batch size, within look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9900,
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9900,
+				},
+			},
+		},
+		"number of events equal two batch sizes, within look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9400,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9500,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(5),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(6),
+					BlockTime: 9900,
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9400,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9500,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(5),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(6),
+					BlockTime: 9900,
+				},
+			},
+		},
+		"number of events exceeds two batch sizes, within look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9300,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9400,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9500,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(5),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(6),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(7),
+					BlockTime: 9900,
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 9300,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9400,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9500,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(5),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(6),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(7),
+					BlockTime: 9900,
+				},
+			},
+		},
+		"single event, outside look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 8999, // just outside look back period
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{},
+		},
+		"event from first batch outside look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 8800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 8900, // below cut-off
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9900,
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9900,
+				},
+			},
+		},
+		"event from second batch outside look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 8800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 8900, // below cut-off
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(5),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(6),
+					BlockTime: 9900,
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(5),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(6),
+					BlockTime: 9900,
+				},
+			},
+		},
+		"event from third batch outside look-back period": {
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+					BlockTime: 8800, // first from third batch outside cut-off
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9400, // oldest from second batch
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9500,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(5),
+					BlockTime: 9700, // oldest from first batch
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(6),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(7),
+					BlockTime: 9900,
+				},
+			},
+			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+					BlockTime: 9400,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+					BlockTime: 9500,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(4),
+					BlockTime: 9600,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(5),
+					BlockTime: 9700,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(6),
+					BlockTime: 9800,
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(7),
+					BlockTime: 9900,
+				},
+			},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancelCtx := context.WithCancel(context.Background())
+			defer cancelCtx()
+
+			bridgeOutClient := newLocalBridgeOutClient()
+			bridgeOutClient.SetAssetsUnlockedEvents(test.mezoEvents)
+
+			server := Server{
+				bridgeOutClient: bridgeOutClient,
+				bridgeOutLookBackPeriod: lookBackPeriod,
+				assetsUnlockedBatchSize: batchSize,
+				attestationQueue: make([]bridgetypes.AssetsUnlockedEvent, 0),
+				timeFunc: mockTimeFunc,
+			}
+
+			actualEvents, err := server.fetchRecentAssetsUnlockedEvents(ctx)
+			if err != nil {
+				panic(err)
+			}
+
+			if !reflect.DeepEqual(test.expectedEvents, actualEvents) {
+				t.Errorf(
+					"unexpected events\n expected: %v\n actual:   %v",
+					test.expectedEvents,
+					actualEvents,
+				)
+			}
+		})
+	}
 }
