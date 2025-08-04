@@ -56,28 +56,62 @@ describe("AssetsBridge", function() {
     let tokenAmount: any;
     let initialSenderBalance: any;
     let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let errorMessage: string;
+    let receipt: any;
+    let gasCost = 0;
 
     before(async function() {
       await fixture();
       tokenAmount = ethers.parseEther("8");
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
 
-      try {
-        tx = await assetsBridge.connect(senderSigner).bridgeOut(
-          btcTokenPrecompileAddress,
-          tokenAmount,
-          0,
-           Buffer.from(recipient, "hex"),
-        );
-        await tx.wait();
-      } catch (error) {
-	  expect(error.message).to.include(
-          "/cosmos.bank.v1beta1.MsgSend authorization type does not exist or is expired for address",
-        );
-      }
+      let f = async function(...gasLimit: [] | [any]) {
+        let _tx: any;
+        try {
+          _tx = await assetsBridge.connect(senderSigner).bridgeOut(
+            btcTokenPrecompileAddress,
+            tokenAmount,
+            0,
+            Buffer.from(recipient, "hex"),
+            ...gasLimit,
+          );
+          await _tx.wait();
+        } catch (error) {
+          if (gasLimit.length == 0) {
+            errorMessage = error.message;
+          } else {
+            expect(error.message).to.include(
+              "reverted",
+            );
+          }
+        }
+
+        return _tx;
+      };
+
+      // first check the actual error
+      await f();
+      // then call with a gasLimit to make it consume gas
+      tx = await f({ gasLimit: 1000000 });
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = receipt.gasUsed * receipt.gasPrice;
+    });
+    it("should verify the transaction failed", async function() {
+      expect(receipt!.status).to.equal(0);
     });
 
-    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
+    it("should have had the specific error when estimating gas", async function() {
+      expect(errorMessage).to.include(
+        "/cosmos.bank.v1beta1.MsgSend authorization type does not exist or is expired for address",
+      );
+    });
+
+    it("should verify the balance hasn't changed", async function() {
+      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should verify that BTC and BTC ERC20 balance has same balances", async function() {
       expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
     });
   });
@@ -112,9 +146,10 @@ describe("AssetsBridge", function() {
         );
         await tx.wait();
       } catch (error) {
-	  expect(error.message).to.include("couldn't get script from var-len data: malformed var len data");
+        expect(error.message).to.include("couldn't get script from var-len data: malformed var len data");
       }
     });
+
     // clean up for following tests
     after(async function() {
       tx = await btcToken.connect(senderSigner)
@@ -139,13 +174,14 @@ describe("AssetsBridge", function() {
     let tx: any;
     let tokenAmount: any;
     let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let sourceTokenAddress = ethers.Wallet.createRandom().address;
 
     before(async function() {
       await fixture();
 
       // do the erc20 token mapping
       let tx = await assetsBridge.connect(poolOwner).createERC20TokenMapping(
-        ethers.Wallet.createRandom().address,
+        sourceTokenAddress,
         await simpleToken.getAddress(),
       );
       await tx.wait();
@@ -170,6 +206,13 @@ describe("AssetsBridge", function() {
           "failed to execute ERC20 burnFrom call: execution reverted: evm transaction execution failed",
         );
       }
+    });
+
+    after(async function() {
+      let tx = await assetsBridge.connect(poolOwner).deleteERC20TokenMapping(
+        sourceTokenAddress,
+      );
+      await tx.wait();
     });
 
     it("should verify the new balances", async function() {
@@ -324,7 +367,7 @@ describe("AssetsBridge", function() {
         .to.equal(await btcToken.balanceOf(senderAddress));
     });
 
-    it("should verify that contract address haven't changed", async function() {
+    it("should verify that contract address balances haven't changed", async function() {
       expect(await ethers.provider.getBalance(contractAddress))
         .to.equal(await btcToken.balanceOf(contractAddress))
         .to.equal(ethers.parseEther("8"));
@@ -704,13 +747,14 @@ describe("AssetsBridge", function() {
     let tx: any;
     let tokenAmount: any;
     let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let sourceTokenAddress = ethers.Wallet.createRandom().address;
 
     before(async function() {
       await fixture();
 
       // do the erc20 token mapping
       let tx = await assetsBridge.connect(poolOwner).createERC20TokenMapping(
-        ethers.Wallet.createRandom().address,
+        sourceTokenAddress,
         await simpleToken.getAddress(),
       );
       await tx.wait();
@@ -735,6 +779,13 @@ describe("AssetsBridge", function() {
       );
       await tx.wait();
       receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+    });
+
+    after(async function() {
+      let tx = await assetsBridge.connect(poolOwner).deleteERC20TokenMapping(
+        sourceTokenAddress,
+      );
+      await tx.wait();
     });
 
     it("should verify the transaction didn't revert", async function() {
