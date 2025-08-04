@@ -55,6 +55,10 @@ var (
 	// fetch from the Mezo blockchain in one gRPC call.
 	assetsUnlockedBatchSize = 100
 
+	// assetsUnlockedFetchingPeriod is the time period defining how often new
+	// AssetsUnlocked events should be fetched.
+	assetsUnlockedFetchingPeriod = 5 * time.Minute
+
 	// errSequenceGap is the error reported when there is a gap between
 	// sequences of events.
 	errSequenceGap = fmt.Errorf("sequence gap between events")
@@ -84,9 +88,10 @@ type BridgeOutClient interface {
 // TimeFunc is a function that returns the current time.
 type TimeFunc func() time.Time
 
-// Server observes events emitted by the Mezo `MezoBridge` contract on the
-// Ethereum chain. It enables retrieval of information on the assets locked by
-// the contract. It is intended to be run as a separate process.
+// Server enables exchange of bridging-related information between the Mezo
+// and Ethereum chains. It used for both bridging-in of assets from Ethereum
+// to Mezo and bridging-out the other way around. It is intended to be run as
+// a separate process.
 type Server struct {
 	logger log.Logger
 
@@ -217,7 +222,8 @@ func RunServer(
 	}()
 
 	go func() {
-		// TODO: Decide whether we should run this goroutine by calling
+		// TODO: Only a subset of validators should be attesting AssetsUnlocked
+		//       events. Decide whether we should run this goroutine by calling
 		//       MezoBridge.bridgeValidators() with our Ethereum address.
 
 		defer cancelCtx()
@@ -233,7 +239,8 @@ func RunServer(
 	}()
 
 	go func() {
-		// TODO: Decide whether we should run this goroutine by calling
+		// TODO: Only a subset of validators should be attesting AssetsUnlocked
+		//       events. Decide whether we should run this goroutine by calling
 		//       MezoBridge.bridgeValidators() with our Ethereum address.
 
 		defer cancelCtx()
@@ -290,7 +297,9 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done(): // Handle context cancellation
-			s.logger.Info("stopping event observation due to context cancellation")
+			s.logger.Info(
+				"stopping assets locked event observation due to context cancellation",
+			)
 			return nil
 		case <-tickerChan:
 			// On each tick check if the current finalized block is greater than the last
@@ -301,7 +310,10 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 			//			 the sidecar if an error arises specifically with event processing.”
 			err := s.processEvents(ctx)
 			if err != nil {
-				s.logger.Error("failed to monitor newly emitted events", "err", err)
+				s.logger.Error(
+					"failed to monitor newly emitted assets locked events",
+					"err", err,
+				)
 			}
 		}
 	}
@@ -524,10 +536,75 @@ func (s *Server) startGRPCServer(
 	}
 }
 
+// observeAssetsUnlockedEvents monitors `AssetsUnlocked` events emitted on the
+// Mezo chain and stores unattested `AssetsUnlocked` events preparing them for
+// attestation. This routine consists of two parts:
+//   - initial check for unattested `AssesUnlocked` events emitted when the sidecar
+//     was turned off
+//   - periodic check for new unattested `AssetsUnlocked` events
 func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
-	// TODO: Implement
-	<-ctx.Done()
-	return nil
+	// At the start of the routine we need to learn which of the recent
+	// `AssetsUnlocked` events might require attestation in the `MezoBridge`
+	// smart contract. It's possible that the sidecar has been turned off
+	// for a significant amount of time while the Mezo chain was processing
+	// bridge-out requests.
+
+	// First fetch recent events. We consider such events as possibly unattested.
+	// The events are already sorted by their unlock sequence in ascending order.
+	recentEvents, err := s.fetchRecentAssetsUnlockedEvents(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to fetch recent AssetsUnlocked events: [%w]",
+			err,
+		)
+	}
+
+	s.logger.Info(
+		"Fetched recent AssetsUnlocked events",
+		"length", len(recentEvents),
+	)
+
+	unattestedEvents, err := s.findUnattestedAssetsUnlockedEvents(
+		ctx,
+		recentEvents,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to find unattested AssetsUnlocked events: [%w]",
+			err,
+		)
+	}
+
+	s.logger.Info(
+		"Found unattested events",
+		"length", len(unattestedEvents),
+	)
+
+	s.attestationMutex.Lock()
+	s.attestationQueue = unattestedEvents
+	s.attestationMutex.Unlock()
+
+	ticker := time.NewTicker(assetsUnlockedFetchingPeriod)
+	defer ticker.Stop()
+	tickerChan := ticker.C
+
+	for {
+		select {
+		case <-ctx.Done(): // Handle context cancellation
+			s.logger.Info(
+				"stopping assets unlocked event observation due to context cancellation",
+			)
+			return nil
+		case <-tickerChan:
+			err := s.fetchNewAssetsUnlockedEvents(ctx)
+			if err != nil {
+				s.logger.Error(
+					"failed to monitor newly emitted assets unlocked events",
+					"err", err,
+				)
+			}
+		}
+	}
 }
 
 // fetchRecentAssetsUnlockedEvents fetches AssetsUnlocked events that entered
@@ -617,15 +694,103 @@ outer:
 	}
 
 	// Ensure events are sorted in ascending order of their unlock sequences.
-	if len(recentEvents) > 1 {
-		sort.Slice(recentEvents, func(i, j int) bool {
-			return recentEvents[i].UnlockSequence.LT(recentEvents[j].UnlockSequence)
-		})
-	}
+	sort.Slice(recentEvents, func(i, j int) bool {
+		return recentEvents[i].UnlockSequence.LT(recentEvents[j].UnlockSequence)
+	})
 
 	return recentEvents, nil
 }
 
+// findUnattestedAssetsUnlockedEvents finds unattested `AssetsUnlocked` events
+// from the passed input events. An event is considered attested if there
+// was an `AssetsUnlockConfirmed` event emitted for it on Ethereum and its
+// unlock sequence is among the confirmed unlocks.
+func (s *Server) findUnattestedAssetsUnlockedEvents(
+	ctx context.Context,
+	inputEvents []bridgetypes.AssetsUnlockedEvent,
+) ([]bridgetypes.AssetsUnlockedEvent, error) {
+	// If there are no input events, return early with an empty list.
+	if len(inputEvents) == 0 {
+		return []bridgetypes.AssetsUnlockedEvent{}, nil
+	}
+
+	// Use unlock sequences of the input events as a filter.
+	unlockSequences := make([]*big.Int, len(inputEvents))
+	for i, event := range inputEvents {
+		unlockSequences[i] = event.UnlockSequence.BigInt()
+	}
+
+	// Finalized block is considered safe from reorgs as it is 64-96 blocks
+	// behind the current tip. It can be used as a filter.
+	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the finalized block: [%w]", err)
+	}
+	endBlock := finalizedBlock.Uint64()
+
+	// Search for `AssetsUnlockConfirmed` events for the given unlock sequences.
+	// Limit the search to finalized blocks.
+	confirmedEvents, err := s.bridgeContract.PastAssetsUnlockConfirmedEvents(
+		0, // TODO: What setting startBlock to a lower value improve performance?
+		&endBlock,
+		unlockSequences,
+		nil,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to fetch past AssetsUnlockConfirmed events: [%w]",
+			err,
+		)
+	}
+
+	// TODO: We might need to split getting PastAssetsUnlockConfirmedEvents into batches.
+
+	attestedUnlockSequences := make(map[string]bool)
+
+	for _, confirmedEvent := range confirmedEvents {
+		confirmedUnlockSequence := confirmedEvent.UnlockSequenceNumber
+
+		// Only consider an event as attested if its unlock sequence still
+		// remains among confirmed unlocks.
+		isConfirmed, err := s.bridgeContract.ConfirmedUnlocks(confirmedUnlockSequence)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to check if AssetsUnlocked event remains confirmed: [%w]",
+				err,
+			)
+		}
+
+		if isConfirmed {
+			attestedUnlockSequences[confirmedUnlockSequence.String()] = true
+		}
+	}
+
+	// If the event's unlock sequence is not among the attested sequences
+	// consider the event unattested.
+	unattestedEvents := []bridgetypes.AssetsUnlockedEvent{}
+	for _, event := range inputEvents {
+		if !attestedUnlockSequences[event.UnlockSequence.String()] {
+			unattestedEvents = append(unattestedEvents, event)
+		}
+	}
+
+	// Sort the unattested events by their unlock sequences in ascending order.
+	sort.Slice(unattestedEvents, func(i, j int) bool {
+		return unattestedEvents[i].UnlockSequence.
+			LT(unattestedEvents[j].UnlockSequence)
+	})
+
+	return unattestedEvents, nil
+}
+
+//nolint:unparam
+func (s *Server) fetchNewAssetsUnlockedEvents(_ context.Context) error {
+	// TODO: Get the current sequence tip and any missing AssetsUnlocked events
+	return nil
+}
+
+//nolint:unparam
 func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) error {
 	// TODO: Implement
 	<-ctx.Done()

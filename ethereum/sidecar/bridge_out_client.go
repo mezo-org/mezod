@@ -18,7 +18,7 @@ import (
 )
 
 // BridgeOutGrpcClient enables gRPC communication with mezod validator node needed
-// for bridge-out process.
+// for the bridge-out process.
 type BridgeOutGrpcClient struct {
 	mutex          sync.Mutex
 	requestTimeout time.Duration
@@ -42,7 +42,7 @@ func NewBridgeOutGrpcClient(
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to create grpc bridge-out client for Ethereum sidecar [%w]",
+			"failed to create gRPC bridge-out client for Ethereum sidecar [%w]",
 			err,
 		)
 	}

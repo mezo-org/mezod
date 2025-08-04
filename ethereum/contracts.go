@@ -34,10 +34,7 @@ type BridgeContract interface {
 	ConfirmedUnlocks(arg0 *big.Int) (bool, error)
 }
 
-// TODO: Remove once bindings for `MezoBridge` re-generated and contain features
-//
-//	related to attestation.
-type MezoBridgeAssetsUnlockConfirmed struct {
+type MezoBridgeAssetsUnlockConfirmed struct { // TODO: Remove once bindings for `MezoBridge` are re-generated and contain features related to attestation.
 	UnlockSequenceNumber *big.Int
 	Recipient            common.Hash
 	Token                common.Address
@@ -46,10 +43,7 @@ type MezoBridgeAssetsUnlockConfirmed struct {
 	Raw                  Log
 }
 
-// TODO: Remove once bindings for `MezoBridge` re-generated and contain features
-//
-//	related to attestation.
-type Log struct {
+type Log struct { // TODO: Remove once bindings for `MezoBridge` are re-generated and contain features related to attestation.
 	// Consensus fields:
 	// address of the contract that generated the event
 	Address common.Address `json:"address" gencodec:"required"`
@@ -71,7 +65,7 @@ type Log struct {
 	// index of the log in the block
 	Index uint `json:"logIndex" rlp:"-"`
 
-	// The Removed field is true if this log was reverted due to a chain reorganisation.
+	// The Removed field is true if this log was reverted due to a chain reorganization.
 	// You must pay attention to this field if you receive logs through a filter query.
 	Removed bool `json:"removed" rlp:"-"`
 }

@@ -1,6 +1,7 @@
 package sidecar
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -42,13 +43,24 @@ func (r *BridgeContract) PastAssetsUnlockConfirmedEvents(
 	tokenFilter []common.Address,
 ) ([]*ethereum.MezoBridgeAssetsUnlockConfirmed, error) {
 	// TODO: Leaving unimplemented for now. Call `PastAssetsUnlockConfirmedEvents`
-	//       on r.delegate once bindings for MezoBridge re-generated.
+	//       on r.delegate once bindings for MezoBridge are re-generated.
+
+	fmt.Printf(
+		"startBlock=%d endBlock=%v unlockFilter=%v recipientFilter=%v tokenFilter=%v\n",
+		startBlock,
+		endBlock,
+		unlockSequenceNumberFilter,
+		recipientFilter,
+		tokenFilter,
+	)
 	return nil, nil
 }
 
 func (r *BridgeContract) ConfirmedUnlocks(arg0 *big.Int) (bool, error) {
 	// TODO: Leaving unimplemented for now. Call `ConfirmedUnlocks`
-	//       on r.delegate once bindings for MezoBridge re-generated.
+	//       on r.delegate once bindings for MezoBridge are re-generated.
+
+	fmt.Printf("arg0=%v\n", arg0)
 	return false, nil
 }
 

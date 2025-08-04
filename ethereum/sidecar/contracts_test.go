@@ -51,16 +51,16 @@ func (lbc *localBridgeContract) FilterAssetsLocked(
 }
 
 func (lbc *localBridgeContract) PastAssetsUnlockConfirmedEvents(
-	startBlock uint64,
-	endBlock *uint64,
-	unlockSequenceNumberFilter []*big.Int,
-	recipientFilter [][]byte,
-	tokenFilter []common.Address,
+	_ uint64,
+	_ *uint64,
+	_ []*big.Int,
+	_ [][]byte,
+	_ []common.Address,
 ) ([]*ethereum.MezoBridgeAssetsUnlockConfirmed, error) {
 	panic("unimplemented")
 }
 
-func (lbc *localBridgeContract) ConfirmedUnlocks(arg0 *big.Int) (bool, error) {
+func (lbc *localBridgeContract) ConfirmedUnlocks(_ *big.Int) (bool, error) {
 	panic("unimplemented")
 }
 
