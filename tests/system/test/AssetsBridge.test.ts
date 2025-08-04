@@ -60,14 +60,12 @@ describe("AssetsBridge", function() {
     before(async function() {
       await fixture();
 
-      console.log(1);
       // do the erc20 token mapping
       let tx = await assetsBridge.connect(poolOwner).createERC20TokenMapping(
         ethers.Wallet.createRandom().address,
         await simpleToken.getAddress(),
       );
       await tx.wait();
-      console.log(2);
 
       // mint some token to ourselves
       tokenAmount = 1000;
@@ -76,16 +74,13 @@ describe("AssetsBridge", function() {
         .mint(senderAddress, tokenAmount);
       await tx.wait();
 
-      console.log(3);
       try {
-        console.log(4);
         tx = await assetsBridge.connect(senderSigner).bridgeOut(
           await simpleToken.getAddress(),
           tokenAmount,
           0,
           Buffer.from(recipient, "hex"),
         );
-        console.log(8);
         await tx.wait();
       } catch (error) {
         expect(error.message).to.include(
