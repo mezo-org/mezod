@@ -17,7 +17,7 @@ type localBridgeOutClient struct {
 }
 
 func (lboc *localBridgeOutClient) GetAssetsUnlockedSequenceTip(
-	ctx context.Context,
+	_ context.Context,
 ) (sdkmath.Int, error) {
 	tip := sdkmath.NewInt(0)
 
@@ -31,7 +31,7 @@ func (lboc *localBridgeOutClient) GetAssetsUnlockedSequenceTip(
 }
 
 func (lboc *localBridgeOutClient) GetAssetsUnlockedEvents(
-	ctx context.Context,
+	_ context.Context,
 	sequenceStart sdkmath.Int,
 	sequenceEnd sdkmath.Int,
 ) ([]bridgetypes.AssetsUnlockedEvent, error) {
@@ -43,8 +43,8 @@ func (lboc *localBridgeOutClient) GetAssetsUnlockedEvents(
 	for _, event := range lboc.events {
 		if event.UnlockSequence.GTE(sequenceStart) &&
 			event.UnlockSequence.LT(sequenceEnd) {
-				events = append(events, event)
-			}
+			events = append(events, event)
+		}
 	}
 
 	return events, nil

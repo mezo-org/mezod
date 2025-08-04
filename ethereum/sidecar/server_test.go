@@ -372,27 +372,27 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 
 	// Events used in tests only need have unlock sequence and block time set.
 	// Others fields omitted.
-	tests := map[string]struct{
+	tests := map[string]struct {
 		mezoEvents     []bridgetypes.AssetsUnlockedEvent
 		expectedEvents []bridgetypes.AssetsUnlockedEvent
 		expectedError  error
 	}{
 		"no events": {
-			mezoEvents: []bridgetypes.AssetsUnlockedEvent{},
+			mezoEvents:     []bridgetypes.AssetsUnlockedEvent{},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{},
-			expectedError: nil,
+			expectedError:  nil,
 		},
 		"single event, within look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9000, // on the border of look back period
+					BlockTime:      9000, // on the border of look back period
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9000,
+					BlockTime:      9000,
 				},
 			},
 			expectedError: nil,
@@ -401,21 +401,21 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedError: nil,
@@ -424,29 +424,29 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedError: nil,
@@ -455,37 +455,37 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedError: nil,
@@ -494,53 +494,53 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9400,
+					BlockTime:      9400,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9500,
+					BlockTime:      9500,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(5),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(6),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9400,
+					BlockTime:      9400,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9500,
+					BlockTime:      9500,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(5),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(6),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedError: nil,
@@ -549,61 +549,61 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9300,
+					BlockTime:      9300,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9400,
+					BlockTime:      9400,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9500,
+					BlockTime:      9500,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(5),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(6),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(7),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9300,
+					BlockTime:      9300,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9400,
+					BlockTime:      9400,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9500,
+					BlockTime:      9500,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(5),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(6),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(7),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedError: nil,
@@ -612,39 +612,39 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 8999, // just outside look back period
+					BlockTime:      8999, // just outside look back period
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{},
-			expectedError: nil,
+			expectedError:  nil,
 		},
 		"event from first batch outside look-back period": {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 8800,
+					BlockTime:      8800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 8900, // below cut-off
+					BlockTime:      8900, // below cut-off
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedError: nil,
@@ -653,45 +653,45 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 8800,
+					BlockTime:      8800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 8900, // below cut-off
+					BlockTime:      8900, // below cut-off
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(5),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(6),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(5),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(6),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedError: nil,
@@ -700,57 +700,57 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 8800, // first from third batch outside cut-off
+					BlockTime:      8800, // first from third batch outside cut-off
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9400, // oldest from second batch
+					BlockTime:      9400, // oldest from second batch
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9500,
+					BlockTime:      9500,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(5),
-					BlockTime: 9700, // oldest from first batch
+					BlockTime:      9700, // oldest from first batch
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(6),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(7),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9400,
+					BlockTime:      9400,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(3),
-					BlockTime: 9500,
+					BlockTime:      9500,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9600,
+					BlockTime:      9600,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(5),
-					BlockTime: 9700,
+					BlockTime:      9700,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(6),
-					BlockTime: 9800,
+					BlockTime:      9800,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(7),
-					BlockTime: 9900,
+					BlockTime:      9900,
 				},
 			},
 			expectedError: nil,
@@ -759,16 +759,16 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
 				{
 					UnlockSequence: sdkmath.NewInt(1),
-					BlockTime: 9300,
+					BlockTime:      9300,
 				},
 				{
 					UnlockSequence: sdkmath.NewInt(2),
-					BlockTime: 9400,
+					BlockTime:      9400,
 				},
 				// Event with sequence `3` missing on purpose.
 				{
 					UnlockSequence: sdkmath.NewInt(4),
-					BlockTime: 9500,
+					BlockTime:      9500,
 				},
 			},
 			expectedEvents: nil,
@@ -787,11 +787,11 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			bridgeOutClient.SetAssetsUnlockedEvents(test.mezoEvents)
 
 			server := Server{
-				bridgeOutClient: bridgeOutClient,
+				bridgeOutClient:         bridgeOutClient,
 				bridgeOutLookBackPeriod: lookBackPeriod,
 				assetsUnlockedBatchSize: batchSize,
-				attestationQueue: make([]bridgetypes.AssetsUnlockedEvent, 0),
-				timeFunc: mockTimeFunc,
+				attestationQueue:        make([]bridgetypes.AssetsUnlockedEvent, 0),
+				timeFunc:                mockTimeFunc,
 			}
 
 			actualEvents, err := server.fetchRecentAssetsUnlockedEvents(ctx)

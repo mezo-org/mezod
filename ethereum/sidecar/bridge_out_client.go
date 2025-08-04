@@ -105,13 +105,11 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 
 	response, err := queryClient.AssetsUnlockedEvents(ctxWithTimeout, request)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get AssetsUnlocked events [%v]", err)
+		return nil, fmt.Errorf("failed to get AssetsUnlocked events: [%w]", err)
 	}
 
 	events := make([]bridgetypes.AssetsUnlockedEvent, len(response.Events))
-	for i, event := range response.Events {
-		events[i] = event
-	}
+	copy(events, response.Events)
 
 	err = validateAssetsUnlockedEntries(sequenceStart, sequenceEnd, events)
 	if err != nil {

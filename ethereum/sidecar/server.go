@@ -589,12 +589,12 @@ outer:
 		expectedLength := seqEnd.Sub(seqStart).Int64()
 		if int64(len(events)) != expectedLength {
 			return nil, fmt.Errorf(
-				"fetched unexpected number of AssetsUnlocked events for " +
+				"fetched unexpected number of AssetsUnlocked events for "+
 					"range [%s, %s); expected %d, got %d",
-					seqStart.String(),
-					seqEnd.String(),
-					expectedLength,
-					len(events),
+				seqStart.String(),
+				seqEnd.String(),
+				expectedLength,
+				len(events),
 			)
 		}
 
