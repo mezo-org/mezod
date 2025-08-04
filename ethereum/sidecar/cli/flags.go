@@ -71,7 +71,7 @@ func NewFlagSetEthereumSidecar(
 		defaultBridgeOutServerAddress,
 		"Address of the gRPC bridge-out server. The bridge-out server is "+
 			"run by validators as part of mezod and responds with "+
-			"AssetsUnlock entries",
+			"AssetsUnlock events",
 	)
 
 	fs.Duration(
