@@ -120,6 +120,10 @@ type Server struct {
 	attestationMutex sync.RWMutex
 	attestationQueue []bridgetypes.AssetsUnlockedEvent
 
+	// Unguarded by mutex as only the AssetsUnlock event observation
+	// routine uses it.
+	lastAssetsUnlockedSequence sdkmath.Int
+
 	timeFunc TimeFunc
 }
 
@@ -539,7 +543,7 @@ func (s *Server) startGRPCServer(
 // observeAssetsUnlockedEvents monitors `AssetsUnlocked` events emitted on the
 // Mezo chain and stores unattested `AssetsUnlocked` events preparing them for
 // attestation. This routine consists of two parts:
-//   - initial check for unattested `AssesUnlocked` events emitted when the sidecar
+//   - initial check for unattested `AssetsUnlocked` events emitted when the sidecar
 //     was turned off
 //   - periodic check for new unattested `AssetsUnlocked` events
 func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
@@ -559,11 +563,6 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 		)
 	}
 
-	s.logger.Info(
-		"Fetched recent AssetsUnlocked events",
-		"length", len(recentEvents),
-	)
-
 	unattestedEvents, err := s.findUnattestedAssetsUnlockedEvents(
 		ctx,
 		recentEvents,
@@ -575,14 +574,23 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 		)
 	}
 
-	s.logger.Info(
-		"Found unattested events",
-		"length", len(unattestedEvents),
-	)
-
 	s.attestationMutex.Lock()
 	s.attestationQueue = unattestedEvents
 	s.attestationMutex.Unlock()
+
+	// Save the unlock sequence of the last event as the starting point for
+	// further event fetching.
+	s.lastAssetsUnlockedSequence = sdkmath.ZeroInt()
+	if len(recentEvents) > 0 {
+		s.lastAssetsUnlockedSequence = recentEvents[len(recentEvents)-1].UnlockSequence
+	}
+
+	s.logger.Info(
+		"Initial search for recent unattested AssetsUnlocked events",
+		"recent_events", len(recentEvents),
+		"unattested_events", len(unattestedEvents),
+		"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
+	)
 
 	ticker := time.NewTicker(assetsUnlockedFetchingPeriod)
 	defer ticker.Stop()
@@ -784,9 +792,80 @@ func (s *Server) findUnattestedAssetsUnlockedEvents(
 	return unattestedEvents, nil
 }
 
-//nolint:unparam
-func (s *Server) fetchNewAssetsUnlockedEvents(_ context.Context) error {
-	// TODO: Get the current sequence tip and any missing AssetsUnlocked events
+func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
+	sequenceTip, err := s.bridgeOutClient.GetAssetsUnlockedSequenceTip(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to fetch assets unlocked sequence tip: [%w]",
+			err,
+		)
+	}
+
+	// This should never happen. Check just in case.
+	if sequenceTip.LT(s.lastAssetsUnlockedSequence) {
+		return fmt.Errorf(
+			"current AssetsUnlock sequence tip on Mezo lower than "+
+				"the last processed unlock sequence (%s vs %s)",
+			sequenceTip.String(),
+			s.lastAssetsUnlockedSequence.String(),
+		)
+	}
+
+	// If the unlock sequence tip has not advanced on Mezo return early.
+	if sequenceTip.Equal(s.lastAssetsUnlockedSequence) {
+		s.logger.Info(
+			"No new AssetsUnlocked events to fetch from Mezo",
+			"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
+		)
+		return nil
+	}
+
+	// The unlock sequence tip on Mezo is greater than the unlock sequence from
+	// the last fetched event. We need to fetch events from Mezo.
+	seqStart := s.lastAssetsUnlockedSequence.AddRaw(1)
+	seqEnd := sequenceTip.AddRaw(1)
+
+	// TODO: Do we need to split the request into batches?
+	//       Fetching new events is run frequently - there shouldn't be
+	//       many events to fetch.
+	events, err := s.bridgeOutClient.GetAssetsUnlockedEvents(
+		ctx,
+		seqStart,
+		seqEnd,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to fetch AssetsUnlocked events [%s, %s): %w",
+			seqStart.String(),
+			seqEnd.String(),
+			err,
+		)
+	}
+
+	expectedLength := seqEnd.Sub(seqStart).Int64()
+	if int64(len(events)) != expectedLength {
+		return fmt.Errorf(
+			"fetched unexpected number of AssetsUnlocked events for "+
+				"range [%s, %s); expected %d, got %d",
+			seqStart.String(),
+			seqEnd.String(),
+			expectedLength,
+			len(events),
+		)
+	}
+
+	s.attestationMutex.Lock()
+	s.attestationQueue = append(s.attestationQueue, events...)
+	s.attestationMutex.Unlock()
+
+	s.lastAssetsUnlockedSequence = sequenceTip
+
+	s.logger.Info(
+		"Fetched new AssetsUnlocked events from Mezo",
+		"event_count", len(events),
+		"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
+	)
+
 	return nil
 }
 
