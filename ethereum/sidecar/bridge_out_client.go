@@ -157,12 +157,25 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedSequenceTip(
 	return tip, nil
 }
 
+// validateAssetsUnlockedEntries validates the AssetsUnlocked events fetched
+// from the Mezo chain.
 func validateAssetsUnlockedEntries(
-	_ sdkmath.Int,
-	_ sdkmath.Int,
-	_ []bridgetypes.AssetsUnlockedEvent,
+	sequenceStart sdkmath.Int,
+	sequenceEnd sdkmath.Int,
+	events []bridgetypes.AssetsUnlockedEvent,
 ) error {
-	// TODO: Add validation.
+	if len(events) == 0 {
+		return nil
+	}
+
+	if !bridgetypes.AssetsUnlockedEvents(events).IsValid() {
+		return ErrInvalidEventsSequence
+	}
+
+	if (!sequenceStart.IsNil() && events[0].UnlockSequence.LT(sequenceStart)) ||
+		(!sequenceEnd.IsNil() && events[len(events)-1].UnlockSequence.GTE(sequenceEnd)) {
+		return ErrRequestedBoundariesViolated
+	}
 
 	return nil
 }
