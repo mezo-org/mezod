@@ -67,18 +67,14 @@ func (m *memEventBus) Topics() (topics []string) {
 }
 
 func (m *memEventBus) AddTopic(name string, src <-chan coretypes.ResultEvent) error {
-	m.topicsMux.RLock()
-	_, ok := m.topics[name]
-	m.topicsMux.RUnlock()
+	m.topicsMux.Lock()
+	defer m.topicsMux.Unlock()
 
-	if ok {
+	if _, ok := m.topics[name]; ok {
 		return errors.New("topic already registered")
 	}
 
-	m.topicsMux.Lock()
 	m.topics[name] = src
-	m.topicsMux.Unlock()
-
 	go m.publishTopic(name, src)
 
 	return nil
