@@ -101,15 +101,16 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 		return nil, fmt.Errorf("failed to get AssetsUnlocked events: [%w]", err)
 	}
 
-	events := make([]bridgetypes.AssetsUnlockedEvent, len(response.Events))
-	copy(events, response.Events)
-
-	err = validateAssetsUnlockedEntries(sequenceStart, sequenceEnd, events)
+	err = validateAssetsUnlockedEntries(
+		sequenceStart,
+		sequenceEnd,
+		response.Events,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return events, nil
+	return response.Events, nil
 }
 
 // GetAssetsUnlockedSequenceTip gets the assets unlocked sequence tip from the
