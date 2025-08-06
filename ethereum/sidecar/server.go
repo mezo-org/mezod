@@ -650,7 +650,7 @@ outer:
 		seqEnd := sequenceTip.AddRaw(1)
 
 		// Sequence start is inclusive. It cannot be lower than `1`.
-		seqStart := sequenceTip.SubRaw(int64(s.assetsUnlockedBatchSize - 1))
+		seqStart := seqEnd.SubRaw(int64(s.assetsUnlockedBatchSize))
 		if seqStart.LT(sdkmath.OneInt()) {
 			seqStart = sdkmath.OneInt()
 		}
