@@ -57,7 +57,7 @@ var (
 
 	// assetsUnlockedFetchingPeriod is the time period defining how often new
 	// AssetsUnlocked events should be fetched.
-	assetsUnlockedFetchingPeriod = 5 * time.Minute
+	assetsUnlockedFetchingPeriod = 1 * time.Minute
 
 	// errSequenceGap is the error reported when there is a gap between
 	// sequences of events.
@@ -739,7 +739,7 @@ func (s *Server) findUnattestedAssetsUnlockedEvents(
 	// Search for `AssetsUnlockConfirmed` events for the given unlock sequences.
 	// Limit the search to finalized blocks.
 	confirmedEvents, err := s.bridgeContract.PastAssetsUnlockConfirmedEvents(
-		0, // TODO: What setting startBlock to a lower value improve performance?
+		0, // TODO: Would setting startBlock to a lower value improve performance?
 		&endBlock,
 		unlockSequences,
 		nil,
