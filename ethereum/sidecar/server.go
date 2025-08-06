@@ -198,7 +198,7 @@ func RunServer(
 		bridgeOutClient:         bridgeOutClient,
 		bridgeOutLookBackPeriod: bridgeOutLookBackPeriod,
 		assetsUnlockedBatchSize: assetsUnlockedBatchSize,
-		attestationQueue:        make([]bridgetypes.AssetsUnlockedEvent, 0),
+		attestationQueue:        []bridgetypes.AssetsUnlockedEvent{},
 		timeFunc:                time.Now,
 	}
 
