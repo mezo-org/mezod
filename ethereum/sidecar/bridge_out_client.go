@@ -31,8 +31,6 @@ func NewBridgeOutGrpcClient(
 ) (*BridgeOutGrpcClient, error) {
 	connection, err := grpc.NewClient(
 		serverAddress,
-		// TODO: Consider using TLS protocol so that the Mezo node and Ethereum
-		//       sidecar can be run on separate servers.
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(
 			grpc.ForceCodec(codec.NewProtoCodec(registry).GRPCCodec()),
