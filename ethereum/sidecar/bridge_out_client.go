@@ -3,7 +3,6 @@ package sidecar
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -20,7 +19,6 @@ import (
 // BridgeOutGrpcClient enables gRPC communication with mezod validator node needed
 // for the bridge-out process.
 type BridgeOutGrpcClient struct {
-	mutex          sync.Mutex
 	requestTimeout time.Duration
 	connection     *grpc.ClientConn
 }
@@ -90,9 +88,6 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 	sequenceStart sdkmath.Int,
 	sequenceEnd sdkmath.Int,
 ) ([]bridgetypes.AssetsUnlockedEvent, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
 	defer cancel()
 
@@ -126,9 +121,6 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 func (c *BridgeOutGrpcClient) GetAssetsUnlockedSequenceTip(
 	ctx context.Context,
 ) (sdkmath.Int, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
 	defer cancel()
 
