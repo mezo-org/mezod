@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/cmd/config"
 	"github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -29,6 +31,8 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 	// AssetsLocked events possible (see AssetsLockedEvent.IsValid).
 	cfg := sdk.GetConfig()
 	config.SetBech32Prefixes(cfg)
+
+	blockTime := uint32(10000)
 
 	toBytes := func(address string) sdk.AccAddress {
 		account, err := sdk.AccAddressFromBech32(address)
@@ -55,14 +59,16 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 				UnlockSequence: math.NewInt(11),
 				Recipient:      toBytes(recipient1),
 				Token:          testSourceERC20Token1,
-				Sender:         toBytes(recipient1),
+				Sender:         sender,
 				Amount:         math.NewInt(1),
 				Chain:          0,
+				BlockTime:      blockTime,
 			},
 			run: func(ctx sdk.Context, k Keeper) (*types.AssetsUnlockedEvent, error) {
 				token, _ := hex.DecodeString(testMezoERC20Token1[2:])
 				recipient := toBytes(recipient1)
-				return k.SaveAssetsUnlocked(ctx, recipient, token, recipient, math.NewInt(1), 0)
+				sender := common.HexToAddress(sender).Bytes()
+				return k.SaveAssetsUnlocked(ctx, recipient, token, sender, math.NewInt(1), 0)
 			},
 		},
 		{
@@ -73,16 +79,18 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 				UnlockSequence: math.NewInt(11),
 				Recipient:      toBytes(recipient1),
 				Token:          testSourceBTCToken,
-				Sender:         toBytes(recipient1),
+				Sender:         sender,
 				Amount:         math.NewInt(1),
 				Chain:          0,
+				BlockTime:      blockTime,
 			},
 			run: func(ctx sdk.Context, k Keeper) (*types.AssetsUnlockedEvent, error) {
 				btcToken := evmtypes.HexAddressToBytes(
 					evmtypes.BTCTokenPrecompileAddress,
 				)
 				recipient := toBytes(recipient1)
-				return k.SaveAssetsUnlocked(ctx, recipient, btcToken, recipient, math.NewInt(1), 0)
+				sender := common.HexToAddress(sender).Bytes()
+				return k.SaveAssetsUnlocked(ctx, recipient, btcToken, sender, math.NewInt(1), 0)
 			},
 		},
 		{
@@ -94,7 +102,8 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 				// not a mapped address
 				token, _ := hex.DecodeString("57CC23C7f5Ec21f0225187281dD61Ef7dFb5C476")
 				recipient := toBytes(recipient1)
-				return k.SaveAssetsUnlocked(ctx, recipient, token, recipient, math.NewInt(1), 0)
+				sender := common.HexToAddress(sender).Bytes()
+				return k.SaveAssetsUnlocked(ctx, recipient, token, sender, math.NewInt(1), 0)
 			},
 		},
 	}
@@ -102,6 +111,7 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, k := mockContext()
+			ctx = ctx.WithBlockTime(time.Unix(int64(blockTime), 0).UTC())
 
 			k.bankKeeper = test.bankKeeperFn(ctx)
 			k.evmKeeper = test.evmKeeperFn(ctx)
