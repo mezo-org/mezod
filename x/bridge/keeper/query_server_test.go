@@ -99,7 +99,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(1),
 					Recipient:      []byte{0x01, 0x11},
 					Token:          "0x1111111111111111111111111111111111111111",
-					Sender:         []byte{0x01, 0x11},
+					Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 					Amount:         math.NewInt(100),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -108,7 +108,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(2),
 					Recipient:      []byte{0x02, 0x22},
 					Token:          "0x2222222222222222222222222222222222222222",
-					Sender:         []byte{0x02, 0x22},
+					Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					Amount:         math.NewInt(200),
 					Chain:          2,
 					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -121,7 +121,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(1),
 						Recipient:      []byte{0x01, 0x11},
 						Token:          "0x1111111111111111111111111111111111111111",
-						Sender:         []byte{0x01, 0x11},
+						Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 						Amount:         math.NewInt(100),
 						Chain:          1,
 						BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -130,7 +130,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(2),
 						Recipient:      []byte{0x02, 0x22},
 						Token:          "0x2222222222222222222222222222222222222222",
-						Sender:         []byte{0x02, 0x22},
+						Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 						Amount:         math.NewInt(200),
 						Chain:          2,
 						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -145,7 +145,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(1),
 					Recipient:      []byte{0x01, 0x11},
 					Token:          "0x1111111111111111111111111111111111111111",
-					Sender:         []byte{0x01, 0x11},
+					Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 					Amount:         math.NewInt(100),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -154,7 +154,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(2),
 					Recipient:      []byte{0x02, 0x22},
 					Token:          "0x2222222222222222222222222222222222222222",
-					Sender:         []byte{0x02, 0x22},
+					Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					Amount:         math.NewInt(200),
 					Chain:          2,
 					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -163,7 +163,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(3),
 					Recipient:      []byte{0x03, 0x33},
 					Token:          "0x3333333333333333333333333333333333333333",
-					Sender:         []byte{0x03, 0x33},
+					Sender:         "0xcccccccccccccccccccccccccccccccccccccccc",
 					Amount:         math.NewInt(300),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
@@ -178,7 +178,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(1),
 						Recipient:      []byte{0x01, 0x11},
 						Token:          "0x1111111111111111111111111111111111111111",
-						Sender:         []byte{0x01, 0x11},
+						Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 						Amount:         math.NewInt(100),
 						Chain:          1,
 						BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -187,7 +187,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(2),
 						Recipient:      []byte{0x02, 0x22},
 						Token:          "0x2222222222222222222222222222222222222222",
-						Sender:         []byte{0x02, 0x22},
+						Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 						Amount:         math.NewInt(200),
 						Chain:          2,
 						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -202,7 +202,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(1),
 					Recipient:      []byte{0x01, 0x11},
 					Token:          "0x1111111111111111111111111111111111111111",
-					Sender:         []byte{0x01, 0x11},
+					Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 					Amount:         math.NewInt(100),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -211,7 +211,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(2),
 					Recipient:      []byte{0x02, 0x22},
 					Token:          "0x2222222222222222222222222222222222222222",
-					Sender:         []byte{0x02, 0x22},
+					Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					Amount:         math.NewInt(200),
 					Chain:          2,
 					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -220,7 +220,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(3),
 					Recipient:      []byte{0x03, 0x33},
 					Token:          "0x3333333333333333333333333333333333333333",
-					Sender:         []byte{0x03, 0x33},
+					Sender:         "0xcccccccccccccccccccccccccccccccccccccccc",
 					Amount:         math.NewInt(300),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
@@ -235,7 +235,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(2),
 						Recipient:      []byte{0x02, 0x22},
 						Token:          "0x2222222222222222222222222222222222222222",
-						Sender:         []byte{0x02, 0x22},
+						Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 						Amount:         math.NewInt(200),
 						Chain:          2,
 						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -244,7 +244,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(3),
 						Recipient:      []byte{0x03, 0x33},
 						Token:          "0x3333333333333333333333333333333333333333",
-						Sender:         []byte{0x03, 0x33},
+						Sender:         "0xcccccccccccccccccccccccccccccccccccccccc",
 						Amount:         math.NewInt(300),
 						Chain:          1,
 						BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
@@ -259,7 +259,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(1),
 					Recipient:      []byte{0x01, 0x11},
 					Token:          "0x1111111111111111111111111111111111111111",
-					Sender:         []byte{0x01, 0x11},
+					Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 					Amount:         math.NewInt(100),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -268,7 +268,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(2),
 					Recipient:      []byte{0x02, 0x22},
 					Token:          "0x2222222222222222222222222222222222222222",
-					Sender:         []byte{0x02, 0x22},
+					Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					Amount:         math.NewInt(200),
 					Chain:          2,
 					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -289,7 +289,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(1),
 					Recipient:      []byte{0x01, 0x11},
 					Token:          "0x1111111111111111111111111111111111111111",
-					Sender:         []byte{0x01, 0x11},
+					Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 					Amount:         math.NewInt(100),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -298,7 +298,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(2),
 					Recipient:      []byte{0x02, 0x22},
 					Token:          "0x2222222222222222222222222222222222222222",
-					Sender:         []byte{0x02, 0x22},
+					Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					Amount:         math.NewInt(200),
 					Chain:          2,
 					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -307,7 +307,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(3),
 					Recipient:      []byte{0x03, 0x33},
 					Token:          "0x3333333333333333333333333333333333333333",
-					Sender:         []byte{0x03, 0x33},
+					Sender:         "0xcccccccccccccccccccccccccccccccccccccccc",
 					Amount:         math.NewInt(300),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
@@ -323,7 +323,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(2),
 						Recipient:      []byte{0x02, 0x22},
 						Token:          "0x2222222222222222222222222222222222222222",
-						Sender:         []byte{0x02, 0x22},
+						Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 						Amount:         math.NewInt(200),
 						Chain:          2,
 						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -332,7 +332,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(3),
 						Recipient:      []byte{0x03, 0x33},
 						Token:          "0x3333333333333333333333333333333333333333",
-						Sender:         []byte{0x03, 0x33},
+						Sender:         "0xcccccccccccccccccccccccccccccccccccccccc",
 						Amount:         math.NewInt(300),
 						Chain:          1,
 						BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
@@ -347,7 +347,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(1),
 					Recipient:      []byte{0x01, 0x11},
 					Token:          "0x1111111111111111111111111111111111111111",
-					Sender:         []byte{0x01, 0x11},
+					Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 					Amount:         math.NewInt(100),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -356,7 +356,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(2),
 					Recipient:      []byte{0x02, 0x22},
 					Token:          "0x2222222222222222222222222222222222222222",
-					Sender:         []byte{0x02, 0x22},
+					Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					Amount:         math.NewInt(200),
 					Chain:          2,
 					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -365,7 +365,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(3),
 					Recipient:      []byte{0x03, 0x33},
 					Token:          "0x3333333333333333333333333333333333333333",
-					Sender:         []byte{0x03, 0x33},
+					Sender:         "0xcccccccccccccccccccccccccccccccccccccccc",
 					Amount:         math.NewInt(300),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
@@ -381,7 +381,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(2),
 						Recipient:      []byte{0x02, 0x22},
 						Token:          "0x2222222222222222222222222222222222222222",
-						Sender:         []byte{0x02, 0x22},
+						Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 						Amount:         math.NewInt(200),
 						Chain:          2,
 						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -396,7 +396,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(1),
 					Recipient:      []byte{0x01, 0x11},
 					Token:          "0x1111111111111111111111111111111111111111",
-					Sender:         []byte{0x01, 0x11},
+					Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 					Amount:         math.NewInt(100),
 					Chain:          1,
 					BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -405,7 +405,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 					UnlockSequence: math.NewInt(2),
 					Recipient:      []byte{0x02, 0x22},
 					Token:          "0x2222222222222222222222222222222222222222",
-					Sender:         []byte{0x02, 0x22},
+					Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 					Amount:         math.NewInt(200),
 					Chain:          2,
 					BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -421,7 +421,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(1),
 						Recipient:      []byte{0x01, 0x11},
 						Token:          "0x1111111111111111111111111111111111111111",
-						Sender:         []byte{0x01, 0x11},
+						Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 						Amount:         math.NewInt(100),
 						Chain:          1,
 						BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -430,7 +430,7 @@ func TestAssetsUnlockedEvents(t *testing.T) {
 						UnlockSequence: math.NewInt(2),
 						Recipient:      []byte{0x02, 0x22},
 						Token:          "0x2222222222222222222222222222222222222222",
-						Sender:         []byte{0x02, 0x22},
+						Sender:         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 						Amount:         math.NewInt(200),
 						Chain:          2,
 						BlockTime:      uint32(time.Unix(2, 0).Unix()), //nolint:gosec
@@ -502,7 +502,7 @@ func TestAssetsUnlockedEvents_MissingEventInSequence(t *testing.T) {
 			UnlockSequence: math.NewInt(1),
 			Recipient:      []byte{0x01, 0x11},
 			Token:          "0x1111111111111111111111111111111111111111",
-			Sender:         []byte{0x01, 0x11},
+			Sender:         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			Amount:         math.NewInt(100),
 			Chain:          1,
 			BlockTime:      uint32(time.Unix(1, 0).Unix()), //nolint:gosec
@@ -514,7 +514,7 @@ func TestAssetsUnlockedEvents_MissingEventInSequence(t *testing.T) {
 			UnlockSequence: math.NewInt(3),
 			Recipient:      []byte{0x03, 0x33},
 			Token:          "0x3333333333333333333333333333333333333333",
-			Sender:         []byte{0x03, 0x33},
+			Sender:         "0xcccccccccccccccccccccccccccccccccccccccc",
 			Amount:         math.NewInt(300),
 			Chain:          1,
 			BlockTime:      uint32(time.Unix(3, 0).Unix()), //nolint:gosec
