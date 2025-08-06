@@ -16,17 +16,18 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
+// requestTimeout is the timeout for requests sent to the mezod validator node.
+const requestTimeout = 5 * time.Second
+
 // BridgeOutGrpcClient enables gRPC communication with mezod validator node needed
 // for the bridge-out process.
 type BridgeOutGrpcClient struct {
-	requestTimeout time.Duration
 	connection     *grpc.ClientConn
 }
 
 func NewBridgeOutGrpcClient(
 	logger log.Logger,
 	serverAddress string,
-	requestTimeout time.Duration,
 	registry types.InterfaceRegistry,
 ) (*BridgeOutGrpcClient, error) {
 	connection, err := grpc.NewClient(
@@ -44,7 +45,6 @@ func NewBridgeOutGrpcClient(
 	}
 
 	c := &BridgeOutGrpcClient{
-		requestTimeout: requestTimeout,
 		connection:     connection,
 	}
 
@@ -86,7 +86,7 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 	sequenceStart sdkmath.Int,
 	sequenceEnd sdkmath.Int,
 ) ([]bridgetypes.AssetsUnlockedEvent, error) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
 	queryClient := bridgetypes.NewQueryClient(c.connection)
@@ -120,7 +120,7 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 func (c *BridgeOutGrpcClient) GetAssetsUnlockedSequenceTip(
 	ctx context.Context,
 ) (sdkmath.Int, error) {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, c.requestTimeout)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
 	queryClient := bridgetypes.NewQueryClient(c.connection)

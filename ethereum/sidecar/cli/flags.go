@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"time"
 
 	flag "github.com/spf13/pflag"
 )
@@ -14,7 +13,6 @@ const (
 	FlagServerBatchSize           = "ethereum-sidecar.server.batch-size"
 	FlagServerRequestsPerMinute   = "ethereum-sidecar.server.requests-per-minute"
 	FlagBridgeOutServerAddress    = "ethereum-sidecar.bridge-out.server-address"
-	FlagBridgeOutRequestTimeout   = "ethereum-sidecar.bridge-out.request-timeout"
 )
 
 func NewFlagSetEthereumSidecar(
@@ -24,7 +22,6 @@ func NewFlagSetEthereumSidecar(
 	defaultServerBatchSize uint64,
 	defaultServerRequestsPerMinute uint64,
 	defaultBridgeOutServerAddress string,
-	defaultBridgeOutRequestTimeout time.Duration,
 ) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
@@ -72,12 +69,6 @@ func NewFlagSetEthereumSidecar(
 		"Address of the gRPC bridge-out server. The bridge-out server is "+
 			"run by validators as part of mezod and responds with "+
 			"AssetsUnlock events",
-	)
-
-	fs.Duration(
-		FlagBridgeOutRequestTimeout,
-		defaultBridgeOutRequestTimeout,
-		"Timeout for AssetsUnlock requests sent to bridge-out server",
 	)
 
 	return fs

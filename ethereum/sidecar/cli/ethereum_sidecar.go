@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"time"
-
 	"google.golang.org/grpc/encoding"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -29,7 +27,6 @@ func NewEthereumSidecarCmd() *cobra.Command {
 	// this example.
 	defaultServerRequestsPerMinute := uint64(600) // 10 requests per second
 	defaultBridgeOutServerAddress := "127.0.0.1:9090"
-	defaultBridgeOutRequestTimeout := 5 * time.Second
 
 	cmd := &cobra.Command{
 		Use:   "ethereum-sidecar",
@@ -47,7 +44,6 @@ func NewEthereumSidecarCmd() *cobra.Command {
 			defaultServerBatchSize,
 			defaultServerRequestsPerMinute,
 			defaultBridgeOutServerAddress,
-			defaultBridgeOutRequestTimeout,
 		))
 
 	return cmd
@@ -65,7 +61,6 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 	batchSize, _ := cmd.Flags().GetUint64(FlagServerBatchSize)
 	requestsPerMinute, _ := cmd.Flags().GetUint64(FlagServerRequestsPerMinute)
 	bridgeOutServerAddress, _ := cmd.Flags().GetString(FlagBridgeOutServerAddress)
-	bridgeOutRequestTimeout, _ := cmd.Flags().GetDuration(FlagBridgeOutRequestTimeout)
 
 	clientCtx, err := client.GetClientQueryContext(cmd)
 	if err != nil {
@@ -86,7 +81,6 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		batchSize,
 		requestsPerMinute,
 		bridgeOutServerAddress,
-		bridgeOutRequestTimeout,
 		clientCtx.InterfaceRegistry,
 	)
 
