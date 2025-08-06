@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
@@ -26,7 +25,6 @@ type BridgeOutGrpcClient struct {
 }
 
 func NewBridgeOutGrpcClient(
-	logger log.Logger,
 	serverAddress string,
 	registry types.InterfaceRegistry,
 ) (*BridgeOutGrpcClient, error) {

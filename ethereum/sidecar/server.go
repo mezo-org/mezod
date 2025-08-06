@@ -176,7 +176,6 @@ func RunServer(
 	}
 
 	bridgeOutClient, err := NewBridgeOutGrpcClient(
-		logger,
 		bridgeOutServerAddress,
 		registry,
 	)
