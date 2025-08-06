@@ -255,6 +255,8 @@ func (es EventSystem) SubscribePendingTxs() (*Subscription, pubsub.UnsubscribeFu
 type filterIndex map[filters.Type]map[rpc.ID]*Subscription
 
 // eventLoop (un)installs filters and processes mux events.
+//
+//nolint:gosimple
 func (es *EventSystem) eventLoop() {
 	for {
 		select {
