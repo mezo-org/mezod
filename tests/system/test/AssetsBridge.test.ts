@@ -23,7 +23,6 @@ describe("AssetsBridge", function() {
   let senderSigner: any;
   let poolOwner: any;
   let senderAddress: string;
-  let recipientAddress: string;
   let contractAddress: string;
 
   const fixture = async function() {
@@ -46,10 +45,586 @@ describe("AssetsBridge", function() {
     var fundingSigner = signers[0];
     const transferTx = await btcToken.connect(fundingSigner).transfer(senderSigner, ethers.parseEther("10"));
     await transferTx.wait();
-
-    // another random address to be used later
-    recipientAddress = ethers.Wallet.createRandom().address;
   };
+
+  describe("bridgeOutBtcFailureApprovalTooSmall", function() {
+    let receipt1: any;
+    let receipt2: any;
+    let tx: any;
+    let tokenAmount: any;
+    let initialSenderBalance: any;
+    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let gasCost = 0;
+    let errorMessage: string;
+
+    before(async function() {
+      await fixture();
+      tokenAmount = ethers.parseEther("8");
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+
+      // approve for token amount
+      tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, tokenAmount / 2n);
+      await tx.wait();
+      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = receipt1.gasUsed * receipt1.gasPrice;
+
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
+
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 100000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include(
+          "reverted",
+        );
+      }
+      receipt2 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost += receipt2.gasUsed * receipt2.gasPrice;
+    });
+
+    // clean up for following tests
+    after(async function() {
+      tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, 0);
+      await tx.wait();
+    });
+
+    it("should verify the transaction failed", async function() {
+      expect(receipt1!.status).to.equal(1);
+    });
+
+    it("should verify the error message", async function() {
+      expect(errorMessage).to.include(
+        "couldn't accept authorization: requested amount is more than spend limit: insufficient funds",
+      );
+    });
+
+    it("should verify the balance hasn't changed", async function() {
+      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
+      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
+    });
+  });
+
+  describe("bridgeOutBtcFailureInvalidChain", function() {
+    let receipt1: any;
+    let receipt2: any;
+    let tx: any;
+    let tokenAmount: any;
+    let initialSenderBalance: any;
+    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let gasCost = 0;
+    let errorMessage: string;
+
+    before(async function() {
+      await fixture();
+      tokenAmount = ethers.parseEther("8");
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+
+      // approve for token amount
+      tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, tokenAmount);
+      await tx.wait();
+      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = receipt1.gasUsed * receipt1.gasPrice;
+
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          10,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
+
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          10,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 100000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include("reverted");
+      }
+      receipt2 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = gasCost + receipt2.gasUsed * receipt2.gasPrice;
+    });
+
+    // clean up for following tests
+    after(async function() {
+      tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, 0);
+      await tx.wait();
+    });
+
+    it("should verify the transaction failed", async function() {
+      expect(receipt1!.status).to.equal(1);
+      expect(receipt2!.status).to.equal(0);
+    });
+
+    it("should verify the error message", async function() {
+      expect(errorMessage).to.include("unsupported chain: 10");
+    });
+
+    it("should verify the balance hasn't changed", async function() {
+      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
+      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
+    });
+  });
+
+  describe("bridgeOutBtcFailureInvalidEthereumRecipient", function() {
+    let receipt1: any;
+    let receipt2: any;
+    let tx: any;
+    let tokenAmount: any;
+    let initialSenderBalance: any;
+    let recipient = "150bCF49Ee8E2Bd9f59e99182";
+    let gasCost = 0;
+    let errorMessage: string;
+
+    before(async function() {
+      await fixture();
+      tokenAmount = ethers.parseEther("8");
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+
+      // approve for token amount
+      tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, tokenAmount);
+      await tx.wait();
+      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = receipt1.gasUsed * receipt1.gasPrice;
+
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
+
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 100000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include("reverted");
+      }
+
+      receipt2 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = gasCost + receipt2.gasUsed * receipt2.gasPrice;
+    });
+
+    // clean up for following tests
+    after(async function() {
+      tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, 0);
+      await tx.wait();
+    });
+
+    it("should verify the transaction failed", async function() {
+      expect(receipt1!.status).to.equal(1);
+      expect(receipt2!.status).to.equal(0);
+    });
+
+    it("should verify the error message", async function() {
+      expect(errorMessage).to.include("invalid recipient address for Ethereum chain: 150bcf49ee8e2bd9f59e9918");
+    });
+
+    it("should verify the balance hasn't changed", async function() {
+      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
+      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
+    });
+  });
+
+  describe("bridgeOutBtcFailureNotEnoughFunds", function() {
+    let receipt1: any;
+    let receipt2: any;
+    let tx: any;
+    let tokenAmount: any;
+    let initialSenderBalance: any;
+    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let gasCost = 0;
+    let errorMessage: string;
+
+    before(async function() {
+      await fixture();
+      tokenAmount = ethers.parseEther("12");
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+
+      // approve for token amount
+      tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, tokenAmount);
+      await tx.wait();
+      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = receipt1.gasUsed * receipt1.gasPrice;
+
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
+
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 100000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include(
+          "reverted",
+        );
+      }
+      receipt2 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = gasCost + receipt2.gasUsed * receipt2.gasPrice;
+    });
+
+    // clean up for following tests
+    after(async function() {
+      tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, 0);
+      await tx.wait();
+    });
+
+    it("should verify the transaction failed", async function() {
+      expect(receipt1!.status).to.equal(1);
+      expect(receipt2!.status).to.equal(0);
+    });
+
+    it("should verify the error message", async function() {
+      expect(errorMessage).to.include(
+        "insufficient funds",
+      );
+    });
+
+    it("should verify the balance hasn't changed", async function() {
+      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
+      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
+    });
+  });
+
+  describe("bridgeOutERC20ToEthereumFailureNotMapped", function() {
+    let tx: any;
+    let tokenAmount: any;
+    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let errorMessage: string;
+
+    before(async function() {
+      await fixture();
+
+      // mint some token to ourselves
+      tokenAmount = 1000;
+      // approve for token amount
+      tx = await simpleToken.connect(senderSigner)
+        .mint(senderAddress, tokenAmount);
+      await tx.wait();
+
+      // approve for token amount
+      tx = await simpleToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, tokenAmount);
+      await tx.wait();
+
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          await simpleToken.getAddress(),
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
+
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          await simpleToken.getAddress(),
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 100000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include(
+          "reverted",
+        );
+      }
+    });
+
+    it("should verify the error message", async function() {
+      expect(errorMessage).to.include(
+        "unsupported token",
+      );
+      expect(errorMessage).to.include(
+        "for ethereum target chain",
+      );
+    });
+
+    it("should verify the new balances", async function() {
+      var updatedSenderBalance = await simpleToken.balanceOf(senderAddress);
+      expect(updatedSenderBalance).to.equal(1000);
+    });
+  });
+
+  describe("bridgeOutERC20ToBitcoinInvalid", function() {
+    let tx: any;
+    let tokenAmount: any;
+    let recipient = "1976a91462e907b15cbf27d5425399ebf6f0fb50ebb88f1888ac";
+    let errorMessage: string;
+
+    before(async function() {
+      await fixture();
+
+      // mint some token to ourselves
+      tokenAmount = 1000;
+      // approve for token amount
+      tx = await simpleToken.connect(senderSigner)
+        .mint(senderAddress, tokenAmount);
+      await tx.wait();
+
+      // approve for token amount
+      tx = await simpleToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, tokenAmount);
+      await tx.wait();
+
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          await simpleToken.getAddress(),
+          tokenAmount,
+          1,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
+
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          await simpleToken.getAddress(),
+          tokenAmount,
+          1,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 1000000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include("revert");
+      }
+    });
+
+    it("should verify the error message", async function() {
+      expect(errorMessage).to.include(
+        "unsupported token",
+      );
+      expect(errorMessage).to.include(
+        "for bitcoin target chain",
+      );
+    });
+
+    it("should verify the new balances", async function() {
+      var updatedSenderBalance = await simpleToken.balanceOf(senderAddress);
+      expect(updatedSenderBalance).to.equal(1000);
+    });
+  });
+
+  describe("bridgeOutERC20ToEthereumFailureNotApproved", function() {
+    let tokenAmount: any;
+    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let sourceTokenAddress = ethers.Wallet.createRandom().address;
+    let errorMessage: string;
+
+    before(async function() {
+      await fixture();
+
+      // do the erc20 token mapping
+      let tx = await assetsBridge.connect(poolOwner).createERC20TokenMapping(
+        sourceTokenAddress,
+        await simpleToken.getAddress(),
+      );
+      await tx.wait();
+
+      // mint some token to ourselves
+      tokenAmount = 1000;
+      // approve for token amount
+      tx = await simpleToken.connect(senderSigner)
+        .mint(senderAddress, tokenAmount);
+      await tx.wait();
+
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          await simpleToken.getAddress(),
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
+
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          await simpleToken.getAddress(),
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 1000000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include("reverted");
+      }
+    });
+
+    after(async function() {
+      let tx = await assetsBridge.connect(poolOwner).deleteERC20TokenMapping(
+        sourceTokenAddress,
+      );
+      await tx.wait();
+    });
+    it("should verify error message", async function() {
+      expect(errorMessage).to.include(
+        "failed to execute ERC20 burnFrom call: execution reverted: evm transaction execution failed",
+      );
+    });
+
+    it("should verify the new balances", async function() {
+      var updatedSenderBalance = await simpleToken.balanceOf(senderAddress);
+      expect(updatedSenderBalance).to.equal(1000);
+    });
+  });
+
+  describe("bridgeOutBtcFailureInvalidBitcoinRecipient", function() {
+    let tx: any;
+    let receipt1: any;
+    let receipt2: any;
+    let tokenAmount: any;
+    let initialSenderBalance: any;
+    let recipient = "150bCF49Ee8E2";
+    let gasCost = 0;
+    let errorMessage: string;
+
+    before(async function() {
+      await fixture();
+      tokenAmount = ethers.parseEther("8");
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+
+      // approve for token amount
+      let tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, tokenAmount);
+      await tx.wait();
+      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = receipt1.gasUsed * receipt1.gasPrice;
+
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          1,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
+
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          1,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 1000000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include("reverted");
+      }
+
+      receipt2 = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = gasCost + receipt2.gasUsed * receipt2.gasPrice;
+    });
+
+    // clean up for following tests
+    after(async function() {
+      let tx = await btcToken.connect(senderSigner)
+        .approve(assetsBridgePrecompileAddress, 0);
+      await tx.wait();
+    });
+
+    it("should verify the error message", async function() {
+      expect(errorMessage).to.include("couldn't get script from var-len data: malformed var len data");
+    });
+
+    it("should verify the transaction failed", async function() {
+      expect(receipt1!.status).to.equal(1);
+      expect(receipt2!.status).to.equal(0);
+    });
+
+    it("should verify the balance hasn't changed", async function() {
+      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
+      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
+    });
+  });
 
   describe("bridgeOutBtcToEthereumFailureNotApproved", function() {
     let tx: any;
@@ -65,34 +640,32 @@ describe("AssetsBridge", function() {
       tokenAmount = ethers.parseEther("8");
       initialSenderBalance = await ethers.provider.getBalance(senderAddress);
 
-      let f = async function(...gasLimit: [] | [any]) {
-        let _tx: any;
-        try {
-          _tx = await assetsBridge.connect(senderSigner).bridgeOut(
-            btcTokenPrecompileAddress,
-            tokenAmount,
-            0,
-            Buffer.from(recipient, "hex"),
-            ...gasLimit,
-          );
-          await _tx.wait();
-        } catch (error) {
-          if (gasLimit.length == 0) {
-            errorMessage = error.message;
-          } else {
-            expect(error.message).to.include(
-              "reverted",
-            );
-          }
-        }
+      try {
+        await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+        );
+      } catch (error: any) {
+        errorMessage = error.message;
+      }
 
-        return _tx;
-      };
+      try {
+        tx = await assetsBridge.connect(senderSigner).bridgeOut(
+          btcTokenPrecompileAddress,
+          tokenAmount,
+          0,
+          Buffer.from(recipient, "hex"),
+          { gasLimit: 1000000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.message).to.include(
+          "reverted",
+        );
+      }
 
-      // first check the actual error
-      await f();
-      // then call with a gasLimit to make it consume gas
-      tx = await f({ gasLimit: 1000000 });
       receipt = await ethers.provider.getTransactionReceipt(tx.hash);
       gasCost = receipt.gasUsed * receipt.gasPrice;
     });
@@ -113,203 +686,6 @@ describe("AssetsBridge", function() {
 
     it("should verify that BTC and BTC ERC20 balance has same balances", async function() {
       expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
-    });
-  });
-
-  describe("bridgeOutBtcFailureInvalidBitcoinRecipient", function() {
-    let receipt: any;
-    let tx: any;
-    let tokenAmount: any;
-    let initialSenderBalance: any;
-    let recipient = "150bCF49Ee8E2";
-    let gasCost = 0;
-
-    before(async function() {
-      await fixture();
-      tokenAmount = ethers.parseEther("8");
-
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
-
-      // approve for token amount
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, tokenAmount);
-      await tx.wait();
-      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
-      gasCost = receipt.gasUsed * receipt.gasPrice;
-
-      try {
-        await assetsBridge.connect(senderSigner).bridgeOut(
-          btcTokenPrecompileAddress,
-          tokenAmount,
-          1,
-          Buffer.from(recipient, "hex"),
-        );
-        await tx.wait();
-      } catch (error) {
-        expect(error.message).to.include("couldn't get script from var-len data: malformed var len data");
-      }
-    });
-
-    // clean up for following tests
-    after(async function() {
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, 0);
-      await tx.wait();
-    });
-
-    it("should verify the transaction failed", async function() {
-      expect(receipt!.status).to.equal(1);
-    });
-    it("should verify the balance hasn't changed", async function() {
-      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
-      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
-    });
-    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
-      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
-    });
-  });
-
-  describe("bridgeOutERC20ToEthereumFailureNotApproved", function() {
-    let receipt: any;
-    let tx: any;
-    let tokenAmount: any;
-    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
-    let sourceTokenAddress = ethers.Wallet.createRandom().address;
-
-    before(async function() {
-      await fixture();
-
-      // do the erc20 token mapping
-      let tx = await assetsBridge.connect(poolOwner).createERC20TokenMapping(
-        sourceTokenAddress,
-        await simpleToken.getAddress(),
-      );
-      await tx.wait();
-
-      // mint some token to ourselves
-      tokenAmount = 1000;
-      // approve for token amount
-      tx = await simpleToken.connect(senderSigner)
-        .mint(senderAddress, tokenAmount);
-      await tx.wait();
-
-      try {
-        tx = await assetsBridge.connect(senderSigner).bridgeOut(
-          await simpleToken.getAddress(),
-          tokenAmount,
-          0,
-          Buffer.from(recipient, "hex"),
-        );
-        await tx.wait();
-      } catch (error) {
-        expect(error.message).to.include(
-          "failed to execute ERC20 burnFrom call: execution reverted: evm transaction execution failed",
-        );
-      }
-    });
-
-    after(async function() {
-      let tx = await assetsBridge.connect(poolOwner).deleteERC20TokenMapping(
-        sourceTokenAddress,
-      );
-      await tx.wait();
-    });
-
-    it("should verify the new balances", async function() {
-      var updatedSenderBalance = await simpleToken.balanceOf(senderAddress);
-      expect(updatedSenderBalance).to.equal(1000);
-    });
-  });
-
-  describe("bridgeOutERC20ToBitcoinInvalid", function() {
-    let receipt: any;
-    let tx: any;
-    let tokenAmount: any;
-    let recipient = "1976a91462e907b15cbf27d5425399ebf6f0fb50ebb88f1888ac";
-
-    before(async function() {
-      await fixture();
-
-      // mint some token to ourselves
-      tokenAmount = 1000;
-      // approve for token amount
-      tx = await simpleToken.connect(senderSigner)
-        .mint(senderAddress, tokenAmount);
-      await tx.wait();
-
-      // approve for token amount
-      tx = await simpleToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, tokenAmount);
-      await tx.wait();
-
-      try {
-        tx = await assetsBridge.connect(senderSigner).bridgeOut(
-          await simpleToken.getAddress(),
-          tokenAmount,
-          1,
-          Buffer.from(recipient, "hex"),
-        );
-        console.log(8);
-        await tx.wait();
-      } catch (error) {
-        expect(error.message).to.include(
-          "unsupported token",
-        );
-        expect(error.message).to.include(
-          "for bitcoin target chain",
-        );
-      }
-    });
-
-    it("should verify the new balances", async function() {
-      var updatedSenderBalance = await simpleToken.balanceOf(senderAddress);
-      expect(updatedSenderBalance).to.equal(1000);
-    });
-  });
-
-  describe("bridgeOutERC20ToEthereumFailureNotMapped", function() {
-    let receipt: any;
-    let tx: any;
-    let tokenAmount: any;
-    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
-
-    before(async function() {
-      await fixture();
-
-      // mint some token to ourselves
-      tokenAmount = 1000;
-      // approve for token amount
-      tx = await simpleToken.connect(senderSigner)
-        .mint(senderAddress, tokenAmount);
-      await tx.wait();
-
-      // approve for token amount
-      tx = await simpleToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, tokenAmount);
-      await tx.wait();
-
-      try {
-        tx = await assetsBridge.connect(senderSigner).bridgeOut(
-          await simpleToken.getAddress(),
-          tokenAmount,
-          0,
-          Buffer.from(recipient, "hex"),
-        );
-        console.log(8);
-        await tx.wait();
-      } catch (error) {
-        expect(error.message).to.include(
-          "unsupported token",
-        );
-        expect(error.message).to.include(
-          "for ethereum target chain",
-        );
-      }
-    });
-
-    it("should verify the new balances", async function() {
-      var updatedSenderBalance = await simpleToken.balanceOf(senderAddress);
-      expect(updatedSenderBalance).to.equal(1000);
     });
   });
 
@@ -343,7 +719,7 @@ describe("AssetsBridge", function() {
           { gasLimit: 1000000 },
         );
         await tx.wait();
-      } catch (error) {
+      } catch (error: any) {
         expect(error.shortMessage).to.include(
           "execution reverted",
         );
@@ -422,227 +798,6 @@ describe("AssetsBridge", function() {
       expect(await ethers.provider.getBalance(contractAddress))
         .to.equal(await btcToken.balanceOf(contractAddress))
         .to.equal(0n);
-    });
-  });
-
-  describe("bridgeOutBtcFailureNotEnoughFunds", function() {
-    let receipt1: any;
-    let tx: any;
-    let tokenAmount: any;
-    let initialSenderBalance: any;
-    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
-    let gasCost = 0;
-
-    before(async function() {
-      await fixture();
-      tokenAmount = ethers.parseEther("12");
-
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
-
-      // approve for token amount
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, tokenAmount);
-      await tx.wait();
-      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
-      gasCost = receipt1.gasUsed * receipt1.gasPrice;
-
-      try {
-        tx = await assetsBridge.connect(senderSigner).bridgeOut(
-          btcTokenPrecompileAddress,
-          tokenAmount,
-          0,
-          Buffer.from(recipient, "hex"),
-        );
-        await tx.wait();
-      } catch (error) {
-        expect(error.message).to.include(
-          "insufficient funds",
-        );
-      }
-    });
-
-    // clean up for following tests
-    after(async function() {
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, 0);
-      await tx.wait();
-    });
-
-    it("should verify the transaction failed", async function() {
-      expect(receipt1!.status).to.equal(1);
-    });
-
-    it("should verify the balance hasn't changed", async function() {
-      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
-      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
-    });
-
-    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
-      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
-    });
-  });
-
-  describe("bridgeOutBtcFailureApprovalTooSmall", function() {
-    let receipt1: any;
-    let tx: any;
-    let tokenAmount: any;
-    let initialSenderBalance: any;
-    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
-    let gasCost = 0;
-
-    before(async function() {
-      await fixture();
-      tokenAmount = ethers.parseEther("8");
-
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
-
-      // approve for token amount
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, tokenAmount / 2n);
-      await tx.wait();
-      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
-      gasCost = receipt1.gasUsed * receipt1.gasPrice;
-
-      try {
-        tx = await assetsBridge.connect(senderSigner).bridgeOut(
-          btcTokenPrecompileAddress,
-          tokenAmount,
-          0,
-          Buffer.from(recipient, "hex"),
-        );
-        await tx.wait();
-      } catch (error) {
-        expect(error.message).to.include(
-          "couldn't accept authorization: requested amount is more than spend limit: insufficient funds",
-        );
-      }
-    });
-
-    // clean up for following tests
-    after(async function() {
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, 0);
-      await tx.wait();
-    });
-
-    it("should verify the transaction failed", async function() {
-      expect(receipt1!.status).to.equal(1);
-    });
-
-    it("should verify the balance hasn't changed", async function() {
-      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
-      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
-    });
-
-    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
-      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
-    });
-  });
-
-  describe("bridgeOutBtcFailureInvalidChain", function() {
-    let receipt1: any;
-    let tx: any;
-    let tokenAmount: any;
-    let initialSenderBalance: any;
-    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
-    let gasCost = 0;
-
-    before(async function() {
-      await fixture();
-      tokenAmount = ethers.parseEther("8");
-
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
-
-      // approve for token amount
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, tokenAmount);
-      await tx.wait();
-      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
-      gasCost = receipt1.gasUsed * receipt1.gasPrice;
-
-      try {
-        tx = await assetsBridge.connect(senderSigner).bridgeOut(
-          btcTokenPrecompileAddress,
-          tokenAmount,
-          10,
-          Buffer.from(recipient, "hex"),
-        );
-        await tx.wait();
-      } catch (error) {
-        expect(error.message).to.include("unsupported chain: 10");
-      }
-    });
-
-    // clean up for following tests
-    after(async function() {
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, 0);
-      await tx.wait();
-    });
-
-    it("should verify the transaction failed", async function() {
-      expect(receipt1!.status).to.equal(1);
-    });
-
-    it("should verify the balance hasn't changed", async function() {
-      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
-      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
-    });
-
-    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
-      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
-    });
-  });
-
-  describe("bridgeOutBtcFailureInvalidEthereumRecipient", function() {
-    let receipt1: any;
-    let tx: any;
-    let tokenAmount: any;
-    let initialSenderBalance: any;
-    let recipient = "150bCF49Ee8E2Bd9f59e99182";
-    let gasCost = 0;
-
-    before(async function() {
-      await fixture();
-      tokenAmount = ethers.parseEther("8");
-
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
-
-      // approve for token amount
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, tokenAmount);
-      await tx.wait();
-      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
-      gasCost = receipt1.gasUsed * receipt1.gasPrice;
-
-      try {
-        await assetsBridge.connect(senderSigner).bridgeOut(
-          btcTokenPrecompileAddress,
-          tokenAmount,
-          0,
-          Buffer.from(recipient, "hex"),
-        );
-        await tx.wait();
-      } catch (error) {
-        expect(error.message).to.include("invalid recipient address for Ethereum chain: 150bcf49ee8e2bd9f59e9918");
-      }
-    });
-    // clean up for following tests
-    after(async function() {
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, 0);
-      await tx.wait();
-    });
-
-    it("should verify the transaction failed", async function() {
-      expect(receipt1!.status).to.equal(1);
-    });
-    it("should verify the balance hasn't changed", async function() {
-      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
-      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
-    });
-    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
-      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
     });
   });
 
