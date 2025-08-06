@@ -48,10 +48,9 @@ func (aue AssetsUnlockedEvent) IsValid() bool {
 		return false
 	}
 
-	// TODO: Uncomment once https://github.com/mezo-org/mezod/pull/522 is merged.
-	// if !evmtypes.IsHexAddress(aue.Sender) {
-	// 	return false
-	// }
+	if !evmtypes.IsHexAddress(aue.Sender) {
+		return false
+	}
 
 	if aue.Amount.IsNil() || !aue.Amount.IsPositive() {
 		return false
