@@ -22,7 +22,7 @@ const requestTimeout = 5 * time.Second
 // BridgeOutGrpcClient enables gRPC communication with mezod validator node needed
 // for the bridge-out process.
 type BridgeOutGrpcClient struct {
-	connection     *grpc.ClientConn
+	connection *grpc.ClientConn
 }
 
 func NewBridgeOutGrpcClient(
@@ -45,35 +45,8 @@ func NewBridgeOutGrpcClient(
 	}
 
 	c := &BridgeOutGrpcClient{
-		connection:     connection,
+		connection: connection,
 	}
-
-	go func() {
-		// Test the connection to the Ethereum sidecar bridge-out server by
-		// verifying we can successfully execute `GetAssetsUnlockedEntries`.
-		ctxWithTimeout, cancel := context.WithTimeout(
-			context.Background(),
-			requestTimeout,
-		)
-		defer cancel()
-
-		_, err := c.GetAssetsUnlockedEvents(
-			ctxWithTimeout,
-			sdkmath.NewInt(1),
-			sdkmath.NewInt(2),
-		)
-		if err != nil {
-			logger.Error(
-				"ethereum sidecar bridge-out connection test failed; possible " +
-					"problem with sidecar configuration or connectivity",
-			)
-		} else {
-			logger.Info(
-				"ethereum bridge-out sidecar connection test completed " +
-					"successfully",
-			)
-		}
-	}()
 
 	return c, nil
 }
