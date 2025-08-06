@@ -1,5 +1,8 @@
 # RFC-3: Bridging non-Bitcoin assets to Mezo
 
+>[!WARNING]
+> This document was superseded by [RFC-4](./rfc-4.md).
+
 ## Background
 
 [RFC-2: Bridging Bitcoin to Mezo](./rfc-2.md) describes the mechanism of
