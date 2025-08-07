@@ -48,7 +48,7 @@ var (
 
 	// bridgeOutLookBackPeriod is the look-back period used when fetching
 	// AssetsUnlocked events from the Mezo chain. It defines how far back we
-	// look when searching for unattested events.
+	// look when searching for unconfirmed events.
 	bridgeOutLookBackPeriod = 30 * 24 * time.Hour // ~1 month
 
 	// assetsUnlockedBatchSize is the number of AssetsUnlocked events we can
@@ -538,11 +538,11 @@ func (s *Server) startGRPCServer(
 }
 
 // observeAssetsUnlockedEvents monitors `AssetsUnlocked` events emitted on the
-// Mezo chain and stores unattested `AssetsUnlocked` events preparing them for
+// Mezo chain and stores unconfirmed `AssetsUnlocked` events preparing them for
 // attestation. This routine consists of two parts:
-//   - initial check for unattested `AssetsUnlocked` events emitted when the sidecar
-//     was turned off
-//   - periodic check for new unattested `AssetsUnlocked` events
+//   - initial check for unconfirmed `AssetsUnlocked` events emitted when the
+//     sidecar was turned off
+//   - periodic check for new unconfirmed `AssetsUnlocked` events
 func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 	// At the start of the routine we need to learn which of the recent
 	// `AssetsUnlocked` events might require attestation in the `MezoBridge`
@@ -550,8 +550,9 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 	// for a significant amount of time while the Mezo chain was processing
 	// bridge-out requests.
 
-	// First fetch recent events. We consider such events as possibly unattested.
-	// The events are already sorted by their unlock sequence in ascending order.
+	// First fetch recent events. We consider such events as possibly
+	// unconfirmed. The events are already sorted by their unlock sequence in
+	// ascending order.
 	recentEvents, err := s.fetchRecentAssetsUnlockedEvents(ctx)
 	if err != nil {
 		return fmt.Errorf(
@@ -560,19 +561,19 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 		)
 	}
 
-	unattestedEvents, err := s.findUnattestedAssetsUnlockedEvents(
+	unconfirmedEvents, err := s.findUnconfirmedAssetsUnlockedEvents(
 		ctx,
 		recentEvents,
 	)
 	if err != nil {
 		return fmt.Errorf(
-			"failed to find unattested AssetsUnlocked events: [%w]",
+			"failed to find unconfirmed AssetsUnlocked events: [%w]",
 			err,
 		)
 	}
 
 	s.attestationMutex.Lock()
-	s.attestationQueue = unattestedEvents
+	s.attestationQueue = unconfirmedEvents
 	s.attestationMutex.Unlock()
 
 	// Save the unlock sequence of the last event as the starting point for
@@ -583,9 +584,9 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 	}
 
 	s.logger.Info(
-		"Initial search for recent unattested AssetsUnlocked events",
+		"Initial search for recent unconfirmed AssetsUnlocked events",
 		"recent_events", len(recentEvents),
-		"unattested_events", len(unattestedEvents),
+		"unconfirmed_events", len(unconfirmedEvents),
 		"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
 	)
 
@@ -614,7 +615,7 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 
 // fetchRecentAssetsUnlockedEvents fetches AssetsUnlocked events that entered
 // the Mezo blockchain within the AssetsUnlocked look-back period. We consider
-// events within that range as possibly unattested. The returned events are
+// events within that range as possibly unconfirmed. The returned events are
 // sorted in the ascending order of their unlock sequences (from the lowest
 // to the highest).
 func (s *Server) fetchRecentAssetsUnlockedEvents(ctx context.Context) (
@@ -706,11 +707,11 @@ outer:
 	return recentEvents, nil
 }
 
-// findUnattestedAssetsUnlockedEvents finds unattested `AssetsUnlocked` events
-// from the passed input events. An event is considered attested if there
+// findUnconfirmedAssetsUnlockedEvents finds unconfirmed `AssetsUnlocked` events
+// from the passed input events. An event is considered confirmed if there
 // was an `AssetsUnlockConfirmed` event emitted for it on Ethereum and its
 // unlock sequence is among the confirmed unlocks.
-func (s *Server) findUnattestedAssetsUnlockedEvents(
+func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 	ctx context.Context,
 	inputEvents []bridgetypes.AssetsUnlockedEvent,
 ) ([]bridgetypes.AssetsUnlockedEvent, error) {
@@ -751,14 +752,14 @@ func (s *Server) findUnattestedAssetsUnlockedEvents(
 
 	// TODO: We might need to split getting PastAssetsUnlockConfirmedEvents into batches.
 
-	attestedUnlockSequences := make(map[string]bool)
+	confirmedUnlockSequences := make(map[string]bool)
 
 	for _, confirmedEvent := range confirmedEvents {
-		confirmedUnlockSequence := confirmedEvent.UnlockSequenceNumber
+		eventUnlockSequence := confirmedEvent.UnlockSequenceNumber
 
-		// Only consider an event as attested if its unlock sequence still
+		// Only consider an event as confirmed if its unlock sequence still
 		// remains among confirmed unlocks.
-		isConfirmed, err := s.bridgeContract.ConfirmedUnlocks(confirmedUnlockSequence)
+		isConfirmed, err := s.bridgeContract.ConfirmedUnlocks(eventUnlockSequence)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"failed to check if AssetsUnlocked event remains confirmed: [%w]",
@@ -767,26 +768,26 @@ func (s *Server) findUnattestedAssetsUnlockedEvents(
 		}
 
 		if isConfirmed {
-			attestedUnlockSequences[confirmedUnlockSequence.String()] = true
+			confirmedUnlockSequences[eventUnlockSequence.String()] = true
 		}
 	}
 
-	// If the event's unlock sequence is not among the attested sequences
-	// consider the event unattested.
-	unattestedEvents := []bridgetypes.AssetsUnlockedEvent{}
+	// If the event's unlock sequence is not among the confirmed sequences
+	// consider the event unconfirmed.
+	unconfirmedEvents := []bridgetypes.AssetsUnlockedEvent{}
 	for _, event := range inputEvents {
-		if !attestedUnlockSequences[event.UnlockSequence.String()] {
-			unattestedEvents = append(unattestedEvents, event)
+		if !confirmedUnlockSequences[event.UnlockSequence.String()] {
+			unconfirmedEvents = append(unconfirmedEvents, event)
 		}
 	}
 
-	// Sort the unattested events by their unlock sequences in ascending order.
-	sort.Slice(unattestedEvents, func(i, j int) bool {
-		return unattestedEvents[i].UnlockSequence.
-			LT(unattestedEvents[j].UnlockSequence)
+	// Sort the unconfirmed events by their unlock sequences in ascending order.
+	sort.Slice(unconfirmedEvents, func(i, j int) bool {
+		return unconfirmedEvents[i].UnlockSequence.
+			LT(unconfirmedEvents[j].UnlockSequence)
 	})
 
-	return unattestedEvents, nil
+	return unconfirmedEvents, nil
 }
 
 func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
