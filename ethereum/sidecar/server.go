@@ -822,9 +822,11 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 	seqStart := s.lastAssetsUnlockedSequence.AddRaw(1)
 	seqEnd := sequenceTip.AddRaw(1)
 
-	// TODO: Do we need to split the request into batches?
-	//       Fetching new events is run frequently - there shouldn't be
-	//       many events to fetch.
+	// ON THE MEZOD SIDE THERE IS A LIMIT OF 10,000 EVENTS THAT CAN BE FETCHED
+	// IN ONE REQUEST. EXCEEDING THE LIMIT RESULTS IN AN ERROR.
+	// However, since new events are fetched very frequently therefore there is
+	// no need to split them into batches as realistically we should never
+	// exceed the limit.
 	events, err := s.bridgeOutClient.GetAssetsUnlockedEvents(
 		ctx,
 		seqStart,
