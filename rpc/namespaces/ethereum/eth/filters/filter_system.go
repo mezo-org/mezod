@@ -17,6 +17,7 @@ package filters
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -129,6 +130,11 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 		return sub, unsubFn, nil
 	}
 
+	if !errors.Is(err, pubsub.ErrTopicNotFound) {
+		sub.err <- err
+		return nil, nil, err
+	}
+
 	// topic doesn't exist, to create it
 	switch sub.typ {
 	case filters.LogsSubscription:
@@ -151,6 +157,7 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 	if err := es.eventBus.AddTopic(sub.event, ch); err != nil {
 		es.logger.Error("AddTopic failed after verification, there might be a bug in the EventSystem",
 			"topic", sub.event, "error", err, "subscription", sub.id)
+		sub.err <- err
 		return nil, nil, fmt.Errorf("event system internal error: %w", err)
 	}
 
@@ -165,6 +172,7 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 		es.logger.Error("Subscribe failed after AddTopic succeeded, there might be a bug in the EventSystem",
 			"topic", sub.event, "error", err, "subscription", sub.id)
 		// we remove the subscription as we had an error when subscribing.
+		sub.err <- err
 		delete(es.index[sub.typ], sub.id)
 		es.eventBus.RemoveTopic(sub.event)
 		// this call to subscribe created the topicChans, however, seeing that
