@@ -12,7 +12,7 @@ const (
 	FlagServerNetwork             = "ethereum-sidecar.server.network"
 	FlagServerBatchSize           = "ethereum-sidecar.server.batch-size"
 	FlagServerRequestsPerMinute   = "ethereum-sidecar.server.requests-per-minute"
-	FlagBridgeOutServerAddress    = "ethereum-sidecar.bridge-out.server-address"
+	FlagAssetsUnlockedEndpoint    = "ethereum-sidecar.assets-unlocked-endpoint"
 )
 
 func NewFlagSetEthereumSidecar(
@@ -21,7 +21,7 @@ func NewFlagSetEthereumSidecar(
 	defaultServerNetwork string,
 	defaultServerBatchSize uint64,
 	defaultServerRequestsPerMinute uint64,
-	defaultBridgeOutServerAddress string,
+	defaultAssetsUnlockedEndpoint string,
 ) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
@@ -64,11 +64,10 @@ func NewFlagSetEthereumSidecar(
 	)
 
 	fs.String(
-		FlagBridgeOutServerAddress,
-		defaultBridgeOutServerAddress,
-		"Address of the gRPC bridge-out server. The bridge-out server is "+
-			"run by validators as part of mezod and responds with "+
-			"AssetsUnlock events",
+		FlagAssetsUnlockedEndpoint,
+		defaultAssetsUnlockedEndpoint,
+		"Address of the gRPC endpoint for providing info on AssetsUnlocked "+
+			"events emitted on the Mezo chain",
 	)
 
 	return fs

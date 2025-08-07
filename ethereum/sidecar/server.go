@@ -136,7 +136,7 @@ func RunServer(
 	ethereumNetwork string,
 	batchSize uint64,
 	requestsPerMinute uint64,
-	bridgeOutServerAddress string,
+	assetsUnlockedEndpoint string,
 	registry codectypes.InterfaceRegistry,
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
@@ -176,7 +176,7 @@ func RunServer(
 	}
 
 	bridgeOutClient, err := NewBridgeOutGrpcClient(
-		bridgeOutServerAddress,
+		assetsUnlockedEndpoint,
 		registry,
 	)
 	if err != nil {

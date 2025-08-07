@@ -26,7 +26,7 @@ func NewEthereumSidecarCmd() *cobra.Command {
 	// per 2 seconds, which is 30 requests per minute. Flag should be set to 30 for
 	// this example.
 	defaultServerRequestsPerMinute := uint64(600) // 10 requests per second
-	defaultBridgeOutServerAddress := "127.0.0.1:9090"
+	defaultAssetsUnlockedEndpoint := "127.0.0.1:9090"
 
 	cmd := &cobra.Command{
 		Use:   "ethereum-sidecar",
@@ -43,7 +43,7 @@ func NewEthereumSidecarCmd() *cobra.Command {
 			defaultServerEthereumNetwork.String(),
 			defaultServerBatchSize,
 			defaultServerRequestsPerMinute,
-			defaultBridgeOutServerAddress,
+			defaultAssetsUnlockedEndpoint,
 		))
 
 	return cmd
@@ -60,7 +60,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 	network, _ := cmd.Flags().GetString(FlagServerNetwork)
 	batchSize, _ := cmd.Flags().GetUint64(FlagServerBatchSize)
 	requestsPerMinute, _ := cmd.Flags().GetUint64(FlagServerRequestsPerMinute)
-	bridgeOutServerAddress, _ := cmd.Flags().GetString(FlagBridgeOutServerAddress)
+	assetsUnlockedEndpoint, _ := cmd.Flags().GetString(FlagAssetsUnlockedEndpoint)
 
 	clientCtx, err := client.GetClientQueryContext(cmd)
 	if err != nil {
@@ -80,7 +80,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		network,
 		batchSize,
 		requestsPerMinute,
-		bridgeOutServerAddress,
+		assetsUnlockedEndpoint,
 		clientCtx.InterfaceRegistry,
 	)
 
