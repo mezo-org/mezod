@@ -166,8 +166,6 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 		return nil, nil, fmt.Errorf("event system internal error: %w", err)
 	}
 
-	// add subscription to the index
-	es.index[sub.typ][sub.id] = sub
 	// store the topic channel
 	es.topicChans[sub.event] = ch
 
@@ -178,15 +176,17 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 			"topic", sub.event, "error", err, "subscription", sub.id)
 		// we remove the subscription as we had an error when subscribing.
 		sub.err <- err
-		delete(es.index[sub.typ], sub.id)
-		es.eventBus.RemoveTopic(sub.event)
 		// this call to subscribe created the topicChans, however, seeing that
 		// the subscription failed, and there's no other subscriber for it
 		// we need to delete the chan for the topic to leave no unused
 		// resources behind
+		es.eventBus.RemoveTopic(sub.event)
 		delete(es.topicChans, sub.event)
 		return nil, nil, fmt.Errorf("event system internal error: %w", err)
 	}
+
+	// add subscription to the index
+	es.index[sub.typ][sub.id] = sub
 
 	sub.eventCh = eventCh
 	return sub, unsubFn, nil
