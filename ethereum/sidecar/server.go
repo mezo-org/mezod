@@ -811,7 +811,7 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 	// If the unlock sequence tip has not advanced on Mezo return early.
 	if sequenceTip.Equal(s.lastAssetsUnlockedSequence) {
 		s.logger.Info(
-			"No new AssetsUnlocked events to fetch from Mezo",
+			"no new AssetsUnlocked events to fetch from Mezo",
 			"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
 		)
 		return nil
