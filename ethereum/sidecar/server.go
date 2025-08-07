@@ -667,20 +667,6 @@ outer:
 			)
 		}
 
-		// We know how many events we should receive. Any difference suggests
-		// an error on `mezod` server side (e.g. gaps in stored event database).
-		expectedLength := seqEnd.Sub(seqStart).Int64()
-		if int64(len(events)) != expectedLength {
-			return nil, fmt.Errorf(
-				"fetched unexpected number of AssetsUnlocked events for "+
-					"range [%s, %s); expected %d, got %d",
-				seqStart.String(),
-				seqEnd.String(),
-				expectedLength,
-				len(events),
-			)
-		}
-
 		for i := len(events) - 1; i >= 0; i-- {
 			event := events[i]
 			if event.BlockTime < cutOffBlockTime {
@@ -839,18 +825,6 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 			seqStart.String(),
 			seqEnd.String(),
 			err,
-		)
-	}
-
-	expectedLength := seqEnd.Sub(seqStart).Int64()
-	if int64(len(events)) != expectedLength {
-		return fmt.Errorf(
-			"fetched unexpected number of AssetsUnlocked events for "+
-				"range [%s, %s); expected %d, got %d",
-			seqStart.String(),
-			seqEnd.String(),
-			expectedLength,
-			len(events),
 		)
 	}
 
