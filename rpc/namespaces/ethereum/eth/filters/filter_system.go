@@ -120,7 +120,7 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 
 	// try to subscribe to existing topic first
 	// no need to loop over the existing topics, just try to
-	// get it, an error return the topic exists
+	// get it, an error is returned if the topic doesn't exist
 	eventCh, unsubFn, err := es.eventBus.Subscribe(sub.event)
 	if err == nil {
 		// topic exists, add subscription to the index
