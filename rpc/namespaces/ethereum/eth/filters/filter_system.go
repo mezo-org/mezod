@@ -123,68 +123,73 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 	// no need to loop over the existing topics, just try to
 	// get it, an error is returned if the topic doesn't exist
 	eventCh, unsubFn, err := es.eventBus.Subscribe(sub.event)
-	if err == nil {
-		// topic exists, add subscription to the index
+	if err != nil {
+		// There is an error. Check if ErrTopicNotFound.
+		if !errors.Is(err, pubsub.ErrTopicNotFound) {
+			// Error is NOT ErrTopicNotFound. Bubble up.
+			sub.err <- err
+			return nil, nil, err
+		}
+
+		// We haven't returned so error is ErrTopicNotFound.
+		// Continue with execution and create topic.
+		// topic doesn't exist, to create it
+		switch sub.typ {
+		case filters.LogsSubscription:
+			err = es.tmWSClient.Subscribe(ctx, sub.event)
+		case filters.BlocksSubscription:
+			err = es.tmWSClient.Subscribe(ctx, sub.event)
+		case filters.PendingTransactionsSubscription:
+			err = es.tmWSClient.Subscribe(ctx, sub.event)
+		default:
+			err = fmt.Errorf("invalid filter subscription type %d", sub.typ)
+		}
+
+		if err != nil {
+			sub.err <- err
+			return nil, nil, err
+		}
+
+		// create topic channel and add to event bus
+		ch := make(chan coretypes.ResultEvent)
+		if err := es.eventBus.AddTopic(sub.event, ch); err != nil {
+			es.logger.Error("AddTopic failed after verification, there might be a bug in the EventSystem",
+				"topic", sub.event, "error", err, "subscription", sub.id)
+			sub.err <- err
+			return nil, nil, fmt.Errorf("event system internal error: %w", err)
+		}
+
+		// add subscription to the index
+		es.index[sub.typ][sub.id] = sub
+		// store the topic channel
+		es.topicChans[sub.event] = ch
+
+		// subscribe to the newly created topic
+		eventCh, unsubFn, err = es.eventBus.Subscribe(sub.event)
+		if err != nil {
+			es.logger.Error("Subscribe failed after AddTopic succeeded, there might be a bug in the EventSystem",
+				"topic", sub.event, "error", err, "subscription", sub.id)
+			// we remove the subscription as we had an error when subscribing.
+			sub.err <- err
+			delete(es.index[sub.typ], sub.id)
+			es.eventBus.RemoveTopic(sub.event)
+			// this call to subscribe created the topicChans, however, seeing that
+			// the subscription failed, and there's no other subscriber for it
+			// we need to delete the chan for the topic to leave no unused
+			// resources behind
+			delete(es.topicChans, sub.event)
+			return nil, nil, fmt.Errorf("event system internal error: %w", err)
+		}
+
+		sub.eventCh = eventCh
+		return sub, unsubFn, nil
+
+	} else {
+		// No error. Topic exists so add subscription to the index.
 		es.index[sub.typ][sub.id] = sub
 		sub.eventCh = eventCh
 		return sub, unsubFn, nil
 	}
-
-	if !errors.Is(err, pubsub.ErrTopicNotFound) {
-		sub.err <- err
-		return nil, nil, err
-	}
-
-	// topic doesn't exist, to create it
-	switch sub.typ {
-	case filters.LogsSubscription:
-		err = es.tmWSClient.Subscribe(ctx, sub.event)
-	case filters.BlocksSubscription:
-		err = es.tmWSClient.Subscribe(ctx, sub.event)
-	case filters.PendingTransactionsSubscription:
-		err = es.tmWSClient.Subscribe(ctx, sub.event)
-	default:
-		err = fmt.Errorf("invalid filter subscription type %d", sub.typ)
-	}
-
-	if err != nil {
-		sub.err <- err
-		return nil, nil, err
-	}
-
-	// create topic channel and add to event bus
-	ch := make(chan coretypes.ResultEvent)
-	if err := es.eventBus.AddTopic(sub.event, ch); err != nil {
-		es.logger.Error("AddTopic failed after verification, there might be a bug in the EventSystem",
-			"topic", sub.event, "error", err, "subscription", sub.id)
-		sub.err <- err
-		return nil, nil, fmt.Errorf("event system internal error: %w", err)
-	}
-
-	// add subscription to the index
-	es.index[sub.typ][sub.id] = sub
-	// store the topic channel
-	es.topicChans[sub.event] = ch
-
-	// subscribe to the newly created topic
-	eventCh, unsubFn, err = es.eventBus.Subscribe(sub.event)
-	if err != nil {
-		es.logger.Error("Subscribe failed after AddTopic succeeded, there might be a bug in the EventSystem",
-			"topic", sub.event, "error", err, "subscription", sub.id)
-		// we remove the subscription as we had an error when subscribing.
-		sub.err <- err
-		delete(es.index[sub.typ], sub.id)
-		es.eventBus.RemoveTopic(sub.event)
-		// this call to subscribe created the topicChans, however, seeing that
-		// the subscription failed, and there's no other subscriber for it
-		// we need to delete the chan for the topic to leave no unused
-		// resources behind
-		delete(es.topicChans, sub.event)
-		return nil, nil, fmt.Errorf("event system internal error: %w", err)
-	}
-
-	sub.eventCh = eventCh
-	return sub, unsubFn, nil
 }
 
 // SubscribeLogs creates a subscription that will write all logs matching the
