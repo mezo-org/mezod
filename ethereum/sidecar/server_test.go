@@ -783,15 +783,15 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 			ctx, cancelCtx := context.WithCancel(context.Background())
 			defer cancelCtx()
 
-			bridgeOutClient := newLocalBridgeOutClient()
-			bridgeOutClient.SetAssetsUnlockedEvents(test.mezoEvents)
+			assetsUnlockedEndpoint := newLocalAssetsUnlockedEndpoint()
+			assetsUnlockedEndpoint.SetAssetsUnlockedEvents(test.mezoEvents)
 
 			server := Server{
-				bridgeOutClient:         bridgeOutClient,
-				bridgeOutLookBackPeriod: lookBackPeriod,
-				assetsUnlockedBatchSize: batchSize,
-				attestationQueue:        make([]bridgetypes.AssetsUnlockedEvent, 0),
-				timeFunc:                mockTimeFunc,
+				assetsUnlockedEndpoint:       assetsUnlockedEndpoint,
+				assetsUnlockedLookBackPeriod: lookBackPeriod,
+				assetsUnlockedBatchSize:      batchSize,
+				attestationQueue:             make([]bridgetypes.AssetsUnlockedEvent, 0),
+				timeFunc:                     mockTimeFunc,
 			}
 
 			actualEvents, err := server.fetchRecentAssetsUnlockedEvents(ctx)

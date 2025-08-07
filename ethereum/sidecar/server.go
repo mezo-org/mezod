@@ -46,10 +46,10 @@ var (
 	// enough.
 	cachedEventsLimit = 500000
 
-	// bridgeOutLookBackPeriod is the look-back period used when fetching
+	// assetsUnlockedLookBackPeriod is the look-back period used when fetching
 	// AssetsUnlocked events from the Mezo chain. It defines how far back we
 	// look when searching for unconfirmed events.
-	bridgeOutLookBackPeriod = 30 * 24 * time.Hour // ~1 month
+	assetsUnlockedLookBackPeriod = 30 * 24 * time.Hour // ~1 month
 
 	// assetsUnlockedBatchSize is the number of AssetsUnlocked events we can
 	// fetch from the Mezo blockchain in one gRPC call.
@@ -67,8 +67,9 @@ var (
 	errInvalidEvents = fmt.Errorf("invalid AssetsLocked events")
 )
 
-// BridgeOutClient is a client enabling communication with the `Mezo` chain.
-type BridgeOutClient interface {
+// AssetsUnlockedEndpoint is a client enabling communication with the `Mezo`
+// chain.
+type AssetsUnlockedEndpoint interface {
 	// GetAssetsUnlockedSequenceTip gets the assets unlocked sequence tip from
 	// the Mezo chain. The returned sequence tip is equal to the number of
 	// AssetsUnlocked events made so far. It is also equal to the value of the
@@ -112,10 +113,10 @@ type Server struct {
 	requestsPerMinute uint64
 
 	// bridging-out
-	bridgeOutClient BridgeOutClient
+	assetsUnlockedEndpoint AssetsUnlockedEndpoint
 
-	bridgeOutLookBackPeriod time.Duration
-	assetsUnlockedBatchSize int
+	assetsUnlockedLookBackPeriod time.Duration
+	assetsUnlockedBatchSize      int
 
 	attestationMutex sync.RWMutex
 	attestationQueue []bridgetypes.AssetsUnlockedEvent
@@ -175,28 +176,28 @@ func RunServer(
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
-	bridgeOutClient, err := NewBridgeOutGrpcClient(
+	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
 		assetsUnlockedEndpoint,
 		registry,
 	)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create bridge-out client: %v", err))
+		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
 	}
 
 	server := &Server{
-		logger:                  logger,
-		grpcServer:              grpc.NewServer(),
-		events:                  make([]bridgetypes.AssetsLockedEvent, 0),
-		lastFinalizedBlock:      new(big.Int),
-		bridgeContract:          NewBridgeContract(bridgeContract),
-		chain:                   chain,
-		batchSize:               batchSize,
-		requestsPerMinute:       requestsPerMinute,
-		bridgeOutClient:         bridgeOutClient,
-		bridgeOutLookBackPeriod: bridgeOutLookBackPeriod,
-		assetsUnlockedBatchSize: assetsUnlockedBatchSize,
-		attestationQueue:        []bridgetypes.AssetsUnlockedEvent{},
-		timeFunc:                time.Now,
+		logger:                       logger,
+		grpcServer:                   grpc.NewServer(),
+		events:                       make([]bridgetypes.AssetsLockedEvent, 0),
+		lastFinalizedBlock:           new(big.Int),
+		bridgeContract:               NewBridgeContract(bridgeContract),
+		chain:                        chain,
+		batchSize:                    batchSize,
+		requestsPerMinute:            requestsPerMinute,
+		assetsUnlockedEndpoint:       assetsUnlockedGrpcEndpoint,
+		assetsUnlockedLookBackPeriod: assetsUnlockedLookBackPeriod,
+		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
+		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
+		timeFunc:                     time.Now,
 	}
 
 	go func() {
@@ -623,7 +624,7 @@ func (s *Server) fetchRecentAssetsUnlockedEvents(ctx context.Context) (
 	error,
 ) {
 	// Fetching events starts from the current sequence tip.
-	sequenceTip, err := s.bridgeOutClient.GetAssetsUnlockedSequenceTip(ctx)
+	sequenceTip, err := s.assetsUnlockedEndpoint.GetAssetsUnlockedSequenceTip(ctx)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to fetch assets unlocked sequence tip: [%w]",
@@ -637,7 +638,7 @@ func (s *Server) fetchRecentAssetsUnlockedEvents(ctx context.Context) (
 	}
 
 	// Cut-off block time in UNIX seconds.
-	cutOffBlockTime := uint32(s.timeFunc().Add(-s.bridgeOutLookBackPeriod).Unix()) //nolint:gosec
+	cutOffBlockTime := uint32(s.timeFunc().Add(-s.assetsUnlockedLookBackPeriod).Unix()) //nolint:gosec
 	recentEvents := []bridgetypes.AssetsUnlockedEvent{}
 
 	// Walk backwards from the current sequence tip in windows of at most
@@ -653,7 +654,7 @@ outer:
 			seqStart = sdkmath.OneInt()
 		}
 
-		events, err := s.bridgeOutClient.GetAssetsUnlockedEvents(
+		events, err := s.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
 			ctx,
 			seqStart,
 			seqEnd,
@@ -777,7 +778,7 @@ func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 }
 
 func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
-	sequenceTip, err := s.bridgeOutClient.GetAssetsUnlockedSequenceTip(ctx)
+	sequenceTip, err := s.assetsUnlockedEndpoint.GetAssetsUnlockedSequenceTip(ctx)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to fetch assets unlocked sequence tip: [%w]",
@@ -814,7 +815,7 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 	// However, since new events are fetched very frequently therefore there is
 	// no need to split them into batches as realistically we should never
 	// exceed the limit.
-	events, err := s.bridgeOutClient.GetAssetsUnlockedEvents(
+	events, err := s.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
 		ctx,
 		seqStart,
 		seqEnd,

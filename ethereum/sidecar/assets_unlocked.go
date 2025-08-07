@@ -18,16 +18,16 @@ import (
 // requestTimeout is the timeout for requests sent to the mezod validator node.
 const requestTimeout = 5 * time.Second
 
-// BridgeOutGrpcClient enables gRPC communication with mezod validator node needed
-// for the bridge-out process.
-type BridgeOutGrpcClient struct {
+// AssetsUnlockedGrpcEndpoint enables gRPC communication with mezod validator node
+// needed for the bridge-out process.
+type AssetsUnlockedGrpcEndpoint struct {
 	connection *grpc.ClientConn
 }
 
-func NewBridgeOutGrpcClient(
+func NewAssetsUnlockedGrpcEndpoint(
 	serverAddress string,
 	registry types.InterfaceRegistry,
-) (*BridgeOutGrpcClient, error) {
+) (*AssetsUnlockedGrpcEndpoint, error) {
 	connection, err := grpc.NewClient(
 		serverAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -42,17 +42,17 @@ func NewBridgeOutGrpcClient(
 		)
 	}
 
-	c := &BridgeOutGrpcClient{
+	endpoint := &AssetsUnlockedGrpcEndpoint{
 		connection: connection,
 	}
 
-	return c, nil
+	return endpoint, nil
 }
 
 // GetAssetsUnlockedEvents gets the AssetsUnlocked events from the Mezo chain.
 // The requested range of events is inclusive on the lower side and exclusive
 // on the upper side.
-func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
+func (auge *AssetsUnlockedGrpcEndpoint) GetAssetsUnlockedEvents(
 	ctx context.Context,
 	sequenceStart sdkmath.Int,
 	sequenceEnd sdkmath.Int,
@@ -60,7 +60,7 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
-	queryClient := bridgetypes.NewQueryClient(c.connection)
+	queryClient := bridgetypes.NewQueryClient(auge.connection)
 
 	request := &bridgetypes.QueryAssetsUnlockedEventsRequest{
 		SequenceStart: sequenceStart,
@@ -88,13 +88,13 @@ func (c *BridgeOutGrpcClient) GetAssetsUnlockedEvents(
 // Mezo chain. The returned sequence tip is equal to the number of AssetsUnlocked
 // events made so far. It is also equal to the value of the unlock sequence
 // in the newest AssetsUnlocked event.
-func (c *BridgeOutGrpcClient) GetAssetsUnlockedSequenceTip(
+func (auge *AssetsUnlockedGrpcEndpoint) GetAssetsUnlockedSequenceTip(
 	ctx context.Context,
 ) (sdkmath.Int, error) {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
-	queryClient := bridgetypes.NewQueryClient(c.connection)
+	queryClient := bridgetypes.NewQueryClient(auge.connection)
 
 	request := &bridgetypes.QueryAssetsUnlockedSequenceTipRequest{}
 

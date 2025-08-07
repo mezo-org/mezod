@@ -8,20 +8,20 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
-func newLocalBridgeOutClient() *localBridgeOutClient {
-	return &localBridgeOutClient{}
+func newLocalAssetsUnlockedEndpoint() *localAssetsUnlockedEndpoint {
+	return &localAssetsUnlockedEndpoint{}
 }
 
-type localBridgeOutClient struct {
+type localAssetsUnlockedEndpoint struct {
 	events []bridgetypes.AssetsUnlockedEvent
 }
 
-func (lboc *localBridgeOutClient) GetAssetsUnlockedSequenceTip(
+func (laue *localAssetsUnlockedEndpoint) GetAssetsUnlockedSequenceTip(
 	_ context.Context,
 ) (sdkmath.Int, error) {
 	tip := sdkmath.NewInt(0)
 
-	for _, event := range lboc.events {
+	for _, event := range laue.events {
 		if event.UnlockSequence.GT(tip) {
 			tip = event.UnlockSequence
 		}
@@ -30,7 +30,7 @@ func (lboc *localBridgeOutClient) GetAssetsUnlockedSequenceTip(
 	return tip, nil
 }
 
-func (lboc *localBridgeOutClient) GetAssetsUnlockedEvents(
+func (laue *localAssetsUnlockedEndpoint) GetAssetsUnlockedEvents(
 	_ context.Context,
 	sequenceStart sdkmath.Int,
 	sequenceEnd sdkmath.Int,
@@ -40,7 +40,7 @@ func (lboc *localBridgeOutClient) GetAssetsUnlockedEvents(
 	}
 
 	events := []bridgetypes.AssetsUnlockedEvent{}
-	for _, event := range lboc.events {
+	for _, event := range laue.events {
 		if event.UnlockSequence.GTE(sequenceStart) &&
 			event.UnlockSequence.LT(sequenceEnd) {
 			events = append(events, event)
@@ -50,8 +50,8 @@ func (lboc *localBridgeOutClient) GetAssetsUnlockedEvents(
 	return events, nil
 }
 
-func (lboc *localBridgeOutClient) SetAssetsUnlockedEvents(
+func (laue *localAssetsUnlockedEndpoint) SetAssetsUnlockedEvents(
 	events []bridgetypes.AssetsUnlockedEvent,
 ) {
-	lboc.events = events
+	laue.events = events
 }
