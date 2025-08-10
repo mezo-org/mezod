@@ -776,3 +776,136 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestFetchNewAssetsUnlockedEvents(t *testing.T) {
+	tests := map[string]struct {
+		currentLastAssetsUnlockedSequence  sdkmath.Int
+		currentAttestationQueue            []bridgetypes.AssetsUnlockedEvent
+		mezoEvents                         []bridgetypes.AssetsUnlockedEvent
+		expectedLastAssetsUnlockedSequence sdkmath.Int
+		expectedAttestationQueue           []bridgetypes.AssetsUnlockedEvent
+		expectedError                      error
+	}{
+		"no events": {
+			currentLastAssetsUnlockedSequence:  sdkmath.ZeroInt(),
+			currentAttestationQueue:            []bridgetypes.AssetsUnlockedEvent{},
+			mezoEvents:                         []bridgetypes.AssetsUnlockedEvent{},
+			expectedLastAssetsUnlockedSequence: sdkmath.ZeroInt(),
+			expectedAttestationQueue:           []bridgetypes.AssetsUnlockedEvent{},
+			expectedError:                      nil,
+		},
+		"new events, empty queue": {
+			currentLastAssetsUnlockedSequence: sdkmath.ZeroInt(),
+			currentAttestationQueue:           []bridgetypes.AssetsUnlockedEvent{},
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+				},
+			},
+			expectedLastAssetsUnlockedSequence: sdkmath.NewInt(2),
+			expectedAttestationQueue: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+				},
+			},
+			expectedError: nil,
+		},
+		"new events, non-empty queue": {
+			currentLastAssetsUnlockedSequence: sdkmath.OneInt(),
+			currentAttestationQueue: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+				},
+			},
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+				},
+			},
+			expectedLastAssetsUnlockedSequence: sdkmath.NewInt(3),
+			expectedAttestationQueue: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(3),
+				},
+			},
+			expectedError: nil,
+		},
+		"sequence mismatch": {
+			currentLastAssetsUnlockedSequence: sdkmath.NewInt(2),
+			currentAttestationQueue: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+				},
+			},
+			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
+				// sequence tip on Mezo will be `1, lower than events already
+				// fetched by sidecar.
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+				},
+			},
+			expectedLastAssetsUnlockedSequence: sdkmath.NewInt(2),
+			expectedAttestationQueue: []bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(1),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(2),
+				},
+			},
+			expectedError: fmt.Errorf(
+				"current AssetsUnlock sequence tip on Mezo lower than " +
+					"the last processed unlock sequence (1 vs 2)",
+			),
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancelCtx := context.WithCancel(context.Background())
+			defer cancelCtx()
+
+			assetsUnlockedEndpoint := newLocalAssetsUnlockedEndpoint()
+			assetsUnlockedEndpoint.SetAssetsUnlockedEvents(test.mezoEvents)
+
+			server := Server{
+				logger:                     log.NewNopLogger(),
+				lastAssetsUnlockedSequence: test.currentLastAssetsUnlockedSequence,
+				attestationQueue:           test.currentAttestationQueue,
+				assetsUnlockedEndpoint:     assetsUnlockedEndpoint,
+			}
+
+			err := server.fetchNewAssetsUnlockedEvents(ctx)
+
+			require.Equal(
+				t,
+				test.expectedAttestationQueue,
+				server.attestationQueue,
+			)
+			require.Equal(
+				t,
+				test.expectedLastAssetsUnlockedSequence,
+				server.lastAssetsUnlockedSequence,
+			)
+			require.Equal(t, test.expectedError, err)
+		})
+	}
+}
