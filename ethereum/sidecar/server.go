@@ -87,10 +87,15 @@ type AssetsUnlockedEndpoint interface {
 	) ([]bridgetypes.AssetsUnlockedEvent, error)
 }
 
-// Server enables exchange of bridging-related information between the Mezo
-// and Ethereum chains. It used for both bridging-in of assets from Ethereum
-// to Mezo and bridging-out the other way around. It is intended to be run as
-// a separate process.
+// Server coordinates bridge data between Ethereum and Mezo.
+// It handles both directions:
+//   - Bridge-in (Ethereum to Mezo): watches AssetsLocked events emitted by the
+//     MezoBridge contract and serves them via gRPC to `mezod` validator nodes.
+//   - Bridge-out (Mezo to Ethereum): monitors AssetsUnlocked events on Mezo and
+//     attests on Ethereum. Events are read from the chain via validators gRPC
+//     endpoints.
+//
+// Server is intended to run as a separate process.
 type Server struct {
 	logger log.Logger
 
