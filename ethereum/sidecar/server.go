@@ -19,6 +19,7 @@ import (
 	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	"github.com/mezo-org/mezod/ethereum/sidecar/mezotime"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	"github.com/mezo-org/mezod/version"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -86,9 +87,6 @@ type AssetsUnlockedEndpoint interface {
 	) ([]bridgetypes.AssetsUnlockedEvent, error)
 }
 
-// TimeFunc is a function that returns the current time.
-type TimeFunc func() time.Time
-
 // Server enables exchange of bridging-related information between the Mezo
 // and Ethereum chains. It used for both bridging-in of assets from Ethereum
 // to Mezo and bridging-out the other way around. It is intended to be run as
@@ -124,8 +122,6 @@ type Server struct {
 	// Unguarded by mutex as only the AssetsUnlock event observation
 	// routine uses it.
 	lastAssetsUnlockedSequence sdkmath.Int
-
-	timeFunc TimeFunc
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -197,7 +193,6 @@ func RunServer(
 		assetsUnlockedLookBackPeriod: assetsUnlockedLookBackPeriod,
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
-		timeFunc:                     time.Now,
 	}
 
 	go func() {
@@ -638,7 +633,7 @@ func (s *Server) fetchRecentAssetsUnlockedEvents(ctx context.Context) (
 	}
 
 	// Cut-off block time in UNIX seconds.
-	cutOffBlockTime := uint32(s.timeFunc().Add(-s.assetsUnlockedLookBackPeriod).Unix()) //nolint:gosec
+	cutOffBlockTime := uint32(mezotime.Now().Add(-s.assetsUnlockedLookBackPeriod).Unix()) //nolint:gosec
 	recentEvents := []bridgetypes.AssetsUnlockedEvent{}
 
 	// Walk backwards from the current sequence tip in windows of at most

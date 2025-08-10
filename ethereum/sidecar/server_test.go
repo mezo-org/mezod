@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/cmd/config"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	"github.com/mezo-org/mezod/ethereum/sidecar/mezotime"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -354,9 +355,9 @@ func TestAssetsLockedEvents(t *testing.T) {
 }
 
 func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
-	// Mock function always returning 10000 seconds since Unix epoch as the
-	// current time.
-	mockTimeFunc := func() time.Time {
+	// Use a mock function for getting the current time. It always returns
+	// 10000 seconds since Unix epoch.
+	mezotime.Now = func() time.Time {
 		return time.Unix(10_000, 0)
 	}
 
@@ -758,7 +759,6 @@ func TestFetchRecentAssetsUnlockedEvents(t *testing.T) {
 				assetsUnlockedLookBackPeriod: lookBackPeriod,
 				assetsUnlockedBatchSize:      batchSize,
 				attestationQueue:             make([]bridgetypes.AssetsUnlockedEvent, 0),
-				timeFunc:                     mockTimeFunc,
 			}
 
 			actualEvents, err := server.fetchRecentAssetsUnlockedEvents(ctx)
