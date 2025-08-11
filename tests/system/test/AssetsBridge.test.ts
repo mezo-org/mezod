@@ -283,8 +283,6 @@ describe("AssetsBridge", function() {
     });
   });
 
-  // contract* counterparts for BTC
-
   describe("contractBridgeOutBTCFailureNoAllowance", function() {
     let receipt: any;
     let tx: any;
@@ -457,10 +455,6 @@ describe("AssetsBridge", function() {
         .to.equal(0n);
     });
   });
-
-  // bridgeOutERC20FailureNoAllowance
-  // bridgeOutERC20FailureNoBalance
-  // bridgeOutERC20Success
 
   describe("bridgeOutERC20FailureNoAllowance", function() {
     let tokenAmount: any;
@@ -696,7 +690,6 @@ describe("AssetsBridge", function() {
     });
   });
 
-  // contract* counterparts for ERC20
   describe("contractBridgeOutERC20FailureNoAllowance", function() {
     let receipt: any;
     let tx: any;
