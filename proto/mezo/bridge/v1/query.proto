@@ -13,6 +13,19 @@ service Query {
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
     option (google.api.http).get = "/mezo/bridge/v1/params";
   }
+
+  // AssetsUnlockedSequenceTip queries the assets unlocked sequence tip.
+  rpc AssetsUnlockedSequenceTip(QueryAssetsUnlockedSequenceTipRequest)
+      returns (QueryAssetsUnlockedSequenceTipResponse) {
+    option (google.api.http).get =
+        "/mezo/bridge/v1/assets_unlocked_sequence_tip";
+  }
+
+  // AssetsUnlockedEvents queries the assets unlocked events.
+  rpc AssetsUnlockedEvents(QueryAssetsUnlockedEventsRequest)
+      returns (QueryAssetsUnlockedEventsResponse) {
+    option (google.api.http).get = "/mezo/bridge/v1/assets_unlocked_events";
+  }
 }
 
 // QueryParamsRequest is request type for the Query/Params RPC method.
@@ -22,4 +35,47 @@ message QueryParamsRequest {}
 message QueryParamsResponse {
   // params holds all the parameters of this module.
   Params params = 1 [ (gogoproto.nullable) = false ];
+}
+
+// QueryAssetsUnlockedSequenceTipRequest is request type for the
+// Query/AssetsUnlockedSequenceTip RPC method.
+message QueryAssetsUnlockedSequenceTipRequest {}
+
+// QueryAssetsUnlockedSequenceTipResponse is response type for the
+// Query/AssetsUnlockedSequenceTip RPC method.
+message QueryAssetsUnlockedSequenceTipResponse {
+  // sequence_tip is the current assets unlocked sequence tip.
+  string sequence_tip = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+// QueryAssetsUnlockedEventsRequest is request type for the
+// Query/AssetsUnlockedEvents RPC method.
+message QueryAssetsUnlockedEventsRequest {
+  // sequence_start is the start of the sequence range (inclusive). If the
+  // underlying pointer is set to nil, the range is unbounded on the lower side.
+  // Notice that it is the underlying pointer that can be set to nil, not the
+  // sequence_start itself.
+  string sequence_start = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  // sequence_end is the end of the sequence range (exclusive). If the
+  // underlying pointer is set to nil, the range is unbounded on the upper side.
+  // Notice that it is the underlying pointer that can be set to nil, not the
+  // sequence_end itself.
+  string sequence_end = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+// QueryAssetsUnlockedEventsResponse is response type for the
+// Query/AssetsUnlockedEvents RPC method.
+message QueryAssetsUnlockedEventsResponse {
+  // events is a list of AssetsUnlockedEvents forming a sequence strictly
+  // increasing by `1`.
+  repeated AssetsUnlockedEvent events = 1 [ (gogoproto.nullable) = false ];
 }

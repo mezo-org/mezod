@@ -54,7 +54,7 @@ message AssetsUnlockedEvent {
   // token is the hex-encoded EVM address of the bridged token.
   string token = 3;
   // sender is the address bridging out.
-  bytes sender = 4;
+  string sender = 4;
   // amount of assets unlocked, in token-specific precision.
   string amount = 5 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
@@ -62,6 +62,9 @@ message AssetsUnlockedEvent {
   ];
   // chain is the target chain for this unlock event.
   uint32 chain = 6;
+  // block_time is the UNIX timestamp of the block at which the event was
+  // emitted. It is in seconds.
+  uint32 block_time = 7;
 }
 
 // ERC20TokenMapping defines a mapping between an ERC20 token on the source
