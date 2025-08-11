@@ -855,7 +855,7 @@ describe("AssetsBridge", function() {
     });
   });
 
-  describe("contractBridgeOutBtcSuccessToBitcoin", function() {
+  describe("contractBridgeOutBtcToBitcoinSuccess", function() {
     let receipt: any;
     let tx: any;
     let tokenAmount: any;
@@ -906,7 +906,7 @@ describe("AssetsBridge", function() {
     });
   });
 
-  describe("bridgeOutBtcSuccessToBitcoin", function() {
+  describe("bridgeOutBTCToBitcoinSuccess", function() {
     let receipt1: any;
     let receipt2: any;
     let tx: any;
