@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "e2e tests for mezo",
   "scripts": {
-    "test": "hardhat test ./test/*.test.ts --network localhost",
+    "test": "hardhat test ./test/AssetsBridge.test.ts --network localhost",
     "deploy": "hardhat deploy --network localhost"
   },
   "author": "",

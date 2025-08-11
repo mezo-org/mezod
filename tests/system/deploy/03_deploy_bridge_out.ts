@@ -7,9 +7,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   console.log(`deployer is ${deployer}`)
 
-  console.log("Deploying BridgeOut contract...")
+  console.log("Deploying BridgeOutDelegate contract...")
 
-  await deployments.deploy("BridgeOut", {
+  await deployments.deploy("BridgeOutDelegate", {
     from: deployer,
     args: [],
     log: true,
@@ -27,4 +27,4 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func
 
-func.tags = ["BridgeOut"]
+func.tags = ["BridgeOutDelegate"]

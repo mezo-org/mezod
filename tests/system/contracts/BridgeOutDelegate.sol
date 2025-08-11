@@ -78,9 +78,9 @@ contract SimpleToken {
     }
 }
 
-/// @title BridgeOut
+/// @title BridgeOutDelegate
 /// @notice Handles various bridgeOut scenarios for Mezo native asset bridge.
-contract BridgeOut {
+contract BridgeOutDelegate {
     // AssetsBridge precompile address on Mezo.
     address private constant bridgePrecompile = 0x7B7C000000000000000000000000000000000012;
     // BTC precompile address on Mezo
@@ -108,7 +108,26 @@ contract BridgeOut {
 	IAssetsBridge(bridgePrecompile).bridgeOut(btcPrecompile, amount * 2, 1, recipient);
     }
 
-    function bridgeOutBTCToBitcoinSuccess(bytes calldata recipient, uint256 amount) external payable {
+    function bridgeOutERC20Success(bytes calldata recipient, uint256 amount, address tokenAddress) external payable {
+	bool okApprove = IERC20(tokenAddress).approve(bridgePrecompile, amount);
+        require(okApprove, "couldn't approve bridge for transferFrom");
+
+	bool okBridgeOut = IAssetsBridge(bridgePrecompile).bridgeOut(tokenAddress, amount, 0, recipient);
+        require(okBridgeOut, "couldn't bridge out erc20");
+    }
+
+    function bridgeOutERC20Reverts(bytes calldata recipient, uint256 amount, address tokenAddress) external payable {
+	bool okApprove = IERC20(tokenAddress).approve(bridgePrecompile, amount);
+        require(okApprove, "couldn't approve bridge for transferFrom");
+
+	bool okBridgeOut = IAssetsBridge(bridgePrecompile).bridgeOut(tokenAddress, amount, 0, recipient);
+        require(okBridgeOut, "couldn't bridge out erc20");
+
+	// now just revert
+	revert("revert triggered");
+    }
+
+    function bridgeOutBTCSuccess(bytes calldata recipient, uint256 amount) external payable {
 	bool okApprove = IBTC(btcPrecompile).approve(bridgePrecompile, amount);
         require(okApprove, "couldn't approve bridge for transferFrom");
 

@@ -5,7 +5,7 @@ import assetsbridgeabi from "../../../precompile/assetsbridge/abi.json";
 import btcabi from "../../../precompile/btctoken/abi.json";
 import mezoabi from "../../../precompile/mezotoken/abi.json";
 import validatorpoolabi from "../../../precompile/validatorpool/abi.json";
-import { BridgeOut } from "../typechain-types/BridgeOut";
+import { BridgeOutDelegate } from "../typechain-types/BridgeOutDelegate";
 import { SimpleToken } from "../typechain-types/SimpleToken";
 import { getDeployedContract } from "./helpers/contract";
 
@@ -25,7 +25,7 @@ describe("AssetsBridge", function() {
   let btcToken: any;
   let mezoToken: any;
   let validatorPool: any;
-  let bridgeOut: BridgeOut;
+  let bridgeOutDelegate: BridgeOutDelegate;
   let simpleToken: SimpleToken;
   let signers: any;
   let senderSigner: any;
@@ -39,10 +39,10 @@ describe("AssetsBridge", function() {
     assetsBridge = new hre.ethers.Contract(assetsBridgePrecompileAddress, assetsbridgeabi, ethers.provider);
     btcToken = new hre.ethers.Contract(btcTokenPrecompileAddress, btcabi, ethers.provider);
     mezoToken = new hre.ethers.Contract(mezoTokenPrecompileAddress, mezoabi, ethers.provider);
-    bridgeOut = await getDeployedContract("BridgeOut");
+    bridgeOutDelegate = await getDeployedContract("BridgeOutDelegate");
     simpleToken = await getDeployedContract("SimpleToken");
     signers = await ethers.getSigners();
-    contractAddress = await bridgeOut.getAddress();
+    contractAddress = await bridgeOutDelegate.getAddress();
     poolOwner = await ethers.getSigner(await validatorPool.owner());
 
     // define the address used in th test
@@ -55,6 +55,165 @@ describe("AssetsBridge", function() {
     const transferTx = await btcToken.connect(fundingSigner).transfer(senderSigner, ethers.parseEther("10"));
     await transferTx.wait();
   };
+
+  describe("contractBridgeOutERC20Success", function() {
+    let receipt: any;
+    let tx: any;
+    let tokenAmount: any;
+    let initialSenderBalance: any;
+    let initialContractBalance: any;
+    let recipient = "150bCF49Ee8E2Bd9f59e991821DE5B74C6D876aA";
+    let gasCost = 0;
+    let sourceTokenAddress = ethers.Wallet.createRandom().address;
+
+    before(async function() {
+	await fixture();
+      tokenAmount = ethers.parseEther("8");
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+
+      // do the erc20 token mapping
+      let tx = await assetsBridge.connect(poolOwner).createERC20TokenMapping(
+        sourceTokenAddress,
+        await simpleToken.getAddress(),
+      );
+      await tx.wait();
+
+      // mint some token to ourselves
+      tx = await simpleToken.connect(senderSigner)
+        .mint(senderAddress, tokenAmount);
+      await tx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = receipt.gasUsed * receipt.gasPrice;
+
+      // send the funds to the contract first
+      const transferTx = await simpleToken.connect(senderSigner).transfer(contractAddress, tokenAmount);
+      await transferTx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(transferTx.hash);
+
+      gasCost = gasCost + receipt.gasUsed * receipt.gasPrice;
+
+      initialContractBalance = await ethers.provider.getBalance(contractAddress);
+
+      try {
+        tx = await bridgeOutDelegate.connect(senderSigner).bridgeOutERC20Success(
+          Buffer.from(recipient, "hex"),
+          tokenAmount,
+          simpleToken.getAddress(),
+          { gasLimit: 10000000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+	  console.log(error);
+          expect(error.shortMessage).to.include(
+          "execution reverted",
+        );
+      }
+
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = gasCost + receipt.gasUsed * receipt.gasPrice;
+    });
+
+    after(async function() {
+      let tx = await assetsBridge.connect(poolOwner).deleteERC20TokenMapping(
+        sourceTokenAddress,
+      );
+      await tx.wait();
+    });
+
+    it("should verify the transaction did not revert", async function() {
+      expect(receipt!.status).to.equal(1);
+    });
+
+    it("should verify the new balances", async function() {
+      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should verify that contract address balances have been updated", async function() {
+      expect(await simpleToken.balanceOf(contractAddress))
+        .to.equal(ethers.parseEther("0"));
+    });
+  });
+
+  describe("contractBridgeOutERC20Reverts", function() {
+    let receipt: any;
+    let tx: any;
+    let tokenAmount: any;
+    let initialSenderBalance: any;
+    let initialContractBalance: any;
+    let recipient = "1976a91462e907b15cbf27d5425399ebf6f0fb50ebb88f1888ac";
+    let gasCost = 0;
+    let sourceTokenAddress = ethers.Wallet.createRandom().address;
+
+    before(async function() {
+      await fixture();
+      tokenAmount = ethers.parseEther("8");
+
+      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
+
+      // do the erc20 token mapping
+      let tx = await assetsBridge.connect(poolOwner).createERC20TokenMapping(
+        sourceTokenAddress,
+        await simpleToken.getAddress(),
+      );
+      await tx.wait();
+
+      // mint some token to ourselves
+      tx = await simpleToken.connect(senderSigner)
+        .mint(senderAddress, tokenAmount);
+      await tx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = receipt.gasUsed * receipt.gasPrice;
+
+      // send the funds to the contract first
+      const transferTx = await simpleToken.connect(senderSigner).transfer(contractAddress, tokenAmount);
+      await transferTx.wait();
+      receipt = await ethers.provider.getTransactionReceipt(transferTx.hash);
+
+      gasCost = gasCost + receipt.gasUsed * receipt.gasPrice;
+
+      initialContractBalance = await ethers.provider.getBalance(contractAddress);
+
+      try {
+        tx = await bridgeOutDelegate.connect(senderSigner).bridgeOutERC20Reverts(
+          Buffer.from(recipient, "hex"),
+          tokenAmount,
+          simpleToken.getAddress(),
+          { gasLimit: 1000000 },
+        );
+        await tx.wait();
+      } catch (error: any) {
+        expect(error.shortMessage).to.include(
+          "execution reverted",
+        );
+      }
+
+      receipt = await ethers.provider.getTransactionReceipt(tx.hash);
+      gasCost = gasCost + receipt.gasUsed * receipt.gasPrice;
+    });
+
+    after(async function() {
+      let tx = await assetsBridge.connect(poolOwner).deleteERC20TokenMapping(
+        sourceTokenAddress,
+      );
+      await tx.wait();
+    });
+
+    it("should verify the transaction did revert", async function() {
+      expect(receipt!.status).to.equal(0);
+    });
+
+    it("should verify the new balances", async function() {
+      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
+      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should verify that contract address balances haven't changed", async function() {
+      expect(await simpleToken.balanceOf(contractAddress))
+        .to.equal(ethers.parseEther("8"));
+    });
+  });
 
   describe("contractBridgeOutERC20FailureNoAllowance", function() {
     let receipt: any;
@@ -97,7 +256,7 @@ describe("AssetsBridge", function() {
       initialContractBalance = await ethers.provider.getBalance(contractAddress);
 
       try {
-        tx = await bridgeOut.connect(senderSigner).bridgeOutERC20FailureNoBalance(
+        tx = await bridgeOutDelegate.connect(senderSigner).bridgeOutERC20FailureNoBalance(
           Buffer.from(recipient, "hex"),
           tokenAmount,
           simpleToken.getAddress(),
@@ -177,7 +336,7 @@ describe("AssetsBridge", function() {
       initialContractBalance = await ethers.provider.getBalance(contractAddress);
 
       try {
-        tx = await bridgeOut.connect(senderSigner).bridgeOutERC20FailureNoBalance(
+        tx = await bridgeOutDelegate.connect(senderSigner).bridgeOutERC20FailureNoBalance(
           Buffer.from(recipient, "hex"),
           tokenAmount,
           simpleToken.getAddress(),
@@ -216,7 +375,7 @@ describe("AssetsBridge", function() {
     });
   });
 
-  describe("contractBridgeOutBtcFailureNoBalance", function() {
+  describe("contractBridgeOutBTCFailureNoBalance", function() {
     let receipt: any;
     let tx: any;
     let tokenAmount: any;
@@ -240,7 +399,7 @@ describe("AssetsBridge", function() {
       initialContractBalance = await ethers.provider.getBalance(contractAddress);
 
       try {
-        tx = await bridgeOut.connect(senderSigner).bridgeOutBTCFailureNoBalance(
+        tx = await bridgeOutDelegate.connect(senderSigner).bridgeOutBTCFailureNoBalance(
           Buffer.from(recipient, "hex"),
           tokenAmount,
           { gasLimit: 1000000 },
@@ -277,7 +436,7 @@ describe("AssetsBridge", function() {
     });
   });
 
-  describe("contractBridgeOutBtcFailureNoAllowance", function() {
+  describe("contractBridgeOutBTCFailureNoAllowance", function() {
     let receipt: any;
     let tx: any;
     let tokenAmount: any;
@@ -301,7 +460,7 @@ describe("AssetsBridge", function() {
       initialContractBalance = await ethers.provider.getBalance(contractAddress);
 
       try {
-        tx = await bridgeOut.connect(senderSigner).bridgeOutBTCFailureNoAllowance(
+        tx = await bridgeOutDelegate.connect(senderSigner).bridgeOutBTCFailureNoAllowance(
           Buffer.from(recipient, "hex"),
           tokenAmount,
           { gasLimit: 1000000 },
@@ -435,7 +594,7 @@ describe("AssetsBridge", function() {
     });
   });
 
-  describe("bridgeOutBtcSuccess", function() {
+  describe("bridgeOutBTCSuccess", function() {
     let receipt1: any;
     let receipt2: any;
     let receipt3: any;
@@ -799,7 +958,7 @@ describe("AssetsBridge", function() {
     });
   });
 
-  describe("contractBridgeOutBtcReverts", function() {
+  describe("contractBridgeOutBTCReverts", function() {
     let receipt: any;
     let tx: any;
     let tokenAmount: any;
@@ -823,7 +982,7 @@ describe("AssetsBridge", function() {
       initialContractBalance = await ethers.provider.getBalance(contractAddress);
 
       try {
-        tx = await bridgeOut.connect(senderSigner).bridgeOutBTCReverts(
+        tx = await bridgeOutDelegate.connect(senderSigner).bridgeOutBTCReverts(
           Buffer.from(recipient, "hex"),
           tokenAmount,
           { gasLimit: 1000000 },
@@ -860,7 +1019,7 @@ describe("AssetsBridge", function() {
     });
   });
 
-  describe("contractBridgeOutBtcToBitcoinSuccess", function() {
+  describe("contractBridgeOutBTCSuccess", function() {
     let receipt: any;
     let tx: any;
     let tokenAmount: any;
@@ -880,7 +1039,7 @@ describe("AssetsBridge", function() {
       receipt = await ethers.provider.getTransactionReceipt(transferTx.hash);
       gasCost = receipt.gasUsed * receipt.gasPrice;
 
-      tx = await bridgeOut.connect(senderSigner).bridgeOutBTCToBitcoinSuccess(
+      tx = await bridgeOutDelegate.connect(senderSigner).bridgeOutBTCSuccess(
         Buffer.from(recipient, "hex"),
         tokenAmount,
       );
@@ -908,54 +1067,6 @@ describe("AssetsBridge", function() {
       expect(await ethers.provider.getBalance(contractAddress))
         .to.equal(await btcToken.balanceOf(contractAddress))
         .to.equal(0n);
-    });
-  });
-
-  describe("bridgeOutBTCToBitcoinSuccess", function() {
-    let receipt1: any;
-    let receipt2: any;
-    let tx: any;
-    let tokenAmount: any;
-    let initialSenderBalance: any;
-    let recipient = "1976a91462e907b15cbf27d5425399ebf6f0fb50ebb88f1888ac";
-    let gasCost = 0;
-
-    before(async function() {
-      await fixture();
-      tokenAmount = ethers.parseEther("8");
-
-      initialSenderBalance = await ethers.provider.getBalance(senderAddress);
-
-      // approve for token amount
-      tx = await btcToken.connect(senderSigner)
-        .approve(assetsBridgePrecompileAddress, tokenAmount);
-      await tx.wait();
-      receipt1 = await ethers.provider.getTransactionReceipt(tx.hash);
-      gasCost = receipt1.gasUsed * receipt1.gasPrice;
-
-      tx = await assetsBridge.connect(senderSigner).bridgeOut(
-        btcTokenPrecompileAddress,
-        tokenAmount,
-        1,
-        Buffer.from(recipient, "hex"),
-      );
-      await tx.wait();
-      receipt2 = await ethers.provider.getTransactionReceipt(tx.hash);
-      gasCost = gasCost + receipt2.gasUsed * receipt2.gasPrice;
-    });
-
-    it("should verify the transaction didn't revert", async function() {
-      expect(receipt1!.status).to.equal(1);
-      expect(receipt2!.status).to.equal(1);
-    });
-
-    it("should verify the new balances", async function() {
-      var updatedSenderBalance = await ethers.provider.getBalance(senderAddress);
-      expect(updatedSenderBalance).to.equal(initialSenderBalance - gasCost - tokenAmount);
-    });
-
-    it("should verify that BTC and BTC ERC20 balance are equal", async function() {
-      expect(await ethers.provider.getBalance(senderAddress)).to.equal(await btcToken.balanceOf(senderAddress));
     });
   });
 });
