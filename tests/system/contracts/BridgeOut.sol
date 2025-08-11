@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {IAssetsBridge} from "./interfaces/IAssetsBridge.sol";
 import {IBTC} from "./interfaces/IBTC.sol";
+import {IERC20} from "./interfaces/solidity/IERC20.sol";
 
 contract SimpleToken {
     mapping(address => uint256) private _balances;
@@ -31,8 +32,6 @@ contract SimpleToken {
 
     // Mint function - creates new tokens
     function mint(address to, uint256 amount) public {
-        require(to != address(0), "ERC20: mint to zero address");
-
         _totalSupply += amount;
         _balances[to] += amount;
 
@@ -41,8 +40,6 @@ contract SimpleToken {
 
     // Approve function - allows spender to use owner's tokens
     function approve(address spender, uint256 amount) public returns (bool) {
-        require(spender != address(0), "ERC20: approve to zero address");
-
         _allowances[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
@@ -50,12 +47,16 @@ contract SimpleToken {
     }
 
     // TransferFrom function - transfers tokens on behalf of another address
-    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
-        require(from != address(0), "ERC20: transfer from zero address");
-        require(to != address(0), "ERC20: transfer to zero address");
-        require(_balances[from] >= amount, "ERC20: transfer amount exceeds balance");
-        require(_allowances[from][msg.sender] >= amount, "ERC20: transfer amount exceeds allowance");
+    function transfer(address to, uint256 amount) public returns (bool) {
+        _balances[msg.sender] -= amount;
+        _balances[to] += amount;
 
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    // TransferFrom function - transfers tokens on behalf of another address
+    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
         _balances[from] -= amount;
         _balances[to] += amount;
         _allowances[from][msg.sender] -= amount;
@@ -85,6 +86,28 @@ contract BridgeOut {
     // BTC precompile address on Mezo
     address private constant btcPrecompile = 0x7b7C000000000000000000000000000000000000;
 
+    function bridgeOutERC20FailureNoAllowance(bytes calldata recipient, uint256 amount, address tokenAddress) external payable {
+	IAssetsBridge(bridgePrecompile).bridgeOut(tokenAddress, amount * 2, 0, recipient);
+    }
+
+    function bridgeOutERC20FailureNoBalance(bytes calldata recipient, uint256 amount, address tokenAddress) external payable {
+	bool okApprove = IERC20(tokenAddress).approve(bridgePrecompile, amount);
+        require(okApprove, "couldn't approve bridge for transferFrom");
+
+	IAssetsBridge(bridgePrecompile).bridgeOut(tokenAddress, amount * 2, 0, recipient);
+    }
+
+    function bridgeOutBTCFailureNoAllowance(bytes calldata recipient, uint256 amount) external payable {
+	IAssetsBridge(bridgePrecompile).bridgeOut(btcPrecompile, amount, 1, recipient);
+    }
+
+    function bridgeOutBTCFailureNoBalance(bytes calldata recipient, uint256 amount) external payable {
+	bool okApprove = IBTC(btcPrecompile).approve(bridgePrecompile, amount);
+        require(okApprove, "couldn't approve bridge for transferFrom");
+
+	IAssetsBridge(bridgePrecompile).bridgeOut(btcPrecompile, amount * 2, 1, recipient);
+    }
+
     function bridgeOutBTCToBitcoinSuccess(bytes calldata recipient, uint256 amount) external payable {
 	bool okApprove = IBTC(btcPrecompile).approve(bridgePrecompile, amount);
         require(okApprove, "couldn't approve bridge for transferFrom");
@@ -93,7 +116,7 @@ contract BridgeOut {
         require(okBridgeOut, "couldn't bridge out btc");
     }
 
-    function bridgeOutBTCToBitcoinReverts(bytes calldata recipient, uint256 amount) external payable {
+    function bridgeOutBTCReverts(bytes calldata recipient, uint256 amount) external payable {
 	bool okApprove = IBTC(btcPrecompile).approve(bridgePrecompile, amount);
         require(okApprove, "couldn't approve bridge for transferFrom");
 
@@ -102,50 +125,5 @@ contract BridgeOut {
 
 	// now just revert
 	revert("revert triggered");
-    }
-
-    function bridgeOutBTCToEthereum(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
-    }
-
-    function bridgeOutERC20ToEthereum(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
-    }
-
-    function bridgeOutInvalidERC20ToEthereum(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
-    }
-
-    function bridgeOutBTCNotEnoughBalance(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
-    }
-
-    function bridgeOutBTCNotApproved(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
-    }
-
-    function bridgeOutBTCNotEnoughApproved(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
-    }
-
-    function bridgeOutERC20NotEnoughBalance(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
-    }
-
-    function bridgeOutERC20NotEnoughApproved(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
-    }
-
-    function bridgeOutERC20NotApproved(address recipient) external payable {
-        // bool ok = IAssetsBridge(precompile).bridgeOut();
-        // require(ok, "No balance to transfer");
     }
 }
