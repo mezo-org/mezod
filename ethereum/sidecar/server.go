@@ -121,6 +121,12 @@ type Server struct {
 	batchSize         uint64
 	requestsPerMinute uint64
 
+	// Channel used to indicate whether the data-heavy part of AssetsLocked
+	// observation routine is done. Once this channel is closed we can proceed
+	// with the AssetsUnlocked observation routine. Delaying launch helps avoid
+	// overwhelming Ethereum data providers with requests.
+	assetsLockedReady chan struct{}
+
 	// bridging-out
 	assetsUnlockedEndpoint AssetsUnlockedEndpoint
 
@@ -200,6 +206,7 @@ func RunServer(
 		chain:                        chain,
 		batchSize:                    batchSize,
 		requestsPerMinute:            requestsPerMinute,
+		assetsLockedReady:            make(chan struct{}),
 		assetsUnlockedEndpoint:       assetsUnlockedGrpcEndpoint,
 		assetsUnlockedLookBackPeriod: assetsUnlockedLookBackPeriod,
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
@@ -229,9 +236,24 @@ func RunServer(
 		server.logger.Info("gRPC server routine stopped")
 	}()
 
-	// TODO: wait until the initial fetching of `AssetsLocked` events ends in
-	// 	     the `observeAssetsLockedEvents` routine. Make sure to cancel
-	//       waiting if an error occurs in that routine.
+	server.logger.Info(
+		"Waiting for the initial AssetsLocked sync before launching " +
+			"AssetsUnlocked routine",
+	)
+
+	select {
+	case <-server.assetsLockedReady:
+		server.logger.Info(
+			"Initial AssetsLocked sync completed; proceeding with " +
+				"AssetsUnlocked routines",
+		)
+	case <-ctx.Done():
+		server.logger.Info(
+			"Context canceled while waiting; exiting without launching " +
+				"AssetsUnlocked routines",
+		)
+		return
+	}
 
 	go func() {
 		// TODO: Only a subset of validators should be attesting AssetsUnlocked
@@ -303,8 +325,8 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	s.lastFinalizedBlock = finalizedBlock
 	s.lastFinalizedBlockMutex.Unlock()
 
-	// TODO: Inform other routines that might be waiting that the initial
-	//       event fetching is done.
+	// Signal that initial synchronization is ready.
+	close(s.assetsLockedReady)
 
 	// Start a ticker to periodically check the current block number
 	tickerChan := s.chain.BlockCounter().WatchBlocks(ctx)
