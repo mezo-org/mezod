@@ -15,6 +15,7 @@ const (
 	FlagKeyringBackend            = "keyring-backend"
 	FlagKeyringDir                = "keyring-dir"
 	FlagKeyType                   = "keyring-type"
+	FlagKeyName                   = "key-name"
 )
 
 func NewFlagSetEthereumSidecar(
@@ -25,7 +26,8 @@ func NewFlagSetEthereumSidecar(
 	defaultServerRequestsPerMinute uint64,
 	defaultKeyringBackend,
 	defaultKeyringDir,
-	defaultKeyType string,
+	defaultKeyType,
+	defaultKeyName string,
 ) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
 
@@ -83,6 +85,12 @@ func NewFlagSetEthereumSidecar(
 		FlagKeyType,
 		defaultKeyType,
 		"Key signing algorithm to generate keys for",
+	)
+
+	fs.String(
+		FlagKeyName,
+		defaultKeyName,
+		"Name of the key to extract from keyring (optional)",
 	)
 
 	return fs

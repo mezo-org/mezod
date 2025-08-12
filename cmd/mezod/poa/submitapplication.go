@@ -1,9 +1,7 @@
 package poa
 
 import (
-	"bufio"
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -17,12 +15,9 @@ import (
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 	"github.com/spf13/cobra"
 
-	"github.com/cosmos/cosmos-sdk/client/input"
-	"github.com/cosmos/cosmos-sdk/crypto"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	clientkeys "github.com/mezo-org/mezod/client/keys"
 	"github.com/mezo-org/mezod/precompile/validatorpool"
 	validatorpoolgen "github.com/mezo-org/mezod/precompile/validatorpool/gen"
 )
@@ -91,7 +86,7 @@ func runSubmitApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	privateKey, err := extractPrivateKey(cmd, args[0])
+	privateKey, err := clientkeys.ExtractPrivateKey(cmd, args[0])
 	if err != nil {
 		return err
 	}
@@ -206,42 +201,6 @@ func loadContract(client *ethclient.Client) (*validatorpoolgen.Validatorpool, er
 		return nil, fmt.Errorf("failed to load contract: %v", err)
 	}
 	return instance, nil
-}
-
-func extractPrivateKey(cmd *cobra.Command, keyName string) (*ecdsa.PrivateKey, error) {
-	clientCtx, err := clientSdk.GetClientTxContext(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get client transaction context: %v", err)
-	}
-
-	decryptPassword := ""
-	inBuf := bufio.NewReader(cmd.InOrStdin())
-	if clientCtx.Keyring.Backend() == keyring.BackendFile {
-		decryptPassword, err = input.GetPassword("Exporting private key. \nEnter key password:", inBuf)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get password: %v", err)
-		}
-	}
-
-	armor, err := clientCtx.Keyring.ExportPrivKeyArmor(keyName, decryptPassword)
-	if err != nil {
-		return nil, fmt.Errorf("failed to export private key: %v", err)
-	}
-
-	privKey, algo, err := crypto.UnarmorDecryptPrivKey(armor, decryptPassword)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt private key: %v", err)
-	}
-	if algo != ethsecp256k1.KeyType {
-		return nil, fmt.Errorf("invalid key algorithm, got %s, expected %s", algo, ethsecp256k1.KeyType)
-	}
-
-	ethPrivKey, ok := privKey.(*ethsecp256k1.PrivKey)
-	if !ok {
-		return nil, fmt.Errorf("invalid private key type %T, expected %T", privKey, &ethsecp256k1.PrivKey{})
-	}
-
-	return ethPrivKey.ToECDSA()
 }
 
 func submitApplication(instance *validatorpoolgen.Validatorpool, auth *bind.TransactOpts, consPubKeyArray [32]byte, description validatorpoolgen.Description) error {
