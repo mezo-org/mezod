@@ -16,14 +16,21 @@
 package keys
 
 import (
+	"bufio"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"io"
 
 	"sigs.k8s.io/yaml"
 
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/input"
 	"github.com/cosmos/cosmos-sdk/client/keys"
+	"github.com/cosmos/cosmos-sdk/crypto"
 	cryptokeyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"github.com/mezo-org/mezod/crypto/ethsecp256k1"
+	"github.com/spf13/cobra"
 )
 
 // available output formats.
@@ -71,4 +78,40 @@ func printTextRecords(w io.Writer, kos []keys.KeyOutput) error {
 	}
 
 	return nil
+}
+
+func ExtractPrivateKey(cmd *cobra.Command, keyName string) (*ecdsa.PrivateKey, error) {
+	clientCtx, err := client.GetClientTxContext(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get client transaction context: %v", err)
+	}
+
+	decryptPassword := ""
+	inBuf := bufio.NewReader(cmd.InOrStdin())
+	if clientCtx.Keyring.Backend() == cryptokeyring.BackendFile {
+		decryptPassword, err = input.GetPassword("Exporting private key. \nEnter key password:", inBuf)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get password: %v", err)
+		}
+	}
+
+	armor, err := clientCtx.Keyring.ExportPrivKeyArmor(keyName, decryptPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to export private key: %v", err)
+	}
+
+	privKey, algo, err := crypto.UnarmorDecryptPrivKey(armor, decryptPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt private key: %v", err)
+	}
+	if algo != ethsecp256k1.KeyType {
+		return nil, fmt.Errorf("invalid key algorithm, got %s, expected %s", algo, ethsecp256k1.KeyType)
+	}
+
+	ethPrivKey, ok := privKey.(*ethsecp256k1.PrivKey)
+	if !ok {
+		return nil, fmt.Errorf("invalid private key type %T, expected %T", privKey, &ethsecp256k1.PrivKey{})
+	}
+
+	return ethPrivKey.ToECDSA()
 }

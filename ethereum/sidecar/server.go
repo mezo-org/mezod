@@ -2,6 +2,7 @@ package sidecar
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"net"
@@ -73,6 +74,9 @@ type Server struct {
 
 	batchSize         uint64
 	requestsPerMinute uint64
+
+	// privateKey is an optional ECDSA private key extracted from keyring
+	privateKey *ecdsa.PrivateKey
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -84,6 +88,7 @@ func RunServer(
 	ethereumNetwork string,
 	batchSize uint64,
 	requestsPerMinute uint64,
+	privateKey *ecdsa.PrivateKey,
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
 	mezoBridgeAddress := portal.MezoBridgeAddress(network)
@@ -130,6 +135,7 @@ func RunServer(
 		chain:              chain,
 		batchSize:          batchSize,
 		requestsPerMinute:  requestsPerMinute,
+		privateKey:         privateKey,
 	}
 
 	go func() {
