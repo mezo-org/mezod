@@ -4,8 +4,10 @@ import (
 	"google.golang.org/grpc/encoding"
 
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
+	"github.com/mezo-org/mezod/crypto/hd"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/spf13/cobra"
 
@@ -26,6 +28,9 @@ func NewEthereumSidecarCmd() *cobra.Command {
 	// per 2 seconds, which is 30 requests per minute. Flag should be set to 30 for
 	// this example.
 	defaultServerRequestsPerMinute := uint64(600) // 10 requests per second
+	defaultKeyringBackend := flags.DefaultKeyringBackend
+	defaultKeyringDir := ""
+	defaultKeyType := string(hd.EthSecp256k1Type)
 
 	cmd := &cobra.Command{
 		Use:   "ethereum-sidecar",
@@ -42,6 +47,9 @@ func NewEthereumSidecarCmd() *cobra.Command {
 			defaultServerEthereumNetwork.String(),
 			defaultServerBatchSize,
 			defaultServerRequestsPerMinute,
+			defaultKeyringBackend,
+			defaultKeyringDir,
+			defaultKeyType,
 		))
 
 	return cmd
