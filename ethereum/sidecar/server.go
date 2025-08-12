@@ -241,6 +241,8 @@ func RunServer(
 			"AssetsUnlocked routine",
 	)
 
+	// Wait until the initial synchronization of the AssetsLocked routine is
+	// complete.
 	select {
 	case <-server.assetsLockedReady:
 		server.logger.Info(
