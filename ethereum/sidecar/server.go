@@ -52,6 +52,12 @@ var (
 	// look when searching for unconfirmed events.
 	assetsUnlockedLookBackPeriod = 30 * 24 * time.Hour // ~1 month
 
+	// assetsUnlockConfirmedLookBackBlocks is the number of blocks used when
+	// fetching AssetsUnlockConfirmed events from the Ethereum chain. It defines
+	// how far back we look when searching for the events. Its value should
+	// cover at least one month of Ethereum blocks; we add a 5-day margin.
+	assetsUnlockConfirmedLookBackBlocks = uint64(252000) // ~35 days
+
 	// assetsUnlockedBatchSize is the number of AssetsUnlocked events we can
 	// fetch from the Mezo blockchain in one gRPC call.
 	assetsUnlockedBatchSize = 100
@@ -223,6 +229,10 @@ func RunServer(
 		server.logger.Info("gRPC server routine stopped")
 	}()
 
+	// TODO: wait until the initial fetching of `AssetsLocked` events ends in
+	// 	     the `observeAssetsLockedEvents` routine. Make sure to cancel
+	//       waiting if an error occurs in that routine.
+
 	go func() {
 		// TODO: Only a subset of validators should be attesting AssetsUnlocked
 		//       events. Decide whether we should run this goroutine by calling
@@ -292,6 +302,9 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	s.lastFinalizedBlockMutex.Lock()
 	s.lastFinalizedBlock = finalizedBlock
 	s.lastFinalizedBlockMutex.Unlock()
+
+	// TODO: Inform other routines that might be waiting that the initial
+	//       event fetching is done.
 
 	// Start a ticker to periodically check the current block number
 	tickerChan := s.chain.BlockCounter().WatchBlocks(ctx)
@@ -696,8 +709,8 @@ outer:
 
 // findUnconfirmedAssetsUnlockedEvents finds unconfirmed `AssetsUnlocked` events
 // from the passed input events. An event is considered confirmed if there
-// was an `AssetsUnlockConfirmed` event emitted for it on Ethereum and its
-// unlock sequence is among the confirmed unlocks.
+// was an `AssetsUnlockConfirmed` event emitted for it on Ethereum within
+// finalized range of blocks.
 func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 	ctx context.Context,
 	inputEvents []bridgetypes.AssetsUnlockedEvent,
@@ -707,56 +720,46 @@ func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 		return []bridgetypes.AssetsUnlockedEvent{}, nil
 	}
 
-	// Use unlock sequences of the input events as a filter.
-	unlockSequences := make([]*big.Int, len(inputEvents))
-	for i, event := range inputEvents {
-		unlockSequences[i] = event.UnlockSequence.BigInt()
+	currentBlock, err := s.chain.BlockCounter().CurrentBlock()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to get current block on Ethereum chain [%w]",
+			err,
+		)
+	}
+
+	// The search range can be limited to avoid excessive chain data usage.
+	// When defining the start block we must make sure we cover the entire range
+	// in which the input events could have been confirmed on Ethereum.
+	startBlock := uint64(0)
+	if currentBlock > assetsUnlockConfirmedLookBackBlocks {
+		startBlock = currentBlock - assetsUnlockConfirmedLookBackBlocks
 	}
 
 	// Finalized block is considered safe from reorgs as it is 64-96 blocks
-	// behind the current tip. It can be used as a filter.
+	// behind the current tip. It can be used as the end block.
 	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get the finalized block: [%w]", err)
 	}
 	endBlock := finalizedBlock.Uint64()
 
-	// Search for `AssetsUnlockConfirmed` events for the given unlock sequences.
-	// Limit the search to finalized blocks.
-	confirmedEvents, err := s.bridgeContract.PastAssetsUnlockConfirmedEvents(
-		0, // TODO: Would setting startBlock to a lower value improve performance?
-		&endBlock,
-		unlockSequences,
-		nil,
-		nil,
+	confirmedEvents, err := s.fetchAssetsUnlockConfirmedEvents(
+		startBlock,
+		endBlock,
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to fetch past AssetsUnlockConfirmed events: [%w]",
+			"failed to fetch AssetsUnlockConfirmed events: [%w]",
 			err,
 		)
 	}
 
-	// TODO: We might need to split getting PastAssetsUnlockConfirmedEvents into batches.
-
+	// Store the unlock sequences in a map for an easy look-up.
 	confirmedUnlockSequences := make(map[string]bool)
-
 	for _, confirmedEvent := range confirmedEvents {
-		eventUnlockSequence := confirmedEvent.UnlockSequenceNumber
-
-		// Only consider an event as confirmed if its unlock sequence still
-		// remains among confirmed unlocks.
-		isConfirmed, err := s.bridgeContract.ConfirmedUnlocks(eventUnlockSequence)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"failed to check if AssetsUnlocked event remains confirmed: [%w]",
-				err,
-			)
-		}
-
-		if isConfirmed {
-			confirmedUnlockSequences[eventUnlockSequence.String()] = true
-		}
+		eventUnlockSequence := confirmedEvent.UnlockSequenceNumber.String()
+		confirmedUnlockSequences[eventUnlockSequence] = true
 	}
 
 	// If the event's unlock sequence is not among the confirmed sequences
@@ -842,6 +845,84 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 	)
 
 	return nil
+}
+
+// fetchAssetsUnlockConfirmedEvents retrieves raw `AssetsUnlockConfirmed` ABI
+// events from the MezoBridge contract within a specified block range. The
+// function fetches events in batches if the entire range is too large to fetch
+// at once.
+func (s *Server) fetchAssetsUnlockConfirmedEvents(
+	startBlock uint64,
+	endBlock uint64,
+) ([]*ethconnect.MezoBridgeAssetsUnlockConfirmed, error) {
+	s.logger.Info(
+		"fetching AssetsUnlockConfirmed events from range",
+		"startBlock", startBlock,
+		"endBlock", endBlock,
+	)
+
+	abiEvents := make([]*ethconnect.MezoBridgeAssetsUnlockConfirmed, 0)
+
+	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute)) //nolint:gosec
+	defer ticker.Stop()
+
+	iterator, err := s.bridgeContract.FilterAssetsUnlockConfirmed(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   &endBlock,
+		}, nil, nil, nil,
+	)
+	if err != nil {
+		s.logger.Warn(
+			"failed to fetch AssetsUnlockConfirmed events from the entire "+
+				"range; falling back to batched events fetch",
+			"startBlock", startBlock,
+			"endBlock", endBlock,
+			"err", err,
+		)
+
+		batchStartBlock := startBlock
+
+		for batchStartBlock <= endBlock {
+			batchEndBlock := batchStartBlock + s.batchSize
+			if batchEndBlock > endBlock {
+				batchEndBlock = endBlock
+			}
+
+			s.logger.Info(
+				"fetching a batch of AssetsUnlockConfirmed events from range",
+				"batchStartBlock", batchStartBlock,
+				"batchEndBlock", batchEndBlock,
+			)
+
+			<-ticker.C
+
+			batchIterator, batchErr := s.bridgeContract.FilterAssetsUnlockConfirmed(
+				&bind.FilterOpts{
+					Start: batchStartBlock,
+					End:   &batchEndBlock,
+				}, nil, nil, nil,
+			)
+			if batchErr != nil {
+				return nil, fmt.Errorf(
+					"batched AssetsUnlockConfirmed fetch failed: [%w]; giving up",
+					batchErr,
+				)
+			}
+
+			for batchIterator.Next() {
+				abiEvents = append(abiEvents, batchIterator.Event())
+			}
+
+			batchStartBlock = batchEndBlock + 1
+		}
+	} else {
+		for iterator.Next() {
+			abiEvents = append(abiEvents, iterator.Event())
+		}
+	}
+
+	return abiEvents, nil
 }
 
 //nolint:unparam

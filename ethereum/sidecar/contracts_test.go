@@ -50,17 +50,12 @@ func (lbc *localBridgeContract) FilterAssetsLocked(
 	}, nil
 }
 
-func (lbc *localBridgeContract) PastAssetsUnlockConfirmedEvents(
-	_ uint64,
-	_ *uint64,
+func (lbc *localBridgeContract) FilterAssetsUnlockConfirmed(
+	_ *bind.FilterOpts,
 	_ []*big.Int,
 	_ [][]byte,
 	_ []common.Address,
-) ([]*ethereum.MezoBridgeAssetsUnlockConfirmed, error) {
-	panic("unimplemented")
-}
-
-func (lbc *localBridgeContract) ConfirmedUnlocks(_ *big.Int) (bool, error) {
+) (ethereum.AssetsUnlockConfirmedIterator, error) {
 	panic("unimplemented")
 }
 

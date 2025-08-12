@@ -1,7 +1,6 @@
 package sidecar
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -35,33 +34,15 @@ func (r *BridgeContract) FilterAssetsLocked(
 	return &AssetsLockedIterator{iter: iter}, nil
 }
 
-func (r *BridgeContract) PastAssetsUnlockConfirmedEvents(
-	startBlock uint64,
-	endBlock *uint64,
-	unlockSequenceNumberFilter []*big.Int,
-	recipientFilter [][]byte,
-	tokenFilter []common.Address,
-) ([]*ethereum.MezoBridgeAssetsUnlockConfirmed, error) {
-	// TODO: Leaving unimplemented for now. Call `PastAssetsUnlockConfirmedEvents`
+func (r *BridgeContract) FilterAssetsUnlockConfirmed(
+	_ *bind.FilterOpts,
+	_ []*big.Int,
+	_ [][]byte,
+	_ []common.Address,
+) (ethereum.AssetsUnlockConfirmedIterator, error) {
+	// TODO: Leaving unimplemented for now. Call `FilterAssetsUnlockConfirmed`
 	//       on r.delegate once bindings for MezoBridge are re-generated.
-
-	fmt.Printf(
-		"startBlock=%d endBlock=%v unlockFilter=%v recipientFilter=%v tokenFilter=%v\n",
-		startBlock,
-		endBlock,
-		unlockSequenceNumberFilter,
-		recipientFilter,
-		tokenFilter,
-	)
 	return nil, nil
-}
-
-func (r *BridgeContract) ConfirmedUnlocks(arg0 *big.Int) (bool, error) {
-	// TODO: Leaving unimplemented for now. Call `ConfirmedUnlocks`
-	//       on r.delegate once bindings for MezoBridge are re-generated.
-
-	fmt.Printf("arg0=%v\n", arg0)
-	return false, nil
 }
 
 type AssetsLockedIterator struct {

@@ -15,6 +15,13 @@ type AssetsLockedIterator interface {
 	Event() *portal.MezoBridgeAssetsLocked
 }
 
+type AssetsUnlockConfirmedIterator interface {
+	Next() bool
+	Error() error
+	Close() error
+	Event() *MezoBridgeAssetsUnlockConfirmed
+}
+
 type BridgeContract interface {
 	FilterAssetsLocked(
 		opts *bind.FilterOpts,
@@ -23,15 +30,12 @@ type BridgeContract interface {
 		token []common.Address,
 	) (AssetsLockedIterator, error)
 
-	PastAssetsUnlockConfirmedEvents(
-		startBlock uint64,
-		endBlock *uint64,
-		unlockSequenceNumberFilter []*big.Int,
-		recipientFilter [][]byte,
-		tokenFilter []common.Address,
-	) ([]*MezoBridgeAssetsUnlockConfirmed, error)
-
-	ConfirmedUnlocks(arg0 *big.Int) (bool, error)
+	FilterAssetsUnlockConfirmed(
+		opts *bind.FilterOpts,
+		unlockSequenceNumber []*big.Int,
+		recipient [][]byte,
+		token []common.Address,
+	) (AssetsUnlockConfirmedIterator, error)
 }
 
 type MezoBridgeAssetsUnlockConfirmed struct { // TODO: Remove once bindings for `MezoBridge` are re-generated and contain features related to attestation.
