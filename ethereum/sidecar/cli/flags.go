@@ -14,7 +14,6 @@ const (
 	FlagServerRequestsPerMinute   = "ethereum-sidecar.server.requests-per-minute"
 	FlagKeyringBackend            = "keyring-backend"
 	FlagKeyringDir                = "keyring-dir"
-	FlagKeyType                   = "keyring-type"
 	FlagKeyName                   = "key-name"
 )
 
@@ -26,7 +25,6 @@ func NewFlagSetEthereumSidecar(
 	defaultServerRequestsPerMinute uint64,
 	defaultKeyringBackend,
 	defaultKeyringDir,
-	defaultKeyType,
 	defaultKeyName string,
 ) *flag.FlagSet {
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
@@ -79,12 +77,6 @@ func NewFlagSetEthereumSidecar(
 		FlagKeyringDir,
 		defaultKeyringDir,
 		"The client Keyring directory; if omitted, the default 'home' directory will be used",
-	)
-
-	fs.String(
-		FlagKeyType,
-		defaultKeyType,
-		"Key signing algorithm to generate keys for",
 	)
 
 	fs.String(

@@ -11,7 +11,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
 	clientkeys "github.com/mezo-org/mezod/client/keys"
-	"github.com/mezo-org/mezod/crypto/hd"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/spf13/cobra"
 
@@ -34,7 +33,6 @@ func NewEthereumSidecarCmd() *cobra.Command {
 	defaultServerRequestsPerMinute := uint64(600) // 10 requests per second
 	defaultKeyringBackend := flags.DefaultKeyringBackend
 	defaultKeyringDir := ""
-	defaultKeyType := string(hd.EthSecp256k1Type)
 	defaultKeyName := ""
 
 	cmd := &cobra.Command{
@@ -54,7 +52,6 @@ func NewEthereumSidecarCmd() *cobra.Command {
 			defaultServerRequestsPerMinute,
 			defaultKeyringBackend,
 			defaultKeyringDir,
-			defaultKeyType,
 			defaultKeyName,
 		))
 
