@@ -17,11 +17,10 @@ package filters
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"cosmossdk.io/log"
 	tmjson "github.com/cometbft/cometbft/libs/json"
@@ -66,7 +65,6 @@ type EventSystem struct {
 	indexMux   *sync.RWMutex
 
 	// Channels
-	install   chan *Subscription // install filter for event notification
 	uninstall chan *Subscription // remove filter for event notification
 	eventBus  pubsub.EventBus
 }
@@ -91,7 +89,6 @@ func NewEventSystem(logger log.Logger, tmWSClient *rpcclient.WSClient) *EventSys
 		index:      index,
 		topicChans: make(map[string]chan<- coretypes.ResultEvent, len(index)),
 		indexMux:   new(sync.RWMutex),
-		install:    make(chan *Subscription),
 		uninstall:  make(chan *Subscription),
 		eventBus:   pubsub.NewEventBus(),
 	}
@@ -118,25 +115,32 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 
-	existingSubs := es.eventBus.Topics()
-	for _, topic := range existingSubs {
-		if topic == sub.event {
-			eventCh, unsubFn, err := es.eventBus.Subscribe(sub.event)
-			if err != nil {
-				err := errors.Wrapf(err, "failed to subscribe to topic: %s", sub.event)
-				sub.err <- err
-				return nil, nil, err
-			}
+	// lock during the entire event system when subscribing.
+	es.indexMux.Lock()
+	defer es.indexMux.Unlock()
 
-			// wrap events in a go routine to prevent blocking
-			es.install <- sub
-			<-sub.installed
-
-			sub.eventCh = eventCh
-			return sub, unsubFn, nil
+	// try to subscribe to existing topic first
+	// no need to loop over the existing topics, just try to
+	// get it, an error is returned if the topic doesn't exist
+	eventCh, unsubFn, err := es.eventBus.Subscribe(sub.event)
+	if err != nil {
+		// There is an error. Check if ErrTopicNotFound.
+		if !errors.Is(err, pubsub.ErrTopicNotFound) {
+			// Error is NOT ErrTopicNotFound. Bubble up.
+			sub.err <- err
+			return nil, nil, err
 		}
+
+		// We haven't returned so error is ErrTopicNotFound.
+		// Continue with execution and create topic.
+	} else {
+		// No error. Topic exists so add subscription to the index.
+		es.index[sub.typ][sub.id] = sub
+		sub.eventCh = eventCh
+		return sub, unsubFn, nil
 	}
 
+	// topic doesn't exist, to create it
 	switch sub.typ {
 	case filters.LogsSubscription:
 		err = es.tmWSClient.Subscribe(ctx, sub.event)
@@ -153,15 +157,36 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 		return nil, nil, err
 	}
 
-	// wrap events in a go routine to prevent blocking
-	es.install <- sub
-	<-sub.installed
-
-	eventCh, unsubFn, err := es.eventBus.Subscribe(sub.event)
-	if err != nil {
+	// create topic channel and add to event bus
+	ch := make(chan coretypes.ResultEvent)
+	if err := es.eventBus.AddTopic(sub.event, ch); err != nil {
+		es.logger.Error("AddTopic failed after verification, there might be a bug in the EventSystem",
+			"topic", sub.event, "error", err, "subscription", sub.id)
 		sub.err <- err
-		return nil, nil, errors.Wrapf(err, "failed to subscribe to topic after installed: %s", sub.event)
+		return nil, nil, fmt.Errorf("event system internal error: %w", err)
 	}
+
+	// store the topic channel
+	es.topicChans[sub.event] = ch
+
+	// subscribe to the newly created topic
+	eventCh, unsubFn, err = es.eventBus.Subscribe(sub.event)
+	if err != nil {
+		es.logger.Error("Subscribe failed after AddTopic succeeded, there might be a bug in the EventSystem",
+			"topic", sub.event, "error", err, "subscription", sub.id)
+		// we remove the subscription as we had an error when subscribing.
+		sub.err <- err
+		// this call to subscribe created the topicChans, however, seeing that
+		// the subscription failed, and there's no other subscriber for it
+		// we need to delete the chan for the topic to leave no unused
+		// resources behind
+		es.eventBus.RemoveTopic(sub.event)
+		delete(es.topicChans, sub.event)
+		return nil, nil, fmt.Errorf("event system internal error: %w", err)
+	}
+
+	// add subscription to the index
+	es.index[sub.typ][sub.id] = sub
 
 	sub.eventCh = eventCh
 	return sub, unsubFn, nil
@@ -205,14 +230,13 @@ func (es *EventSystem) SubscribeLogs(crit filters.FilterCriteria) (*Subscription
 // given criteria to the given logs channel.
 func (es *EventSystem) subscribeLogs(crit filters.FilterCriteria) (*Subscription, pubsub.UnsubscribeFunc, error) {
 	sub := &Subscription{
-		id:        rpc.NewID(),
-		typ:       filters.LogsSubscription,
-		event:     evmEvents,
-		logsCrit:  crit,
-		created:   time.Now().UTC(),
-		logs:      make(chan []*ethtypes.Log),
-		installed: make(chan struct{}, 1),
-		err:       make(chan error, 1),
+		id:       rpc.NewID(),
+		typ:      filters.LogsSubscription,
+		event:    evmEvents,
+		logsCrit: crit,
+		created:  time.Now().UTC(),
+		logs:     make(chan []*ethtypes.Log),
+		err:      make(chan error, 1),
 	}
 
 	return es.subscribe(sub)
@@ -221,13 +245,12 @@ func (es *EventSystem) subscribeLogs(crit filters.FilterCriteria) (*Subscription
 // SubscribeNewHeads subscribes to new block headers events.
 func (es EventSystem) SubscribeNewHeads() (*Subscription, pubsub.UnsubscribeFunc, error) {
 	sub := &Subscription{
-		id:        rpc.NewID(),
-		typ:       filters.BlocksSubscription,
-		event:     headerEvents,
-		created:   time.Now().UTC(),
-		headers:   make(chan *ethtypes.Header),
-		installed: make(chan struct{}, 1),
-		err:       make(chan error, 1),
+		id:      rpc.NewID(),
+		typ:     filters.BlocksSubscription,
+		event:   headerEvents,
+		created: time.Now().UTC(),
+		headers: make(chan *ethtypes.Header),
+		err:     make(chan error, 1),
 	}
 	return es.subscribe(sub)
 }
@@ -235,13 +258,12 @@ func (es EventSystem) SubscribeNewHeads() (*Subscription, pubsub.UnsubscribeFunc
 // SubscribePendingTxs subscribes to new pending transactions events from the mempool.
 func (es EventSystem) SubscribePendingTxs() (*Subscription, pubsub.UnsubscribeFunc, error) {
 	sub := &Subscription{
-		id:        rpc.NewID(),
-		typ:       filters.PendingTransactionsSubscription,
-		event:     txEvents,
-		created:   time.Now().UTC(),
-		hashes:    make(chan []common.Hash),
-		installed: make(chan struct{}, 1),
-		err:       make(chan error, 1),
+		id:      rpc.NewID(),
+		typ:     filters.PendingTransactionsSubscription,
+		event:   txEvents,
+		created: time.Now().UTC(),
+		hashes:  make(chan []common.Hash),
+		err:     make(chan error, 1),
 	}
 	return es.subscribe(sub)
 }
@@ -249,24 +271,11 @@ func (es EventSystem) SubscribePendingTxs() (*Subscription, pubsub.UnsubscribeFu
 type filterIndex map[filters.Type]map[rpc.ID]*Subscription
 
 // eventLoop (un)installs filters and processes mux events.
+//
+//nolint:gosimple
 func (es *EventSystem) eventLoop() {
 	for {
 		select {
-		case f := <-es.install:
-			es.logger.Debug("installing subscription", "subId", f.ID())
-			es.indexMux.Lock()
-			es.index[f.typ][f.id] = f
-			ch := make(chan coretypes.ResultEvent)
-			if err := es.eventBus.AddTopic(f.event, ch); err != nil {
-				// Just a log here, error can be that we already have created
-				// the topic
-				es.logger.Debug("failed to add event topic to event bus", "topic", f.event, "error", err.Error())
-			} else {
-				// topic didn't exists, add it to the map
-				es.topicChans[f.event] = ch
-			}
-			es.indexMux.Unlock()
-			close(f.installed)
 		case f := <-es.uninstall:
 			es.logger.Debug("uninstalling subscription", "subId", f.ID())
 			es.indexMux.Lock()

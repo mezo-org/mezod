@@ -1,11 +1,16 @@
 package cli
 
 import (
+	"crypto/ecdsa"
+	"fmt"
+
 	"google.golang.org/grpc/encoding"
 
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
+	clientkeys "github.com/mezo-org/mezod/client/keys"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/spf13/cobra"
 
@@ -27,6 +32,9 @@ func NewEthereumSidecarCmd() *cobra.Command {
 	// this example.
 	defaultServerRequestsPerMinute := uint64(600) // 10 requests per second
 	defaultAssetsUnlockedEndpoint := "127.0.0.1:9090"
+	defaultKeyringBackend := flags.DefaultKeyringBackend
+	defaultKeyringDir := ""
+	defaultKeyName := ""
 
 	cmd := &cobra.Command{
 		Use:   "ethereum-sidecar",
@@ -44,6 +52,9 @@ func NewEthereumSidecarCmd() *cobra.Command {
 			defaultServerBatchSize,
 			defaultServerRequestsPerMinute,
 			defaultAssetsUnlockedEndpoint,
+			defaultKeyringBackend,
+			defaultKeyringDir,
+			defaultKeyName,
 		))
 
 	return cmd
@@ -61,6 +72,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 	batchSize, _ := cmd.Flags().GetUint64(FlagServerBatchSize)
 	requestsPerMinute, _ := cmd.Flags().GetUint64(FlagServerRequestsPerMinute)
 	assetsUnlockedEndpoint, _ := cmd.Flags().GetString(FlagAssetsUnlockedEndpoint)
+	keyName, _ := cmd.Flags().GetString(FlagKeyName)
 
 	clientCtx, err := client.GetClientQueryContext(cmd)
 	if err != nil {
@@ -73,6 +85,16 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		codec.NewProtoCodec(clientCtx.InterfaceRegistry).GRPCCodec(),
 	)
 
+	// Extract private key from keyring if key name is provided
+	var privateKey *ecdsa.PrivateKey
+	if keyName != "" {
+		privateKey, err = clientkeys.ExtractPrivateKey(cmd, keyName)
+		if err != nil {
+			return fmt.Errorf("failed to extract private key: %w", err)
+		}
+		logger.Info("Successfully extracted private key from keyring", "key-name", keyName)
+	}
+
 	sidecar.RunServer(
 		logger,
 		grpcAddress,
@@ -82,6 +104,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		requestsPerMinute,
 		assetsUnlockedEndpoint,
 		clientCtx.InterfaceRegistry,
+		privateKey,
 	)
 
 	return nil

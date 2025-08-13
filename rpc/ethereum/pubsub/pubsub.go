@@ -24,6 +24,8 @@ import (
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 )
 
+var ErrTopicNotFound = errors.New("topic not found")
+
 type UnsubscribeFunc func()
 
 type EventBus interface {
@@ -67,18 +69,14 @@ func (m *memEventBus) Topics() (topics []string) {
 }
 
 func (m *memEventBus) AddTopic(name string, src <-chan coretypes.ResultEvent) error {
-	m.topicsMux.RLock()
-	_, ok := m.topics[name]
-	m.topicsMux.RUnlock()
+	m.topicsMux.Lock()
+	defer m.topicsMux.Unlock()
 
-	if ok {
+	if _, ok := m.topics[name]; ok {
 		return errors.New("topic already registered")
 	}
 
-	m.topicsMux.Lock()
 	m.topics[name] = src
-	m.topicsMux.Unlock()
-
 	go m.publishTopic(name, src)
 
 	return nil
@@ -96,7 +94,7 @@ func (m *memEventBus) Subscribe(name string) (<-chan coretypes.ResultEvent, Unsu
 	m.topicsMux.RUnlock()
 
 	if !ok {
-		return nil, nil, errors.Errorf("topic not found: %s", name)
+		return nil, nil, ErrTopicNotFound
 	}
 
 	ch := make(chan coretypes.ResultEvent, 1000)

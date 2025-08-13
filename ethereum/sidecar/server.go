@@ -2,6 +2,7 @@ package sidecar
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"net"
@@ -139,6 +140,9 @@ type Server struct {
 	// Unguarded by mutex as only the AssetsUnlock event observation
 	// routine uses it.
 	lastAssetsUnlockedSequence sdkmath.Int
+
+	// privateKey is an optional ECDSA private key extracted from keyring
+	privateKey *ecdsa.PrivateKey
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -152,6 +156,7 @@ func RunServer(
 	requestsPerMinute uint64,
 	assetsUnlockedEndpoint string,
 	registry codectypes.InterfaceRegistry,
+	privateKey *ecdsa.PrivateKey,
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
 	mezoBridgeAddress := portal.MezoBridgeAddress(network)
@@ -211,6 +216,7 @@ func RunServer(
 		assetsUnlockedLookBackPeriod: assetsUnlockedLookBackPeriod,
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
+		privateKey:                   privateKey,
 	}
 
 	go func() {
