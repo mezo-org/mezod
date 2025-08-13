@@ -13,6 +13,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/cmd/config"
+	"github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/sidecar/mezotime"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
@@ -122,7 +123,7 @@ func TestFetchABIEvents(t *testing.T) {
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			bridgeContract.SetErrors(test.onchainErrors)
-			bridgeContract.SetEvents(test.onchainEvents)
+			bridgeContract.SetAssetsLockedEvents(test.onchainEvents)
 
 			events, err := server.fetchABIEvents(test.startBlock, test.endBlock)
 
@@ -309,7 +310,7 @@ func TestFetchFinalizedEvents(t *testing.T) {
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			bitcoinBridge.SetErrors(test.onchainErrors)
-			bitcoinBridge.SetEvents(test.onchainEvents)
+			bitcoinBridge.SetAssetsLockedEvents(test.onchainEvents)
 
 			server.events = test.serversEvents
 
@@ -906,6 +907,126 @@ func TestFetchNewAssetsUnlockedEvents(t *testing.T) {
 				server.lastAssetsUnlockedSequence,
 			)
 			require.Equal(t, test.expectedError, err)
+		})
+	}
+}
+
+func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
+	onchainErr := fmt.Errorf("onchain failure")
+	bridgeContract := newLocalBridgeContract()
+
+	server := &Server{
+		logger:            log.NewNopLogger(),
+		events:            make([]bridgetypes.AssetsLockedEvent, 0),
+		bridgeContract:    bridgeContract,
+		batchSize:         3,
+		requestsPerMinute: uint64(600),
+	}
+
+	tests := map[string]struct {
+		startBlock, endBlock uint64
+		onchainEvents        []*ethereum.MezoBridgeAssetsUnlockConfirmed
+		onchainErrors        []error
+		expectedEvents       []*ethereum.MezoBridgeAssetsUnlockConfirmed
+		expectedErr          error
+	}{
+		"fetching whole range successful": {
+			200,
+			300,
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+				{
+					UnlockSequenceNumber: big.NewInt(100),
+					Recipient:            common.HexToHash("0x0A219c03938FBC93aA23cAd65f7c480f52665C2a"),
+					Token:                common.HexToAddress("0x3A128b915bee3645396d43Fe7A13A59a66C427d6"),
+					Amount:               big.NewInt(1000000),
+				},
+				{
+					UnlockSequenceNumber: big.NewInt(101),
+					Recipient:            common.HexToHash("0xd728eB5aB3C743e0c2Cf5aFd4c81FEEC0f8f7300"),
+					Token:                common.HexToAddress("0x3A128b915bee3645396d43Fe7A13A59a66C427d6"),
+					Amount:               big.NewInt(2000000),
+				},
+			},
+			nil,
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+				{
+					UnlockSequenceNumber: big.NewInt(100),
+					Recipient:            common.HexToHash("0x0A219c03938FBC93aA23cAd65f7c480f52665C2a"),
+					Token:                common.HexToAddress("0x3A128b915bee3645396d43Fe7A13A59a66C427d6"),
+					Amount:               big.NewInt(1000000),
+				},
+				{
+					UnlockSequenceNumber: big.NewInt(101),
+					Recipient:            common.HexToHash("0xd728eB5aB3C743e0c2Cf5aFd4c81FEEC0f8f7300"),
+					Token:                common.HexToAddress("0x3A128b915bee3645396d43Fe7A13A59a66C427d6"),
+					Amount:               big.NewInt(2000000),
+				},
+			},
+			nil,
+		},
+		"fetching whole range unsuccessful": {
+			2,
+			5,
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+				{
+					UnlockSequenceNumber: big.NewInt(100),
+					Recipient:            common.HexToHash("0x0A219c03938FBC93aA23cAd65f7c480f52665C2a"),
+					Token:                common.HexToAddress("0x3A128b915bee3645396d43Fe7A13A59a66C427d6"),
+					Amount:               big.NewInt(1000000),
+				},
+				{
+					UnlockSequenceNumber: big.NewInt(101),
+					Recipient:            common.HexToHash("0xd728eB5aB3C743e0c2Cf5aFd4c81FEEC0f8f7300"),
+					Token:                common.HexToAddress("0x3A128b915bee3645396d43Fe7A13A59a66C427d6"),
+					Amount:               big.NewInt(2000000),
+				},
+			},
+			[]error{onchainErr, nil},
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+				{
+					UnlockSequenceNumber: big.NewInt(100),
+					Recipient:            common.HexToHash("0x0A219c03938FBC93aA23cAd65f7c480f52665C2a"),
+					Token:                common.HexToAddress("0x3A128b915bee3645396d43Fe7A13A59a66C427d6"),
+					Amount:               big.NewInt(1000000),
+				},
+				{
+					UnlockSequenceNumber: big.NewInt(101),
+					Recipient:            common.HexToHash("0xd728eB5aB3C743e0c2Cf5aFd4c81FEEC0f8f7300"),
+					Token:                common.HexToAddress("0x3A128b915bee3645396d43Fe7A13A59a66C427d6"),
+					Amount:               big.NewInt(2000000),
+				},
+			},
+			nil,
+		},
+		"error when fetching": {
+			200,
+			300,
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{},
+			[]error{onchainErr, onchainErr}, // return error twice
+			nil,
+			onchainErr,
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			bridgeContract.SetErrors(test.onchainErrors)
+			bridgeContract.SetAssetsUnlockConfirmedEvents(test.onchainEvents)
+
+			events, err := server.fetchAssetsUnlockConfirmedEvents(
+				test.startBlock,
+				test.endBlock,
+			)
+
+			require.ErrorIs(t, err, test.expectedErr)
+
+			if !reflect.DeepEqual(test.expectedEvents, events) {
+				t.Errorf(
+					"unexpected events\n expected: %v\n actual:   %v",
+					test.expectedEvents,
+					events,
+				)
+			}
 		})
 	}
 }
