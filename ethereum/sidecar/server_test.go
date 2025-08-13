@@ -856,7 +856,7 @@ func TestFetchNewAssetsUnlockedEvents(t *testing.T) {
 				},
 			},
 			mezoEvents: []bridgetypes.AssetsUnlockedEvent{
-				// sequence tip on Mezo will be `1, lower than events already
+				// sequence tip on Mezo will be `1`, lower than events already
 				// fetched by sidecar.
 				{
 					UnlockSequence: sdkmath.NewInt(1),
