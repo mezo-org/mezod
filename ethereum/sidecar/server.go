@@ -117,7 +117,7 @@ type Server struct {
 
 	bridgeContract ethconnect.BridgeContract
 
-	chain *ethconnect.BaseChain
+	chain ethconnect.Chain
 
 	batchSize         uint64
 	requestsPerMinute uint64
@@ -337,7 +337,7 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	close(s.assetsLockedReady)
 
 	// Start a ticker to periodically check the current block number
-	tickerChan := s.chain.BlockCounter().WatchBlocks(ctx)
+	tickerChan := s.chain.WatchBlocks(ctx)
 
 	for {
 		select {
@@ -750,7 +750,7 @@ func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 		return []bridgetypes.AssetsUnlockedEvent{}, nil
 	}
 
-	currentBlock, err := s.chain.BlockCounter().CurrentBlock()
+	currentBlock, err := s.chain.CurrentBlock()
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to get current block on Ethereum chain [%w]",

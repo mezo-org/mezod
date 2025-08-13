@@ -141,12 +141,16 @@ func newBaseChain(
 	}, nil
 }
 
-func (bc *BaseChain) BlockCounter() *ethereum.BlockCounter {
-	return bc.blockCounter
+func (bc *BaseChain) CurrentBlock() (uint64, error) {
+	return bc.blockCounter.CurrentBlock()
 }
 
 func (bc *BaseChain) FinalizedBlock(ctx context.Context) (*big.Int, error) {
 	return bc.finalizedBlockFn(ctx)
+}
+
+func (bc *BaseChain) WatchBlocks(ctx context.Context) <-chan uint64 {
+	return bc.blockCounter.WatchBlocks(ctx)
 }
 
 func (bc *BaseChain) Client() ethutil.EthereumClient {
