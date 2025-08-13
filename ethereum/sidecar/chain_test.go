@@ -1,0 +1,35 @@
+package sidecar
+
+import (
+	"context"
+	"math/big"
+)
+
+func newLocalChain() *localChain {
+	return &localChain{}
+}
+
+type localChain struct {
+	currentBlock   uint64
+	finalizedBlock *big.Int
+}
+
+func (lc *localChain) CurrentBlock() (uint64, error) {
+	return lc.currentBlock, nil
+}
+
+func (lc *localChain) FinalizedBlock(_ context.Context) (*big.Int, error) {
+	return lc.finalizedBlock, nil
+}
+
+func (lc *localChain) WatchBlocks(_ context.Context) <-chan uint64 {
+	panic("unimplemented")
+}
+
+func (lc *localChain) setCurrentBlock(currentBlock uint64) {
+	lc.currentBlock = currentBlock
+}
+
+func (lc *localChain) setFinalizedBlock(finalizedBlock *big.Int) {
+	lc.finalizedBlock = finalizedBlock
+}

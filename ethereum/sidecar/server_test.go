@@ -1030,3 +1030,160 @@ func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestFindUnconfirmedAssetsUnlockedEvents(t *testing.T) {
+	tests := map[string]struct {
+		inputEvents    []bridgetypes.AssetsUnlockedEvent
+		onchainEvents  []*ethereum.MezoBridgeAssetsUnlockConfirmed
+		expectedEvents []bridgetypes.AssetsUnlockedEvent
+	}{
+		"empty input events": {
+			[]bridgetypes.AssetsUnlockedEvent{},
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+				{
+					UnlockSequenceNumber: big.NewInt(100),
+					Amount:               big.NewInt(1000000),
+				},
+			},
+			[]bridgetypes.AssetsUnlockedEvent{},
+		},
+		"all events are already confirmed": {
+			[]bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(100),
+					Amount:         sdkmath.NewInt(1000),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(101),
+					Amount:         sdkmath.NewInt(1001),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(102),
+					Amount:         sdkmath.NewInt(1002),
+				},
+			},
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+				{
+					UnlockSequenceNumber: big.NewInt(99),
+				},
+				{
+					UnlockSequenceNumber: big.NewInt(100),
+				},
+				{
+					UnlockSequenceNumber: big.NewInt(101),
+				},
+				{
+					UnlockSequenceNumber: big.NewInt(102),
+				},
+			},
+			[]bridgetypes.AssetsUnlockedEvent{},
+		},
+		"some events are unconfirmed": {
+			[]bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(100),
+					Amount:         sdkmath.NewInt(1000),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(101),
+					Amount:         sdkmath.NewInt(1001),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(102),
+					Amount:         sdkmath.NewInt(1002),
+				},
+			},
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+				{
+					UnlockSequenceNumber: big.NewInt(101),
+				},
+			},
+			[]bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(100),
+					Amount:         sdkmath.NewInt(1000),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(102),
+					Amount:         sdkmath.NewInt(1002),
+				},
+			},
+		},
+		"all events are unconfirmed": {
+			[]bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(100),
+					Amount:         sdkmath.NewInt(1000),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(101),
+					Amount:         sdkmath.NewInt(1001),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(102),
+					Amount:         sdkmath.NewInt(1002),
+				},
+			},
+			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+				// some earlier event is confirmed
+				{
+					UnlockSequenceNumber: big.NewInt(99),
+				},
+			},
+			[]bridgetypes.AssetsUnlockedEvent{
+				{
+					UnlockSequence: sdkmath.NewInt(100),
+					Amount:         sdkmath.NewInt(1000),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(101),
+					Amount:         sdkmath.NewInt(1001),
+				},
+				{
+					UnlockSequence: sdkmath.NewInt(102),
+					Amount:         sdkmath.NewInt(1002),
+				},
+			},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			bridgeContract := newLocalBridgeContract()
+			chain := newLocalChain()
+
+			server := &Server{
+				logger:            log.NewNopLogger(),
+				events:            make([]bridgetypes.AssetsLockedEvent, 0),
+				bridgeContract:    bridgeContract,
+				chain:             chain,
+				batchSize:         3,
+				requestsPerMinute: uint64(600),
+			}
+
+			ctx, cancelCtx := context.WithCancel(context.Background())
+			defer cancelCtx()
+
+			bridgeContract.SetAssetsUnlockConfirmedEvents(test.onchainEvents)
+
+			chain.setCurrentBlock(1000)
+			chain.setFinalizedBlock(big.NewInt(900))
+
+			events, err := server.findUnconfirmedAssetsUnlockedEvents(
+				ctx,
+				test.inputEvents,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(test.expectedEvents, events) {
+				t.Errorf(
+					"unexpected events\n expected: %v\n actual:   %v",
+					test.expectedEvents,
+					events,
+				)
+			}
+		})
+	}
+}

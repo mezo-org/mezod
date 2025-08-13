@@ -116,8 +116,7 @@ type Server struct {
 	lastFinalizedBlock      *big.Int
 
 	bridgeContract ethconnect.BridgeContract
-
-	chain ethconnect.Chain
+	chain          ethconnect.Chain
 
 	batchSize         uint64
 	requestsPerMinute uint64
