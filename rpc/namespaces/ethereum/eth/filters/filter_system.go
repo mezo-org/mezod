@@ -26,7 +26,6 @@ import (
 	tmjson "github.com/cometbft/cometbft/libs/json"
 	tmquery "github.com/cometbft/cometbft/libs/pubsub/query"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 	tmtypes "github.com/cometbft/cometbft/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -37,6 +36,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/mezo-org/mezod/rpc/ethereum/pubsub"
+	mezodtypes "github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -53,9 +53,9 @@ var (
 // EventSystem creates subscriptions, processes events and broadcasts them to the
 // subscription which match the subscription criteria using the Tendermint's RPC client.
 type EventSystem struct {
-	logger     log.Logger
-	ctx        context.Context
-	tmWSClient *rpcclient.WSClient
+	logger        log.Logger
+	ctx           context.Context
+	cometWSClient *mezodtypes.CometWSClient
 
 	// light client mode
 	lightMode bool
@@ -75,22 +75,22 @@ type EventSystem struct {
 //
 // The returned manager has a loop that needs to be stopped with the Stop function
 // or by stopping the given mux.
-func NewEventSystem(logger log.Logger, tmWSClient *rpcclient.WSClient) *EventSystem {
+func NewEventSystem(logger log.Logger, cometWSClient *mezodtypes.CometWSClient) *EventSystem {
 	index := make(filterIndex)
 	for i := filters.UnknownSubscription; i < filters.LastIndexSubscription; i++ {
 		index[i] = make(map[rpc.ID]*Subscription)
 	}
 
 	es := &EventSystem{
-		logger:     logger,
-		ctx:        context.Background(),
-		tmWSClient: tmWSClient,
-		lightMode:  false,
-		index:      index,
-		topicChans: make(map[string]chan<- coretypes.ResultEvent, len(index)),
-		indexMux:   new(sync.RWMutex),
-		uninstall:  make(chan *Subscription),
-		eventBus:   pubsub.NewEventBus(),
+		logger:        logger,
+		ctx:           context.Background(),
+		cometWSClient: cometWSClient,
+		lightMode:     false,
+		index:         index,
+		topicChans:    make(map[string]chan<- coretypes.ResultEvent, len(index)),
+		indexMux:      new(sync.RWMutex),
+		uninstall:     make(chan *Subscription),
+		eventBus:      pubsub.NewEventBus(),
 	}
 
 	go es.eventLoop()
@@ -107,6 +107,8 @@ func (es *EventSystem) WithContext(ctx context.Context) {
 // subscribe performs a new event subscription to a given Tendermint event.
 // The subscription creates a unidirectional receive event channel to receive the ResultEvent.
 func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.UnsubscribeFunc, error) {
+	// TODO (Lukasz): Refactor this function.
+
 	var (
 		err      error
 		cancelFn context.CancelFunc
@@ -143,11 +145,11 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 	// topic doesn't exist, to create it
 	switch sub.typ {
 	case filters.LogsSubscription:
-		err = es.tmWSClient.Subscribe(ctx, sub.event)
+		err = es.cometWSClient.Subscribe(ctx, sub.event)
 	case filters.BlocksSubscription:
-		err = es.tmWSClient.Subscribe(ctx, sub.event)
+		err = es.cometWSClient.Subscribe(ctx, sub.event)
 	case filters.PendingTransactionsSubscription:
-		err = es.tmWSClient.Subscribe(ctx, sub.event)
+		err = es.cometWSClient.Subscribe(ctx, sub.event)
 	default:
 		err = fmt.Errorf("invalid filter subscription type %d", sub.typ)
 	}
@@ -274,6 +276,8 @@ type filterIndex map[filters.Type]map[rpc.ID]*Subscription
 //
 //nolint:gosimple
 func (es *EventSystem) eventLoop() {
+	// TODO (Lukasz): Refactor this function.
+
 	for {
 		select {
 		case f := <-es.uninstall:
@@ -294,7 +298,7 @@ func (es *EventSystem) eventLoop() {
 			if !channelInUse {
 				es.logger.Debug("topic not used by any channel", "query", f.event)
 
-				if err := es.tmWSClient.Unsubscribe(es.ctx, f.event); err != nil {
+				if err := es.cometWSClient.Unsubscribe(es.ctx, f.event); err != nil {
 					es.logger.Error("failed to unsubscribe from query", "query", f.event, "error", err.Error())
 				}
 
@@ -314,7 +318,7 @@ func (es *EventSystem) eventLoop() {
 
 func (es *EventSystem) consumeEvents() {
 	for {
-		for rpcResp := range es.tmWSClient.ResponsesCh {
+		for rpcResp := range es.cometWSClient.ResponsesCh {
 			var ev coretypes.ResultEvent
 
 			if rpcResp.Error != nil {
@@ -330,6 +334,7 @@ func (es *EventSystem) consumeEvents() {
 				continue
 			}
 
+			// TODO (Lukasz): Check this critical section for race conditions.
 			es.indexMux.RLock()
 			ch, ok := es.topicChans[ev.Query]
 			es.indexMux.RUnlock()

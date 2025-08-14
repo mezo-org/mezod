@@ -34,8 +34,6 @@ import (
 	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/txpool"
 	"github.com/mezo-org/mezod/rpc/namespaces/ethereum/web3"
 	"github.com/mezo-org/mezod/types"
-
-	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 )
 
 // RPC namespaces and API version
@@ -62,7 +60,7 @@ const (
 type APICreator = func(
 	ctx *server.Context,
 	clientCtx client.Context,
-	tendermintWebsocketClient *rpcclient.WSClient,
+	cometWSClient *types.CometWSClient,
 	allowUnprotectedTxs bool,
 	indexer types.EVMTxIndexer,
 ) []rpc.API
@@ -74,7 +72,7 @@ func init() {
 	apiCreators = map[string]APICreator{
 		EthNamespace: func(serverCtx *server.Context,
 			clientCtx client.Context,
-			tmWSClient *rpcclient.WSClient,
+			cometWSClient *types.CometWSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
@@ -89,12 +87,12 @@ func init() {
 				{
 					Namespace: EthNamespace,
 					Version:   apiVersion,
-					Service:   filters.NewPublicAPI(serverCtx.Logger, clientCtx, tmWSClient, evmBackend),
+					Service:   filters.NewPublicAPI(serverCtx.Logger, clientCtx, cometWSClient, evmBackend),
 					Public:    true,
 				},
 			}
 		},
-		Web3Namespace: func(*server.Context, client.Context, *rpcclient.WSClient, bool, types.EVMTxIndexer) []rpc.API {
+		Web3Namespace: func(*server.Context, client.Context, *types.CometWSClient, bool, types.EVMTxIndexer) []rpc.API {
 			return []rpc.API{
 				{
 					Namespace: Web3Namespace,
@@ -104,7 +102,7 @@ func init() {
 				},
 			}
 		},
-		NetNamespace: func(serverCtx *server.Context, clientCtx client.Context, _ *rpcclient.WSClient, _ bool, _ types.EVMTxIndexer) []rpc.API {
+		NetNamespace: func(serverCtx *server.Context, clientCtx client.Context, _ *types.CometWSClient, _ bool, _ types.EVMTxIndexer) []rpc.API {
 			return []rpc.API{
 				{
 					Namespace: NetNamespace,
@@ -116,7 +114,7 @@ func init() {
 		},
 		PersonalNamespace: func(serverCtx *server.Context,
 			clientCtx client.Context,
-			_ *rpcclient.WSClient,
+			_ *types.CometWSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
@@ -130,7 +128,7 @@ func init() {
 				},
 			}
 		},
-		TxPoolNamespace: func(serverCtx *server.Context, _ client.Context, _ *rpcclient.WSClient, _ bool, _ types.EVMTxIndexer) []rpc.API {
+		TxPoolNamespace: func(serverCtx *server.Context, _ client.Context, _ *types.CometWSClient, _ bool, _ types.EVMTxIndexer) []rpc.API {
 			return []rpc.API{
 				{
 					Namespace: TxPoolNamespace,
@@ -142,7 +140,7 @@ func init() {
 		},
 		DebugNamespace: func(serverCtx *server.Context,
 			clientCtx client.Context,
-			_ *rpcclient.WSClient,
+			_ *types.CometWSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
@@ -158,7 +156,7 @@ func init() {
 		},
 		MinerNamespace: func(serverCtx *server.Context,
 			clientCtx client.Context,
-			_ *rpcclient.WSClient,
+			_ *types.CometWSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
@@ -175,7 +173,7 @@ func init() {
 		MezoNamespace: func(
 			serverCtx *server.Context,
 			clientCtx client.Context,
-			_ *rpcclient.WSClient,
+			_ *types.CometWSClient,
 			allowUnprotectedTxs bool,
 			indexer types.EVMTxIndexer,
 		) []rpc.API {
@@ -195,7 +193,7 @@ func init() {
 // GetRPCAPIs returns the list of all APIs
 func GetRPCAPIs(ctx *server.Context,
 	clientCtx client.Context,
-	tmWSClient *rpcclient.WSClient,
+	cometWSClient *types.CometWSClient,
 	allowUnprotectedTxs bool,
 	indexer types.EVMTxIndexer,
 	selectedAPIs []string,
@@ -204,7 +202,7 @@ func GetRPCAPIs(ctx *server.Context,
 
 	for _, ns := range selectedAPIs {
 		if creator, ok := apiCreators[ns]; ok {
-			apis = append(apis, creator(ctx, clientCtx, tmWSClient, allowUnprotectedTxs, indexer)...)
+			apis = append(apis, creator(ctx, clientCtx, cometWSClient, allowUnprotectedTxs, indexer)...)
 		} else {
 			ctx.Logger.Error("invalid namespace value", "namespace", ns)
 		}
