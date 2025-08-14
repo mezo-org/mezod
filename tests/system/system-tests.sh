@@ -19,6 +19,11 @@ cp ../../precompile/mezotoken/IMEZO.sol ./contracts/interfaces
 # Adjust imports in IMEZO.sol
 sed -i '' 's|../erc20/|./solidity/|g' ./contracts/interfaces/IMEZO.sol
 
+# Copy Validator Pool interface
+cp ../../precompile/validatorpool/IValidatorPool.sol ./contracts/interfaces
+# Copy Asset Bridge interface
+cp ../../precompile/assetsbridge/IAssetsBridge.sol ./contracts/interfaces
+
 # Install dependencies
 npm i
 
