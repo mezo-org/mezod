@@ -14,7 +14,9 @@ import (
 	sdkmath "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
@@ -131,8 +133,9 @@ type Server struct {
 	assetsUnlockedLookBackPeriod time.Duration
 	assetsUnlockedBatchSize      int
 
-	attestationMutex sync.RWMutex
-	attestationQueue []bridgetypes.AssetsUnlockedEvent
+	attestationMutex         sync.RWMutex
+	attestationQueue         []bridgetypes.AssetsUnlockedEvent
+	attestationQueueNotifier chan struct{}
 
 	// Unguarded by mutex as only the AssetsUnlock event observation
 	// routine uses it.
@@ -140,6 +143,14 @@ type Server struct {
 
 	// privateKey is an optional ECDSA private key extracted from keyring
 	privateKey *ecdsa.PrivateKey
+
+	txExecutor *IndividualAttestationTransactionExecutor
+}
+
+type noopTransactor struct{}
+
+func (t *noopTransactor) AttestBridgeOut(_ *bind.TransactOpts, _ *bridgetypes.AssetsUnlockedEvent) (*types.Transaction, error) {
+	return nil, nil
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -195,6 +206,19 @@ func RunServer(
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
+	txExecutor, err := NewIndividualAttestationTransactionExecutor(
+		logger,
+		privateKey,
+		chain,
+		common.HexToAddress(mezoBridgeAddress),
+		// TODO: use it when it bindings are generated
+		// bridgeContractTransactor,
+		&noopTransactor{},
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create individual attestation transaction executor: %v", err))
+	}
+
 	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
 		assetsUnlockedEndpoint,
 		registry,
@@ -206,6 +230,7 @@ func RunServer(
 	server := &Server{
 		logger:                       logger,
 		grpcServer:                   grpc.NewServer(),
+		attestationQueueNotifier:     make(chan struct{}),
 		assetsLockedEvents:           make([]bridgetypes.AssetsLockedEvent, 0),
 		lastFinalizedBlock:           new(big.Int),
 		bridgeContract:               NewBridgeContract(bridgeContract),
@@ -218,6 +243,7 @@ func RunServer(
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
 		privateKey:                   privateKey,
+		txExecutor:                   txExecutor,
 	}
 
 	go func() {
@@ -287,13 +313,13 @@ func RunServer(
 		//       MezoBridge.bridgeValidators() with our Ethereum address.
 
 		defer cancelCtx()
-		err := server.attestAssetsUnlockedEvents(ctx)
-		if err != nil {
-			server.logger.Error(
-				"AssetsUnlocked events attestation routine failed",
-				"err", err,
-			)
-		}
+		server.attestAssetsUnlockedEvents(ctx)
+		// if err != nil {
+		// 	server.logger.Error(
+		// 		"AssetsUnlocked events attestation routine failed",
+		// 		"err", err,
+		// 	)
+		// }
 
 		server.logger.Info("AssetsUnlocked events attestation routine stopped")
 	}()
@@ -864,6 +890,8 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 	s.attestationQueue = append(s.attestationQueue, events...)
 	s.attestationMutex.Unlock()
 
+	s.notifyNewEventsToAttest()
+
 	s.lastAssetsUnlockedSequence = sequenceTip
 
 	s.logger.Info(
@@ -873,6 +901,18 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 	)
 
 	return nil
+}
+
+func (s *Server) notifyNewEventsToAttest() {
+	select {
+	case s.attestationQueueNotifier <- struct{}{}:
+		// Write succeeded without blocking
+		fmt.Println("Value sent successfully")
+	default:
+		// nothing to do, channel is full, so we already
+		// notified the attestation worker that there's
+		// work to do
+	}
 }
 
 // fetchAssetsUnlockConfirmedEvents retrieves raw `AssetsUnlockConfirmed` ABI
@@ -951,11 +991,44 @@ func (s *Server) fetchAssetsUnlockConfirmedEvents(
 	return result, nil
 }
 
-//nolint:unparam
-func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) error {
-	// TODO: Implement
-	<-ctx.Done()
-	return nil
+func (s *Server) unqueueAttestation() *bridgetypes.AssetsUnlockedEvent {
+	s.attestationMutex.Lock()
+	defer s.attestationMutex.Unlock()
+	if len(s.attestationQueue) == 0 {
+		return nil
+	}
+
+	attestation := s.attestationQueue[0]
+	s.attestationQueue = s.attestationQueue[1:]
+
+	return &attestation
+}
+
+func (s *Server) queueAttestation(attestation *bridgetypes.AssetsUnlockedEvent) {
+	s.attestationMutex.Lock()
+	defer s.attestationMutex.Unlock()
+
+	s.attestationQueue = append(s.attestationQueue, *attestation)
+}
+
+func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
+	for {
+		select {
+		case <-s.attestationQueueNotifier:
+			// we have been notified some events are to be attested
+			// let's unqueue them one by one
+			for attestation := s.unqueueAttestation(); attestation != nil; attestation = s.unqueueAttestation() {
+				if err := s.txExecutor.Send(attestation); err != nil {
+					s.logger.Error("error sending attestation %cv to MezoBridge: %v, rescheduling to be executed later", attestation.String(), err)
+					s.queueAttestation(attestation)
+				}
+			}
+		case <-ctx.Done():
+			s.logger.Info(
+				"stopping assets unlocked attestations to context cancellation",
+			)
+		}
+	}
 }
 
 // Version return the current version of the ethereum sidecar.
