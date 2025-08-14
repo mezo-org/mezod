@@ -141,10 +141,6 @@ func newBaseChain(
 	}, nil
 }
 
-func (bc *BaseChain) CurrentBlock() (uint64, error) {
-	return bc.blockCounter.CurrentBlock()
-}
-
 func (bc *BaseChain) FinalizedBlock(ctx context.Context) (*big.Int, error) {
 	return bc.finalizedBlockFn(ctx)
 }

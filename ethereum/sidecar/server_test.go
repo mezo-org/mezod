@@ -1171,8 +1171,6 @@ func TestFindUnconfirmedAssetsUnlockedEvents(t *testing.T) {
 			defer cancelCtx()
 
 			bridgeContract.SetAssetsUnlockConfirmedEvents(test.onchainEvents)
-
-			chain.setCurrentBlock(1000)
 			chain.setFinalizedBlock(big.NewInt(900))
 
 			events, err := server.findUnconfirmedAssetsUnlockedEvents(
