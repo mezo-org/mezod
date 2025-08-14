@@ -750,22 +750,6 @@ func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 		return []bridgetypes.AssetsUnlockedEvent{}, nil
 	}
 
-	currentBlock, err := s.chain.BlockCounter().CurrentBlock()
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get current block on Ethereum chain [%w]",
-			err,
-		)
-	}
-
-	// The search range can be limited to avoid excessive chain data usage.
-	// When defining the start block we must make sure we cover the entire range
-	// in which the input events could have been confirmed on Ethereum.
-	startBlock := uint64(0)
-	if currentBlock > assetsUnlockConfirmedLookBackBlocks {
-		startBlock = currentBlock - assetsUnlockConfirmedLookBackBlocks
-	}
-
 	// Finalized block is considered safe from reorgs as it is 64-96 blocks
 	// behind the current tip. It can be used as the end block.
 	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
@@ -773,6 +757,14 @@ func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 		return nil, fmt.Errorf("failed to get the finalized block: [%w]", err)
 	}
 	endBlock := finalizedBlock.Uint64()
+
+	// The search range can be limited to avoid excessive chain data usage.
+	// When defining the start block we must make sure we cover the entire range
+	// in which the input events could have been confirmed on Ethereum.
+	startBlock := uint64(0)
+	if endBlock > assetsUnlockConfirmedLookBackBlocks {
+		startBlock = endBlock - assetsUnlockConfirmedLookBackBlocks
+	}
 
 	confirmedEvents, err := s.fetchAssetsUnlockConfirmedEvents(
 		startBlock,
