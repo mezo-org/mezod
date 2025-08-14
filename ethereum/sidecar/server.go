@@ -109,8 +109,8 @@ type Server struct {
 	// bridging-in
 	grpcServer *grpc.Server
 
-	eventsMutex sync.RWMutex
-	events      []bridgetypes.AssetsLockedEvent
+	assetsLockedEventsMutex sync.RWMutex
+	assetsLockedEvents      []bridgetypes.AssetsLockedEvent
 
 	lastFinalizedBlockMutex sync.RWMutex
 	lastFinalizedBlock      *big.Int
@@ -204,7 +204,7 @@ func RunServer(
 	server := &Server{
 		logger:                       logger,
 		grpcServer:                   grpc.NewServer(),
-		events:                       make([]bridgetypes.AssetsLockedEvent, 0),
+		assetsLockedEvents:           make([]bridgetypes.AssetsLockedEvent, 0),
 		lastFinalizedBlock:           new(big.Int),
 		bridgeContract:               NewBridgeContract(bridgeContract),
 		chain:                        chain,
@@ -323,7 +323,7 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	} else {
 		startBlock = 0
 	}
-	err = s.fetchFinalizedEvents(startBlock, finalizedBlock.Uint64())
+	err = s.fetchFinalizedAssetsLockedEvents(startBlock, finalizedBlock.Uint64())
 	if err != nil {
 		return fmt.Errorf("failed to fetch historical events: [%w]", err)
 	}
@@ -349,10 +349,10 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 			// On each tick check if the current finalized block is greater than the last
 			// finalized block.
 			// TODO: Add a basic counter to manage validation issues that may occur
-			//			 when processing events. This counter should allow a few retry
-			//			 attempts to handle temporary connection issues, but should halt
-			//			 the sidecar if an error arises specifically with event processing.”
-			err := s.processEvents(ctx)
+			//	     when processing events. This counter should allow a few retry
+			//		 attempts to handle temporary connection issues, but should halt
+			//		 the sidecar if an error arises specifically with event processing.
+			err := s.processAssetsLockedEvents(ctx)
 			if err != nil {
 				s.logger.Error(
 					"failed to monitor newly emitted assets locked events",
@@ -363,10 +363,10 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	}
 }
 
-// processEvents processes events from Ethereum by fetching the AssetsLocked
-// finalized events within a specified block range and managing memory usage
-// for cached events.
-func (s *Server) processEvents(ctx context.Context) error {
+// processAssetsLockedEvents processes AssetsLocked events from Ethereum by
+// fetching the AssetsLocked finalized events within a specified block range and
+// managing memory usage for cached events.
+func (s *Server) processAssetsLockedEvents(ctx context.Context) error {
 	currentFinalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get finalized block: [%w]", err)
@@ -385,9 +385,15 @@ func (s *Server) processEvents(ctx context.Context) error {
 		// currentFinalizedBlock = 132
 		// fetching events in the following range [101, 132]
 		exclusiveLastFinalizedBlock := s.lastFinalizedBlock.Uint64() + 1
-		err := s.fetchFinalizedEvents(exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
+		err := s.fetchFinalizedAssetsLockedEvents(
+			exclusiveLastFinalizedBlock,
+			currentFinalizedBlock.Uint64(),
+		)
 		if err != nil {
-			return fmt.Errorf("cannot fetch finalized events: [%w]", err)
+			return fmt.Errorf(
+				"cannot fetch finalized AssetsLocked events: [%w]",
+				err,
+			)
 		}
 		s.lastFinalizedBlockMutex.Lock()
 		s.lastFinalizedBlock = currentFinalizedBlock
@@ -395,25 +401,26 @@ func (s *Server) processEvents(ctx context.Context) error {
 	}
 
 	// Free up memory up to the length that exceeds the cache size.
-	if len(s.events) > cachedEventsLimit {
-		s.eventsMutex.Lock()
-		trim := len(s.events) - cachedEventsLimit
-		s.events = s.events[trim:]
-		s.eventsMutex.Unlock()
+	if len(s.assetsLockedEvents) > cachedEventsLimit {
+		s.assetsLockedEventsMutex.Lock()
+		trim := len(s.assetsLockedEvents) - cachedEventsLimit
+		s.assetsLockedEvents = s.assetsLockedEvents[trim:]
+		s.assetsLockedEventsMutex.Unlock()
 	}
 
 	return nil
 }
 
-// fetchFinalizedEvents retrieves and processes finalized `AssetsLocked` events
-// from the Ethereum network, within a specified block range. It uses the
-// provided MezoBridge contract to filter these events. Each event is
-// transformed into an `AssetsLockedEvent` type compatible with the bridgetypes
-// package and added to the server's event list with mutex protection.
-func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error {
-	abiEvents, err := s.fetchABIEvents(startBlock, endBlock)
+// fetchFinalizedAssetsLockedEvents retrieves and processes finalized
+// `AssetsLocked` events from the Ethereum network, within a specified block
+// range. It uses the provided MezoBridge contract to filter these events.
+// Each event is transformed into an `AssetsLockedEvent` type compatible with
+// the bridgetypes package and added to the server's event list with mutex
+// protection.
+func (s *Server) fetchFinalizedAssetsLockedEvents(startBlock uint64, endBlock uint64) error {
+	abiEvents, err := s.fetchAssetsLockedABIEvents(startBlock, endBlock)
 	if err != nil {
-		return fmt.Errorf("failed to fetch ABI events: [%w]", err)
+		return fmt.Errorf("failed to fetch AssetsLocked ABI events: [%w]", err)
 	}
 
 	//nolint:all
@@ -445,12 +452,12 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		return bufferedEvents[i].Sequence.LT(bufferedEvents[j].Sequence)
 	})
 
-	s.eventsMutex.Lock()
-	defer s.eventsMutex.Unlock()
+	s.assetsLockedEventsMutex.Lock()
+	defer s.assetsLockedEventsMutex.Unlock()
 
 	// Make sure there are no gaps between events and bufferedEvents lists
-	if len(s.events) > 0 && len(bufferedEvents) > 0 {
-		lastEvent := s.events[len(s.events)-1]
+	if len(s.assetsLockedEvents) > 0 && len(bufferedEvents) > 0 {
+		lastEvent := s.assetsLockedEvents[len(s.assetsLockedEvents)-1]
 		firstEvent := bufferedEvents[0]
 		if !lastEvent.Sequence.Add(sdkmath.NewInt(1)).Equal(firstEvent.Sequence) {
 			return errSequenceGap
@@ -461,15 +468,15 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		return errInvalidEvents
 	}
 
-	s.events = append(s.events, bufferedEvents...)
+	s.assetsLockedEvents = append(s.assetsLockedEvents, bufferedEvents...)
 
 	return nil
 }
 
-// fetchABIEvents retrieves raw `AssetsLocked` ABI events from the MezoBridge
-// contract within a specified block range. The function fetches events in batches if
-// the entire range is too large to fetch at once.
-func (s *Server) fetchABIEvents(
+// fetchAssetsLockedABIEvents retrieves raw `AssetsLocked` ABI events from the
+// MezoBridge contract within a specified block range. The function fetches
+// events in batches if the entire range is too large to fetch at once.
+func (s *Server) fetchAssetsLockedABIEvents(
 	startBlock uint64,
 	endBlock uint64,
 ) ([]*portal.MezoBridgeAssetsLocked, error) {
@@ -749,22 +756,6 @@ func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 		return []bridgetypes.AssetsUnlockedEvent{}, nil
 	}
 
-	currentBlock, err := s.chain.CurrentBlock()
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get current block on Ethereum chain [%w]",
-			err,
-		)
-	}
-
-	// The search range can be limited to avoid excessive chain data usage.
-	// When defining the start block we must make sure we cover the entire range
-	// in which the input events could have been confirmed on Ethereum.
-	startBlock := uint64(0)
-	if currentBlock > assetsUnlockConfirmedLookBackBlocks {
-		startBlock = currentBlock - assetsUnlockConfirmedLookBackBlocks
-	}
-
 	// Finalized block is considered safe from reorgs as it is 64-96 blocks
 	// behind the current tip. It can be used as the end block.
 	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
@@ -772,6 +763,14 @@ func (s *Server) findUnconfirmedAssetsUnlockedEvents(
 		return nil, fmt.Errorf("failed to get the finalized block: [%w]", err)
 	}
 	endBlock := finalizedBlock.Uint64()
+
+	// The search range can be limited to avoid excessive chain data usage.
+	// When defining the start block we must make sure we cover the entire range
+	// in which the input events could have been confirmed on Ethereum.
+	startBlock := uint64(0)
+	if endBlock > assetsUnlockConfirmedLookBackBlocks {
+		startBlock = endBlock - assetsUnlockConfirmedLookBackBlocks
+	}
 
 	confirmedEvents, err := s.fetchAssetsUnlockConfirmedEvents(
 		startBlock,
@@ -980,8 +979,8 @@ func (s *Server) AssetsLockedEvents(
 	*pb.AssetsLockedEventsResponse,
 	error,
 ) {
-	s.eventsMutex.RLock()
-	defer s.eventsMutex.RUnlock()
+	s.assetsLockedEventsMutex.RLock()
+	defer s.assetsLockedEventsMutex.RUnlock()
 
 	start, end := req.SequenceStart, req.SequenceEnd
 
@@ -998,7 +997,7 @@ func (s *Server) AssetsLockedEvents(
 
 	// Filter events that fit into the requested range.
 	filteredEvents := []*bridgetypes.AssetsLockedEvent{}
-	for _, event := range s.events {
+	for _, event := range s.assetsLockedEvents {
 		if (start.IsNil() || event.Sequence.GTE(start)) && (end.IsNil() || event.Sequence.LT(end)) {
 			filteredEvents = append(filteredEvents, &bridgetypes.AssetsLockedEvent{
 				Sequence:  event.Sequence,

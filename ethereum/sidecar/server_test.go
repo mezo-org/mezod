@@ -23,16 +23,16 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
-func TestFetchABIEvents(t *testing.T) {
+func TestFetchAssetsLockedABIEvents(t *testing.T) {
 	onchainErr := fmt.Errorf("onchain failure")
 	bridgeContract := newLocalBridgeContract()
 
 	server := &Server{
-		logger:            log.NewNopLogger(),
-		events:            make([]bridgetypes.AssetsLockedEvent, 0),
-		bridgeContract:    bridgeContract,
-		batchSize:         3,
-		requestsPerMinute: uint64(600),
+		logger:             log.NewNopLogger(),
+		assetsLockedEvents: make([]bridgetypes.AssetsLockedEvent, 0),
+		bridgeContract:     bridgeContract,
+		batchSize:          3,
+		requestsPerMinute:  uint64(600),
 	}
 
 	tests := map[string]struct {
@@ -125,7 +125,10 @@ func TestFetchABIEvents(t *testing.T) {
 			bridgeContract.SetErrors(test.onchainErrors)
 			bridgeContract.SetAssetsLockedEvents(test.onchainEvents)
 
-			events, err := server.fetchABIEvents(test.startBlock, test.endBlock)
+			events, err := server.fetchAssetsLockedABIEvents(
+				test.startBlock,
+				test.endBlock,
+			)
 
 			require.ErrorIs(t, err, test.expectedErr)
 
@@ -140,15 +143,15 @@ func TestFetchABIEvents(t *testing.T) {
 	}
 }
 
-func TestFetchFinalizedEvents(t *testing.T) {
+func TestFetchFinalizedAssetsLockedEvents(t *testing.T) {
 	bitcoinBridge := newLocalBridgeContract()
 
 	server := &Server{
-		logger:            log.NewNopLogger(),
-		events:            []bridgetypes.AssetsLockedEvent{},
-		bridgeContract:    bitcoinBridge,
-		batchSize:         3,
-		requestsPerMinute: uint64(600),
+		logger:             log.NewNopLogger(),
+		assetsLockedEvents: []bridgetypes.AssetsLockedEvent{},
+		bridgeContract:     bitcoinBridge,
+		batchSize:          3,
+		requestsPerMinute:  uint64(600),
 	}
 
 	sdk.GetConfig().SetBech32PrefixForAccount(config.Bech32Prefix, "")
@@ -312,16 +315,19 @@ func TestFetchFinalizedEvents(t *testing.T) {
 			bitcoinBridge.SetErrors(test.onchainErrors)
 			bitcoinBridge.SetAssetsLockedEvents(test.onchainEvents)
 
-			server.events = test.serversEvents
+			server.assetsLockedEvents = test.serversEvents
 
-			err := server.fetchFinalizedEvents(test.startBlock, test.endBlock)
+			err := server.fetchFinalizedAssetsLockedEvents(
+				test.startBlock,
+				test.endBlock,
+			)
 			require.ErrorIs(t, err, test.expectedErr)
 
-			if !reflect.DeepEqual(test.expectedEvents, server.events) {
+			if !reflect.DeepEqual(test.expectedEvents, server.assetsLockedEvents) {
 				t.Errorf(
 					"unexpected events\n expected: %v\n actual:   %v",
 					test.expectedEvents,
-					server.events,
+					server.assetsLockedEvents,
 				)
 			}
 		})
@@ -330,7 +336,7 @@ func TestFetchFinalizedEvents(t *testing.T) {
 
 func TestAssetsLockedEvents(t *testing.T) {
 	server := &Server{
-		events: []bridgetypes.AssetsLockedEvent{
+		assetsLockedEvents: []bridgetypes.AssetsLockedEvent{
 			{Sequence: sdkmath.NewIntFromBigInt(big.NewInt(1)), Recipient: "recipient1", Amount: sdkmath.NewIntFromBigInt(big.NewInt(100)), Token: "token1"},
 			{Sequence: sdkmath.NewIntFromBigInt(big.NewInt(2)), Recipient: "recipient2", Amount: sdkmath.NewIntFromBigInt(big.NewInt(200)), Token: "token2"},
 		},
@@ -916,11 +922,11 @@ func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
 	bridgeContract := newLocalBridgeContract()
 
 	server := &Server{
-		logger:            log.NewNopLogger(),
-		events:            make([]bridgetypes.AssetsLockedEvent, 0),
-		bridgeContract:    bridgeContract,
-		batchSize:         3,
-		requestsPerMinute: uint64(600),
+		logger:             log.NewNopLogger(),
+		assetsLockedEvents: make([]bridgetypes.AssetsLockedEvent, 0),
+		bridgeContract:     bridgeContract,
+		batchSize:          3,
+		requestsPerMinute:  uint64(600),
 	}
 
 	tests := map[string]struct {
@@ -1153,12 +1159,12 @@ func TestFindUnconfirmedAssetsUnlockedEvents(t *testing.T) {
 			chain := newLocalChain()
 
 			server := &Server{
-				logger:            log.NewNopLogger(),
-				events:            make([]bridgetypes.AssetsLockedEvent, 0),
-				bridgeContract:    bridgeContract,
-				chain:             chain,
-				batchSize:         3,
-				requestsPerMinute: uint64(600),
+				logger:             log.NewNopLogger(),
+				assetsLockedEvents: make([]bridgetypes.AssetsLockedEvent, 0),
+				bridgeContract:     bridgeContract,
+				chain:              chain,
+				batchSize:          3,
+				requestsPerMinute:  uint64(600),
 			}
 
 			ctx, cancelCtx := context.WithCancel(context.Background())
