@@ -93,7 +93,7 @@ func NewEventSystem(logger log.Logger, cometWSClient *mezodtypes.CometWSClient) 
 		eventBus:      pubsub.NewEventBus(),
 	}
 
-	go es.eventLoop()
+	go es.uninstallLoop()
 	go es.consumeEvents()
 	return es
 }
@@ -107,8 +107,6 @@ func (es *EventSystem) WithContext(ctx context.Context) {
 // subscribe performs a new event subscription to a given Tendermint event.
 // The subscription creates a unidirectional receive event channel to receive the ResultEvent.
 func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.UnsubscribeFunc, error) {
-	// TODO (Lukasz): Refactor this function.
-
 	var (
 		err      error
 		cancelFn context.CancelFunc
@@ -117,7 +115,7 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 
-	// lock during the entire event system when subscribing.
+	// lock the entire event system when subscribing.
 	es.indexMux.Lock()
 	defer es.indexMux.Unlock()
 
@@ -142,7 +140,7 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 		return sub, unsubFn, nil
 	}
 
-	// topic doesn't exist, to create it
+	// topic doesn't exist, so create it
 	switch sub.typ {
 	case filters.LogsSubscription:
 		err = es.cometWSClient.Subscribe(ctx, sub.event)
@@ -272,47 +270,42 @@ func (es EventSystem) SubscribePendingTxs() (*Subscription, pubsub.UnsubscribeFu
 
 type filterIndex map[filters.Type]map[rpc.ID]*Subscription
 
-// eventLoop (un)installs filters and processes mux events.
+// uninstallLoop uninstalls filters.
 //
 //nolint:gosimple
-func (es *EventSystem) eventLoop() {
-	// TODO (Lukasz): Refactor this function.
+func (es *EventSystem) uninstallLoop() {
+	for f := range es.uninstall {
+		es.logger.Debug("uninstalling subscription", "subId", f.ID())
+		es.indexMux.Lock()
+		delete(es.index[f.typ], f.id)
 
-	for {
-		select {
-		case f := <-es.uninstall:
-			es.logger.Debug("uninstalling subscription", "subId", f.ID())
-			es.indexMux.Lock()
-			delete(es.index[f.typ], f.id)
-
-			var channelInUse bool
-			// #nosec G705
-			for _, sub := range es.index[f.typ] {
-				if sub.event == f.event {
-					channelInUse = true
-					break
-				}
+		var channelInUse bool
+		// #nosec G705
+		for _, sub := range es.index[f.typ] {
+			if sub.event == f.event {
+				channelInUse = true
+				break
 			}
-
-			// remove topic only when channel is not used by other subscriptions
-			if !channelInUse {
-				es.logger.Debug("topic not used by any channel", "query", f.event)
-
-				if err := es.cometWSClient.Unsubscribe(es.ctx, f.event); err != nil {
-					es.logger.Error("failed to unsubscribe from query", "query", f.event, "error", err.Error())
-				}
-
-				ch, ok := es.topicChans[f.event]
-				if ok {
-					es.eventBus.RemoveTopic(f.event)
-					close(ch)
-					delete(es.topicChans, f.event)
-				}
-			}
-
-			es.indexMux.Unlock()
-			close(f.err)
 		}
+
+		// remove topic only when channel is not used by other subscriptions
+		if !channelInUse {
+			es.logger.Debug("topic not used by any channel", "query", f.event)
+
+			if err := es.cometWSClient.Unsubscribe(es.ctx, f.event); err != nil {
+				es.logger.Error("failed to unsubscribe from query", "query", f.event, "error", err.Error())
+			}
+
+			ch, ok := es.topicChans[f.event]
+			if ok {
+				es.eventBus.RemoveTopic(f.event)
+				close(ch)
+				delete(es.topicChans, f.event)
+			}
+		}
+
+		es.indexMux.Unlock()
+		close(f.err)
 	}
 }
 
@@ -334,7 +327,6 @@ func (es *EventSystem) consumeEvents() {
 				continue
 			}
 
-			// TODO (Lukasz): Check this critical section for race conditions.
 			es.indexMux.RLock()
 			ch, ok := es.topicChans[ev.Query]
 			es.indexMux.RUnlock()
