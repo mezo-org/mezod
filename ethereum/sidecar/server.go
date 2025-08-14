@@ -116,8 +116,7 @@ type Server struct {
 	lastFinalizedBlock      *big.Int
 
 	bridgeContract ethconnect.BridgeContract
-
-	chain *ethconnect.BaseChain
+	chain          ethconnect.Chain
 
 	batchSize         uint64
 	requestsPerMinute uint64
@@ -337,7 +336,7 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	close(s.assetsLockedReady)
 
 	// Start a ticker to periodically check the current block number
-	tickerChan := s.chain.BlockCounter().WatchBlocks(ctx)
+	tickerChan := s.chain.WatchBlocks(ctx)
 
 	for {
 		select {
