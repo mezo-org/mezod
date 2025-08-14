@@ -34,6 +34,17 @@ func (r *BridgeContract) FilterAssetsLocked(
 	return &AssetsLockedIterator{iter: iter}, nil
 }
 
+func (r *BridgeContract) FilterAssetsUnlockConfirmed(
+	_ *bind.FilterOpts,
+	_ []*big.Int,
+	_ [][]byte,
+	_ []common.Address,
+) (ethereum.AssetsUnlockConfirmedIterator, error) {
+	// TODO: Leaving unimplemented for now. Call `FilterAssetsUnlockConfirmed`
+	//       on r.delegate once bindings for MezoBridge are re-generated.
+	return nil, nil
+}
+
 type AssetsLockedIterator struct {
 	iter *portal.MezoBridgeAssetsLockedIterator
 }

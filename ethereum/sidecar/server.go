@@ -12,6 +12,7 @@ import (
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,6 +20,7 @@ import (
 	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	"github.com/mezo-org/mezod/ethereum/sidecar/mezotime"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
 	"github.com/mezo-org/mezod/version"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -46,6 +48,25 @@ var (
 	// enough.
 	cachedEventsLimit = 500000
 
+	// assetsUnlockedLookBackPeriod is the look-back period used when fetching
+	// AssetsUnlocked events from the Mezo chain. It defines how far back we
+	// look when searching for unconfirmed events.
+	assetsUnlockedLookBackPeriod = 30 * 24 * time.Hour // ~1 month
+
+	// assetsUnlockConfirmedLookBackBlocks is the number of blocks used when
+	// fetching AssetsUnlockConfirmed events from the Ethereum chain. It defines
+	// how far back we look when searching for the events. Its value should
+	// cover at least one month of Ethereum blocks; we add a 5-day margin.
+	assetsUnlockConfirmedLookBackBlocks = uint64(252000) // ~35 days
+
+	// assetsUnlockedBatchSize is the number of AssetsUnlocked events we can
+	// fetch from the Mezo blockchain in one gRPC call.
+	assetsUnlockedBatchSize = 100
+
+	// assetsUnlockedFetchingPeriod is the time period defining how often new
+	// AssetsUnlocked events should be fetched.
+	assetsUnlockedFetchingPeriod = 1 * time.Minute
+
 	// errSequenceGap is the error reported when there is a gap between
 	// sequences of events.
 	errSequenceGap = fmt.Errorf("sequence gap between events")
@@ -54,16 +75,42 @@ var (
 	errInvalidEvents = fmt.Errorf("invalid AssetsLocked events")
 )
 
-// Server observes events emitted by the Mezo `MezoBridge` contract on the
-// Ethereum chain. It enables retrieval of information on the assets locked by
-// the contract. It is intended to be run as a separate process.
+// AssetsUnlockedEndpoint is a client enabling communication with the `Mezo`
+// chain.
+type AssetsUnlockedEndpoint interface {
+	// GetAssetsUnlockedSequenceTip gets the assets unlocked sequence tip from
+	// the Mezo chain. The returned sequence tip is equal to the number of
+	// AssetsUnlocked events made so far. It is also equal to the value of the
+	// unlock sequence in the newest AssetsUnlocked event.
+	GetAssetsUnlockedSequenceTip(ctx context.Context) (sdkmath.Int, error)
+
+	// GetAssetsUnlockedEvents gets the AssetsUnlocked events from the Mezo
+	// chain. The requested range of events is inclusive on the lower side and
+	// exclusive on the upper side.
+	GetAssetsUnlockedEvents(
+		ctx context.Context,
+		sequenceStart sdkmath.Int,
+		sequenceEnd sdkmath.Int,
+	) ([]bridgetypes.AssetsUnlockedEvent, error)
+}
+
+// Server coordinates bridge data between Ethereum and Mezo.
+// It handles both directions:
+//   - Bridge-in (Ethereum to Mezo): watches AssetsLocked events emitted by the
+//     MezoBridge contract and serves them via gRPC to `mezod` validator nodes.
+//   - Bridge-out (Mezo to Ethereum): monitors AssetsUnlocked events on Mezo and
+//     attests on Ethereum. Events are read from the chain via validators gRPC
+//     endpoints.
+//
+// Server is intended to run as a separate process.
 type Server struct {
 	logger log.Logger
 
+	// bridging-in
 	grpcServer *grpc.Server
 
-	eventsMutex sync.RWMutex
-	events      []bridgetypes.AssetsLockedEvent
+	assetsLockedEventsMutex sync.RWMutex
+	assetsLockedEvents      []bridgetypes.AssetsLockedEvent
 
 	lastFinalizedBlockMutex sync.RWMutex
 	lastFinalizedBlock      *big.Int
@@ -74,6 +121,25 @@ type Server struct {
 
 	batchSize         uint64
 	requestsPerMinute uint64
+
+	// Channel used to indicate whether the data-heavy part of AssetsLocked
+	// observation routine is done. Once this channel is closed we can proceed
+	// with the AssetsUnlocked observation routine. Delaying launch helps avoid
+	// overwhelming Ethereum data providers with requests.
+	assetsLockedReady chan struct{}
+
+	// bridging-out
+	assetsUnlockedEndpoint AssetsUnlockedEndpoint
+
+	assetsUnlockedLookBackPeriod time.Duration
+	assetsUnlockedBatchSize      int
+
+	attestationMutex sync.RWMutex
+	attestationQueue []bridgetypes.AssetsUnlockedEvent
+
+	// Unguarded by mutex as only the AssetsUnlock event observation
+	// routine uses it.
+	lastAssetsUnlockedSequence sdkmath.Int
 
 	// privateKey is an optional ECDSA private key extracted from keyring
 	privateKey *ecdsa.PrivateKey
@@ -88,6 +154,8 @@ func RunServer(
 	ethereumNetwork string,
 	batchSize uint64,
 	requestsPerMinute uint64,
+	assetsUnlockedEndpoint string,
+	registry codectypes.InterfaceRegistry,
 	privateKey *ecdsa.PrivateKey,
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
@@ -126,26 +194,42 @@ func RunServer(
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
+	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
+		assetsUnlockedEndpoint,
+		registry,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
+	}
+
 	server := &Server{
-		logger:             logger,
-		grpcServer:         grpc.NewServer(),
-		events:             make([]bridgetypes.AssetsLockedEvent, 0),
-		lastFinalizedBlock: new(big.Int),
-		bridgeContract:     NewBridgeContract(bridgeContract),
-		chain:              chain,
-		batchSize:          batchSize,
-		requestsPerMinute:  requestsPerMinute,
-		privateKey:         privateKey,
+		logger:                       logger,
+		grpcServer:                   grpc.NewServer(),
+		assetsLockedEvents:           make([]bridgetypes.AssetsLockedEvent, 0),
+		lastFinalizedBlock:           new(big.Int),
+		bridgeContract:               NewBridgeContract(bridgeContract),
+		chain:                        chain,
+		batchSize:                    batchSize,
+		requestsPerMinute:            requestsPerMinute,
+		assetsLockedReady:            make(chan struct{}),
+		assetsUnlockedEndpoint:       assetsUnlockedGrpcEndpoint,
+		assetsUnlockedLookBackPeriod: assetsUnlockedLookBackPeriod,
+		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
+		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
+		privateKey:                   privateKey,
 	}
 
 	go func() {
 		defer cancelCtx()
-		err := server.observeEvents(ctx)
+		err := server.observeAssetsLockedEvents(ctx)
 		if err != nil {
-			server.logger.Error("event observation routine failed", "err", err)
+			server.logger.Error(
+				"AssetsLocked events observation routine failed",
+				"err", err,
+			)
 		}
 
-		server.logger.Info("event observation routine stopped")
+		server.logger.Info("AssetsLocked events observation routine stopped")
 	}()
 
 	go func() {
@@ -158,12 +242,67 @@ func RunServer(
 		server.logger.Info("gRPC server routine stopped")
 	}()
 
+	server.logger.Info(
+		"Waiting for the initial AssetsLocked sync before launching " +
+			"AssetsUnlocked routine",
+	)
+
+	// Wait until the initial synchronization of the AssetsLocked routine is
+	// complete.
+	select {
+	case <-server.assetsLockedReady:
+		server.logger.Info(
+			"Initial AssetsLocked sync completed; proceeding with " +
+				"AssetsUnlocked routines",
+		)
+	case <-ctx.Done():
+		server.logger.Info(
+			"Context canceled while waiting; exiting without launching " +
+				"AssetsUnlocked routines",
+		)
+		return
+	}
+
+	go func() {
+		// TODO: Only a subset of validators should be attesting AssetsUnlocked
+		//       events. Decide whether we should run this goroutine by calling
+		//       MezoBridge.bridgeValidators() with our Ethereum address.
+
+		defer cancelCtx()
+		err := server.observeAssetsUnlockedEvents(ctx)
+		if err != nil {
+			server.logger.Error(
+				"AssetsUnlocked events observation routine failed",
+				"err", err,
+			)
+		}
+
+		server.logger.Info("AssetsUnlocked events observation routine stopped")
+	}()
+
+	go func() {
+		// TODO: Only a subset of validators should be attesting AssetsUnlocked
+		//       events. Decide whether we should run this goroutine by calling
+		//       MezoBridge.bridgeValidators() with our Ethereum address.
+
+		defer cancelCtx()
+		err := server.attestAssetsUnlockedEvents(ctx)
+		if err != nil {
+			server.logger.Error(
+				"AssetsUnlocked events attestation routine failed",
+				"err", err,
+			)
+		}
+
+		server.logger.Info("AssetsUnlocked events attestation routine stopped")
+	}()
+
 	<-ctx.Done()
 
 	server.logger.Error("sidecar stopped")
 }
 
-// observeEvents monitors and processes events from the MezoBridge smart contract.
+// observeAssetsLockedEvents monitors and processes AssetsLocked events from the MezoBridge smart contract.
 //
 //   - Initializes a MezoBridge contract instance using the provided blockchain connection and contract address.
 //   - Retrieves the most recent finalized block number from the blockchain.
@@ -172,7 +311,7 @@ func RunServer(
 //   - Sets up a ticker channel to continuously monitor new finalized blocks.
 //   - On each new block notification from the ticker channel, calls `processEvents` to handle new events
 //     since the last finalized block.
-func (s *Server) observeEvents(ctx context.Context) error {
+func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get the finalized block: [%w]", err)
@@ -185,7 +324,7 @@ func (s *Server) observeEvents(ctx context.Context) error {
 	} else {
 		startBlock = 0
 	}
-	err = s.fetchFinalizedEvents(startBlock, finalizedBlock.Uint64())
+	err = s.fetchFinalizedAssetsLockedEvents(startBlock, finalizedBlock.Uint64())
 	if err != nil {
 		return fmt.Errorf("failed to fetch historical events: [%w]", err)
 	}
@@ -194,33 +333,41 @@ func (s *Server) observeEvents(ctx context.Context) error {
 	s.lastFinalizedBlock = finalizedBlock
 	s.lastFinalizedBlockMutex.Unlock()
 
+	// Signal that initial synchronization is ready.
+	close(s.assetsLockedReady)
+
 	// Start a ticker to periodically check the current block number
 	tickerChan := s.chain.BlockCounter().WatchBlocks(ctx)
 
 	for {
 		select {
 		case <-ctx.Done(): // Handle context cancellation
-			s.logger.Info("stopping event observation due to context cancellation")
+			s.logger.Info(
+				"stopping assets locked event observation due to context cancellation",
+			)
 			return nil
 		case <-tickerChan:
 			// On each tick check if the current finalized block is greater than the last
 			// finalized block.
 			// TODO: Add a basic counter to manage validation issues that may occur
-			//			 when processing events. This counter should allow a few retry
-			//			 attempts to handle temporary connection issues, but should halt
-			//			 the sidecar if an error arises specifically with event processing.”
-			err := s.processEvents(ctx)
+			//	     when processing events. This counter should allow a few retry
+			//		 attempts to handle temporary connection issues, but should halt
+			//		 the sidecar if an error arises specifically with event processing.
+			err := s.processAssetsLockedEvents(ctx)
 			if err != nil {
-				s.logger.Error("failed to monitor newly emitted events", "err", err)
+				s.logger.Error(
+					"failed to monitor newly emitted assets locked events",
+					"err", err,
+				)
 			}
 		}
 	}
 }
 
-// processEvents processes events from Ethereum by fetching the AssetsLocked
-// finalized events within a specified block range and managing memory usage
-// for cached events.
-func (s *Server) processEvents(ctx context.Context) error {
+// processAssetsLockedEvents processes AssetsLocked events from Ethereum by
+// fetching the AssetsLocked finalized events within a specified block range and
+// managing memory usage for cached events.
+func (s *Server) processAssetsLockedEvents(ctx context.Context) error {
 	currentFinalizedBlock, err := s.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get finalized block: [%w]", err)
@@ -239,9 +386,15 @@ func (s *Server) processEvents(ctx context.Context) error {
 		// currentFinalizedBlock = 132
 		// fetching events in the following range [101, 132]
 		exclusiveLastFinalizedBlock := s.lastFinalizedBlock.Uint64() + 1
-		err := s.fetchFinalizedEvents(exclusiveLastFinalizedBlock, currentFinalizedBlock.Uint64())
+		err := s.fetchFinalizedAssetsLockedEvents(
+			exclusiveLastFinalizedBlock,
+			currentFinalizedBlock.Uint64(),
+		)
 		if err != nil {
-			return fmt.Errorf("cannot fetch finalized events: [%w]", err)
+			return fmt.Errorf(
+				"cannot fetch finalized AssetsLocked events: [%w]",
+				err,
+			)
 		}
 		s.lastFinalizedBlockMutex.Lock()
 		s.lastFinalizedBlock = currentFinalizedBlock
@@ -249,25 +402,26 @@ func (s *Server) processEvents(ctx context.Context) error {
 	}
 
 	// Free up memory up to the length that exceeds the cache size.
-	if len(s.events) > cachedEventsLimit {
-		s.eventsMutex.Lock()
-		trim := len(s.events) - cachedEventsLimit
-		s.events = s.events[trim:]
-		s.eventsMutex.Unlock()
+	if len(s.assetsLockedEvents) > cachedEventsLimit {
+		s.assetsLockedEventsMutex.Lock()
+		trim := len(s.assetsLockedEvents) - cachedEventsLimit
+		s.assetsLockedEvents = s.assetsLockedEvents[trim:]
+		s.assetsLockedEventsMutex.Unlock()
 	}
 
 	return nil
 }
 
-// fetchFinalizedEvents retrieves and processes finalized `AssetsLocked` events
-// from the Ethereum network, within a specified block range. It uses the
-// provided MezoBridge contract to filter these events. Each event is
-// transformed into an `AssetsLockedEvent` type compatible with the bridgetypes
-// package and added to the server's event list with mutex protection.
-func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error {
-	abiEvents, err := s.fetchABIEvents(startBlock, endBlock)
+// fetchFinalizedAssetsLockedEvents retrieves and processes finalized
+// `AssetsLocked` events from the Ethereum network, within a specified block
+// range. It uses the provided MezoBridge contract to filter these events.
+// Each event is transformed into an `AssetsLockedEvent` type compatible with
+// the bridgetypes package and added to the server's event list with mutex
+// protection.
+func (s *Server) fetchFinalizedAssetsLockedEvents(startBlock uint64, endBlock uint64) error {
+	abiEvents, err := s.fetchAssetsLockedABIEvents(startBlock, endBlock)
 	if err != nil {
-		return fmt.Errorf("failed to fetch ABI events: [%w]", err)
+		return fmt.Errorf("failed to fetch AssetsLocked ABI events: [%w]", err)
 	}
 
 	//nolint:all
@@ -299,12 +453,12 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		return bufferedEvents[i].Sequence.LT(bufferedEvents[j].Sequence)
 	})
 
-	s.eventsMutex.Lock()
-	defer s.eventsMutex.Unlock()
+	s.assetsLockedEventsMutex.Lock()
+	defer s.assetsLockedEventsMutex.Unlock()
 
 	// Make sure there are no gaps between events and bufferedEvents lists
-	if len(s.events) > 0 && len(bufferedEvents) > 0 {
-		lastEvent := s.events[len(s.events)-1]
+	if len(s.assetsLockedEvents) > 0 && len(bufferedEvents) > 0 {
+		lastEvent := s.assetsLockedEvents[len(s.assetsLockedEvents)-1]
 		firstEvent := bufferedEvents[0]
 		if !lastEvent.Sequence.Add(sdkmath.NewInt(1)).Equal(firstEvent.Sequence) {
 			return errSequenceGap
@@ -315,15 +469,15 @@ func (s *Server) fetchFinalizedEvents(startBlock uint64, endBlock uint64) error 
 		return errInvalidEvents
 	}
 
-	s.events = append(s.events, bufferedEvents...)
+	s.assetsLockedEvents = append(s.assetsLockedEvents, bufferedEvents...)
 
 	return nil
 }
 
-// fetchABIEvents retrieves raw `AssetsLocked` ABI events from the MezoBridge
-// contract within a specified block range. The function fetches events in batches if
-// the entire range is too large to fetch at once.
-func (s *Server) fetchABIEvents(
+// fetchAssetsLockedABIEvents retrieves raw `AssetsLocked` ABI events from the
+// MezoBridge contract within a specified block range. The function fetches
+// events in batches if the entire range is too large to fetch at once.
+func (s *Server) fetchAssetsLockedABIEvents(
 	startBlock uint64,
 	endBlock uint64,
 ) ([]*portal.MezoBridgeAssetsLocked, error) {
@@ -434,6 +588,379 @@ func (s *Server) startGRPCServer(
 	}
 }
 
+// observeAssetsUnlockedEvents monitors `AssetsUnlocked` events emitted on the
+// Mezo chain and stores unconfirmed `AssetsUnlocked` events preparing them for
+// attestation. This routine consists of two parts:
+//   - initial check for unconfirmed `AssetsUnlocked` events emitted when the
+//     sidecar was turned off
+//   - periodic check for new unconfirmed `AssetsUnlocked` events
+func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
+	// At the start of the routine we need to learn which of the recent
+	// `AssetsUnlocked` events might require attestation in the `MezoBridge`
+	// smart contract. It's possible that the sidecar has been turned off
+	// for a significant amount of time while the Mezo chain was processing
+	// bridge-out requests.
+
+	// First fetch recent events. We consider such events as possibly
+	// unconfirmed. The events are already sorted by their unlock sequence in
+	// ascending order.
+	recentEvents, err := s.fetchRecentAssetsUnlockedEvents(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to fetch recent AssetsUnlocked events: [%w]",
+			err,
+		)
+	}
+
+	unconfirmedEvents, err := s.findUnconfirmedAssetsUnlockedEvents(
+		ctx,
+		recentEvents,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to find unconfirmed AssetsUnlocked events: [%w]",
+			err,
+		)
+	}
+
+	s.attestationMutex.Lock()
+	s.attestationQueue = unconfirmedEvents
+	s.attestationMutex.Unlock()
+
+	// Save the unlock sequence of the last event as the starting point for
+	// further event fetching.
+	s.lastAssetsUnlockedSequence = sdkmath.ZeroInt()
+	if len(recentEvents) > 0 {
+		s.lastAssetsUnlockedSequence = recentEvents[len(recentEvents)-1].UnlockSequence
+	}
+
+	s.logger.Info(
+		"Initial search for recent unconfirmed AssetsUnlocked events",
+		"recent_events", len(recentEvents),
+		"unconfirmed_events", len(unconfirmedEvents),
+		"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
+	)
+
+	ticker := time.NewTicker(assetsUnlockedFetchingPeriod)
+	defer ticker.Stop()
+	tickerChan := ticker.C
+
+	for {
+		select {
+		case <-ctx.Done(): // Handle context cancellation
+			s.logger.Info(
+				"stopping assets unlocked event observation due to context cancellation",
+			)
+			return nil
+		case <-tickerChan:
+			err := s.fetchNewAssetsUnlockedEvents(ctx)
+			if err != nil {
+				s.logger.Error(
+					"failed to monitor newly emitted assets unlocked events",
+					"err", err,
+				)
+			}
+		}
+	}
+}
+
+// fetchRecentAssetsUnlockedEvents fetches AssetsUnlocked events that entered
+// the Mezo blockchain within the AssetsUnlocked look-back period. We consider
+// events within that range as possibly unconfirmed. The returned events are
+// sorted in the ascending order of their unlock sequences (from the lowest
+// to the highest).
+func (s *Server) fetchRecentAssetsUnlockedEvents(ctx context.Context) (
+	[]bridgetypes.AssetsUnlockedEvent,
+	error,
+) {
+	// Fetching events starts from the current sequence tip.
+	sequenceTip, err := s.assetsUnlockedEndpoint.GetAssetsUnlockedSequenceTip(ctx)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to fetch assets unlocked sequence tip: [%w]",
+			err,
+		)
+	}
+
+	// The sequence tip is zero, meaning no events have been made.
+	if sequenceTip.IsZero() {
+		return []bridgetypes.AssetsUnlockedEvent{}, nil
+	}
+
+	// Cut-off block time in UNIX seconds.
+	cutOffBlockTime := uint32(mezotime.Now().Add(-s.assetsUnlockedLookBackPeriod).Unix()) //nolint:gosec
+	recentEvents := []bridgetypes.AssetsUnlockedEvent{}
+
+	// Walk backwards from the current sequence tip in windows of at most
+	// `assetsUnlockedBatchSize`.
+outer:
+	for sequenceTip.IsPositive() {
+		// Sequence end is exclusive. We must add `1`.
+		seqEnd := sequenceTip.AddRaw(1)
+
+		// Sequence start is inclusive. It cannot be lower than `1`.
+		seqStart := seqEnd.SubRaw(int64(s.assetsUnlockedBatchSize))
+		if seqStart.LT(sdkmath.OneInt()) {
+			seqStart = sdkmath.OneInt()
+		}
+
+		events, err := s.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
+			ctx,
+			seqStart,
+			seqEnd,
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to fetch AssetsUnlocked events [%s, %s): %w",
+				seqStart.String(),
+				seqEnd.String(),
+				err,
+			)
+		}
+
+		for i := len(events) - 1; i >= 0; i-- {
+			event := events[i]
+			if event.BlockTime < cutOffBlockTime {
+				// We found an event older than cut-off time.
+				break outer
+			}
+			recentEvents = append(recentEvents, event)
+		}
+
+		// If the length of fetched events was smaller than the batch size,
+		// there are no more events to fetch.
+		if len(events) < s.assetsUnlockedBatchSize {
+			break
+		}
+
+		sequenceTip = seqStart.SubRaw(1)
+	}
+
+	// Ensure events are sorted in ascending order of their unlock sequences.
+	sort.Slice(recentEvents, func(i, j int) bool {
+		return recentEvents[i].UnlockSequence.LT(recentEvents[j].UnlockSequence)
+	})
+
+	return recentEvents, nil
+}
+
+// findUnconfirmedAssetsUnlockedEvents finds unconfirmed `AssetsUnlocked` events
+// from the passed input events. An event is considered confirmed if there
+// was an `AssetsUnlockConfirmed` event emitted for it on Ethereum within
+// finalized range of blocks.
+func (s *Server) findUnconfirmedAssetsUnlockedEvents(
+	ctx context.Context,
+	inputEvents []bridgetypes.AssetsUnlockedEvent,
+) ([]bridgetypes.AssetsUnlockedEvent, error) {
+	// If there are no input events, return early with an empty list.
+	if len(inputEvents) == 0 {
+		return []bridgetypes.AssetsUnlockedEvent{}, nil
+	}
+
+	// Finalized block is considered safe from reorgs as it is 64-96 blocks
+	// behind the current tip. It can be used as the end block.
+	finalizedBlock, err := s.chain.FinalizedBlock(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the finalized block: [%w]", err)
+	}
+	endBlock := finalizedBlock.Uint64()
+
+	// The search range can be limited to avoid excessive chain data usage.
+	// When defining the start block we must make sure we cover the entire range
+	// in which the input events could have been confirmed on Ethereum.
+	startBlock := uint64(0)
+	if endBlock > assetsUnlockConfirmedLookBackBlocks {
+		startBlock = endBlock - assetsUnlockConfirmedLookBackBlocks
+	}
+
+	confirmedEvents, err := s.fetchAssetsUnlockConfirmedEvents(
+		startBlock,
+		endBlock,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to fetch AssetsUnlockConfirmed events: [%w]",
+			err,
+		)
+	}
+
+	// Store the unlock sequences in a map for an easy look-up.
+	confirmedUnlockSequences := make(map[string]bool)
+	for _, confirmedEvent := range confirmedEvents {
+		eventUnlockSequence := confirmedEvent.UnlockSequenceNumber.String()
+		confirmedUnlockSequences[eventUnlockSequence] = true
+	}
+
+	// If the event's unlock sequence is not among the confirmed sequences
+	// consider the event unconfirmed.
+	unconfirmedEvents := []bridgetypes.AssetsUnlockedEvent{}
+	for _, event := range inputEvents {
+		if !confirmedUnlockSequences[event.UnlockSequence.String()] {
+			unconfirmedEvents = append(unconfirmedEvents, event)
+		}
+	}
+
+	// Sort the unconfirmed events by their unlock sequences in ascending order.
+	sort.Slice(unconfirmedEvents, func(i, j int) bool {
+		return unconfirmedEvents[i].UnlockSequence.
+			LT(unconfirmedEvents[j].UnlockSequence)
+	})
+
+	return unconfirmedEvents, nil
+}
+
+func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
+	sequenceTip, err := s.assetsUnlockedEndpoint.GetAssetsUnlockedSequenceTip(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to fetch assets unlocked sequence tip: [%w]",
+			err,
+		)
+	}
+
+	// This should never happen. Check just in case.
+	if sequenceTip.LT(s.lastAssetsUnlockedSequence) {
+		return fmt.Errorf(
+			"current AssetsUnlock sequence tip on Mezo lower than "+
+				"the last processed unlock sequence (%s vs %s)",
+			sequenceTip.String(),
+			s.lastAssetsUnlockedSequence.String(),
+		)
+	}
+
+	// If the unlock sequence tip has not advanced on Mezo return early.
+	if sequenceTip.Equal(s.lastAssetsUnlockedSequence) {
+		s.logger.Info(
+			"no new AssetsUnlocked events to fetch from Mezo",
+			"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
+		)
+		return nil
+	}
+
+	// The unlock sequence tip on Mezo is greater than the unlock sequence from
+	// the last fetched event. We need to fetch events from Mezo.
+	seqStart := s.lastAssetsUnlockedSequence.AddRaw(1)
+	seqEnd := sequenceTip.AddRaw(1)
+
+	// ON THE MEZOD SIDE THERE IS A LIMIT OF 10,000 EVENTS THAT CAN BE FETCHED
+	// IN ONE REQUEST. EXCEEDING THE LIMIT RESULTS IN AN ERROR.
+	// However, since new events are fetched very frequently therefore there is
+	// no need to split them into batches as realistically we should never
+	// exceed the limit.
+	events, err := s.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
+		ctx,
+		seqStart,
+		seqEnd,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to fetch AssetsUnlocked events [%s, %s): %w",
+			seqStart.String(),
+			seqEnd.String(),
+			err,
+		)
+	}
+
+	s.attestationMutex.Lock()
+	s.attestationQueue = append(s.attestationQueue, events...)
+	s.attestationMutex.Unlock()
+
+	s.lastAssetsUnlockedSequence = sequenceTip
+
+	s.logger.Info(
+		"Fetched new AssetsUnlocked events from Mezo",
+		"event_count", len(events),
+		"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
+	)
+
+	return nil
+}
+
+// fetchAssetsUnlockConfirmedEvents retrieves raw `AssetsUnlockConfirmed` ABI
+// events from the MezoBridge contract within a specified block range. The
+// function fetches events in batches if the entire range is too large to fetch
+// at once.
+func (s *Server) fetchAssetsUnlockConfirmedEvents(
+	startBlock uint64,
+	endBlock uint64,
+) ([]*ethconnect.MezoBridgeAssetsUnlockConfirmed, error) {
+	s.logger.Info(
+		"fetching AssetsUnlockConfirmed events from range",
+		"startBlock", startBlock,
+		"endBlock", endBlock,
+	)
+
+	abiEvents := make([]*ethconnect.MezoBridgeAssetsUnlockConfirmed, 0)
+
+	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute)) //nolint:gosec
+	defer ticker.Stop()
+
+	iterator, err := s.bridgeContract.FilterAssetsUnlockConfirmed(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   &endBlock,
+		}, nil, nil, nil,
+	)
+	if err != nil {
+		s.logger.Warn(
+			"failed to fetch AssetsUnlockConfirmed events from the entire "+
+				"range; falling back to batched events fetch",
+			"startBlock", startBlock,
+			"endBlock", endBlock,
+			"err", err,
+		)
+
+		batchStartBlock := startBlock
+
+		for batchStartBlock <= endBlock {
+			batchEndBlock := batchStartBlock + s.batchSize
+			if batchEndBlock > endBlock {
+				batchEndBlock = endBlock
+			}
+
+			s.logger.Info(
+				"fetching a batch of AssetsUnlockConfirmed events from range",
+				"batchStartBlock", batchStartBlock,
+				"batchEndBlock", batchEndBlock,
+			)
+
+			<-ticker.C
+
+			batchIterator, batchErr := s.bridgeContract.FilterAssetsUnlockConfirmed(
+				&bind.FilterOpts{
+					Start: batchStartBlock,
+					End:   &batchEndBlock,
+				}, nil, nil, nil,
+			)
+			if batchErr != nil {
+				return nil, fmt.Errorf(
+					"batched AssetsUnlockConfirmed fetch failed: [%w]; giving up",
+					batchErr,
+				)
+			}
+
+			for batchIterator.Next() {
+				abiEvents = append(abiEvents, batchIterator.Event())
+			}
+
+			batchStartBlock = batchEndBlock + 1
+		}
+	} else {
+		for iterator.Next() {
+			abiEvents = append(abiEvents, iterator.Event())
+		}
+	}
+
+	return abiEvents, nil
+}
+
+//nolint:unparam
+func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) error {
+	// TODO: Implement
+	<-ctx.Done()
+	return nil
+}
+
 // Version return the current version of the ethereum sidecar.
 func (s *Server) Version(
 	_ context.Context,
@@ -453,8 +980,8 @@ func (s *Server) AssetsLockedEvents(
 	*pb.AssetsLockedEventsResponse,
 	error,
 ) {
-	s.eventsMutex.RLock()
-	defer s.eventsMutex.RUnlock()
+	s.assetsLockedEventsMutex.RLock()
+	defer s.assetsLockedEventsMutex.RUnlock()
 
 	start, end := req.SequenceStart, req.SequenceEnd
 
@@ -471,7 +998,7 @@ func (s *Server) AssetsLockedEvents(
 
 	// Filter events that fit into the requested range.
 	filteredEvents := []*bridgetypes.AssetsLockedEvent{}
-	for _, event := range s.events {
+	for _, event := range s.assetsLockedEvents {
 		if (start.IsNil() || event.Sequence.GTE(start)) && (end.IsNil() || event.Sequence.LT(end)) {
 			filteredEvents = append(filteredEvents, &bridgetypes.AssetsLockedEvent{
 				Sequence:  event.Sequence,

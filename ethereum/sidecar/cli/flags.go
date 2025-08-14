@@ -12,6 +12,7 @@ const (
 	FlagServerNetwork             = "ethereum-sidecar.server.network"
 	FlagServerBatchSize           = "ethereum-sidecar.server.batch-size"
 	FlagServerRequestsPerMinute   = "ethereum-sidecar.server.requests-per-minute"
+	FlagAssetsUnlockedEndpoint    = "ethereum-sidecar.assets-unlocked-endpoint"
 	FlagKeyringBackend            = "keyring-backend"
 	FlagKeyringDir                = "keyring-dir"
 	FlagKeyName                   = "key-name"
@@ -23,6 +24,7 @@ func NewFlagSetEthereumSidecar(
 	defaultServerNetwork string,
 	defaultServerBatchSize uint64,
 	defaultServerRequestsPerMinute uint64,
+	defaultAssetsUnlockedEndpoint string,
 	defaultKeyringBackend,
 	defaultKeyringDir,
 	defaultKeyName string,
@@ -65,6 +67,13 @@ func NewFlagSetEthereumSidecar(
 		FlagServerRequestsPerMinute,
 		defaultServerRequestsPerMinute,
 		"Requests per minute for an Ethereum RPC provider",
+	)
+
+	fs.String(
+		FlagAssetsUnlockedEndpoint,
+		defaultAssetsUnlockedEndpoint,
+		"Address of the gRPC endpoint for providing info on AssetsUnlocked "+
+			"events emitted on the Mezo chain",
 	)
 
 	fs.String(
