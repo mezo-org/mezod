@@ -39,13 +39,13 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"cosmossdk.io/log"
-	rpcclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 	tmtypes "github.com/cometbft/cometbft/types"
 
 	"github.com/mezo-org/mezod/rpc/ethereum/pubsub"
 	rpcfilters "github.com/mezo-org/mezod/rpc/namespaces/ethereum/eth/filters"
 	"github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/server/config"
+	mezodtypes "github.com/mezo-org/mezod/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -90,7 +90,7 @@ type websocketsServer struct {
 	logger   log.Logger
 }
 
-func NewWebsocketsServer(clientCtx client.Context, logger log.Logger, tmWSClient *rpcclient.WSClient, cfg *config.Config) WebsocketsServer {
+func NewWebsocketsServer(clientCtx client.Context, logger log.Logger, cometWSClient *mezodtypes.CometWSClient, cfg *config.Config) WebsocketsServer {
 	logger = logger.With("api", "websocket-server")
 	_, port, _ := net.SplitHostPort(cfg.JSONRPC.Address) // #nosec G703
 
@@ -99,7 +99,7 @@ func NewWebsocketsServer(clientCtx client.Context, logger log.Logger, tmWSClient
 		wsAddr:   cfg.JSONRPC.WsAddress,
 		certFile: cfg.TLS.CertificatePath,
 		keyFile:  cfg.TLS.KeyPath,
-		api:      newPubSubAPI(clientCtx, logger, tmWSClient),
+		api:      newPubSubAPI(clientCtx, logger, cometWSClient),
 		logger:   logger,
 	}
 }
@@ -379,10 +379,10 @@ type pubSubAPI struct {
 }
 
 // newPubSubAPI creates an instance of the ethereum PubSub API.
-func newPubSubAPI(clientCtx client.Context, logger log.Logger, tmWSClient *rpcclient.WSClient) *pubSubAPI {
+func newPubSubAPI(clientCtx client.Context, logger log.Logger, cometWSClient *mezodtypes.CometWSClient) *pubSubAPI {
 	logger = logger.With("module", "websocket-client")
 	return &pubSubAPI{
-		events:    rpcfilters.NewEventSystem(logger, tmWSClient),
+		events:    rpcfilters.NewEventSystem(logger, cometWSClient),
 		logger:    logger,
 		clientCtx: clientCtx,
 	}

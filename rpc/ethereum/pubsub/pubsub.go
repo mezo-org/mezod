@@ -121,9 +121,7 @@ func (m *memEventBus) publishTopic(name string, src <-chan coretypes.ResultEvent
 		msg, ok := <-src
 		if !ok {
 			m.closeAllSubscribers(name)
-			m.topicsMux.Lock()
-			delete(m.topics, name)
-			m.topicsMux.Unlock()
+			m.RemoveTopic(name)
 			return
 		}
 		m.publishAllSubscribers(name, msg)
