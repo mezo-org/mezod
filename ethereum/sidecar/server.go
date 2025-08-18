@@ -133,9 +133,8 @@ type Server struct {
 	assetsUnlockedLookBackPeriod time.Duration
 	assetsUnlockedBatchSize      int
 
-	attestationMutex         sync.RWMutex
-	attestationQueue         []bridgetypes.AssetsUnlockedEvent
-	attestationQueueNotifier chan struct{}
+	attestationMutex sync.RWMutex
+	attestationQueue []bridgetypes.AssetsUnlockedEvent
 
 	// Unguarded by mutex as only the AssetsUnlock event observation
 	// routine uses it.
@@ -230,7 +229,6 @@ func RunServer(
 	server := &Server{
 		logger:                       logger,
 		grpcServer:                   grpc.NewServer(),
-		attestationQueueNotifier:     make(chan struct{}),
 		assetsLockedEvents:           make([]bridgetypes.AssetsLockedEvent, 0),
 		lastFinalizedBlock:           new(big.Int),
 		bridgeContract:               NewBridgeContract(bridgeContract),
@@ -890,8 +888,6 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 	s.attestationQueue = append(s.attestationQueue, events...)
 	s.attestationMutex.Unlock()
 
-	s.notifyNewEventsToAttest()
-
 	s.lastAssetsUnlockedSequence = sequenceTip
 
 	s.logger.Info(
@@ -901,18 +897,6 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 	)
 
 	return nil
-}
-
-func (s *Server) notifyNewEventsToAttest() {
-	select {
-	case s.attestationQueueNotifier <- struct{}{}:
-		// Write succeeded without blocking
-		fmt.Println("Value sent successfully")
-	default:
-		// nothing to do, channel is full, so we already
-		// notified the attestation worker that there's
-		// work to do
-	}
 }
 
 // fetchAssetsUnlockConfirmedEvents retrieves raw `AssetsUnlockConfirmed` ABI
@@ -1004,24 +988,31 @@ func (s *Server) unqueueAttestation() *bridgetypes.AssetsUnlockedEvent {
 	return &attestation
 }
 
-func (s *Server) queueAttestation(attestation *bridgetypes.AssetsUnlockedEvent) {
-	s.attestationMutex.Lock()
-	defer s.attestationMutex.Unlock()
-
-	s.attestationQueue = append(s.attestationQueue, *attestation)
-}
-
 func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case <-s.attestationQueueNotifier:
-			// we have been notified some events are to be attested
-			// let's unqueue them one by one
+		case <-ticker.C:
+			// get attestations if any
 			for attestation := s.unqueueAttestation(); attestation != nil; attestation = s.unqueueAttestation() {
-				if err := s.txExecutor.Send(attestation); err != nil {
-					s.logger.Error("error sending attestation %cv to MezoBridge: %v, rescheduling to be executed later", attestation.String(), err)
-					s.queueAttestation(attestation)
+
+				// try to execute this transaction until we have done so successfully.
+				retry := true
+				for retry {
+					// TODO: first verify that:
+					// - we haven't attested this yet
+					// - it's not been already confirmed via enough validators attestation yet
+
+					if err := s.txExecutor.Send(attestation); err != nil {
+						s.logger.Error("error sending attestation %cv to MezoBridge: %v, rescheduling to be executed later", attestation.String(), err)
+						continue
+					}
+
+					retry = false
 				}
+
 			}
 		case <-ctx.Done():
 			s.logger.Info(
