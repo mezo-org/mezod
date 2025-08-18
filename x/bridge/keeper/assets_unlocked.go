@@ -189,3 +189,20 @@ func (k Keeper) BurnERC20(
 
 	return nil
 }
+
+func (k Keeper) GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) (
+	math.Int,
+	bool,
+) {
+	// TODO: Implement
+	return math.Int{}, false
+}
+
+func (k Keeper) SetMinBridgeOutAmount(
+	ctx sdk.Context,
+	mezoToken []byte,
+	min math.Int,
+) error {
+	// TODO: Implement
+	return nil
+}

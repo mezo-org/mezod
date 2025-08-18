@@ -326,3 +326,21 @@ func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
 ) (*bridgetypes.AssetsUnlockedEvent, error) {
 	return nil, errors.New("unimplemented")
 }
+
+func (k *FakeBridgeKeeper) GetMinBridgeOutAmount(
+	ctx sdk.Context,
+	mezoToken []byte,
+) (math.Int, bool) {
+	// TODO: Implement and use in tests
+	return math.Int{}, false
+}
+
+
+func (k *FakeBridgeKeeper) SetMinBridgeOutAmount(
+	ctx sdk.Context,
+	mezoToken []byte,
+	min math.Int,
+) error {
+	// TODO: Implement
+	return nil
+}
