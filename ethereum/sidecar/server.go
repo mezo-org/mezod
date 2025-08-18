@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"net"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,9 +15,11 @@ import (
 	sdkmath "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
@@ -1000,7 +1003,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 				// try to execute this transaction until we have done so successfully.
 				retry := true
-				for retry {
+				for retry && s.shouldAttest(attestation) {
 					// TODO: first verify that:
 					// - we haven't attested this yet
 					// - it's not been already confirmed via enough validators attestation yet
@@ -1020,6 +1023,61 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 			)
 		}
 	}
+}
+
+func (s *Server) shouldAttest(attestation *bridgetypes.AssetsUnlockedEvent) bool {
+	callOpts := &bind.CallOpts{
+		BlockNumber: big.NewInt(-4), // this is safe block
+	}
+
+	ok, err := s.bridgeContract.ConfirmedUnlocks(callOpts, attestation.Amount.BigInt())
+	if err != nil {
+		s.logger.Error("couldn't get confirmedLocks", "error", err)
+		return true
+	}
+	if ok {
+		return false
+	}
+
+	// probably do that earlier
+	contractABI, err := abi.JSON(strings.NewReader(portal.MezoBridgeABI))
+	if err != nil {
+		panic(err)
+	}
+
+	encoded, err := contractABI.Pack(
+		"",
+		attestation.UnlockSequence.BigInt(),
+		attestation.Recipient,
+		attestation.Token,
+		attestation.Amount.BigInt(),
+		attestation.Chain)
+	if err != nil {
+		s.logger.Error("couldn't get pack assets unlocked", "error", err)
+		return true
+	}
+
+	hash := crypto.Keccak256Hash(encoded)
+
+	bitmap, err := s.bridgeContract.Attestations(callOpts, hash)
+	if err != nil {
+		s.logger.Error("couldn't get confirmedLocks", "error", err)
+		return true
+	}
+
+	validatorId, err := s.bridgeContract.ValidatorIDs(callOpts, s.txExecutor.address)
+	if err != nil {
+		s.logger.Error("couldn't get validator ID", "error", err)
+		return true
+	}
+
+	mask := new(big.Int).Lsh(big.NewInt(1), uint(validatorId))
+
+	if new(big.Int).And(bitmap, mask).Int64() != 0 {
+		return false
+	}
+
+	return true
 }
 
 // Version return the current version of the ethereum sidecar.
