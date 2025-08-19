@@ -135,4 +135,21 @@ interface IAssetsBridge {
      * @return True if the call succeeded, false otherwise.
      */
     function bridgeOut(address token, uint256 amount, uint8 chain, bytes calldata recipient) external returns (bool);
+
+    /**
+     * @notice Sets the outflow limit for a specific token.
+     * @param token The address of the token to set the limit for.
+     * @param limit The maximum amount that can be bridged out in a 25,000 block window.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner.
+     * @return True if the call succeeded, false otherwise.
+     */
+    function setOutflowLimit(address token, uint256 limit) external returns (bool);
+
+    /**
+     * @notice Gets the current outflow limit for a specific token.
+     * @param token The address of the token to check the limit for.
+     * @return The current outflow limit for the token.
+     */
+    function getOutflowLimit(address token) external view returns (uint256);
 }

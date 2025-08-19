@@ -14,7 +14,8 @@ import (
 // In case an assertion prove false, the function will panic, leaving time
 // for the node operators to investigate.
 func (k *Keeper) EndBlock(ctx context.Context) error {
-	params := k.GetParams(sdk.UnwrapSDKContext(ctx))
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	params := k.GetParams(sdkCtx)
 	var asserts []func(context.Context) error
 
 	if params.BtcSupplyAssertionEnabled {
@@ -26,6 +27,8 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 			panic(fmt.Sprintf("inconsistent state between the bridge and mezo: %v", err))
 		}
 	}
+
+	k.handleOutflowReset(sdkCtx)
 
 	return nil
 }
@@ -58,4 +61,20 @@ func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
 	)
 
 	return nil
+}
+
+// handleOutflowReset checks if it's time to reset outflow counters and does so if needed.
+func (k *Keeper) handleOutflowReset(ctx sdk.Context) {
+	currentHeight := uint64(ctx.BlockHeight())
+	lastResetHeight := k.getLastOutflowReset(ctx)
+
+	if currentHeight-lastResetHeight >= OutflowResetBlocks {
+		k.resetAllOutflows(ctx)
+		k.setLastOutflowReset(ctx, currentHeight)
+		k.Logger(ctx).Info(
+			"bridge outflow limits reset",
+			"height", currentHeight,
+			"lastResetHeight", lastResetHeight,
+		)
+	}
 }
