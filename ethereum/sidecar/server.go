@@ -1024,7 +1024,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 func (s *Server) shouldAttest(attestation *bridgetypes.AssetsUnlockedEvent) bool {
 	callOpts := &bind.CallOpts{
-		BlockNumber: rpc.FinalizedBlockNumber.Int64(),
+		BlockNumber: big.NewInt(int64(rpc.FinalizedBlockNumber)),
 	}
 
 	ok, err := s.bridgeContract.ConfirmedUnlocks(callOpts, attestation.Amount.BigInt())
