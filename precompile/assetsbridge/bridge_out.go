@@ -240,6 +240,10 @@ func (m *BridgeOutMethod) validate(
 		return errors.New("amount must be positive")
 	}
 
+	if err := m.validateAmount(sdkCtx, inputs.Amount, inputs.Token); err != nil {
+		return err
+	}
+
 	_, ok := inputs.Chain.Validate()
 	if !ok {
 		return fmt.Errorf("unsupported chain: %v", inputs.Chain)
@@ -279,6 +283,32 @@ func (m *BridgeOutMethod) validateToken(
 	default:
 		panic("unreachable: unknown chain type")
 	}
+}
+
+func (m *BridgeOutMethod) validateAmount(
+	sdkCtx sdk.Context,
+	amount *big.Int,
+	token common.Address,
+) error {
+	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
+	if err != nil {
+		return fmt.Errorf("failed to convert amount: [%w]", err)
+	}
+
+	minAmount, found := m.bridgeKeeper.GetMinBridgeOutAmount(
+		sdkCtx,
+		token.Bytes(),
+	)
+
+	if found && sdkAmount.LT(minAmount) {
+		return fmt.Errorf(
+			"amount below minimum bridgeable amount: %s < %s",
+			sdkAmount,
+			minAmount,
+		)
+	}
+
+	return nil
 }
 
 // extractInputs extract the inputs from the precompile.MethodInputs and apply
