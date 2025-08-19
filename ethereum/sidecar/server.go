@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"net"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -1036,21 +1035,9 @@ func (s *Server) shouldAttest(attestation *bridgetypes.AssetsUnlockedEvent) bool
 		return false
 	}
 
-	// probably do that earlier
-	contractABI, err := abi.JSON(strings.NewReader(portal.MezoBridgeABI))
+	encoded, err := abiEncodeAttestation(attestation)
 	if err != nil {
-		panic(err)
-	}
-
-	encoded, err := contractABI.Pack(
-		"",
-		attestation.UnlockSequence.BigInt(),
-		attestation.Recipient,
-		attestation.Token,
-		attestation.Amount.BigInt(),
-		attestation.Chain)
-	if err != nil {
-		s.logger.Error("couldn't get pack assets unlocked", "error", err)
+		s.logger.Error("couldn't ABI encode attestation", "error", err)
 		return true
 	}
 
@@ -1150,4 +1137,37 @@ func initializeBridgeContract(
 	}
 
 	return bridgeContract, nil
+}
+
+func abiEncodeAttestation(attestation *bridgetypes.AssetsUnlockedEvent) ([]byte, error) {
+	uint256Type, err := abi.NewType("uint256", "uint256", nil)
+	if err != nil {
+		return nil, err
+	}
+	bytesType, err := abi.NewType("bytes", "bytes", nil)
+	if err != nil {
+		return nil, err
+	}
+	addressType, err := abi.NewType("address", "address", nil)
+	if err != nil {
+		return nil, err
+	}
+	uint8Type, err := abi.NewType("uint8", "uint8", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return abi.Arguments{
+		{Type: uint256Type},
+		{Type: bytesType},
+		{Type: addressType},
+		{Type: uint256Type},
+		{Type: uint8Type},
+	}.Pack(
+		attestation.UnlockSequence.BigInt(),
+		attestation.Recipient,
+		attestation.Token,
+		attestation.Amount.BigInt(),
+		attestation.Chain,
+	)
 }
