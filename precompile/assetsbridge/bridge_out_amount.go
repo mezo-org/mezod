@@ -117,16 +117,16 @@ const MinBridgeOutAmountSetEventName = "MinBridgeOutAmountSet"
 // - token (indexed): the address of the token on Mezo chain.
 // - minAmount (non-indexed): the new minimum bridgeable amount for the token.
 type MinBridgeOutAmountSetEvent struct {
-	mezoToken common.Address
+	token     common.Address
 	minAmount *big.Int
 }
 
 func NewMinBridgeOutAmountSetEvent(
-	mezoToken common.Address,
+	token common.Address,
 	minAmount *big.Int,
 ) *MinBridgeOutAmountSetEvent {
 	return &MinBridgeOutAmountSetEvent{
-		mezoToken: mezoToken,
+		token:     token,
 		minAmount: minAmount,
 	}
 }
@@ -139,11 +139,79 @@ func (e *MinBridgeOutAmountSetEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{
 			Indexed: true,
-			Value:   e.mezoToken,
+			Value:   e.token,
 		},
 		{
 			Indexed: false,
 			Value:   e.minAmount,
 		},
 	}
+}
+
+// GetMinBridgeOutAmountMethodName is the name of the getMinBridgeOutAmount
+// method. It matches the name of the method in the contract ABI.
+//
+//nolint:gosec
+const GetMinBridgeOutAmountMethodName = "getMinBridgeOutAmount"
+
+// GetMinBridgeOutAmountMethod is the implementation of the getMinBridgeOutAmount
+// method.
+type GetMinBridgeOutAmountMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetMinBridgeOutAmountMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetMinBridgeOutAmountMethod {
+	return &GetMinBridgeOutAmountMethod{
+		bridgeKeeper: bridgeKeeper,
+	}
+}
+
+func (m *GetMinBridgeOutAmountMethod) MethodName() string {
+	return GetMinBridgeOutAmountMethodName
+}
+
+func (m *GetMinBridgeOutAmountMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetMinBridgeOutAmountMethod) RequiredGas(_ []byte) (uint64, bool) {
+	// Fallback to the default gas calculation.
+	return 0, false
+}
+
+func (m *GetMinBridgeOutAmountMethod) Payable() bool {
+	return false
+}
+
+func (m *GetMinBridgeOutAmountMethod) Run(
+	context *precompile.RunContext,
+	inputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
+		return nil, err
+	}
+
+	token, ok := inputs[0].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("token must be common.Address")
+	}
+
+	minAmount, found := m.bridgeKeeper.GetMinBridgeOutAmount(
+		context.SdkCtx(),
+		token.Bytes(),
+	)
+
+	if !found {
+		return precompile.MethodOutputs{
+			big.NewInt(0),
+			false,
+		}, nil
+	}
+
+	return precompile.MethodOutputs{
+		minAmount.BigInt(),
+		true,
+	}, nil
 }
