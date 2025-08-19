@@ -1005,10 +1005,6 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				// try to execute this transaction until we have done so successfully.
 				retry := true
 				for retry && s.shouldAttest(attestation) {
-					// TODO: first verify that:
-					// - we haven't attested this yet
-					// - it's not been already confirmed via enough validators attestation yet
-
 					if err := s.txExecutor.Send(attestation); err != nil {
 						s.logger.Error("error sending attestation %cv to MezoBridge: %v, rescheduling to be executed later", attestation.String(), err)
 						continue
@@ -1028,7 +1024,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 func (s *Server) shouldAttest(attestation *bridgetypes.AssetsUnlockedEvent) bool {
 	callOpts := &bind.CallOpts{
-		BlockNumber: rpc.FinalizedBlockNumber,
+		BlockNumber: rpc.FinalizedBlockNumber.Int64(),
 	}
 
 	ok, err := s.bridgeContract.ConfirmedUnlocks(callOpts, attestation.Amount.BigInt())
