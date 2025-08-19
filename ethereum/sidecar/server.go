@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rpc"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
@@ -1027,7 +1028,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 func (s *Server) shouldAttest(attestation *bridgetypes.AssetsUnlockedEvent) bool {
 	callOpts := &bind.CallOpts{
-		BlockNumber: big.NewInt(-4), // this is safe block
+		BlockNumber: rpc.FinalizedBlockNumber,
 	}
 
 	ok, err := s.bridgeContract.ConfirmedUnlocks(callOpts, attestation.Amount.BigInt())
