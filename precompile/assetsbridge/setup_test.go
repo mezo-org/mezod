@@ -328,18 +328,17 @@ func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
 }
 
 func (k *FakeBridgeKeeper) GetMinBridgeOutAmount(
-	ctx sdk.Context,
-	mezoToken []byte,
+	_ sdk.Context,
+	_ []byte,
 ) (math.Int, bool) {
 	// TODO: Implement and use in tests
 	return math.Int{}, false
 }
 
-
 func (k *FakeBridgeKeeper) SetMinBridgeOutAmount(
-	ctx sdk.Context,
-	mezoToken []byte,
-	min math.Int,
+	_ sdk.Context,
+	_ []byte,
+	_ math.Int,
 ) error {
 	// TODO: Implement
 	return nil

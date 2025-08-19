@@ -45,6 +45,10 @@ var (
 
 	// AssetsUnlockedKeyPrefix is the key prefix for the assets unlocked key.
 	AssetsUnlockedKeyPrefix = []byte{0x80}
+
+	// MinBridgeOutAmountKeyPrefix is the key prefix for the minimum bridge-out
+	// amount.
+	MinBridgeOutAmountKeyPrefix = []byte{0x90}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
@@ -56,4 +60,10 @@ func GetERC20TokenMappingKey(sourceERC20Token []byte) []byte {
 // GetAssetsUnlockedKey gets the key for an AssetsUnlocked event.
 func GetAssetsUnlockedKey(unlockSequence math.Int) []byte {
 	return append(AssetsUnlockedKeyPrefix, unlockSequence.BigInt().Bytes()...)
+}
+
+// GetMinBridgeOutAmountKey gets the key for minimum bridge-out amount by the
+// given Mezo token address.
+func GetMinBridgeOutAmountKey(mezoToken []byte) []byte {
+	return append(MinBridgeOutAmountKeyPrefix, mezoToken...)
 }

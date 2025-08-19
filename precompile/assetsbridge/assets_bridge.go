@@ -206,7 +206,8 @@ type BridgeKeeper interface {
 	GetERC20TokenMapping(ctx sdk.Context, sourceToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
 	GetERC20TokenMappingFromMezoToken(ctx sdk.Context, mezoToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
 	GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) (math.Int, bool)
-	SetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte, min math.Int) error
+	SetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte, minAmount math.Int) error
+	// TODO: Consider adding DeleteMinBridgeOutAmount to get rid of min amount completely.
 	GetParams(ctx sdk.Context) bridgetypes.Params
 	SaveAssetsUnlocked(
 		ctx sdk.Context,

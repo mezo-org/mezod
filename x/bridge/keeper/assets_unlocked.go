@@ -194,15 +194,42 @@ func (k Keeper) GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) (
 	math.Int,
 	bool,
 ) {
-	// TODO: Implement
-	return math.Int{}, false
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(types.GetMinBridgeOutAmountKey(mezoToken))
+	if bz == nil {
+		return math.Int{}, false
+	}
+
+	var minAmount math.Int
+	err := minAmount.Unmarshal(bz)
+	if err != nil {
+		panic(err)
+	}
+
+	return minAmount, true
 }
 
 func (k Keeper) SetMinBridgeOutAmount(
 	ctx sdk.Context,
 	mezoToken []byte,
-	min math.Int,
+	minAmount math.Int,
 ) error {
-	// TODO: Implement
+	if len(mezoToken) != 20 {
+		return fmt.Errorf("invalid mezo token address length")
+	}
+
+	if !minAmount.IsPositive() {
+		return fmt.Errorf("minimum bridgeable amount must be positive")
+	}
+
+	// TODO: Consider checking if the token is bridgeable (i.e. BTC or mapped
+	//       ERC20)
+	store := ctx.KVStore(k.storeKey)
+	bz, err := minAmount.Marshal()
+	if err != nil {
+		return err
+	}
+
+	store.Set(types.GetMinBridgeOutAmountKey(mezoToken), bz)
 	return nil
 }
