@@ -8,7 +8,10 @@ import (
 // TODO: The `make gen_address` command is done on purpose to generate only contract addresses
 //       for Sepolia. See explanation in the `ethereum/bindings/portal/portal.go` file.
 
-//go:generate make gen_address
+// TODO for TET-1197: Switch back to `make gen_address` once we have a stable release.
+//                    Remember to remove the sepolia/gen/abi and sepolia/gen/contract
+//                    directories as well.
+//go:generate make
 
 var (
 	//go:embed _address/MezoBridge
