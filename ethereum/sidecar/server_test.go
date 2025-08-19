@@ -13,7 +13,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/cmd/config"
-	"github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/sidecar/mezotime"
 	pb "github.com/mezo-org/mezod/ethereum/sidecar/types"
@@ -931,15 +930,15 @@ func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
 
 	tests := map[string]struct {
 		startBlock, endBlock uint64
-		onchainEvents        []*ethereum.MezoBridgeAssetsUnlockConfirmed
+		onchainEvents        []*portal.MezoBridgeAssetsUnlockConfirmed
 		onchainErrors        []error
-		expectedEvents       []*ethereum.MezoBridgeAssetsUnlockConfirmed
+		expectedEvents       []*portal.MezoBridgeAssetsUnlockConfirmed
 		expectedErr          error
 	}{
 		"fetching whole range successful": {
 			200,
 			300,
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{
 				{
 					UnlockSequenceNumber: big.NewInt(100),
 					Recipient:            common.HexToHash("0x0A219c03938FBC93aA23cAd65f7c480f52665C2a"),
@@ -954,7 +953,7 @@ func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
 				},
 			},
 			nil,
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{
 				{
 					UnlockSequenceNumber: big.NewInt(100),
 					Recipient:            common.HexToHash("0x0A219c03938FBC93aA23cAd65f7c480f52665C2a"),
@@ -973,7 +972,7 @@ func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
 		"fetching whole range unsuccessful": {
 			2,
 			5,
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{
 				{
 					UnlockSequenceNumber: big.NewInt(100),
 					Recipient:            common.HexToHash("0x0A219c03938FBC93aA23cAd65f7c480f52665C2a"),
@@ -988,7 +987,7 @@ func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
 				},
 			},
 			[]error{onchainErr, nil},
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{
 				{
 					UnlockSequenceNumber: big.NewInt(100),
 					Recipient:            common.HexToHash("0x0A219c03938FBC93aA23cAd65f7c480f52665C2a"),
@@ -1007,7 +1006,7 @@ func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
 		"error when fetching": {
 			200,
 			300,
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{},
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{},
 			[]error{onchainErr, onchainErr}, // return error twice
 			nil,
 			onchainErr,
@@ -1040,12 +1039,12 @@ func TestFetchAssetsUnlockConfirmedEvents(t *testing.T) {
 func TestFindUnconfirmedAssetsUnlockedEvents(t *testing.T) {
 	tests := map[string]struct {
 		inputEvents    []bridgetypes.AssetsUnlockedEvent
-		onchainEvents  []*ethereum.MezoBridgeAssetsUnlockConfirmed
+		onchainEvents  []*portal.MezoBridgeAssetsUnlockConfirmed
 		expectedEvents []bridgetypes.AssetsUnlockedEvent
 	}{
 		"empty input events": {
 			[]bridgetypes.AssetsUnlockedEvent{},
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{
 				{
 					UnlockSequenceNumber: big.NewInt(100),
 					Amount:               big.NewInt(1000000),
@@ -1068,7 +1067,7 @@ func TestFindUnconfirmedAssetsUnlockedEvents(t *testing.T) {
 					Amount:         sdkmath.NewInt(1002),
 				},
 			},
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{
 				{
 					UnlockSequenceNumber: big.NewInt(99),
 				},
@@ -1099,7 +1098,7 @@ func TestFindUnconfirmedAssetsUnlockedEvents(t *testing.T) {
 					Amount:         sdkmath.NewInt(1002),
 				},
 			},
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{
 				{
 					UnlockSequenceNumber: big.NewInt(101),
 				},
@@ -1130,7 +1129,7 @@ func TestFindUnconfirmedAssetsUnlockedEvents(t *testing.T) {
 					Amount:         sdkmath.NewInt(1002),
 				},
 			},
-			[]*ethereum.MezoBridgeAssetsUnlockConfirmed{
+			[]*portal.MezoBridgeAssetsUnlockConfirmed{
 				// some earlier event is confirmed
 				{
 					UnlockSequenceNumber: big.NewInt(99),

@@ -3,8 +3,9 @@ package portal
 import (
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethereumgen "github.com/mezo-org/mezod/ethereum/bindings/portal/ethereum/gen"
-	ethereumabi "github.com/mezo-org/mezod/ethereum/bindings/portal/ethereum/gen/abi"
 	sepoliagen "github.com/mezo-org/mezod/ethereum/bindings/portal/sepolia/gen"
+	sepoliaabi "github.com/mezo-org/mezod/ethereum/bindings/portal/sepolia/gen/abi"
+	sepoliacontract "github.com/mezo-org/mezod/ethereum/bindings/portal/sepolia/gen/contract"
 )
 
 // TODO: The current bindings implementation uses a simplified approach for handling multiple Ethereum networks.
@@ -34,10 +35,11 @@ func MezoBridgeAddress(network ethconfig.Network) string {
 	}
 }
 
+// TODO for TET-1197: Switch back to Ethereum mainnet bindings.
 type (
-	MezoBridge                     = ethereumabi.MezoBridge
-	MezoBridgeAssetsLocked         = ethereumabi.MezoBridgeAssetsLocked
-	MezoBridgeAssetsLockedIterator = ethereumabi.MezoBridgeAssetsLockedIterator
+	MezoBridge                      = sepoliacontract.MezoBridge
+	MezoBridgeAssetsLocked          = sepoliaabi.MezoBridgeAssetsLocked
+	MezoBridgeAssetsUnlockConfirmed = sepoliaabi.MezoBridgeAssetsUnlockConfirmed
 )
 
-var NewMezoBridge = ethereumabi.NewMezoBridge
+var NewMezoBridge = sepoliacontract.NewMezoBridge
