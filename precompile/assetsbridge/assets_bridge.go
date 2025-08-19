@@ -163,6 +163,7 @@ func NewPrecompile(
 
 	if settings.BridgeOut {
 		methods = append(methods, newBridgeOutMethod(bridgeKeeper, authzKeeper))
+		methods = append(methods, newSetMinBridgeOutAmountMethod(poaKeeper, bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
