@@ -19,6 +19,7 @@ type BridgeContract interface {
 	ValidatorIDs(address common.Address) (uint8, error)
 	ConfirmedUnlocks(sequenceNumber *big.Int) (bool, error)
 	Attestations(hash [32]byte) (*big.Int, error)
+	BridgeValidatorsCount() (*big.Int, error)
 	PastAssetsLockedEvents(
 		startBlock uint64,
 		endBlock *uint64,

@@ -83,3 +83,7 @@ func (r *BridgeContract) PastAssetsUnlockConfirmedEvents(
 	}
 	return events, nil
 }
+
+func (r *BridgeContract) BridgeValidatorsCount() (*big.Int, error) {
+	return r.delegate.BridgeValidatorsCount()
+}

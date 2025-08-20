@@ -144,6 +144,7 @@ type Server struct {
 
 	attestationValidator *AttestationValidation
 	blockCounter         *ethconfig.BlockCounter
+	submissionQueue      *SubmissionQueue
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -206,6 +207,12 @@ func RunServer(
 		chain.Key().Address,
 	)
 
+	submissionQueue := NewSubmissionQueue(
+		logger,
+		bridgeContract,
+		chain.Key().Address,
+	)
+
 	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
 		assetsUnlockedEndpoint,
 		registry,
@@ -231,6 +238,7 @@ func RunServer(
 		privateKey:                   privateKey,
 		attestationValidator:         attestationValidator,
 		blockCounter:                 chain.BlockCounter(),
+		submissionQueue:              submissionQueue,
 	}
 
 	go func() {
@@ -993,6 +1001,22 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					Chain:                uint8(attestation.Chain), //nolint:gosec // G115: Chain is known to be within uint8 range
 				}
 
+				delay, err := s.submissionQueue.GetSubmissionDelay(&bridgeAssetsUnlocked)
+				if err != nil {
+					// TODO: what should we do here??
+					s.logger.Error("couldn't get submission delay", "attestation", attestation.String(), "error", err)
+				}
+
+				s.logger.Debug("waiting for attestation submission slot", "delay", delay)
+
+				// wait for our turn to submit
+				select {
+				case <-time.After(delay):
+					// proceed with attestation
+				case <-ctx.Done():
+					return
+				}
+
 				for {
 					err := s.attestationValidator.IsConfirmed(&bridgeAssetsUnlocked)
 					if errors.Is(err, ErrInvalidAttestation) {
@@ -1015,7 +1039,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 					s.logger.Debug("attestation sent, waiting for confirmation", "txHash", tx.Hash().Hex())
 
-					finalized, err := s.chain.FinalizedBlock(context.Background())
+					finalized, err := s.chain.FinalizedBlock(ctx)
 					if err != nil {
 						s.logger.Error("couldn't get chain finalized block", "error", err)
 						continue
@@ -1039,6 +1063,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 			s.logger.Info(
 				"stopping assets unlocked attestations to context cancellation",
 			)
+			return
 		}
 	}
 }

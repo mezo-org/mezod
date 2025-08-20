@@ -115,3 +115,7 @@ func (lbc *localBridgeContract) ConfirmedUnlocks(_ *big.Int) (bool, error) {
 func (lbc *localBridgeContract) Attestations(_ [32]byte) (*big.Int, error) {
 	return nil, nil
 }
+
+func (lbc *localBridgeContract) BridgeValidatorsCount() (*big.Int, error) {
+	return big.NewInt(0), nil
+}
