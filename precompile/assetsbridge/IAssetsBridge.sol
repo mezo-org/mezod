@@ -64,6 +64,16 @@ interface IAssetsBridge {
     );
 
     /**
+     * @notice Emitted when the minimum bridge-out amount for a token is updated.
+     * @param mezoToken The address of the token on the Mezo chain.
+     * @param minAmount The new minimum bridgeable amount for this token.
+     */
+    event MinBridgeOutAmountSet(
+        address indexed mezoToken,
+        uint256 minAmount
+    );
+
+    /**
      * @notice Helper function used to enable bridged assets observability.
      */
     function bridge(AssetsLocked[] memory events) external returns (bool);
@@ -135,4 +145,23 @@ interface IAssetsBridge {
      * @return True if the call succeeded, false otherwise.
      */
     function bridgeOut(address token, uint256 amount, uint8 chain, bytes calldata recipient) external returns (bool);
+
+    /**
+     * @notice Sets the minimum bridge-out amount for the given token.
+     * @param mezoToken The address of the token on the Mezo chain.
+     * @param minAmount The new minimum amount for the given token.
+     * @dev Requirements:
+     *      - The caller must be the contract owner,
+     *      - The mezoToken address must not be the zero address,
+     *      - The minAmount must be positive.
+     */
+    function setMinBridgeOutAmount(address mezoToken, uint256 minAmount) external returns (bool);
+
+    /**
+    * @notice Returns the minimum bridge-out amount (if set) for a Mezo token.
+    * @param mezoToken The address of the token on the Mezo chain.
+    * @return minAmount The current minimum amount for the token (0 if unset).
+    * @return isSet True if a minimum is set, false otherwise.
+    */
+    function getMinBridgeOutAmount(address mezoToken) external view returns (uint256 minAmount, bool isSet);
 }

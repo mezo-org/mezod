@@ -41,4 +41,12 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function getSourceBTCToken() external view returns (address) {
         return IAssetsBridge(precompile).getSourceBTCToken();
     }
+
+    function setMinBridgeOutAmount(address mezoToken, uint256 minAmount) external returns (bool) {
+        return IAssetsBridge(precompile).setMinBridgeOutAmount(mezoToken, minAmount);
+    }
+
+    function getMinBridgeOutAmount(address mezoToken) external view returns (uint256, bool) {
+        return IAssetsBridge(precompile).getMinBridgeOutAmount(mezoToken);
+    }
 }
