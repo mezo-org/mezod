@@ -73,7 +73,7 @@ func (m *SetMinBridgeOutAmountMethod) Run(
 	}
 
 	if minAmount.Sign() <= 0 {
-		return nil, fmt.Errorf("minimum amount must be negative")
+		return nil, fmt.Errorf("minimum amount must be positive")
 	}
 
 	err := m.poaKeeper.CheckOwner(
