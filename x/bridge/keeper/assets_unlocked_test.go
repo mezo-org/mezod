@@ -430,3 +430,27 @@ func TestBurnERC20(t *testing.T) {
 		})
 	}
 }
+
+func TestGetMinBridgeOutAmount(t *testing.T) {
+	ctx, k := mockContext()
+
+	token1, err := hex.DecodeString(testMezoERC20Token1[2:])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	minAmount := math.NewInt(20000)
+	k.SetMinBridgeOutAmount(ctx, token1, minAmount)
+
+	actualMinAmount1 := k.GetMinBridgeOutAmount(ctx, token1)
+	require.EqualValues(t, minAmount, actualMinAmount1)
+
+	// Check for unknown token
+	token2, err := hex.DecodeString(testMezoERC20Token2[2:])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actualMinAmount2 := k.GetMinBridgeOutAmount(ctx, token2)
+	require.EqualValues(t, math.ZeroInt(), actualMinAmount2)
+}
