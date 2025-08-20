@@ -63,6 +63,10 @@ func (m *SetMinBridgeOutAmountMethod) Run(
 		return nil, fmt.Errorf("mezo token must be common.Address")
 	}
 
+	if (mezoToken == common.Address{}) {
+		return nil, fmt.Errorf("mezo token cannot be the zero address")
+	}
+
 	minAmount, ok := inputs[1].(*big.Int)
 	if !ok {
 		return nil, fmt.Errorf("invalid minimum amount: %v", inputs[1])
@@ -72,8 +76,8 @@ func (m *SetMinBridgeOutAmountMethod) Run(
 		return nil, fmt.Errorf("minimum amount is required")
 	}
 
-	if minAmount.Sign() < 0 {
-		return nil, fmt.Errorf("minimum amount cannot be negative")
+	if minAmount.Sign() <= 0 {
+		return nil, fmt.Errorf("minimum amount must be negative")
 	}
 
 	err := m.poaKeeper.CheckOwner(
