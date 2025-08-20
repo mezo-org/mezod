@@ -4,6 +4,8 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"google.golang.org/grpc/encoding"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -92,7 +94,14 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to extract private key: %w", err)
 		}
-		logger.Info("Successfully extracted private key from keyring", "key-name", keyName)
+		logger.Info("successfully extracted private key from keyring", "key-name", keyName)
+	} else {
+		// If the key name is not provided, generate a random key. This key
+		// won't be used by the sidcar for signing but is needed to be present.
+		privateKey, err = crypto.GenerateKey()
+		if err != nil {
+			return fmt.Errorf("failed to generate private key: %w", err)
+		}
 	}
 
 	sidecar.RunServer(

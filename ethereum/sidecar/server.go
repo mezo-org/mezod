@@ -14,10 +14,8 @@ import (
 	sdkmath "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
-	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/sidecar/mezotime"
@@ -178,17 +176,21 @@ func RunServer(
 
 	var err error
 	// Connect to the Ethereum network
-	chain, err := ethconnect.Connect(ctx, ethconfig.Config{
-		Network:           network,
-		URL:               providerURL,
-		ContractAddresses: map[string]string{mezoBridgeName: mezoBridgeAddress},
-	})
+	chain, err := ethconnect.Connect(
+		ctx,
+		ethconfig.Config{
+			Network:           network,
+			URL:               providerURL,
+			ContractAddresses: map[string]string{mezoBridgeName: mezoBridgeAddress},
+		},
+		privateKey,
+	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to the Ethereum network: %v", err))
 	}
 
 	// Initialize the MezoBridge contract instance.
-	bridgeContract, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain.Client())
+	bridgeContract, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
@@ -486,16 +488,17 @@ func (s *Server) fetchAssetsLockedABIEvents(
 		"endBlock", endBlock,
 	)
 
-	abiEvents := make([]*portal.MezoBridgeAssetsLocked, 0)
+	result := make([]*portal.MezoBridgeAssetsLocked, 0)
 
 	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute)) //nolint:gosec
 	defer ticker.Stop()
 
-	iterator, err := s.bridgeContract.FilterAssetsLocked(
-		&bind.FilterOpts{
-			Start: startBlock,
-			End:   &endBlock,
-		}, nil, nil, nil,
+	events, err := s.bridgeContract.PastAssetsLockedEvents(
+		startBlock,
+		&endBlock,
+		nil,
+		nil,
+		nil,
 	)
 	if err != nil {
 		s.logger.Warn(
@@ -522,11 +525,12 @@ func (s *Server) fetchAssetsLockedABIEvents(
 
 			<-ticker.C
 
-			batchIterator, batchErr := s.bridgeContract.FilterAssetsLocked(
-				&bind.FilterOpts{
-					Start: batchStartBlock,
-					End:   &batchEndBlock,
-				}, nil, nil, nil,
+			batchEvents, batchErr := s.bridgeContract.PastAssetsLockedEvents(
+				batchStartBlock,
+				&batchEndBlock,
+				nil,
+				nil,
+				nil,
 			)
 			if batchErr != nil {
 				return nil, fmt.Errorf(
@@ -535,19 +539,15 @@ func (s *Server) fetchAssetsLockedABIEvents(
 				)
 			}
 
-			for batchIterator.Next() {
-				abiEvents = append(abiEvents, batchIterator.Event())
-			}
+			result = append(result, batchEvents...)
 
 			batchStartBlock = batchEndBlock + 1
 		}
 	} else {
-		for iterator.Next() {
-			abiEvents = append(abiEvents, iterator.Event())
-		}
+		result = append(result, events...)
 	}
 
-	return abiEvents, nil
+	return result, nil
 }
 
 // startGRPCServer starts the gRPC server and registers the Ethereum sidecar
@@ -882,23 +882,24 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 func (s *Server) fetchAssetsUnlockConfirmedEvents(
 	startBlock uint64,
 	endBlock uint64,
-) ([]*ethconnect.MezoBridgeAssetsUnlockConfirmed, error) {
+) ([]*portal.MezoBridgeAssetsUnlockConfirmed, error) {
 	s.logger.Info(
 		"fetching AssetsUnlockConfirmed events from range",
 		"startBlock", startBlock,
 		"endBlock", endBlock,
 	)
 
-	abiEvents := make([]*ethconnect.MezoBridgeAssetsUnlockConfirmed, 0)
+	result := make([]*portal.MezoBridgeAssetsUnlockConfirmed, 0)
 
 	ticker := time.NewTicker(time.Minute / time.Duration(s.requestsPerMinute)) //nolint:gosec
 	defer ticker.Stop()
 
-	iterator, err := s.bridgeContract.FilterAssetsUnlockConfirmed(
-		&bind.FilterOpts{
-			Start: startBlock,
-			End:   &endBlock,
-		}, nil, nil, nil,
+	events, err := s.bridgeContract.PastAssetsUnlockConfirmedEvents(
+		startBlock,
+		&endBlock,
+		nil,
+		nil,
+		nil,
 	)
 	if err != nil {
 		s.logger.Warn(
@@ -925,11 +926,12 @@ func (s *Server) fetchAssetsUnlockConfirmedEvents(
 
 			<-ticker.C
 
-			batchIterator, batchErr := s.bridgeContract.FilterAssetsUnlockConfirmed(
-				&bind.FilterOpts{
-					Start: batchStartBlock,
-					End:   &batchEndBlock,
-				}, nil, nil, nil,
+			batchEvents, batchErr := s.bridgeContract.PastAssetsUnlockConfirmedEvents(
+				batchStartBlock,
+				&batchEndBlock,
+				nil,
+				nil,
+				nil,
 			)
 			if batchErr != nil {
 				return nil, fmt.Errorf(
@@ -938,19 +940,15 @@ func (s *Server) fetchAssetsUnlockConfirmedEvents(
 				)
 			}
 
-			for batchIterator.Next() {
-				abiEvents = append(abiEvents, batchIterator.Event())
-			}
+			result = append(result, batchEvents...)
 
 			batchStartBlock = batchEndBlock + 1
 		}
 	} else {
-		for iterator.Next() {
-			abiEvents = append(abiEvents, iterator.Event())
-		}
+		result = append(result, events...)
 	}
 
-	return abiEvents, nil
+	return result, nil
 }
 
 //nolint:unparam
@@ -1016,9 +1014,18 @@ func (s *Server) AssetsLockedEvents(
 // Construct a new instance of the Ethereum MezoBridge contract.
 func initializeBridgeContract(
 	address common.Address,
-	client ethutil.EthereumClient,
+	chain *ethconnect.BaseChain,
 ) (*portal.MezoBridge, error) {
-	bridgeContract, err := portal.NewMezoBridge(address, client)
+	bridgeContract, err := portal.NewMezoBridge(
+		address,
+		chain.ChainID(),
+		chain.Key(),
+		chain.Client(),
+		chain.NonceManager(),
+		chain.MiningWaiter(),
+		chain.BlockCounter(),
+		chain.TransactionMutex(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach to MezoBridge contract. %v", err)
 	}
