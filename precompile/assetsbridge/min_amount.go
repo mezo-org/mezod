@@ -72,10 +72,6 @@ func (m *SetMinBridgeOutAmountMethod) Run(
 		return nil, fmt.Errorf("invalid minimum amount: %v", inputs[1])
 	}
 
-	if minAmount == nil {
-		return nil, fmt.Errorf("minimum amount is required")
-	}
-
 	if minAmount.Sign() <= 0 {
 		return nil, fmt.Errorf("minimum amount must be negative")
 	}
