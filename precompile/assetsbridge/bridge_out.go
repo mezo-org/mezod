@@ -295,12 +295,12 @@ func (m *BridgeOutMethod) validateAmount(
 		return fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 
-	minAmount, found := m.bridgeKeeper.GetMinBridgeOutAmount(
+	minAmount := m.bridgeKeeper.GetMinBridgeOutAmount(
 		sdkCtx,
 		token.Bytes(),
 	)
 
-	if found && sdkAmount.LT(minAmount) {
+	if sdkAmount.LT(minAmount) {
 		return fmt.Errorf(
 			"amount below minimum bridgeable amount: %s < %s",
 			sdkAmount,

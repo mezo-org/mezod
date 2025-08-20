@@ -202,20 +202,12 @@ func (m *GetMinBridgeOutAmountMethod) Run(
 		return nil, fmt.Errorf("token must be common.Address")
 	}
 
-	minAmount, found := m.bridgeKeeper.GetMinBridgeOutAmount(
+	minAmount := m.bridgeKeeper.GetMinBridgeOutAmount(
 		context.SdkCtx(),
 		token.Bytes(),
 	)
 
-	if !found {
-		return precompile.MethodOutputs{
-			big.NewInt(0),
-			false,
-		}, nil
-	}
-
 	return precompile.MethodOutputs{
 		minAmount.BigInt(),
-		true,
 	}, nil
 }

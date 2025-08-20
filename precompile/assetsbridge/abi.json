@@ -337,13 +337,8 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "minAmount",
+        "name": "",
         "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "isSet",
-        "type": "bool"
       }
     ],
     "stateMutability": "view",

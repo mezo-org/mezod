@@ -330,9 +330,9 @@ func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
 func (k *FakeBridgeKeeper) GetMinBridgeOutAmount(
 	_ sdk.Context,
 	_ []byte,
-) (math.Int, bool) {
+) math.Int {
 	// TODO: Implement and use in tests
-	return math.Int{}, false
+	return math.ZeroInt()
 }
 
 func (k *FakeBridgeKeeper) SetMinBridgeOutAmount(

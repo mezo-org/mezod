@@ -132,6 +132,6 @@ task(
     .addParam('mezoToken', 'The address of the token on the Mezo chain')
     .setAction(async (taskArguments, hre) => {
       const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
-      const [minAmount, isSet] = await bridge.getMinBridgeOutAmount(taskArguments.mezoToken)
-      console.log(JSON.stringify({ minAmount: minAmount.toString(), isSet }, null, 2))
+      const minAmount = await bridge.getMinBridgeOutAmount(taskArguments.mezoToken)
+      console.log(minAmount)
   })

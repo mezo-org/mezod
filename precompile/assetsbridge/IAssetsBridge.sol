@@ -160,8 +160,7 @@ interface IAssetsBridge {
     /**
     * @notice Returns the minimum bridge-out amount (if set) for a Mezo token.
     * @param mezoToken The address of the token on the Mezo chain.
-    * @return minAmount The current minimum amount for the token (0 if unset).
-    * @return isSet True if a minimum is set, false otherwise.
+    * @return The current minimum amount for the token (0 if unset).
     */
-    function getMinBridgeOutAmount(address mezoToken) external view returns (uint256 minAmount, bool isSet);
+    function getMinBridgeOutAmount(address mezoToken) external view returns (uint256);
 }
