@@ -15,10 +15,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
@@ -146,13 +143,7 @@ type Server struct {
 	privateKey *ecdsa.PrivateKey
 
 	attestationValidator *AttestationValidation
-	blockCounter         *ethereum.BlockCounter
-}
-
-type noopTransactor struct{}
-
-func (t *noopTransactor) AttestBridgeOut(_ *bind.TransactOpts, _ *bridgetypes.AssetsUnlockedEvent) (*types.Transaction, error) {
-	return nil, nil
+	blockCounter         *ethconfig.BlockCounter
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -999,7 +990,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					Recipient:            attestation.Recipient,
 					Token:                common.HexToAddress(attestation.Token),
 					Amount:               attestation.Amount.BigInt(),
-					Chain:                uint8(attestation.Chain),
+					Chain:                uint8(attestation.Chain), //nolint:gosec // G115: Chain is known to be within uint8 range
 				}
 
 				for {

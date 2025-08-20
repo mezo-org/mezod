@@ -92,26 +92,26 @@ func (lbc *localBridgeContract) SetErrors(errors []error) {
 	lbc.errors = errors
 }
 
-func (r *localBridgeContract) ValidateAssetsUnlocked(
+func (lbc *localBridgeContract) ValidateAssetsUnlocked(
 	_ portal.MezoBridgeAssetsUnlocked,
 ) (bool, error) {
 	return true, nil
 }
 
-func (r *localBridgeContract) AttestBridgeOut(
-	assetsUnlocked *portal.MezoBridgeAssetsUnlocked,
+func (lbc *localBridgeContract) AttestBridgeOut(
+	_ *portal.MezoBridgeAssetsUnlocked,
 ) (*types.Transaction, error) {
 	return nil, nil
 }
 
-func (r *localBridgeContract) ValidatorIDs(_ common.Address) (uint8, error) {
+func (lbc *localBridgeContract) ValidatorIDs(_ common.Address) (uint8, error) {
 	return 0, nil
 }
 
-func (r *localBridgeContract) ConfirmedUnlocks(_ *big.Int) (bool, error) {
+func (lbc *localBridgeContract) ConfirmedUnlocks(_ *big.Int) (bool, error) {
 	return true, nil
 }
 
-func (r *localBridgeContract) Attestations(_ [32]byte) (*big.Int, error) {
+func (lbc *localBridgeContract) Attestations(_ [32]byte) (*big.Int, error) {
 	return nil, nil
 }

@@ -87,19 +87,18 @@ func (av *AttestationValidation) checkOwnConfirmation(
 		return fmt.Errorf("couldn't get confirmedLock: %w", err)
 	}
 
-	validatorId, err := av.bridgeContract.ValidatorIDs(av.address)
+	validatorID, err := av.bridgeContract.ValidatorIDs(av.address)
 	if err != nil {
 		return fmt.Errorf("couldn't get validator ID: %w", err)
 	}
 
-	mask := new(big.Int).Lsh(big.NewInt(1), uint(validatorId))
+	mask := new(big.Int).Lsh(big.NewInt(1), uint(validatorID))
 
 	if new(big.Int).And(bitmap, mask).Int64() != 0 {
 		return ErrValidatorNotInTheBitmap
 	}
 
 	return nil
-
 }
 
 func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked) ([]byte, error) {

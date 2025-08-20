@@ -11,9 +11,7 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-var (
-	bridgeAddress = common.HexToAddress("0xB81057aB093B161b53049bDC9edb6c6cE8472784")
-)
+var bridgeAddress = common.HexToAddress("0xB81057aB093B161b53049bDC9edb6c6cE8472784")
 
 type testAttestationValidation struct {
 	*AttestationValidation
