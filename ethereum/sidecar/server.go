@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
@@ -145,6 +146,7 @@ type Server struct {
 	privateKey *ecdsa.PrivateKey
 
 	attestationValidator *AttestationValidation
+	blockCounter         *ethereum.BlockCounter
 }
 
 type noopTransactor struct{}
@@ -237,6 +239,7 @@ func RunServer(
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
 		privateKey:                   privateKey,
 		attestationValidator:         attestationValidator,
+		blockCounter:                 chain.BlockCounter(),
 	}
 
 	go func() {
@@ -1014,12 +1017,31 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 					tx, err := s.bridgeContract.AttestBridgeOut(&bridgeAssetsUnlocked)
 					if err != nil {
-						s.logger.Error("error sending attestation %cv to MezoBridge: %v, rescheduling to be executed later", attestation.String(), err)
+						s.logger.Error("error sending attestation %cv to MezoBridge: %v", attestation.String(), err)
 						// just log the error then try again
 						continue
 					}
 
-					s.logger.Debug("attestation sent", "txHash", tx.Hash().Hex())
+					s.logger.Debug("attestation sent, waiting for confirmation", "txHash", tx.Hash().Hex())
+
+					finalized, err := s.chain.FinalizedBlock(context.Background())
+					if err != nil {
+						s.logger.Error("couldn't get chain finalized block", "error", err)
+						continue
+					}
+
+					err = s.attestationValidator.WaitForConfirmation(
+						s.blockCounter,
+						finalized.Uint64(),
+						64, // this is 2 epoch // finalized block
+						&bridgeAssetsUnlocked,
+					)
+					if err != nil {
+						s.logger.Error("couldn't confirm transaction", attestation.String(), err)
+						continue
+					}
+
+					s.logger.Debug("attestation confirmed successfully")
 				}
 			}
 		case <-ctx.Done():
