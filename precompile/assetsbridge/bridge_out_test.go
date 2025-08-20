@@ -128,6 +128,7 @@ func (k *ExtendedFakeBridgeKeeper) Reset() {
 	k.assetsUnlockedCalled = false
 	k.lastAssetsUnlocked = nil
 	k.burnErr = nil
+	k.minAmountByToken = make(map[string]math.Int)
 }
 
 type BridgeOutTestSuite struct {
@@ -211,6 +212,58 @@ func (s *BridgeOutTestSuite) TestBridgeOutTokenValidation() {
 			basicPass:   true,
 			revert:      true,
 			errContains: "unsupported token",
+		},
+	}
+
+	s.RunMethodTestCasesWithKeepers(testcases, "bridgeOut")
+}
+
+func (s *BridgeOutTestSuite) TestBridgeOutAmountValidation() {
+	testcases := []TestCase{
+		{
+			name: "minimum bridgeable amount not set",
+			run: func() []interface{} {
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
+				return []interface{}{testERC20Token, big.NewInt(200), uint8(0), ethRecipient}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+		},
+		{
+			name: "amount below minimum bridgeable amount",
+			run: func() []interface{} {
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
+				_ = s.extBridgeKeeper.SetMinBridgeOutAmount(s.ctx, testERC20Token.Bytes(), math.NewInt(200))
+				return []interface{}{testERC20Token, big.NewInt(199), uint8(0), ethRecipient}
+			},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "amount below minimum bridgeable amount",
+			output:      nil,
+		},
+		{
+			name: "amount equal to minimum bridgeable amount",
+			run: func() []interface{} {
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
+				_ = s.extBridgeKeeper.SetMinBridgeOutAmount(s.ctx, testERC20Token.Bytes(), math.NewInt(200))
+				return []interface{}{testERC20Token, big.NewInt(200), uint8(0), ethRecipient}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+		},
+		{
+			name: "amount above minimum bridgeable amount",
+			run: func() []interface{} {
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
+				_ = s.extBridgeKeeper.SetMinBridgeOutAmount(s.ctx, testERC20Token.Bytes(), math.NewInt(200))
+				return []interface{}{testERC20Token, big.NewInt(201), uint8(0), ethRecipient}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
 		},
 	}
 
