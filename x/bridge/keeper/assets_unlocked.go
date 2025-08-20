@@ -193,7 +193,7 @@ func (k Keeper) BurnERC20(
 func (k Keeper) GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) math.Int {
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get(types.GetMinBridgeOutAmountKey(mezoToken))
-	if bz == nil {
+	if len(bz) == 0 {
 		return math.ZeroInt()
 	}
 
