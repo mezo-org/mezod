@@ -41,4 +41,16 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function getSourceBTCToken() external view returns (address) {
         return IAssetsBridge(precompile).getSourceBTCToken();
     }
+
+    function setOutflowLimit(address token, uint256 limit) external returns (bool) {
+        return IAssetsBridge(precompile).setOutflowLimit(token, limit);
+    }
+
+    function getOutflowLimit(address token) external view returns (uint256) {
+        return IAssetsBridge(precompile).getOutflowLimit(token);
+    }
+
+    function getOutflowCapacity(address token) external view returns (uint256 capacity, uint256 resetHeight) {
+        return IAssetsBridge(precompile).getOutflowCapacity(token);
+    }
 }
