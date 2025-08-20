@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
 
@@ -89,4 +90,28 @@ func (lbc *localBridgeContract) SetErrors(errors []error) {
 	lbc.mutex.Lock()
 	defer lbc.mutex.Unlock()
 	lbc.errors = errors
+}
+
+func (r *localBridgeContract) ValidateAssetsUnlocked(
+	_ portal.MezoBridgeAssetsUnlocked,
+) (bool, error) {
+	return true, nil
+}
+
+func (r *localBridgeContract) AttestBridgeOut(
+	assetsUnlocked *portal.MezoBridgeAssetsUnlocked,
+) (*types.Transaction, error) {
+	return nil, nil
+}
+
+func (r *localBridgeContract) ValidatorIDs(_ common.Address) (uint8, error) {
+	return 0, nil
+}
+
+func (r *localBridgeContract) ConfirmedUnlocks(_ *big.Int) (bool, error) {
+	return true, nil
+}
+
+func (r *localBridgeContract) Attestations(_ [32]byte) (*big.Int, error) {
+	return nil, nil
 }

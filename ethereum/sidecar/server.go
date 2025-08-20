@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -14,12 +15,9 @@ import (
 	sdkmath "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rpc"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
@@ -146,7 +144,7 @@ type Server struct {
 	// privateKey is an optional ECDSA private key extracted from keyring
 	privateKey *ecdsa.PrivateKey
 
-	txExecutor *IndividualAttestationTransactionExecutor
+	attestationValidator *AttestationValidation
 }
 
 type noopTransactor struct{}
@@ -203,23 +201,17 @@ func RunServer(
 	}
 
 	// Initialize the MezoBridge contract instance.
-	bridgeContract, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
+	bridgeContractInstance, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
-	txExecutor, err := NewIndividualAttestationTransactionExecutor(
-		logger,
-		privateKey,
-		chain,
-		common.HexToAddress(mezoBridgeAddress),
-		// TODO: use it when it bindings are generated
-		// bridgeContractTransactor,
-		&noopTransactor{},
+	bridgeContract := NewBridgeContract(bridgeContractInstance)
+
+	attestationValidator := NewAttestationValidation(
+		bridgeContract,
+		chain.Key().Address,
 	)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create individual attestation transaction executor: %v", err))
-	}
 
 	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
 		assetsUnlockedEndpoint,
@@ -234,7 +226,7 @@ func RunServer(
 		grpcServer:                   grpc.NewServer(),
 		assetsLockedEvents:           make([]bridgetypes.AssetsLockedEvent, 0),
 		lastFinalizedBlock:           new(big.Int),
-		bridgeContract:               NewBridgeContract(bridgeContract),
+		bridgeContract:               bridgeContract,
 		chain:                        chain,
 		batchSize:                    batchSize,
 		requestsPerMinute:            requestsPerMinute,
@@ -244,7 +236,7 @@ func RunServer(
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
 		privateKey:                   privateKey,
-		txExecutor:                   txExecutor,
+		attestationValidator:         attestationValidator,
 	}
 
 	go func() {
@@ -998,20 +990,37 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			// get attestations if any
 			for attestation := s.unqueueAttestation(); attestation != nil; attestation = s.unqueueAttestation() {
+				bridgeAssetsUnlocked := portal.MezoBridgeAssetsUnlocked{
+					UnlockSequenceNumber: attestation.UnlockSequence.BigInt(),
+					Recipient:            attestation.Recipient,
+					Token:                common.HexToAddress(attestation.Token),
+					Amount:               attestation.Amount.BigInt(),
+					Chain:                uint8(attestation.Chain),
+				}
 
-				// try to execute this transaction until we have done so successfully.
-				retry := true
-				for retry && s.shouldAttest(attestation) {
-					if err := s.txExecutor.Send(attestation); err != nil {
+				for {
+					err := s.attestationValidator.IsConfirmed(&bridgeAssetsUnlocked)
+					if errors.Is(err, ErrInvalidAttestation) {
+						// we log an error and skip it
+						s.logger.Error("invalid attestation -- skipping", "attestation", attestation.String(), "error", err)
+						break
+					} else if err == nil {
+						// nothing to do
+						break
+					}
+
+					s.logger.Debug("attestation status", "attestation", attestation.String(), "error", err)
+
+					tx, err := s.bridgeContract.AttestBridgeOut(&bridgeAssetsUnlocked)
+					if err != nil {
 						s.logger.Error("error sending attestation %cv to MezoBridge: %v, rescheduling to be executed later", attestation.String(), err)
+						// just log the error then try again
 						continue
 					}
 
-					retry = false
+					s.logger.Debug("attestation sent", "txHash", tx.Hash().Hex())
 				}
-
 			}
 		case <-ctx.Done():
 			s.logger.Info(
@@ -1019,49 +1028,6 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 			)
 		}
 	}
-}
-
-func (s *Server) shouldAttest(attestation *bridgetypes.AssetsUnlockedEvent) bool {
-	callOpts := &bind.CallOpts{
-		BlockNumber: big.NewInt(int64(rpc.FinalizedBlockNumber)),
-	}
-
-	ok, err := s.bridgeContract.ConfirmedUnlocks(callOpts, attestation.Amount.BigInt())
-	if err != nil {
-		s.logger.Error("couldn't get confirmedLocks", "error", err)
-		return true
-	}
-	if ok {
-		return false
-	}
-
-	encoded, err := abiEncodeAttestation(attestation)
-	if err != nil {
-		s.logger.Error("couldn't ABI encode attestation", "error", err)
-		return true
-	}
-
-	hash := crypto.Keccak256Hash(encoded)
-
-	bitmap, err := s.bridgeContract.Attestations(callOpts, hash)
-	if err != nil {
-		s.logger.Error("couldn't get confirmedLocks", "error", err)
-		return true
-	}
-
-	validatorId, err := s.bridgeContract.ValidatorIDs(callOpts, s.txExecutor.address)
-	if err != nil {
-		s.logger.Error("couldn't get validator ID", "error", err)
-		return true
-	}
-
-	mask := new(big.Int).Lsh(big.NewInt(1), uint(validatorId))
-
-	if new(big.Int).And(bitmap, mask).Int64() != 0 {
-		return false
-	}
-
-	return true
 }
 
 // Version return the current version of the ethereum sidecar.
@@ -1137,37 +1103,4 @@ func initializeBridgeContract(
 	}
 
 	return bridgeContract, nil
-}
-
-func abiEncodeAttestation(attestation *bridgetypes.AssetsUnlockedEvent) ([]byte, error) {
-	uint256Type, err := abi.NewType("uint256", "uint256", nil)
-	if err != nil {
-		return nil, err
-	}
-	bytesType, err := abi.NewType("bytes", "bytes", nil)
-	if err != nil {
-		return nil, err
-	}
-	addressType, err := abi.NewType("address", "address", nil)
-	if err != nil {
-		return nil, err
-	}
-	uint8Type, err := abi.NewType("uint8", "uint8", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return abi.Arguments{
-		{Type: uint256Type},
-		{Type: bytesType},
-		{Type: addressType},
-		{Type: uint256Type},
-		{Type: uint8Type},
-	}.Pack(
-		attestation.UnlockSequence.BigInt(),
-		attestation.Recipient,
-		attestation.Token,
-		attestation.Amount.BigInt(),
-		attestation.Chain,
-	)
 }
