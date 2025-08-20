@@ -211,24 +211,6 @@ func (k Keeper) SetMinBridgeOutAmount(
 	mezoToken []byte,
 	minAmount math.Int,
 ) error {
-	if len(mezoToken) != 20 {
-		return fmt.Errorf("invalid mezo token address length")
-	}
-
-	if !minAmount.IsPositive() {
-		return fmt.Errorf("minimum bridgeable amount must be positive")
-	}
-
-	// Ensure token is bridgeable: BTC precompile or mapped ERC20
-	btcToken := evmtypes.HexAddressToBytes(
-		evmtypes.BTCTokenPrecompileAddress,
-	)
-	if !bytes.Equal(mezoToken, btcToken) {
-		if _, ok := k.GetERC20TokenMappingFromMezoToken(ctx, mezoToken); !ok {
-			return fmt.Errorf("token is not bridgeable")
-		}
-	}
-
 	store := ctx.KVStore(k.storeKey)
 	bz, err := minAmount.Marshal()
 	if err != nil {
