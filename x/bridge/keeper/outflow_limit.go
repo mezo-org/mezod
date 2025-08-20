@@ -46,8 +46,8 @@ func (k Keeper) GetOutflowLimit(
 	return limit
 }
 
-// GetCurrentOutflow returns the current outflow amount for a specific token.
-func (k Keeper) GetCurrentOutflow(
+// getCurrentOutflow returns the current outflow amount for a specific token.
+func (k Keeper) getCurrentOutflow(
 	ctx sdk.Context,
 	token []byte,
 ) math.Int {
@@ -71,8 +71,8 @@ func (k Keeper) increaseCurrentOutflow(
 	ctx sdk.Context,
 	token []byte,
 	amount math.Int,
-) error {
-	currentOutflow := k.GetCurrentOutflow(ctx, token)
+) {
+	currentOutflow := k.getCurrentOutflow(ctx, token)
 	newOutflow := currentOutflow.Add(amount)
 
 	store := ctx.KVStore(k.storeKey)
@@ -83,8 +83,6 @@ func (k Keeper) increaseCurrentOutflow(
 	}
 
 	store.Set(types.GetCurrentOutflowKey(token), bz)
-
-	return nil
 }
 
 // checkOutflowLimit verifies if adding the amount would exceed the outflow limit for a token.
@@ -141,7 +139,7 @@ func (k Keeper) GetOutflowCapacity(
 	token []byte,
 ) (capacity math.Int, resetHeight uint64) {
 	limit := k.GetOutflowLimit(ctx, token)
-	current := k.GetCurrentOutflow(ctx, token)
+	current := k.getCurrentOutflow(ctx, token)
 	lastReset := k.getLastOutflowReset(ctx)
 
 	// Calculate outflow capacity (limit - current)

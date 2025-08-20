@@ -138,10 +138,7 @@ func (k Keeper) SaveAssetsUnlocked(
 	}
 	k.saveAssetsUnlocked(ctx, assetsUnlocked)
 
-	err := k.increaseCurrentOutflow(ctx, token, amount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update outflow: [%w]", err)
-	}
+	k.increaseCurrentOutflow(ctx, token, amount)
 
 	return assetsUnlocked, nil
 }
