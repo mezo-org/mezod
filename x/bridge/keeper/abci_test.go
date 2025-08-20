@@ -51,6 +51,7 @@ func TestHandleOutflowReset(t *testing.T) {
 		keeper.increaseCurrentOutflow(ctx, tokenAddr2, math.NewInt(300))
 
 		// Set last reset to current block (0)
+		//nolint:gosec
 		keeper.setLastOutflowReset(ctx, uint64(ctx.BlockHeight()))
 
 		// Call handleOutflowReset - should not reset since threshold not reached

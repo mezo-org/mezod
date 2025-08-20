@@ -65,6 +65,7 @@ func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
 
 // handleOutflowReset checks if it's time to reset outflow counters and does so if needed.
 func (k *Keeper) handleOutflowReset(ctx sdk.Context) {
+	//nolint:gosec
 	currentHeight := uint64(ctx.BlockHeight())
 	lastResetHeight := k.getLastOutflowReset(ctx)
 
