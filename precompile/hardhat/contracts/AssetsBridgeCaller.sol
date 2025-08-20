@@ -53,4 +53,16 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function getOutflowCapacity(address token) external view returns (uint256 capacity, uint256 resetHeight) {
         return IAssetsBridge(precompile).getOutflowCapacity(token);
     }
+
+    function setPauser(address pauser) external returns (bool) {
+        return IAssetsBridge(precompile).setPauser(pauser);
+    }
+
+    function getPauser() external view returns (address) {
+        return IAssetsBridge(precompile).getPauser();
+    }
+
+    function pauseBridgeOut() external returns (bool) {
+        return IAssetsBridge(precompile).pauseBridgeOut();
+    }
 }

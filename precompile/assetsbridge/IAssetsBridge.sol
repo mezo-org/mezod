@@ -162,4 +162,29 @@ interface IAssetsBridge {
      * @return resetHeight The block height when the capacity will reset (last outflow reset + reset blocks).
      */
     function getOutflowCapacity(address token) external view returns (uint256 capacity, uint256 resetHeight);
+
+    /**
+     * @notice Sets the pauser address for emergency bridge operations.
+     * @param pauser The address that will be able to pause bridge operations. 
+     *               Can be 0x0 to remove the pauser.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner.
+     * @return True if the call succeeded, false otherwise.
+     */
+    function setPauser(address pauser) external returns (bool);
+
+    /**
+     * @notice Gets the current pauser address.
+     * @return The address of the current pauser.
+     */
+    function getPauser() external view returns (address);
+
+    /**
+     * @notice Pauses all bridge out operations by setting outflow limits to 0 for all supported tokens.
+     * @dev Requirements:
+     *      - The caller must be the current pauser.
+     *      - The pauser address must not be 0x0.
+     * @return True if the call succeeded, false otherwise.
+     */
+    function pauseBridgeOut() external returns (bool);
 }
