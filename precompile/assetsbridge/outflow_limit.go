@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	SetOutflowLimitMethodName = "setOutflowLimit"
-	GetOutflowLimitMethodName = "getOutflowLimit"
+	SetOutflowLimitMethodName    = "setOutflowLimit"
+	GetOutflowLimitMethodName    = "getOutflowLimit"
+	GetOutflowCapacityMethodName = "getOutflowCapacity"
 )
 
 type SetOutflowLimitMethod struct {
@@ -134,5 +135,59 @@ func (m *GetOutflowLimitMethod) Run(
 		token.Bytes(),
 	)
 
-	return precompile.MethodOutputs{limit.BigInt()}, nil
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(limit),
+	}, nil
+}
+
+type GetOutflowCapacityMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetOutflowCapacityMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetOutflowCapacityMethod {
+	return &GetOutflowCapacityMethod{
+		bridgeKeeper: bridgeKeeper,
+	}
+}
+
+func (m *GetOutflowCapacityMethod) MethodName() string {
+	return GetOutflowCapacityMethodName
+}
+
+func (m *GetOutflowCapacityMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetOutflowCapacityMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetOutflowCapacityMethod) Payable() bool {
+	return false
+}
+
+func (m *GetOutflowCapacityMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 1); err != nil {
+		return nil, err
+	}
+
+	token, ok := rawInputs[0].(common.Address)
+	if !ok {
+		return nil, fmt.Errorf("invalid token address: %v", rawInputs[0])
+	}
+
+	capacity, resetHeight := m.bridgeKeeper.GetOutflowCapacity(
+		context.SdkCtx(),
+		token.Bytes(),
+	)
+
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(capacity),
+		new(big.Int).SetUint64(resetHeight),
+	}, nil
 }

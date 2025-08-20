@@ -93,11 +93,9 @@ func (k Keeper) checkOutflowLimit(
 	token []byte,
 	amount math.Int,
 ) error {
-	limit := k.GetOutflowLimit(ctx, token)
-	currentOutflow := k.GetCurrentOutflow(ctx, token)
-	newOutflow := currentOutflow.Add(amount)
+	capacity, _ := k.GetOutflowCapacity(ctx, token)
 
-	if newOutflow.GT(limit) {
+	if amount.GT(capacity) {
 		return types.ErrOutflowLimitExceeded
 	}
 
@@ -134,4 +132,27 @@ func (k Keeper) resetAllOutflows(ctx sdk.Context) {
 	for _, key := range keys {
 		store.Delete(key)
 	}
+}
+
+// GetOutflowCapacity returns the outflow capacity for a specific token
+// and the capacity reset block.
+func (k Keeper) GetOutflowCapacity(
+	ctx sdk.Context,
+	token []byte,
+) (capacity math.Int, resetHeight uint64) {
+	limit := k.GetOutflowLimit(ctx, token)
+	current := k.GetCurrentOutflow(ctx, token)
+	lastReset := k.getLastOutflowReset(ctx)
+
+	// Calculate outflow capacity (limit - current)
+	capacity = limit.Sub(current)
+	// Should never happen, but just in case.
+	if capacity.IsNegative() {
+		capacity = math.ZeroInt()
+	}
+
+	// Calculate capacity reset block (last reset + reset blocks)
+	resetHeight = lastReset + OutflowResetBlocks
+
+	return capacity, resetHeight
 }

@@ -132,3 +132,15 @@ task(
     const result: string = await bridge.getOutflowLimit(taskArguments.token)
     console.log(result)
   })
+
+task(
+  'assetsBridge:getOutflowCapacity',
+  'Gets the outflow capacity for a specific token'
+)
+  .addParam('token', 'The address of the token to check the capacity for')
+  .setAction(async (taskArguments, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getOutflowCapacity(taskArguments.token)
+    console.log('capacity:', result[0].toString())
+    console.log('reset height:', result[1].toString())
+  })
