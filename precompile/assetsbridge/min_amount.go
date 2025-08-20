@@ -208,6 +208,6 @@ func (m *GetMinBridgeOutAmountMethod) Run(
 	)
 
 	return precompile.MethodOutputs{
-		minAmount.BigInt(),
+		precompile.TypesConverter.BigInt.FromSDK(minAmount),
 	}, nil
 }
