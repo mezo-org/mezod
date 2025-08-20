@@ -721,7 +721,22 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 				// The output is packed as bytes, we need to unpack it
 				out, err := method.Outputs.Unpack(output)
 				s.Require().NoError(err)
-				s.Require().Equal(tc.output, out)
+				s.Require().Equal(len(tc.output), len(out))
+				for i := range tc.output {
+					if expected, ok := tc.output[i].(*big.Int); ok {
+						// Special case for handling big.Int comparison
+						actual, ok := out[i].(*big.Int)
+						s.Require().True(ok)
+						if expected == nil || actual == nil {
+							s.Require().Equal(expected, actual)
+						} else {
+							s.Require().Equal(expected.String(), actual.String())
+						}
+					} else {
+						// Default comparison
+						s.Require().Equal(tc.output[i], out[i])
+					}
+				}
 			}
 
 			if tc.postCheck != nil {

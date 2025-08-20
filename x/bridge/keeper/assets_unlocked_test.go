@@ -440,7 +440,10 @@ func TestGetMinBridgeOutAmount(t *testing.T) {
 	}
 
 	minAmount := math.NewInt(20000)
-	k.SetMinBridgeOutAmount(ctx, token1, minAmount)
+	err = k.SetMinBridgeOutAmount(ctx, token1, minAmount)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	actualMinAmount1 := k.GetMinBridgeOutAmount(ctx, token1)
 	require.EqualValues(t, minAmount, actualMinAmount1)
