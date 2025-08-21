@@ -195,12 +195,12 @@ func RunServer(
 	}
 
 	// Initialize the MezoBridge contract instance.
-	bridgeContractInstance, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
+	bridgeContractBinding, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
-	bridgeContract := NewBridgeContract(bridgeContractInstance)
+	bridgeContract := NewBridgeContract(bridgeContractBinding)
 
 	attestationValidator := newAttestationValidation(
 		bridgeContract,
