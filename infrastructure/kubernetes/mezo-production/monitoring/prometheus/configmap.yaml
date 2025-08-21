@@ -55,4 +55,4 @@ data:
               contract: PCV
             annotations:
               summary: "PCV contract debt to pay is zero"
-              description: "The PCV contract debtToPay function returned 0, which may indicate an issue with the contract state."
+              description: "The PCV contract debtToPay function returned 0."
