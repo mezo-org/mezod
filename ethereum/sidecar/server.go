@@ -1007,7 +1007,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					s.logger.Error("couldn't get submission delay", "attestation", attestation.String(), "error", err)
 				}
 
-				s.logger.Debug("waiting for attestation submission slot", "delay", delay)
+				s.logger.Info("waiting for attestation submission slot", "delay", delay)
 
 				// wait for our turn to submit
 				select {
@@ -1024,11 +1024,11 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						s.logger.Error("invalid attestation -- skipping", "attestation", attestation.String(), "error", err)
 						break
 					} else if err == nil {
-						// nothing to do
+						s.logger.Info("attestation already confirmed", "attestation", attestation.String())
 						break
 					}
 
-					s.logger.Debug("attestation status", "attestation", attestation.String(), "error", err)
+					s.logger.Info("attestation status", "attestation", attestation.String(), "error", err)
 
 					tx, err := s.bridgeContract.AttestBridgeOut(&bridgeAssetsUnlocked)
 					if err != nil {
@@ -1037,7 +1037,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						continue
 					}
 
-					s.logger.Debug("attestation sent, waiting for confirmation", "txHash", tx.Hash().Hex())
+					s.logger.Info("attestation sent, waiting for confirmation", "txHash", tx.Hash().Hex())
 
 					finalized, err := s.chain.FinalizedBlock(ctx)
 					if err != nil {
@@ -1056,7 +1056,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						continue
 					}
 
-					s.logger.Debug("attestation confirmed successfully")
+					s.logger.Info("attestation confirmed successfully")
 				}
 			}
 		case <-ctx.Done():
