@@ -9,6 +9,9 @@ data:
       scrape_interval: 2s
       evaluation_interval: 2s
 
+    rule_files:
+      - "alert_rules.yml"
+
     scrape_configs:
       - job_name: 'metrics-scraper'
         static_configs:
@@ -35,3 +38,21 @@ data:
         metrics_path: /metrics
         static_configs:
           - targets: ['balance-exporter:9115']
+      - job_name: 'musd-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['musd-exporter:9116']
+
+  alert_rules.yml: |
+    groups:
+      - name: musd_alerts
+        rules:
+          - alert: PCVDebtToPayZero
+            expr: pcv_debt_to_pay == 0
+            for: 1m
+            labels:
+              severity: warning
+              contract: PCV
+            annotations:
+              summary: "PCV contract debt to pay is zero"
+              description: "The PCV contract debtToPay function returned 0, which may indicate an issue with the contract state."

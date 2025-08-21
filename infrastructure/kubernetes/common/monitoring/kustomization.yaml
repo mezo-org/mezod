@@ -16,6 +16,8 @@ resources:
   - blackbox-exporter/configmap.yaml
   - balance-exporter/deployment.yaml
   - balance-exporter/service.yaml
+  - musd-exporter/deployment.yaml
+  - musd-exporter/service.yaml
 
 configMapGenerator:
   - name: grafana-config
