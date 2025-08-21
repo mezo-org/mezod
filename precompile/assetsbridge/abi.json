@@ -4,6 +4,49 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "uint256",
+        "name": "unlockSequenceNumber",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes",
+        "name": "recipient",
+        "type": "bytes"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "chain",
+        "type": "uint8"
+      }
+    ],
+    "name": "AssetsUnlocked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "address",
         "name": "sourceToken",
         "type": "address"
@@ -38,6 +81,25 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "mezoToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "minAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "MinBridgeOutAmountSet",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "components": [
@@ -68,6 +130,40 @@
       }
     ],
     "name": "bridge",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "chain",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes",
+        "name": "recipient",
+        "type": "bytes"
+      }
+    ],
+    "name": "bridgeOut",
     "outputs": [
       {
         "internalType": "bool",
@@ -119,6 +215,19 @@
       }
     ],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getCurrentSequenceTip",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -191,6 +300,25 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "mezoToken",
+        "type": "address"
+      }
+    ],
+    "name": "getMinBridgeOutAmount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "getSourceBTCToken",
     "outputs": [
@@ -202,104 +330,6 @@
     ],
     "stateMutability": "view",
     "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getCurrentSequenceTip",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "type": "function",
-    "name": "bridgeOut",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "name": "chain",
-        "type": "uint8"
-      },
-      {
-        "name": "recipient",
-        "type": "bytes"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "name": "AssetsUnlocked",
-    "type": "event",
-    "anonymous": false,
-    "inputs": [
-      {
-        "name": "unlockSequenceNumber",
-        "type": "uint256",
-        "indexed": true
-      },
-      {
-        "name": "recipient",
-        "type": "bytes",
-        "indexed": true
-      },
-      {
-        "name": "token",
-        "type": "address",
-        "indexed": true
-      },
-      {
-        "name": "sender",
-        "type": "address",
-        "indexed": false
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false
-      },
-      {
-        "name": "chain",
-        "type": "uint8",
-        "indexed": false
-      }
-    ]
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "mezoToken",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "minAmount",
-        "type": "uint256"
-      }
-    ],
-    "name": "MinBridgeOutAmountSet",
-    "type": "event"
   },
   {
     "inputs": [
@@ -323,25 +353,6 @@
       }
     ],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "mezoToken",
-        "type": "address"
-      }
-    ],
-    "name": "getMinBridgeOutAmount",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   }
 ]
