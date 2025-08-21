@@ -35,18 +35,18 @@ func newSubmissionQueue(
 	}
 }
 
-func (s *submissionQueue) GetSubmissionDelay(attestation *portal.MezoBridgeAssetsUnlocked) (time.Duration, error) {
+func (s *submissionQueue) GetSubmissionDelay(attestation *portal.MezoBridgeAssetsUnlocked) time.Duration {
 	queue, err := s.calculateSubmissionQueue(attestation.UnlockSequenceNumber)
 	if err != nil {
-		return time.Duration(0), fmt.Errorf("failed to calculate submission queue: %w", err)
+		return time.Duration(0)
 	}
 
 	myValidatorID, err := s.bridgeContract.ValidatorIDs(s.address)
 	if err != nil {
-		return time.Duration(0), fmt.Errorf("failed to get validator ID: %w", err)
+		return time.Duration(0)
 	}
 
-	return s.calculateSubmissionDelay(queue, myValidatorID), nil
+	return s.calculateSubmissionDelay(queue, myValidatorID)
 }
 
 func (s *submissionQueue) calculateSubmissionQueue(sequenceNumber *big.Int) ([]uint8, error) {

@@ -60,7 +60,7 @@ func TestSubmissionQueue_GetSubmissionDelay(t *testing.T) {
 					Return(nil, expectedError).
 					Times(1)
 			},
-			expectErr: "failed to calculate submission queue: failed to get validator count: network error",
+			expectedDelay: time.Duration(0),
 		},
 		{
 			name:        "No validators found",
@@ -71,7 +71,7 @@ func TestSubmissionQueue_GetSubmissionDelay(t *testing.T) {
 					Return(big.NewInt(0), nil).
 					Times(1)
 			},
-			expectErr: "failed to calculate submission queue: no validators found",
+			expectedDelay: time.Duration(0),
 		},
 		{
 			name:        "ValidatorIDs fails",
@@ -87,7 +87,7 @@ func TestSubmissionQueue_GetSubmissionDelay(t *testing.T) {
 					Return(uint8(0), expectedError).
 					Times(1)
 			},
-			expectErr: "failed to get validator ID: validator ID error",
+			expectedDelay: time.Duration(0),
 		},
 		{
 			name:        "Single validator - should have no delay",
@@ -159,15 +159,9 @@ func TestSubmissionQueue_GetSubmissionDelay(t *testing.T) {
 			testCase.pre(tsq)
 
 			// execute the transaction
-			delay, err := tsq.GetSubmissionDelay(testCase.attestation)
+			delay := tsq.GetSubmissionDelay(testCase.attestation)
 
-			// verify
-			if len(testCase.expectErr) > 0 {
-				assert.ErrorContains(t, err, testCase.expectErr, "not the expected error")
-			} else {
-				assert.NoError(t, err, "expected no error")
-				assert.Equal(t, testCase.expectedDelay, delay, "unexpected delay")
-			}
+			assert.Equal(t, testCase.expectedDelay, delay, "unexpected delay")
 
 			if testCase.post != nil {
 				testCase.post(tsq)

@@ -986,7 +986,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			for attestation := s.unqueueAttestation(); attestation != nil; attestation = s.unqueueAttestation() {
-				bridgeAssetsUnlocked := portal.MezoBridgeAssetsUnlocked{
+				bridgeAssetsUnlocked := &portal.MezoBridgeAssetsUnlocked{
 					UnlockSequenceNumber: attestation.UnlockSequence.BigInt(),
 					Recipient:            attestation.Recipient,
 					Token:                common.HexToAddress(attestation.Token),
@@ -994,11 +994,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					Chain:                uint8(attestation.Chain), //nolint:gosec // G115: Chain is known to be within uint8 range
 				}
 
-				delay, err := s.submissionQueue.GetSubmissionDelay(&bridgeAssetsUnlocked)
-				if err != nil {
-					// TODO: what should we do here??
-					s.logger.Error("couldn't get submission delay", "attestation", attestation.String(), "error", err)
-				}
+				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
 
 				s.logger.Info("waiting for attestation submission slot", "delay", delay)
 
@@ -1011,7 +1007,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				}
 
 				for {
-					err := s.attestationValidator.IsConfirmed(&bridgeAssetsUnlocked)
+					err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 					if errors.Is(err, ErrInvalidAttestation) {
 						// we log an error and skip it
 						s.logger.Error("invalid attestation -- skipping", "attestation", attestation.String(), "error", err)
@@ -1023,7 +1019,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 					s.logger.Info("attestation status", "attestation", attestation.String(), "error", err)
 
-					tx, err := s.bridgeContract.AttestBridgeOut(&bridgeAssetsUnlocked)
+					tx, err := s.bridgeContract.AttestBridgeOut(bridgeAssetsUnlocked)
 					if err != nil {
 						s.logger.Error("error sending attestation %cv to MezoBridge: %v", attestation.String(), err)
 						// just log the error then try again
@@ -1042,7 +1038,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						s.blockCounter,
 						finalized.Uint64(),
 						64, // this is 2 epoch // finalized block
-						&bridgeAssetsUnlocked,
+						bridgeAssetsUnlocked,
 					)
 					if err != nil {
 						s.logger.Error("couldn't confirm transaction", attestation.String(), err)
