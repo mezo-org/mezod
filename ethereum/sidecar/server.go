@@ -143,7 +143,7 @@ type Server struct {
 	privateKey *ecdsa.PrivateKey
 
 	attestationValidator *attestationValidator
-	blockCounter         *ethconfig.BlockCounter
+	blockHeightWaiter    ethconfig.BlockHeightWaiter
 	submissionQueue      *submissionQueue
 }
 
@@ -237,7 +237,7 @@ func RunServer(
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
 		privateKey:                   privateKey,
 		attestationValidator:         attestationValidator,
-		blockCounter:                 chain.BlockCounter(),
+		blockHeightWaiter:            chain.BlockCounter(),
 		submissionQueue:              submissionQueue,
 	}
 
@@ -1035,7 +1035,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					}
 
 					err = s.attestationValidator.WaitForConfirmation(
-						s.blockCounter,
+						s.blockHeightWaiter,
 						finalized.Uint64(),
 						64, // this is 2 epoch // finalized block
 						bridgeAssetsUnlocked,
