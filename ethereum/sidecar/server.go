@@ -1048,6 +1048,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					}
 
 					s.logger.Info("attestation confirmed successfully")
+					break
 				}
 			}
 		case <-ctx.Done():
