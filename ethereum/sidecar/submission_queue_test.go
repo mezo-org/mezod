@@ -129,7 +129,7 @@ func TestSubmissionQueue_GetSubmissionDelay(t *testing.T) {
 					Times(1)
 				tsq.mockBridgeContract.EXPECT().
 					ValidatorIDs(gomock.Any()).
-					Return(uint8(1), nil).
+					Return(uint8(2), nil).
 					Times(1)
 			},
 			expectedDelay: 1 * time.Minute,

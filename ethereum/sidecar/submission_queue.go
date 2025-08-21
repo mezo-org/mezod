@@ -62,7 +62,7 @@ func (s *submissionQueue) calculateSubmissionQueue(sequenceNumber *big.Int) ([]u
 
 	validatorIDs := make([]uint8, count)
 	for i := uint64(0); i < count; i++ {
-		validatorIDs[i] = uint8(i) // #nosec G115 - this is fine, max is 255
+		validatorIDs[i] = uint8(i + 1) // #nosec G115 - this is fine, max is 255
 	}
 
 	seed := sequenceNumber.Int64()
