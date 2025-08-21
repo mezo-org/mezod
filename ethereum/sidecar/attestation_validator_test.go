@@ -144,29 +144,6 @@ func TestAttestationValidation(t *testing.T) {
 			expectErr: "network error",
 		},
 		{
-			name:        "Validator not in the bitmap",
-			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidator) {
-				tav.mockBridgeContract.EXPECT().
-					ValidateAssetsUnlocked(gomock.Any()).
-					Return(true, nil).
-					Times(1)
-				tav.mockBridgeContract.EXPECT().
-					ConfirmedUnlocks(gomock.Any()).
-					Return(false, nil).
-					Times(1)
-				tav.mockBridgeContract.EXPECT().
-					Attestations(gomock.Any()).
-					Return(new(big.Int).SetBit(big.NewInt(0), int(10), 0), nil).
-					Times(1)
-				tav.mockBridgeContract.EXPECT().
-					ValidatorIDs(gomock.Any()).
-					Return(uint8(10), nil).
-					Times(1)
-			},
-			expectErr: ErrValidatorNotInTheBitmap.Error(),
-		},
-		{
 			name:        "Validation succeeded, nothing to do",
 			attestation: defaultAttestation(),
 			pre: func(tav *testAttestationValidator) {

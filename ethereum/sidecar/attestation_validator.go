@@ -14,8 +14,7 @@ import (
 )
 
 var (
-	ErrInvalidAttestation      = errors.New("invalid attestation")
-	ErrValidatorNotInTheBitmap = errors.New("validatorId not in the bitmap yet")
+	ErrInvalidAttestation = errors.New("invalid attestation")
 )
 
 type attestationValidator struct {
@@ -95,7 +94,7 @@ func (av *attestationValidator) checkOwnAttestation(
 	mask := new(big.Int).Lsh(big.NewInt(1), uint(validatorID))
 
 	if new(big.Int).And(bitmap, mask).Int64() == 0 {
-		return false, ErrValidatorNotInTheBitmap
+		return false, nil
 	}
 
 	return true, nil

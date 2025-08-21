@@ -3,7 +3,6 @@ package sidecar
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -1009,11 +1008,12 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 				for {
 					ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
-					if errors.Is(err, ErrInvalidAttestation) {
+					if err != nil {
 						// we log an error and skip it
 						s.logger.Error("invalid attestation -- skipping", "attestation", attestation.String(), "error", err)
-						break
-					} else if ok && err == nil {
+						continue
+					}
+					if ok {
 						s.logger.Info("attestation already confirmed", "attestation", attestation.String())
 						break
 					}
@@ -1039,7 +1039,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					ok, err = s.attestationValidator.WaitForAttestationConfirmation(
 						s.blockHeightWaiter,
 						latestBlock.NumberU64(),
-						64, // this is 2 epoch // finalized block
+						32, // this is 1 epoch // safe block
 						bridgeAssetsUnlocked,
 					)
 					if err != nil {
