@@ -138,7 +138,6 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 
 			// Set the outflow limit to the maximum value of uint256
 			maxUint256 := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1))
-			fmt.Println("maxUint256", maxUint256)
 			k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(testMezoERC20Token1), math.NewIntFromBigInt(maxUint256))
 			k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(invalidToken), math.NewIntFromBigInt(maxUint256))
 			k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress), math.NewIntFromBigInt(maxUint256))
