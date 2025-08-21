@@ -157,7 +157,7 @@ func TestAttestationValidation(t *testing.T) {
 					Times(1)
 				tav.mockBridgeContract.EXPECT().
 					Attestations(gomock.Any()).
-					Return(new(big.Int).SetBit(big.NewInt(1), int(10), 1), nil).
+					Return(new(big.Int).SetBit(big.NewInt(0), int(10), 0), nil).
 					Times(1)
 				tav.mockBridgeContract.EXPECT().
 					ValidatorIDs(gomock.Any()).
@@ -180,7 +180,7 @@ func TestAttestationValidation(t *testing.T) {
 					Times(1)
 				tav.mockBridgeContract.EXPECT().
 					Attestations(gomock.Any()).
-					Return(new(big.Int).SetBit(big.NewInt(1), int(10), 0), nil).
+					Return(new(big.Int).SetBit(big.NewInt(0), int(10), 1), nil).
 					Times(1)
 				tav.mockBridgeContract.EXPECT().
 					ValidatorIDs(gomock.Any()).

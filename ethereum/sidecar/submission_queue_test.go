@@ -199,11 +199,11 @@ func TestSubmissionQueue_shuffleValidatorIDs(t *testing.T) {
 		copy(validatorIDs1, original)
 		copy(validatorIDs2, original)
 
-		tsq.shuffleValidatorIDs(validatorIDs1, 12345)
-		tsq.shuffleValidatorIDs(validatorIDs2, 54321)
+		res1 := tsq.shuffleValidatorIDs(validatorIDs1, 12345)
+		res2 := tsq.shuffleValidatorIDs(validatorIDs2, 54321)
 
 		// Very unlikely to be the same after shuffle with different seeds
-		assert.NotEqual(t, validatorIDs1, validatorIDs2, "different seeds should produce different shuffles")
+		assert.NotEqual(t, res1, res2, "different seeds should produce different shuffles")
 	})
 }
 

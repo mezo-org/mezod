@@ -94,7 +94,7 @@ func (av *attestationValidator) checkOwnAttestation(
 
 	mask := new(big.Int).Lsh(big.NewInt(1), uint(validatorID))
 
-	if new(big.Int).And(bitmap, mask).Int64() != 0 {
+	if new(big.Int).And(bitmap, mask).Int64() == 0 {
 		return ErrValidatorNotInTheBitmap
 	}
 
