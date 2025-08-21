@@ -13,28 +13,28 @@ import (
 
 var bridgeAddress = common.HexToAddress("0xB81057aB093B161b53049bDC9edb6c6cE8472784")
 
-type testAttestationValidation struct {
-	*AttestationValidation
+type testAttestationValidator struct {
+	*attestationValidator
 
 	t                  *testing.T
 	ctrl               *gomock.Controller
 	mockBridgeContract *MockBridgeContract
 }
 
-func newAttestationValidation(t *testing.T) *testAttestationValidation {
+func newTestAttestationValidator(t *testing.T) *testAttestationValidator {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
 	mockBridgeContract := NewMockBridgeContract(ctrl)
-	av := NewAttestationValidation(
+	av := newAttestationValidation(
 		mockBridgeContract, bridgeAddress,
 	)
 
-	return &testAttestationValidation{
-		AttestationValidation: av,
-		t:                     t,
-		ctrl:                  ctrl,
-		mockBridgeContract:    mockBridgeContract,
+	return &testAttestationValidator{
+		attestationValidator: av,
+		t:                    t,
+		ctrl:                 ctrl,
+		mockBridgeContract:   mockBridgeContract,
 	}
 }
 
@@ -42,14 +42,14 @@ func TestAttestationValidation(t *testing.T) {
 	testCases := []struct {
 		name        string
 		attestation *portal.MezoBridgeAssetsUnlocked
-		pre         func(tte *testAttestationValidation)
-		post        func(tte *testAttestationValidation)
+		pre         func(tte *testAttestationValidator)
+		post        func(tte *testAttestationValidator)
 		expectErr   string
 	}{
 		{
 			name:        "ValidateAssetsUnlocked failed with error",
 			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidation) {
+			pre: func(tav *testAttestationValidator) {
 				expectedError := errors.New("network error")
 				tav.mockBridgeContract.EXPECT().
 					ValidateAssetsUnlocked(gomock.Any()).
@@ -61,7 +61,7 @@ func TestAttestationValidation(t *testing.T) {
 		{
 			name:        "ValidateAssetsUnlocked failed not valid",
 			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidation) {
+			pre: func(tav *testAttestationValidator) {
 				tav.mockBridgeContract.EXPECT().
 					ValidateAssetsUnlocked(gomock.Any()).
 					Return(false, nil).
@@ -72,7 +72,7 @@ func TestAttestationValidation(t *testing.T) {
 		{
 			name:        "ConfirmedUnlocks failed with error",
 			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidation) {
+			pre: func(tav *testAttestationValidator) {
 				tav.mockBridgeContract.EXPECT().
 					ValidateAssetsUnlocked(gomock.Any()).
 					Return(true, nil).
@@ -88,7 +88,7 @@ func TestAttestationValidation(t *testing.T) {
 		{
 			name:        "ConfirmedUnlocks is confirmed",
 			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidation) {
+			pre: func(tav *testAttestationValidator) {
 				tav.mockBridgeContract.EXPECT().
 					ValidateAssetsUnlocked(gomock.Any()).
 					Return(true, nil).
@@ -102,7 +102,7 @@ func TestAttestationValidation(t *testing.T) {
 		{
 			name:        "Attestation failed with error",
 			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidation) {
+			pre: func(tav *testAttestationValidator) {
 				tav.mockBridgeContract.EXPECT().
 					ValidateAssetsUnlocked(gomock.Any()).
 					Return(true, nil).
@@ -122,7 +122,7 @@ func TestAttestationValidation(t *testing.T) {
 		{
 			name:        "ValidatorIDs failed with error",
 			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidation) {
+			pre: func(tav *testAttestationValidator) {
 				tav.mockBridgeContract.EXPECT().
 					ValidateAssetsUnlocked(gomock.Any()).
 					Return(true, nil).
@@ -146,7 +146,7 @@ func TestAttestationValidation(t *testing.T) {
 		{
 			name:        "Validator not in the bitmap",
 			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidation) {
+			pre: func(tav *testAttestationValidator) {
 				tav.mockBridgeContract.EXPECT().
 					ValidateAssetsUnlocked(gomock.Any()).
 					Return(true, nil).
@@ -169,7 +169,7 @@ func TestAttestationValidation(t *testing.T) {
 		{
 			name:        "Validation succeeded, nothing to do",
 			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidation) {
+			pre: func(tav *testAttestationValidator) {
 				tav.mockBridgeContract.EXPECT().
 					ValidateAssetsUnlocked(gomock.Any()).
 					Return(true, nil).
@@ -192,7 +192,7 @@ func TestAttestationValidation(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			tte := newAttestationValidation(t)
+			tte := newTestAttestationValidator(t)
 
 			// prepare the test
 			testCase.pre(tte)

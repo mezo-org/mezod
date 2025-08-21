@@ -142,9 +142,9 @@ type Server struct {
 	// privateKey is an optional ECDSA private key extracted from keyring
 	privateKey *ecdsa.PrivateKey
 
-	attestationValidator *AttestationValidation
+	attestationValidator *attestationValidator
 	blockCounter         *ethconfig.BlockCounter
-	submissionQueue      *SubmissionQueue
+	submissionQueue      *submissionQueue
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -202,12 +202,12 @@ func RunServer(
 
 	bridgeContract := NewBridgeContract(bridgeContractInstance)
 
-	attestationValidator := NewAttestationValidation(
+	attestationValidator := newAttestationValidation(
 		bridgeContract,
 		chain.Key().Address,
 	)
 
-	submissionQueue := NewSubmissionQueue(
+	submissionQueue := newSubmissionQueue(
 		logger,
 		bridgeContract,
 		chain.Key().Address,

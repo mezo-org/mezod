@@ -14,7 +14,7 @@ import (
 )
 
 type testSubmissionQueue struct {
-	*SubmissionQueue
+	*submissionQueue
 
 	t                  *testing.T
 	ctrl               *gomock.Controller
@@ -27,14 +27,14 @@ func newTestSubmissionQueue(t *testing.T) *testSubmissionQueue {
 	ctrl := gomock.NewController(t)
 	mockBridgeContract := NewMockBridgeContract(ctrl)
 	address := common.HexToAddress("0x123")
-	sq := NewSubmissionQueue(
+	sq := newSubmissionQueue(
 		log.NewNopLogger(),
 		mockBridgeContract,
 		address,
 	)
 
 	return &testSubmissionQueue{
-		SubmissionQueue:    sq,
+		submissionQueue:    sq,
 		t:                  t,
 		ctrl:               ctrl,
 		mockBridgeContract: mockBridgeContract,

@@ -18,22 +18,22 @@ var (
 	ErrValidatorNotInTheBitmap = errors.New("validatorId not in the bitmap yet")
 )
 
-type AttestationValidation struct {
+type attestationValidator struct {
 	bridgeContract ethconnect.BridgeContract
 	address        common.Address
 }
 
-func NewAttestationValidation(
+func newAttestationValidation(
 	bridgeContract ethconnect.BridgeContract,
 	validatorAddress common.Address,
-) *AttestationValidation {
-	return &AttestationValidation{
+) *attestationValidator {
+	return &attestationValidator{
 		bridgeContract: bridgeContract,
 		address:        validatorAddress,
 	}
 }
 
-func (av *AttestationValidation) IsConfirmed(
+func (av *attestationValidator) IsConfirmed(
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) error {
 	ok, err := av.bridgeContract.ValidateAssetsUnlocked(*attestation)
@@ -54,25 +54,25 @@ func (av *AttestationValidation) IsConfirmed(
 		return nil
 	}
 
-	return av.checkOwnConfirmation(attestation)
+	return av.checkOwnAttestation(attestation)
 }
 
-func (av *AttestationValidation) WaitForConfirmation(
+func (av *attestationValidator) WaitForConfirmation(
 	blockHeightWaiter ethconfig.BlockHeightWaiter,
 	startBlock, confirmations uint64,
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) error {
-	return WaitForBlockConfirmations(
+	return waitForBlockConfirmations(
 		blockHeightWaiter,
 		startBlock,
 		confirmations,
 		func() error {
-			return av.checkOwnConfirmation(attestation)
+			return av.checkOwnAttestation(attestation)
 		},
 	)
 }
 
-func (av *AttestationValidation) checkOwnConfirmation(
+func (av *attestationValidator) checkOwnAttestation(
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) error {
 	encoded, err := abiEncodeAttestation(attestation)
@@ -134,12 +134,12 @@ func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked) ([]byte,
 	)
 }
 
-// WaitForBlockConfirmations ensures that after receiving specific number of block
+// waitForBlockConfirmations ensures that after receiving specific number of block
 // confirmations the state of the chain is actually as expected. It waits for
 // predefined number of blocks since the start block number provided. After the
 // required block number is reached it performs a check of the chain state with
 // a provided function returning a error.
-func WaitForBlockConfirmations(
+func waitForBlockConfirmations(
 	blockHeightWaiter ethconfig.BlockHeightWaiter,
 	startBlockNumber uint64,
 	blockConfirmations uint64,

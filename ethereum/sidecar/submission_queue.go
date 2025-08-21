@@ -17,25 +17,25 @@ const (
 	defaultSubmissionDelay = 30 * time.Second
 )
 
-type SubmissionQueue struct {
+type submissionQueue struct {
 	logger         log.Logger
 	bridgeContract ethconnect.BridgeContract
 	address        common.Address
 }
 
-func NewSubmissionQueue(
+func newSubmissionQueue(
 	logger log.Logger,
 	bridgeContract ethconnect.BridgeContract,
 	address common.Address,
-) *SubmissionQueue {
-	return &SubmissionQueue{
+) *submissionQueue {
+	return &submissionQueue{
 		logger:         logger,
 		bridgeContract: bridgeContract,
 		address:        address,
 	}
 }
 
-func (s *SubmissionQueue) GetSubmissionDelay(attestation *portal.MezoBridgeAssetsUnlocked) (time.Duration, error) {
+func (s *submissionQueue) GetSubmissionDelay(attestation *portal.MezoBridgeAssetsUnlocked) (time.Duration, error) {
 	queue, err := s.calculateSubmissionQueue(attestation.UnlockSequenceNumber)
 	if err != nil {
 		return time.Duration(0), fmt.Errorf("failed to calculate submission queue: %w", err)
@@ -49,7 +49,7 @@ func (s *SubmissionQueue) GetSubmissionDelay(attestation *portal.MezoBridgeAsset
 	return s.calculateSubmissionDelay(queue, myValidatorID), nil
 }
 
-func (s *SubmissionQueue) calculateSubmissionQueue(sequenceNumber *big.Int) ([]uint8, error) {
+func (s *submissionQueue) calculateSubmissionQueue(sequenceNumber *big.Int) ([]uint8, error) {
 	validatorCount, err := s.bridgeContract.BridgeValidatorsCount()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get validator count: %w", err)
@@ -67,22 +67,26 @@ func (s *SubmissionQueue) calculateSubmissionQueue(sequenceNumber *big.Int) ([]u
 
 	seed := sequenceNumber.Int64()
 	slices.Sort(validatorIDs)
-	s.shuffleValidatorIDs(validatorIDs, seed)
 
-	return validatorIDs, nil
+	return s.shuffleValidatorIDs(validatorIDs, seed), nil
 }
 
-func (s *SubmissionQueue) shuffleValidatorIDs(validatorIDs []uint8, seed int64) {
+func (s *submissionQueue) shuffleValidatorIDs(validatorIDs []uint8, seed int64) []uint8 {
+	cpy := make([]uint8, len(validatorIDs))
+	copy(cpy, validatorIDs)
+
 	source := rand.NewSource(seed)
 	// #nosec G404 - this is alright for such kind of shuffling
 	rng := rand.New(source)
 
-	rng.Shuffle(len(validatorIDs), func(i, j int) {
-		validatorIDs[i], validatorIDs[j] = validatorIDs[j], validatorIDs[i]
+	rng.Shuffle(len(cpy), func(i, j int) {
+		cpy[i], cpy[j] = cpy[j], cpy[i]
 	})
+
+	return cpy
 }
 
-func (s *SubmissionQueue) calculateSubmissionDelay(queue []uint8, myValidatorID uint8) time.Duration {
+func (s *submissionQueue) calculateSubmissionDelay(queue []uint8, myValidatorID uint8) time.Duration {
 	for i, validatorID := range queue {
 		if validatorID == myValidatorID {
 			return time.Duration(i) * defaultSubmissionDelay
