@@ -42,6 +42,9 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 		return account
 	}
 
+	//nolint:gosec
+	invalidToken := "0x57cc23c7f5ec21f0225187281dd61ef7dfb5c476"
+
 	tests := []struct {
 		name         string
 		bankKeeperFn func(ctx sdk.Context) *mockBankKeeper
@@ -97,10 +100,10 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 			name:         "invalid token",
 			bankKeeperFn: func(_ sdk.Context) *mockBankKeeper { return newMockBankKeeper() },
 			evmKeeperFn:  func(_ sdk.Context) *mockEvmKeeper { return newMockEvmKeeper() },
-			errContains:  "unknown token 57cc23c7f5ec21f0225187281dd61ef7dfb5c476",
+			errContains:  fmt.Sprintf("unknown token %s", invalidToken[2:]),
 			run: func(ctx sdk.Context, k Keeper) (*types.AssetsUnlockedEvent, error) {
 				// not a mapped address
-				token, _ := hex.DecodeString("57CC23C7f5Ec21f0225187281dD61Ef7dFb5C476")
+				token, _ := hex.DecodeString(invalidToken[2:])
 				recipient := toBytes(recipient1)
 				sender := common.HexToAddress(sender).Bytes()
 				return k.SaveAssetsUnlocked(ctx, recipient, token, sender, math.NewInt(1), 0)
@@ -132,6 +135,12 @@ func TestSaveAssetsUnlocked(t *testing.T) {
 					},
 				},
 			)
+
+			// Set the outflow limit to the maximum value of uint256
+			maxUint256 := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1))
+			k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(testMezoERC20Token1), math.NewIntFromBigInt(maxUint256))
+			k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(invalidToken), math.NewIntFromBigInt(maxUint256))
+			k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress), math.NewIntFromBigInt(maxUint256))
 
 			evt, err := test.run(ctx, k)
 
@@ -429,4 +438,231 @@ func TestBurnERC20(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
+	cfg := sdk.GetConfig()
+	config.SetBech32Prefixes(cfg)
+
+	btcToken := evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress)
+	erc20Token := common.HexToAddress("0x1234567890123456789012345678901234567890").Bytes()
+
+	t.Run("SaveAssetsUnlocked respects outflow limits for BTC", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		// Set outflow limit for BTC token
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+
+		// First let's verify the outflow limit was set correctly
+		limit := keeper.GetOutflowLimit(ctx, btcToken)
+		require.Equal(t, math.NewInt(1000), limit, "limit should be set correctly")
+
+		// Verify capacity
+		capacity, _ := keeper.GetOutflowCapacity(ctx, btcToken)
+		require.Equal(t, math.NewInt(1000), capacity, "capacity should equal limit initially")
+
+		// Test direct outflow limit check
+		err := keeper.checkOutflowLimit(ctx, btcToken, math.NewInt(500))
+		require.NoError(t, err, "outflow limit check should pass for amount within limit")
+
+		// First transaction within limit should succeed
+		event, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),      // recipient
+			btcToken,                 // token
+			[]byte("sender_address"), // sender
+			math.NewInt(500),         // amount
+			1,                        // chain
+		)
+		require.NoError(t, err, "transaction within limit should succeed")
+		require.NotNil(t, event)
+
+		// Verify outflow was tracked
+		currentOutflow := keeper.getCurrentOutflow(ctx, btcToken)
+		require.Equal(t, math.NewInt(500), currentOutflow, "outflow should be tracked")
+
+		// Second transaction within remaining capacity should succeed
+		_, err = keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient2"),     // recipient
+			btcToken,                 // token
+			[]byte("sender_address"), // sender
+			math.NewInt(400),         // amount
+			1,
+		)
+		require.NoError(t, err, "transaction within remaining capacity should succeed")
+
+		// Verify total outflow
+		currentOutflow = keeper.getCurrentOutflow(ctx, btcToken)
+		require.Equal(t, math.NewInt(900), currentOutflow, "total outflow should be tracked")
+
+		// Third transaction exceeding limit should fail
+		_, err = keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient3"),     // recipient
+			btcToken,                 // token
+			[]byte("sender_address"), // sender
+			math.NewInt(200),         // amount
+			1,
+		)
+		require.Error(t, err, "transaction exceeding limit should fail")
+		require.ErrorContains(t, err, "outflow limit check error", "should be outflow limit error")
+		require.ErrorIs(t, err, types.ErrOutflowLimitExceeded)
+
+		// Verify outflow was not increased for failed transaction
+		currentOutflow = keeper.getCurrentOutflow(ctx, btcToken)
+		require.Equal(t, math.NewInt(900), currentOutflow, "outflow should not increase for failed transaction")
+	})
+
+	t.Run("SaveAssetsUnlocked respects outflow limits for ERC20", func(t *testing.T) {
+		ctx, keeper := mockContext()
+
+		// Create ERC20 token mapping first
+		sourceToken := common.HexToAddress("0xA0b86a33E6441b5B6F7BB33b8F2D8F9FD6D5F0C2").Bytes()
+		mapping := types.NewERC20TokenMapping(sourceToken, erc20Token)
+		keeper.setERC20TokenMapping(ctx, mapping)
+
+		// Set outflow limit for ERC20 token
+		keeper.SetOutflowLimit(ctx, erc20Token, math.NewInt(2000))
+
+		// Transaction within limit should succeed
+		event, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),      // recipient
+			erc20Token,               // token
+			[]byte("sender_address"), // sender
+			math.NewInt(1500),        // amount
+			2,
+		)
+		require.NoError(t, err, "transaction within limit should succeed")
+		require.NotNil(t, event)
+
+		// Verify outflow was tracked
+		currentOutflow := keeper.getCurrentOutflow(ctx, erc20Token)
+		require.Equal(t, math.NewInt(1500), currentOutflow, "outflow should be tracked")
+
+		// Transaction exceeding remaining capacity should fail
+		_, err = keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient2"),     // recipient
+			erc20Token,               // token
+			[]byte("sender_address"), // sender
+			math.NewInt(600),         // amount
+			2,
+		)
+		require.Error(t, err, "transaction exceeding limit should fail")
+		require.ErrorContains(t, err, "outflow limit check error")
+	})
+
+	t.Run("SaveAssetsUnlocked with zero outflow limit", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		zeroLimitToken := common.HexToAddress("0x9999999999999999999999999999999999999999").Bytes()
+
+		// Create ERC20 token mapping
+		sourceToken := common.HexToAddress("0xB1b86a33E6441b5B6F7BB33b8F2D8F9FD6D5F0C2").Bytes()
+		mapping := types.NewERC20TokenMapping(sourceToken, zeroLimitToken)
+		keeper.setERC20TokenMapping(ctx, mapping)
+
+		// Zero limit means no outflow allowed
+		keeper.SetOutflowLimit(ctx, zeroLimitToken, math.ZeroInt())
+
+		// Any transaction should fail
+		_, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),      // recipient
+			zeroLimitToken,           // token
+			[]byte("sender_address"), // sender
+			math.NewInt(1),           // amount
+			2,
+		)
+		require.Error(t, err, "transaction with zero limit should fail")
+		require.ErrorContains(t, err, "outflow limit check error")
+	})
+
+	t.Run("SaveAssetsUnlocked with no outflow limit set", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		noLimitToken := common.HexToAddress("0x8888888888888888888888888888888888888888").Bytes()
+
+		// No limit set means zero limit by default
+		_, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),      // recipient
+			noLimitToken,             // token
+			[]byte("sender_address"), // sender
+			math.NewInt(1),           // amount
+			2,
+		)
+		require.Error(t, err, "transaction with no limit set should fail")
+		require.ErrorContains(t, err, "outflow limit check error")
+	})
+
+	t.Run("SaveAssetsUnlocked exactly at limit", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		exactLimitToken := common.HexToAddress("0x7777777777777777777777777777777777777777").Bytes()
+
+		// Create ERC20 token mapping
+		sourceToken := common.HexToAddress("0xC2b86a33E6441b5B6F7BB33b8F2D8F9FD6D5F0C2").Bytes()
+		mapping := types.NewERC20TokenMapping(sourceToken, exactLimitToken)
+		keeper.setERC20TokenMapping(ctx, mapping)
+
+		// Set limit
+		keeper.SetOutflowLimit(ctx, exactLimitToken, math.NewInt(100))
+
+		// Transaction exactly at limit should succeed
+		event, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),      // recipient
+			exactLimitToken,          // token
+			[]byte("sender_address"), // sender
+			math.NewInt(100),         // amount
+			2,
+		)
+		require.NoError(t, err, "transaction exactly at limit should succeed")
+		require.NotNil(t, event)
+
+		// Verify outflow is at limit
+		currentOutflow := keeper.getCurrentOutflow(ctx, exactLimitToken)
+		require.Equal(t, math.NewInt(100), currentOutflow)
+
+		// Any additional transaction should fail
+		_, err = keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient2"),     // recipient
+			exactLimitToken,          // token
+			[]byte("sender_address"), // sender
+			math.NewInt(1),           // amount
+			2,
+		)
+		require.Error(t, err, "any additional transaction should fail")
+	})
+
+	t.Run("SaveAssetsUnlocked with large limit", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		largeLimitToken := common.HexToAddress("0x6666666666666666666666666666666666666666").Bytes()
+
+		// Create ERC20 token mapping
+		sourceToken := common.HexToAddress("0xD3b86a33E6441b5B6F7BB33b8F2D8F9FD6D5F0C2").Bytes()
+		mapping := types.NewERC20TokenMapping(sourceToken, largeLimitToken)
+		keeper.setERC20TokenMapping(ctx, mapping)
+
+		// Set very large limit
+		largeLimit := math.NewIntFromBigInt(big.NewInt(0).Exp(big.NewInt(10), big.NewInt(19), nil)) // 10^19
+		keeper.SetOutflowLimit(ctx, largeLimitToken, largeLimit)
+
+		// Multiple transactions should succeed
+		for i := 0; i < 5; i++ {
+			_, err := keeper.SaveAssetsUnlocked(
+				ctx,
+				[]byte(fmt.Sprintf("recipient%d", i)), // recipient
+				largeLimitToken,                       // token
+				[]byte("sender_address"),              // sender
+				math.NewInt(1000000),                  // amount
+				2,
+			)
+			require.NoError(t, err, "transaction with large limit should succeed")
+		}
+
+		// Verify cumulative outflow
+		currentOutflow := keeper.getCurrentOutflow(ctx, largeLimitToken)
+		require.Equal(t, math.NewInt(5000000), currentOutflow)
+	})
 }

@@ -2,6 +2,7 @@ package assetsbridge_test
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"math/big"
 	"slices"
@@ -134,6 +135,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 					BTCManagement:   true,
 					ERC20Management: true,
 					SequenceTipView: true,
+					BridgeOut:       true,
 				},
 			)
 			s.Require().NoError(err)
@@ -214,6 +216,10 @@ type FakeBridgeKeeper struct {
 	currentSequenceTip  math.Int
 
 	burnErr error
+
+	outflowLimits   map[string]math.Int
+	outflowCurrent  map[string]math.Int
+	lastResetHeight uint64
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -221,6 +227,9 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		sourceBTCToken:      sourceBTCToken,
 		erc20TokensMappings: make([]*bridgetypes.ERC20TokenMapping, 0),
 		currentSequenceTip:  math.NewIntFromBigInt(big.NewInt(0)),
+		outflowLimits:       make(map[string]math.Int),
+		outflowCurrent:      make(map[string]math.Int),
+		lastResetHeight:     0,
 	}
 }
 
@@ -325,4 +334,42 @@ func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
 	_ uint8,
 ) (*bridgetypes.AssetsUnlockedEvent, error) {
 	return nil, errors.New("unimplemented")
+}
+
+func (k *FakeBridgeKeeper) SetOutflowLimit(_ sdk.Context, token []byte, limit math.Int) {
+	k.outflowLimits[hex.EncodeToString(token)] = limit
+}
+
+func (k *FakeBridgeKeeper) GetOutflowLimit(_ sdk.Context, token []byte) math.Int {
+	if limit, exists := k.outflowLimits[hex.EncodeToString(token)]; exists {
+		return limit
+	}
+	return math.ZeroInt()
+}
+
+func (k *FakeBridgeKeeper) GetOutflowCapacity(ctx sdk.Context, token []byte) (capacity math.Int, resetHeight uint64) {
+	limit := k.GetOutflowLimit(ctx, token)
+	current, exists := k.outflowCurrent[hex.EncodeToString(token)]
+	if !exists {
+		current = math.ZeroInt()
+	}
+
+	capacity = limit.Sub(current)
+	if capacity.IsNegative() {
+		capacity = math.ZeroInt()
+	}
+
+	// Use a fixed reset height for testing
+	resetHeight = k.lastResetHeight + 25000
+
+	return capacity, resetHeight
+}
+
+func (k *FakeBridgeKeeper) increaseCurrentOutflow(token []byte, amount math.Int) {
+	key := hex.EncodeToString(token)
+	current, exists := k.outflowCurrent[key]
+	if !exists {
+		current = math.ZeroInt()
+	}
+	k.outflowCurrent[key] = current.Add(amount)
 }

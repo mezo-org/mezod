@@ -106,3 +106,41 @@ task(
       console.log(confirmed.hash)
     } 
   )
+
+task('assetsBridge:setOutflowLimit', 'Sets the outflow limit for a specific token')
+  .addParam('token', 'The address of the token to set the limit for')
+  .addParam('limit', 'The maximum amount that can be bridged out in a 25,000 block window (set to 0 to remove limit)')
+  .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.setOutflowLimit(
+      taskArguments.token,
+      taskArguments.limit
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task(
+  'assetsBridge:getOutflowLimit',
+  'Gets the current outflow limit for a specific token'
+)
+  .addParam('token', 'The address of the token to check the limit for')
+  .setAction(async (taskArguments, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result: string = await bridge.getOutflowLimit(taskArguments.token)
+    console.log(result)
+  })
+
+task(
+  'assetsBridge:getOutflowCapacity',
+  'Gets the outflow capacity for a specific token'
+)
+  .addParam('token', 'The address of the token to check the capacity for')
+  .setAction(async (taskArguments, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getOutflowCapacity(taskArguments.token)
+    console.log('capacity:', result[0].toString())
+    console.log('reset height:', result[1].toString())
+  })
