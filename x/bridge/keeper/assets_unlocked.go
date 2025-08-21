@@ -214,7 +214,7 @@ func (k Keeper) SetMinBridgeOutAmount(
 	store := ctx.KVStore(k.storeKey)
 	bz, err := minAmount.Marshal()
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	store.Set(types.GetMinBridgeOutAmountKey(mezoToken), bz)
