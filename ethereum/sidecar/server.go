@@ -1046,9 +1046,10 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						s.logger.Error("couldn't confirm transaction", attestation.String(), err)
 						continue
 					}
-
-					s.logger.Info("attestation confirmed successfully")
-					break
+					if ok {
+						s.logger.Info("attestation confirmed successfully")
+						break
+					}
 				}
 			}
 		case <-ctx.Done():

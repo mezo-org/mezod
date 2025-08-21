@@ -13,9 +13,7 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
 
-var (
-	ErrInvalidAttestation = errors.New("invalid attestation")
-)
+var ErrInvalidAttestation = errors.New("invalid attestation")
 
 type attestationValidator struct {
 	bridgeContract ethconnect.BridgeContract
