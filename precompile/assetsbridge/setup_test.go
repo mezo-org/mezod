@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"slices"
 	"testing"
@@ -27,6 +28,7 @@ import (
 	"github.com/mezo-org/mezod/testutil"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -220,6 +222,9 @@ type FakeBridgeKeeper struct {
 	outflowLimits   map[string]math.Int
 	outflowCurrent  map[string]math.Int
 	lastResetHeight uint64
+
+	pauser sdk.AccAddress
+	paused bool
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -372,4 +377,31 @@ func (k *FakeBridgeKeeper) increaseCurrentOutflow(token []byte, amount math.Int)
 		current = math.ZeroInt()
 	}
 	k.outflowCurrent[key] = current.Add(amount)
+}
+
+func (k *FakeBridgeKeeper) GetPauser(_ sdk.Context) sdk.AccAddress {
+	return k.pauser
+}
+
+func (k *FakeBridgeKeeper) SetPauser(_ sdk.Context, pauser sdk.AccAddress) {
+	k.pauser = pauser
+}
+
+func (k *FakeBridgeKeeper) PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error {
+	pauser := k.GetPauser(ctx)
+	if evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
+		return fmt.Errorf("no pauser is set")
+	}
+
+	if !pauser.Equals(caller) {
+		return fmt.Errorf("caller is not the pauser")
+	}
+
+	k.paused = true
+
+	return nil
+}
+
+func (k *FakeBridgeKeeper) isPaused() bool {
+	return k.paused
 }

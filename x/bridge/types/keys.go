@@ -54,6 +54,9 @@ var (
 
 	// LastOutflowResetKey is a standalone key for tracking when outflow was last reset.
 	LastOutflowResetKey = []byte{0x92}
+
+	// PauserKey is a standalone key for the pauser address.
+	PauserKey = []byte{0x93}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
