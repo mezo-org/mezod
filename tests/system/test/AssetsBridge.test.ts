@@ -54,6 +54,10 @@ describe("AssetsBridge", function() {
     var fundingSigner = signers[0];
     const transferTx = await btcToken.connect(fundingSigner).transfer(senderSigner, ethers.parseEther("10"));
     await transferTx.wait();
+
+    // set the outflow limits to the maximum value of uint256
+    await assetsBridge.connect(poolOwner).setOutflowLimit(btcTokenPrecompileAddress, ethers.MaxUint256);
+    await assetsBridge.connect(poolOwner).setOutflowLimit(await simpleToken.getAddress(), ethers.MaxUint256);
   };
 
   describe("bridgeOutBTCFailureNoAllowance", function() {

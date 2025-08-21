@@ -2,7 +2,9 @@ package assetsbridge_test
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"slices"
 	"testing"
@@ -26,6 +28,7 @@ import (
 	"github.com/mezo-org/mezod/testutil"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -134,6 +137,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 					BTCManagement:   true,
 					ERC20Management: true,
 					SequenceTipView: true,
+					BridgeOut:       true,
 				},
 			)
 			s.Require().NoError(err)
@@ -215,6 +219,13 @@ type FakeBridgeKeeper struct {
 	minAmountByToken    map[string]math.Int
 
 	burnErr error
+
+	outflowLimits   map[string]math.Int
+	outflowCurrent  map[string]math.Int
+	lastResetHeight uint64
+
+	pauser sdk.AccAddress
+	paused bool
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -222,6 +233,9 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		sourceBTCToken:      sourceBTCToken,
 		erc20TokensMappings: make([]*bridgetypes.ERC20TokenMapping, 0),
 		currentSequenceTip:  math.NewIntFromBigInt(big.NewInt(0)),
+		outflowLimits:       make(map[string]math.Int),
+		outflowCurrent:      make(map[string]math.Int),
+		lastResetHeight:     0,
 		minAmountByToken:    make(map[string]math.Int),
 	}
 }
@@ -347,4 +361,69 @@ func (k *FakeBridgeKeeper) SetMinBridgeOutAmount(
 ) error {
 	k.minAmountByToken[common.BytesToAddress(mezoToken).Hex()] = minAmount
 	return nil
+}
+
+func (k *FakeBridgeKeeper) SetOutflowLimit(_ sdk.Context, token []byte, limit math.Int) {
+	k.outflowLimits[hex.EncodeToString(token)] = limit
+}
+
+func (k *FakeBridgeKeeper) GetOutflowLimit(_ sdk.Context, token []byte) math.Int {
+	if limit, exists := k.outflowLimits[hex.EncodeToString(token)]; exists {
+		return limit
+	}
+	return math.ZeroInt()
+}
+
+func (k *FakeBridgeKeeper) GetOutflowCapacity(ctx sdk.Context, token []byte) (capacity math.Int, resetHeight uint64) {
+	limit := k.GetOutflowLimit(ctx, token)
+	current, exists := k.outflowCurrent[hex.EncodeToString(token)]
+	if !exists {
+		current = math.ZeroInt()
+	}
+
+	capacity = limit.Sub(current)
+	if capacity.IsNegative() {
+		capacity = math.ZeroInt()
+	}
+
+	// Use a fixed reset height for testing
+	resetHeight = k.lastResetHeight + 25000
+
+	return capacity, resetHeight
+}
+
+func (k *FakeBridgeKeeper) increaseCurrentOutflow(token []byte, amount math.Int) {
+	key := hex.EncodeToString(token)
+	current, exists := k.outflowCurrent[key]
+	if !exists {
+		current = math.ZeroInt()
+	}
+	k.outflowCurrent[key] = current.Add(amount)
+}
+
+func (k *FakeBridgeKeeper) GetPauser(_ sdk.Context) sdk.AccAddress {
+	return k.pauser
+}
+
+func (k *FakeBridgeKeeper) SetPauser(_ sdk.Context, pauser sdk.AccAddress) {
+	k.pauser = pauser
+}
+
+func (k *FakeBridgeKeeper) PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error {
+	pauser := k.GetPauser(ctx)
+	if evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
+		return fmt.Errorf("no pauser is set")
+	}
+
+	if !pauser.Equals(caller) {
+		return fmt.Errorf("caller is not the pauser")
+	}
+
+	k.paused = true
+
+	return nil
+}
+
+func (k *FakeBridgeKeeper) isPaused() bool {
+	return k.paused
 }

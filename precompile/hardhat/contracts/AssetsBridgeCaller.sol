@@ -42,6 +42,30 @@ contract AssetsBridgeCaller is IAssetsBridge {
         return IAssetsBridge(precompile).getSourceBTCToken();
     }
 
+    function setOutflowLimit(address token, uint256 limit) external returns (bool) {
+        return IAssetsBridge(precompile).setOutflowLimit(token, limit);
+    }
+
+    function getOutflowLimit(address token) external view returns (uint256) {
+        return IAssetsBridge(precompile).getOutflowLimit(token);
+    }
+
+    function getOutflowCapacity(address token) external view returns (uint256 capacity, uint256 resetHeight) {
+        return IAssetsBridge(precompile).getOutflowCapacity(token);
+    }
+
+    function setPauser(address pauser) external returns (bool) {
+        return IAssetsBridge(precompile).setPauser(pauser);
+    }
+
+    function getPauser() external view returns (address) {
+        return IAssetsBridge(precompile).getPauser();
+    }
+
+    function pauseBridgeOut() external returns (bool) {
+        return IAssetsBridge(precompile).pauseBridgeOut();
+    }
+
     function setMinBridgeOutAmount(address mezoToken, uint256 minAmount) external returns (bool) {
         return IAssetsBridge(precompile).setMinBridgeOutAmount(mezoToken, minAmount);
     }
@@ -50,3 +74,4 @@ contract AssetsBridgeCaller is IAssetsBridge {
         return IAssetsBridge(precompile).getMinBridgeOutAmount(mezoToken);
     }
 }
+

@@ -163,6 +163,12 @@ func NewPrecompile(
 
 	if settings.BridgeOut {
 		methods = append(methods, newBridgeOutMethod(bridgeKeeper, authzKeeper))
+		methods = append(methods, newSetOutflowLimitMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetOutflowLimitMethod(bridgeKeeper))
+		methods = append(methods, newGetOutflowCapacityMethod(bridgeKeeper))
+		methods = append(methods, newSetPauserMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetPauserMethod(bridgeKeeper))
+		methods = append(methods, newPauseBridgeOutMethod(bridgeKeeper))
 		methods = append(methods, newSetMinBridgeOutAmountMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetMinBridgeOutAmountMethod(bridgeKeeper))
 	}
@@ -229,6 +235,12 @@ type BridgeKeeper interface {
 		fromAddr []byte,
 		amount *big.Int,
 	) error
+	SetOutflowLimit(ctx sdk.Context, token []byte, limit math.Int)
+	GetOutflowLimit(ctx sdk.Context, token []byte) math.Int
+	GetOutflowCapacity(ctx sdk.Context, token []byte) (capacity math.Int, resetHeight uint64)
+	SetPauser(ctx sdk.Context, pauser sdk.AccAddress)
+	GetPauser(ctx sdk.Context) sdk.AccAddress
+	PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error
 }
 
 type AuthzKeeper interface {

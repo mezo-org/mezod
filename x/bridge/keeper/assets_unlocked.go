@@ -90,6 +90,10 @@ func (k Keeper) SaveAssetsUnlocked(
 	amount math.Int,
 	chain uint8,
 ) (*types.AssetsUnlockedEvent, error) {
+	if err := k.checkOutflowLimit(ctx, token, amount); err != nil {
+		return nil, fmt.Errorf("outflow limit check error: [%w]", err)
+	}
+
 	var targetToken string
 	// is it the btc token?
 	btcToken := evmtypes.HexAddressToBytes(
@@ -133,6 +137,8 @@ func (k Keeper) SaveAssetsUnlocked(
 		BlockTime:      blockTime,
 	}
 	k.saveAssetsUnlocked(ctx, assetsUnlocked)
+
+	k.increaseCurrentOutflow(ctx, token, amount)
 
 	return assetsUnlocked, nil
 }

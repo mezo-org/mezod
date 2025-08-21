@@ -137,3 +137,8 @@ func HexAddressToBytes(address string) []byte {
 func BytesToHexAddress(address []byte) string {
 	return common.BytesToAddress(address).Hex()
 }
+
+// ZeroHexAddress returns the zero address as a hex-encoded string.
+func ZeroHexAddress() string {
+	return common.Address{}.Hex()
+}

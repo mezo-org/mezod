@@ -136,15 +136,67 @@ interface IAssetsBridge {
     /**
      * @notice Initiates the bridge out process by unlocking the given assets on Mezo.
      * @param token The address of the ERC20 token on Mezo.
-     * @param amount The amount of the ERC20 token to unlock.
-     * @param chain The target chain to bridge out to.
+     * @param amount The amount of the ERC20 token to unlock, in the token-specific precision.
+     * @param chain The target chain to bridge out to, 0 for Ethereum, 1 for Bitcoin.
      * @param recipient The target address to send the funds to.
-              On Ethereum: recipient is a 20-byte EVM address
-              On Bitcoin: recipient is a proper standard-type Bitcoin script
-              supported by tBTC, i.e. P2PKH, P2WPKH, P2SH or P2WSH
+              - On Ethereum: recipient is a 20-byte EVM address
+              - On Bitcoin: recipient is a proper standard-type Bitcoin script
+                supported by tBTC, i.e. P2PKH, P2WPKH, P2SH or P2WSH
      * @return True if the call succeeded, false otherwise.
      */
     function bridgeOut(address token, uint256 amount, uint8 chain, bytes calldata recipient) external returns (bool);
+
+    /**
+     * @notice Sets the outflow limit for a specific token.
+     * @param token The address of the token to set the limit for.
+     * @param limit The maximum amount that can be bridged out in a 25,000 block window,
+     *              in the token-specific precision.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner.
+     * @return True if the call succeeded, false otherwise.
+     */
+    function setOutflowLimit(address token, uint256 limit) external returns (bool);
+
+    /**
+     * @notice Gets the current outflow limit for a specific token.
+     * @param token The address of the token to check the limit for.
+     * @return The current outflow limit for the token, in the token-specific precision.
+     */
+    function getOutflowLimit(address token) external view returns (uint256);
+
+    /**
+     * @notice Gets the outflow capacity for a specific token.
+     * @param token The address of the token to check the capacity for.
+     * @return capacity The remaining outflow capacity for the token (outflow limit - current outflow),
+     *                         in the token-specific precision.
+     * @return resetHeight The block height when the capacity will reset (last outflow reset + reset blocks).
+     */
+    function getOutflowCapacity(address token) external view returns (uint256 capacity, uint256 resetHeight);
+
+    /**
+     * @notice Sets the pauser address for emergency bridge operations.
+     * @param pauser The address that will be able to pause bridge operations.
+     *               Can be 0x0 to remove the pauser.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner.
+     * @return True if the call succeeded, false otherwise.
+     */
+    function setPauser(address pauser) external returns (bool);
+
+    /**
+     * @notice Gets the current pauser address.
+     * @return The address of the current pauser.
+     */
+    function getPauser() external view returns (address);
+
+    /**
+     * @notice Pauses all bridge out operations by setting outflow limits to 0 for all supported tokens.
+     * @dev Requirements:
+     *      - The caller must be the current pauser.
+     *      - The pauser address must not be 0x0.
+     * @return True if the call succeeded, false otherwise.
+     */
+    function pauseBridgeOut() external returns (bool);
 
     /**
      * @notice Sets the minimum bridge-out amount for the given token.
