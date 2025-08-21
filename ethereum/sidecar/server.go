@@ -1054,7 +1054,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 			}
 		case <-ctx.Done():
 			s.logger.Info(
-				"stopping assets unlocked attestations to context cancellation",
+				"stopping assets unlocked attestations due to context cancellation",
 			)
 			return
 		}
