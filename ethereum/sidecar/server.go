@@ -1001,8 +1001,9 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				// wait for our turn to submit
 				select {
 				case <-time.After(delay):
-					// proceed with attestation
+					s.logger.Info("starting processing attestation", "attestation", attestation.String())
 				case <-ctx.Done():
+					s.logger.Info("topping assets unlocked attestations to context cancellation")
 					return
 				}
 
