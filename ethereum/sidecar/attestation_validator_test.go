@@ -198,13 +198,15 @@ func TestAttestationValidation(t *testing.T) {
 			testCase.pre(tte)
 
 			// execute the transaction
-			err := tte.IsConfirmed(testCase.attestation)
+			ok, err := tte.IsConfirmed(testCase.attestation)
 
 			// verify
 			if len(testCase.expectErr) > 0 {
 				assert.ErrorContains(t, err, testCase.expectErr, "not the expected error")
+				assert.False(t, ok)
 			} else {
 				assert.NoError(t, err, "expected no error")
+				assert.True(t, ok)
 			}
 
 			if testCase.post != nil {

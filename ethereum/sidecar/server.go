@@ -1008,12 +1008,12 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				}
 
 				for {
-					err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
+					ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 					if errors.Is(err, ErrInvalidAttestation) {
 						// we log an error and skip it
 						s.logger.Error("invalid attestation -- skipping", "attestation", attestation.String(), "error", err)
 						break
-					} else if err == nil {
+					} else if ok && err == nil {
 						s.logger.Info("attestation already confirmed", "attestation", attestation.String())
 						break
 					}
@@ -1035,7 +1035,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						continue
 					}
 
-					err = s.attestationValidator.WaitForConfirmation(
+					ok, err = s.attestationValidator.WaitForAttestationConfirmation(
 						s.blockHeightWaiter,
 						finalized.Uint64(),
 						64, // this is 2 epoch // finalized block

@@ -35,38 +35,38 @@ func newAttestationValidation(
 
 func (av *attestationValidator) IsConfirmed(
 	attestation *portal.MezoBridgeAssetsUnlocked,
-) error {
+) (bool, error) {
 	ok, err := av.bridgeContract.ValidateAssetsUnlocked(*attestation)
 	if err != nil {
-		return fmt.Errorf("couldn't call validateAssetsUnlocked: %w", err)
+		return false, fmt.Errorf("couldn't call validateAssetsUnlocked: %w", err)
 	}
 	if !ok {
 		// this is a specific case of error
 		// the attestation is not valid, we specify it down the line
-		return ErrInvalidAttestation
+		return false, ErrInvalidAttestation
 	}
 
 	ok, err = av.bridgeContract.ConfirmedUnlocks(attestation.Amount)
 	if err != nil {
-		return fmt.Errorf("couldn't get confirmedLocks: %w", err)
+		return false, fmt.Errorf("couldn't get confirmedLocks: %w", err)
 	}
 	if ok {
-		return nil
+		return true, nil
 	}
 
 	return av.checkOwnAttestation(attestation)
 }
 
-func (av *attestationValidator) WaitForConfirmation(
+func (av *attestationValidator) WaitForAttestationConfirmation(
 	blockHeightWaiter ethconfig.BlockHeightWaiter,
 	startBlock, confirmations uint64,
 	attestation *portal.MezoBridgeAssetsUnlocked,
-) error {
+) (bool, error) {
 	return waitForBlockConfirmations(
 		blockHeightWaiter,
 		startBlock,
 		confirmations,
-		func() error {
+		func() (bool, error) {
 			return av.checkOwnAttestation(attestation)
 		},
 	)
@@ -74,31 +74,31 @@ func (av *attestationValidator) WaitForConfirmation(
 
 func (av *attestationValidator) checkOwnAttestation(
 	attestation *portal.MezoBridgeAssetsUnlocked,
-) error {
+) (bool, error) {
 	encoded, err := abiEncodeAttestation(attestation)
 	if err != nil {
-		return fmt.Errorf("couldn't ABI encode attestation: %w", err)
+		return false, fmt.Errorf("couldn't ABI encode attestation: %w", err)
 	}
 
 	hash := crypto.Keccak256Hash(encoded)
 
 	bitmap, err := av.bridgeContract.Attestations(hash)
 	if err != nil {
-		return fmt.Errorf("couldn't get confirmedLock: %w", err)
+		return false, fmt.Errorf("couldn't get confirmedLock: %w", err)
 	}
 
 	validatorID, err := av.bridgeContract.ValidatorIDs(av.address)
 	if err != nil {
-		return fmt.Errorf("couldn't get validator ID: %w", err)
+		return false, fmt.Errorf("couldn't get validator ID: %w", err)
 	}
 
 	mask := new(big.Int).Lsh(big.NewInt(1), uint(validatorID))
 
 	if new(big.Int).And(bitmap, mask).Int64() == 0 {
-		return ErrValidatorNotInTheBitmap
+		return false, ErrValidatorNotInTheBitmap
 	}
 
-	return nil
+	return true, nil
 }
 
 func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked) ([]byte, error) {
@@ -143,13 +143,13 @@ func waitForBlockConfirmations(
 	blockHeightWaiter ethconfig.BlockHeightWaiter,
 	startBlockNumber uint64,
 	blockConfirmations uint64,
-	stateCheck func() error,
-) error {
+	stateCheck func() (bool, error),
+) (bool, error) {
 	blockHeight := startBlockNumber + blockConfirmations
 
 	err := blockHeightWaiter.WaitForBlockHeight(blockHeight)
 	if err != nil {
-		return fmt.Errorf("failed to wait for block height: [%v]", err)
+		return false, fmt.Errorf("failed to wait for block height: [%v]", err)
 	}
 
 	return stateCheck()
