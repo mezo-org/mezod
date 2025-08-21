@@ -81,6 +81,25 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "mezoToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "minAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "MinBridgeOutAmountSet",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "components": [
@@ -284,6 +303,25 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "mezoToken",
+        "type": "address"
+      }
+    ],
+    "name": "getMinBridgeOutAmount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "token",
         "type": "address"
       }
@@ -352,6 +390,30 @@
   {
     "inputs": [],
     "name": "pauseBridgeOut",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "mezoToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMinBridgeOutAmount",
     "outputs": [
       {
         "internalType": "bool",
