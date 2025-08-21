@@ -309,13 +309,6 @@ func RunServer(
 
 		defer cancelCtx()
 		server.attestAssetsUnlockedEvents(ctx)
-		// if err != nil {
-		// 	server.logger.Error(
-		// 		"AssetsUnlocked events attestation routine failed",
-		// 		"err", err,
-		// 	)
-		// }
-
 		server.logger.Info("AssetsUnlocked events attestation routine stopped")
 	}()
 
