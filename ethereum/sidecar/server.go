@@ -1030,7 +1030,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					s.logger.Info("attestation sent, waiting for confirmation", "txHash", tx.Hash().Hex())
 
 					// nil is latest block
-					latestBlock, err := s.chain.Client().BlockByNumber(ctx, nil)
+					latestBlock, err := s.chain.LatestBlock(ctx)
 					if err != nil {
 						s.logger.Error("couldn't get chain latest block", "error", err)
 						continue
@@ -1038,7 +1038,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 					ok, err = s.attestationValidator.WaitForAttestationConfirmation(
 						s.blockHeightWaiter,
-						latestBlock.NumberU64(),
+						latestBlock.Uint64(),
 						32, // this is 1 epoch // safe block
 						bridgeAssetsUnlocked,
 					)

@@ -3,8 +3,6 @@ package sidecar
 import (
 	"context"
 	"math/big"
-
-	"github.com/keep-network/keep-common/pkg/chain/ethereum/ethutil"
 )
 
 func newLocalChain() *localChain {
@@ -23,7 +21,7 @@ func (lc *localChain) WatchBlocks(_ context.Context) <-chan uint64 {
 	panic("unimplemented")
 }
 
-func (lc *localChain) Client() ethutil.EthereumClient {
+func (lc *localChain) LatestBlock(_ context.Context) (*big.Int, error) {
 	panic("unimplemented")
 }
 
