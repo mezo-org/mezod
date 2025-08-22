@@ -202,6 +202,7 @@ func RunServer(
 	bridgeContract := NewBridgeContract(bridgeContractBinding)
 
 	attestationValidator := newAttestationValidation(
+		logger,
 		bridgeContract,
 		chain.Key().Address,
 	)
@@ -991,6 +992,15 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					Token:                common.HexToAddress(attestation.Token),
 					Amount:               attestation.Amount.BigInt(),
 					Chain:                uint8(attestation.Chain), //nolint:gosec // G115: Chain is known to be within uint8 range
+				}
+
+				ok, err := s.attestationValidator.IsValid(ctx, bridgeAssetsUnlocked)
+				if err != nil {
+					// this is only context cancellation
+					return
+				}
+				if !ok {
+					continue
 				}
 
 				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)

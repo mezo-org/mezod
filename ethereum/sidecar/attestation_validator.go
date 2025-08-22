@@ -1,10 +1,12 @@
 package sidecar
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"math/big"
+	"time"
 
+	"cosmossdk.io/log"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -13,37 +15,50 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
 
-var ErrInvalidAttestation = errors.New("invalid attestation")
+var defaultIsValidTickerDuration = time.Second
 
 type attestationValidator struct {
+	logger         log.Logger
 	bridgeContract ethconnect.BridgeContract
 	address        common.Address
 }
 
 func newAttestationValidation(
+	logger log.Logger,
 	bridgeContract ethconnect.BridgeContract,
 	validatorAddress common.Address,
 ) *attestationValidator {
 	return &attestationValidator{
+		logger:         logger,
 		bridgeContract: bridgeContract,
 		address:        validatorAddress,
+	}
+}
+
+func (av *attestationValidator) IsValid(ctx context.Context, bridgeAssetsUnlocked *portal.MezoBridgeAssetsUnlocked) (bool, error) {
+	ticker := time.NewTicker(defaultIsValidTickerDuration)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			ok, err := av.bridgeContract.ValidateAssetsUnlocked(*bridgeAssetsUnlocked)
+			if err != nil {
+				av.logger.Error("couldn't call validateAssetsUnlocked", "error", err)
+				continue
+			}
+			return ok, nil
+		case <-ctx.Done():
+			av.logger.Info("stopping assets unlocked validation due to context cancellation")
+			return false, ctx.Err()
+		}
 	}
 }
 
 func (av *attestationValidator) IsConfirmed(
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) (bool, error) {
-	ok, err := av.bridgeContract.ValidateAssetsUnlocked(*attestation)
-	if err != nil {
-		return false, fmt.Errorf("couldn't call validateAssetsUnlocked: %w", err)
-	}
-	if !ok {
-		// this is a specific case of error
-		// the attestation is not valid, we specify it down the line
-		return false, ErrInvalidAttestation
-	}
-
-	ok, err = av.bridgeContract.ConfirmedUnlocks(attestation.Amount)
+	ok, err := av.bridgeContract.ConfirmedUnlocks(attestation.Amount)
 	if err != nil {
 		return false, fmt.Errorf("couldn't get confirmedLocks: %w", err)
 	}
