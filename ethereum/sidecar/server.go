@@ -281,7 +281,7 @@ func RunServer(
 
 	if id != 0 {
 		server.logger.Info(
-			"Account is an attesting validator. Waiting for the initial " +
+			"sidecar represents a bridge validator; waiting for the initial " +
 				"AssetsLocked sync before launching AssetsUnlocked routine",
 		)
 
@@ -320,7 +320,10 @@ func RunServer(
 			server.logger.Info("AssetsUnlocked events attestation routine stopped")
 		}()
 	} else {
-		server.logger.Info("Account is NOT an attesting validator")
+		server.logger.Info(
+			"sidecar does not represent a bridge validator; skipping " +
+				"AssetsUnlocked events processing",
+		)
 	}
 
 	<-ctx.Done()
