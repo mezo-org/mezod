@@ -65,4 +65,13 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function pauseBridgeOut() external returns (bool) {
         return IAssetsBridge(precompile).pauseBridgeOut();
     }
+
+    function setMinBridgeOutAmount(address mezoToken, uint256 minAmount) external returns (bool) {
+        return IAssetsBridge(precompile).setMinBridgeOutAmount(mezoToken, minAmount);
+    }
+
+    function getMinBridgeOutAmount(address mezoToken) external view returns (uint256) {
+        return IAssetsBridge(precompile).getMinBridgeOutAmount(mezoToken);
+    }
 }
+

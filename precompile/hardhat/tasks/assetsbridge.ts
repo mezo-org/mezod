@@ -84,7 +84,7 @@ task(
 )
 
 task(
-  'assetsBridge:bridgeOut', 
+  'assetsBridge:bridgeOut',
   'Initiates the bridge out process by unlocking the given assets on Mezo'
 )
   .addParam('token', 'The address of the ERC20 token on Mezo')
@@ -104,7 +104,7 @@ task(
       )
       const confirmed = await pending.wait()
       console.log(confirmed.hash)
-    } 
+    }
   )
 
 task('assetsBridge:setOutflowLimit', 'Sets the outflow limit for a specific token')
@@ -177,4 +177,34 @@ task(
     const pending = await bridge.pauseBridgeOut()
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
+
+  })
+
+task(
+  'assetsBridge:setMinBridgeOutAmount',
+  'Sets the minimum bridge-out amount for a Mezo token'
+)
+  .addParam('token', 'The address of the token on the Mezo chain')
+  .addParam('amount', 'The new minimum amount')
+  .addParam('signer', 'The signer address (msg.sender)')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.setMinBridgeOutAmount(
+      taskArguments.token,
+      taskArguments.amount
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task(
+  'assetsBridge:getMinBridgeOutAmount',
+  'Returns the minimum bridge-out amount (if set) for a Mezo token'
+)
+  .addParam('token', 'The address of the token on the Mezo chain')
+  .setAction(async (taskArguments, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const minAmount = await bridge.getMinBridgeOutAmount(taskArguments.token)
+    console.log(minAmount)
   })
