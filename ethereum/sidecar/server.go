@@ -170,7 +170,7 @@ func RunServer(
 	}
 
 	logger.Info(
-		"Sidecar server resolved MezoBridge contract and Ethereum network",
+		"sidecar server resolved MezoBridge contract and Ethereum network",
 		"mezo_bridge_address", mezoBridgeAddress,
 		"ethereum_network", network,
 	)
@@ -265,7 +265,7 @@ func RunServer(
 	}()
 
 	server.logger.Info(
-		"Waiting for the initial AssetsLocked sync before launching " +
+		"waiting for the initial AssetsLocked sync before launching " +
 			"AssetsUnlocked routine",
 	)
 
@@ -459,7 +459,7 @@ func (s *Server) fetchFinalizedAssetsLockedEvents(startBlock uint64, endBlock ui
 	}
 
 	if len(bufferedEvents) == 0 {
-		s.logger.Info("no new events to process")
+		s.logger.Info("no new AssetsLocked events to process")
 		return nil
 	}
 
@@ -497,7 +497,7 @@ func (s *Server) fetchAssetsLockedABIEvents(
 	endBlock uint64,
 ) ([]*portal.MezoBridgeAssetsLocked, error) {
 	s.logger.Info(
-		"fetching AssetsLocked events from range",
+		"fetching AssetsLocked events from Ethereum using range",
 		"startBlock", startBlock,
 		"endBlock", endBlock,
 	)
@@ -648,7 +648,7 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 	}
 
 	s.logger.Info(
-		"Initial search for recent unconfirmed AssetsUnlocked events",
+		"initial search for recent unconfirmed AssetsUnlocked events done",
 		"recent_events", len(recentEvents),
 		"unconfirmed_events", len(unconfirmedEvents),
 		"unlock_sequence_tip", s.lastAssetsUnlockedSequence.String(),
@@ -986,6 +986,8 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			for attestation := s.unqueueAttestation(); attestation != nil; attestation = s.unqueueAttestation() {
+				attestationLogger := s.logger.With("unlock_sequence", attestation.UnlockSequence.String())
+
 				bridgeAssetsUnlocked := &portal.MezoBridgeAssetsUnlocked{
 					UnlockSequenceNumber: attestation.UnlockSequence.BigInt(),
 					Recipient:            attestation.Recipient,
@@ -997,60 +999,79 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 				if err != nil {
 					// we are just logging here so we can move into the attestation loop anyway
-					s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
+					attestationLogger.Warn(
+						"couldn't check the state of the AssetsUnlocked entry - moving on with attestation process anyway",
+						"error", err,
+					)
 				}
 				if ok {
-					s.logger.Info("attestation already confirmed", "attestation", attestation.String())
+					attestationLogger.Info(
+						"entry already went through the attestation process - skipping",
+					)
 					continue
 				}
 
 				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
 
-				s.logger.Info("waiting for attestation submission slot", "delay", delay)
+				attestationLogger.Info("waiting for attestation submission slot", "delay", fmt.Sprintf("%vs", delay.Seconds()))
 
 				// wait for our turn to submit
 				select {
 				case <-time.After(delay):
-					s.logger.Info("starting processing attestation", "attestation", attestation.String())
+					attestationLogger.Info("starting attestation process")
 				case <-ctx.Done():
-					s.logger.Info("stopping assets unlocked attestations to context cancellation")
+					attestationLogger.Info("stopping assets unlocked attestations to context cancellation")
 					return
 				}
 
-				withBackoff := false
-				for {
-					if withBackoff {
+				// attestation process loop
+				for i := 0; ; i++ {
+					attestationProcessLogger := attestationLogger.With("iteration", i)
+
+					if i > 0 {
+						// use a small backoff for subsequent iterations as they
+						// are most likely retries
 						time.Sleep(10 * time.Second)
-					} else {
-						// start with backoff from next iteration
-						withBackoff = true
 					}
 
 					ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 					if err != nil {
-						s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
+						attestationProcessLogger.Error(
+							"couldn't check the state of the AssetsUnlocked entry - retrying",
+							"error", err,
+						)
 						continue
 					}
 					if ok {
-						s.logger.Info("attestation already confirmed", "attestation", attestation.String())
+						attestationProcessLogger.Info(
+							"attestation process completed with success",
+						)
 						break
 					}
 
-					s.logger.Info("attestation status", "attestation", attestation.String(), "error", err)
+					attestationProcessLogger.Info("sending attestation to MezoBridge")
 
 					tx, err := s.bridgeContract.AttestBridgeOut(bridgeAssetsUnlocked)
 					if err != nil {
-						s.logger.Error("error sending attestation %cv to MezoBridge: %v", attestation.String(), err)
-						// just log the error then try again
+						attestationProcessLogger.Error(
+							"error sending attestation to MezoBridge - retrying",
+							"error", err,
+						)
 						continue
 					}
 
-					s.logger.Info("attestation sent, waiting for confirmation", "txHash", tx.Hash().Hex())
+					attestationProcessLogger.Info(
+						"attestation sent - waiting for confirmation",
+						"txHash", tx.Hash().Hex(),
+					)
 
 					// nil is latest block
 					latestBlock, err := s.chain.LatestBlock(ctx)
 					if err != nil {
-						s.logger.Error("couldn't get chain latest block", "error", err)
+						attestationProcessLogger.Error(
+							"couldn't get chain latest block - retrying",
+							"error", err,
+						)
 						continue
 					}
 
@@ -1062,7 +1083,11 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						func() (bool, error) { return true, nil },
 					)
 					if err != nil {
-						s.logger.Error("error while waiting for confirmation", attestation.String(), err)
+						attestationProcessLogger.Error(
+							"error while waiting for confirmation - retrying",
+							"error", err,
+						)
+						continue
 					}
 				}
 			}
