@@ -1027,7 +1027,15 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					return
 				}
 
+				withBackoff := false
 				for {
+					if withBackoff {
+						time.Sleep(time.Second)
+					} else {
+						// start with backoff from next iteration
+						withBackoff = true
+					}
+
 					ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 					if err != nil {
 						s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
@@ -1070,6 +1078,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						s.logger.Info("attestation confirmed successfully")
 						break
 					}
+
 				}
 			}
 		case <-ctx.Done():
