@@ -98,7 +98,7 @@ func (av *attestationValidator) checkOwnAttestation(
 
 	bitmap, err := av.bridgeContract.Attestations(hash)
 	if err != nil {
-		return false, fmt.Errorf("couldn't get confirmedLock: %w", err)
+		return false, fmt.Errorf("couldn't get confirmedUnlock: %w", err)
 	}
 
 	validatorID, err := av.bridgeContract.ValidatorIDs(av.address)

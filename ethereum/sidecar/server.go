@@ -996,15 +996,17 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 				ok, err := s.attestationValidator.IsValid(ctx, bridgeAssetsUnlocked)
 				if err != nil {
-					// this is only context cancellation
+					s.logger.Error("context cancelled", "error", err)
 					return
 				}
 				if !ok {
+					s.logger.Warn("invalid attestation", "attestation", attestation)
 					continue
 				}
 
 				ok, err = s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 				if err != nil {
+					// we are just logging here so we can move into the attestation loop anyway
 					s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
 				}
 				if ok {
@@ -1021,7 +1023,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				case <-time.After(delay):
 					s.logger.Info("starting processing attestation", "attestation", attestation.String())
 				case <-ctx.Done():
-					s.logger.Info("topping assets unlocked attestations to context cancellation")
+					s.logger.Info("stopping assets unlocked attestations to context cancellation")
 					return
 				}
 
@@ -1061,7 +1063,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						bridgeAssetsUnlocked,
 					)
 					if err != nil {
-						s.logger.Error("couldn't confirm transaction", attestation.String(), err)
+						s.logger.Error("couldn't confirm attestation transaction", attestation.String(), err)
 						continue
 					}
 					if ok {
