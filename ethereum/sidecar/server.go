@@ -1030,7 +1030,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				withBackoff := false
 				for {
 					if withBackoff {
-						time.Sleep(time.Second)
+						time.Sleep(10 * time.Second)
 					} else {
 						// start with backoff from next iteration
 						withBackoff = true
