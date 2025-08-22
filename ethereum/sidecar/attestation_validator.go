@@ -1,10 +1,8 @@
 package sidecar
 
 import (
-	"context"
 	"fmt"
 	"math/big"
-	"time"
 
 	"cosmossdk.io/log"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -14,8 +12,6 @@ import (
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
-
-var defaultIsValidTickerDuration = 30 * time.Second
 
 type attestationValidator struct {
 	logger         log.Logger
@@ -32,28 +28,6 @@ func newAttestationValidation(
 		logger:         logger,
 		bridgeContract: bridgeContract,
 		address:        validatorAddress,
-	}
-}
-
-func (av *attestationValidator) IsValid(ctx context.Context, bridgeAssetsUnlocked *portal.MezoBridgeAssetsUnlocked) (bool, error) {
-	// ticker is used to retry the validation in case
-	// of network transient failure.
-	ticker := time.NewTicker(defaultIsValidTickerDuration)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			ok, err := av.bridgeContract.ValidateAssetsUnlocked(*bridgeAssetsUnlocked)
-			if err != nil {
-				av.logger.Error("couldn't call validateAssetsUnlocked", "error", err)
-				continue
-			}
-			return ok, nil
-		case <-ctx.Done():
-			av.logger.Info("stopping assets unlocked validation due to context cancellation")
-			return false, ctx.Err()
-		}
 	}
 }
 

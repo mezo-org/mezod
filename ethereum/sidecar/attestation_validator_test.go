@@ -1,11 +1,9 @@
 package sidecar
 
 import (
-	"context"
 	"errors"
 	"math/big"
 	"testing"
-	"time"
 
 	"cosmossdk.io/log"
 	"github.com/ethereum/go-ethereum/common"
@@ -38,79 +36,6 @@ func newTestAttestationValidator(t *testing.T) *testAttestationValidator {
 		t:                    t,
 		ctrl:                 ctrl,
 		mockBridgeContract:   mockBridgeContract,
-	}
-}
-
-func TestAttestationValidationIsValid(t *testing.T) {
-	testCases := []struct {
-		name        string
-		attestation *portal.MezoBridgeAssetsUnlocked
-		pre         func(tte *testAttestationValidator)
-		getCtx      func() context.Context
-		expect      bool
-		expectErr   string
-	}{
-		{
-			name:        "IsValid - succeess",
-			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidator) {
-				defaultIsValidTickerDuration = 1
-				tav.mockBridgeContract.EXPECT().
-					ValidateAssetsUnlocked(gomock.Any()).
-					Return(true, nil).
-					Times(1)
-			},
-			getCtx: context.Background,
-			expect: true,
-		},
-		{
-			name:        "IsValid - failure",
-			attestation: defaultAttestation(),
-			pre: func(tav *testAttestationValidator) {
-				defaultIsValidTickerDuration = 1
-				tav.mockBridgeContract.EXPECT().
-					ValidateAssetsUnlocked(gomock.Any()).
-					Return(false, nil).
-					Times(1)
-			},
-			getCtx: context.Background,
-			expect: false,
-		},
-		{
-			name:        "ctx canceled",
-			attestation: defaultAttestation(),
-			pre: func(_ *testAttestationValidator) {
-				// just to make sure the context cancel is trigger first
-				defaultIsValidTickerDuration = 10 * time.Second
-			},
-			getCtx: func() context.Context {
-				ctx, cancel := context.WithCancel(context.Background())
-				cancel()
-				return ctx
-			},
-			expect:    false,
-			expectErr: "context canceled",
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			tte := newTestAttestationValidator(t)
-
-			// prepare the test
-			testCase.pre(tte)
-
-			ctx := testCase.getCtx()
-
-			// execute the transaction
-			ok, err := tte.IsValid(ctx, testCase.attestation)
-			assert.Equal(t, ok, testCase.expect)
-			if len(testCase.expectErr) > 0 {
-				assert.ErrorContains(t, err, testCase.expectErr)
-			}
-
-			tte.ctrl.Finish()
-		})
 	}
 }
 

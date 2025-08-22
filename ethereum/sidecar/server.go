@@ -994,17 +994,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					Chain:                uint8(attestation.Chain), //nolint:gosec // G115: Chain is known to be within uint8 range
 				}
 
-				ok, err := s.attestationValidator.IsValid(ctx, bridgeAssetsUnlocked)
-				if err != nil {
-					s.logger.Error("context canceled", "error", err)
-					return
-				}
-				if !ok {
-					s.logger.Warn("invalid attestation", "attestation", attestation)
-					continue
-				}
-
-				ok, err = s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
+				ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 				if err != nil {
 					// we are just logging here so we can move into the attestation loop anyway
 					s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
