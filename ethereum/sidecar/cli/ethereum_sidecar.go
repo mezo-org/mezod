@@ -94,10 +94,14 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to extract private key: %w", err)
 		}
-		logger.Info("successfully extracted private key from keyring", "key-name", keyName)
+		logger.Info(
+			"successfully extracted private key from keyring",
+			"keyName", keyName,
+			"address", crypto.PubkeyToAddress(privateKey.PublicKey).Hex(),
+		)
 	} else {
 		// If the key name is not provided, generate a random key. This key
-		// won't be used by the sidcar for signing but is needed to be present.
+		// won't be used by the sidecar for signing but is needed to be present.
 		privateKey, err = crypto.GenerateKey()
 		if err != nil {
 			return fmt.Errorf("failed to generate private key: %w", err)

@@ -35,7 +35,7 @@ func (av *attestationValidator) IsConfirmed(
 ) (bool, error) {
 	ok, err := av.bridgeContract.ConfirmedUnlocks(attestation.UnlockSequenceNumber)
 	if err != nil {
-		return false, fmt.Errorf("couldn't get confirmedLocks: %w", err)
+		return false, fmt.Errorf("couldn't get confirmedUnlocks: %w", err)
 	}
 	if ok {
 		return true, nil
