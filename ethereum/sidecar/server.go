@@ -996,7 +996,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 				ok, err := s.attestationValidator.IsValid(ctx, bridgeAssetsUnlocked)
 				if err != nil {
-					s.logger.Error("context cancelled", "error", err)
+					s.logger.Error("context canceled", "error", err)
 					return
 				}
 				if !ok {
