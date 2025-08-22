@@ -215,12 +215,12 @@ func (bc *BaseChain) FinalizedBlock(ctx context.Context) (*big.Int, error) {
 }
 
 func (bc *BaseChain) LatestBlock(ctx context.Context) (*big.Int, error) {
-	r, err := bc.Client().BlockByNumber(ctx, nil)
+	r, err := bc.Client().HeaderByNumber(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.Number(), nil
+	return r.Number, nil
 }
 
 func (bc *BaseChain) WatchBlocks(ctx context.Context) <-chan uint64 {
