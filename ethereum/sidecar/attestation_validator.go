@@ -15,7 +15,7 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
 
-var defaultIsValidTickerDuration = time.Second
+var defaultIsValidTickerDuration = 30 * time.Second
 
 type attestationValidator struct {
 	logger         log.Logger
