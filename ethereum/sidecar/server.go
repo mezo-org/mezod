@@ -209,13 +209,6 @@ func RunServer(
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
-	accountAddress := chain.Key().Address
-
-	logger.Info(
-		"Extracted Ethereum account address",
-		"ethereum_account_address", accountAddress,
-	)
-
 	bridgeContract := NewBridgeContract(bridgeContractBinding)
 
 	attestationValidator := newAttestationValidation(
@@ -280,6 +273,7 @@ func RunServer(
 		server.logger.Info("gRPC server routine stopped")
 	}()
 
+	accountAddress := chain.Key().Address
 	id, err := server.bridgeContract.ValidatorIDs(accountAddress)
 	if err != nil {
 		panic(fmt.Sprintf("failed to get bridge validator ID: %v", err))
