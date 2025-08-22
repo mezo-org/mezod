@@ -3,6 +3,8 @@ package sidecar
 import (
 	"context"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
 func newLocalChain() *localChain {
@@ -11,6 +13,10 @@ func newLocalChain() *localChain {
 
 type localChain struct {
 	finalizedBlock *big.Int
+}
+
+func (lc *localChain) Key() *keystore.Key {
+	panic("unimplemented")
 }
 
 func (lc *localChain) FinalizedBlock(_ context.Context) (*big.Int, error) {

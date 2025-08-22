@@ -151,9 +151,6 @@ type Server struct {
 	// routine uses it.
 	lastAssetsUnlockedSequence sdkmath.Int
 
-	// privateKey is an optional ECDSA private key extracted from keyring
-	privateKey *ecdsa.PrivateKey
-
 	attestationValidator     *attestationValidator
 	blockHeightWaiterFactory BlockHeightWaiterFactory
 	submissionQueue          *submissionQueue
@@ -212,6 +209,13 @@ func RunServer(
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
+	accountAddress := chain.Key().Address
+
+	logger.Info(
+		"Extracted Ethereum account address",
+		"ethereum_account_address", accountAddress,
+	)
+
 	bridgeContract := NewBridgeContract(bridgeContractBinding)
 
 	attestationValidator := newAttestationValidation(
@@ -248,7 +252,6 @@ func RunServer(
 		assetsUnlockedLookBackPeriod: assetsUnlockedLookBackPeriod,
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
-		privateKey:                   privateKey,
 		attestationValidator:         attestationValidator,
 		blockHeightWaiterFactory:     chain.BlockCounter(),
 		submissionQueue:              submissionQueue,
@@ -277,53 +280,54 @@ func RunServer(
 		server.logger.Info("gRPC server routine stopped")
 	}()
 
-	server.logger.Info(
-		"waiting for the initial AssetsLocked sync before launching " +
-			"AssetsUnlocked routine",
-	)
-
-	// Wait until the initial synchronization of the AssetsLocked routine is
-	// complete.
-	select {
-	case <-server.assetsLockedReady:
-		server.logger.Info(
-			"initial AssetsLocked sync completed; proceeding with " +
-				"AssetsUnlocked routines",
-		)
-	case <-ctx.Done():
-		server.logger.Info(
-			"context canceled while waiting; exiting without launching " +
-				"AssetsUnlocked routines",
-		)
-		return
+	id, err := server.bridgeContract.ValidatorIDs(accountAddress)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get bridge validator ID: %v", err))
 	}
 
-	go func() {
-		// TODO: Only a subset of validators should be attesting AssetsUnlocked
-		//       events. Decide whether we should run this goroutine by calling
-		//       MezoBridge.bridgeValidators() with our Ethereum address.
+	if id != 0 {
+		server.logger.Info(
+			"Account is an attesting validator. Waiting for the initial " +
+				"AssetsLocked sync before launching AssetsUnlocked routine",
+		)
 
-		defer cancelCtx()
-		err := server.observeAssetsUnlockedEvents(ctx)
-		if err != nil {
-			server.logger.Error(
-				"AssetsUnlocked events observation routine failed",
-				"err", err,
+		// Wait until the initial synchronization of the AssetsLocked routine is
+		// complete.
+		select {
+		case <-server.assetsLockedReady:
+			server.logger.Info(
+				"initial AssetsLocked sync completed; proceeding with " +
+					"AssetsUnlocked routines",
 			)
+		case <-ctx.Done():
+			server.logger.Info(
+				"context canceled while waiting; exiting without launching " +
+					"AssetsUnlocked routines",
+			)
+			return
 		}
 
-		server.logger.Info("AssetsUnlocked events observation routine stopped")
-	}()
+		go func() {
+			defer cancelCtx()
+			err := server.observeAssetsUnlockedEvents(ctx)
+			if err != nil {
+				server.logger.Error(
+					"AssetsUnlocked events observation routine failed",
+					"err", err,
+				)
+			}
 
-	go func() {
-		// TODO: Only a subset of validators should be attesting AssetsUnlocked
-		//       events. Decide whether we should run this goroutine by calling
-		//       MezoBridge.bridgeValidators() with our Ethereum address.
+			server.logger.Info("AssetsUnlocked events observation routine stopped")
+		}()
 
-		defer cancelCtx()
-		server.attestAssetsUnlockedEvents(ctx)
-		server.logger.Info("AssetsUnlocked events attestation routine stopped")
-	}()
+		go func() {
+			defer cancelCtx()
+			server.attestAssetsUnlockedEvents(ctx)
+			server.logger.Info("AssetsUnlocked events attestation routine stopped")
+		}()
+	} else {
+		server.logger.Info("Account is NOT an attesting validator")
+	}
 
 	<-ctx.Done()
 
