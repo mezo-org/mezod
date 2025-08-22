@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
@@ -43,21 +42,6 @@ func (av *attestationValidator) IsConfirmed(
 	}
 
 	return av.checkOwnAttestation(attestation)
-}
-
-func (av *attestationValidator) WaitForAttestationConfirmation(
-	blockHeightWaiter ethconfig.BlockHeightWaiter,
-	startBlock, confirmations uint64,
-	attestation *portal.MezoBridgeAssetsUnlocked,
-) (bool, error) {
-	return waitForBlockConfirmations(
-		blockHeightWaiter,
-		startBlock,
-		confirmations,
-		func() (bool, error) {
-			return av.checkOwnAttestation(attestation)
-		},
-	)
 }
 
 func (av *attestationValidator) checkOwnAttestation(
@@ -120,25 +104,4 @@ func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked) ([]byte,
 		attestation.Amount,
 		attestation.Chain,
 	)
-}
-
-// waitForBlockConfirmations ensures that after receiving specific number of block
-// confirmations the state of the chain is actually as expected. It waits for
-// predefined number of blocks since the start block number provided. After the
-// required block number is reached it performs a check of the chain state with
-// a provided function returning a error.
-func waitForBlockConfirmations(
-	blockHeightWaiter ethconfig.BlockHeightWaiter,
-	startBlockNumber uint64,
-	blockConfirmations uint64,
-	stateCheck func() (bool, error),
-) (bool, error) {
-	blockHeight := startBlockNumber + blockConfirmations
-
-	err := blockHeightWaiter.WaitForBlockHeight(blockHeight)
-	if err != nil {
-		return false, fmt.Errorf("failed to wait for block height: [%v]", err)
-	}
-
-	return stateCheck()
 }

@@ -16,7 +16,6 @@ import (
 	common "github.com/ethereum/go-ethereum/common"
 	types "github.com/ethereum/go-ethereum/core/types"
 	portal "github.com/mezo-org/mezod/ethereum/bindings/portal"
-	abi "github.com/mezo-org/mezod/ethereum/bindings/portal/sepolia/gen/abi"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -132,21 +131,6 @@ func (m *MockBridgeContract) PastAssetsUnlockConfirmedEvents(startBlock uint64, 
 func (mr *MockBridgeContractMockRecorder) PastAssetsUnlockConfirmedEvents(startBlock, endBlock, unlockSequenceNumber, recipient, token any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PastAssetsUnlockConfirmedEvents", reflect.TypeOf((*MockBridgeContract)(nil).PastAssetsUnlockConfirmedEvents), startBlock, endBlock, unlockSequenceNumber, recipient, token)
-}
-
-// ValidateAssetsUnlocked mocks base method.
-func (m *MockBridgeContract) ValidateAssetsUnlocked(assetsUnlocked abi.MezoBridgeAssetsUnlocked) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateAssetsUnlocked", assetsUnlocked)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ValidateAssetsUnlocked indicates an expected call of ValidateAssetsUnlocked.
-func (mr *MockBridgeContractMockRecorder) ValidateAssetsUnlocked(assetsUnlocked any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateAssetsUnlocked", reflect.TypeOf((*MockBridgeContract)(nil).ValidateAssetsUnlocked), assetsUnlocked)
 }
 
 // ValidatorIDs mocks base method.

@@ -96,12 +96,6 @@ func (lbc *localBridgeContract) SetErrors(errors []error) {
 	lbc.errors = errors
 }
 
-func (lbc *localBridgeContract) ValidateAssetsUnlocked(
-	_ portal.MezoBridgeAssetsUnlocked,
-) (bool, error) {
-	return true, nil
-}
-
 func (lbc *localBridgeContract) AttestBridgeOut(
 	_ *portal.MezoBridgeAssetsUnlocked,
 ) (*types.Transaction, error) {

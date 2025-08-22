@@ -1054,21 +1054,16 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						continue
 					}
 
-					ok, err = s.attestationValidator.WaitForAttestationConfirmation(
+					ok, err = waitForBlockConfirmations(
 						s.blockHeightWaiter,
 						latestBlock.Uint64(),
 						32, // this is 1 epoch // safe block
-						bridgeAssetsUnlocked,
+						// this is enough as we just want to be blocking for 32 blocks
+						func() (bool, error) { return true, nil },
 					)
 					if err != nil {
-						s.logger.Error("couldn't confirm attestation transaction", attestation.String(), err)
-						continue
+						s.logger.Error("error while waiting for confirmation", attestation.String(), err)
 					}
-					if ok {
-						s.logger.Info("attestation confirmed successfully")
-						break
-					}
-
 				}
 			}
 		case <-ctx.Done():
@@ -1153,4 +1148,25 @@ func initializeBridgeContract(
 	}
 
 	return bridgeContract, nil
+}
+
+// waitForBlockConfirmations ensures that after receiving specific number of block
+// confirmations the state of the chain is actually as expected. It waits for
+// predefined number of blocks since the start block number provided. After the
+// required block number is reached it performs a check of the chain state with
+// a provided function returning a error.
+func waitForBlockConfirmations(
+	blockHeightWaiter ethconfig.BlockHeightWaiter,
+	startBlockNumber uint64,
+	blockConfirmations uint64,
+	stateCheck func() (bool, error),
+) (bool, error) {
+	blockHeight := startBlockNumber + blockConfirmations
+
+	err := blockHeightWaiter.WaitForBlockHeight(blockHeight)
+	if err != nil {
+		return false, fmt.Errorf("failed to wait for block height: [%v]", err)
+	}
+
+	return stateCheck()
 }
