@@ -274,12 +274,12 @@ func RunServer(
 	}()
 
 	accountAddress := chain.Key().Address
-	id, err := server.bridgeContract.ValidatorIDs(accountAddress)
+	bridgeValidatorID, err := server.bridgeContract.ValidatorIDs(accountAddress)
 	if err != nil {
 		panic(fmt.Sprintf("failed to get bridge validator ID: %v", err))
 	}
 
-	if id != 0 {
+	if bridgeValidatorID != 0 {
 		server.logger.Info(
 			"sidecar represents a bridge validator; waiting for the initial " +
 				"AssetsLocked sync before launching AssetsUnlocked routine",
