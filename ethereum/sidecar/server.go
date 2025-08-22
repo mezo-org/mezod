@@ -1003,6 +1003,15 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					continue
 				}
 
+				ok, err = s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
+				if err != nil {
+					s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
+				}
+				if ok {
+					s.logger.Info("attestation already confirmed", "attestation", attestation.String())
+					continue
+				}
+
 				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
 
 				s.logger.Info("waiting for attestation submission slot", "delay", delay)
@@ -1019,8 +1028,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				for {
 					ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 					if err != nil {
-						// we log an error and skip it
-						s.logger.Error("invalid attestation -- skipping", "attestation", attestation.String(), "error", err)
+						s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
 						continue
 					}
 					if ok {
