@@ -36,6 +36,8 @@ func newAttestationValidation(
 }
 
 func (av *attestationValidator) IsValid(ctx context.Context, bridgeAssetsUnlocked *portal.MezoBridgeAssetsUnlocked) (bool, error) {
+	// ticker is used to retry the validation in case
+	// of network transient failure.
 	ticker := time.NewTicker(defaultIsValidTickerDuration)
 	defer ticker.Stop()
 
