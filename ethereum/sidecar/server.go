@@ -287,12 +287,12 @@ func RunServer(
 	select {
 	case <-server.assetsLockedReady:
 		server.logger.Info(
-			"Initial AssetsLocked sync completed; proceeding with " +
+			"initial AssetsLocked sync completed; proceeding with " +
 				"AssetsUnlocked routines",
 		)
 	case <-ctx.Done():
 		server.logger.Info(
-			"Context canceled while waiting; exiting without launching " +
+			"context canceled while waiting; exiting without launching " +
 				"AssetsUnlocked routines",
 		)
 		return
@@ -511,8 +511,8 @@ func (s *Server) fetchAssetsLockedABIEvents(
 ) ([]*portal.MezoBridgeAssetsLocked, error) {
 	s.logger.Info(
 		"fetching AssetsLocked events from Ethereum using range",
-		"startBlock", startBlock,
-		"endBlock", endBlock,
+		"start_block", startBlock,
+		"end_block", endBlock,
 	)
 
 	result := make([]*portal.MezoBridgeAssetsLocked, 0)
@@ -546,8 +546,8 @@ func (s *Server) fetchAssetsLockedABIEvents(
 
 			s.logger.Info(
 				"fetching a batch of AssetsLocked events from range",
-				"batchStartBlock", batchStartBlock,
-				"batchEndBlock", batchEndBlock,
+				"batch_start_block", batchStartBlock,
+				"batch_end_block", batchEndBlock,
 			)
 
 			<-ticker.C
@@ -912,8 +912,8 @@ func (s *Server) fetchAssetsUnlockConfirmedEvents(
 ) ([]*portal.MezoBridgeAssetsUnlockConfirmed, error) {
 	s.logger.Info(
 		"fetching AssetsUnlockConfirmed events from range",
-		"startBlock", startBlock,
-		"endBlock", endBlock,
+		"start_block", startBlock,
+		"end_block", endBlock,
 	)
 
 	result := make([]*portal.MezoBridgeAssetsUnlockConfirmed, 0)
@@ -932,8 +932,8 @@ func (s *Server) fetchAssetsUnlockConfirmedEvents(
 		s.logger.Warn(
 			"failed to fetch AssetsUnlockConfirmed events from the entire "+
 				"range; falling back to batched events fetch",
-			"startBlock", startBlock,
-			"endBlock", endBlock,
+			"start_block", startBlock,
+			"end_block", endBlock,
 			"err", err,
 		)
 
@@ -947,8 +947,8 @@ func (s *Server) fetchAssetsUnlockConfirmedEvents(
 
 			s.logger.Info(
 				"fetching a batch of AssetsUnlockConfirmed events from range",
-				"batchStartBlock", batchStartBlock,
-				"batchEndBlock", batchEndBlock,
+				"batch_start_block", batchStartBlock,
+				"batch_end_block", batchEndBlock,
 			)
 
 			<-ticker.C
@@ -999,7 +999,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			for attestation := s.unqueueAttestation(); attestation != nil; attestation = s.unqueueAttestation() {
-				attestationLogger := s.logger.With("unlockSequence", attestation.UnlockSequence.String())
+				attestationLogger := s.logger.With("unlock_sequence", attestation.UnlockSequence.String())
 
 				bridgeAssetsUnlocked := &portal.MezoBridgeAssetsUnlocked{
 					UnlockSequenceNumber: attestation.UnlockSequence.BigInt(),
@@ -1094,8 +1094,8 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 					attestationProcessLogger.Info(
 						"attestation sent - waiting for confirmation",
-						"txHash", tx.Hash().Hex(),
-						"ethereumConfirmationBlock", confirmationBlock,
+						"tx_hash", tx.Hash().Hex(),
+						"ethereum_confirmation_block", confirmationBlock,
 					)
 
 					waiter, err := s.blockHeightWaiterFactory.BlockHeightWaiter(confirmationBlock)
