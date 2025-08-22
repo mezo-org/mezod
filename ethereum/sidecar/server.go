@@ -223,14 +223,6 @@ func RunServer(
 		chain.Key().Address,
 	)
 
-	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
-		assetsUnlockedEndpoint,
-		registry,
-	)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
-	}
-
 	server := &Server{
 		logger:                       logger,
 		grpcServer:                   grpc.NewServer(),
@@ -241,7 +233,6 @@ func RunServer(
 		batchSize:                    batchSize,
 		requestsPerMinute:            requestsPerMinute,
 		assetsLockedReady:            make(chan struct{}),
-		assetsUnlockedEndpoint:       assetsUnlockedGrpcEndpoint,
 		assetsUnlockedLookBackPeriod: assetsUnlockedLookBackPeriod,
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
@@ -280,6 +271,18 @@ func RunServer(
 	}
 
 	if bridgeValidatorID != 0 {
+		// Since the sidecar represents a bridge validator, we must enable
+		// communication with the AssetsUnlocked endpoint in mezod.
+		assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
+			assetsUnlockedEndpoint,
+			registry,
+		)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
+		}
+
+		server.assetsUnlockedEndpoint = assetsUnlockedGrpcEndpoint
+
 		server.logger.Info(
 			"sidecar represents a bridge validator; waiting for the initial " +
 				"AssetsLocked sync before launching AssetsUnlocked routine",
