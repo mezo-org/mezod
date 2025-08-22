@@ -140,6 +140,10 @@ type Server struct {
 
 	// privateKey is an optional ECDSA private key extracted from keyring
 	privateKey *ecdsa.PrivateKey
+
+	attestationValidator *attestationValidator
+	blockHeightWaiter    ethconfig.BlockHeightWaiter
+	submissionQueue      *submissionQueue
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -190,10 +194,24 @@ func RunServer(
 	}
 
 	// Initialize the MezoBridge contract instance.
-	bridgeContract, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
+	bridgeContractBinding, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
+
+	bridgeContract := NewBridgeContract(bridgeContractBinding)
+
+	attestationValidator := newAttestationValidation(
+		logger,
+		bridgeContract,
+		chain.Key().Address,
+	)
+
+	submissionQueue := newSubmissionQueue(
+		logger,
+		bridgeContract,
+		chain.Key().Address,
+	)
 
 	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
 		assetsUnlockedEndpoint,
@@ -208,7 +226,7 @@ func RunServer(
 		grpcServer:                   grpc.NewServer(),
 		assetsLockedEvents:           make([]bridgetypes.AssetsLockedEvent, 0),
 		lastFinalizedBlock:           new(big.Int),
-		bridgeContract:               NewBridgeContract(bridgeContract),
+		bridgeContract:               bridgeContract,
 		chain:                        chain,
 		batchSize:                    batchSize,
 		requestsPerMinute:            requestsPerMinute,
@@ -218,6 +236,9 @@ func RunServer(
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
 		privateKey:                   privateKey,
+		attestationValidator:         attestationValidator,
+		blockHeightWaiter:            chain.BlockCounter(),
+		submissionQueue:              submissionQueue,
 	}
 
 	go func() {
@@ -287,14 +308,7 @@ func RunServer(
 		//       MezoBridge.bridgeValidators() with our Ethereum address.
 
 		defer cancelCtx()
-		err := server.attestAssetsUnlockedEvents(ctx)
-		if err != nil {
-			server.logger.Error(
-				"AssetsUnlocked events attestation routine failed",
-				"err", err,
-			)
-		}
-
+		server.attestAssetsUnlockedEvents(ctx)
 		server.logger.Info("AssetsUnlocked events attestation routine stopped")
 	}()
 
@@ -951,11 +965,114 @@ func (s *Server) fetchAssetsUnlockConfirmedEvents(
 	return result, nil
 }
 
-//nolint:unparam
-func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) error {
-	// TODO: Implement
-	<-ctx.Done()
-	return nil
+func (s *Server) unqueueAttestation() *bridgetypes.AssetsUnlockedEvent {
+	s.attestationMutex.Lock()
+	defer s.attestationMutex.Unlock()
+	if len(s.attestationQueue) == 0 {
+		return nil
+	}
+
+	attestation := s.attestationQueue[0]
+	s.attestationQueue = s.attestationQueue[1:]
+
+	return &attestation
+}
+
+func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			for attestation := s.unqueueAttestation(); attestation != nil; attestation = s.unqueueAttestation() {
+				bridgeAssetsUnlocked := &portal.MezoBridgeAssetsUnlocked{
+					UnlockSequenceNumber: attestation.UnlockSequence.BigInt(),
+					Recipient:            attestation.Recipient,
+					Token:                common.HexToAddress(attestation.Token),
+					Amount:               attestation.Amount.BigInt(),
+					Chain:                uint8(attestation.Chain), //nolint:gosec // G115: Chain is known to be within uint8 range
+				}
+
+				ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
+				if err != nil {
+					// we are just logging here so we can move into the attestation loop anyway
+					s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
+				}
+				if ok {
+					s.logger.Info("attestation already confirmed", "attestation", attestation.String())
+					continue
+				}
+
+				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
+
+				s.logger.Info("waiting for attestation submission slot", "delay", delay)
+
+				// wait for our turn to submit
+				select {
+				case <-time.After(delay):
+					s.logger.Info("starting processing attestation", "attestation", attestation.String())
+				case <-ctx.Done():
+					s.logger.Info("stopping assets unlocked attestations to context cancellation")
+					return
+				}
+
+				withBackoff := false
+				for {
+					if withBackoff {
+						time.Sleep(10 * time.Second)
+					} else {
+						// start with backoff from next iteration
+						withBackoff = true
+					}
+
+					ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
+					if err != nil {
+						s.logger.Error("couldn't confirm attestation", "attestation", attestation.String(), "error", err)
+						continue
+					}
+					if ok {
+						s.logger.Info("attestation already confirmed", "attestation", attestation.String())
+						break
+					}
+
+					s.logger.Info("attestation status", "attestation", attestation.String(), "error", err)
+
+					tx, err := s.bridgeContract.AttestBridgeOut(bridgeAssetsUnlocked)
+					if err != nil {
+						s.logger.Error("error sending attestation %cv to MezoBridge: %v", attestation.String(), err)
+						// just log the error then try again
+						continue
+					}
+
+					s.logger.Info("attestation sent, waiting for confirmation", "txHash", tx.Hash().Hex())
+
+					// nil is latest block
+					latestBlock, err := s.chain.LatestBlock(ctx)
+					if err != nil {
+						s.logger.Error("couldn't get chain latest block", "error", err)
+						continue
+					}
+
+					_, err = waitForBlockConfirmations(
+						s.blockHeightWaiter,
+						latestBlock.Uint64(),
+						32, // this is 1 epoch // safe block
+						// this is enough as we just want to be blocking for 32 blocks
+						func() (bool, error) { return true, nil },
+					)
+					if err != nil {
+						s.logger.Error("error while waiting for confirmation", attestation.String(), err)
+					}
+				}
+			}
+		case <-ctx.Done():
+			s.logger.Info(
+				"stopping assets unlocked attestations due to context cancellation",
+			)
+			return
+		}
+	}
 }
 
 // Version return the current version of the ethereum sidecar.
@@ -1031,4 +1148,25 @@ func initializeBridgeContract(
 	}
 
 	return bridgeContract, nil
+}
+
+// waitForBlockConfirmations ensures that after receiving specific number of block
+// confirmations the state of the chain is actually as expected. It waits for
+// predefined number of blocks since the start block number provided. After the
+// required block number is reached it performs a check of the chain state with
+// a provided function returning a error.
+func waitForBlockConfirmations(
+	blockHeightWaiter ethconfig.BlockHeightWaiter,
+	startBlockNumber uint64,
+	blockConfirmations uint64,
+	stateCheck func() (bool, error),
+) (bool, error) {
+	blockHeight := startBlockNumber + blockConfirmations
+
+	err := blockHeightWaiter.WaitForBlockHeight(blockHeight)
+	if err != nil {
+		return false, fmt.Errorf("failed to wait for block height: [%v]", err)
+	}
+
+	return stateCheck()
 }
