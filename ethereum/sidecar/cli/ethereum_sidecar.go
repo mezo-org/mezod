@@ -96,7 +96,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		}
 		logger.Info(
 			"successfully extracted private key from keyring",
-			"key_name", keyName,
+			"keyName", keyName,
 			"address", crypto.PubkeyToAddress(privateKey.PublicKey).Hex(),
 		)
 	} else {
