@@ -60,7 +60,7 @@ func (av *attestationValidator) IsValid(ctx context.Context, bridgeAssetsUnlocke
 func (av *attestationValidator) IsConfirmed(
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) (bool, error) {
-	ok, err := av.bridgeContract.ConfirmedUnlocks(attestation.Amount)
+	ok, err := av.bridgeContract.ConfirmedUnlocks(attestation.UnlockSequenceNumber)
 	if err != nil {
 		return false, fmt.Errorf("couldn't get confirmedLocks: %w", err)
 	}
