@@ -1054,7 +1054,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						continue
 					}
 
-					ok, err = waitForBlockConfirmations(
+					_, err = waitForBlockConfirmations(
 						s.blockHeightWaiter,
 						latestBlock.Uint64(),
 						32, // this is 1 epoch // safe block
