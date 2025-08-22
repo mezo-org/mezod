@@ -169,6 +169,8 @@ func NewPrecompile(
 		methods = append(methods, newSetPauserMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetPauserMethod(bridgeKeeper))
 		methods = append(methods, newPauseBridgeOutMethod(bridgeKeeper))
+		methods = append(methods, newSetMinBridgeOutAmountMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetMinBridgeOutAmountMethod(bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -211,6 +213,8 @@ type BridgeKeeper interface {
 	GetERC20TokensMappings(ctx sdk.Context) []*bridgetypes.ERC20TokenMapping
 	GetERC20TokenMapping(ctx sdk.Context, sourceToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
 	GetERC20TokenMappingFromMezoToken(ctx sdk.Context, mezoToken []byte) (*bridgetypes.ERC20TokenMapping, bool)
+	GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) math.Int
+	SetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte, minAmount math.Int) error
 	GetParams(ctx sdk.Context) bridgetypes.Params
 	SaveAssetsUnlocked(
 		ctx sdk.Context,

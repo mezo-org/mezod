@@ -195,3 +195,34 @@ func (k Keeper) BurnERC20(
 
 	return nil
 }
+
+func (k Keeper) GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) math.Int {
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(types.GetMinBridgeOutAmountKey(mezoToken))
+	if len(bz) == 0 {
+		return math.ZeroInt()
+	}
+
+	var minAmount math.Int
+	err := minAmount.Unmarshal(bz)
+	if err != nil {
+		panic(err)
+	}
+
+	return minAmount
+}
+
+func (k Keeper) SetMinBridgeOutAmount(
+	ctx sdk.Context,
+	mezoToken []byte,
+	minAmount math.Int,
+) error {
+	store := ctx.KVStore(k.storeKey)
+	bz, err := minAmount.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	store.Set(types.GetMinBridgeOutAmountKey(mezoToken), bz)
+	return nil
+}

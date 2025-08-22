@@ -57,6 +57,10 @@ var (
 
 	// PauserKey is a standalone key for the pauser address.
 	PauserKey = []byte{0x93}
+
+	// MinBridgeOutAmountKeyPrefix is the key prefix for the minimum bridge-out
+	// amount.
+	MinBridgeOutAmountKeyPrefix = []byte{0x94}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
@@ -78,4 +82,10 @@ func GetOutflowLimitKey(token []byte) []byte {
 // GetCurrentOutflowKey gets the key for current outflow tracking by token address.
 func GetCurrentOutflowKey(token []byte) []byte {
 	return append(CurrentOutflowKeyPrefix, token...)
+}
+
+// GetMinBridgeOutAmountKey gets the key for minimum bridge-out amount by the
+// given Mezo token address.
+func GetMinBridgeOutAmountKey(mezoToken []byte) []byte {
+	return append(MinBridgeOutAmountKeyPrefix, mezoToken...)
 }

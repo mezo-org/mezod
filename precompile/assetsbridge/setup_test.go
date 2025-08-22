@@ -216,6 +216,7 @@ type FakeBridgeKeeper struct {
 	sourceBTCToken      []byte
 	erc20TokensMappings []*bridgetypes.ERC20TokenMapping
 	currentSequenceTip  math.Int
+	minAmountByToken    map[string]math.Int
 
 	burnErr error
 
@@ -235,6 +236,7 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		outflowLimits:       make(map[string]math.Int),
 		outflowCurrent:      make(map[string]math.Int),
 		lastResetHeight:     0,
+		minAmountByToken:    make(map[string]math.Int),
 	}
 }
 
@@ -339,6 +341,26 @@ func (k *FakeBridgeKeeper) SaveAssetsUnlocked(
 	_ uint8,
 ) (*bridgetypes.AssetsUnlockedEvent, error) {
 	return nil, errors.New("unimplemented")
+}
+
+func (k *FakeBridgeKeeper) GetMinBridgeOutAmount(
+	_ sdk.Context,
+	mezoToken []byte,
+) math.Int {
+	minAmount, ok := k.minAmountByToken[common.BytesToAddress(mezoToken).Hex()]
+	if ok {
+		return minAmount
+	}
+	return math.ZeroInt()
+}
+
+func (k *FakeBridgeKeeper) SetMinBridgeOutAmount(
+	_ sdk.Context,
+	mezoToken []byte,
+	minAmount math.Int,
+) error {
+	k.minAmountByToken[common.BytesToAddress(mezoToken).Hex()] = minAmount
+	return nil
 }
 
 func (k *FakeBridgeKeeper) SetOutflowLimit(_ sdk.Context, token []byte, limit math.Int) {
