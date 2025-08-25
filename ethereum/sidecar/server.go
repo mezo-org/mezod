@@ -151,9 +151,6 @@ type Server struct {
 	// routine uses it.
 	lastAssetsUnlockedSequence sdkmath.Int
 
-	// privateKey is an optional ECDSA private key extracted from keyring
-	privateKey *ecdsa.PrivateKey
-
 	attestationValidator     *attestationValidator
 	blockHeightWaiterFactory BlockHeightWaiterFactory
 	submissionQueue          *submissionQueue
@@ -226,14 +223,6 @@ func RunServer(
 		chain.Key().Address,
 	)
 
-	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
-		assetsUnlockedEndpoint,
-		registry,
-	)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
-	}
-
 	server := &Server{
 		logger:                       logger,
 		grpcServer:                   grpc.NewServer(),
@@ -244,11 +233,9 @@ func RunServer(
 		batchSize:                    batchSize,
 		requestsPerMinute:            requestsPerMinute,
 		assetsLockedReady:            make(chan struct{}),
-		assetsUnlockedEndpoint:       assetsUnlockedGrpcEndpoint,
 		assetsUnlockedLookBackPeriod: assetsUnlockedLookBackPeriod,
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
-		privateKey:                   privateKey,
 		attestationValidator:         attestationValidator,
 		blockHeightWaiterFactory:     chain.BlockCounter(),
 		submissionQueue:              submissionQueue,
@@ -277,19 +264,12 @@ func RunServer(
 		server.logger.Info("gRPC server routine stopped")
 	}()
 
-	server.logger.Info(
-		"waiting for the initial AssetsLocked sync before launching " +
-			"AssetsUnlocked routine",
-	)
-
 	// Wait until the initial synchronization of the AssetsLocked routine is
 	// complete.
+	server.logger.Info("waiting for initial AssetsLocked sync")
 	select {
 	case <-server.assetsLockedReady:
-		server.logger.Info(
-			"initial AssetsLocked sync completed; proceeding with " +
-				"AssetsUnlocked routines",
-		)
+		server.logger.Info("initial AssetsLocked sync completed")
 	case <-ctx.Done():
 		server.logger.Info(
 			"context canceled while waiting; exiting without launching " +
@@ -298,32 +278,54 @@ func RunServer(
 		return
 	}
 
-	go func() {
-		// TODO: Only a subset of validators should be attesting AssetsUnlocked
-		//       events. Decide whether we should run this goroutine by calling
-		//       MezoBridge.bridgeValidators() with our Ethereum address.
+	accountAddress := chain.Key().Address
+	bridgeValidatorID, err := server.bridgeContract.ValidatorIDs(accountAddress)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get bridge validator ID: %v", err))
+	}
 
-		defer cancelCtx()
-		err := server.observeAssetsUnlockedEvents(ctx)
+	if bridgeValidatorID != 0 {
+		server.logger.Info(
+			"sidecar represents a bridge validator; proceeding with " +
+				"AssetsUnlocked events processing",
+		)
+
+		// Since the sidecar represents a bridge validator, we must enable
+		// communication with the AssetsUnlocked endpoint in mezod.
+		assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
+			assetsUnlockedEndpoint,
+			registry,
+		)
 		if err != nil {
-			server.logger.Error(
-				"AssetsUnlocked events observation routine failed",
-				"err", err,
-			)
+			panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
 		}
 
-		server.logger.Info("AssetsUnlocked events observation routine stopped")
-	}()
+		server.assetsUnlockedEndpoint = assetsUnlockedGrpcEndpoint
 
-	go func() {
-		// TODO: Only a subset of validators should be attesting AssetsUnlocked
-		//       events. Decide whether we should run this goroutine by calling
-		//       MezoBridge.bridgeValidators() with our Ethereum address.
+		go func() {
+			defer cancelCtx()
+			err := server.observeAssetsUnlockedEvents(ctx)
+			if err != nil {
+				server.logger.Error(
+					"AssetsUnlocked events observation routine failed",
+					"err", err,
+				)
+			}
 
-		defer cancelCtx()
-		server.attestAssetsUnlockedEvents(ctx)
-		server.logger.Info("AssetsUnlocked events attestation routine stopped")
-	}()
+			server.logger.Info("AssetsUnlocked events observation routine stopped")
+		}()
+
+		go func() {
+			defer cancelCtx()
+			server.attestAssetsUnlockedEvents(ctx)
+			server.logger.Info("AssetsUnlocked events attestation routine stopped")
+		}()
+	} else {
+		server.logger.Info(
+			"sidecar does not represent a bridge validator; skipping " +
+				"AssetsUnlocked events processing",
+		)
+	}
 
 	<-ctx.Done()
 
