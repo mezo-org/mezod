@@ -264,6 +264,20 @@ func RunServer(
 		server.logger.Info("gRPC server routine stopped")
 	}()
 
+	// Wait until the initial synchronization of the AssetsLocked routine is
+	// complete.
+	server.logger.Info("waiting for initial AssetsLocked sync")
+	select {
+	case <-server.assetsLockedReady:
+		server.logger.Info("initial AssetsLocked sync completed")
+	case <-ctx.Done():
+		server.logger.Info(
+			"context canceled while waiting; exiting without launching " +
+				"AssetsUnlocked routines",
+		)
+		return
+	}
+
 	accountAddress := chain.Key().Address
 	bridgeValidatorID, err := server.bridgeContract.ValidatorIDs(accountAddress)
 	if err != nil {
@@ -271,6 +285,11 @@ func RunServer(
 	}
 
 	if bridgeValidatorID != 0 {
+		server.logger.Info(
+			"sidecar represents a bridge validator; proceeding with " +
+				"AssetsUnlocked events processing",
+		)
+
 		// Since the sidecar represents a bridge validator, we must enable
 		// communication with the AssetsUnlocked endpoint in mezod.
 		assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
@@ -282,27 +301,6 @@ func RunServer(
 		}
 
 		server.assetsUnlockedEndpoint = assetsUnlockedGrpcEndpoint
-
-		server.logger.Info(
-			"sidecar represents a bridge validator; waiting for the initial " +
-				"AssetsLocked sync before launching AssetsUnlocked routine",
-		)
-
-		// Wait until the initial synchronization of the AssetsLocked routine is
-		// complete.
-		select {
-		case <-server.assetsLockedReady:
-			server.logger.Info(
-				"initial AssetsLocked sync completed; proceeding with " +
-					"AssetsUnlocked routines",
-			)
-		case <-ctx.Done():
-			server.logger.Info(
-				"context canceled while waiting; exiting without launching " +
-					"AssetsUnlocked routines",
-			)
-			return
-		}
 
 		go func() {
 			defer cancelCtx()
