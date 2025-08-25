@@ -33,7 +33,7 @@ func NewEthereumSidecarCmd() *cobra.Command {
 	// per 2 seconds, which is 30 requests per minute. Flag should be set to 30 for
 	// this example.
 	defaultServerRequestsPerMinute := uint64(600) // 10 requests per second
-	defaultAssetsUnlockedEndpoint := "127.0.0.1:9090"
+	defaultServerAssetsUnlockedEndpoint := "127.0.0.1:9090"
 	defaultKeyringBackend := flags.DefaultKeyringBackend
 	defaultKeyringDir := ""
 	defaultKeyName := ""
@@ -53,7 +53,7 @@ func NewEthereumSidecarCmd() *cobra.Command {
 			defaultServerEthereumNetwork.String(),
 			defaultServerBatchSize,
 			defaultServerRequestsPerMinute,
-			defaultAssetsUnlockedEndpoint,
+			defaultServerAssetsUnlockedEndpoint,
 			defaultKeyringBackend,
 			defaultKeyringDir,
 			defaultKeyName,
@@ -73,7 +73,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 	network, _ := cmd.Flags().GetString(FlagServerNetwork)
 	batchSize, _ := cmd.Flags().GetUint64(FlagServerBatchSize)
 	requestsPerMinute, _ := cmd.Flags().GetUint64(FlagServerRequestsPerMinute)
-	assetsUnlockedEndpoint, _ := cmd.Flags().GetString(FlagAssetsUnlockedEndpoint)
+	assetsUnlockedEndpoint, _ := cmd.Flags().GetString(FlagServerAssetsUnlockedEndpoint)
 	keyName, _ := cmd.Flags().GetString(FlagKeyName)
 
 	clientCtx, err := client.GetClientQueryContext(cmd)

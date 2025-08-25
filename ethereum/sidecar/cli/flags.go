@@ -7,15 +7,15 @@ import (
 )
 
 const (
-	FlagServerAddress             = "ethereum-sidecar.server.address"
-	FlagServerEthereumNodeAddress = "ethereum-sidecar.server.ethereum-node-address"
-	FlagServerNetwork             = "ethereum-sidecar.server.network"
-	FlagServerBatchSize           = "ethereum-sidecar.server.batch-size"
-	FlagServerRequestsPerMinute   = "ethereum-sidecar.server.requests-per-minute"
-	FlagAssetsUnlockedEndpoint    = "ethereum-sidecar.assets-unlocked-endpoint"
-	FlagKeyringBackend            = "keyring-backend"
-	FlagKeyringDir                = "keyring-dir"
-	FlagKeyName                   = "key-name"
+	FlagServerAddress                = "ethereum-sidecar.server.address"
+	FlagServerEthereumNodeAddress    = "ethereum-sidecar.server.ethereum-node-address"
+	FlagServerNetwork                = "ethereum-sidecar.server.network"
+	FlagServerBatchSize              = "ethereum-sidecar.server.batch-size"
+	FlagServerRequestsPerMinute      = "ethereum-sidecar.server.requests-per-minute"
+	FlagServerAssetsUnlockedEndpoint = "ethereum-sidecar.server.assets-unlocked-endpoint"
+	FlagKeyringBackend               = "keyring-backend"
+	FlagKeyringDir                   = "keyring-dir"
+	FlagKeyName                      = "key-name"
 )
 
 func NewFlagSetEthereumSidecar(
@@ -24,7 +24,7 @@ func NewFlagSetEthereumSidecar(
 	defaultServerNetwork string,
 	defaultServerBatchSize uint64,
 	defaultServerRequestsPerMinute uint64,
-	defaultAssetsUnlockedEndpoint string,
+	defaultServerAssetsUnlockedEndpoint string,
 	defaultKeyringBackend,
 	defaultKeyringDir,
 	defaultKeyName string,
@@ -70,9 +70,9 @@ func NewFlagSetEthereumSidecar(
 	)
 
 	fs.String(
-		FlagAssetsUnlockedEndpoint,
-		defaultAssetsUnlockedEndpoint,
-		"Address of the gRPC endpoint for providing info on AssetsUnlocked "+
+		FlagServerAssetsUnlockedEndpoint,
+		defaultServerAssetsUnlockedEndpoint,
+		"Address of the mezod gRPC endpoint used to get AssetsUnlocked "+
 			"events emitted on the Mezo chain",
 	)
 
@@ -91,7 +91,7 @@ func NewFlagSetEthereumSidecar(
 	fs.String(
 		FlagKeyName,
 		defaultKeyName,
-		"Name of the key to extract from keyring (optional)",
+		"Name of the key to extract from keyring (mandatory for bridge validator nodes, optional for other node types)",
 	)
 
 	return fs
