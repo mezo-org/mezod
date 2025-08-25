@@ -35,3 +35,4 @@ data:
     
     scrape_interval: "30s"
     timeout: "10s"
+  
