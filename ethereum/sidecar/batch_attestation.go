@@ -4,11 +4,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 	"time"
 
 	"cosmossdk.io/log"
 	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
@@ -30,9 +30,9 @@ type BridgeWorker interface {
 type batchAttestation struct {
 	logger         log.Logger
 	privateKey     *ecdsa.PrivateKey
-	address        common.Address
 	bridgeWorker   BridgeWorker
 	bridgeContract ethconnect.BridgeContract
+	chainID        *big.Int
 }
 
 func newBatchAttestation(
@@ -40,12 +40,14 @@ func newBatchAttestation(
 	privateKey *ecdsa.PrivateKey,
 	bridgeWorker BridgeWorker,
 	bridgeContract ethconnect.BridgeContract,
+	chainID *big.Int,
 ) *batchAttestation {
 	return &batchAttestation{
 		logger:         logger,
 		privateKey:     privateKey,
 		bridgeWorker:   bridgeWorker,
 		bridgeContract: bridgeContract,
+		chainID:        chainID,
 	}
 }
 
@@ -123,7 +125,7 @@ func (ba *batchAttestation) sendPayload(
 }
 
 func (ba *batchAttestation) signPayload(attestation *portal.MezoBridgeAssetsUnlocked) (string, error) {
-	abiEncoded, err := abiEncodeAttestation(attestation)
+	abiEncoded, err := abiEncodeAttestation(attestation, ba.chainID)
 	if err != nil {
 		return "", err
 	}

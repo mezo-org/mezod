@@ -12,7 +12,7 @@ package sidecar
 import (
 	reflect "reflect"
 
-	common "github.com/ethereum/go-ethereum/common"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,15 +41,15 @@ func (m *MockBridgeWorker) EXPECT() *MockBridgeWorkerMockRecorder {
 }
 
 // SendSignature mocks base method.
-func (m *MockBridgeWorker) SendSignature(address common.Address, signature string) error {
+func (m *MockBridgeWorker) SendSignature(attestation *portal.MezoBridgeAssetsUnlocked, signature string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendSignature", address, signature)
+	ret := m.ctrl.Call(m, "SendSignature", attestation, signature)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SendSignature indicates an expected call of SendSignature.
-func (mr *MockBridgeWorkerMockRecorder) SendSignature(address, signature any) *gomock.Call {
+func (mr *MockBridgeWorkerMockRecorder) SendSignature(attestation, signature any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSignature", reflect.TypeOf((*MockBridgeWorker)(nil).SendSignature), address, signature)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSignature", reflect.TypeOf((*MockBridgeWorker)(nil).SendSignature), attestation, signature)
 }

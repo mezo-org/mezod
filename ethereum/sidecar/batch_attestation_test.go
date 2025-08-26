@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"math/big"
 	"testing"
 	"time"
 
@@ -42,9 +43,9 @@ func newTestBatchAttestation(t *testing.T) *testBatchAttestation {
 	ba := newBatchAttestation(
 		log.NewNopLogger(),
 		privateKey,
-		address,
 		mockBridgeWorker,
 		mockBridgeContract,
+		big.NewInt(1),
 	)
 
 	return &testBatchAttestation{
@@ -184,13 +185,13 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			tba := newTestBatchAttestation(t)
 
 			// Override the default timeout
-			defaultBatchAttestationTimeout = testCase.timeout
+			batchAttestationTimeout = testCase.timeout
 
 			// Also set a shorter check interval
-			defaultBatchAttestationCheck = 10 * time.Millisecond
+			batchAttestationCheck = 10 * time.Millisecond
 
 			// Set a shorter retry interval
-			defaultRetrySendSignature = 10 * time.Millisecond
+			retrySendSignature = 10 * time.Millisecond
 
 			// Prepare the test
 			testCase.pre(tba)

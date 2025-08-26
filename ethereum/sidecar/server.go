@@ -224,6 +224,7 @@ func RunServer(
 		privateKey,
 		nil, // this is the bridgeWorker
 		bridgeContract,
+		chain.ChainID(),
 	)
 
 	submissionQueue := newSubmissionQueue(
