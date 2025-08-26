@@ -1038,18 +1038,18 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 				}
 
 				// first try with the batch attestation stuff
-				// ok, err = s.batchAttestation.TryAttest(ctx, bridgeAssetsUnlocked)
-				// if err != nil {
-				// 	if err == ctx.Err() {
-				// 		attestationLogger.Info("stopping attestation slot wait due to context cancellation")
-				// 	}
-				// 	attestationLogger.Error("batch attestation terminated with error", "attestation", attestation, "error", err)
-				// }
-				// if ok {
-				// 	attestationLogger.Info(
-				// 		"entry already was attested via the batch attestation - skipping individual attestation",
-				// 	)
-				// }
+				ok, err = s.batchAttestation.TryAttest(ctx, bridgeAssetsUnlocked)
+				if err != nil {
+					if ctx.Err() != nil {
+						attestationLogger.Info("stopping attestation slot wait due to context cancellation")
+					}
+					attestationLogger.Error("batch attestation terminated with error", "attestation", attestation, "error", err)
+				}
+				if ok {
+					attestationLogger.Info(
+						"entry already was attested via the batch attestation - skipping individual attestation",
+					)
+				}
 
 				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
 

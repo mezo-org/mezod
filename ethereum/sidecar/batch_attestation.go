@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"time"
 
 	"cosmossdk.io/log"
@@ -15,9 +16,9 @@ import (
 )
 
 var (
-	defaultBatchAttestationTimeout = 5 * time.Minute
-	defaultBatchAttestationCheck   = 15 * time.Second
-	defaultRetrySendSignature      = 5 * time.Second
+	batchAttestationTimeout = 10 * time.Minute
+	batchAttestationCheck   = 15 * time.Second
+	retrySendSignature      = 5 * time.Second
 )
 
 type BridgeWorker interface {
@@ -58,19 +59,18 @@ func (ba *batchAttestation) TryAttest(
 ) (bool, error) {
 	// main timeout, for the overall time spent
 	// trying waiting for the bridge worker to submit the attestations
-	cancelCtx, cancel := context.WithTimeout(context.Background(), defaultBatchAttestationTimeout)
-	defer cancel()
+	attestCtx, cancelAttestCtx := context.WithTimeout(ctx, batchAttestationTimeout)
+	defer cancelAttestCtx()
 
 	// first send the attestestation signature.
 	// if there's an error we can fallback to
-	ok, err := ba.sendPayload(ctx, cancelCtx, attestation)
-	if !ok || err != nil {
-		// if either there was an error = ctx canceled or sending
-		// payload is not ok == reached default batch timeout
-		return ok, err
+	err := ba.sendPayload(attestCtx, attestation)
+	if err != nil {
+		// if there was an error = ctx canceled
+		return false, err
 	}
 
-	checkTicker := time.NewTicker(defaultBatchAttestationCheck)
+	checkTicker := time.NewTicker(batchAttestationCheck)
 	defer checkTicker.Stop()
 
 	for {
@@ -81,50 +81,45 @@ func (ba *batchAttestation) TryAttest(
 				return true, nil
 			}
 			// else we just continue to wait for the confirmation
-		case <-cancelCtx.Done():
-			ba.logger.Info("stopping batch attestation slot wait due timeout")
+		case <-attestCtx.Done():
+			ba.logger.Info("stopping batch attestation wait due timeout")
 			return false, nil
-		case <-ctx.Done():
-			ba.logger.Info("stopping batch attestation slot wait due to context cancellation")
-			return false, ctx.Err()
 		}
 	}
 }
 
 func (ba *batchAttestation) sendPayload(
 	ctx context.Context,
-	cancelCtx context.Context,
 	attestation *portal.MezoBridgeAssetsUnlocked,
-) (bool, error) {
+) error {
 	signature, err := ba.signPayload(attestation)
 	if err != nil {
-		// we panic here, there's no reason than a bug or misconfiguration
+		// we panic here, there's no reason other than a bug or misconfiguration
 		// for not being able to sign the payload here, so let just exit early
-		ba.logger.Error("couldn't sign batch attestation payload", "attestation", attestation, "error", err)
-		panic("unable to sign batch attestation payload")
+		panic(fmt.Sprintf("unable to sign batch attestation payload: [%v]", err))
 	}
 
 	// we operate this in a loop just to handle retries in case
 	// of transcient network failure.
-	retryTicker := time.NewTicker(defaultRetrySendSignature)
+	retryTicker := time.NewTicker(retrySendSignature)
 	defer retryTicker.Stop()
+
+	ctx, cancel := context.WithTimeout(ctx, batchAttestationTimeout/5)
+	defer cancel()
 
 	for {
 		select {
 		case <-retryTicker.C:
 			err := ba.bridgeWorker.SendSignature(ba.address, signature)
 			if err != nil {
-				ba.logger.Info("couldn't send signature to bridge worker",
+				ba.logger.Warn("couldn't send signature to bridge worker",
 					"attestation", attestation, "error", err)
 				continue
 			}
-			return true, nil
-		case <-cancelCtx.Done():
-			ba.logger.Info("stopping batch attestation slot wait due timeout")
-			return false, nil
+			return nil
 		case <-ctx.Done():
-			ba.logger.Info("stopping batch attestation slot wait due to context cancellation")
-			return false, ctx.Err()
+			ba.logger.Info("stopping sending batch attestation payload wait due to timeout")
+			return ctx.Err()
 		}
 	}
 }
@@ -146,7 +141,7 @@ func (ba *batchAttestation) signPayload(attestation *portal.MezoBridgeAssetsUnlo
 func (ba *batchAttestation) isConfirmed(attestation *portal.MezoBridgeAssetsUnlocked) bool {
 	ok, err := ba.bridgeContract.ConfirmedUnlocks(attestation.UnlockSequenceNumber)
 	if err != nil {
-		ba.logger.Error("couldn't get confirmedLocks", "error", err)
+		ba.logger.Error("couldn't get confirmedUnlocks", "error", err)
 	}
 
 	return ok
