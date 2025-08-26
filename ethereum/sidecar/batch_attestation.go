@@ -24,7 +24,7 @@ var (
 type BridgeWorker interface {
 	// expect no returned payload,
 	// just an error eventually
-	SendSignature(address common.Address, signature string) error
+	SendSignature(attestation *portal.MezoBridgeAssetsUnlocked, signature string) error
 }
 
 type batchAttestation struct {
@@ -38,13 +38,11 @@ type batchAttestation struct {
 func newBatchAttestation(
 	logger log.Logger,
 	privateKey *ecdsa.PrivateKey,
-	address common.Address,
 	bridgeWorker BridgeWorker,
 	bridgeContract ethconnect.BridgeContract,
 ) *batchAttestation {
 	return &batchAttestation{
 		logger:         logger,
-		address:        address,
 		privateKey:     privateKey,
 		bridgeWorker:   bridgeWorker,
 		bridgeContract: bridgeContract,
@@ -110,7 +108,7 @@ func (ba *batchAttestation) sendPayload(
 	for {
 		select {
 		case <-retryTicker.C:
-			err := ba.bridgeWorker.SendSignature(ba.address, signature)
+			err := ba.bridgeWorker.SendSignature(attestation, signature)
 			if err != nil {
 				ba.logger.Warn("couldn't send signature to bridge worker",
 					"attestation", attestation, "error", err)

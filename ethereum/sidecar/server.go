@@ -222,7 +222,6 @@ func RunServer(
 	batchAttestation := newBatchAttestation(
 		logger,
 		privateKey,
-		chain.Key().Address,
 		nil, // this is the bridgeWorker
 		bridgeContract,
 	)
