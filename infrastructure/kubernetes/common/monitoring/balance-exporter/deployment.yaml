@@ -32,6 +32,8 @@ spec:
               value: "9115"
             - name: ADDRESSES_FILE
               value: /etc/balance-exporter/addresses.txt
+            - name: CONTRACTS_FILE
+              value: /etc/balance-exporter/contracts.txt
             - name: PREFIX
               value: mezo_
             - name: CHAIN_RPC_URL
