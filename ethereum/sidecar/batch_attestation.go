@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -19,6 +20,8 @@ var (
 	batchAttestationTimeout = 10 * time.Minute
 	batchAttestationCheck   = 15 * time.Second
 	retrySendSignature      = 5 * time.Second
+
+	ErrBridgeWorkerNotSet = errors.New("bridge worker not set")
 )
 
 type BridgeWorker interface {
@@ -57,6 +60,9 @@ func (ba *batchAttestation) TryAttest(
 	ctx context.Context,
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) (bool, error) {
+	if ba.bridgeWorker == nil {
+		return false, ErrBridgeWorkerNotSet
+	}
 	// main timeout, for the overall time spent
 	// trying waiting for the bridge worker to submit the attestations
 	attestCtx, cancelAttestCtx := context.WithTimeout(ctx, batchAttestationTimeout)

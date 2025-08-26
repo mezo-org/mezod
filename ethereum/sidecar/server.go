@@ -222,7 +222,8 @@ func RunServer(
 	batchAttestation := newBatchAttestation(
 		logger,
 		privateKey,
-		nil, // this is the bridgeWorker
+		// TODO: pass the bridge worked here when implemented
+		nil,
 		bridgeContract,
 		chain.ChainID(),
 	)
@@ -1037,28 +1038,30 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					continue
 				}
 
+				attestationLogger.Info("starting batch attestation process", "attestation", attestation)
+
 				// first try with the batch attestation stuff
 				ok, err = s.batchAttestation.TryAttest(ctx, bridgeAssetsUnlocked)
 				if err != nil {
 					if ctx.Err() != nil {
 						attestationLogger.Info("stopping attestation slot wait due to context cancellation")
 					}
-					attestationLogger.Error("batch attestation terminated with error", "attestation", attestation, "error", err)
+					attestationLogger.Warn("batch attestation process failed - falling back to individual attestation process", "error", err)
 				}
 				if ok {
 					attestationLogger.Info(
-						"entry already was attested via the batch attestation - skipping individual attestation",
+						"entry confirmed via the batch attestation process - skipping individual attestation",
 					)
 				}
 
 				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
 
-				attestationLogger.Info("waiting for attestation submission slot", "delay", fmt.Sprintf("%vs", delay.Seconds()))
+				attestationLogger.Info("waiting for individual attestation submission slot", "delay", fmt.Sprintf("%vs", delay.Seconds()))
 
 				// wait for our turn to submit
 				select {
 				case <-time.After(delay):
-					attestationLogger.Info("starting attestation process")
+					attestationLogger.Info("starting individual attestation process")
 				case <-ctx.Done():
 					attestationLogger.Info("stopping attestation slot wait due to context cancellation")
 					return
