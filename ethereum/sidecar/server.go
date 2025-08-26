@@ -154,6 +154,8 @@ type Server struct {
 	attestationValidator     *attestationValidator
 	blockHeightWaiterFactory BlockHeightWaiterFactory
 	submissionQueue          *submissionQueue
+
+	batchAttestation *batchAttestation
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -217,6 +219,14 @@ func RunServer(
 		chain.Key().Address,
 	)
 
+	batchAttestation := newBatchAttestation(
+		logger,
+		privateKey,
+		chain.Key().Address,
+		nil, // this is the bridgeWorker
+		bridgeContract,
+	)
+
 	submissionQueue := newSubmissionQueue(
 		logger,
 		bridgeContract,
@@ -239,6 +249,7 @@ func RunServer(
 		attestationValidator:         attestationValidator,
 		blockHeightWaiterFactory:     chain.BlockCounter(),
 		submissionQueue:              submissionQueue,
+		batchAttestation:             batchAttestation,
 	}
 
 	go func() {
@@ -1025,6 +1036,20 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					)
 					continue
 				}
+
+				// first try with the batch attestation stuff
+				// ok, err = s.batchAttestation.TryAttest(ctx, bridgeAssetsUnlocked)
+				// if err != nil {
+				// 	if err == ctx.Err() {
+				// 		attestationLogger.Info("stopping attestation slot wait due to context cancellation")
+				// 	}
+				// 	attestationLogger.Error("batch attestation terminated with error", "attestation", attestation, "error", err)
+				// }
+				// if ok {
+				// 	attestationLogger.Info(
+				// 		"entry already was attested via the batch attestation - skipping individual attestation",
+				// 	)
+				// }
 
 				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
 
