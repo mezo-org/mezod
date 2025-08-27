@@ -154,6 +154,8 @@ type Server struct {
 	attestationValidator     *attestationValidator
 	blockHeightWaiterFactory BlockHeightWaiterFactory
 	submissionQueue          *submissionQueue
+
+	batchAttestation *batchAttestation
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -217,6 +219,15 @@ func RunServer(
 		chain.Key().Address,
 	)
 
+	batchAttestation := newBatchAttestation(
+		logger,
+		privateKey,
+		// TODO: pass the bridge worked here when implemented
+		nil,
+		bridgeContract,
+		chain.ChainID(),
+	)
+
 	submissionQueue := newSubmissionQueue(
 		logger,
 		bridgeContract,
@@ -239,6 +250,7 @@ func RunServer(
 		attestationValidator:         attestationValidator,
 		blockHeightWaiterFactory:     chain.BlockCounter(),
 		submissionQueue:              submissionQueue,
+		batchAttestation:             batchAttestation,
 	}
 
 	go func() {
@@ -1026,14 +1038,30 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					continue
 				}
 
+				attestationLogger.Info("starting batch attestation process", "attestation", attestation)
+
+				// first try with the batch attestation stuff
+				ok, err = s.batchAttestation.TryAttest(ctx, bridgeAssetsUnlocked)
+				if err != nil {
+					if ctx.Err() != nil {
+						attestationLogger.Info("stopping attestation slot wait due to context cancellation")
+					}
+					attestationLogger.Warn("batch attestation process failed - falling back to individual attestation process", "error", err)
+				}
+				if ok {
+					attestationLogger.Info(
+						"entry confirmed via the batch attestation process - skipping individual attestation",
+					)
+				}
+
 				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
 
-				attestationLogger.Info("waiting for attestation submission slot", "delay", fmt.Sprintf("%vs", delay.Seconds()))
+				attestationLogger.Info("waiting for individual attestation submission slot", "delay", fmt.Sprintf("%vs", delay.Seconds()))
 
 				// wait for our turn to submit
 				select {
 				case <-time.After(delay):
-					attestationLogger.Info("starting attestation process")
+					attestationLogger.Info("starting individual attestation process")
 				case <-ctx.Done():
 					attestationLogger.Info("stopping attestation slot wait due to context cancellation")
 					return

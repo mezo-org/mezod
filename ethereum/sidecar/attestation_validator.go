@@ -47,7 +47,7 @@ func (av *attestationValidator) IsConfirmed(
 func (av *attestationValidator) checkOwnAttestation(
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) (bool, error) {
-	encoded, err := abiEncodeAttestation(attestation)
+	encoded, err := abiEncodeAttestation(attestation, nil)
 	if err != nil {
 		return false, fmt.Errorf("couldn't ABI encode attestation: %w", err)
 	}
@@ -73,7 +73,7 @@ func (av *attestationValidator) checkOwnAttestation(
 	return true, nil
 }
 
-func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked) ([]byte, error) {
+func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
 	uint256Type, err := abi.NewType("uint256", "uint256", nil)
 	if err != nil {
 		return nil, err
@@ -91,17 +91,34 @@ func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked) ([]byte,
 		return nil, err
 	}
 
-	return abi.Arguments{
-		{Type: uint256Type},
-		{Type: bytesType},
-		{Type: addressType},
-		{Type: uint256Type},
-		{Type: uint8Type},
-	}.Pack(
-		attestation.UnlockSequenceNumber,
-		attestation.Recipient,
-		attestation.Token,
-		attestation.Amount,
-		attestation.Chain,
+	var argumentsTypes abi.Arguments
+	var arguments []any
+	if chainID != nil {
+		argumentsTypes = append(argumentsTypes, abi.Argument{Type: uint256Type})
+		arguments = append(arguments, chainID)
+	}
+
+	argumentsTypes = append(
+		argumentsTypes,
+		abi.Arguments{
+			{Type: uint256Type},
+			{Type: bytesType},
+			{Type: addressType},
+			{Type: uint256Type},
+			{Type: uint8Type},
+		}...,
 	)
+
+	arguments = append(
+		arguments,
+		[]any{
+			attestation.UnlockSequenceNumber,
+			attestation.Recipient,
+			attestation.Token,
+			attestation.Amount,
+			attestation.Chain,
+		}...,
+	)
+
+	return argumentsTypes.Pack(arguments...)
 }
