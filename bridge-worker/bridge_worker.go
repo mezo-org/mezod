@@ -81,7 +81,7 @@ func RunBridgeWorker(
 
 	<-ctx.Done()
 
-	log.Print("sidecar stopped")
+	log.Print("bridge worker stopped")
 }
 
 func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
