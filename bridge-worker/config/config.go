@@ -1,4 +1,4 @@
-package bridgeworker
+package config
 
 import (
 	"crypto/ecdsa"
