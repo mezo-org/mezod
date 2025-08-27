@@ -184,6 +184,7 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v1.0.0-rc1` | 3712500 | Planned upgrade with chain halt    | Patch for mixed precompile addresses.                                                                                                           |
 | `v2.0.2` | 5559500 | Planned upgrade with chain halt    | Bring back parity with mainnet.                                                                                                           |
 | `v3.0.0` | 5695000 | Planned upgrade with chain halt    | [v3.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v3.0.0) |
+| `v4.0.0` | 6854500 | Planned upgrade with chain halt    | [v4.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v4.0.0) |
 
 ### Mainnet
 
