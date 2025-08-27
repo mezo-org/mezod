@@ -76,13 +76,13 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			pre: func(tba *testBatchAttestation) {
 				expectedError := errors.New("network error")
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(tba.address, gomock.Any()).
+					SendSignature(defaultUnlockAttestation(), gomock.Any()).
 					Return(expectedError).
 					AnyTimes()
 			},
 			ctx:             context.Background,
 			expectedSuccess: false,
-			expectedError:   "",
+			expectedError:   "context deadline exceeded",
 			timeout:         100 * time.Millisecond, // Short timeout for testing
 		},
 		{
@@ -90,7 +90,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(tba.address, gomock.Any()).
+					SendSignature(defaultUnlockAttestation(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				tba.mockBridgeContract.EXPECT().
@@ -108,7 +108,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(tba.address, gomock.Any()).
+					SendSignature(defaultUnlockAttestation(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				tba.mockBridgeContract.EXPECT().
@@ -126,7 +126,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(tba.address, gomock.Any()).
+					SendSignature(defaultUnlockAttestation(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				// First few calls return false, then true
@@ -151,7 +151,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(tba.address, gomock.Any()).
+					SendSignature(defaultUnlockAttestation(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				expectedError := errors.New("contract error")
