@@ -85,9 +85,10 @@ func RunBridgeWorker(
 }
 
 func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
-	// TODO: Implement
+	// TODO: Implement; log for now.
+	log.Print("Inside Bitcoin withdrawal logic")
 	<-ctx.Done()
-	return nil
+	return ctx.Err()
 }
 
 // Construct a new instance of the Ethereum MezoBridge contract.
