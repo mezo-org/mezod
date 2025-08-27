@@ -221,3 +221,20 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 		})
 	}
 }
+
+func TestAttestationDigestHash(t *testing.T) {
+	attestation := &portal.MezoBridgeAssetsUnlocked{
+		UnlockSequenceNumber: big.NewInt(10),
+		Recipient:            common.HexToAddress("0x87eaCD568b85dA3cfF39D3bb82F9329B23786b76").Bytes(),
+		Token:                common.HexToAddress("0x517f2982701695D4E52f1ECFBEf3ba31Df470161"),
+		Amount:               big.NewInt(77),
+		Chain:                0,
+	}
+
+	digestHash, err := attestationDigestHash(attestation, big.NewInt(1))
+	assert.NoError(t, err)
+
+	// Expected digest hash computed using Solidity's `keccak256(abi.encode(1, AssetsUnlocked)).toEthSignedMessageHash()`
+	expectedDigestHash := common.HexToHash("0xcb97fcb7f22cc5aadd1b5e6497d547723d4a652d31cf38e78d3644b44a71846d").Bytes()
+	assert.Equal(t, expectedDigestHash, digestHash)
+}
