@@ -20,8 +20,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: balance-exporter
-          # TODO: Use the mezo/balance-exporter image once it is published
-          image: nkuba/balance-exporter
+          image: rtwatts/balance-exporter:v1.0
           ports:
             - containerPort: 9115
           volumeMounts:
