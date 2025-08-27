@@ -10,11 +10,9 @@ import (
 	"github.com/mezo-org/mezod/bridge-worker/types"
 )
 
-var (
-	submitSignatureEndpoint = func(baseURL string) string {
-		return fmt.Sprintf("%s/submit-signature", baseURL)
-	}
-)
+var submitSignatureEndpoint = func(baseURL string) string {
+	return fmt.Sprintf("%s/submit-signature", baseURL)
+}
 
 type Client struct {
 	baseURL    string
