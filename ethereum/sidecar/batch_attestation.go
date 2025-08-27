@@ -130,13 +130,24 @@ func (ba *batchAttestation) sendPayload(
 	}
 }
 
+func attestationDigestHash(attestation *portal.MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
+	abiEncoded, err := abiEncodeAttestationWithChainID(attestation, chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	digest := crypto.Keccak256(abiEncoded)
+
+	return accounts.TextHash(digest), nil
+}
+
 func (ba *batchAttestation) signPayload(attestation *portal.MezoBridgeAssetsUnlocked) (string, error) {
-	abiEncoded, err := abiEncodeAttestationWithChainID(attestation, ba.chainID)
+	digestHash, err := attestationDigestHash(attestation, ba.chainID)
 	if err != nil {
 		return "", err
 	}
 
-	signature, err := crypto.Sign(accounts.TextHash(abiEncoded), ba.privateKey)
+	signature, err := crypto.Sign(digestHash, ba.privateKey)
 	if err != nil {
 		return "", err
 	}
