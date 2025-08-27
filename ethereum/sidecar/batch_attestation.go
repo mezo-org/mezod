@@ -72,8 +72,7 @@ func (ba *batchAttestation) TryAttest(
 	// if there's an error we can fallback to
 	err := ba.sendPayload(attestCtx, attestation)
 	if err != nil {
-		// if there was an error = ctx canceled
-		return false, err
+		return false, fmt.Errorf("failed to send payload: %w", err)
 	}
 
 	checkTicker := time.NewTicker(batchAttestationCheck)
@@ -88,8 +87,7 @@ func (ba *batchAttestation) TryAttest(
 			}
 			// else we just continue to wait for the confirmation
 		case <-attestCtx.Done():
-			ba.logger.Info("stopping batch attestation wait due timeout")
-			return false, nil
+			return false, fmt.Errorf("batch attestation terminated: %w", attestCtx.Err())
 		}
 	}
 }
@@ -102,7 +100,7 @@ func (ba *batchAttestation) sendPayload(
 	if err != nil {
 		// we panic here, there's no reason other than a bug or misconfiguration
 		// for not being able to sign the payload here, so let just exit early
-		panic(fmt.Sprintf("unable to sign batch attestation payload: [%v]", err))
+		panic(fmt.Sprintf("unable to sign batch attestation payload: %v", err))
 	}
 
 	// we operate this in a loop just to handle retries in case
@@ -110,28 +108,30 @@ func (ba *batchAttestation) sendPayload(
 	retryTicker := time.NewTicker(retrySendSignature)
 	defer retryTicker.Stop()
 
-	ctx, cancel := context.WithTimeout(ctx, batchAttestationTimeout/5)
-	defer cancel()
+	sendCtx, cancelSendCtx := context.WithTimeout(ctx, batchAttestationTimeout/5)
+	defer cancelSendCtx()
 
 	for {
 		select {
 		case <-retryTicker.C:
 			err := ba.bridgeWorker.SendSignature(attestation, signature)
 			if err != nil {
-				ba.logger.Warn("couldn't send signature to bridge worker",
-					"attestation", attestation, "error", err)
+				ba.logger.Warn(
+					"failed to send attestation signature to the bridge worker",
+					"unlock_sequence", attestation.UnlockSequenceNumber.String(),
+					"error", err,
+				)
 				continue
 			}
 			return nil
-		case <-ctx.Done():
-			ba.logger.Info("stopping sending batch attestation payload wait due to timeout")
-			return ctx.Err()
+		case <-sendCtx.Done():
+			return fmt.Errorf("payload send terminated: %w", sendCtx.Err())
 		}
 	}
 }
 
 func (ba *batchAttestation) signPayload(attestation *portal.MezoBridgeAssetsUnlocked) (string, error) {
-	abiEncoded, err := abiEncodeAttestation(attestation, ba.chainID)
+	abiEncoded, err := abiEncodeAttestationWithChainID(attestation, ba.chainID)
 	if err != nil {
 		return "", err
 	}
@@ -147,7 +147,12 @@ func (ba *batchAttestation) signPayload(attestation *portal.MezoBridgeAssetsUnlo
 func (ba *batchAttestation) isConfirmed(attestation *portal.MezoBridgeAssetsUnlocked) bool {
 	ok, err := ba.bridgeContract.ConfirmedUnlocks(attestation.UnlockSequenceNumber)
 	if err != nil {
-		ba.logger.Error("couldn't get confirmedUnlocks", "error", err)
+		ba.logger.Error(
+			"failed to get confirmedUnlocks during batch attestation",
+			"unlock_sequence", attestation.UnlockSequenceNumber.String(),
+			"error", err,
+		)
+		return false
 	}
 
 	return ok

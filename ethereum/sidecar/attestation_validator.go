@@ -47,7 +47,7 @@ func (av *attestationValidator) IsConfirmed(
 func (av *attestationValidator) checkOwnAttestation(
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) (bool, error) {
-	encoded, err := abiEncodeAttestation(attestation, nil)
+	encoded, err := abiEncodeAttestation(attestation)
 	if err != nil {
 		return false, fmt.Errorf("couldn't ABI encode attestation: %w", err)
 	}
@@ -73,7 +73,13 @@ func (av *attestationValidator) checkOwnAttestation(
 	return true, nil
 }
 
-func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
+func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked) ([]byte, error) {
+	return abiEncodeAttestationWithChainID(attestation, nil)
+}
+
+// abiEncodeAttestationWithChainID is used to encode the attestation with the chain ID
+// which is used to produce a signature for the batch attestation process.
+func abiEncodeAttestationWithChainID(attestation *portal.MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
 	uint256Type, err := abi.NewType("uint256", "uint256", nil)
 	if err != nil {
 		return nil, err

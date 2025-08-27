@@ -263,7 +263,7 @@ func RunServer(
 			)
 		}
 
-		server.logger.Info("AssetsLocked events observation routine stopped")
+		server.logger.Warn("AssetsLocked events observation routine stopped")
 	}()
 
 	go func() {
@@ -273,7 +273,7 @@ func RunServer(
 			server.logger.Error("gRPC server routine failed", "err", err)
 		}
 
-		server.logger.Info("gRPC server routine stopped")
+		server.logger.Warn("gRPC server routine stopped")
 	}()
 
 	// Wait until the initial synchronization of the AssetsLocked routine is
@@ -283,7 +283,7 @@ func RunServer(
 	case <-server.assetsLockedReady:
 		server.logger.Info("initial AssetsLocked sync completed")
 	case <-ctx.Done():
-		server.logger.Info(
+		server.logger.Warn(
 			"context canceled while waiting; exiting without launching " +
 				"AssetsUnlocked routines",
 		)
@@ -324,13 +324,13 @@ func RunServer(
 				)
 			}
 
-			server.logger.Info("AssetsUnlocked events observation routine stopped")
+			server.logger.Warn("AssetsUnlocked events observation routine stopped")
 		}()
 
 		go func() {
 			defer cancelCtx()
 			server.attestAssetsUnlockedEvents(ctx)
-			server.logger.Info("AssetsUnlocked events attestation routine stopped")
+			server.logger.Warn("AssetsUnlocked events attestation routine stopped")
 		}()
 	} else {
 		server.logger.Info(
@@ -1025,9 +1025,10 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 				ok, err := s.attestationValidator.IsConfirmed(bridgeAssetsUnlocked)
 				if err != nil {
-					// we are just logging here so we can move into the attestation loop anyway
+					// we are just logging here so we can move into the attestation process anyway
 					attestationLogger.Warn(
-						"couldn't check the state of the AssetsUnlocked entry - moving on with attestation process anyway",
+						"couldn't check the state of the AssetsUnlocked entry - "+
+							"moving on with attestation process anyway",
 						"error", err,
 					)
 				}
@@ -1038,32 +1039,43 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					continue
 				}
 
-				attestationLogger.Info("starting batch attestation process", "attestation", attestation)
+				attestationLogger.Info("starting batch attestation process")
 
-				// first try with the batch attestation stuff
 				ok, err = s.batchAttestation.TryAttest(ctx, bridgeAssetsUnlocked)
 				if err != nil {
-					if ctx.Err() != nil {
-						attestationLogger.Info("stopping attestation slot wait due to context cancellation")
-					}
-					attestationLogger.Warn("batch attestation process failed - falling back to individual attestation process", "error", err)
+					attestationLogger.Warn(
+						"batch attestation process failed - falling back to "+
+							"individual attestation process",
+						"error", err,
+					)
 				}
 				if ok {
-					attestationLogger.Info(
-						"entry confirmed via the batch attestation process - skipping individual attestation",
+					attestationLogger.Info("entry confirmed via the batch attestation process")
+					continue
+				}
+
+				// it could happen that the main ctx was canceled while we were doing the batch attestation
+				// so we need to check for that here and return early if that's the case
+				if ctx.Err() != nil {
+					attestationLogger.Warn(
+						"stopping the entire attestation process due to context cancellation",
 					)
+					return
 				}
 
 				delay := s.submissionQueue.GetSubmissionDelay(bridgeAssetsUnlocked)
 
-				attestationLogger.Info("waiting for individual attestation submission slot", "delay", fmt.Sprintf("%vs", delay.Seconds()))
+				attestationLogger.Info(
+					"waiting for individual attestation submission slot",
+					"delay", fmt.Sprintf("%vs", delay.Seconds()),
+				)
 
 				// wait for our turn to submit
 				select {
 				case <-time.After(delay):
 					attestationLogger.Info("starting individual attestation process")
 				case <-ctx.Done():
-					attestationLogger.Info("stopping attestation slot wait due to context cancellation")
+					attestationLogger.Warn("stopping attestation slot wait due to context cancellation")
 					return
 				}
 
@@ -1077,7 +1089,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						select {
 						case <-time.After(attestationProcessBackoff):
 						case <-ctx.Done():
-							attestationProcessLogger.Info(
+							attestationProcessLogger.Warn(
 								"stopping attestation process backoff wait due to context cancellation",
 							)
 							return
@@ -1141,13 +1153,13 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					case <-waiter:
 						attestationProcessLogger.Info("confirmation wait completed")
 					case <-ctx.Done():
-						attestationProcessLogger.Info("stopping confirmation wait due to context cancellation")
+						attestationProcessLogger.Warn("stopping confirmation wait due to context cancellation")
 						return
 					}
 				}
 			}
 		case <-ctx.Done():
-			s.logger.Info(
+			s.logger.Warn(
 				"stopping assets unlocked attestation loop due to context cancellation",
 			)
 			return

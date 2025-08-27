@@ -82,7 +82,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			},
 			ctx:             context.Background,
 			expectedSuccess: false,
-			expectedError:   "context deadline exceeded",
+			expectedError:   "failed to send payload: payload send terminated: context deadline exceeded",
 			timeout:         100 * time.Millisecond, // Short timeout for testing
 		},
 		{
@@ -100,7 +100,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			},
 			ctx:             context.Background,
 			expectedSuccess: false,
-			expectedError:   "",
+			expectedError:   "batch attestation terminated: context deadline exceeded",
 			timeout:         100 * time.Millisecond,
 		},
 		{
@@ -162,7 +162,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			},
 			ctx:             context.Background,
 			expectedSuccess: false,
-			expectedError:   "",
+			expectedError:   "batch attestation terminated: context deadline exceeded",
 			timeout:         100 * time.Millisecond,
 		},
 		{
@@ -171,11 +171,12 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			pre:         func(_ *testBatchAttestation) {},
 			ctx: func() context.Context {
 				ctx, cancel := context.WithCancel(context.Background())
+				// cancel the context immediately so we fail at payload send
 				cancel()
 				return ctx
 			},
 			expectedSuccess: false,
-			expectedError:   "context canceled",
+			expectedError:   "failed to send payload: payload send terminated: context canceled",
 			timeout:         5 * time.Second,
 		},
 	}
