@@ -18,6 +18,7 @@ var mezoBridgeName = "MezoBridge"
 
 type BridgeWorker struct {
 	bridgeContract *portal.MezoBridge
+	chain          *ethconnect.BaseChain
 }
 
 func RunBridgeWorker(
@@ -36,7 +37,7 @@ func RunBridgeWorker(
 	}
 
 	log.Printf(
-		"resolved MezoBridge: %s and ethereum_network: %s",
+		"resolved MezoBridge address: %s and Ethereum network: %s",
 		mezoBridgeAddress,
 		network,
 	)
@@ -44,7 +45,6 @@ func RunBridgeWorker(
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
 
-	var err error
 	// Connect to the Ethereum network
 	chain, err := ethconnect.Connect(
 		ctx,
@@ -67,6 +67,7 @@ func RunBridgeWorker(
 
 	bw := &BridgeWorker{
 		bridgeContract: bridgeContractBinding,
+		chain:          chain,
 	}
 
 	go func() {
