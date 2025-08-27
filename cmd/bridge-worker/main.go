@@ -13,5 +13,6 @@ func init() {
 }
 
 func main() {
+	flag.Parse()
 	bridgeworker.Start(configPath)
 }
