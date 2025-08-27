@@ -14,7 +14,7 @@ import (
 )
 
 // mezoBridgeName is the name of the MezoBridge contract.
-var mezoBridgeName = "MezoBridge"
+const mezoBridgeName = "MezoBridge"
 
 type BridgeWorker struct {
 	bridgeContract *portal.MezoBridge
