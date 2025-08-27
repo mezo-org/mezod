@@ -26,8 +26,7 @@ import (
 )
 
 const (
-	attestationProcessBackoff     = 10 * time.Second
-	attestationConfirmationBlocks = 32
+	attestationProcessBackoff = 10 * time.Second
 )
 
 var (
@@ -97,12 +96,15 @@ type AssetsUnlockedEndpoint interface {
 	) ([]bridgetypes.AssetsUnlockedEvent, error)
 }
 
-// BlockHeightWaiterFactory is a factory for creating block height waiters.
-type BlockHeightWaiterFactory interface {
-	// BlockHeightWaiter returns a waiter for the given block.
-	BlockHeightWaiter(
-		blockNumber uint64,
-	) (<-chan uint64, error)
+// attestationFinalityCheck is a struct that contains an AssetsUnlockedEvent and
+// the Ethereum height at which the attestation finality check for it was scheduled.
+type attestationFinalityCheck struct {
+	*bridgetypes.AssetsUnlockedEvent
+	scheduledAtHeight *big.Int // nil means unscheduled
+}
+
+func (afc *attestationFinalityCheck) key() string {
+	return afc.UnlockSequence.String()
 }
 
 // Server coordinates bridge data between Ethereum and Mezo.
@@ -117,7 +119,6 @@ type BlockHeightWaiterFactory interface {
 type Server struct {
 	logger log.Logger
 
-	// bridging-in
 	grpcServer *grpc.Server
 
 	assetsLockedEventsMutex sync.RWMutex
@@ -138,24 +139,25 @@ type Server struct {
 	// overwhelming Ethereum data providers with requests.
 	assetsLockedReady chan struct{}
 
-	// bridging-out
 	assetsUnlockedEndpoint AssetsUnlockedEndpoint
 
 	assetsUnlockedLookBackPeriod time.Duration
 	assetsUnlockedBatchSize      int
 
-	attestationMutex sync.RWMutex
+	attestationMutex sync.Mutex
 	attestationQueue []bridgetypes.AssetsUnlockedEvent
 
 	// Unguarded by mutex as only the AssetsUnlock event observation
 	// routine uses it.
 	lastAssetsUnlockedSequence sdkmath.Int
 
-	attestationValidator     *attestationValidator
-	blockHeightWaiterFactory BlockHeightWaiterFactory
-	submissionQueue          *submissionQueue
+	attestationValidator *attestationValidator
+	submissionQueue      *submissionQueue
 
 	batchAttestation *batchAttestation
+
+	attestationFinalityChecksMutex sync.Mutex
+	attestationFinalityChecks      map[string]*attestationFinalityCheck
 }
 
 // RunServer initializes the server, starts the event observing routine and
@@ -248,9 +250,9 @@ func RunServer(
 		assetsUnlockedBatchSize:      assetsUnlockedBatchSize,
 		attestationQueue:             []bridgetypes.AssetsUnlockedEvent{},
 		attestationValidator:         attestationValidator,
-		blockHeightWaiterFactory:     chain.BlockCounter(),
 		submissionQueue:              submissionQueue,
 		batchAttestation:             batchAttestation,
+		attestationFinalityChecks:    make(map[string]*attestationFinalityCheck),
 	}
 
 	go func() {
@@ -332,6 +334,12 @@ func RunServer(
 			server.attestAssetsUnlockedEvents(ctx)
 			server.logger.Warn("AssetsUnlocked events attestation routine stopped")
 		}()
+
+		go func() {
+			defer cancelCtx()
+			server.processAttestationFinalityChecks(ctx)
+			server.logger.Warn("attestation finality checks routine stopped")
+		}()
 	} else {
 		server.logger.Info(
 			"sidecar does not represent a bridge validator; skipping " +
@@ -384,7 +392,7 @@ func (s *Server) observeAssetsLockedEvents(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done(): // Handle context cancellation
-			s.logger.Info(
+			s.logger.Warn(
 				"stopping assets locked event observation due to context cancellation",
 			)
 			return nil
@@ -663,9 +671,7 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 		)
 	}
 
-	s.attestationMutex.Lock()
-	s.attestationQueue = unconfirmedEvents
-	s.attestationMutex.Unlock()
+	s.queueAttestations(unconfirmedEvents...)
 
 	// Save the unlock sequence of the last event as the starting point for
 	// further event fetching.
@@ -688,7 +694,7 @@ func (s *Server) observeAssetsUnlockedEvents(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done(): // Handle context cancellation
-			s.logger.Info(
+			s.logger.Warn(
 				"stopping assets unlocked event observation due to context cancellation",
 			)
 			return nil
@@ -901,9 +907,7 @@ func (s *Server) fetchNewAssetsUnlockedEvents(ctx context.Context) error {
 		)
 	}
 
-	s.attestationMutex.Lock()
-	s.attestationQueue = append(s.attestationQueue, events...)
-	s.attestationMutex.Unlock()
+	s.queueAttestations(events...)
 
 	s.lastAssetsUnlockedSequence = sequenceTip
 
@@ -992,6 +996,25 @@ func (s *Server) fetchAssetsUnlockConfirmedEvents(
 	return result, nil
 }
 
+func (s *Server) queueAttestations(attestations ...bridgetypes.AssetsUnlockedEvent) {
+	s.attestationMutex.Lock()
+	defer s.attestationMutex.Unlock()
+
+	if len(attestations) == 0 {
+		return
+	}
+
+	s.attestationQueue = append(s.attestationQueue, attestations...)
+
+	// order attestations by unlock sequence in ascending order
+	sort.Slice(
+		s.attestationQueue,
+		func(i, j int) bool {
+			return s.attestationQueue[i].UnlockSequence.LT(s.attestationQueue[j].UnlockSequence)
+		},
+	)
+}
+
 func (s *Server) unqueueAttestation() *bridgetypes.AssetsUnlockedEvent {
 	s.attestationMutex.Lock()
 	defer s.attestationMutex.Unlock()
@@ -1050,6 +1073,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 					)
 				}
 				if ok {
+					s.queueAttestationFinalityCheck(attestation)
 					attestationLogger.Info("entry confirmed via the batch attestation process")
 					continue
 				}
@@ -1122,45 +1146,134 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 						continue
 					}
 
-					// nil is latest block
-					latestBlock, err := s.chain.LatestBlock(ctx)
-					if err != nil {
-						attestationProcessLogger.Error(
-							"couldn't get chain latest block - retrying",
-							"error", err,
-						)
-						continue
-					}
-
-					confirmationBlock := latestBlock.Uint64() + attestationConfirmationBlocks
-
-					attestationProcessLogger.Info(
-						"attestation sent - waiting for confirmation",
-						"tx_hash", tx.Hash().Hex(),
-						"ethereum_confirmation_block", confirmationBlock,
-					)
-
-					waiter, err := s.blockHeightWaiterFactory.BlockHeightWaiter(confirmationBlock)
-					if err != nil {
-						attestationProcessLogger.Error(
-							"error while spinning up confirmation waiter - retrying",
-							"error", err,
-						)
-						continue
-					}
-
-					select {
-					case <-waiter:
-						attestationProcessLogger.Info("confirmation wait completed")
-					case <-ctx.Done():
-						attestationProcessLogger.Warn("stopping confirmation wait due to context cancellation")
-						return
-					}
+					s.queueAttestationFinalityCheck(attestation)
+					attestationProcessLogger.Info("attestation sent", "tx_hash", tx.Hash().Hex())
+					break
 				}
 			}
 		case <-ctx.Done():
 			s.logger.Warn(
 				"stopping assets unlocked attestation loop due to context cancellation",
+			)
+			return
+		}
+	}
+}
+
+func (s *Server) queueAttestationFinalityCheck(attestation *bridgetypes.AssetsUnlockedEvent) {
+	s.attestationFinalityChecksMutex.Lock()
+	defer s.attestationFinalityChecksMutex.Unlock()
+
+	check := &attestationFinalityCheck{
+		AssetsUnlockedEvent: attestation,
+		scheduledAtHeight:   nil, // processAttestationFinalityChecks routine is responsible for scheduling
+	}
+
+	// This should never happen. Check just in case.
+	if _, ok := s.attestationFinalityChecks[check.key()]; ok {
+		return
+	}
+
+	s.attestationFinalityChecks[check.key()] = check
+
+	s.logger.Info(
+		"queued attestation finality check",
+		"unlock_sequence", check.key(),
+	)
+}
+
+func (s *Server) processAttestationFinalityChecks(ctx context.Context) {
+	tickerChan := s.chain.WatchBlocks(ctx)
+
+	for {
+		select {
+		case height := <-tickerChan:
+			currentFinalizedBlock, err := s.chain.FinalizedBlock(ctx)
+			if err != nil {
+				s.logger.Error(
+					"cannot get finalized block during attestation finality checks - "+
+						"skipping current iteration",
+					"error", err,
+				)
+				continue
+			}
+
+			checksToExecute := make([]*attestationFinalityCheck, 0)
+
+			// Lock the mutex but not hold it for too long. Just schedule
+			// new checks and determine which ones are ready to be executed.
+			s.attestationFinalityChecksMutex.Lock()
+			for _, check := range s.attestationFinalityChecks {
+				checkLogger := s.logger.With(
+					"unlock_sequence", check.UnlockSequence.String(),
+				)
+
+				// First, schedule the check if needed.
+				if check.scheduledAtHeight == nil {
+					//nolint:gosec
+					check.scheduledAtHeight = big.NewInt(int64(height))
+
+					checkLogger.Info(
+						"attestation finality check scheduled",
+						"scheduled_at_height", check.scheduledAtHeight.String(),
+						"current_finalized_block", currentFinalizedBlock.String(),
+					)
+				}
+
+				// Then, see if check's scheduled height fell into a finalized epoch
+				// and is ready to be executed.
+				if currentFinalizedBlock.Cmp(check.scheduledAtHeight) >= 0 {
+					checksToExecute = append(checksToExecute, check)
+				}
+			}
+			s.attestationFinalityChecksMutex.Unlock()
+
+			for _, check := range checksToExecute {
+				checkLogger := s.logger.With(
+					"unlock_sequence", check.UnlockSequence.String(),
+				)
+
+				checkLogger.Info(
+					"executing attestation finality check",
+					"scheduled_at_height", check.scheduledAtHeight.String(),
+					"current_finalized_block", currentFinalizedBlock.String(),
+				)
+
+				confirmed, err := s.bridgeContract.ConfirmedUnlocks(
+					check.UnlockSequence.BigInt(),
+				)
+				if err != nil {
+					checkLogger.Error(
+						"error while checking attestation finality - retry will be "+
+							"done during next iteration",
+						"error", err,
+					)
+					// Continue to the next check without removing the current one
+					// from the queue upon error. This way, the check will be retried
+					// during the next iteration.
+					continue
+				}
+
+				if confirmed {
+					checkLogger.Info("attestation confirmed during finality check")
+				} else {
+					// If the attestation is not confirmed, we need to re-queue it
+					// so the attestation loop can pick it up again.
+					s.queueAttestations(*check.AssetsUnlockedEvent)
+
+					checkLogger.Info(
+						"attestation deemed to be unconfirmed during finality check; " +
+							"attestation re-queued",
+					)
+				}
+				// Confirmation check is done, remove the check from the queue.
+				s.attestationFinalityChecksMutex.Lock()
+				delete(s.attestationFinalityChecks, check.key())
+				s.attestationFinalityChecksMutex.Unlock()
+			}
+		case <-ctx.Done():
+			s.logger.Warn(
+				"stopping attestation finality checks due to context cancellation",
 			)
 			return
 		}
