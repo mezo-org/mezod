@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+	bwtypes "github.com/mezo-org/mezod/bridge-worker/types"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
@@ -19,7 +20,7 @@ import (
 var (
 	batchAttestationTimeout = 10 * time.Minute
 	batchAttestationCheck   = 15 * time.Second
-	retrySendSignature      = 5 * time.Second
+	retrySubmitSignature    = 5 * time.Second
 
 	ErrBridgeWorkerNotSet = errors.New("bridge worker not set")
 )
@@ -27,7 +28,7 @@ var (
 type BridgeWorker interface {
 	// expect no returned payload,
 	// just an error eventually
-	SendSignature(attestation *portal.MezoBridgeAssetsUnlocked, signature string) error
+	SubmitSignature(attestation *bwtypes.AssetsUnlocked, signature string) error
 }
 
 type batchAttestation struct {
@@ -105,16 +106,18 @@ func (ba *batchAttestation) sendPayload(
 
 	// we operate this in a loop just to handle retries in case
 	// of transcient network failure.
-	retryTicker := time.NewTicker(retrySendSignature)
+	retryTicker := time.NewTicker(retrySubmitSignature)
 	defer retryTicker.Stop()
 
 	sendCtx, cancelSendCtx := context.WithTimeout(ctx, batchAttestationTimeout/5)
 	defer cancelSendCtx()
 
+	bwAttestation := bwtypes.AssetsUnlockedFromPortal(attestation)
+
 	for {
 		select {
 		case <-retryTicker.C:
-			err := ba.bridgeWorker.SendSignature(attestation, signature)
+			err := ba.bridgeWorker.SubmitSignature(bwAttestation, signature)
 			if err != nil {
 				ba.logger.Warn(
 					"failed to send attestation signature to the bridge worker",

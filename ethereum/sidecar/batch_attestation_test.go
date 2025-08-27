@@ -71,12 +71,12 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 		timeout         time.Duration
 	}{
 		{
-			name:        "SendSignature fails repeatedly until timeout",
+			name:        "SubmitSignature fails repeatedly until timeout",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				expectedError := errors.New("network error")
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitSignature(gomock.Any(), gomock.Any()).
 					Return(expectedError).
 					AnyTimes()
 			},
@@ -86,11 +86,11 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			timeout:         100 * time.Millisecond, // Short timeout for testing
 		},
 		{
-			name:        "SendSignature succeeds but confirmation never comes",
+			name:        "SubmitSignature succeeds but confirmation never comes",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitSignature(gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				tba.mockBridgeContract.EXPECT().
@@ -104,11 +104,11 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			timeout:         100 * time.Millisecond,
 		},
 		{
-			name:        "SendSignature succeeds and confirmation comes immediately",
+			name:        "SubmitSignature succeeds and confirmation comes immediately",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitSignature(gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				tba.mockBridgeContract.EXPECT().
@@ -122,11 +122,11 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			timeout:         5 * time.Second,
 		},
 		{
-			name:        "SendSignature succeeds and confirmation comes after delay",
+			name:        "SubmitSignature succeeds and confirmation comes after delay",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitSignature(gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				// First few calls return false, then true
@@ -147,11 +147,11 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			timeout:         5 * time.Second,
 		},
 		{
-			name:        "SendSignature succeeds but ConfirmedUnlocks returns error",
+			name:        "SubmitSignature succeeds but ConfirmedUnlocks returns error",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitSignature(gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				expectedError := errors.New("contract error")
@@ -192,7 +192,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			batchAttestationCheck = 10 * time.Millisecond
 
 			// Set a shorter retry interval
-			retrySendSignature = 10 * time.Millisecond
+			retrySubmitSignature = 10 * time.Millisecond
 
 			// Prepare the test
 			testCase.pre(tba)
