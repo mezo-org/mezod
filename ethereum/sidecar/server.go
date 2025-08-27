@@ -222,12 +222,14 @@ func RunServer(
 		chain.Key().Address,
 	)
 
-	var bridgeWorkerClient *bwclient.Client = nil
+	// TODO: actually instantiate this later
+	// for we keep it nil, so done the line
+	// we skip the batch attestation phase.
+	var bridgeWorkerClient *bwclient.Client
 
 	batchAttestation := newBatchAttestation(
 		logger,
 		privateKey,
-		// TODO: pass the bridge worked here when implemented
 		bridgeWorkerClient,
 		bridgeContract,
 		chain.ChainID(),

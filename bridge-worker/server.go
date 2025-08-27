@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"time"
 
 	"cosmossdk.io/log"
 	"github.com/ethereum/go-ethereum/accounts"
@@ -38,8 +39,9 @@ func NewServer(
 	mux.HandleFunc("POST /submit-signature", s.submitSignature)
 
 	s.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: mux,
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           mux,
+		ReadHeaderTimeout: time.Second,
 	}
 
 	return s
@@ -129,7 +131,7 @@ func readSubmitSignatureRequest(r *http.Request) (*types.SubmitSignatureRequest,
 
 func writeError(w http.ResponseWriter, err error, status int) {
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(types.SubmitSignatureResponse{
+	_ = json.NewEncoder(w).Encode(types.SubmitSignatureResponse{
 		Error:   err.Error(),
 		Success: false,
 	})
@@ -137,7 +139,7 @@ func writeError(w http.ResponseWriter, err error, status int) {
 
 func writeSuccess(w http.ResponseWriter, status int) {
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(types.SubmitSignatureResponse{
+	_ = json.NewEncoder(w).Encode(types.SubmitSignatureResponse{
 		Success: true,
 	})
 }
