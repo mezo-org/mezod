@@ -12,7 +12,7 @@ package sidecar
 import (
 	reflect "reflect"
 
-	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	types "github.com/mezo-org/mezod/bridge-worker/types"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,16 +40,16 @@ func (m *MockBridgeWorker) EXPECT() *MockBridgeWorkerMockRecorder {
 	return m.recorder
 }
 
-// SendSignature mocks base method.
-func (m *MockBridgeWorker) SendSignature(attestation *portal.MezoBridgeAssetsUnlocked, signature string) error {
+// SubmitSignature mocks base method.
+func (m *MockBridgeWorker) SubmitSignature(attestation *types.AssetsUnlocked, signature string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendSignature", attestation, signature)
+	ret := m.ctrl.Call(m, "SubmitSignature", attestation, signature)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SendSignature indicates an expected call of SendSignature.
-func (mr *MockBridgeWorkerMockRecorder) SendSignature(attestation, signature any) *gomock.Call {
+// SubmitSignature indicates an expected call of SubmitSignature.
+func (mr *MockBridgeWorkerMockRecorder) SubmitSignature(attestation, signature any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendSignature", reflect.TypeOf((*MockBridgeWorker)(nil).SendSignature), attestation, signature)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitSignature", reflect.TypeOf((*MockBridgeWorker)(nil).SubmitSignature), attestation, signature)
 }

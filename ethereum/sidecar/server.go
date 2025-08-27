@@ -16,6 +16,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
+	bwclient "github.com/mezo-org/mezod/bridge-worker/client"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/sidecar/mezotime"
@@ -221,11 +222,13 @@ func RunServer(
 		chain.Key().Address,
 	)
 
+	var bridgeWorkerClient *bwclient.Client = nil
+
 	batchAttestation := newBatchAttestation(
 		logger,
 		privateKey,
 		// TODO: pass the bridge worked here when implemented
-		nil,
+		bridgeWorkerClient,
 		bridgeContract,
 		chain.ChainID(),
 	)
