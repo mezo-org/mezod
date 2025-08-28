@@ -4,7 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"log"
+
+	"cosmossdk.io/log"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -17,11 +18,13 @@ import (
 const mezoBridgeName = "MezoBridge"
 
 type BridgeWorker struct {
+	logger         log.Logger
 	bridgeContract *portal.MezoBridge
 	chain          *ethconnect.BaseChain
 }
 
 func RunBridgeWorker(
+	logger log.Logger,
 	providerURL string,
 	ethereumNetwork string,
 	privateKey *ecdsa.PrivateKey,
@@ -36,10 +39,10 @@ func RunBridgeWorker(
 		)
 	}
 
-	log.Printf(
-		"resolved MezoBridge address: %s and Ethereum network: %s",
-		mezoBridgeAddress,
-		network,
+	logger.Info(
+		"resolved MezoBridge contract and Ethereum network",
+		"mezo_bridge_address", mezoBridgeAddress,
+		"ethereum_network", network,
 	)
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
@@ -66,6 +69,7 @@ func RunBridgeWorker(
 	}
 
 	bw := &BridgeWorker{
+		logger:         logger,
 		bridgeContract: bridgeContractBinding,
 		chain:          chain,
 	}
@@ -74,20 +78,23 @@ func RunBridgeWorker(
 		defer cancelCtx()
 		err := bw.handleBitcoinWithdrawing(ctx)
 		if err != nil {
-			log.Printf("Bitcoin withdrawing routine failed: %v", err)
+			bw.logger.Info(
+				"Bitcoin withdrawing routine failed",
+				"err", err,
+			)
 		}
 
-		log.Printf("Bitcoin withdrawing routine stopped")
+		bw.logger.Info("Bitcoin withdrawing routine stopped")
 	}()
 
 	<-ctx.Done()
 
-	log.Print("bridge worker stopped")
+	bw.logger.Info("bridge worker stopped")
 }
 
 func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
 	// TODO: Implement; log for now.
-	log.Print("Inside Bitcoin withdrawal logic")
+	bw.logger.Info("Inside Bitcoin withdrawal logic")
 	<-ctx.Done()
 	return ctx.Err()
 }
