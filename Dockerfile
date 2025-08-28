@@ -31,16 +31,16 @@ RUN make build
 #
 # Busybox layer as source of shell commands
 #
-FROM busybox:stable AS busybox
+FROM busybox:1.36.0-glibc AS busybox
 
 #
 # Production layer
 #
-FROM gcr.io/distroless/base-nossl:nonroot AS production
+FROM gcr.io/distroless/base-nossl-debian12:nonroot AS production
 
 ADD --chmod=755 https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 /bin/jq
 
-COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/ls /bin/grep /bin/awk /bin/tail /bin/rm /bin/
+COPY --from=busybox /bin/sh /bin/cat /bin/test /bin/ls /bin/grep /bin/awk /bin/tail /bin/rm /bin/yes /bin/
 COPY --from=build /go/src/github.com/mezo-org/mezod/build/mezod /usr/bin/mezod
 COPY entrypoint.sh /entrypoint.sh
 
