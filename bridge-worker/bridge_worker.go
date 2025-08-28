@@ -8,7 +8,6 @@ import (
 	"cosmossdk.io/log"
 
 	"github.com/ethereum/go-ethereum/common"
-
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
@@ -90,13 +89,6 @@ func RunBridgeWorker(
 	<-ctx.Done()
 
 	bw.logger.Info("bridge worker stopped")
-}
-
-func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
-	// TODO: Implement; log for now.
-	bw.logger.Info("Inside Bitcoin withdrawal logic")
-	<-ctx.Done()
-	return ctx.Err()
 }
 
 // Construct a new instance of the Ethereum MezoBridge contract.
