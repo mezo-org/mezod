@@ -175,30 +175,34 @@ func computeAssetsUnlockedHash(
 	amount *big.Int,
 	chain uint8,
 ) (common.Hash, error) {
-	uint256Type, err := abi.NewType("uint256", "uint256", nil)
-	if err != nil {
-		return common.Hash{}, err
+	type assetsUnlockedTuple struct {
+		UnlockSequenceNumber *big.Int       `abi:"unlockSequenceNumber"`
+		Recipient            []byte         `abi:"recipient"`
+		Token                common.Address `abi:"token"`
+		Amount               *big.Int       `abi:"amount"`
+		Chain                uint8          `abi:"chain"`
 	}
-	bytesType, err := abi.NewType("bytes", "bytes", nil)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	addressType, err := abi.NewType("address", "address", nil)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	uint8Type, err := abi.NewType("uint8", "uint8", nil)
+
+	tupleType, err := abi.NewType("tuple", "tuple", []abi.ArgumentMarshaling{
+		{Name: "unlockSequenceNumber", Type: "uint256"}, // unlockSequenceNumber
+		{Name: "recipient", Type: "bytes"},              // recipient
+		{Name: "token", Type: "address"},                // token
+		{Name: "amount", Type: "uint256"},               // amount
+		{Name: "chain", Type: "uint8"},                  // chain
+	})
 	if err != nil {
 		return common.Hash{}, err
 	}
 
-	bytes, err := abi.Arguments{
-		{Type: uint256Type}, // unlockSequenceNumber
-		{Type: bytesType},   // recipient
-		{Type: addressType}, // token
-		{Type: uint256Type}, // amount
-		{Type: uint8Type},   // chain
-	}.Pack(unlockSeq, recipient, token, amount, chain)
+	entry := assetsUnlockedTuple{
+		UnlockSequenceNumber: unlockSeq,
+		Recipient:            recipient,
+		Token:                token,
+		Amount:               amount,
+		Chain:                chain,
+	}
+
+	bytes, err := (abi.Arguments{{Type: tupleType}}).Pack(entry)
 	if err != nil {
 		return common.Hash{}, err
 	}
