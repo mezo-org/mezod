@@ -24,8 +24,6 @@ const (
 )
 
 func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
-	bw.logger.Info("Inside Bitcoin withdrawal logic")
-
 	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
 	if err != nil {
 		return fmt.Errorf("failed to get current block: [%w]", err)
@@ -55,13 +53,38 @@ func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
 				err,
 			)
 		}
-		fmt.Println("isPendingWithdrawal", isPendingWithdrawal)
+
+		if isPendingWithdrawal {
+			err := bw.withdrawBTC(event)
+			if err != nil {
+				return fmt.Errorf("failed to withdraw BTC: [%w]", err)
+			}
+		}
 	}
 
-	// TODO: Continue with implementation.
+	bw.btcWithdrawingLastProcessedBlock = currentBlock
 
-	<-ctx.Done()
-	return ctx.Err()
+	// Start a ticker to periodically check the current block number
+	tickerChan := bw.chain.WatchBlocks(ctx)
+
+	for {
+		select {
+		case <-ctx.Done(): // Handle context cancellation
+			bw.logger.Warn(
+				"stopping BTC withdrawing due to context cancellation",
+			)
+			return nil
+		case <-tickerChan:
+			// Process incoming AssetsUnlockedConfirmed events
+			err := bw.processNewAssetsUnlockConfirmedEvents()
+			if err != nil {
+				bw.logger.Error(
+					"failed to process newly emitted AssetsUnlockConfirmed events",
+					"err", err,
+				)
+			}
+		}
+	}
 }
 
 func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
@@ -143,7 +166,7 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 		return false, nil
 	}
 
-	hash, err := computeAssetsUnlockedHash(
+	hash, err := computeAttestationKey(
 		event.UnlockSequenceNumber,
 		event.Recipient[:],
 		event.Token,
@@ -152,7 +175,7 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 	)
 	if err != nil {
 		return false, fmt.Errorf(
-			"failed to calculate AssetsUnlocked hash: [%w]",
+			"failed to calculate attestation key: [%w]",
 			err,
 		)
 	}
@@ -168,7 +191,55 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 	return isPendingBTCWithdrawal, nil
 }
 
-func computeAssetsUnlockedHash(
+func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
+	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
+	if err != nil {
+		return fmt.Errorf("cannot get current block: [%w]", err)
+	}
+
+	if currentBlock > bw.btcWithdrawingLastProcessedBlock {
+		events, err := bw.fetchAssetsUnlockConfirmedEvents(
+			bw.btcWithdrawingLastProcessedBlock+1,
+			currentBlock,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to fetch AssetsUnlockConfirmed events: [%w]",
+				err,
+			)
+		}
+
+		for _, event := range events {
+			isPendingWithdrawal, err := bw.isPendingBTCWithdrawal(event)
+			if err != nil {
+				return fmt.Errorf(
+					"failed to check if event represents pending BTC withdrawal: [%w]",
+					err,
+				)
+			}
+
+			if isPendingWithdrawal {
+				err := bw.withdrawBTC(event)
+				if err != nil {
+					return fmt.Errorf("failed to withdraw BTC: [%w]", err)
+				}
+			}
+		}
+
+		bw.btcWithdrawingLastProcessedBlock = currentBlock
+	}
+
+	return nil
+}
+
+func (bw *BridgeWorker) withdrawBTC(
+	_ *portal.MezoBridgeAssetsUnlockConfirmed,
+) error {
+	// TODO: Implement
+	return nil
+}
+
+func computeAttestationKey(
 	unlockSeq *big.Int,
 	recipient []byte,
 	token common.Address,

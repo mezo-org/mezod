@@ -24,6 +24,9 @@ type BridgeWorker struct {
 
 	batchSize         uint64
 	requestsPerMinute uint64
+
+	// TODO: Check if we need mutex
+	btcWithdrawingLastProcessedBlock uint64
 }
 
 func RunBridgeWorker(

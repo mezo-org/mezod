@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestComputeAssetsUnlockedHash(t *testing.T) {
+func TestComputeAttestationKey(t *testing.T) {
 	unlockSeq := big.NewInt(1)
 	token := common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
 	amount := big.NewInt(1000)
@@ -28,7 +28,7 @@ func TestComputeAssetsUnlockedHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hash, err := computeAssetsUnlockedHash(
+	hash, err := computeAttestationKey(
 		unlockSeq,
 		recipient,
 		token,
