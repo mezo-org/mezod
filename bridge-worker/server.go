@@ -36,7 +36,7 @@ func NewServer(
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /submit-signature", s.submitSignature)
+	mux.HandleFunc("POST /attestations", s.submitAttestation)
 
 	s.server = &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
@@ -61,10 +61,10 @@ func (s *Server) Stop(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
-func (s *Server) submitSignature(w http.ResponseWriter, r *http.Request) {
+func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	req, err := readSubmitSignatureRequest(r)
+	req, err := readSubmitAttestationRequest(r)
 	if err != nil {
 		writeError(w, err, http.StatusBadRequest)
 		return
@@ -114,14 +114,14 @@ func (s *Server) recoverAddress(entry *types.AssetsUnlocked, signature string) (
 	return crypto.PubkeyToAddress(*publicKeyBytes), nil
 }
 
-func readSubmitSignatureRequest(r *http.Request) (*types.SubmitSignatureRequest, error) {
+func readSubmitAttestationRequest(r *http.Request) (*types.SubmitAttestationRequest, error) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, errors.New("failed to read request body")
 	}
 	defer r.Body.Close()
 
-	req := types.SubmitSignatureRequest{}
+	req := types.SubmitAttestationRequest{}
 	if err := json.Unmarshal(body, &req); err != nil {
 		return nil, errors.New("invalid json format")
 	}
@@ -131,7 +131,7 @@ func readSubmitSignatureRequest(r *http.Request) (*types.SubmitSignatureRequest,
 
 func writeError(w http.ResponseWriter, err error, status int) {
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(types.SubmitSignatureResponse{
+	_ = json.NewEncoder(w).Encode(types.SubmitAttestationResponse{
 		Error:   err.Error(),
 		Success: false,
 	})
@@ -139,7 +139,7 @@ func writeError(w http.ResponseWriter, err error, status int) {
 
 func writeSuccess(w http.ResponseWriter, status int) {
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(types.SubmitSignatureResponse{
+	_ = json.NewEncoder(w).Encode(types.SubmitAttestationResponse{
 		Success: true,
 	})
 }

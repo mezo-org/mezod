@@ -77,12 +77,12 @@ func (a *AssetsUnlocked) Validate() error {
 	return nil
 }
 
-type SubmitSignatureRequest struct {
+type SubmitAttestationRequest struct {
 	Entry     *AssetsUnlocked
 	Signature string
 }
 
-func (s *SubmitSignatureRequest) Validate() error {
+func (s *SubmitAttestationRequest) Validate() error {
 	if s.Entry == nil {
 		return ErrMissingAssetsUnlockedEntry
 	}
@@ -94,7 +94,7 @@ func (s *SubmitSignatureRequest) Validate() error {
 	return s.Entry.Validate()
 }
 
-type SubmitSignatureResponse struct {
+type SubmitAttestationResponse struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error,omitempty"`
 }

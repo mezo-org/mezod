@@ -56,15 +56,15 @@ func TestServer_submitSignature(t *testing.T) {
 		requestBody    interface{}
 		expectedStatus int
 		expectedError  string
-		setupRequest   func() *types.SubmitSignatureRequest
+		setupRequest   func() *types.SubmitAttestationRequest
 	}{
 		{
 			name:           "Valid signature submission",
 			expectedStatus: http.StatusAccepted,
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				signature := createValidSignature(entry, privateKey)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -86,8 +86,8 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Missing Entry field",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "missing assets unlocked entry",
-			setupRequest: func() *types.SubmitSignatureRequest {
-				return &types.SubmitSignatureRequest{
+			setupRequest: func() *types.SubmitAttestationRequest {
+				return &types.SubmitAttestationRequest{
 					Entry:     nil,
 					Signature: "0x" + strings.Repeat("00", 65),
 				}
@@ -97,8 +97,8 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Missing signature",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid signature format",
-			setupRequest: func() *types.SubmitSignatureRequest {
-				return &types.SubmitSignatureRequest{
+			setupRequest: func() *types.SubmitAttestationRequest {
+				return &types.SubmitAttestationRequest{
 					Entry:     createValidEntry(),
 					Signature: "",
 				}
@@ -108,8 +108,8 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Missing 0x prefix in signature",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid signature format",
-			setupRequest: func() *types.SubmitSignatureRequest {
-				return &types.SubmitSignatureRequest{
+			setupRequest: func() *types.SubmitAttestationRequest {
+				return &types.SubmitAttestationRequest{
 					Entry:     createValidEntry(),
 					Signature: strings.Repeat("00", 65),
 				}
@@ -119,8 +119,8 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Invalid hex encoding in signature",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid signature format",
-			setupRequest: func() *types.SubmitSignatureRequest {
-				return &types.SubmitSignatureRequest{
+			setupRequest: func() *types.SubmitAttestationRequest {
+				return &types.SubmitAttestationRequest{
 					Entry:     createValidEntry(),
 					Signature: "0x" + strings.Repeat("zz", 65),
 				}
@@ -130,8 +130,8 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Wrong signature length",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid signature format",
-			setupRequest: func() *types.SubmitSignatureRequest {
-				return &types.SubmitSignatureRequest{
+			setupRequest: func() *types.SubmitAttestationRequest {
+				return &types.SubmitAttestationRequest{
 					Entry:     createValidEntry(),
 					Signature: "0x" + strings.Repeat("00", 32), // Too short
 				}
@@ -141,11 +141,11 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Missing sequence number",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "missing sequence number",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.UnlockSequenceNumber = nil
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -155,11 +155,11 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Invalid sequence number (zero)",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid sequence number",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.UnlockSequenceNumber = big.NewInt(0)
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -169,11 +169,11 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Invalid sequence number (negative)",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid sequence number",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.UnlockSequenceNumber = big.NewInt(-1)
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -183,11 +183,11 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Invalid recipient (empty)",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid recipient",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.Recipient = []byte{}
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -197,12 +197,12 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Valid entry but invalid signature for recovery",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "recovery failed",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				// Zero address is actually valid for the token field validation
 				// This test will pass validation but fail at signature recovery
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -212,11 +212,11 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Missing amount",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "missing amount",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.Amount = nil
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -226,11 +226,11 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Invalid amount (zero)",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid amount",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.Amount = big.NewInt(0)
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -240,11 +240,11 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Invalid amount (negative)",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid amount",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.Amount = big.NewInt(-1)
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -254,11 +254,11 @@ func TestServer_submitSignature(t *testing.T) {
 			name:           "Invalid chain (out of range)",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid chain",
-			setupRequest: func() *types.SubmitSignatureRequest {
+			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.Chain = 99 // Invalid chain value
 				signature := "0x" + strings.Repeat("00", 65)
-				return &types.SubmitSignatureRequest{
+				return &types.SubmitAttestationRequest{
 					Entry:     entry,
 					Signature: signature,
 				}
@@ -289,12 +289,12 @@ func TestServer_submitSignature(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			server.submitSignature(w, req)
+			server.submitAttestation(w, req)
 
 			assert.Equal(t, testCase.expectedStatus, w.Code)
 			assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-			var response types.SubmitSignatureResponse
+			var response types.SubmitAttestationResponse
 			err = json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
 
