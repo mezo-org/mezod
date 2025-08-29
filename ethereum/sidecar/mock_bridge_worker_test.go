@@ -40,16 +40,16 @@ func (m *MockBridgeWorker) EXPECT() *MockBridgeWorkerMockRecorder {
 	return m.recorder
 }
 
-// SubmitSignature mocks base method.
-func (m *MockBridgeWorker) SubmitSignature(attestation *types.AssetsUnlocked, signature string) error {
+// SubmitAttestation mocks base method.
+func (m *MockBridgeWorker) SubmitAttestation(attestation *types.AssetsUnlocked, signature string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitSignature", attestation, signature)
+	ret := m.ctrl.Call(m, "SubmitAttestation", attestation, signature)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SubmitSignature indicates an expected call of SubmitSignature.
-func (mr *MockBridgeWorkerMockRecorder) SubmitSignature(attestation, signature any) *gomock.Call {
+// SubmitAttestation indicates an expected call of SubmitAttestation.
+func (mr *MockBridgeWorkerMockRecorder) SubmitAttestation(attestation, signature any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitSignature", reflect.TypeOf((*MockBridgeWorker)(nil).SubmitSignature), attestation, signature)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitAttestation", reflect.TypeOf((*MockBridgeWorker)(nil).SubmitAttestation), attestation, signature)
 }

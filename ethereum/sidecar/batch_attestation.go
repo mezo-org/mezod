@@ -20,7 +20,7 @@ import (
 var (
 	batchAttestationTimeout = 10 * time.Minute
 	batchAttestationCheck   = 15 * time.Second
-	retrySubmitSignature    = 5 * time.Second
+	retrySubmitAttestation  = 5 * time.Second
 
 	ErrBridgeWorkerNotSet = errors.New("bridge worker not set")
 )
@@ -28,7 +28,7 @@ var (
 type BridgeWorker interface {
 	// expect no returned payload,
 	// just an error eventually
-	SubmitSignature(attestation *bwtypes.AssetsUnlocked, signature string) error
+	SubmitAttestation(attestation *bwtypes.AssetsUnlocked, signature string) error
 }
 
 type batchAttestation struct {
@@ -106,7 +106,7 @@ func (ba *batchAttestation) sendPayload(
 
 	// we operate this in a loop just to handle retries in case
 	// of transcient network failure.
-	retryTicker := time.NewTicker(retrySubmitSignature)
+	retryTicker := time.NewTicker(retrySubmitAttestation)
 	defer retryTicker.Stop()
 
 	sendCtx, cancelSendCtx := context.WithTimeout(ctx, batchAttestationTimeout/5)
@@ -117,7 +117,7 @@ func (ba *batchAttestation) sendPayload(
 	for {
 		select {
 		case <-retryTicker.C:
-			err := ba.bridgeWorker.SubmitSignature(bwAttestation, signature)
+			err := ba.bridgeWorker.SubmitAttestation(bwAttestation, signature)
 			if err != nil {
 				ba.logger.Warn(
 					"failed to send attestation signature to the bridge worker",

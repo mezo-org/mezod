@@ -10,8 +10,8 @@ import (
 	"github.com/mezo-org/mezod/bridge-worker/types"
 )
 
-var submitSignatureEndpoint = func(baseURL string) string {
-	return fmt.Sprintf("%s/submit-signature", baseURL)
+var submitAttestationEndpoint = func(baseURL string) string {
+	return fmt.Sprintf("%s/attestations", baseURL)
 }
 
 type Client struct {
@@ -26,8 +26,8 @@ func NewClient(url string) *Client {
 	}
 }
 
-func (c *Client) SubmitSignature(attestation *types.AssetsUnlocked, signature string) error {
-	request := &types.SubmitSignatureRequest{
+func (c *Client) SubmitAttestation(attestation *types.AssetsUnlocked, signature string) error {
+	request := &types.SubmitAttestationRequest{
 		Entry:     attestation,
 		Signature: signature,
 	}
@@ -37,13 +37,13 @@ func (c *Client) SubmitSignature(attestation *types.AssetsUnlocked, signature st
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	resp, err := c.httpClient.Post(submitSignatureEndpoint(c.baseURL), "application/json", bytes.NewBuffer(payload))
+	resp, err := c.httpClient.Post(submitAttestationEndpoint(c.baseURL), "application/json", bytes.NewBuffer(payload))
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	var response types.SubmitSignatureResponse
+	var response types.SubmitAttestationResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
