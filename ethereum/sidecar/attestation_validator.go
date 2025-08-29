@@ -74,34 +74,55 @@ func (av *attestationValidator) checkOwnAttestation(
 }
 
 func abiEncodeAttestation(attestation *portal.MezoBridgeAssetsUnlocked) ([]byte, error) {
-	uint256Type, err := abi.NewType("uint256", "uint256", nil)
-	if err != nil {
-		return nil, err
+	return abiEncodeAttestationWithChainID(attestation, nil)
+}
+
+// abiEncodeAttestationWithChainID is used to encode the attestation with the chain ID
+// which is used to produce a signature for the batch attestation process.
+func abiEncodeAttestationWithChainID(attestation *portal.MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
+	var argumentsTypes abi.Arguments
+	var arguments []any
+
+	if chainID != nil {
+		uint256Type, err := abi.NewType("uint256", "uint256", nil)
+		if err != nil {
+			return nil, err
+		}
+		argumentsTypes = append(argumentsTypes, abi.Argument{Type: uint256Type})
+		arguments = append(arguments, chainID)
 	}
-	bytesType, err := abi.NewType("bytes", "bytes", nil)
-	if err != nil {
-		return nil, err
-	}
-	addressType, err := abi.NewType("address", "address", nil)
-	if err != nil {
-		return nil, err
-	}
-	uint8Type, err := abi.NewType("uint8", "uint8", nil)
+
+	// Create tuple type for AssetsUnlocked struct
+	tupleType, err := abi.NewType("tuple", "tuple", []abi.ArgumentMarshaling{
+		{Name: "unlockSequenceNumber", Type: "uint256"},
+		{Name: "recipient", Type: "bytes"},
+		{Name: "token", Type: "address"},
+		{Name: "amount", Type: "uint256"},
+		{Name: "chain", Type: "uint8"},
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return abi.Arguments{
-		{Type: uint256Type},
-		{Type: bytesType},
-		{Type: addressType},
-		{Type: uint256Type},
-		{Type: uint8Type},
-	}.Pack(
-		attestation.UnlockSequenceNumber,
-		attestation.Recipient,
-		attestation.Token,
-		attestation.Amount,
-		attestation.Chain,
-	)
+	// Add the tuple as a single argument instead of individual fields
+	argumentsTypes = append(argumentsTypes, abi.Argument{Type: tupleType})
+
+	// Create the struct as a single tuple argument
+	assetsUnlockedTuple := struct {
+		UnlockSequenceNumber *big.Int
+		Recipient            []byte
+		Token                common.Address
+		Amount               *big.Int
+		Chain                uint8
+	}{
+		UnlockSequenceNumber: attestation.UnlockSequenceNumber,
+		Recipient:            attestation.Recipient,
+		Token:                attestation.Token,
+		Amount:               attestation.Amount,
+		Chain:                attestation.Chain,
+	}
+
+	arguments = append(arguments, assetsUnlockedTuple)
+
+	return argumentsTypes.Pack(arguments...)
 }
