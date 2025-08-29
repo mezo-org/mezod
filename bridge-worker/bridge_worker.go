@@ -17,9 +17,16 @@ import (
 const mezoBridgeName = "MezoBridge"
 
 type BridgeWorker struct {
-	logger         log.Logger
+	logger log.Logger
+
 	bridgeContract *portal.MezoBridge
 	chain          *ethconnect.BaseChain
+
+	batchSize         uint64
+	requestsPerMinute uint64
+
+	// TODO: Check if we need mutex
+	btcWithdrawingLastProcessedBlock uint64
 }
 
 func RunBridgeWorker(
@@ -68,9 +75,11 @@ func RunBridgeWorker(
 	}
 
 	bw := &BridgeWorker{
-		logger:         logger,
-		bridgeContract: bridgeContractBinding,
-		chain:          chain,
+		logger:            logger,
+		bridgeContract:    bridgeContractBinding,
+		chain:             chain,
+		batchSize:         defaultBatchSize,
+		requestsPerMinute: defaultRequestsPerMinute,
 	}
 
 	go func() {
