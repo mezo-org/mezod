@@ -6,6 +6,7 @@ resources:
   - prometheus/configmap.yaml
   - ingress.yaml
   - balance-exporter/configmap.yaml
+  - musd-exporter/configmap.yaml
 
 patches:
   - path: grafana/deployement-patch.yaml

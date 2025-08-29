@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: musd-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: musd-exporter
+  template:
+    metadata:
+      labels:
+        app: musd-exporter
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      containers:
+        - name: musd-exporter
+          image: nkuba/contract-exporter
+          ports:
+            - containerPort: 9116
+          volumeMounts:
+            - name: musd-exporter-config
+              mountPath: /etc/musd-exporter
+          env:
+            - name: PORT
+              value: "9116"
+            - name: CONFIG_FILE
+              value: /etc/musd-exporter/config.yaml
+            - name: CHAIN_RPC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rpc-url
+                  key: MEZO
+      volumes:
+        - name: musd-exporter-config
+          configMap:
+            name: musd-exporter-config
