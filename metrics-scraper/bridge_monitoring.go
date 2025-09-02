@@ -27,6 +27,7 @@ func runBridgeMonitoring(ctx context.Context, chainID string, pollRate time.Dura
 	}
 }
 
-func pollBridgeData(ctx context.Context, chainID string) error {
+func pollBridgeData(_ context.Context, _ string) error {
+	// TODO: Implement bridge data polling and expose metrics.
 	return nil
 }
