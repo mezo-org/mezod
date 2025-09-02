@@ -3,49 +3,52 @@ package metricsscraper
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"os"
-	"os/signal"
-	"sync"
-	"syscall"
+	"time"
 )
 
-func Start(configPath string) {
-	buf, err := os.ReadFile(configPath)
+type Config struct {
+	NodesConfigPath string
+	PrometheusPort  uint
+	ChainID         string
+	NodePollRate    time.Duration
+	BridgePollRate  time.Duration
+}
+
+func Start(config Config) error {
+	ctx := context.Background()
+
+	nodesConfig, err := loadNodesConfig(config.NodesConfigPath)
 	if err != nil {
-		log.Fatalf("couldn't read config file: [%v]", err)
+		return fmt.Errorf("couldn't load nodes config: [%w]", err)
 	}
 
-	config := Config{}
-	err = json.Unmarshal(buf, &config)
-	if err != nil {
-		log.Fatalf("couldn't unmarshall config file: [%v]", err)
-	}
-
-	log.Printf("monitoring Mezo chain [%v]", config.ChainID)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	var wg sync.WaitGroup
-	for _, n := range config.Nodes {
-		wg.Add(1)
-
-		// start the job
+	for _, n := range nodesConfig.Nodes {
 		go func(nodeConfig NodeConfig) {
-			defer wg.Done()
-			runNodeMonitoring(ctx, config.NodePollRate.Duration, config.ChainID, nodeConfig)
+			runNodeMonitoring(ctx, nodeConfig, config.ChainID, config.NodePollRate)
 		}(n)
 	}
 
-	go runBridgeMonitoring(ctx, config.BridgePollRate.Duration, config.ChainID)
+	go runBridgeMonitoring(ctx, config.ChainID, config.BridgePollRate)
+	go startPrometheus(config.PrometheusPort)
 
-	go startPrometheus()
+	<-ctx.Done()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	log.Println("monitoring started; listening for SIGINT or SIGTERM to terminate")
-	<-sigChan
+	return nil
+}
 
-	cancel()
-	wg.Wait()
+func loadNodesConfig(nodesConfigPath string) (NodesConfig, error) {
+	buffer, err := os.ReadFile(nodesConfigPath)
+	if err != nil {
+		return NodesConfig{}, fmt.Errorf("couldn't read nodes config file: [%w]", err)
+	}
+
+	nodesConfig := NodesConfig{}
+	err = json.Unmarshal(buffer, &nodesConfig)
+	if err != nil {
+		return NodesConfig{}, fmt.Errorf("couldn't unmarshall nodes config file: [%w]", err)
+	}
+
+	return nodesConfig, nil
 }

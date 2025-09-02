@@ -19,11 +19,20 @@ const (
 	ethGetBlockByNumberEndpoint = "eth_getBlockByNumber"
 )
 
+type NodesConfig struct {
+	Nodes []NodeConfig `json:"nodes"`
+}
+
+type NodeConfig struct {
+	RPCURL  string `json:"rpc_url"`
+	Moniker string `json:"moniker"`
+}
+
 func runNodeMonitoring(
 	ctx context.Context,
-	pollRate time.Duration,
-	chainID string,
 	config NodeConfig,
+	chainID string,
+	pollRate time.Duration,
 ) {
 	log.Printf("starting node [%v] monitoring", config.Moniker)
 
