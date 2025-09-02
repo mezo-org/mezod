@@ -6,9 +6,12 @@ import (
 )
 
 type Config struct {
-	PollRate Duration     `json:"poll_rate"`
-	Nodes    []NodeConfig `json:"nodes"`
-	ChainID  string       `json:"chain_id"`
+	ChainID string `json:"chain_id"`
+
+	NodePollRate Duration     `json:"node_poll_rate"`
+	Nodes        []NodeConfig `json:"nodes"`
+
+	BridgePollRate Duration `json:"bridge_poll_rate"`
 }
 
 type NodeConfig struct {

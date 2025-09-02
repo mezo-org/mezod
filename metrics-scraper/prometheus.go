@@ -60,10 +60,12 @@ var (
 )
 
 func startPrometheus() {
+	log.Printf("starting prometheus")
+
 	http.Handle("/metrics", promhttp.Handler())
 
 	err := http.ListenAndServe(":2112", nil) //nolint:gosec
 	if err != nil {
-		log.Fatalf("error: couldn't start http server: %v", err)
+		log.Fatalf("couldn't start prometheus http server: [%v]", err)
 	}
 }
