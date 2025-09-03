@@ -58,6 +58,14 @@ var (
 		},
 		[]string{"moniker", "chain_id"},
 	)
+
+	pendingAssetsLockedGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "pending_assets_locked",
+			Help: "the number of pending AssetsLocked events to be processed by the bridge",
+		},
+		[]string{"chain_id"},
+	)
 )
 
 func startPrometheus(port uint) {

@@ -2,8 +2,10 @@ package metricsscraper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -26,7 +28,7 @@ func runBridgeMonitoring(
 ) error {
 	log.Printf("starting bridge monitoring")
 
-	_, err := connectMezoBridgeEthereumContract(
+	mezoBridge, err := connectMezoBridgeEthereumContract(
 		ctx,
 		mapMezoChainIDToEthereumNetwork(chainID),
 		ethereumRPCURL,
@@ -38,7 +40,7 @@ func runBridgeMonitoring(
 		)
 	}
 
-	_, err = connectAssetsBridgeMezoContract(
+	assetsBridge, err := connectAssetsBridgeMezoContract(
 		ctx,
 		chainID,
 		mezoRPCURL,
@@ -59,7 +61,12 @@ func runBridgeMonitoring(
 			log.Printf("terminated bridge monitoring")
 			return ctx.Err()
 		case <-ticker.C:
-			if err := pollBridgeData(ctx, chainID); err != nil {
+			if err := pollBridgeData(
+				ctx,
+				chainID,
+				mezoBridge,
+				assetsBridge,
+			); err != nil {
 				log.Printf("error while polling bridge data: %v", err)
 			} else {
 				log.Printf("bridge data polled successfully")
@@ -167,7 +174,55 @@ func mapMezoChainIDToEthereumNetwork(chainID string) keepethereum.Network {
 	}
 }
 
-func pollBridgeData(_ context.Context, _ string) error {
-	// TODO: Implement bridge data polling and expose metrics.
-	return nil
+func pollBridgeData(
+	ctx context.Context,
+	chainID string,
+	mezoBridge *portal.MezoBridge,
+	assetsBridge *AssetsBridge,
+) error {
+	errs := []error{}
+
+	err := pendingAssetsLocked(
+		ctx,
+		chainID,
+		mezoBridge,
+		assetsBridge,
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	return errors.Join(errs...)
+}
+
+func pendingAssetsLocked(
+	ctx context.Context,
+	chainID string,
+	mezoBridge *portal.MezoBridge,
+	assetsBridge *AssetsBridge,
+) (err error) {
+	defer func() {
+		if err != nil {
+			// set gauge to -1 to indicate error
+			pendingAssetsLockedGauge.WithLabelValues(chainID).Set(-1)
+		}
+	}()
+
+	mezoBridgeSequence, err := mezoBridge.Sequence()
+	if err != nil {
+		err = fmt.Errorf("failed to get MezoBridge sequence: [%w]", err)
+		return
+	}
+
+	assetsBridgeSequence, err := assetsBridge.GetCurrentSequenceTip(nil)
+	if err != nil {
+		err = fmt.Errorf("failed to get AssetsBridge sequence: [%w]", err)
+		return
+	}
+
+	pending, _ := new(big.Int).Sub(mezoBridgeSequence, assetsBridgeSequence).Float64()
+
+	pendingAssetsLockedGauge.WithLabelValues(chainID).Set(pending)
+
+	return
 }
