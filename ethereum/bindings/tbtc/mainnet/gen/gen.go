@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-// Bindings are committed; prevent `go generate` from rebuilding here.
-//go:generate true
+// Bindings for tBTC Bridge were generated manually - no `go:generate` needed.
 
 var (
 	//go:embed _address/Bridge
