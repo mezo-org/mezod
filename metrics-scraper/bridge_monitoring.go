@@ -12,6 +12,7 @@ import (
 	keepethereum "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	mezodethereum "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/utils"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -39,6 +40,7 @@ func runBridgeMonitoring(
 
 	_, err = connectAssetsBridgeMezoContract(
 		ctx,
+		chainID,
 		mezoRpcUrl,
 	)
 	if err != nil {
@@ -121,11 +123,26 @@ func connectMezoBridgeEthereumContract(
 
 func connectAssetsBridgeMezoContract(
 	ctx context.Context,
+	chainID string,
 	mezoRpcUrl string,
 ) (*AssetsBridge, error) {
 	client, err := ethclient.DialContext(ctx, mezoRpcUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Mezo network: [%w]", err)
+	}
+
+	eip155ChainID, err := mezotypes.ParseChainID(chainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse chain ID to EIP155 format: [%w]", err)
+	}
+
+	clientChainID, err := client.ChainID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain ID from Mezo RPC: [%w]", err)
+	}
+
+	if eip155ChainID.Cmp(clientChainID) != 0 {
+		return nil, fmt.Errorf("mezo RPC uses different chain ID than expected")
 	}
 
 	assetsBridge, err := NewAssetsBridge(
