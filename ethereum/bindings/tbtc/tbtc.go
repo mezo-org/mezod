@@ -2,9 +2,9 @@ package tbtc
 
 import (
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
-	sepoliagen "github.com/mezo-org/mezod/ethereum/bindings/tbtc/sepolia/gen"
 	mainnetgen "github.com/mezo-org/mezod/ethereum/bindings/tbtc/mainnet/gen"
 	mainnetcontract "github.com/mezo-org/mezod/ethereum/bindings/tbtc/mainnet/gen/contract"
+	sepoliagen "github.com/mezo-org/mezod/ethereum/bindings/tbtc/sepolia/gen"
 )
 
 // The tBTC bindings were generated manually with the following commands:
