@@ -8,10 +8,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	keepethereum "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	mezodethereum "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/utils"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 func runBridgeMonitoring(
@@ -31,6 +33,17 @@ func runBridgeMonitoring(
 	if err != nil {
 		return fmt.Errorf(
 			"failed to connect to MezoBridge contract on Ethereum: [%w]",
+			err,
+		)
+	}
+
+	_, err = connectAssetsBridgeMezoContract(
+		ctx,
+		mezoRpcUrl,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to connect to AssetsBridge contract on Mezo: [%w]",
 			err,
 		)
 	}
@@ -104,6 +117,26 @@ func connectMezoBridgeEthereumContract(
 	}
 
 	return mezoBridge, nil
+}
+
+func connectAssetsBridgeMezoContract(
+	ctx context.Context,
+	mezoRpcUrl string,
+) (*AssetsBridge, error) {
+	client, err := ethclient.DialContext(ctx, mezoRpcUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Mezo network: [%w]", err)
+	}
+
+	assetsBridge, err := NewAssetsBridge(
+		common.HexToAddress(evmtypes.AssetsBridgePrecompileAddress),
+		client,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to AssetsBridge contract: [%w]", err)
+	}
+
+	return assetsBridge, nil
 }
 
 func mapMezoChainIdToEthereumNetwork(chainID string) keepethereum.Network {
