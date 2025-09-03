@@ -70,22 +70,22 @@ func parseFlags(cmd *cobra.Command) (metricsscraper.Config, error) {
 		return metricsscraper.Config{}, fmt.Errorf("bridge poll rate must be greater than 0")
 	}
 
-	mezoRpcUrl, err := cmd.Flags().GetString(flagMezoRpcUrl)
+	mezoRPCURL, err := cmd.Flags().GetString(flagMezoRPCURL)
 	if err != nil {
 		return metricsscraper.Config{}, fmt.Errorf("failed to get Mezo RPC URL: [%w]", err)
 	}
-	_, err = url.ParseRequestURI(mezoRpcUrl)
+	_, err = url.ParseRequestURI(mezoRPCURL)
 	if err != nil {
-		return metricsscraper.Config{}, fmt.Errorf("Mezo RPC URL is not valid: [%w]", err)
+		return metricsscraper.Config{}, fmt.Errorf("mezo RPC URL is not valid: [%w]", err)
 	}
 
-	ethereumRpcUrl, err := cmd.Flags().GetString(flagEthereumRpcUrl)
+	ethereumRPCURL, err := cmd.Flags().GetString(flagEthereumRPCURL)
 	if err != nil {
 		return metricsscraper.Config{}, fmt.Errorf("failed to get Ethereum RPC URL: [%w]", err)
 	}
-	_, err = url.ParseRequestURI(ethereumRpcUrl)
+	_, err = url.ParseRequestURI(ethereumRPCURL)
 	if err != nil {
-		return metricsscraper.Config{}, fmt.Errorf("Ethereum RPC URL is not valid: [%w]", err)
+		return metricsscraper.Config{}, fmt.Errorf("ethereum RPC URL is not valid: [%w]", err)
 	}
 
 	return metricsscraper.Config{
@@ -94,8 +94,8 @@ func parseFlags(cmd *cobra.Command) (metricsscraper.Config, error) {
 		ChainID:         chainID,
 		NodePollRate:    nodePollRate,
 		BridgePollRate:  bridgePollRate,
-		MezoRpcUrl:      mezoRpcUrl,
-		EthereumRpcUrl:  ethereumRpcUrl,
+		MezoRPCURL:      mezoRPCURL,
+		EthereumRPCURL:  ethereumRPCURL,
 	}, nil
 }
 

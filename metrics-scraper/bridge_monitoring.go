@@ -21,15 +21,15 @@ func runBridgeMonitoring(
 	ctx context.Context,
 	chainID string,
 	pollRate time.Duration,
-	mezoRpcUrl string,
-	ethereumRpcUrl string,
+	mezoRPCURL string,
+	ethereumRPCURL string,
 ) error {
 	log.Printf("starting bridge monitoring")
 
 	_, err := connectMezoBridgeEthereumContract(
 		ctx,
-		mapMezoChainIdToEthereumNetwork(chainID),
-		ethereumRpcUrl,
+		mapMezoChainIDToEthereumNetwork(chainID),
+		ethereumRPCURL,
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -41,7 +41,7 @@ func runBridgeMonitoring(
 	_, err = connectAssetsBridgeMezoContract(
 		ctx,
 		chainID,
-		mezoRpcUrl,
+		mezoRPCURL,
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -71,7 +71,7 @@ func runBridgeMonitoring(
 func connectMezoBridgeEthereumContract(
 	ctx context.Context,
 	ethereumNetwork keepethereum.Network,
-	ethereumRpcUrl string,
+	ethereumRPCURL string,
 ) (*portal.MezoBridge, error) {
 	mezoBridgeAddress := portal.MezoBridgeAddress(ethereumNetwork)
 	if len(mezoBridgeAddress) == 0 {
@@ -96,7 +96,7 @@ func connectMezoBridgeEthereumContract(
 		ctx,
 		keepethereum.Config{
 			Network: ethereumNetwork,
-			URL:     ethereumRpcUrl,
+			URL:     ethereumRPCURL,
 		},
 		privateKey,
 	)
@@ -124,9 +124,9 @@ func connectMezoBridgeEthereumContract(
 func connectAssetsBridgeMezoContract(
 	ctx context.Context,
 	chainID string,
-	mezoRpcUrl string,
+	mezoRPCURL string,
 ) (*AssetsBridge, error) {
-	client, err := ethclient.DialContext(ctx, mezoRpcUrl)
+	client, err := ethclient.DialContext(ctx, mezoRPCURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Mezo network: [%w]", err)
 	}
@@ -156,12 +156,13 @@ func connectAssetsBridgeMezoContract(
 	return assetsBridge, nil
 }
 
-func mapMezoChainIdToEthereumNetwork(chainID string) keepethereum.Network {
-	if utils.IsMainnet(chainID) {
+func mapMezoChainIDToEthereumNetwork(chainID string) keepethereum.Network {
+	switch {
+	case utils.IsMainnet(chainID):
 		return keepethereum.Mainnet
-	} else if utils.IsTestnet(chainID) {
+	case utils.IsTestnet(chainID):
 		return keepethereum.Sepolia
-	} else {
+	default:
 		panic(fmt.Sprintf("unknown Mezo chain id: %s", chainID))
 	}
 }

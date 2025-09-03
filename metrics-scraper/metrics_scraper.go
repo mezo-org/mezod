@@ -15,8 +15,8 @@ type Config struct {
 	ChainID         string
 	NodePollRate    time.Duration
 	BridgePollRate  time.Duration
-	MezoRpcUrl      string
-	EthereumRpcUrl  string
+	MezoRPCURL      string
+	EthereumRPCURL  string
 }
 
 func Start(config Config) error {
@@ -43,8 +43,8 @@ func Start(config Config) error {
 			ctx,
 			config.ChainID,
 			config.BridgePollRate,
-			config.MezoRpcUrl,
-			config.EthereumRpcUrl,
+			config.MezoRPCURL,
+			config.EthereumRPCURL,
 		)
 		if err != nil {
 			log.Printf("bridge monitoring routine exited with error: [%v]", err)
