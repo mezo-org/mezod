@@ -80,7 +80,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "currencyUSD"
         },
         "overrides": []
       },
@@ -113,7 +113,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "mezo_contract_function_result{contract=\"PCV\",function=\"debtToPay\"}",
+          "expr": "mezo_contract_function_result{contract=\"PCV\",function=\"debtToPay\"} / 1000000000000000000",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "PCV Debt to Pay",
@@ -147,7 +147,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "currencyUSD"
         },
         "overrides": []
       },
@@ -185,7 +185,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "mezo_contract_function_result{contract=\"PCV\",function=\"debtToPay\"}",
+          "expr": "mezo_contract_function_result{contract=\"PCV\",function=\"debtToPay\"} / 1000000000000000000",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "Current Debt",
