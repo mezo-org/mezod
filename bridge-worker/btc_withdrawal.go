@@ -24,7 +24,7 @@ const (
 	assetsUnlockedConfirmedLookBackPeriod = 216000      // ~30 days
 )
 
-func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
+func (bw *BridgeWorker) handleBitcoinWithdrawals(ctx context.Context) error {
 	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
 	if err != nil {
 		return fmt.Errorf("failed to get current block: [%w]", err)
@@ -60,7 +60,7 @@ func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
 		}
 	}
 
-	bw.btcWithdrawingLastProcessedBlock = currentBlock
+	bw.btcWithdrawalLastProcessedBlock = currentBlock
 
 	// Start a ticker to periodically check the current block number
 	tickerChan := bw.chain.WatchBlocks(ctx)
@@ -69,7 +69,7 @@ func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
 		select {
 		case <-ctx.Done(): // Handle context cancellation
 			bw.logger.Warn(
-				"stopping BTC withdrawing due to context cancellation",
+				"stopping BTC withdrawals routine due to context cancellation",
 			)
 			return nil
 		case <-tickerChan:
@@ -230,9 +230,9 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
 		return fmt.Errorf("cannot get current block: [%w]", err)
 	}
 
-	if currentBlock > bw.btcWithdrawingLastProcessedBlock {
+	if currentBlock > bw.btcWithdrawalLastProcessedBlock {
 		events, err := bw.fetchAssetsUnlockConfirmedEvents(
-			bw.btcWithdrawingLastProcessedBlock+1,
+			bw.btcWithdrawalLastProcessedBlock+1,
 			currentBlock,
 		)
 		if err != nil {
@@ -256,7 +256,7 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
 			}
 		}
 
-		bw.btcWithdrawingLastProcessedBlock = currentBlock
+		bw.btcWithdrawalLastProcessedBlock = currentBlock
 	}
 
 	return nil

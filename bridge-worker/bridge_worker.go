@@ -30,7 +30,7 @@ type BridgeWorker struct {
 	requestsPerMinute uint64
 
 	// TODO: Check if we need mutex
-	btcWithdrawingLastProcessedBlock uint64
+	btcWithdrawalLastProcessedBlock uint64
 
 	btcWithdrawalMutex sync.Mutex
 	btcWithdrawalQueue []portal.MezoBridgeAssetsUnlockConfirmed
@@ -107,15 +107,15 @@ func RunBridgeWorker(
 
 	go func() {
 		defer cancelCtx()
-		err := bw.handleBitcoinWithdrawing(ctx)
+		err := bw.handleBitcoinWithdrawals(ctx)
 		if err != nil {
 			bw.logger.Info(
-				"Bitcoin withdrawing routine failed",
+				"Bitcoin withdrawal routine failed",
 				"err", err,
 			)
 		}
 
-		bw.logger.Info("Bitcoin withdrawing routine stopped")
+		bw.logger.Info("Bitcoin withdrawal routine stopped")
 	}()
 
 	<-ctx.Done()
