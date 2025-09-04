@@ -48,7 +48,7 @@ data:
       - name: musd_alerts
         rules:
           - alert: PCVDebtToPayZero
-            expr: pcv_debt_to_pay == 0
+            expr: mezo_contract_function_result{contract="PCV",function="debtToPay"} == 0
             for: 1m
             labels:
               severity: warning
