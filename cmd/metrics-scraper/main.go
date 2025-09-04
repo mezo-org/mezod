@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/url"
 
 	metricsscraper "github.com/mezo-org/mezod/metrics-scraper"
 	"github.com/mezo-org/mezod/utils"
@@ -69,12 +70,32 @@ func parseFlags(cmd *cobra.Command) (metricsscraper.Config, error) {
 		return metricsscraper.Config{}, fmt.Errorf("bridge poll rate must be greater than 0")
 	}
 
+	mezoRPCURL, err := cmd.Flags().GetString(flagMezoRPCURL)
+	if err != nil {
+		return metricsscraper.Config{}, fmt.Errorf("failed to get Mezo RPC URL: [%w]", err)
+	}
+	_, err = url.ParseRequestURI(mezoRPCURL)
+	if err != nil {
+		return metricsscraper.Config{}, fmt.Errorf("mezo RPC URL is not valid: [%w]", err)
+	}
+
+	ethereumRPCURL, err := cmd.Flags().GetString(flagEthereumRPCURL)
+	if err != nil {
+		return metricsscraper.Config{}, fmt.Errorf("failed to get Ethereum RPC URL: [%w]", err)
+	}
+	_, err = url.ParseRequestURI(ethereumRPCURL)
+	if err != nil {
+		return metricsscraper.Config{}, fmt.Errorf("ethereum RPC URL is not valid: [%w]", err)
+	}
+
 	return metricsscraper.Config{
 		NodesConfigPath: nodesConfigPath,
 		PrometheusPort:  prometheusPort,
 		ChainID:         chainID,
 		NodePollRate:    nodePollRate,
 		BridgePollRate:  bridgePollRate,
+		MezoRPCURL:      mezoRPCURL,
+		EthereumRPCURL:  ethereumRPCURL,
 	}, nil
 }
 
