@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sort"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -55,10 +56,7 @@ func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
 		}
 
 		if isPendingWithdrawal {
-			err := bw.withdrawBTC(event)
-			if err != nil {
-				return fmt.Errorf("failed to withdraw BTC: [%w]", err)
-			}
+			bw.enqueueBtcWithdrawals(*event)
 		}
 	}
 
@@ -85,6 +83,41 @@ func (bw *BridgeWorker) handleBitcoinWithdrawing(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+//nolint:unused
+func (bw *BridgeWorker) enqueueBtcWithdrawals(
+	events ...portal.MezoBridgeAssetsUnlockConfirmed,
+) {
+	bw.btcWithdrawalMutex.Lock()
+	defer bw.btcWithdrawalMutex.Unlock()
+
+	if len(events) == 0 {
+		return
+	}
+
+	bw.btcWithdrawalQueue = append(bw.btcWithdrawalQueue, events...)
+
+	// order events by unlock sequence in ascending order
+	sort.Slice(bw.btcWithdrawalQueue, func(i, j int) bool {
+		return bw.btcWithdrawalQueue[i].UnlockSequenceNumber.Cmp(
+			bw.btcWithdrawalQueue[j].UnlockSequenceNumber,
+		) < 0
+	})
+}
+
+//nolint:unused
+func (bw *BridgeWorker) dequeueBtcWithdrawal() *portal.MezoBridgeAssetsUnlockConfirmed {
+	bw.btcWithdrawalMutex.Lock()
+	defer bw.btcWithdrawalMutex.Unlock()
+	if len(bw.btcWithdrawalQueue) == 0 {
+		return nil
+	}
+
+	event := bw.btcWithdrawalQueue[0]
+	bw.btcWithdrawalQueue = bw.btcWithdrawalQueue[1:]
+
+	return &event
 }
 
 func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
@@ -219,10 +252,7 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
 			}
 
 			if isPendingWithdrawal {
-				err := bw.withdrawBTC(event)
-				if err != nil {
-					return fmt.Errorf("failed to withdraw BTC: [%w]", err)
-				}
+				bw.enqueueBtcWithdrawals(*event)
 			}
 		}
 
@@ -232,6 +262,7 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
 	return nil
 }
 
+//nolint:unused
 func (bw *BridgeWorker) withdrawBTC(
 	_ *portal.MezoBridgeAssetsUnlockConfirmed,
 ) error {

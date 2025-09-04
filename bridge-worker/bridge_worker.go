@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"sync"
 
 	"cosmossdk.io/log"
 
@@ -30,6 +31,9 @@ type BridgeWorker struct {
 
 	// TODO: Check if we need mutex
 	btcWithdrawingLastProcessedBlock uint64
+
+	btcWithdrawalMutex sync.Mutex
+	btcWithdrawalQueue []portal.MezoBridgeAssetsUnlockConfirmed
 }
 
 func RunBridgeWorker(
@@ -98,6 +102,7 @@ func RunBridgeWorker(
 		chain:              chain,
 		batchSize:          defaultBatchSize,
 		requestsPerMinute:  defaultRequestsPerMinute,
+		btcWithdrawalQueue: []portal.MezoBridgeAssetsUnlockConfirmed{},
 	}
 
 	go func() {
