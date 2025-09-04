@@ -23,18 +23,26 @@ import (
 
 const (
 	mezoAssetsUnlockedLookBackBlocks = uint64(172800) // ~7 days (assuming 1 block per 3.5s)
+	// We make the look-back period longer for Ethereum than for Mezo to make sure
+	// we don't miss any AssetsUnlockedConfirmed events that indiciate the completion
+	// of the attestation process on Ethereum. Missing those events could result
+	// in false positives in the pending_assets_unlocked metric.
+	ethereumAssetsUnlockedConfirmedLookBackBlocks = uint64(100800) // ~14 days (assuming 1 block per 12s)
 )
+
+var pendingAssetsUnlockedCache = map[string]bool{} // unlock seqno -> bool
 
 type ethereumChain struct {
 	client     *mezodethereum.BaseChain
 	mezoBridge *portal.MezoBridge
+
+	assetsUnlockedConfirmedCheckpointHeight uint64
 }
 
 type mezoChain struct {
 	client       *ethclient.Client
 	assetsBridge *AssetsBridge
 
-	assetsUnlockSequenceTip        *big.Int
 	assetsUnlockedCheckpointHeight uint64
 }
 
@@ -183,9 +191,8 @@ func connectMezo(
 	}
 
 	return &mezoChain{
-		client:                  client,
-		assetsBridge:            assetsBridge,
-		assetsUnlockSequenceTip: big.NewInt(0),
+		client:       client,
+		assetsBridge: assetsBridge,
 	}, nil
 }
 
@@ -254,13 +261,16 @@ func pendingAssetsLocked(
 		return
 	}
 
+	pending, _ := new(big.Int).Sub(mezoBridgeSequence, assetsBridgeSequence).Float64()
+
 	log.Printf(
-		"MezoBridge lock sequence tip: [%d]; AssetsBridge lock sequence tip: [%d]",
+		"MezoBridge lock sequence tip: [%d]; "+
+			"AssetsBridge lock sequence tip: [%d]; "+
+			"pending AssetsLocked count: [%d]",
 		mezoBridgeSequence,
 		assetsBridgeSequence,
+		int(pending),
 	)
-
-	pending, _ := new(big.Int).Sub(mezoBridgeSequence, assetsBridgeSequence).Float64()
 
 	pendingAssetsLockedGauge.WithLabelValues(mezoChainID).Set(pending)
 
@@ -270,7 +280,7 @@ func pendingAssetsLocked(
 func pendingAssetsUnlocked(
 	ctx context.Context,
 	mezoChainID string,
-	_ *ethereumChain,
+	ethereum *ethereumChain,
 	mezo *mezoChain,
 ) (err error) {
 	defer func() {
@@ -280,28 +290,60 @@ func pendingAssetsUnlocked(
 		}
 	}()
 
-	assetsBridgeSequence, err := mezo.assetsUnlockedSequenceTip(ctx)
+	requestedUnlockSeqnos, err := mezo.requestedUnlockSeqnos(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get AssetsBridge unlock sequence tip: [%w]", err)
+		return fmt.Errorf(
+			"failed to get requested unlock sequence numbers from Mezo: [%w]",
+			err,
+		)
 	}
 
-	// TODO: Determine the MezoBridge seqno tip.
-	mezoBridgeSequence := big.NewInt(0)
+	// Populate the cache with all requested unlock seqnos.
+	for _, seqno := range requestedUnlockSeqnos {
+		pendingAssetsUnlockedCache[seqno.String()] = true
+	}
+
+	processedUnlockSeqnos, err := ethereum.processedUnlockSeqnos(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to get processed unlock sequence numbers from Ethereum: [%w]",
+			err,
+		)
+	}
+
+	// Remove processed unlock seqnos from the cache.
+	for _, seqno := range processedUnlockSeqnos {
+		delete(pendingAssetsUnlockedCache, seqno.String())
+	}
+
+	// Prepare a list of pending seqnos for logging purposes.
+	pendingSeqnos := make([]*big.Int, 0, len(pendingAssetsUnlockedCache))
+	for seqno := range pendingAssetsUnlockedCache {
+		seqnoBigInt, _ := new(big.Int).SetString(seqno, 10)
+		pendingSeqnos = append(pendingSeqnos, seqnoBigInt)
+	}
+	slices.SortFunc(pendingSeqnos, func(a, b *big.Int) int {
+		return a.Cmp(b)
+	})
+
+	// Calculate the number of pending seqnos for metrics.
+	pending := len(pendingAssetsUnlockedCache)
 
 	log.Printf(
-		"AssetsBridge unlock sequence tip: [%d]; MezoBridge unlock sequence tip: [%d]",
-		assetsBridgeSequence,
-		mezoBridgeSequence,
+		"fetched [%d] requested and [%d] processed AssetsUnlocked entries; "+
+			"pending AssetsUnlocked count: [%d] (seqnos: %s)",
+		len(requestedUnlockSeqnos),
+		len(processedUnlockSeqnos),
+		pending,
+		pendingSeqnos,
 	)
 
-	pending, _ := new(big.Int).Sub(assetsBridgeSequence, mezoBridgeSequence).Float64()
-
-	pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(pending)
+	pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(float64(pending))
 
 	return nil
 }
 
-func (mc *mezoChain) assetsUnlockedSequenceTip(ctx context.Context) (*big.Int, error) {
+func (mc *mezoChain) requestedUnlockSeqnos(ctx context.Context) ([]*big.Int, error) {
 	currentHeader, err := mc.client.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current Mezo height: [%w]", err)
@@ -332,20 +374,16 @@ func (mc *mezoChain) assetsUnlockedSequenceTip(ctx context.Context) (*big.Int, e
 
 	mc.assetsUnlockedCheckpointHeight = endHeight + 1
 
-	slices.SortFunc(events, func(a, b *AssetsBridgeAssetsUnlocked) int {
-		return a.UnlockSequenceNumber.Cmp(b.UnlockSequenceNumber)
+	unlockSequenceNumbers := make([]*big.Int, len(events))
+	for i, event := range events {
+		unlockSequenceNumbers[i] = event.UnlockSequenceNumber
+	}
+
+	slices.SortFunc(unlockSequenceNumbers, func(a, b *big.Int) int {
+		return a.Cmp(b)
 	})
 
-	newTip := big.NewInt(0)
-	if len(events) > 0 {
-		newTip = events[len(events)-1].UnlockSequenceNumber
-	}
-
-	if newTip.Cmp(mc.assetsUnlockSequenceTip) > 0 {
-		mc.assetsUnlockSequenceTip = newTip
-	}
-
-	return mc.assetsUnlockSequenceTip, nil
+	return unlockSequenceNumbers, nil
 }
 
 func (mc *mezoChain) assetsUnlockedEvents(
@@ -374,6 +412,55 @@ func (mc *mezoChain) assetsUnlockedEvents(
 	}
 
 	return events, nil
+}
+
+func (ec *ethereumChain) processedUnlockSeqnos(ctx context.Context) ([]*big.Int, error) {
+	currentHeight, err := ec.client.LatestBlock(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current Ethereum height: [%w]", err)
+	}
+
+	startHeight := ec.assetsUnlockedConfirmedCheckpointHeight
+	endHeight := currentHeight.Uint64()
+
+	if startHeight == 0 {
+		if endHeight > ethereumAssetsUnlockedConfirmedLookBackBlocks {
+			startHeight = endHeight - ethereumAssetsUnlockedConfirmedLookBackBlocks
+		}
+	}
+
+	log.Printf(
+		"getting AssetsUnlockedConfirmed events from [%d] to [%d] on Ethereum chain",
+		startHeight,
+		endHeight,
+	)
+
+	events, err := withBatchFetch(ec.assetsUnlockConfirmedEvents, startHeight, endHeight)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to get AssetsUnlockedConfirmed events on Ethereum chain: [%w]",
+			err,
+		)
+	}
+
+	ec.assetsUnlockedConfirmedCheckpointHeight = endHeight + 1
+
+	unlockSequenceNumbers := make([]*big.Int, len(events))
+	for i, event := range events {
+		unlockSequenceNumbers[i] = event.UnlockSequenceNumber
+	}
+
+	slices.SortFunc(unlockSequenceNumbers, func(a, b *big.Int) int {
+		return a.Cmp(b)
+	})
+
+	return unlockSequenceNumbers, nil
+}
+
+func (ec *ethereumChain) assetsUnlockConfirmedEvents(
+	startHeight, endHeight uint64,
+) ([]*portal.MezoBridgeAssetsUnlockConfirmed, error) {
+	return ec.mezoBridge.PastAssetsUnlockConfirmedEvents(startHeight, &endHeight, nil, nil, nil)
 }
 
 func withBatchFetch[T any](
