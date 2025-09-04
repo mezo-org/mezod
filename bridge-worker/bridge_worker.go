@@ -11,6 +11,7 @@ import (
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
 )
 
 // mezoBridgeName is the name of the MezoBridge contract.
@@ -19,8 +20,10 @@ const mezoBridgeName = "MezoBridge"
 type BridgeWorker struct {
 	logger log.Logger
 
-	bridgeContract *portal.MezoBridge
-	chain          *ethconnect.BaseChain
+	bridgeContract     *portal.MezoBridge
+	tbtcBridgeContract *tbtc.Bridge
+
+	chain *ethconnect.BaseChain
 
 	batchSize         uint64
 	requestsPerMinute uint64
@@ -37,6 +40,7 @@ func RunBridgeWorker(
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
 	mezoBridgeAddress := portal.MezoBridgeAddress(network)
+	tbtcBridgeAddress := tbtc.BridgeAddress(network)
 
 	if mezoBridgeAddress == "" {
 		panic(
@@ -45,9 +49,16 @@ func RunBridgeWorker(
 		)
 	}
 
+	if tbtcBridgeAddress == "" {
+		panic(
+			"cannot get address of the Tbtc Bridge contract on Ethereum",
+		)
+	}
+
 	logger.Info(
-		"resolved MezoBridge contract and Ethereum network",
+		"resolved contract addresses and Ethereum network",
 		"mezo_bridge_address", mezoBridgeAddress,
+		"tbtc_bridge_address", tbtcBridgeAddress,
 		"ethereum_network", network,
 	)
 
@@ -69,17 +80,24 @@ func RunBridgeWorker(
 	}
 
 	// Initialize the MezoBridge contract instance.
-	bridgeContractBinding, err := initializeBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
+	mezoBridgeContract, err := initializeMezoBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
 	}
 
+	// Initialize the tBTC Bridge contract instance.
+	tbtcBridgeContract, err := initializeTbtcBridgeContract(common.HexToAddress(tbtcBridgeAddress), chain)
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize tBTC Bridge contract: %v", err))
+	}
+
 	bw := &BridgeWorker{
-		logger:            logger,
-		bridgeContract:    bridgeContractBinding,
-		chain:             chain,
-		batchSize:         defaultBatchSize,
-		requestsPerMinute: defaultRequestsPerMinute,
+		logger:             logger,
+		bridgeContract:     mezoBridgeContract,
+		tbtcBridgeContract: tbtcBridgeContract,
+		chain:              chain,
+		batchSize:          defaultBatchSize,
+		requestsPerMinute:  defaultRequestsPerMinute,
 	}
 
 	go func() {
@@ -101,7 +119,7 @@ func RunBridgeWorker(
 }
 
 // Construct a new instance of the Ethereum MezoBridge contract.
-func initializeBridgeContract(
+func initializeMezoBridgeContract(
 	address common.Address,
 	chain *ethconnect.BaseChain,
 ) (*portal.MezoBridge, error) {
@@ -117,6 +135,28 @@ func initializeBridgeContract(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach to MezoBridge contract. %v", err)
+	}
+
+	return bridgeContract, nil
+}
+
+// Construct a new instance of the Ethereum Tbtc Bridge contract.
+func initializeTbtcBridgeContract(
+	address common.Address,
+	chain *ethconnect.BaseChain,
+) (*tbtc.Bridge, error) {
+	bridgeContract, err := tbtc.NewTbtcBridge(
+		address,
+		chain.ChainID(),
+		chain.Key(),
+		chain.Client(),
+		chain.NonceManager(),
+		chain.MiningWaiter(),
+		chain.BlockCounter(),
+		chain.TransactionMutex(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to Tbtc Bridge contract. %v", err)
 	}
 
 	return bridgeContract, nil

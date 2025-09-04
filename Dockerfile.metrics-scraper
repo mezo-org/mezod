@@ -18,4 +18,3 @@ WORKDIR /
 COPY --from=builder /app/metrics-scraper .
 
 ENTRYPOINT ["./metrics-scraper"]
-CMD ["-config", "/etc/metrics-scraper/config.json"]

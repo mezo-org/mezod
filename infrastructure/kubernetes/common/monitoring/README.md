@@ -64,14 +64,13 @@ One secret is used to set the configuration of the metrics scraper service. To
 create it, use the following command:
 ```Shell
 kubectl create secret generic metrics-scraper-config -n monitoring \
-  --from-file=config.json=<PATH_TO_CONFIG>
+  --from-literal=chain-id=<CHAIN_ID> \
+  --from-file=nodes-config.json=<PATH_TO_NODES_CONFIG>
 ```
 
-Here's an example of the configuration:
+Here's an example of the `nodes-config.json` configuration file:
 ```
 {
-  "poll_rate": "2s",
-  "chain_id": "mezo_31611-1",
   "nodes": [
     {
       "rpc_url": "http://<MEZO_RPC_URL>:8545",
@@ -80,9 +79,6 @@ Here's an example of the configuration:
   ]
 }
 ```
-
-Moreover you can find the Go struct definition of the config in the following
-file: https://github.com/mezo-org/mezod/blob/main/metrics-scraper/config.go
 
 ### Static IP for the metrics-scraper service
 

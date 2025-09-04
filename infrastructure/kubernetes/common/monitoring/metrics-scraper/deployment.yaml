@@ -17,6 +17,15 @@ spec:
         - name: metrics-scraper
           image: mezo/metrics-scraper:latest
           imagePullPolicy: Always
+          args:
+            - --chain-id=$(CHAIN_ID)
+            - --nodes-config=/etc/metrics-scraper/nodes-config.json
+          env:
+            - name: CHAIN_ID
+              valueFrom:
+                secretKeyRef:
+                  name: metrics-scraper-config
+                  key: chain-id
           ports:
             - containerPort: 2112
           resources:
@@ -33,3 +42,6 @@ spec:
         - name: metrics-scraper-config
           secret:
             secretName: metrics-scraper-config
+            items:
+              - key: nodes-config.json
+                path: nodes-config.json
