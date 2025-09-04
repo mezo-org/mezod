@@ -56,3 +56,19 @@ data:
             annotations:
               summary: "PCV contract debt to pay is zero"
               description: "The PCV contract debtToPay function returned 0."
+          - alert: ActivePoolBTCInsufficient
+            expr: |
+              (
+                (mezo_contract_function_result{contract="ActivePool",function="getCollateralBalance"} * mezo_contract_function_result{contract="PriceFeed",function="fetchPrice"} / 1e18) 
+                < 
+                0.8 * (mezo_contract_function_result{contract="MUSD",function="totalSupply"} - mezo_contract_function_result{contract="StabilityPool",function="getTotalMUSDDeposits"}) / 1e18
+              ) 
+              and 
+              mezo_contract_function_result{contract="PCV",function="debtToPay"} > 0
+            for: 5m
+            labels:
+              severity: critical
+              contract: ActivePool
+            annotations:
+              summary: "Active Pool BTC insufficient for redemptions"
+              description: "Active Pool BTC balance is less than 80% of circulating MUSD supply. This could lead to inability to honor redemptions."

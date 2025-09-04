@@ -8,3 +8,7 @@ data:
     testertesting:0x6e80164ea60673D64d5d6228beb684a1274Bb017
   contracts.txt: |
     PCV|0x4dDD70f4C603b6089c07875Be02fEdFD626b80Af|[{"inputs":[],"name":"debtToPay","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|debtToPay
+    ActivePool|0x143A063F62340DA3A8bEA1C5642d18C6D0F7FF51|[{"inputs":[],"name":"getCollateralBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|getCollateralBalance
+    MUSD|0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503|[{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|totalSupply
+    StabilityPool|0x1CCA7E410eE41739792eA0A24e00349Dd247680e|[{"inputs":[],"name":"getTotalMUSDDeposits","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|getTotalMUSDDeposits
+    PriceFeed|0x86bCF0841622a5dAC14A313a15f96A95421b9366|[{"inputs":[],"name":"fetchPrice","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|fetchPrice
