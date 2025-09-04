@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"slices"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -19,18 +21,35 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
+const (
+	mezoAssetsUnlockedLookBackBlocks = uint64(172800) // ~7 days (assuming 1 block per 3.5s)
+)
+
+type ethereumChain struct {
+	client     *mezodethereum.BaseChain
+	mezoBridge *portal.MezoBridge
+}
+
+type mezoChain struct {
+	client       *ethclient.Client
+	assetsBridge *AssetsBridge
+
+	assetsUnlockSequenceTip        *big.Int
+	assetsUnlockedCheckpointHeight uint64
+}
+
 func runBridgeMonitoring(
 	ctx context.Context,
-	chainID string,
+	mezoChainID string,
 	pollRate time.Duration,
 	mezoRPCURL string,
 	ethereumRPCURL string,
 ) error {
 	log.Printf("starting bridge monitoring")
 
-	mezoBridge, err := connectMezoBridgeEthereumContract(
+	ethereum, err := connectEthereum(
 		ctx,
-		mapMezoChainIDToEthereumNetwork(chainID),
+		mapMezoChainIDToEthereumNetwork(mezoChainID),
 		ethereumRPCURL,
 	)
 	if err != nil {
@@ -40,9 +59,9 @@ func runBridgeMonitoring(
 		)
 	}
 
-	assetsBridge, err := connectAssetsBridgeMezoContract(
+	mezo, err := connectMezo(
 		ctx,
-		chainID,
+		mezoChainID,
 		mezoRPCURL,
 	)
 	if err != nil {
@@ -63,9 +82,9 @@ func runBridgeMonitoring(
 		case <-ticker.C:
 			if err := pollBridgeData(
 				ctx,
-				chainID,
-				mezoBridge,
-				assetsBridge,
+				mezoChainID,
+				ethereum,
+				mezo,
 			); err != nil {
 				log.Printf("error while polling bridge data: %v", err)
 			} else {
@@ -75,11 +94,11 @@ func runBridgeMonitoring(
 	}
 }
 
-func connectMezoBridgeEthereumContract(
+func connectEthereum(
 	ctx context.Context,
 	ethereumNetwork keepethereum.Network,
 	ethereumRPCURL string,
-) (*portal.MezoBridge, error) {
+) (*ethereumChain, error) {
 	mezoBridgeAddress := portal.MezoBridgeAddress(ethereumNetwork)
 	if len(mezoBridgeAddress) == 0 {
 		// If this happened, bindings are broken and the only option is to panic.
@@ -99,7 +118,7 @@ func connectMezoBridgeEthereumContract(
 		return nil, fmt.Errorf("failed to generate dummy private key: [%w]", err)
 	}
 
-	ethereumChain, err := mezodethereum.Connect(
+	client, err := mezodethereum.Connect(
 		ctx,
 		keepethereum.Config{
 			Network: ethereumNetwork,
@@ -113,42 +132,45 @@ func connectMezoBridgeEthereumContract(
 
 	mezoBridge, err := portal.NewMezoBridge(
 		common.HexToAddress(mezoBridgeAddress),
-		ethereumChain.ChainID(),
-		ethereumChain.Key(),
-		ethereumChain.Client(),
-		ethereumChain.NonceManager(),
-		ethereumChain.MiningWaiter(),
-		ethereumChain.BlockCounter(),
-		ethereumChain.TransactionMutex(),
+		client.ChainID(),
+		client.Key(),
+		client.Client(),
+		client.NonceManager(),
+		client.MiningWaiter(),
+		client.BlockCounter(),
+		client.TransactionMutex(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach to MezoBridge contract: [%w]", err)
 	}
 
-	return mezoBridge, nil
+	return &ethereumChain{
+		client:     client,
+		mezoBridge: mezoBridge,
+	}, nil
 }
 
-func connectAssetsBridgeMezoContract(
+func connectMezo(
 	ctx context.Context,
-	chainID string,
+	mezoChainID string,
 	mezoRPCURL string,
-) (*AssetsBridge, error) {
+) (*mezoChain, error) {
 	client, err := ethclient.DialContext(ctx, mezoRPCURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Mezo network: [%w]", err)
 	}
 
-	eip155ChainID, err := mezotypes.ParseChainID(chainID)
+	eip155MezoChainID, err := mezotypes.ParseChainID(mezoChainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse chain ID to EIP155 format: [%w]", err)
+		return nil, fmt.Errorf("failed to parse Mezo chain ID to EIP155 format: [%w]", err)
 	}
 
-	clientChainID, err := client.ChainID(ctx)
+	clientMezoChainID, err := client.ChainID(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID from Mezo RPC: [%w]", err)
 	}
 
-	if eip155ChainID.Cmp(clientChainID) != 0 {
+	if eip155MezoChainID.Cmp(clientMezoChainID) != 0 {
 		return nil, fmt.Errorf("mezo RPC uses different chain ID than expected")
 	}
 
@@ -160,33 +182,46 @@ func connectAssetsBridgeMezoContract(
 		return nil, fmt.Errorf("failed to attach to AssetsBridge contract: [%w]", err)
 	}
 
-	return assetsBridge, nil
+	return &mezoChain{
+		client:                  client,
+		assetsBridge:            assetsBridge,
+		assetsUnlockSequenceTip: big.NewInt(0),
+	}, nil
 }
 
-func mapMezoChainIDToEthereumNetwork(chainID string) keepethereum.Network {
+func mapMezoChainIDToEthereumNetwork(mezoChainID string) keepethereum.Network {
 	switch {
-	case utils.IsMainnet(chainID):
+	case utils.IsMainnet(mezoChainID):
 		return keepethereum.Mainnet
-	case utils.IsTestnet(chainID):
+	case utils.IsTestnet(mezoChainID):
 		return keepethereum.Sepolia
 	default:
-		panic(fmt.Sprintf("unknown Mezo chain id: %s", chainID))
+		panic(fmt.Sprintf("unknown Mezo chain id: %s", mezoChainID))
 	}
 }
 
 func pollBridgeData(
 	ctx context.Context,
-	chainID string,
-	mezoBridge *portal.MezoBridge,
-	assetsBridge *AssetsBridge,
+	mezoChainID string,
+	ethereum *ethereumChain,
+	mezo *mezoChain,
 ) error {
 	errs := []error{}
 
 	err := pendingAssetsLocked(
+		mezoChainID,
+		ethereum,
+		mezo,
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	err = pendingAssetsUnlocked(
 		ctx,
-		chainID,
-		mezoBridge,
-		assetsBridge,
+		mezoChainID,
+		ethereum,
+		mezo,
 	)
 	if err != nil {
 		errs = append(errs, err)
@@ -196,33 +231,174 @@ func pollBridgeData(
 }
 
 func pendingAssetsLocked(
-	ctx context.Context,
-	chainID string,
-	mezoBridge *portal.MezoBridge,
-	assetsBridge *AssetsBridge,
+	mezoChainID string,
+	ethereum *ethereumChain,
+	mezo *mezoChain,
 ) (err error) {
 	defer func() {
 		if err != nil {
 			// set gauge to -1 to indicate error
-			pendingAssetsLockedGauge.WithLabelValues(chainID).Set(-1)
+			pendingAssetsLockedGauge.WithLabelValues(mezoChainID).Set(-1)
 		}
 	}()
 
-	mezoBridgeSequence, err := mezoBridge.Sequence()
+	mezoBridgeSequence, err := ethereum.mezoBridge.Sequence()
 	if err != nil {
-		err = fmt.Errorf("failed to get MezoBridge sequence: [%w]", err)
+		err = fmt.Errorf("failed to get MezoBridge lock sequence tip: [%w]", err)
 		return
 	}
 
-	assetsBridgeSequence, err := assetsBridge.GetCurrentSequenceTip(nil)
+	assetsBridgeSequence, err := mezo.assetsBridge.GetCurrentSequenceTip(nil)
 	if err != nil {
-		err = fmt.Errorf("failed to get AssetsBridge sequence: [%w]", err)
+		err = fmt.Errorf("failed to get AssetsBridge lock sequence tip: [%w]", err)
 		return
 	}
+
+	log.Printf(
+		"MezoBridge lock sequence tip: [%d]; AssetsBridge lock sequence tip: [%d]",
+		mezoBridgeSequence,
+		assetsBridgeSequence,
+	)
 
 	pending, _ := new(big.Int).Sub(mezoBridgeSequence, assetsBridgeSequence).Float64()
 
-	pendingAssetsLockedGauge.WithLabelValues(chainID).Set(pending)
+	pendingAssetsLockedGauge.WithLabelValues(mezoChainID).Set(pending)
 
 	return
+}
+
+func pendingAssetsUnlocked(
+	ctx context.Context,
+	mezoChainID string,
+	_ *ethereumChain,
+	mezo *mezoChain,
+) (err error) {
+	defer func() {
+		if err != nil {
+			// set gauge to -1 to indicate error
+			pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(-1)
+		}
+	}()
+
+	assetsBridgeSequence, err := mezo.assetsUnlockedSequenceTip(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get AssetsBridge unlock sequence tip: [%w]", err)
+	}
+
+	// TODO: Determine the MezoBridge seqno tip.
+	mezoBridgeSequence := big.NewInt(0)
+
+	log.Printf(
+		"AssetsBridge unlock sequence tip: [%d]; MezoBridge unlock sequence tip: [%d]",
+		assetsBridgeSequence,
+		mezoBridgeSequence,
+	)
+
+	pending, _ := new(big.Int).Sub(assetsBridgeSequence, mezoBridgeSequence).Float64()
+
+	pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(pending)
+
+	return nil
+}
+
+func (mc *mezoChain) assetsUnlockedSequenceTip(ctx context.Context) (*big.Int, error) {
+	currentHeader, err := mc.client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current Mezo height: [%w]", err)
+	}
+
+	startHeight := mc.assetsUnlockedCheckpointHeight
+	endHeight := currentHeader.Number.Uint64()
+
+	if startHeight == 0 {
+		if endHeight > mezoAssetsUnlockedLookBackBlocks {
+			startHeight = endHeight - mezoAssetsUnlockedLookBackBlocks
+		}
+	}
+
+	log.Printf(
+		"getting AssetsUnlocked events from [%d] to [%d] on Mezo chain",
+		startHeight,
+		endHeight,
+	)
+
+	events, err := withBatchFetch(mc.assetsUnlockedEvents, startHeight, endHeight)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to get AssetsUnlocked events on Mezo chain: [%w]",
+			err,
+		)
+	}
+
+	mc.assetsUnlockedCheckpointHeight = endHeight + 1
+
+	slices.SortFunc(events, func(a, b *AssetsBridgeAssetsUnlocked) int {
+		return a.UnlockSequenceNumber.Cmp(b.UnlockSequenceNumber)
+	})
+
+	newTip := big.NewInt(0)
+	if len(events) > 0 {
+		newTip = events[len(events)-1].UnlockSequenceNumber
+	}
+
+	if newTip.Cmp(mc.assetsUnlockSequenceTip) > 0 {
+		mc.assetsUnlockSequenceTip = newTip
+	}
+
+	return mc.assetsUnlockSequenceTip, nil
+}
+
+func (mc *mezoChain) assetsUnlockedEvents(
+	startHeight, endHeight uint64,
+) ([]*AssetsBridgeAssetsUnlocked, error) {
+	iterator, err := mc.assetsBridge.FilterAssetsUnlocked(
+		&bind.FilterOpts{
+			Start: startHeight,
+			End:   &endHeight,
+		},
+		nil,
+		nil,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to get AssetsUnlocked events on Mezo chain: [%w]",
+			err,
+		)
+	}
+	defer iterator.Close()
+
+	events := make([]*AssetsBridgeAssetsUnlocked, 0)
+	for iterator.Next() {
+		events = append(events, iterator.Event)
+	}
+
+	return events, nil
+}
+
+func withBatchFetch[T any](
+	fetchFunc func(batchStartHeight, batchEndHeight uint64) ([]T, error),
+	startHeight, endHeight uint64,
+) ([]T, error) {
+	batchSize := uint64(1000)
+	batchStartHeight := startHeight
+	result := make([]T, 0)
+
+	for batchStartHeight <= endHeight {
+		batchEndHeight := min(batchStartHeight+batchSize, endHeight)
+
+		batchEvents, batchErr := fetchFunc(batchStartHeight, batchEndHeight)
+		if batchErr != nil {
+			return nil, fmt.Errorf(
+				"batched event fetch failed: [%w]",
+				batchErr,
+			)
+		}
+
+		result = append(result, batchEvents...)
+
+		batchStartHeight = batchEndHeight + 1
+	}
+
+	return result, nil
 }
