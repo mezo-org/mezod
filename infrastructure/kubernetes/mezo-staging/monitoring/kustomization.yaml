@@ -17,6 +17,7 @@ configMapGenerator:
       - grafana/dashboards/mezo-nodes-public.json
       - grafana/dashboards/mezo-portal.json
       - grafana/dashboards/accounts.json
+      - grafana/dashboards/pcv-rebalancing.json
 
 generatorOptions:
   disableNameSuffixHash: true
