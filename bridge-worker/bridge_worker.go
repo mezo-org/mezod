@@ -21,7 +21,7 @@ const mezoBridgeName = "MezoBridge"
 type BridgeWorker struct {
 	logger log.Logger
 
-	bridgeContract     *portal.MezoBridge
+	mezoBridgeContract *portal.MezoBridge
 	tbtcBridgeContract *tbtc.Bridge
 
 	chain *ethconnect.BaseChain
@@ -97,7 +97,7 @@ func RunBridgeWorker(
 
 	bw := &BridgeWorker{
 		logger:             logger,
-		bridgeContract:     mezoBridgeContract,
+		mezoBridgeContract: mezoBridgeContract,
 		tbtcBridgeContract: tbtcBridgeContract,
 		chain:              chain,
 		batchSize:          defaultBatchSize,

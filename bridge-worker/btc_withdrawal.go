@@ -25,19 +25,20 @@ const (
 )
 
 func (bw *BridgeWorker) handleBitcoinWithdrawals(ctx context.Context) error {
-	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
+	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get current block: [%w]", err)
+		return fmt.Errorf("failed to get finalized block: [%w]", err)
 	}
+	endBlock := finalizedBlock.Uint64()
 
 	startBlock := uint64(0)
-	if currentBlock > assetsUnlockedConfirmedLookBackPeriod {
-		startBlock = currentBlock - assetsUnlockedConfirmedLookBackPeriod
+	if endBlock > assetsUnlockedConfirmedLookBackPeriod {
+		startBlock = endBlock - assetsUnlockedConfirmedLookBackPeriod
 	}
 
 	recentEvents, err := bw.fetchAssetsUnlockConfirmedEvents(
 		startBlock,
-		currentBlock,
+		endBlock,
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -60,7 +61,7 @@ func (bw *BridgeWorker) handleBitcoinWithdrawals(ctx context.Context) error {
 		}
 	}
 
-	bw.btcWithdrawalLastProcessedBlock = currentBlock
+	bw.btcWithdrawalLastProcessedBlock = endBlock
 
 	// Start a ticker to periodically check the current block number
 	tickerChan := bw.chain.WatchBlocks(ctx)
@@ -74,7 +75,7 @@ func (bw *BridgeWorker) handleBitcoinWithdrawals(ctx context.Context) error {
 			return nil
 		case <-tickerChan:
 			// Process incoming AssetsUnlockedConfirmed events
-			err := bw.processNewAssetsUnlockConfirmedEvents()
+			err := bw.processNewAssetsUnlockConfirmedEvents(ctx)
 			if err != nil {
 				bw.logger.Error(
 					"failed to process newly emitted AssetsUnlockConfirmed events",
@@ -135,7 +136,7 @@ func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
 	ticker := time.NewTicker(time.Minute / time.Duration(bw.requestsPerMinute)) //nolint:gosec
 	defer ticker.Stop()
 
-	events, err := bw.bridgeContract.PastAssetsUnlockConfirmedEvents(
+	events, err := bw.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(
 		startBlock,
 		&endBlock,
 		nil,
@@ -167,7 +168,7 @@ func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
 
 			<-ticker.C
 
-			batchEvents, batchErr := bw.bridgeContract.PastAssetsUnlockConfirmedEvents(
+			batchEvents, batchErr := bw.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(
 				batchStartBlock,
 				&batchEndBlock,
 				nil,
@@ -195,7 +196,7 @@ func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
 func (bw *BridgeWorker) isPendingBTCWithdrawal(
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) (bool, error) {
-	if event.Chain == bitcoinTargetChain {
+	if event.Chain != bitcoinTargetChain {
 		return false, nil
 	}
 
@@ -213,7 +214,7 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 		)
 	}
 
-	isPendingBTCWithdrawal, err := bw.bridgeContract.PendingBTCWithdrawals(hash)
+	isPendingBTCWithdrawal, err := bw.mezoBridgeContract.PendingBTCWithdrawals(hash)
 	if err != nil {
 		return false, fmt.Errorf(
 			"failed to get pending BTC withdrawals info: [%w]",
@@ -224,16 +225,17 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 	return isPendingBTCWithdrawal, nil
 }
 
-func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
-	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
+func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Context) error {
+	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get current block: [%w]", err)
 	}
+	endBlock := finalizedBlock.Uint64()
 
-	if currentBlock > bw.btcWithdrawalLastProcessedBlock {
+	if endBlock > bw.btcWithdrawalLastProcessedBlock {
 		events, err := bw.fetchAssetsUnlockConfirmedEvents(
 			bw.btcWithdrawalLastProcessedBlock+1,
-			currentBlock,
+			endBlock,
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -256,7 +258,7 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
 			}
 		}
 
-		bw.btcWithdrawalLastProcessedBlock = currentBlock
+		bw.btcWithdrawalLastProcessedBlock = endBlock
 	}
 
 	return nil
@@ -266,7 +268,18 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
 func (bw *BridgeWorker) withdrawBTC(
 	_ *portal.MezoBridgeAssetsUnlockConfirmed,
 ) error {
-	// TODO: Implement
+	// TODO: Implement by finding all the necessary arguments and calling
+	//       withdrawBTC:
+	// entry := portal.MezoBridgeAssetsUnlocked{}
+	// walletPublicKeyHash := [20]byte{}
+	// mainUTXO := portal.BitcoinTxUTXO{}
+
+	// tx, err := bw.mezoBridgeContract.WithdrawBTC(
+	// 	entry,
+	// 	walletPublicKeyHash,
+	// 	mainUTXO,
+	// )
+
 	return nil
 }
 
