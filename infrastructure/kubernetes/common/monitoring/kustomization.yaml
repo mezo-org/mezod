@@ -14,8 +14,8 @@ resources:
   - blackbox-exporter/deployment.yaml
   - blackbox-exporter/service.yaml
   - blackbox-exporter/configmap.yaml
-  - balance-exporter/deployment.yaml
-  - balance-exporter/service.yaml
+  - contracts-exporter/deployment.yaml
+  - contracts-exporter/service.yaml
   - musd-exporter/deployment.yaml
   - musd-exporter/service.yaml
 

@@ -34,10 +34,10 @@ data:
             target_label: instance
           - target_label: __address__
             replacement: blackbox-exporter:9115
-      - job_name: 'balance-exporter'
+      - job_name: 'contracts-exporter'
         metrics_path: /metrics
         static_configs:
-          - targets: ['balance-exporter:9115']
+          - targets: ['contracts-exporter:9115']
       - job_name: 'musd-exporter'
         metrics_path: /metrics
         static_configs:
