@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contracts-exporter-config
+  namespace: monitoring
+data:
+  addresses.txt: |
+    passport-mezo-relayer:0xf35c1a20303ddcA464Ebf5b3b023588Cf3181c8a
+  contracts.txt: |
+    PCV|0x391EcC7ffEFc48cff41D0F2Bb36e38b82180B993|[{"inputs":[],"name":"debtToPay","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|debtToPay
+    ActivePool|0x3012C2fE1240e3754E5C200A0946bb0E07474876|[{"inputs":[],"name":"getCollateralBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|getCollateralBalance
+    MUSD|0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186|[{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|totalSupply
+    StabilityPool|0x73245Eff485aB3AAc1158B3c4d8f4b23797B0e32|[{"inputs":[],"name":"getTotalMUSDDeposits","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|getTotalMUSDDeposits
+    PriceFeed|0xc5aC5A8892230E0A3e1c473881A2de7353fFcA88|[{"inputs":[],"name":"fetchPrice","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|fetchPrice

@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: balance-exporter-config
-  namespace: monitoring
-data:
-  addresses.txt: |
-    passport-mezo-relayer:0xf35c1a20303ddcA464Ebf5b3b023588Cf3181c8a
