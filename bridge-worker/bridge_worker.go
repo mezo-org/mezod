@@ -29,11 +29,13 @@ type BridgeWorker struct {
 	batchSize         uint64
 	requestsPerMinute uint64
 
-	// TODO: Check if we need mutex
 	btcWithdrawalLastProcessedBlock uint64
 
 	btcWithdrawalMutex sync.Mutex
 	btcWithdrawalQueue []portal.MezoBridgeAssetsUnlockConfirmed
+
+	withdrawalFinalityChecksMutex sync.Mutex
+	withdrawalFinalityChecks      map[string]*withdrawalFinalityCheck
 }
 
 func RunBridgeWorker(
@@ -96,26 +98,39 @@ func RunBridgeWorker(
 	}
 
 	bw := &BridgeWorker{
-		logger:             logger,
-		mezoBridgeContract: mezoBridgeContract,
-		tbtcBridgeContract: tbtcBridgeContract,
-		chain:              chain,
-		batchSize:          defaultBatchSize,
-		requestsPerMinute:  defaultRequestsPerMinute,
-		btcWithdrawalQueue: []portal.MezoBridgeAssetsUnlockConfirmed{},
+		logger:                   logger,
+		mezoBridgeContract:       mezoBridgeContract,
+		tbtcBridgeContract:       tbtcBridgeContract,
+		chain:                    chain,
+		batchSize:                defaultBatchSize,
+		requestsPerMinute:        defaultRequestsPerMinute,
+		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
+		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
 	}
 
 	go func() {
 		defer cancelCtx()
-		err := bw.handleBitcoinWithdrawals(ctx)
+		err := bw.observeBitcoinWithdrawals(ctx)
 		if err != nil {
-			bw.logger.Info(
-				"Bitcoin withdrawal routine failed",
+			bw.logger.Error(
+				"Bitcoin withdrawal observation routine failed",
 				"err", err,
 			)
 		}
 
-		bw.logger.Info("Bitcoin withdrawal routine stopped")
+		bw.logger.Warn("Bitcoin withdrawal observation routine stopped")
+	}()
+
+	go func() {
+		defer cancelCtx()
+		bw.processBtcWithdrawalQueue(ctx)
+		bw.logger.Warn("Bitcoin withdrawal processing loop stopped")
+	}()
+
+	go func() {
+		defer cancelCtx()
+		bw.processWithdrawalFinalityChecks(ctx)
+		bw.logger.Warn("Bitcoin withdrawal finality checks loop stopped")
 	}()
 
 	<-ctx.Done()
