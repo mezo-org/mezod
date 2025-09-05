@@ -41,6 +41,7 @@ type (
 	MezoBridgeAssetsLocked          = sepoliaabi.MezoBridgeAssetsLocked
 	MezoBridgeAssetsUnlockConfirmed = sepoliaabi.MezoBridgeAssetsUnlockConfirmed
 	MezoBridgeAssetsUnlocked        = sepoliaabi.MezoBridgeAssetsUnlocked
+	BitcoinTxUTXO                   = sepoliaabi.BitcoinTxUTXO
 )
 
 var NewMezoBridge = sepoliacontract.NewMezoBridge
