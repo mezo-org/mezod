@@ -5,7 +5,7 @@ resources:
   - ../../common/monitoring
   - prometheus/configmap.yaml
   - ingress.yaml
-  - balance-exporter/configmap.yaml
+  - contracts-exporter/configmap.yaml
   - musd-exporter/configmap.yaml
 
 patches:

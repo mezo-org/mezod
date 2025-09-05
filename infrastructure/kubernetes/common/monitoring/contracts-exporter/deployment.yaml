@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: balance-exporter
+  name: contracts-exporter
   namespace: monitoring
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: balance-exporter
+      app: contracts-exporter
   template:
     metadata:
       labels:
-        app: balance-exporter
+        app: contracts-exporter
     spec:
       securityContext:
         runAsUser: 1000
@@ -19,20 +19,21 @@ spec:
         fsGroup: 1000
         runAsNonRoot: true
       containers:
-        - name: balance-exporter
-          image: rtwatts/balance-exporter:v1.0
+        - name: contracts-exporter
+          image: rtwatts/contracts-exporter:v2.0
+          imagePullPolicy: Always
           ports:
             - containerPort: 9115
           volumeMounts:
-            - name: balance-exporter-config
-              mountPath: /etc/balance-exporter
+            - name: contracts-exporter-config
+              mountPath: /etc/contracts-exporter
           env:
             - name: PORT
               value: "9115"
             - name: ADDRESSES_FILE
-              value: /etc/balance-exporter/addresses.txt
+              value: /etc/contracts-exporter/addresses.txt
             - name: CONTRACTS_FILE
-              value: /etc/balance-exporter/contracts.txt
+              value: /etc/contracts-exporter/contracts.txt
             - name: PREFIX
               value: mezo_
             - name: CHAIN_RPC_URL
@@ -42,6 +43,6 @@ spec:
                   key: MEZO
 
       volumes:
-        - name: balance-exporter-config
+        - name: contracts-exporter-config
           configMap:
-            name: balance-exporter-config
+            name: contracts-exporter-config
