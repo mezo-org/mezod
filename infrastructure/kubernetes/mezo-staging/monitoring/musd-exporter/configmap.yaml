@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: musd-exporter-config
+  namespace: monitoring
+data:
+  config.yaml: |
+    contracts:
+      - name: "PCV"
+        address: "0x4dDD70f4C603b6089c07875Be02fEdFD626b80Af"
+        abi: |
+          [
+            {
+              "inputs": [],
+              "name": "debtToPay",
+              "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ]
+        functions:
+          - name: "debtToPay"
+            metric_name: "pcv_debt_to_pay"
+            metric_help: "Amount of debt to pay from PCV contract"
+    
+    scrape_interval: "30s"
+    timeout: "10s"

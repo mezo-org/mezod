@@ -5,7 +5,8 @@ resources:
   - ../../common/monitoring
   - prometheus/configmap.yaml
   - ingress.yaml
-  - balance-exporter/configmap.yaml
+  - contracts-exporter/configmap.yaml
+  - musd-exporter/configmap.yaml
 
 patches:
   - path: grafana/deployement-patch.yaml
@@ -16,6 +17,7 @@ configMapGenerator:
       - grafana/dashboards/mezo-nodes-public.json
       - grafana/dashboards/mezo-portal.json
       - grafana/dashboards/accounts.json
+      - grafana/dashboards/pcv-rebalancing.json
 
 generatorOptions:
   disableNameSuffixHash: true
