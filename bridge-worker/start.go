@@ -19,8 +19,8 @@ func Start(configPath string) {
 	}
 
 	privateKey, err := bwconfig.DecryptKeyFile(
-		cfg.Account.KeyFile,
-		cfg.Account.KeyFilePassword,
+		cfg.EthereumAccount.KeyFile,
+		cfg.EthereumAccount.KeyFilePassword,
 	)
 	if err != nil {
 		panic(fmt.Sprintf("keyfile load error: %v", err))
