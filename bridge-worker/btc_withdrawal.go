@@ -33,14 +33,7 @@ type withdrawalFinalityCheck struct {
 
 // TODO: Check if hashing is a good key method. Maybe simply using unlock sequence could be better.
 func (wfc *withdrawalFinalityCheck) key() string {
-	hash, _ := computeAttestationKey(
-		wfc.event.UnlockSequenceNumber,
-		wfc.event.Recipient[:],
-		wfc.event.Token,
-		wfc.event.Amount,
-		wfc.event.Chain,
-	)
-	return hash.Hex()
+	return wfc.event.UnlockSequenceNumber.String()
 }
 
 func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
@@ -412,7 +405,6 @@ func (bw *BridgeWorker) queueWithdrawalFinalityCheck(
 
 	bw.logger.Info(
 		"queued Bitcoin withdrawal finality check",
-		"entry_hash", check.key(),
 		"unlock_sequence", event.UnlockSequenceNumber.String(),
 	)
 }
@@ -468,13 +460,10 @@ func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
 					"unlock_sequence", check.event.UnlockSequenceNumber.String(),
 				)
 
-				key := check.key()
-
 				checkLogger.Info(
 					"executing Bitcoin withdrawal finality check",
 					"scheduled_at_height", check.scheduledAtHeight.String(),
 					"current_finalized_block", currentFinalizedBlock.String(),
-					"entry_hash", key,
 				)
 
 				pending, err := bw.isPendingBTCWithdrawal(check.event)
@@ -506,7 +495,7 @@ func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
 
 				// Withdrawal check is done, remove the check from the queue.
 				bw.withdrawalFinalityChecksMutex.Lock()
-				delete(bw.withdrawalFinalityChecks, key)
+				delete(bw.withdrawalFinalityChecks, check.key())
 				bw.withdrawalFinalityChecksMutex.Unlock()
 			}
 		case <-ctx.Done():
