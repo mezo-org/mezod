@@ -65,6 +65,8 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 		)
 	}
 
+	pendingWithdrawalCount := 0
+
 	for _, event := range recentEvents {
 		isPendingWithdrawal, err := bw.isPendingBTCWithdrawal(event)
 		if err != nil {
@@ -76,10 +78,17 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 
 		if isPendingWithdrawal {
 			bw.enqueueBtcWithdrawal(event)
+			pendingWithdrawalCount++
 		}
 	}
 
 	bw.btcWithdrawalLastProcessedBlock = endBlock
+
+	bw.logger.Info(
+		"initial search for pending BTC withdrawals done",
+		"confirmed_withdrawal_events", len(recentEvents),
+		"pending_btc_withdrawals", pendingWithdrawalCount,
+	)
 
 	// Start a ticker to periodically check the current block number
 	tickerChan := bw.chain.WatchBlocks(ctx)
@@ -257,6 +266,8 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(
 	}
 	endBlock := finalizedBlock.Uint64()
 
+	newPendingBtcWithdrawals := 0
+
 	if endBlock > bw.btcWithdrawalLastProcessedBlock {
 		events, err := bw.fetchAssetsUnlockConfirmedEvents(
 			bw.btcWithdrawalLastProcessedBlock+1,
@@ -281,11 +292,17 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(
 
 			if isPendingWithdrawal {
 				bw.enqueueBtcWithdrawal(event)
+				newPendingBtcWithdrawals++
 			}
 		}
 
 		bw.btcWithdrawalLastProcessedBlock = endBlock
 	}
+
+	bw.logger.Info(
+		"search for new pending BTC withdrawals done",
+		"new_pending_btc_withdrawals", newPendingBtcWithdrawals,
+	)
 
 	return nil
 }
