@@ -18,6 +18,8 @@ import (
 // mezoBridgeName is the name of the MezoBridge contract.
 const mezoBridgeName = "MezoBridge"
 
+// BridgeWorker is a component responsible for tasks related to bridge-out
+// process.
 type BridgeWorker struct {
 	logger log.Logger
 

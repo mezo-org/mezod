@@ -14,28 +14,45 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
 
+// TODO: Determine which of the following parameters should be settable by the
+//       user.
+
 const (
 	// bitcoinTargetChain is a numerical value representing Bitcoin target chain.
 	bitcoinTargetChain = uint8(1)
 
-	// TODO: Should the following be options?
-	defaultBatchSize                    = uint64(1000)
-	defaultRequestsPerMinute            = uint64(600) // 10 requests per second
-	assetsUnlockConfirmedLookBackBlocks = 216000      // ~30 days
+	// defaultBatchSize is the default value for the batch size used when
+	// retrieving events from the Ethereum chain.
+	defaultBatchSize = uint64(1000)
 
+	// defaultRequestsPerMinute is the default value of a parameter limiting
+	// the number of requests made to the Ethereum chain when fetching events.
+	defaultRequestsPerMinute = uint64(600) // 10 requests per second
+
+	// assetsUnlockConfirmedLookBackBlocks is the number of blocks used when
+	// fetching AssetsUnlockConfirmed events from the Ethereum chain. It defines
+	// how far back we look when searching for events.
+	assetsUnlockConfirmedLookBackBlocks = 216000 // ~30 days
+
+	// withdrawalProcessBackoff is a backoff time used between retries when
+	// submitting a withdrawBTC transaction.
 	withdrawalProcessBackoff = 10 * time.Second
 )
 
+// withdrawalFinalityCheck is a struct that contains an AssetsUnlockConfirmed
+// and the Ethereum height at which the withdrawal finality check for it was
+// scheduled.
 type withdrawalFinalityCheck struct {
 	event             *portal.MezoBridgeAssetsUnlockConfirmed
 	scheduledAtHeight *big.Int // nil means unscheduled
 }
 
-// TODO: Check if hashing is a good key method. Maybe simply using unlock sequence could be better.
 func (wfc *withdrawalFinalityCheck) key() string {
 	return wfc.event.UnlockSequenceNumber.String()
 }
 
+// observeBitcoinWithdrawals monitors AssetsUnlockConfirmed events, filters
+// events representing pending Bitcoin withdrawals and puts them into a queue.
 func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
 	if err != nil {
@@ -98,6 +115,8 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 	}
 }
 
+// enqueueBtcWithdrawal puts AssetsUnlockConfirmed events representing Bitcoin
+// withdrawals into a queue.
 func (bw *BridgeWorker) enqueueBtcWithdrawal(
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) {
@@ -114,6 +133,8 @@ func (bw *BridgeWorker) enqueueBtcWithdrawal(
 	})
 }
 
+// dequeueBtcWithdrawal removes an AssetsUnlockConfirmed event representing
+// a Bitcoin withdrawals from the queue.
 func (bw *BridgeWorker) dequeueBtcWithdrawal() *portal.MezoBridgeAssetsUnlockConfirmed {
 	bw.btcWithdrawalMutex.Lock()
 	defer bw.btcWithdrawalMutex.Unlock()
@@ -127,6 +148,8 @@ func (bw *BridgeWorker) dequeueBtcWithdrawal() *portal.MezoBridgeAssetsUnlockCon
 	return &event
 }
 
+// fetchAssetsUnlockConfirmedEvents fetches AssetsUnlockConfirmed events from
+// the Ethereum MezoBridge contract from the given range.
 func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
 	startBlock uint64,
 	endBlock uint64,
@@ -199,6 +222,8 @@ func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
 	return result, nil
 }
 
+// isPendingBTCWithdrawal checks whether an AssetsUnlockConfirmed event
+// represents a pending Bitcoin withdrawal.
 func (bw *BridgeWorker) isPendingBTCWithdrawal(
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) (bool, error) {
@@ -231,6 +256,9 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 	return isPendingBTCWithdrawal, nil
 }
 
+// processNewAssetsUnlockConfirmedEvents fetches new AssetsUnlockConfirmed
+// events representing pending Bitcoin withdrawals and puts them into a queue.
+// It is intended to be run periodically.
 func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(
 	ctx context.Context,
 ) error {
@@ -273,6 +301,9 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(
 	return nil
 }
 
+// processBtcWithdrawalQueue processes pending Bitcoin withdrawals. It removes
+// AssetsUnlockConfirmed events from the queue, prepares data needed to perform
+// a withdrawal and submit the withdrawBTC transaction.
 func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -385,6 +416,8 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 	}
 }
 
+// queueWithdrawalFinalityCheck constructs a Bitcoin withdrawal finality check
+// and puts it into a queue.
 func (bw *BridgeWorker) queueWithdrawalFinalityCheck(
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) {
@@ -409,6 +442,8 @@ func (bw *BridgeWorker) queueWithdrawalFinalityCheck(
 	)
 }
 
+// processWithdrawalFinalityChecks selects Bitcoin withdrawal finality checks
+// that have reached their scheduled height and executes them.
 func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
 	tickerChan := bw.chain.WatchBlocks(ctx)
 
@@ -523,6 +558,8 @@ func (bw *BridgeWorker) prepareBtcWithdrawal(
 		fmt.Errorf("unimplemented")
 }
 
+// computeAttestationKey computes the attestation key for the data representing
+// an AssetsUnlocked entry.
 func computeAttestationKey(
 	unlockSeq *big.Int,
 	recipient []byte,
