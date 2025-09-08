@@ -44,6 +44,8 @@ func RunBridgeWorker(
 	logger log.Logger,
 	providerURL string,
 	ethereumNetwork string,
+	batchSize uint64,
+	requestsPerMinute uint64,
 	privateKey *ecdsa.PrivateKey,
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
@@ -104,8 +106,8 @@ func RunBridgeWorker(
 		mezoBridgeContract:       mezoBridgeContract,
 		tbtcBridgeContract:       tbtcBridgeContract,
 		chain:                    chain,
-		batchSize:                defaultBatchSize,
-		requestsPerMinute:        defaultRequestsPerMinute,
+		batchSize:                batchSize,
+		requestsPerMinute:        requestsPerMinute,
 		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
 		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
 	}

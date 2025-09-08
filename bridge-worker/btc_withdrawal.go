@@ -14,20 +14,9 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 )
 
-// TODO: Determine which of the following parameters should be settable by the
-//       user.
-
 const (
 	// bitcoinTargetChain is a numerical value representing Bitcoin target chain.
 	bitcoinTargetChain = uint8(1)
-
-	// defaultBatchSize is the default value for the batch size used when
-	// retrieving events from the Ethereum chain.
-	defaultBatchSize = uint64(1000)
-
-	// defaultRequestsPerMinute is the default value of a parameter limiting
-	// the number of requests made to the Ethereum chain when fetching events.
-	defaultRequestsPerMinute = uint64(600) // 10 requests per second
 
 	// assetsUnlockConfirmedLookBackBlocks is the number of blocks used when
 	// fetching AssetsUnlockConfirmed events from the Ethereum chain. It defines
