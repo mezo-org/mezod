@@ -31,6 +31,11 @@ type BridgeWorker struct {
 	batchSize         uint64
 	requestsPerMinute uint64
 
+	liveWalletsMutex sync.Mutex
+	liveWallets      [][20]byte
+
+	liveWalletsLastProcessedBlock uint64 // single-routine use; no mutex locking needed.
+
 	btcWithdrawalLastProcessedBlock uint64
 
 	btcWithdrawalMutex sync.Mutex
@@ -111,6 +116,19 @@ func RunBridgeWorker(
 		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
 		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
 	}
+
+	go func() {
+		defer cancelCtx()
+		err := bw.observeLiveWallets(ctx)
+		if err != nil {
+			bw.logger.Error(
+				"live wallets observation routine failed",
+				"err", err,
+			)
+		}
+
+		bw.logger.Warn("live wallets observation routine stopped")
+	}()
 
 	go func() {
 		defer cancelCtx()

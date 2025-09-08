@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
 )
 
 const (
@@ -26,7 +27,212 @@ const (
 	// withdrawalProcessBackoff is a backoff time used between retries when
 	// submitting a withdrawBTC transaction.
 	withdrawalProcessBackoff = 1 * time.Minute
+
+	// liveWalletsUpdatePeriod defines how frequently we should update the list
+	// of live wallets.
+	liveWalletsUpdatePeriod = 1 * time.Hour
+
+	// walletStateLive represents Live wallet state from the tBTC Bridge contract.
+	walletStateLive = uint8(1)
 )
+
+func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
+	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get finalized block: [%w]", err)
+	}
+	endBlock := finalizedBlock.Uint64()
+
+	recentEvents, err := bw.fetchNewWalletRegisteredEvents(
+		0,
+		endBlock,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to fetch NewWalletRegistered events: [%w]",
+			err,
+		)
+	}
+
+	liveWallets := [][20]byte{}
+	for _, event := range recentEvents {
+		walletPublicKeyHash := event.WalletPubKeyHash
+
+		wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+		if err != nil {
+			return fmt.Errorf("failed to get wallet: [%w]", err)
+		}
+
+		if wallet.State == walletStateLive {
+			liveWallets = append(liveWallets, walletPublicKeyHash)
+		}
+	}
+
+	bw.liveWalletsLastProcessedBlock = endBlock
+
+	bw.liveWalletsMutex.Lock()
+	bw.liveWallets = liveWallets
+	bw.liveWalletsMutex.Unlock()
+
+	// TODO: Should we block the Bitcoin withdrawal routine
+	//       until the initial search for live wallets is complete?
+
+	bw.logger.Info(
+		"finished initial search for live wallets",
+		"number_of_live_wallets", len(liveWallets),
+	)
+
+	ticker := time.NewTicker(liveWalletsUpdatePeriod)
+	defer ticker.Stop()
+	tickerChan := ticker.C
+
+	for {
+		select {
+		case <-ctx.Done(): // Handle context cancellation
+			bw.logger.Warn(
+				"stopping live wallet observation due to context cancellation",
+			)
+			return nil
+		case <-tickerChan:
+			err := bw.updateLiveWallets(ctx)
+			if err != nil {
+				bw.logger.Error("failed to update live wallets", "err", err)
+			}
+		}
+	}
+}
+
+func (bw *BridgeWorker) fetchNewWalletRegisteredEvents(
+	startBlock uint64,
+	endBlock uint64,
+) ([]*tbtc.BridgeNewWalletRegistered, error) {
+	bw.logger.Info(
+		"fetching NewWalletRegistered events from range",
+		"start_block", startBlock,
+		"end_block", endBlock,
+	)
+
+	result := make([]*tbtc.BridgeNewWalletRegistered, 0)
+
+	ticker := time.NewTicker(time.Minute / time.Duration(bw.requestsPerMinute)) //nolint:gosec
+	defer ticker.Stop()
+
+	events, err := bw.tbtcBridgeContract.PastNewWalletRegisteredEvents(
+		startBlock,
+		&endBlock,
+		nil,
+		nil,
+	)
+	if err != nil {
+		bw.logger.Warn(
+			"failed to fetch NewWalletRegistered events from the entire "+
+				"range; falling back to batched events fetch",
+			"start_block", startBlock,
+			"end_block", endBlock,
+			"err", err,
+		)
+
+		batchStartBlock := startBlock
+
+		for batchStartBlock <= endBlock {
+			batchEndBlock := batchStartBlock + bw.batchSize
+			if batchEndBlock > endBlock {
+				batchEndBlock = endBlock
+			}
+
+			bw.logger.Info(
+				"fetching a batch of NewWalletRegistered events from range",
+				"batch_start_block", batchStartBlock,
+				"batch_end_block", batchEndBlock,
+			)
+
+			<-ticker.C
+
+			batchEvents, batchErr := bw.tbtcBridgeContract.PastNewWalletRegisteredEvents(
+				batchStartBlock,
+				&batchEndBlock,
+				nil,
+				nil,
+			)
+			if batchErr != nil {
+				return nil, fmt.Errorf(
+					"batched NewWalletRegistered fetch failed: [%w]; giving up",
+					batchErr,
+				)
+			}
+
+			result = append(result, batchEvents...)
+
+			batchStartBlock = batchEndBlock + 1
+		}
+	} else {
+		result = append(result, events...)
+	}
+
+	return result, nil
+}
+
+func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
+	// Keep only wallets which are still live.
+	updatedLiveWallets := [][20]byte{}
+
+	for _, walletPublicKeyHash := range bw.liveWallets {
+		wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+		if err != nil {
+			return fmt.Errorf("failed to get wallet: [%w]", err)
+		}
+
+		if wallet.State == walletStateLive {
+			updatedLiveWallets = append(updatedLiveWallets, walletPublicKeyHash)
+		}
+	}
+
+	// Look for new live wallets.
+	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get finalized block: [%w]", err)
+	}
+	endBlock := finalizedBlock.Uint64()
+
+	if endBlock > bw.liveWalletsLastProcessedBlock {
+		events, err := bw.fetchNewWalletRegisteredEvents(
+			bw.liveWalletsLastProcessedBlock+1,
+			endBlock,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to fetch NewWalletRegistered events: [%w]",
+				err,
+			)
+		}
+
+		for _, event := range events {
+			walletPublicKeyHash := event.WalletPubKeyHash
+
+			wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+			if err != nil {
+				return fmt.Errorf("failed to get wallet: [%w]", err)
+			}
+
+			if wallet.State == walletStateLive {
+				updatedLiveWallets = append(updatedLiveWallets, walletPublicKeyHash)
+			}
+		}
+
+		bw.liveWalletsLastProcessedBlock = endBlock
+	}
+
+	bw.liveWalletsMutex.Lock()
+	bw.liveWallets = updatedLiveWallets
+	bw.liveWalletsMutex.Unlock()
+
+	bw.logger.Info(
+		"finished updating live wallets",
+		"number_of_live_wallets", len(bw.liveWallets),
+	)
+
+	return nil
+}
 
 // withdrawalFinalityCheck is a struct that contains an AssetsUnlockConfirmed
 // and the Ethereum height at which the withdrawal finality check for it was
@@ -573,18 +779,37 @@ func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
 }
 
 func (bw *BridgeWorker) prepareBtcWithdrawal(
-	_ *portal.MezoBridgeAssetsUnlockConfirmed,
+	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) (
 	portal.MezoBridgeAssetsUnlocked,
-	[20]byte,
-	portal.BitcoinTxUTXO,
+	[20]byte, // wallet pubkey hash to return
+	portal.BitcoinTxUTXO, // main UTXO to return
 	error,
 ) {
-	// TODO: Implement
-	return portal.MezoBridgeAssetsUnlocked{},
-		[20]byte{},
-		portal.BitcoinTxUTXO{},
-		fmt.Errorf("unimplemented")
+	assetsUnlocked := portal.MezoBridgeAssetsUnlocked{
+		UnlockSequenceNumber: event.UnlockSequenceNumber,
+		Recipient:            event.Recipient[:], // TODO: Check the type mismatch ([]byte vs common.Hash)
+		Token:                event.Token,
+		Amount:               event.Amount,
+		Chain:                event.Chain,
+	}
+
+	// Work on a copy of live wallets to avoid blocking for too long.
+	// Live wallets are represented by `[20]byte` arrays, so `copy` will
+	// deep-copy them.
+
+	bw.liveWalletsMutex.Lock()
+	wallets := make([][20]byte, len(bw.liveWallets))
+	copy(wallets, bw.liveWallets)
+	bw.liveWalletsMutex.Unlock()
+
+	fmt.Println(len(wallets))
+
+	// TODO: Continue with the implementation.
+	var walletPKH [20]byte
+	var mainUTXO portal.BitcoinTxUTXO
+
+	return assetsUnlocked, walletPKH, mainUTXO, nil
 }
 
 // computeAttestationKey computes the attestation key for the data representing
