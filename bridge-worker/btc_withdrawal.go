@@ -1,7 +1,9 @@
 package bridgeworker
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"sort"
@@ -11,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
 )
@@ -43,6 +46,8 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 	}
 	endBlock := finalizedBlock.Uint64()
 
+	// TODO: Only look at 1 month of blocks; allow to provide a list of wallets
+	//       in configuration. Check the wallets on the provided list.
 	recentEvents, err := bw.fetchNewWalletRegisteredEvents(
 		0,
 		endBlock,
@@ -788,7 +793,7 @@ func (bw *BridgeWorker) prepareBtcWithdrawal(
 ) {
 	assetsUnlocked := portal.MezoBridgeAssetsUnlocked{
 		UnlockSequenceNumber: event.UnlockSequenceNumber,
-		Recipient:            event.Recipient[:], // TODO: Check the type mismatch ([]byte vs common.Hash)
+		Recipient:            event.Recipient[:], // TODO: We must get the Recipient from the `mezod` endpoint via gRPC call.
 		Token:                event.Token,
 		Amount:               event.Amount,
 		Chain:                event.Chain,
@@ -807,9 +812,111 @@ func (bw *BridgeWorker) prepareBtcWithdrawal(
 
 	// TODO: Continue with the implementation.
 	var walletPKH [20]byte
-	var mainUTXO portal.BitcoinTxUTXO
-
+	var mainUTXO portal.BitcoinTxUTXO // TODO: When checking wallet amount take decimal precision into consideration (1e18 in the event vs 1e8 in mainUTXO)
 	return assetsUnlocked, walletPKH, mainUTXO, nil
+}
+
+func (bw *BridgeWorker) determineWalletMainUtxo(
+	walletPublicKeyHash [20]byte,
+) (*bitcoin.UnspentTransactionOutput, error) {
+	walletChainData, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get on-chain data for wallet: [%v]", err)
+	}
+
+	// Valid case when the wallet doesn't have a main UTXO registered into
+	// the Bridge.
+	if walletChainData.MainUtxoHash == [32]byte{} {
+		return nil, nil
+	}
+
+	// The wallet main UTXO registered in the Bridge almost always comes
+	// from the latest BTC transaction made by the wallet. However, there may
+	// be cases where the BTC transaction was made but their SPV proof is
+	// not yet submitted to the Bridge thus the registered main UTXO points
+	// to the second last BTC transaction. In theory, such a gap between
+	// the actual latest BTC transaction and the registered main UTXO in
+	// the Bridge may be even wider. To cover the worst possible cases, we
+	// must rely on the full transaction history. Due to performance reasons,
+	// we are first taking just the transactions hashes (fast call) and then
+	// fetch full transaction data (time-consuming calls) starting from
+	// the most recent transactions as there is a high chance the main UTXO
+	// comes from there.
+	txHashes, err := bw.btcChain.GetTxHashesForPublicKeyHash(walletPublicKeyHash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get transactions history for wallet: [%v]", err)
+	}
+
+	walletP2PKH, err := bitcoin.PayToPublicKeyHash(walletPublicKeyHash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot construct P2PKH for wallet: [%v]", err)
+	}
+	walletP2WPKH, err := bitcoin.PayToWitnessPublicKeyHash(walletPublicKeyHash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot construct P2WPKH for wallet: [%v]", err)
+	}
+
+	// Start iterating from the latest transaction as the chance it matches
+	// the wallet main UTXO is the highest.
+	for i := len(txHashes) - 1; i >= 0; i-- {
+		txHash := txHashes[i]
+
+		transaction, err := bw.btcChain.GetTransaction(txHash)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"cannot get transaction with hash [%s]: [%v]",
+				txHash.String(),
+				err,
+			)
+		}
+
+		// Iterate over transaction's outputs and find the one that targets
+		// the wallet public key hash.
+		for outputIndex, output := range transaction.Outputs {
+			script := output.PublicKeyScript
+			matchesWallet := bytes.Equal(script, walletP2PKH) ||
+				bytes.Equal(script, walletP2WPKH)
+
+			// Once the right output is found, check whether their hash
+			// matches the main UTXO hash stored on-chain. If so, this
+			// UTXO is the one we are looking for.
+			if matchesWallet {
+				utxo := &bitcoin.UnspentTransactionOutput{
+					Outpoint: &bitcoin.TransactionOutpoint{
+						TransactionHash: transaction.Hash(),
+						OutputIndex:     uint32(outputIndex),
+					},
+					Value: output.Value,
+				}
+
+				if computeMainUtxoHash(utxo) ==
+					walletChainData.MainUtxoHash {
+					return utxo, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("main UTXO not found")
+}
+
+func computeMainUtxoHash(mainUtxo *bitcoin.UnspentTransactionOutput) [32]byte {
+	outputIndexBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(outputIndexBytes, mainUtxo.Outpoint.OutputIndex)
+
+	valueBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(valueBytes, uint64(mainUtxo.Value))
+
+	mainUtxoHash := crypto.Keccak256Hash(
+		append(
+			append(
+				mainUtxo.Outpoint.TransactionHash[:],
+				outputIndexBytes...,
+			), valueBytes...,
+		),
+	)
+
+	return mainUtxoHash
 }
 
 // computeAttestationKey computes the attestation key for the data representing

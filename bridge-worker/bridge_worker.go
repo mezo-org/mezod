@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
+	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
@@ -22,6 +23,8 @@ const mezoBridgeName = "MezoBridge"
 // process.
 type BridgeWorker struct {
 	logger log.Logger
+
+	btcChain bitcoin.Chain // TODO: Initialize
 
 	mezoBridgeContract *portal.MezoBridge
 	tbtcBridgeContract *tbtc.Bridge
