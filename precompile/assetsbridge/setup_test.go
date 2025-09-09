@@ -213,10 +213,11 @@ func (k *FakePoaKeeper) CheckOwner(_ sdk.Context, sender sdk.AccAddress) error {
 }
 
 type FakeBridgeKeeper struct {
-	sourceBTCToken      []byte
-	erc20TokensMappings []*bridgetypes.ERC20TokenMapping
-	currentSequenceTip  math.Int
-	minAmountByToken    map[string]math.Int
+	sourceBTCToken           []byte
+	erc20TokensMappings      []*bridgetypes.ERC20TokenMapping
+	currentSequenceTip       math.Int
+	minAmountByToken         map[string]math.Int
+	minAmountForBitcoinChain math.Int
 
 	burnErr error
 
@@ -230,13 +231,14 @@ type FakeBridgeKeeper struct {
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 	return &FakeBridgeKeeper{
-		sourceBTCToken:      sourceBTCToken,
-		erc20TokensMappings: make([]*bridgetypes.ERC20TokenMapping, 0),
-		currentSequenceTip:  math.NewIntFromBigInt(big.NewInt(0)),
-		outflowLimits:       make(map[string]math.Int),
-		outflowCurrent:      make(map[string]math.Int),
-		lastResetHeight:     0,
-		minAmountByToken:    make(map[string]math.Int),
+		sourceBTCToken:           sourceBTCToken,
+		erc20TokensMappings:      make([]*bridgetypes.ERC20TokenMapping, 0),
+		currentSequenceTip:       math.NewIntFromBigInt(big.NewInt(0)),
+		outflowLimits:            make(map[string]math.Int),
+		outflowCurrent:           make(map[string]math.Int),
+		lastResetHeight:          0,
+		minAmountByToken:         make(map[string]math.Int),
+		minAmountForBitcoinChain: math.ZeroInt(),
 	}
 }
 
@@ -360,6 +362,18 @@ func (k *FakeBridgeKeeper) SetMinBridgeOutAmount(
 	minAmount math.Int,
 ) error {
 	k.minAmountByToken[common.BytesToAddress(mezoToken).Hex()] = minAmount
+	return nil
+}
+
+func (k *FakeBridgeKeeper) GetMinBridgeOutAmountForBitcoinChain(_ sdk.Context) math.Int {
+	return k.minAmountForBitcoinChain
+}
+
+func (k *FakeBridgeKeeper) SetMinBridgeOutAmountForBitcoinChain(
+	_ sdk.Context,
+	minAmount math.Int,
+) error {
+	k.minAmountForBitcoinChain = minAmount
 	return nil
 }
 
