@@ -308,6 +308,9 @@ func (m *BridgeOutMethod) validateAmount(
 					bitcoinMinAmount,
 				)
 			}
+			// Bitcoin-specific minimum is set and respected, we should not check the general minimum
+			// so we return here.
+			return nil
 		}
 	}
 
