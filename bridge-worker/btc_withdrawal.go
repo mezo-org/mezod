@@ -46,8 +46,6 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 	}
 	endBlock := finalizedBlock.Uint64()
 
-	// TODO: Only look at 1 month of blocks; allow to provide a list of wallets
-	//       in configuration. Check the wallets on the provided list.
 	recentEvents, err := bw.fetchNewWalletRegisteredEvents(
 		0,
 		endBlock,
@@ -79,14 +77,15 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 	bw.liveWallets = liveWallets
 	bw.liveWalletsMutex.Unlock()
 
-	// TODO: Should we block the Bitcoin withdrawal routine
-	//       until the initial search for live wallets is complete?
-
 	bw.logger.Info(
 		"finished initial search for live wallets",
 		"number_of_live_wallets", len(liveWallets),
 	)
 
+	// Signal that initial fetching of wallets ready.
+	close(bw.liveWalletsReady)
+
+	// Start a ticker to periodically update the wallets.
 	ticker := time.NewTicker(liveWalletsUpdatePeriod)
 	defer ticker.Stop()
 	tickerChan := ticker.C

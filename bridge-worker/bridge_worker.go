@@ -38,6 +38,11 @@ type BridgeWorker struct {
 	batchSize         uint64
 	requestsPerMinute uint64
 
+	// Channel used to indicate whether the initial fetching of live wallets
+	// is done. Once this channel is closed we can proceed with the Bitcoin
+	// withdrawing routines.
+	liveWalletsReady chan struct{}
+
 	liveWalletsMutex sync.Mutex
 	liveWallets      [][20]byte
 
@@ -123,6 +128,7 @@ func RunBridgeWorker(
 		chain:                    chain,
 		batchSize:                cfg.Ethereum.BatchSize,
 		requestsPerMinute:        cfg.Ethereum.RequestsPerMinute,
+		liveWalletsReady:         make(chan struct{}),
 		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
 		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
 	}
@@ -139,6 +145,19 @@ func RunBridgeWorker(
 
 		bw.logger.Warn("live wallets observation routine stopped")
 	}()
+
+	// Wait until the initial fetching of live wallets is done.
+	bw.logger.Info("waiting for initial fetching of live wallet")
+	select {
+	case <-bw.liveWalletsReady:
+		bw.logger.Info("initial fetching of live wallets completed")
+	case <-ctx.Done():
+		bw.logger.Warn(
+			"context canceled while waiting; exiting without launching " +
+				"Bitcoin withdrawal routines",
+		)
+		return
+	}
 
 	go func() {
 		defer cancelCtx()
