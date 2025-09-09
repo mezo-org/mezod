@@ -36,6 +36,8 @@ func Start(configPath string) {
 		logger,
 		cfg.ProviderURL,
 		cfg.EthereumNetwork,
+		cfg.BatchSize,
+		cfg.RequestsPerMinute,
 		privateKey,
 	)
 }

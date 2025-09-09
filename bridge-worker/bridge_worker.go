@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"sync"
 
 	"cosmossdk.io/log"
 
@@ -17,17 +18,34 @@ import (
 // mezoBridgeName is the name of the MezoBridge contract.
 const mezoBridgeName = "MezoBridge"
 
+// BridgeWorker is a component responsible for tasks related to bridge-out
+// process.
 type BridgeWorker struct {
-	logger             log.Logger
+	logger log.Logger
+
 	mezoBridgeContract *portal.MezoBridge
 	tbtcBridgeContract *tbtc.Bridge
-	chain              *ethconnect.BaseChain
+
+	chain *ethconnect.BaseChain
+
+	batchSize         uint64
+	requestsPerMinute uint64
+
+	btcWithdrawalLastProcessedBlock uint64
+
+	btcWithdrawalMutex sync.Mutex
+	btcWithdrawalQueue []portal.MezoBridgeAssetsUnlockConfirmed
+
+	withdrawalFinalityChecksMutex sync.Mutex
+	withdrawalFinalityChecks      map[string]*withdrawalFinalityCheck
 }
 
 func RunBridgeWorker(
 	logger log.Logger,
 	providerURL string,
 	ethereumNetwork string,
+	batchSize uint64,
+	requestsPerMinute uint64,
 	privateKey *ecdsa.PrivateKey,
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
@@ -84,23 +102,39 @@ func RunBridgeWorker(
 	}
 
 	bw := &BridgeWorker{
-		logger:             logger,
-		mezoBridgeContract: mezoBridgeContract,
-		tbtcBridgeContract: tbtcBridgeContract,
-		chain:              chain,
+		logger:                   logger,
+		mezoBridgeContract:       mezoBridgeContract,
+		tbtcBridgeContract:       tbtcBridgeContract,
+		chain:                    chain,
+		batchSize:                batchSize,
+		requestsPerMinute:        requestsPerMinute,
+		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
+		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
 	}
 
 	go func() {
 		defer cancelCtx()
-		err := bw.handleBitcoinWithdrawing(ctx)
+		err := bw.observeBitcoinWithdrawals(ctx)
 		if err != nil {
-			bw.logger.Info(
-				"Bitcoin withdrawing routine failed",
+			bw.logger.Error(
+				"Bitcoin withdrawal observation routine failed",
 				"err", err,
 			)
 		}
 
-		bw.logger.Info("Bitcoin withdrawing routine stopped")
+		bw.logger.Warn("Bitcoin withdrawal observation routine stopped")
+	}()
+
+	go func() {
+		defer cancelCtx()
+		bw.processBtcWithdrawalQueue(ctx)
+		bw.logger.Warn("Bitcoin withdrawal processing loop stopped")
+	}()
+
+	go func() {
+		defer cancelCtx()
+		bw.processWithdrawalFinalityChecks(ctx)
+		bw.logger.Warn("Bitcoin withdrawal finality checks loop stopped")
 	}()
 
 	<-ctx.Done()

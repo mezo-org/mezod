@@ -12,9 +12,11 @@ import (
 const PasswordEnvVariable = "BRIDGE_WORKER_KEY_PASSWORD"
 
 type Config struct {
-	ProviderURL     string  `json:"provider_url"`     // http(s)/wss Ethereum endpoint
-	EthereumNetwork string  `json:"ethereum_network"` // e.g. "sepolia" | "mainnet"
-	Account         Account `json:"account"`
+	ProviderURL       string  `json:"provider_url"`        // http(s)/wss Ethereum endpoint
+	EthereumNetwork   string  `json:"ethereum_network"`    // e.g. "sepolia" | "mainnet"
+	BatchSize         uint64  `json:"batch_size"`          // e.g. 1000
+	RequestsPerMinute uint64  `json:"requests_per_minute"` // e.g. 600 (10 per second)
+	Account           Account `json:"account"`
 }
 
 type Account struct {
@@ -62,6 +64,14 @@ func ReadConfig(path string) (*Config, error) {
 
 	if cfg.EthereumNetwork == "" {
 		return nil, fmt.Errorf("ethereum_network is required")
+	}
+
+	if cfg.BatchSize == 0 {
+		return nil, fmt.Errorf("batch_size is required")
+	}
+
+	if cfg.RequestsPerMinute == 0 {
+		return nil, fmt.Errorf("requests_per_minute is required")
 	}
 
 	if cfg.Account.KeyFile == "" {
