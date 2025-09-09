@@ -24,6 +24,7 @@ COPY --parents ./**/.keep ./
 COPY --parents ./**/*.json ./
 COPY --parents ./**/*.go ./
 COPY --parents ethereum/bindings/portal/*/gen/_address/MezoBridge ./
+COPY --parents ethereum/bindings/tbtc/*/gen/_address/Bridge ./
 
 RUN make bindings
 RUN make build
