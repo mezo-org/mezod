@@ -43,20 +43,24 @@ func (wfc *withdrawalFinalityCheck) key() string {
 // observeBitcoinWithdrawals monitors AssetsUnlockConfirmed events, filters
 // events representing pending Bitcoin withdrawals and puts them into a queue.
 func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
-	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
+	// Use the current block rather than finalized block to speed up event
+	// processing. Event processing should handle the effects of a possible
+	// reorg (e.g. an event being duplicated in a queue), although there is a
+	// small risk of skipping an event. In that case it would require a manual
+	// execution of `withdrawBTC`.
+	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
 	if err != nil {
-		return fmt.Errorf("failed to get finalized block: [%w]", err)
+		return fmt.Errorf("failed to get current block: [%w]", err)
 	}
-	endBlock := finalizedBlock.Uint64()
 
 	startBlock := uint64(0)
-	if endBlock > assetsUnlockConfirmedLookBackBlocks {
-		startBlock = endBlock - assetsUnlockConfirmedLookBackBlocks
+	if currentBlock > assetsUnlockConfirmedLookBackBlocks {
+		startBlock = currentBlock - assetsUnlockConfirmedLookBackBlocks
 	}
 
 	recentEvents, err := bw.fetchAssetsUnlockConfirmedEvents(
 		startBlock,
-		endBlock,
+		currentBlock,
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -82,7 +86,7 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 		}
 	}
 
-	bw.btcWithdrawalLastProcessedBlock = endBlock
+	bw.btcWithdrawalLastProcessedBlock = currentBlock
 
 	bw.logger.Info(
 		"initial search for pending BTC withdrawals done",
@@ -102,7 +106,7 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 			return nil
 		case <-tickerChan:
 			// Process incoming AssetsUnlockedConfirmed events
-			err := bw.processNewAssetsUnlockConfirmedEvents(ctx)
+			err := bw.processNewAssetsUnlockConfirmedEvents()
 			if err != nil {
 				bw.logger.Error(
 					"failed to process newly emitted AssetsUnlockConfirmed events",
@@ -257,21 +261,23 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 // processNewAssetsUnlockConfirmedEvents fetches new AssetsUnlockConfirmed
 // events representing pending Bitcoin withdrawals and puts them into a queue.
 // It is intended to be run periodically.
-func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(
-	ctx context.Context,
-) error {
-	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
+func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
+	// Use the current block rather than finalized block to speed up event
+	// processing. Event processing should handle the effects of a possible
+	// reorg (e.g. an event being duplicated in a queue), although there is a
+	// small risk of skipping an event. In that case it would require a manual
+	// execution of `withdrawBTC`.
+	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
 	if err != nil {
 		return fmt.Errorf("cannot get current block: [%w]", err)
 	}
-	endBlock := finalizedBlock.Uint64()
 
 	newPendingBtcWithdrawals := 0
 
-	if endBlock > bw.btcWithdrawalLastProcessedBlock {
+	if currentBlock > bw.btcWithdrawalLastProcessedBlock {
 		events, err := bw.fetchAssetsUnlockConfirmedEvents(
 			bw.btcWithdrawalLastProcessedBlock+1,
-			endBlock,
+			currentBlock,
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -296,7 +302,7 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(
 			}
 		}
 
-		bw.btcWithdrawalLastProcessedBlock = endBlock
+		bw.btcWithdrawalLastProcessedBlock = currentBlock
 	}
 
 	bw.logger.Info(
