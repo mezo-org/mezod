@@ -240,7 +240,7 @@ func (m *BridgeOutMethod) validate(
 		return errors.New("amount must be positive")
 	}
 
-	if err := m.validateAmount(sdkCtx, inputs.Amount, inputs.Token); err != nil {
+	if err := m.validateAmount(sdkCtx, inputs.Amount, inputs.Token, inputs.Chain); err != nil {
 		return err
 	}
 
@@ -289,10 +289,29 @@ func (m *BridgeOutMethod) validateAmount(
 	sdkCtx sdk.Context,
 	amount *big.Int,
 	token common.Address,
+	chain TargetChain,
 ) error {
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
 		return fmt.Errorf("failed to convert amount: [%w]", err)
+	}
+
+	if chain == TargetChainBitcoin {
+		// For Bitcoin chain, first check Bitcoin-specific minimum. If it is not set,
+		// use the general minimum.
+		bitcoinMinAmount := m.bridgeKeeper.GetMinBridgeOutAmountForBitcoinChain(sdkCtx)
+		if !bitcoinMinAmount.IsZero() {
+			if sdkAmount.LT(bitcoinMinAmount) {
+				return fmt.Errorf(
+					"amount below minimum bridgeable amount for Bitcoin chain: %s < %s",
+					sdkAmount,
+					bitcoinMinAmount,
+				)
+			}
+			// Bitcoin-specific minimum is set and respected, we should not check the general minimum
+			// so we return here.
+			return nil
+		}
 	}
 
 	minAmount := m.bridgeKeeper.GetMinBridgeOutAmount(

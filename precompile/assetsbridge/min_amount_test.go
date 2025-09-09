@@ -98,3 +98,83 @@ func (s *BridgeOutTestSuite) TestGetMinBridgeOutAmount() {
 
 	s.RunMethodTestCasesWithKeepers(testcases, "getMinBridgeOutAmount")
 }
+
+func (s *BridgeOutTestSuite) TestSetMinBridgeOutAmountForBitcoinChain() {
+	testcases := []TestCase{
+		{
+			name: "caller is not owner",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(123)}
+			},
+			as:          s.account2.EvmAddr, // not the owner
+			basicPass:   true,
+			revert:      true,
+			errContains: "sender is not owner",
+		},
+		{
+			name: "zero minimum amount",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(0)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				minAmount := s.extBridgeKeeper.GetMinBridgeOutAmountForBitcoinChain(s.ctx)
+				s.Require().EqualValues(math.ZeroInt(), minAmount)
+			},
+		},
+		{
+			name: "happy path - set new minimum",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(250000)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				minAmount := s.extBridgeKeeper.GetMinBridgeOutAmountForBitcoinChain(s.ctx)
+				s.Require().EqualValues(math.NewInt(250000), minAmount)
+			},
+		},
+		{
+			name: "overwrite existing minimum",
+			run: func() []interface{} {
+				// first set to 250000 then update to 500000
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(250000))
+				return []interface{}{big.NewInt(500000)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				minAmount := s.extBridgeKeeper.GetMinBridgeOutAmountForBitcoinChain(s.ctx)
+				s.Require().EqualValues(math.NewInt(500000), minAmount)
+			},
+		},
+	}
+
+	s.RunMethodTestCasesWithKeepers(testcases, "setMinBridgeOutAmountForBitcoinChain")
+}
+
+func (s *BridgeOutTestSuite) TestGetMinBridgeOutAmountForBitcoinChain() {
+	testcases := []TestCase{
+		{
+			name:      "minimum amount not set",
+			run:       func() []interface{} { return []interface{}{} },
+			basicPass: true,
+			output:    []interface{}{big.NewInt(0)},
+		},
+		{
+			name: "minimum amount set",
+			run: func() []interface{} {
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(75000))
+				return []interface{}{}
+			},
+			basicPass: true,
+			output:    []interface{}{big.NewInt(75000)},
+		},
+	}
+
+	s.RunMethodTestCasesWithKeepers(testcases, "getMinBridgeOutAmountForBitcoinChain")
+}

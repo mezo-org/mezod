@@ -208,3 +208,26 @@ task(
     const minAmount = await bridge.getMinBridgeOutAmount(taskArguments.token)
     console.log(minAmount)
   })
+
+task('assetsBridge:setMinBridgeOutAmountForBitcoinChain', 'Sets the minimum bridge-out amount for the Bitcoin chain')
+  .addParam('amount', 'The new minimum amount for Bitcoin chain bridge-outs')
+  .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.setMinBridgeOutAmountForBitcoinChain(
+      taskArguments.amount
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task(
+  'assetsBridge:getMinBridgeOutAmountForBitcoinChain',
+  'Returns the minimum bridge-out amount for the Bitcoin chain',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const minAmount = await bridge.getMinBridgeOutAmountForBitcoinChain()
+    console.log(minAmount)
+  }
+)
