@@ -25,7 +25,7 @@ const (
 
 	// withdrawalProcessBackoff is a backoff time used between retries when
 	// submitting a withdrawBTC transaction.
-	withdrawalProcessBackoff = 10 * time.Second
+	withdrawalProcessBackoff = 1 * time.Minute
 )
 
 // withdrawalFinalityCheck is a struct that contains an AssetsUnlockConfirmed
@@ -346,6 +346,8 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 
 				withdrawalLogger.Info("starting Bitcoin withdrawal submission")
 
+				// Preparing Bitcoin withdrawal data is time-consuming. Call it
+				// only once per event processing.
 				entry, walletPublicKeyHash, mainUTXO, err := bw.prepareBtcWithdrawal(event)
 				if err != nil {
 					withdrawalLogger.Error(
@@ -357,13 +359,18 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 					continue
 				}
 
-				// retry loop with small backoff
-				for i := 0; ; i++ {
+				withdrawingSuccessful := false
+
+				// Run a retry loop with a few attempts. If all the attempts
+				// fail, quit retrying and put the event back into the queue.
+				// We need to start over the event processing as the data
+				// needed for `withdrawBTC` might have changed in the meantime.
+				for i := 0; i < 5; i++ {
 					withdrawalProcessLogger := withdrawalLogger.With("iteration", i)
 
 					if i > 0 {
-						// use a small backoff for subsequent iterations as they
-						// are most likely retries
+						// use a backoff for subsequent iterations as they are
+						// most likely retries
 						select {
 						case <-time.After(withdrawalProcessBackoff):
 						case <-ctx.Done():
@@ -388,6 +395,7 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 						withdrawalProcessLogger.Info(
 							"withdrawal no longer pending; skipping",
 						)
+						withdrawingSuccessful = true
 						break
 					}
 
@@ -411,11 +419,20 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 					// schedule finality check
 					bw.queueWithdrawalFinalityCheck(event)
 
+					withdrawingSuccessful = true
+
 					withdrawalProcessLogger.Info(
 						"Bitcoin withdrawal submitted",
 						"tx_hash", tx.Hash().Hex(),
 					)
 					break
+				}
+
+				if !withdrawingSuccessful {
+					withdrawalLogger.Error(
+						"all withdrawal attempts failed; re-queuing",
+					)
+					bw.enqueueBtcWithdrawal(event)
 				}
 			}
 		case <-ctx.Done():
