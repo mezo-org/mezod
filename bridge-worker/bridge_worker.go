@@ -8,9 +8,13 @@ import (
 
 	"cosmossdk.io/log"
 
+	bwconfig "github.com/mezo-org/mezod/bridge-worker/config"
+
+	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
+	"github.com/mezo-org/mezod/bridge-worker/bitcoin/electrum"
+
 	"github.com/ethereum/go-ethereum/common"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
-	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
@@ -50,15 +54,20 @@ type BridgeWorker struct {
 
 func RunBridgeWorker(
 	logger log.Logger,
-	providerURL string,
-	ethereumNetwork string,
-	batchSize uint64,
-	requestsPerMinute uint64,
-	privateKey *ecdsa.PrivateKey,
+	cfg bwconfig.Config,
+	ethPrivateKey *ecdsa.PrivateKey,
 ) {
-	network := ethconnect.NetworkFromString(ethereumNetwork)
-	mezoBridgeAddress := portal.MezoBridgeAddress(network)
-	tbtcBridgeAddress := tbtc.BridgeAddress(network)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
+
+	btcChain, err := electrum.Connect(ctx, cfg.Bitcoin.Electrum)
+	if err != nil {
+		panic(fmt.Sprintf("could not connect to Electrum chain: %v", err))
+	}
+
+	ethereumNetwork := ethconnect.NetworkFromString(cfg.Ethereum.Network)
+	mezoBridgeAddress := portal.MezoBridgeAddress(ethereumNetwork)
+	tbtcBridgeAddress := tbtc.BridgeAddress(ethereumNetwork)
 
 	if mezoBridgeAddress == "" {
 		panic(
@@ -77,21 +86,18 @@ func RunBridgeWorker(
 		"resolved contract addresses and Ethereum network",
 		"mezo_bridge_address", mezoBridgeAddress,
 		"tbtc_bridge_address", tbtcBridgeAddress,
-		"ethereum_network", network,
+		"ethereum_network", ethereumNetwork,
 	)
-
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	defer cancelCtx()
 
 	// Connect to the Ethereum network
 	chain, err := ethconnect.Connect(
 		ctx,
 		ethconfig.Config{
-			Network:           network,
-			URL:               providerURL,
+			Network:           ethereumNetwork,
+			URL:               cfg.Ethereum.ProviderURL,
 			ContractAddresses: map[string]string{mezoBridgeName: mezoBridgeAddress},
 		},
-		privateKey,
+		ethPrivateKey,
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to the Ethereum network: %v", err))
@@ -111,11 +117,12 @@ func RunBridgeWorker(
 
 	bw := &BridgeWorker{
 		logger:                   logger,
+		btcChain:                 btcChain,
 		mezoBridgeContract:       mezoBridgeContract,
 		tbtcBridgeContract:       tbtcBridgeContract,
 		chain:                    chain,
-		batchSize:                batchSize,
-		requestsPerMinute:        requestsPerMinute,
+		batchSize:                cfg.Ethereum.BatchSize,
+		requestsPerMinute:        cfg.Ethereum.RequestsPerMinute,
 		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
 		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
 	}

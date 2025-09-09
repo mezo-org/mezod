@@ -1,14 +1,15 @@
 {
+  "ethereum": {
     "provider_url": "wss://eth-sepolia.g.alchemy.com/v2/<YOUR-KEY>",
-    "ethereum_network": "sepolia",
-    "batch_size": 1000,
-    "requests_per_minute": 600,
-    "ethereum_account": {
+    "network": "sepolia",
+    "account": {
       "key_file": "/path/to/your/key/UTC--2025-08-27T11-04-59.227071000Z--88cb9ffaecaea3a566c00d633d2dcfcc6b9dd3a7"
-    },
-    "bitcoin_account": {
-      "url": "127.0.0.1:8332",
-      "password": "password",
-      "username": "user"
     }
+  },
+  "bitcoin": {
+    "network": "testnet",
+    "electrum": {
+      "url": "wss://electrumx-server.tbtc.network:8443"
+    }
+  }
 }

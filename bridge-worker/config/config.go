@@ -7,17 +7,33 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+
+	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
+	"github.com/mezo-org/mezod/bridge-worker/bitcoin/electrum"
 )
 
-const PasswordEnvVariable = "BRIDGE_WORKER_KEY_PASSWORD"
+const (
+	PasswordEnvVariable              = "BRIDGE_WORKER_KEY_PASSWORD"
+	DefaultEthereumBatchSize         = 1000
+	DefaultEthereumRequestsPerMinute = 600
+)
 
 type Config struct {
+	Ethereum EthereumConfig `json:"ethereum"`
+	Bitcoin  BitcoinConfig  `json:"bitcoin"`
+}
+
+type BitcoinConfig struct {
+	bitcoin.Network `json:"network"` // "mainnet" | "testnet" | "regtest"
+	Electrum        electrum.Config  `json:"electrum"`
+}
+
+type EthereumConfig struct {
 	ProviderURL       string          `json:"provider_url"`        // http(s)/wss Ethereum endpoint
-	EthereumNetwork   string          `json:"ethereum_network"`    // e.g. "sepolia" | "mainnet"
+	Network           string          `json:"network"`             // e.g. "sepolia" | "mainnet"
 	BatchSize         uint64          `json:"batch_size"`          // e.g. 1000
 	RequestsPerMinute uint64          `json:"requests_per_minute"` // e.g. 600 (10 per second)
-	EthereumAccount   EthereumAccount `json:"ethereum_account"`
-	BitcoinAccount    BitcoinAccount  `json:"bitcoin_account"`
+	Account           EthereumAccount `json:"account"`
 }
 
 type EthereumAccount struct {
@@ -25,10 +41,63 @@ type EthereumAccount struct {
 	KeyFilePassword string `json:"key_file_password"` // read from env
 }
 
-type BitcoinAccount struct {
-	URL      string `json:"url"`      // e.g. "127.0.0.1:8332"
-	Password string `json:"password"` // e.g. "password"
-	Username string `json:"user"`     // e.g. "user"
+func (c *Config) applyDefaults() {
+	// Ethereum
+	if c.Ethereum.BatchSize == 0 {
+		c.Ethereum.BatchSize = DefaultEthereumBatchSize
+	}
+	if c.Ethereum.RequestsPerMinute == 0 {
+		c.Ethereum.RequestsPerMinute = DefaultEthereumRequestsPerMinute
+	}
+
+	// Bitcoin
+	if c.Bitcoin.Electrum.ConnectTimeout == 0 {
+		c.Bitcoin.Electrum.ConnectTimeout = electrum.DefaultConnectTimeout
+	}
+	if c.Bitcoin.Electrum.ConnectRetryTimeout == 0 {
+		c.Bitcoin.Electrum.ConnectRetryTimeout = electrum.DefaultConnectRetryTimeout
+	}
+	if c.Bitcoin.Electrum.RequestTimeout == 0 {
+		c.Bitcoin.Electrum.RequestTimeout = electrum.DefaultRequestTimeout
+	}
+	if c.Bitcoin.Electrum.RequestRetryTimeout == 0 {
+		c.Bitcoin.Electrum.RequestRetryTimeout = electrum.DefaultRequestRetryTimeout
+	}
+	if c.Bitcoin.Electrum.KeepAliveInterval == 0 {
+		c.Bitcoin.Electrum.KeepAliveInterval = electrum.DefaultKeepAliveInterval
+	}
+}
+
+func (c *Config) validate() error {
+	// Ethereum
+	if c.Ethereum.ProviderURL == "" {
+		return fmt.Errorf("ethereum.provider_url is required")
+	}
+	if c.Ethereum.Network == "" {
+		return fmt.Errorf("ethereum.network is required")
+	}
+	if c.Ethereum.BatchSize == 0 {
+		return fmt.Errorf("ethereum.batch_size is required")
+	}
+	if c.Ethereum.RequestsPerMinute == 0 {
+		return fmt.Errorf("ethereum.requests_per_minute is required")
+	}
+	if c.Ethereum.Account.KeyFile == "" {
+		return fmt.Errorf("ethereum.account.key_file is required")
+	}
+	if c.Ethereum.Account.KeyFilePassword == "" {
+		return fmt.Errorf("%s not set; please export the keystore password", PasswordEnvVariable)
+	}
+
+	// Bitcoin
+	if c.Bitcoin.Network == bitcoin.Unknown {
+		return fmt.Errorf("bitcoin.network is required")
+	}
+	if c.Bitcoin.Electrum.URL == "" {
+		return fmt.Errorf("bitcoin.electrum.url is required")
+	}
+
+	return nil
 }
 
 func DecryptKeyFile(keyFile, password string) (*ecdsa.PrivateKey, error) {
@@ -44,58 +113,22 @@ func DecryptKeyFile(keyFile, password string) (*ecdsa.PrivateKey, error) {
 }
 
 func ReadConfig(path string) (*Config, error) {
-	cfg := &Config{}
+	var cfg Config
 
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read config file: %v", err)
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	if err := json.Unmarshal(b, &cfg); err != nil {
+		return nil, fmt.Errorf("unmarshal %s: %w", path, err)
 	}
 
-	if err := json.Unmarshal(b, cfg); err != nil {
-		return nil, fmt.Errorf("unmarshal config: %v", err)
+	cfg.Ethereum.Account.KeyFilePassword = os.Getenv(PasswordEnvVariable)
+
+	cfg.applyDefaults()
+
+	if err := cfg.validate(); err != nil {
+		return nil, err
 	}
-
-	// Load password from env.
-	cfg.EthereumAccount.KeyFilePassword = os.Getenv(PasswordEnvVariable)
-
-	if cfg.EthereumAccount.KeyFilePassword == "" {
-		return nil, fmt.Errorf(
-			"%s not set; please export the keystore password",
-			PasswordEnvVariable,
-		)
-	}
-
-	if cfg.ProviderURL == "" {
-		return nil, fmt.Errorf("provider_url is required")
-	}
-
-	if cfg.EthereumNetwork == "" {
-		return nil, fmt.Errorf("ethereum_network is required")
-	}
-
-	if cfg.BatchSize == 0 {
-		return nil, fmt.Errorf("batch_size is required")
-	}
-
-	if cfg.RequestsPerMinute == 0 {
-		return nil, fmt.Errorf("requests_per_minute is required")
-	}
-
-	if cfg.EthereumAccount.KeyFile == "" {
-		return nil, fmt.Errorf("ethereum_account.key_file is required")
-	}
-
-	if cfg.BitcoinAccount.URL == "" {
-		return nil, fmt.Errorf("bitcoin_account.url is required")
-	}
-
-	if cfg.BitcoinAccount.Password == "" {
-		return nil, fmt.Errorf("bitcoin_account.password is required")
-	}
-
-	if cfg.BitcoinAccount.Username == "" {
-		return nil, fmt.Errorf("bitcoin_account.username is required")
-	}
-
-	return cfg, nil
+	return &cfg, nil
 }
