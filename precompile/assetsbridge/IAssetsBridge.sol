@@ -74,6 +74,14 @@ interface IAssetsBridge {
     );
 
     /**
+     * @notice Emitted when the minimum bridge-out amount for the Bitcoin chain is updated.
+     * @param minAmount The new minimum bridgeable amount for the Bitcoin chain.
+     */
+    event MinBridgeOutAmountForBitcoinChainSet(
+        uint256 minAmount
+    );
+
+    /**
      * @notice Helper function used to enable bridged assets observability.
      */
     function bridge(AssetsLocked[] memory events) external returns (bool);

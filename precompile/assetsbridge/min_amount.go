@@ -282,6 +282,16 @@ func (m *SetMinBridgeOutAmountForBitcoinChainMethod) Run(
 		sdkMinAmount,
 	)
 
+	err = context.EventEmitter().Emit(
+		NewMinBridgeOutAmountForBitcoinChainSetEvent(minAmount),
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to emit MinBridgeOutAmountForBitcoinChainSet event: [%w]",
+			err,
+		)
+	}
+
 	return precompile.MethodOutputs{true}, nil
 }
 
@@ -334,4 +344,38 @@ func (m *GetMinBridgeOutAmountForBitcoinChainMethod) Run(
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(minAmount),
 	}, nil
+}
+
+// MinBridgeOutAmountForBitcoinChainSetEventName is the name of the MinBridgeOutAmountForBitcoinChainSet event.
+// It matches the name of the event in the contract ABI.
+//
+//nolint:gosec
+const MinBridgeOutAmountForBitcoinChainSetEventName = "MinBridgeOutAmountForBitcoinChainSet"
+
+// MinBridgeOutAmountForBitcoinChainSetEvent is the implementation of the MinBridgeOutAmountForBitcoinChainSet
+// event that contains the following arguments:
+// - minAmount (non-indexed): the new minimum bridgeable amount for the Bitcoin chain.
+type MinBridgeOutAmountForBitcoinChainSetEvent struct {
+	minAmount *big.Int
+}
+
+func NewMinBridgeOutAmountForBitcoinChainSetEvent(
+	minAmount *big.Int,
+) *MinBridgeOutAmountForBitcoinChainSetEvent {
+	return &MinBridgeOutAmountForBitcoinChainSetEvent{
+		minAmount: minAmount,
+	}
+}
+
+func (e *MinBridgeOutAmountForBitcoinChainSetEvent) EventName() string {
+	return MinBridgeOutAmountForBitcoinChainSetEventName
+}
+
+func (e *MinBridgeOutAmountForBitcoinChainSetEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: false,
+			Value:   e.minAmount,
+		},
+	}
 }
