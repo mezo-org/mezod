@@ -300,7 +300,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutAmountValidation() {
 					nil,
 				)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
-				_ = s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
 				return []interface{}{testBTCToken, big.NewInt(499), uint8(1), btcRecipient}
 			},
 			as:          s.account1.EvmAddr,
@@ -321,7 +321,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutAmountValidation() {
 					nil,
 				)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
-				_ = s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
 				return []interface{}{testBTCToken, big.NewInt(500), uint8(1), btcRecipient}
 			},
 			as:        s.account1.EvmAddr,
@@ -341,7 +341,7 @@ func (s *BridgeOutTestSuite) TestBridgeOutAmountValidation() {
 					nil,
 				)
 				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
-				_ = s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
 				return []interface{}{testBTCToken, big.NewInt(750), uint8(1), btcRecipient}
 			},
 			as:        s.account1.EvmAddr,

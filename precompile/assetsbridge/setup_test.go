@@ -372,9 +372,8 @@ func (k *FakeBridgeKeeper) GetMinBridgeOutAmountForBitcoinChain(_ sdk.Context) m
 func (k *FakeBridgeKeeper) SetMinBridgeOutAmountForBitcoinChain(
 	_ sdk.Context,
 	minAmount math.Int,
-) error {
+) {
 	k.minAmountForBitcoinChain = minAmount
-	return nil
 }
 
 func (k *FakeBridgeKeeper) SetOutflowLimit(_ sdk.Context, token []byte, limit math.Int) {

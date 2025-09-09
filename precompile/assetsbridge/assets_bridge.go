@@ -218,7 +218,7 @@ type BridgeKeeper interface {
 	GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) math.Int
 	SetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte, minAmount math.Int) error
 	GetMinBridgeOutAmountForBitcoinChain(ctx sdk.Context) math.Int
-	SetMinBridgeOutAmountForBitcoinChain(ctx sdk.Context, minAmount math.Int) error
+	SetMinBridgeOutAmountForBitcoinChain(ctx sdk.Context, minAmount math.Int)
 	GetParams(ctx sdk.Context) bridgetypes.Params
 	SaveAssetsUnlocked(
 		ctx sdk.Context,

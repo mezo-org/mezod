@@ -277,13 +277,10 @@ func (m *SetMinBridgeOutAmountForBitcoinChainMethod) Run(
 		return nil, fmt.Errorf("failed to convert minimum amount: [%w]", err)
 	}
 
-	err = m.bridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(
+	m.bridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(
 		context.SdkCtx(),
 		sdkMinAmount,
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	return precompile.MethodOutputs{true}, nil
 }

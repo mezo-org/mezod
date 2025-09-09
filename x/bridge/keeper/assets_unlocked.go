@@ -246,7 +246,7 @@ func (k Keeper) GetMinBridgeOutAmountForBitcoinChain(ctx sdk.Context) math.Int {
 func (k Keeper) SetMinBridgeOutAmountForBitcoinChain(
 	ctx sdk.Context,
 	minAmount math.Int,
-) error {
+) {
 	store := ctx.KVStore(k.storeKey)
 	bz, err := minAmount.Marshal()
 	if err != nil {
@@ -254,5 +254,4 @@ func (k Keeper) SetMinBridgeOutAmountForBitcoinChain(
 	}
 
 	store.Set(types.MinBridgeOutAmountForBitcoinChainKey, bz)
-	return nil
 }

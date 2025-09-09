@@ -703,23 +703,20 @@ func TestGetMinBridgeOutAmountForBitcoinChain(t *testing.T) {
 
 	// Test setting and getting minimum amount
 	minAmount := math.NewInt(50000)
-	err := k.SetMinBridgeOutAmountForBitcoinChain(ctx, minAmount)
-	require.NoError(t, err)
+	k.SetMinBridgeOutAmountForBitcoinChain(ctx, minAmount)
 
 	actualMinAmount = k.GetMinBridgeOutAmountForBitcoinChain(ctx)
 	require.EqualValues(t, minAmount, actualMinAmount)
 
 	// Test overwriting with zero amount
-	err = k.SetMinBridgeOutAmountForBitcoinChain(ctx, math.ZeroInt())
-	require.NoError(t, err)
+	k.SetMinBridgeOutAmountForBitcoinChain(ctx, math.ZeroInt())
 
 	actualMinAmount = k.GetMinBridgeOutAmountForBitcoinChain(ctx)
 	require.EqualValues(t, math.ZeroInt(), actualMinAmount)
 
 	// Test overwriting with another value
 	newMinAmount := math.NewInt(75000)
-	err = k.SetMinBridgeOutAmountForBitcoinChain(ctx, newMinAmount)
-	require.NoError(t, err)
+	k.SetMinBridgeOutAmountForBitcoinChain(ctx, newMinAmount)
 
 	actualMinAmount = k.GetMinBridgeOutAmountForBitcoinChain(ctx)
 	require.EqualValues(t, newMinAmount, actualMinAmount)
@@ -752,14 +749,9 @@ func TestSetMinBridgeOutAmountForBitcoinChain(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := k.SetMinBridgeOutAmountForBitcoinChain(ctx, tc.amount)
-			if tc.expectErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				actualAmount := k.GetMinBridgeOutAmountForBitcoinChain(ctx)
-				require.EqualValues(t, tc.amount, actualAmount)
-			}
+			k.SetMinBridgeOutAmountForBitcoinChain(ctx, tc.amount)
+			actualAmount := k.GetMinBridgeOutAmountForBitcoinChain(ctx)
+			require.EqualValues(t, tc.amount, actualAmount)
 		})
 	}
 }

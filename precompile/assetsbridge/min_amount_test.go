@@ -141,7 +141,7 @@ func (s *BridgeOutTestSuite) TestSetMinBridgeOutAmountForBitcoinChain() {
 			name: "overwrite existing minimum",
 			run: func() []interface{} {
 				// first set to 250000 then update to 500000
-				_ = s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(250000))
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(250000))
 				return []interface{}{big.NewInt(500000)}
 			},
 			as:        s.account1.EvmAddr,
@@ -168,7 +168,7 @@ func (s *BridgeOutTestSuite) TestGetMinBridgeOutAmountForBitcoinChain() {
 		{
 			name: "minimum amount set",
 			run: func() []interface{} {
-				_ = s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(75000))
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(75000))
 				return []interface{}{}
 			},
 			basicPass: true,
