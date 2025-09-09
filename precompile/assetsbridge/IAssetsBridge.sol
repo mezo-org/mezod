@@ -213,6 +213,35 @@ interface IAssetsBridge {
     * @notice Returns the minimum bridge-out amount (if set) for a Mezo token.
     * @param mezoToken The address of the token on the Mezo chain.
     * @return The current minimum amount for the token (0 if unset).
+    * @dev For bridge outs to the Bitcoin chain, the system will always check
+    *      the Bitcoin-specific minimum returned by getMinBridgeOutAmountForBitcoinChain
+    *      first, and fallback to the value returned by this function if the 
+    *      Bitcoin-specific value is zero.
     */
     function getMinBridgeOutAmount(address mezoToken) external view returns (uint256);
+
+    /**
+     * @notice Sets the minimum amount for bridging out to the Bitcoin chain.
+     * @param minAmount The new minimum amount.
+     * @dev Requirements:
+     *      - The caller must be the contract owner,
+     *      - The minAmount must be zero or positive.
+     * @dev This function is here to address the specific case of bridging out to the Bitcoin chain,
+     *      that relies on the tBTC bridge under the hood. As the tBTC bridge has its own minimum
+     *      amount, we need to distinguish between the minimum BTC bridge-out targeting the
+     *      Ethereum chain (not depending on the tBTC bridge) and the minimum BTC bridge-out
+     *      targeting the Bitcoin chain (depending on the tBTC bridge). In practice, this
+     *      value should be always equal (or greater than) the redemptionDustThreshold 
+     *      parameter returned by the redemptionParameters function of the tBTC Bridge contract.
+     */
+    function setMinBridgeOutAmountForBitcoinChain(uint256 minAmount) external returns (bool);
+
+    /**
+    * @notice Returns the minimum amount for bridging out to the Bitcoin chain.
+    * @return The current minimum amount (0 if unset).
+    * @dev For backward compatibility, if the minimum amount for the Bitcoin chain is not set
+    *      (i.e. this function returns zero), the system will try to use the value returned
+    *      by getMinBridgeOutAmount for the BTC token.
+    */
+    function getMinBridgeOutAmountForBitcoinChain() external view returns (uint256);
 }
