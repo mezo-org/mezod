@@ -24,8 +24,8 @@ type Config struct {
 }
 
 type BitcoinConfig struct {
-	bitcoin.Network `json:"network"` // "mainnet" | "testnet" | "regtest"
-	Electrum        electrum.Config  `json:"electrum"`
+	Network  bitcoin.Network `json:"network"` // "mainnet" | "testnet" | "regtest"
+	Electrum electrum.Config `json:"electrum"`
 }
 
 type EthereumConfig struct {

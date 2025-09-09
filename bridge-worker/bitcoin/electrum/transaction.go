@@ -18,7 +18,7 @@ func convertRawTransaction(rawTx string) (*bitcoin.Transaction, error) {
 	}
 
 	result := &bitcoin.Transaction{
-		Version:  int32(t.Version),
+		Version:  t.Version,
 		Locktime: t.LockTime,
 	}
 

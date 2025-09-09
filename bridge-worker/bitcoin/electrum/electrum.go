@@ -150,7 +150,7 @@ func (c *Connection) GetTxHashesForPublicKeyHash(
 		)
 	}
 
-	items := append(p2pkhItems, p2wpkhItems...)
+	items := append(p2pkhItems, p2wpkhItems...) //nolint:gocritic
 
 	sort.SliceStable(
 		items,
