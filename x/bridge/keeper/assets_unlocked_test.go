@@ -693,3 +693,65 @@ func TestGetMinBridgeOutAmount(t *testing.T) {
 	actualMinAmount2 := k.GetMinBridgeOutAmount(ctx, token2)
 	require.EqualValues(t, math.ZeroInt(), actualMinAmount2)
 }
+
+func TestGetMinBridgeOutAmountForBitcoinChain(t *testing.T) {
+	ctx, k := mockContext()
+
+	// Test when minimum amount is not set
+	actualMinAmount := k.GetMinBridgeOutAmountForBitcoinChain(ctx)
+	require.EqualValues(t, math.ZeroInt(), actualMinAmount)
+
+	// Test setting and getting minimum amount
+	minAmount := math.NewInt(50000)
+	k.SetMinBridgeOutAmountForBitcoinChain(ctx, minAmount)
+
+	actualMinAmount = k.GetMinBridgeOutAmountForBitcoinChain(ctx)
+	require.EqualValues(t, minAmount, actualMinAmount)
+
+	// Test overwriting with zero amount
+	k.SetMinBridgeOutAmountForBitcoinChain(ctx, math.ZeroInt())
+
+	actualMinAmount = k.GetMinBridgeOutAmountForBitcoinChain(ctx)
+	require.EqualValues(t, math.ZeroInt(), actualMinAmount)
+
+	// Test overwriting with another value
+	newMinAmount := math.NewInt(75000)
+	k.SetMinBridgeOutAmountForBitcoinChain(ctx, newMinAmount)
+
+	actualMinAmount = k.GetMinBridgeOutAmountForBitcoinChain(ctx)
+	require.EqualValues(t, newMinAmount, actualMinAmount)
+}
+
+func TestSetMinBridgeOutAmountForBitcoinChain(t *testing.T) {
+	ctx, k := mockContext()
+
+	testCases := []struct {
+		name      string
+		amount    math.Int
+		expectErr bool
+	}{
+		{
+			name:      "set zero amount",
+			amount:    math.ZeroInt(),
+			expectErr: false,
+		},
+		{
+			name:      "set positive amount",
+			amount:    math.NewInt(100000),
+			expectErr: false,
+		},
+		{
+			name:      "set large amount",
+			amount:    math.NewIntFromBigInt(big.NewInt(0).Exp(big.NewInt(10), big.NewInt(18), nil)),
+			expectErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			k.SetMinBridgeOutAmountForBitcoinChain(ctx, tc.amount)
+			actualAmount := k.GetMinBridgeOutAmountForBitcoinChain(ctx)
+			require.EqualValues(t, tc.amount, actualAmount)
+		})
+	}
+}
