@@ -65,7 +65,9 @@ create it, use the following command:
 ```Shell
 kubectl create secret generic metrics-scraper-config -n monitoring \
   --from-literal=chain-id=<CHAIN_ID> \
-  --from-file=nodes-config.json=<PATH_TO_NODES_CONFIG>
+  --from-file=nodes-config.json=<PATH_TO_NODES_CONFIG> \
+  --from-literal=mezo-rpc-url=<MEZO_RPC_URL> \
+  --from-literal=ethereum-rpc-url=<ETHEREUM_RPC_URL>
 ```
 
 Here's an example of the `nodes-config.json` configuration file:
