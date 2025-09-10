@@ -84,11 +84,6 @@ func RunBridgeWorker(
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
 
-	btcChain, err := electrum.Connect(ctx, cfg.Bitcoin.Electrum)
-	if err != nil {
-		panic(fmt.Sprintf("could not connect to Electrum chain: %v", err))
-	}
-
 	ethereumNetwork := ethconnect.NetworkFromString(cfg.Ethereum.Network)
 	mezoBridgeAddress := portal.MezoBridgeAddress(ethereumNetwork)
 	tbtcBridgeAddress := tbtc.BridgeAddress(ethereumNetwork)
@@ -138,6 +133,22 @@ func RunBridgeWorker(
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize tBTC Bridge contract: %v", err))
 	}
+
+	logger.Info(
+		"connecting to electrum node",
+		"electrum_url", cfg.Bitcoin.Electrum.URL,
+		"network", cfg.Bitcoin.Network.String(),
+	)
+
+	btcChain, err := electrum.Connect(ctx, cfg.Bitcoin.Electrum)
+	if err != nil {
+		panic(fmt.Sprintf("could not connect to Electrum chain: %v", err))
+	}
+
+	logger.Info(
+		"connecting to Mezo assets unlock endpoint",
+		"endpoint", cfg.Mezo.AssetsUnlockEndpoint,
+	)
 
 	// The messages handled by the bridge-worker contain custom types.
 	// Add codecs so that the messages can be marshaled/unmarshalled.
