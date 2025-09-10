@@ -10,21 +10,19 @@ import (
 	"sync"
 	"time"
 
+	"cosmossdk.io/log"
 	"golang.org/x/exp/slices"
 
 	"github.com/checksum0/go-electrum/electrum"
-	"github.com/ipfs/go-log"
 	"github.com/keep-network/keep-common/pkg/wrappers"
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
 )
 
-var (
-	supportedProtocolVersions = []string{"1.4"}
-	logger                    = log.Logger("electrum")
-)
+var supportedProtocolVersions = []string{"1.4"}
 
 // Connection is a handle for interactions with Electrum server.
 type Connection struct {
+	logger      log.Logger
 	parentCtx   context.Context
 	client      *electrum.Client
 	clientMutex *sync.Mutex
@@ -32,8 +30,13 @@ type Connection struct {
 }
 
 // Connect initializes handle with provided Config.
-func Connect(parentCtx context.Context, config Config) (bitcoin.Chain, error) {
+func Connect(
+	parentCtx context.Context,
+	config Config,
+	logger log.Logger,
+) (bitcoin.Chain, error) {
 	c := &Connection{
+		logger:      logger,
 		parentCtx:   parentCtx,
 		config:      config,
 		clientMutex: &sync.Mutex{},
@@ -266,7 +269,7 @@ func (c *Connection) electrumConnect() error {
 	var client *electrum.Client
 	var err error
 
-	logger.Debug("establishing connection to electrum server...")
+	c.logger.Debug("establishing connection to electrum server...")
 	client, err = connectWithRetry(
 		c,
 		func(ctx context.Context) (*electrum.Client, error) {
@@ -295,10 +298,10 @@ func (c *Connection) keepAlive() {
 				"Ping",
 			)
 			if err != nil {
-				logger.Errorf(
+				c.logger.Error(
 					"failed to ping the electrum server; "+
-						"please verify health of the electrum server: [%v]",
-					err,
+						"please verify health of the electrum server",
+					"err", err,
 				)
 			} else {
 				// Adjust ticker starting at the time of the latest successful ping.
@@ -333,19 +336,28 @@ func (c *Connection) verifyServer() error {
 		return fmt.Errorf("failed to get server version: [%w]", err)
 	}
 
-	logger.Infof(
-		"connected to electrum server [version: [%s], protocol: [%s]]",
-		server.version,
-		server.protocol,
+	c.logger.Info(
+		"connected to electrum server",
+		"version", server.version,
+		"protocol", server.protocol,
 	)
 
 	// Log a warning if connected to a server running an unsupported protocol version.
 	if !slices.Contains(supportedProtocolVersions, server.protocol) {
-		logger.Warnf(
+		c.logger.Warn(
 			"electrum server [%s] runs an unsupported protocol version: [%s]; expected one of: [%s]",
 			c.config.URL,
 			server.protocol,
 			strings.Join(supportedProtocolVersions, ","),
+		)
+	}
+
+	if !slices.Contains(supportedProtocolVersions, server.protocol) {
+		c.logger.Warn(
+			"electrum server runs an unsupported protocol version",
+			"url", c.config.URL,
+			"protocol", server.protocol,
+			"expected", strings.Join(supportedProtocolVersions, ","),
 		)
 	}
 
@@ -385,7 +397,11 @@ func requestWithRetry[K interface{}](
 	requestName string,
 ) (K, error) {
 	startTime := time.Now()
-	logger.Debugf("starting [%s] request to Electrum server", requestName)
+
+	c.logger.Debug(
+		"starting request to Electrum server",
+		"request_name", requestName,
+	)
 
 	var result K
 
@@ -419,10 +435,11 @@ func requestWithRetry[K interface{}](
 		return "success"
 	}
 
-	logger.Debugf("[%s] request to Electrum server completed with [%s] after [%s]",
-		requestName,
-		solveRequestOutcome(err),
-		time.Since(startTime),
+	c.logger.Debug(
+		"request to Electrum server completed",
+		"request_name", requestName,
+		"outcome", solveRequestOutcome(err),
+		"request_duration", time.Since(startTime),
 	)
 
 	return result, err
@@ -434,12 +451,12 @@ func (c *Connection) reconnectIfShutdown() error {
 
 	isClientShutdown := c.client.IsShutdown()
 	if isClientShutdown {
-		logger.Warn("connection to electrum server is down; reconnecting...")
+		c.logger.Warn("connection to electrum server is down; reconnecting...")
 		err := c.electrumConnect()
 		if err != nil {
 			return fmt.Errorf("failed to reconnect to electrum server: [%w]", err)
 		}
-		logger.Info("reconnected to electrum server")
+		c.logger.Info("reconnected to electrum server")
 	}
 
 	return nil

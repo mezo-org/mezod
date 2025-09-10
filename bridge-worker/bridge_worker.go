@@ -140,7 +140,11 @@ func RunBridgeWorker(
 		"network", cfg.Bitcoin.Network.String(),
 	)
 
-	btcChain, err := electrum.Connect(ctx, cfg.Bitcoin.Electrum)
+	btcChain, err := electrum.Connect(
+		ctx,
+		cfg.Bitcoin.Electrum,
+		logger.With(log.ModuleKey, "electrum"),
+	)
 	if err != nil {
 		panic(fmt.Sprintf("could not connect to Electrum chain: %v", err))
 	}
