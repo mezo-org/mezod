@@ -20,12 +20,24 @@ spec:
           args:
             - --chain-id=$(CHAIN_ID)
             - --nodes-config=/etc/metrics-scraper/nodes-config.json
+            - --mezo-rpc-url=$(MEZO_RPC_URL)
+            - --ethereum-rpc-url=$(ETHEREUM_RPC_URL)
           env:
             - name: CHAIN_ID
               valueFrom:
                 secretKeyRef:
                   name: metrics-scraper-config
                   key: chain-id
+            - name: MEZO_RPC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: metrics-scraper-config
+                  key: mezo-rpc-url
+            - name: ETHEREUM_RPC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: metrics-scraper-config
+                  key: ethereum-rpc-url
           ports:
             - containerPort: 2112
           resources:

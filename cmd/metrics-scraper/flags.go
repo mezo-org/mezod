@@ -13,6 +13,8 @@ const (
 	flagChainID        = "chain-id"
 	flagNodePollRate   = "node-poll-rate"
 	flagBridgePollRate = "bridge-poll-rate"
+	flagMezoRPCURL     = "mezo-rpc-url"
+	flagEthereumRPCURL = "ethereum-rpc-url"
 )
 
 // Flags default values
@@ -54,6 +56,18 @@ func newFlagSet() *flag.FlagSet {
 		flagBridgePollRate,
 		flagBridgePollRateDefault,
 		"Frequency of polling data from the bridge components",
+	)
+
+	fs.String(
+		flagMezoRPCURL,
+		"",
+		"Mezo RPC URL",
+	)
+
+	fs.String(
+		flagEthereumRPCURL,
+		"",
+		"Ethereum RPC URL",
 	)
 
 	return fs
