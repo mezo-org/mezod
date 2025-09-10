@@ -51,7 +51,7 @@ func NewAssetsUnlockedGrpcEndpoint(
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to create gRPC bridge-out client for Ethereum sidecar [%w]",
+			"failed to create gRPC AssetsUnlocked endpoint [%w]",
 			err,
 		)
 	}

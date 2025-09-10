@@ -9,7 +9,6 @@ import (
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	mezodtypes "github.com/mezo-org/mezod/types"
 
 	bwconfig "github.com/mezo-org/mezod/bridge-worker/config"
 
@@ -45,8 +44,6 @@ type AssetsUnlockedEndpoint interface {
 type BridgeWorker struct {
 	logger log.Logger
 
-	btcChain bitcoin.Chain
-
 	mezoBridgeContract *portal.MezoBridge
 	tbtcBridgeContract *tbtc.Bridge
 
@@ -54,6 +51,9 @@ type BridgeWorker struct {
 
 	batchSize         uint64
 	requestsPerMinute uint64
+
+	btcChain               bitcoin.Chain
+	assetsUnlockedEndpoint AssetsUnlockedEndpoint
 
 	// Channel used to indicate whether the initial fetching of live wallets
 	// is done. Once this channel is closed we can proceed with the Bitcoin
@@ -72,8 +72,6 @@ type BridgeWorker struct {
 
 	withdrawalFinalityChecksMutex sync.Mutex
 	withdrawalFinalityChecks      map[string]*withdrawalFinalityCheck
-
-	assetsUnlockedEndpoint AssetsUnlockedEndpoint
 }
 
 func RunBridgeWorker(
@@ -156,12 +154,9 @@ func RunBridgeWorker(
 
 	// The messages handled by the bridge-worker contain custom types.
 	// Add codecs so that the messages can be marshaled/unmarshalled.
-	registry := codectypes.NewInterfaceRegistry()
-	mezodtypes.RegisterInterfaces(registry)
-
 	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
 		cfg.Mezo.AssetsUnlockEndpoint,
-		registry,
+		codectypes.NewInterfaceRegistry(),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
@@ -196,16 +191,16 @@ func RunBridgeWorker(
 
 	bw := &BridgeWorker{
 		logger:                   logger,
-		btcChain:                 btcChain,
 		mezoBridgeContract:       mezoBridgeContract,
 		tbtcBridgeContract:       tbtcBridgeContract,
 		chain:                    chain,
 		batchSize:                cfg.Ethereum.BatchSize,
 		requestsPerMinute:        cfg.Ethereum.RequestsPerMinute,
+		btcChain:                 btcChain,
+		assetsUnlockedEndpoint:   assetsUnlockedGrpcEndpoint,
 		liveWalletsReady:         make(chan struct{}),
 		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
 		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
-		assetsUnlockedEndpoint:   assetsUnlockedGrpcEndpoint,
 	}
 
 	go func() {
