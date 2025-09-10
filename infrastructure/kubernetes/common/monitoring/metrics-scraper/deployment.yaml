@@ -22,6 +22,7 @@ spec:
             - --nodes-config=/etc/metrics-scraper/nodes-config.json
             - --mezo-rpc-url=$(MEZO_RPC_URL)
             - --ethereum-rpc-url=$(ETHEREUM_RPC_URL)
+            - --bridge-poll-rate=1m
           env:
             - name: CHAIN_ID
               valueFrom:
