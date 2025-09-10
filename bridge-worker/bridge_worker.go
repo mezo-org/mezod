@@ -28,7 +28,7 @@ const mezoBridgeName = "MezoBridge"
 type BridgeWorker struct {
 	logger log.Logger
 
-	btcChain bitcoin.Chain // TODO: Initialize
+	btcChain bitcoin.Chain
 
 	mezoBridgeContract *portal.MezoBridge
 	tbtcBridgeContract *tbtc.Bridge

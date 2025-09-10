@@ -65,4 +65,3 @@ func decodeTransaction(rawTx string) (*wire.MsgTx, error) {
 
 	return &t, nil
 }
-

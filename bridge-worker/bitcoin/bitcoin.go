@@ -1,9 +1,33 @@
 package bitcoin
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
+
+	"github.com/btcsuite/btcd/wire"
 )
+
+// CompactSizeUint is a documentation type that is supposed to capture the
+// details of the Bitcoin's CompactSize Unsigned Integer. It represents a
+// number value encoded to bytes according to the following rules:
+//
+// ---------------- Value ---------------- | Bytes | --------------- Format --------------
+//
+// ---------------------------------------------------------------------------------------
+// >= 0 && <= 252                          |   1   | uint8
+// >= 253 && <= 0xffff                     |   3   | 0xfd followed by the number as uint16
+// >= 0x10000 && <= 0xffffffff             |   5   | 0xfe followed by the number as uint32
+// >= 0x100000000 && <= 0xffffffffffffffff |   9   | 0xff followed by the number as uint64
+//
+// Worth noting, the encoded number value is represented using the little-endian
+// byte order. For example, to convert the compact size uint 0xfd0302, the
+// 0xfd prefix must be skipped and the 0x0302 must be reversed to 0x0203 and
+// then converted to a decimal number 515.
+//
+// For reference, see:
+// https://developer.bitcoin.org/reference/transactions.html#compactsize-unsigned-integers
+type CompactSizeUint uint64
 
 // ByteOrder represents the byte order used by the Bitcoin byte arrays. The
 // Bitcoin ecosystem is not totally consistent in this regard and different
@@ -63,4 +87,29 @@ func (n *Network) UnmarshalJSON(b []byte) error {
 	}
 	*n = Network(i)
 	return nil
+}
+
+// readCompactSizeUint reads the leading CompactSizeUint from the provided
+// variable length data. Returns the value held by the CompactSizeUint as
+// the first argument and the byte length of the CompactSizeUint as the
+// second one.
+func readCompactSizeUint(varLenData []byte) (CompactSizeUint, int, error) {
+	csu, err := wire.ReadVarInt(bytes.NewReader(varLenData), 0)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return CompactSizeUint(csu), wire.VarIntSerializeSize(csu), nil
+}
+
+// writeCompactSizeUint writes the provided CompactSizeUint into a
+// byte slice.
+func writeCompactSizeUint(csu CompactSizeUint) ([]byte, error) {
+	var buffer bytes.Buffer
+	err := wire.WriteVarInt(&buffer, 0, uint64(csu))
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sort"
@@ -569,6 +570,11 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 					continue
 				}
 
+				withdrawalLogger.Info(
+					"found redemption wallet",
+					"wallet_public_key_hash", hex.EncodeToString(walletPublicKeyHash[:]),
+				)
+
 				withdrawingSuccessful := false
 
 				// Run a retry loop with a few attempts. If all the attempts
@@ -614,9 +620,9 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 					)
 
 					tx, err := bw.mezoBridgeContract.WithdrawBTC(
-						entry,
+						*entry,
 						walletPublicKeyHash,
-						mainUTXO,
+						*mainUTXO,
 					)
 					if err != nil {
 						withdrawalProcessLogger.Error(
@@ -782,17 +788,27 @@ func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
 	}
 }
 
+// prepareBtcWithdrawal selects the redeeming wallet and prepares arguments
+// needed to execute withdrawBTC: AssetsUnlock entry, wallet public key hash and
+// wallet main UTXO.
 func (bw *BridgeWorker) prepareBtcWithdrawal(
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) (
-	portal.MezoBridgeAssetsUnlocked,
-	[20]byte, // wallet pubkey hash to return
-	portal.BitcoinTxUTXO, // main UTXO to return
+	*portal.MezoBridgeAssetsUnlocked,
+	[20]byte, // wallet PKH
+	*portal.BitcoinTxUTXO, // main UTXO
 	error,
 ) {
+	// TODO: We must get the recipient from the `mezod` endpoint via gRPC call.
+	//       We cannot read recipient field from the `AssetsUnlockConfirmed`
+	//       as it does not contain recipient in plain text. See type difference
+	//       of recipient between `AssetsUnlockConfirmed` and `AssetsUnlocked`
+	//       events.
+	recipient := []byte{}
+
 	assetsUnlocked := portal.MezoBridgeAssetsUnlocked{
 		UnlockSequenceNumber: event.UnlockSequenceNumber,
-		Recipient:            event.Recipient[:], // TODO: We must get the Recipient from the `mezod` endpoint via gRPC call.
+		Recipient:            recipient,
 		Token:                event.Token,
 		Amount:               event.Amount,
 		Chain:                event.Chain,
@@ -801,20 +817,105 @@ func (bw *BridgeWorker) prepareBtcWithdrawal(
 	// Work on a copy of live wallets to avoid blocking for too long.
 	// Live wallets are represented by `[20]byte` arrays, so `copy` will
 	// deep-copy them.
-
 	bw.liveWalletsMutex.Lock()
-	wallets := make([][20]byte, len(bw.liveWallets))
-	copy(wallets, bw.liveWallets)
+
+	walletPublicKeyHashes := make([][20]byte, len(bw.liveWallets))
+	copy(walletPublicKeyHashes, bw.liveWallets)
+
 	bw.liveWalletsMutex.Unlock()
 
-	fmt.Println(len(wallets))
+	for _, walletPublicKeyHash := range walletPublicKeyHashes {
+		wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+		if err != nil {
+			return nil, [20]byte{}, nil, fmt.Errorf(
+				"failed to get wallet: [%w]",
+				err,
+			)
+		}
 
-	// TODO: Continue with the implementation.
-	var walletPKH [20]byte
-	var mainUTXO portal.BitcoinTxUTXO // TODO: When checking wallet amount take decimal precision into consideration (1e18 in the event vs 1e8 in mainUTXO)
-	return assetsUnlocked, walletPKH, mainUTXO, nil
+		// Check if the state of the wallet is still live.
+		if wallet.State != walletStateLive {
+			continue
+		}
+
+		mainUTXO, err := bw.determineWalletMainUtxo(walletPublicKeyHash)
+		if err != nil {
+			return nil, [20]byte{}, nil, fmt.Errorf(
+				"failed to determine wallet main UTXO: [%w]",
+				err,
+			)
+		}
+
+		// Wallet has no main UTXO yet.
+		if mainUTXO == nil {
+			continue
+		}
+
+		walletBalanceBtcPrecision := big.NewInt(mainUTXO.Value)
+		walletBalanceBtcPrecision.Sub(
+			walletBalanceBtcPrecision,
+			new(big.Int).SetUint64(wallet.PendingRedemptionsValue),
+		)
+
+		// This should never happen - check just in case.
+		if walletBalanceBtcPrecision.Sign() < 0 {
+			continue
+		}
+
+		walletBalanceErc20Precision := btcToErc20Amount(walletBalanceBtcPrecision)
+
+		// Wallet does not have enough funds.
+		if walletBalanceErc20Precision.Cmp(event.Amount) < 0 {
+			continue
+		}
+
+		outputScript, err := bitcoin.NewScriptFromVarLenData(recipient)
+		if err != nil {
+			return nil, [20]byte{}, nil, fmt.Errorf(
+				"failed to create recipient output script: [%w]",
+				err,
+			)
+		}
+
+		// Check if there are is no pending redemption request for the given
+		// output script from the wallet.
+		redemptionKey, err := computeRedemptionKey(walletPublicKeyHash, outputScript)
+		if err != nil {
+			return nil, [20]byte{}, nil, fmt.Errorf(
+				"failed to compute redemption key: [%w]",
+				err,
+			)
+		}
+
+		redemptionRequest, err := bw.tbtcBridgeContract.PendingRedemptions(redemptionKey)
+		if err != nil {
+			return nil, [20]byte{}, nil, fmt.Errorf(
+				"failed to get pending redemption request: [%w]",
+				err,
+			)
+		}
+
+		// There is already a pending redemption.
+		if redemptionRequest.RequestedAt != 0 {
+			continue
+		}
+
+		utxo := portal.BitcoinTxUTXO{
+			TxHash:        mainUTXO.Outpoint.TransactionHash,
+			TxOutputIndex: mainUTXO.Outpoint.OutputIndex,
+			TxOutputValue: uint64(mainUTXO.Value), // #nosec G115
+		}
+
+		return &assetsUnlocked, walletPublicKeyHash, &utxo, nil
+	}
+
+	return nil, [20]byte{}, nil, fmt.Errorf("cannot find wallet to cover withdrawal")
 }
 
+// determineWalletMainUtxo determines the plain-text wallet main UTXO
+// currently registered in the Bridge on-chain contract. The returned
+// main UTXO can be nil if the wallet does not have a main UTXO registered
+// in the Bridge at the moment.
 func (bw *BridgeWorker) determineWalletMainUtxo(
 	walletPublicKeyHash [20]byte,
 ) (*bitcoin.UnspentTransactionOutput, error) {
@@ -883,7 +984,7 @@ func (bw *BridgeWorker) determineWalletMainUtxo(
 				utxo := &bitcoin.UnspentTransactionOutput{
 					Outpoint: &bitcoin.TransactionOutpoint{
 						TransactionHash: transaction.Hash(),
-						OutputIndex:     uint32(outputIndex),
+						OutputIndex:     uint32(outputIndex), // #nosec G115
 					},
 					Value: output.Value,
 				}
@@ -899,12 +1000,24 @@ func (bw *BridgeWorker) determineWalletMainUtxo(
 	return nil, fmt.Errorf("main UTXO not found")
 }
 
+// btcToErc20Amount converts amount in Bitcoin precision (1e8) to ERC20 token
+// precision (1e18). It effectively multiplies the Bitcoin precision
+// amount by 1e10.
+func btcToErc20Amount(btcPrecisionAmount *big.Int) *big.Int {
+	return new(big.Int).Mul(
+		new(big.Int).Set(btcPrecisionAmount),
+		big.NewInt(10_000_000_000), // × 1e10
+	)
+}
+
+// computeMainUtxoHash computes the hash of the provided main UTXO
+// according to the on-chain Bridge rules.
 func computeMainUtxoHash(mainUtxo *bitcoin.UnspentTransactionOutput) [32]byte {
 	outputIndexBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(outputIndexBytes, mainUtxo.Outpoint.OutputIndex)
 
 	valueBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(valueBytes, uint64(mainUtxo.Value))
+	binary.BigEndian.PutUint64(valueBytes, uint64(mainUtxo.Value)) // #nosec G115
 
 	mainUtxoHash := crypto.Keccak256Hash(
 		append(
@@ -916,6 +1029,29 @@ func computeMainUtxoHash(mainUtxo *bitcoin.UnspentTransactionOutput) [32]byte {
 	)
 
 	return mainUtxoHash
+}
+
+// computeRedemptionKey calculates a redemption key for the given redemption
+// request which is an identifier for a redemption at the given time
+// on-chain.
+func computeRedemptionKey(
+	walletPublicKeyHash [20]byte,
+	redeemerOutputScript bitcoin.Script,
+) (*big.Int, error) {
+	// The Bridge contract builds the redemption key using the length-prefixed
+	// redeemer output script.
+	prefixedRedeemerOutputScript, err := redeemerOutputScript.ToVarLenData()
+	if err != nil {
+		return nil, fmt.Errorf("cannot build prefixed redeemer output script: [%v]", err)
+	}
+
+	redeemerOutputScriptHash := crypto.Keccak256Hash(prefixedRedeemerOutputScript)
+
+	redemptionKey := crypto.Keccak256Hash(
+		append(redeemerOutputScriptHash[:], walletPublicKeyHash[:]...),
+	)
+
+	return redemptionKey.Big(), nil
 }
 
 // computeAttestationKey computes the attestation key for the data representing
