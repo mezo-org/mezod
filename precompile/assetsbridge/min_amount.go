@@ -207,3 +207,175 @@ func (m *GetMinBridgeOutAmountMethod) Run(
 		precompile.TypesConverter.BigInt.FromSDK(minAmount),
 	}, nil
 }
+
+// SetMinBridgeOutAmountForBitcoinChainMethodName is the name of the setMinBridgeOutAmountForBitcoinChain
+// method. It matches the name of the method in the contract ABI.
+//
+//nolint:gosec
+const SetMinBridgeOutAmountForBitcoinChainMethodName = "setMinBridgeOutAmountForBitcoinChain"
+
+// SetMinBridgeOutAmountForBitcoinChainMethod is the implementation of the setMinBridgeOutAmountForBitcoinChain
+// method.
+type SetMinBridgeOutAmountForBitcoinChainMethod struct {
+	poaKeeper    PoaKeeper
+	bridgeKeeper BridgeKeeper
+}
+
+func newSetMinBridgeOutAmountForBitcoinChainMethod(
+	poaKeeper PoaKeeper,
+	bridgeKeeper BridgeKeeper,
+) *SetMinBridgeOutAmountForBitcoinChainMethod {
+	return &SetMinBridgeOutAmountForBitcoinChainMethod{
+		poaKeeper:    poaKeeper,
+		bridgeKeeper: bridgeKeeper,
+	}
+}
+
+func (m *SetMinBridgeOutAmountForBitcoinChainMethod) MethodName() string {
+	return SetMinBridgeOutAmountForBitcoinChainMethodName
+}
+
+func (m *SetMinBridgeOutAmountForBitcoinChainMethod) MethodType() precompile.MethodType {
+	return precompile.Write
+}
+
+func (m *SetMinBridgeOutAmountForBitcoinChainMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *SetMinBridgeOutAmountForBitcoinChainMethod) Payable() bool {
+	return false
+}
+
+func (m *SetMinBridgeOutAmountForBitcoinChainMethod) Run(
+	context *precompile.RunContext,
+	inputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
+		return nil, err
+	}
+
+	minAmount, ok := inputs[0].(*big.Int)
+	if !ok {
+		return nil, fmt.Errorf("invalid minimum amount: %v", inputs[0])
+	}
+
+	if minAmount.Sign() < 0 {
+		return nil, fmt.Errorf("minimum amount must be zero or positive")
+	}
+
+	err := m.poaKeeper.CheckOwner(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	sdkMinAmount, err := precompile.TypesConverter.BigInt.ToSDK(minAmount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert minimum amount: [%w]", err)
+	}
+
+	m.bridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(
+		context.SdkCtx(),
+		sdkMinAmount,
+	)
+
+	err = context.EventEmitter().Emit(
+		NewMinBridgeOutAmountForBitcoinChainSetEvent(minAmount),
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to emit MinBridgeOutAmountForBitcoinChainSet event: [%w]",
+			err,
+		)
+	}
+
+	return precompile.MethodOutputs{true}, nil
+}
+
+// GetMinBridgeOutAmountForBitcoinChainMethodName is the name of the getMinBridgeOutAmountForBitcoinChain
+// method. It matches the name of the method in the contract ABI.
+//
+//nolint:gosec
+const GetMinBridgeOutAmountForBitcoinChainMethodName = "getMinBridgeOutAmountForBitcoinChain"
+
+// GetMinBridgeOutAmountForBitcoinChainMethod is the implementation of the getMinBridgeOutAmountForBitcoinChain
+// method.
+type GetMinBridgeOutAmountForBitcoinChainMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetMinBridgeOutAmountForBitcoinChainMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetMinBridgeOutAmountForBitcoinChainMethod {
+	return &GetMinBridgeOutAmountForBitcoinChainMethod{
+		bridgeKeeper: bridgeKeeper,
+	}
+}
+
+func (m *GetMinBridgeOutAmountForBitcoinChainMethod) MethodName() string {
+	return GetMinBridgeOutAmountForBitcoinChainMethodName
+}
+
+func (m *GetMinBridgeOutAmountForBitcoinChainMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetMinBridgeOutAmountForBitcoinChainMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetMinBridgeOutAmountForBitcoinChainMethod) Payable() bool {
+	return false
+}
+
+func (m *GetMinBridgeOutAmountForBitcoinChainMethod) Run(
+	context *precompile.RunContext,
+	inputs precompile.MethodInputs,
+) (precompile.MethodOutputs, error) {
+	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+		return nil, err
+	}
+
+	minAmount := m.bridgeKeeper.GetMinBridgeOutAmountForBitcoinChain(context.SdkCtx())
+
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(minAmount),
+	}, nil
+}
+
+// MinBridgeOutAmountForBitcoinChainSetEventName is the name of the MinBridgeOutAmountForBitcoinChainSet event.
+// It matches the name of the event in the contract ABI.
+//
+//nolint:gosec
+const MinBridgeOutAmountForBitcoinChainSetEventName = "MinBridgeOutAmountForBitcoinChainSet"
+
+// MinBridgeOutAmountForBitcoinChainSetEvent is the implementation of the MinBridgeOutAmountForBitcoinChainSet
+// event that contains the following arguments:
+// - minAmount (non-indexed): the new minimum bridgeable amount for the Bitcoin chain.
+type MinBridgeOutAmountForBitcoinChainSetEvent struct {
+	minAmount *big.Int
+}
+
+func NewMinBridgeOutAmountForBitcoinChainSetEvent(
+	minAmount *big.Int,
+) *MinBridgeOutAmountForBitcoinChainSetEvent {
+	return &MinBridgeOutAmountForBitcoinChainSetEvent{
+		minAmount: minAmount,
+	}
+}
+
+func (e *MinBridgeOutAmountForBitcoinChainSetEvent) EventName() string {
+	return MinBridgeOutAmountForBitcoinChainSetEventName
+}
+
+func (e *MinBridgeOutAmountForBitcoinChainSetEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{
+			Indexed: false,
+			Value:   e.minAmount,
+		},
+	}
+}

@@ -61,6 +61,10 @@ var (
 	// MinBridgeOutAmountKeyPrefix is the key prefix for the minimum bridge-out
 	// amount.
 	MinBridgeOutAmountKeyPrefix = []byte{0x94}
+
+	// MinBridgeOutAmountForBitcoinChainKey is a standalone key for the minimum
+	// bridge-out amount that applies specifically to the Bitcoin chain.
+	MinBridgeOutAmountForBitcoinChainKey = []byte{0x95}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the

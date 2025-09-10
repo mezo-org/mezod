@@ -229,6 +229,568 @@ func (mb *MezoBridge) AcceptOwnershipGasEstimate() (uint64, error) {
 }
 
 // Transaction submission.
+func (mb *MezoBridge) AddBridgeValidator(
+	arg_validator common.Address,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction addBridgeValidator",
+		" params: ",
+		fmt.Sprint(
+			arg_validator,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.AddBridgeValidator(
+		transactorOptions,
+		arg_validator,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"addBridgeValidator",
+			arg_validator,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction addBridgeValidator with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.AddBridgeValidator(
+				newTransactorOptions,
+				arg_validator,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"addBridgeValidator",
+					arg_validator,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction addBridgeValidator with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallAddBridgeValidator(
+	arg_validator common.Address,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"addBridgeValidator",
+		&result,
+		arg_validator,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) AddBridgeValidatorGasEstimate(
+	arg_validator common.Address,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"addBridgeValidator",
+		mb.contractABI,
+		mb.transactor,
+		arg_validator,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
+func (mb *MezoBridge) AddRefundAuthorization(
+	arg_receiver common.Address,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction addRefundAuthorization",
+		" params: ",
+		fmt.Sprint(
+			arg_receiver,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.AddRefundAuthorization(
+		transactorOptions,
+		arg_receiver,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"addRefundAuthorization",
+			arg_receiver,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction addRefundAuthorization with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.AddRefundAuthorization(
+				newTransactorOptions,
+				arg_receiver,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"addRefundAuthorization",
+					arg_receiver,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction addRefundAuthorization with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallAddRefundAuthorization(
+	arg_receiver common.Address,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"addRefundAuthorization",
+		&result,
+		arg_receiver,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) AddRefundAuthorizationGasEstimate(
+	arg_receiver common.Address,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"addRefundAuthorization",
+		mb.contractABI,
+		mb.transactor,
+		arg_receiver,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
+func (mb *MezoBridge) AttestBridgeOut(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction attestBridgeOut",
+		" params: ",
+		fmt.Sprint(
+			arg_entry,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.AttestBridgeOut(
+		transactorOptions,
+		arg_entry,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"attestBridgeOut",
+			arg_entry,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction attestBridgeOut with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.AttestBridgeOut(
+				newTransactorOptions,
+				arg_entry,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"attestBridgeOut",
+					arg_entry,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction attestBridgeOut with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallAttestBridgeOut(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"attestBridgeOut",
+		&result,
+		arg_entry,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) AttestBridgeOutGasEstimate(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"attestBridgeOut",
+		mb.contractABI,
+		mb.transactor,
+		arg_entry,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
+func (mb *MezoBridge) AttestBridgeOutWithSignatures(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+	arg_signatures []byte,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction attestBridgeOutWithSignatures",
+		" params: ",
+		fmt.Sprint(
+			arg_entry,
+			arg_signatures,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.AttestBridgeOutWithSignatures(
+		transactorOptions,
+		arg_entry,
+		arg_signatures,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"attestBridgeOutWithSignatures",
+			arg_entry,
+			arg_signatures,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction attestBridgeOutWithSignatures with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.AttestBridgeOutWithSignatures(
+				newTransactorOptions,
+				arg_entry,
+				arg_signatures,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"attestBridgeOutWithSignatures",
+					arg_entry,
+					arg_signatures,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction attestBridgeOutWithSignatures with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallAttestBridgeOutWithSignatures(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+	arg_signatures []byte,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"attestBridgeOutWithSignatures",
+		&result,
+		arg_entry,
+		arg_signatures,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) AttestBridgeOutWithSignaturesGasEstimate(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+	arg_signatures []byte,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"attestBridgeOutWithSignatures",
+		mb.contractABI,
+		mb.transactor,
+		arg_entry,
+		arg_signatures,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
 func (mb *MezoBridge) BridgeERC20(
 	arg_ERC20Token common.Address,
 	arg_amount *big.Int,
@@ -861,6 +1423,130 @@ func (mb *MezoBridge) DisableERC20TokenGasEstimate(
 }
 
 // Transaction submission.
+func (mb *MezoBridge) EnableBridgeValidatorRemovalMode(
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction enableBridgeValidatorRemovalMode",
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.EnableBridgeValidatorRemovalMode(
+		transactorOptions,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"enableBridgeValidatorRemovalMode",
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction enableBridgeValidatorRemovalMode with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.EnableBridgeValidatorRemovalMode(
+				newTransactorOptions,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"enableBridgeValidatorRemovalMode",
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction enableBridgeValidatorRemovalMode with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallEnableBridgeValidatorRemovalMode(
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"enableBridgeValidatorRemovalMode",
+		&result,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) EnableBridgeValidatorRemovalModeGasEstimate() (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"enableBridgeValidatorRemovalMode",
+		mb.contractABI,
+		mb.transactor,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
 func (mb *MezoBridge) EnableERC20Token(
 	arg_ERC20Token common.Address,
 	arg_minERC20Amount *big.Int,
@@ -1483,6 +2169,282 @@ func (mb *MezoBridge) InitializeBTCBridgingGasEstimate(
 }
 
 // Transaction submission.
+func (mb *MezoBridge) RemoveBridgeValidator(
+	arg_validator common.Address,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction removeBridgeValidator",
+		" params: ",
+		fmt.Sprint(
+			arg_validator,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.RemoveBridgeValidator(
+		transactorOptions,
+		arg_validator,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"removeBridgeValidator",
+			arg_validator,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction removeBridgeValidator with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.RemoveBridgeValidator(
+				newTransactorOptions,
+				arg_validator,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"removeBridgeValidator",
+					arg_validator,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction removeBridgeValidator with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallRemoveBridgeValidator(
+	arg_validator common.Address,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"removeBridgeValidator",
+		&result,
+		arg_validator,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) RemoveBridgeValidatorGasEstimate(
+	arg_validator common.Address,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"removeBridgeValidator",
+		mb.contractABI,
+		mb.transactor,
+		arg_validator,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
+func (mb *MezoBridge) RemoveRefundAuthorization(
+	arg_receiver common.Address,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction removeRefundAuthorization",
+		" params: ",
+		fmt.Sprint(
+			arg_receiver,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.RemoveRefundAuthorization(
+		transactorOptions,
+		arg_receiver,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"removeRefundAuthorization",
+			arg_receiver,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction removeRefundAuthorization with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.RemoveRefundAuthorization(
+				newTransactorOptions,
+				arg_receiver,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"removeRefundAuthorization",
+					arg_receiver,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction removeRefundAuthorization with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallRemoveRefundAuthorization(
+	arg_receiver common.Address,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"removeRefundAuthorization",
+		&result,
+		arg_receiver,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) RemoveRefundAuthorizationGasEstimate(
+	arg_receiver common.Address,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"removeRefundAuthorization",
+		mb.contractABI,
+		mb.transactor,
+		arg_receiver,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
 func (mb *MezoBridge) RenounceOwnership(
 
 	transactionOptions ...chainutil.TransactionOptions,
@@ -1739,6 +2701,144 @@ func (mb *MezoBridge) TransferOwnershipGasEstimate(
 		mb.contractABI,
 		mb.transactor,
 		arg_newOwner,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
+func (mb *MezoBridge) UpdateFeeCollector(
+	arg__feeCollector common.Address,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction updateFeeCollector",
+		" params: ",
+		fmt.Sprint(
+			arg__feeCollector,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.UpdateFeeCollector(
+		transactorOptions,
+		arg__feeCollector,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"updateFeeCollector",
+			arg__feeCollector,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction updateFeeCollector with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.UpdateFeeCollector(
+				newTransactorOptions,
+				arg__feeCollector,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"updateFeeCollector",
+					arg__feeCollector,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction updateFeeCollector with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallUpdateFeeCollector(
+	arg__feeCollector common.Address,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"updateFeeCollector",
+		&result,
+		arg__feeCollector,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) UpdateFeeCollectorGasEstimate(
+	arg__feeCollector common.Address,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"updateFeeCollector",
+		mb.contractABI,
+		mb.transactor,
+		arg__feeCollector,
 	)
 
 	return result, err
@@ -2030,7 +3130,739 @@ func (mb *MezoBridge) UpdateMinTBTCAmountGasEstimate(
 	return result, err
 }
 
+// Transaction submission.
+func (mb *MezoBridge) UpdateReimbursementPool(
+	arg__reimbursementPool common.Address,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction updateReimbursementPool",
+		" params: ",
+		fmt.Sprint(
+			arg__reimbursementPool,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.UpdateReimbursementPool(
+		transactorOptions,
+		arg__reimbursementPool,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"updateReimbursementPool",
+			arg__reimbursementPool,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction updateReimbursementPool with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.UpdateReimbursementPool(
+				newTransactorOptions,
+				arg__reimbursementPool,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"updateReimbursementPool",
+					arg__reimbursementPool,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction updateReimbursementPool with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallUpdateReimbursementPool(
+	arg__reimbursementPool common.Address,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"updateReimbursementPool",
+		&result,
+		arg__reimbursementPool,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) UpdateReimbursementPoolGasEstimate(
+	arg__reimbursementPool common.Address,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"updateReimbursementPool",
+		mb.contractABI,
+		mb.transactor,
+		arg__reimbursementPool,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
+func (mb *MezoBridge) UpdateTBTCRedeemer(
+	arg__tbtcRedeemer common.Address,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction updateTBTCRedeemer",
+		" params: ",
+		fmt.Sprint(
+			arg__tbtcRedeemer,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.UpdateTBTCRedeemer(
+		transactorOptions,
+		arg__tbtcRedeemer,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"updateTBTCRedeemer",
+			arg__tbtcRedeemer,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction updateTBTCRedeemer with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.UpdateTBTCRedeemer(
+				newTransactorOptions,
+				arg__tbtcRedeemer,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"updateTBTCRedeemer",
+					arg__tbtcRedeemer,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction updateTBTCRedeemer with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallUpdateTBTCRedeemer(
+	arg__tbtcRedeemer common.Address,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"updateTBTCRedeemer",
+		&result,
+		arg__tbtcRedeemer,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) UpdateTBTCRedeemerGasEstimate(
+	arg__tbtcRedeemer common.Address,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"updateTBTCRedeemer",
+		mb.contractABI,
+		mb.transactor,
+		arg__tbtcRedeemer,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
+func (mb *MezoBridge) UpdateWithdrawalFee(
+	arg__withdrawalFee *big.Int,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction updateWithdrawalFee",
+		" params: ",
+		fmt.Sprint(
+			arg__withdrawalFee,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.UpdateWithdrawalFee(
+		transactorOptions,
+		arg__withdrawalFee,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"updateWithdrawalFee",
+			arg__withdrawalFee,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction updateWithdrawalFee with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.UpdateWithdrawalFee(
+				newTransactorOptions,
+				arg__withdrawalFee,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"updateWithdrawalFee",
+					arg__withdrawalFee,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction updateWithdrawalFee with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallUpdateWithdrawalFee(
+	arg__withdrawalFee *big.Int,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"updateWithdrawalFee",
+		&result,
+		arg__withdrawalFee,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) UpdateWithdrawalFeeGasEstimate(
+	arg__withdrawalFee *big.Int,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"updateWithdrawalFee",
+		mb.contractABI,
+		mb.transactor,
+		arg__withdrawalFee,
+	)
+
+	return result, err
+}
+
+// Transaction submission.
+func (mb *MezoBridge) WithdrawBTC(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+	arg_walletPubKeyHash [20]byte,
+	arg_mainUtxo abi.BitcoinTxUTXO,
+
+	transactionOptions ...chainutil.TransactionOptions,
+) (*types.Transaction, error) {
+	mbLogger.Debug(
+		"submitting transaction withdrawBTC",
+		" params: ",
+		fmt.Sprint(
+			arg_entry,
+			arg_walletPubKeyHash,
+			arg_mainUtxo,
+		),
+	)
+
+	mb.transactionMutex.Lock()
+	defer mb.transactionMutex.Unlock()
+
+	// create a copy
+	transactorOptions := new(bind.TransactOpts)
+	*transactorOptions = *mb.transactorOptions
+
+	if len(transactionOptions) > 1 {
+		return nil, fmt.Errorf(
+			"could not process multiple transaction options sets",
+		)
+	} else if len(transactionOptions) > 0 {
+		transactionOptions[0].Apply(transactorOptions)
+	}
+
+	nonce, err := mb.nonceManager.CurrentNonce()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve account nonce: %v", err)
+	}
+
+	transactorOptions.Nonce = new(big.Int).SetUint64(nonce)
+
+	transaction, err := mb.contract.WithdrawBTC(
+		transactorOptions,
+		arg_entry,
+		arg_walletPubKeyHash,
+		arg_mainUtxo,
+	)
+	if err != nil {
+		return transaction, mb.errorResolver.ResolveError(
+			err,
+			mb.transactorOptions.From,
+			nil,
+			"withdrawBTC",
+			arg_entry,
+			arg_walletPubKeyHash,
+			arg_mainUtxo,
+		)
+	}
+
+	mbLogger.Infof(
+		"submitted transaction withdrawBTC with id: [%s] and nonce [%v]",
+		transaction.Hash(),
+		transaction.Nonce(),
+	)
+
+	go mb.miningWaiter.ForceMining(
+		transaction,
+		transactorOptions,
+		func(newTransactorOptions *bind.TransactOpts) (*types.Transaction, error) {
+			// If original transactor options has a non-zero gas limit, that
+			// means the client code set it on their own. In that case, we
+			// should rewrite the gas limit from the original transaction
+			// for each resubmission. If the gas limit is not set by the client
+			// code, let the the submitter re-estimate the gas limit on each
+			// resubmission.
+			if transactorOptions.GasLimit != 0 {
+				newTransactorOptions.GasLimit = transactorOptions.GasLimit
+			}
+
+			transaction, err := mb.contract.WithdrawBTC(
+				newTransactorOptions,
+				arg_entry,
+				arg_walletPubKeyHash,
+				arg_mainUtxo,
+			)
+			if err != nil {
+				return nil, mb.errorResolver.ResolveError(
+					err,
+					mb.transactorOptions.From,
+					nil,
+					"withdrawBTC",
+					arg_entry,
+					arg_walletPubKeyHash,
+					arg_mainUtxo,
+				)
+			}
+
+			mbLogger.Infof(
+				"submitted transaction withdrawBTC with id: [%s] and nonce [%v]",
+				transaction.Hash(),
+				transaction.Nonce(),
+			)
+
+			return transaction, nil
+		},
+	)
+
+	mb.nonceManager.IncrementNonce()
+
+	return transaction, err
+}
+
+// Non-mutating call, not a transaction submission.
+func (mb *MezoBridge) CallWithdrawBTC(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+	arg_walletPubKeyHash [20]byte,
+	arg_mainUtxo abi.BitcoinTxUTXO,
+	blockNumber *big.Int,
+) error {
+	var result interface{} = nil
+
+	err := chainutil.CallAtBlock(
+		mb.transactorOptions.From,
+		blockNumber, nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"withdrawBTC",
+		&result,
+		arg_entry,
+		arg_walletPubKeyHash,
+		arg_mainUtxo,
+	)
+
+	return err
+}
+
+func (mb *MezoBridge) WithdrawBTCGasEstimate(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+	arg_walletPubKeyHash [20]byte,
+	arg_mainUtxo abi.BitcoinTxUTXO,
+) (uint64, error) {
+	var result uint64
+
+	result, err := chainutil.EstimateGas(
+		mb.callerOptions.From,
+		mb.contractAddress,
+		"withdrawBTC",
+		mb.contractABI,
+		mb.transactor,
+		arg_entry,
+		arg_walletPubKeyHash,
+		arg_mainUtxo,
+	)
+
+	return result, err
+}
+
 // ----- Const Methods ------
+
+func (mb *MezoBridge) AttestationThreshold() (*big.Int, error) {
+	result, err := mb.contract.AttestationThreshold(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"attestationThreshold",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) AttestationThresholdAtBlock(
+	blockNumber *big.Int,
+) (*big.Int, error) {
+	var result *big.Int
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"attestationThreshold",
+		&result,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) Attestations(
+	arg0 [32]byte,
+) (*big.Int, error) {
+	result, err := mb.contract.Attestations(
+		mb.callerOptions,
+		arg0,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"attestations",
+			arg0,
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) AttestationsAtBlock(
+	arg0 [32]byte,
+	blockNumber *big.Int,
+) (*big.Int, error) {
+	var result *big.Int
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"attestations",
+		&result,
+		arg0,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) AttestationsCount(
+	arg_attestationKey [32]byte,
+) (uint8, error) {
+	result, err := mb.contract.AttestationsCount(
+		mb.callerOptions,
+		arg_attestationKey,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"attestationsCount",
+			arg_attestationKey,
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) AttestationsCountAtBlock(
+	arg_attestationKey [32]byte,
+	blockNumber *big.Int,
+) (uint8, error) {
+	var result uint8
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"attestationsCount",
+		&result,
+		arg_attestationKey,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) BASISPOINTSDENOMINATOR() (*big.Int, error) {
+	result, err := mb.contract.BASISPOINTSDENOMINATOR(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"bASISPOINTSDENOMINATOR",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) BASISPOINTSDENOMINATORAtBlock(
+	blockNumber *big.Int,
+) (*big.Int, error) {
+	var result *big.Int
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"bASISPOINTSDENOMINATOR",
+		&result,
+	)
+
+	return result, err
+}
 
 func (mb *MezoBridge) Bridge() (common.Address, error) {
 	result, err := mb.contract.Bridge(
@@ -2063,6 +3895,166 @@ func (mb *MezoBridge) BridgeAtBlock(
 		mb.errorResolver,
 		mb.contractAddress,
 		"bridge",
+		&result,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) BridgeValidatorIDs(
+	arg0 common.Address,
+) (uint8, error) {
+	result, err := mb.contract.BridgeValidatorIDs(
+		mb.callerOptions,
+		arg0,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"bridgeValidatorIDs",
+			arg0,
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) BridgeValidatorIDsAtBlock(
+	arg0 common.Address,
+	blockNumber *big.Int,
+) (uint8, error) {
+	var result uint8
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"bridgeValidatorIDs",
+		&result,
+		arg0,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) BridgeValidatorRemovalMode() (bool, error) {
+	result, err := mb.contract.BridgeValidatorRemovalMode(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"bridgeValidatorRemovalMode",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) BridgeValidatorRemovalModeAtBlock(
+	blockNumber *big.Int,
+) (bool, error) {
+	var result bool
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"bridgeValidatorRemovalMode",
+		&result,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) BridgeValidators(
+	arg0 *big.Int,
+) (common.Address, error) {
+	result, err := mb.contract.BridgeValidators(
+		mb.callerOptions,
+		arg0,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"bridgeValidators",
+			arg0,
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) BridgeValidatorsAtBlock(
+	arg0 *big.Int,
+	blockNumber *big.Int,
+) (common.Address, error) {
+	var result common.Address
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"bridgeValidators",
+		&result,
+		arg0,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) BridgeValidatorsCount() (*big.Int, error) {
+	result, err := mb.contract.BridgeValidatorsCount(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"bridgeValidatorsCount",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) BridgeValidatorsCountAtBlock(
+	blockNumber *big.Int,
+) (*big.Int, error) {
+	var result *big.Int
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"bridgeValidatorsCount",
 		&result,
 	)
 
@@ -2105,6 +4097,49 @@ func (mb *MezoBridge) BtcDepositsAtBlock(
 		mb.errorResolver,
 		mb.contractAddress,
 		"btcDeposits",
+		&result,
+		arg0,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) ConfirmedUnlocks(
+	arg0 *big.Int,
+) (bool, error) {
+	result, err := mb.contract.ConfirmedUnlocks(
+		mb.callerOptions,
+		arg0,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"confirmedUnlocks",
+			arg0,
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) ConfirmedUnlocksAtBlock(
+	arg0 *big.Int,
+	blockNumber *big.Int,
+) (bool, error) {
+	var result bool
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"confirmedUnlocks",
 		&result,
 		arg0,
 	)
@@ -2186,6 +4221,43 @@ func (mb *MezoBridge) ERC20TokensCountAtBlock(
 		mb.errorResolver,
 		mb.contractAddress,
 		"eRC20TokensCount",
+		&result,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) FeeCollector() (common.Address, error) {
+	result, err := mb.contract.FeeCollector(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"feeCollector",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) FeeCollectorAtBlock(
+	blockNumber *big.Int,
+) (common.Address, error) {
+	var result common.Address
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"feeCollector",
 		&result,
 	)
 
@@ -2303,6 +4375,49 @@ func (mb *MezoBridge) OwnerAtBlock(
 	return result, err
 }
 
+func (mb *MezoBridge) PendingBTCWithdrawals(
+	arg0 [32]byte,
+) (bool, error) {
+	result, err := mb.contract.PendingBTCWithdrawals(
+		mb.callerOptions,
+		arg0,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"pendingBTCWithdrawals",
+			arg0,
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) PendingBTCWithdrawalsAtBlock(
+	arg0 [32]byte,
+	blockNumber *big.Int,
+) (bool, error) {
+	var result bool
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"pendingBTCWithdrawals",
+		&result,
+		arg0,
+	)
+
+	return result, err
+}
+
 func (mb *MezoBridge) PendingOwner() (common.Address, error) {
 	result, err := mb.contract.PendingOwner(
 		mb.callerOptions,
@@ -2334,6 +4449,86 @@ func (mb *MezoBridge) PendingOwnerAtBlock(
 		mb.errorResolver,
 		mb.contractAddress,
 		"pendingOwner",
+		&result,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) RefundAuthorizations(
+	arg0 common.Address,
+) (bool, error) {
+	result, err := mb.contract.RefundAuthorizations(
+		mb.callerOptions,
+		arg0,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"refundAuthorizations",
+			arg0,
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) RefundAuthorizationsAtBlock(
+	arg0 common.Address,
+	blockNumber *big.Int,
+) (bool, error) {
+	var result bool
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"refundAuthorizations",
+		&result,
+		arg0,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) ReimbursementPool() (common.Address, error) {
+	result, err := mb.contract.ReimbursementPool(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"reimbursementPool",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) ReimbursementPoolAtBlock(
+	blockNumber *big.Int,
+) (common.Address, error) {
+	var result common.Address
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"reimbursementPool",
 		&result,
 	)
 
@@ -2377,6 +4572,43 @@ func (mb *MezoBridge) SATOSHIMULTIPLIERAtBlock(
 	return result, err
 }
 
+func (mb *MezoBridge) SIGNATUREBYTESIZE() (*big.Int, error) {
+	result, err := mb.contract.SIGNATUREBYTESIZE(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"sIGNATUREBYTESIZE",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) SIGNATUREBYTESIZEAtBlock(
+	blockNumber *big.Int,
+) (*big.Int, error) {
+	var result *big.Int
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"sIGNATUREBYTESIZE",
+		&result,
+	)
+
+	return result, err
+}
+
 func (mb *MezoBridge) Sequence() (*big.Int, error) {
 	result, err := mb.contract.Sequence(
 		mb.callerOptions,
@@ -2408,6 +4640,43 @@ func (mb *MezoBridge) SequenceAtBlock(
 		mb.errorResolver,
 		mb.contractAddress,
 		"sequence",
+		&result,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) TbtcRedeemer() (common.Address, error) {
+	result, err := mb.contract.TbtcRedeemer(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"tbtcRedeemer",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) TbtcRedeemerAtBlock(
+	blockNumber *big.Int,
+) (common.Address, error) {
+	var result common.Address
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"tbtcRedeemer",
 		&result,
 	)
 
@@ -2482,6 +4751,86 @@ func (mb *MezoBridge) TbtcVaultAtBlock(
 		mb.errorResolver,
 		mb.contractAddress,
 		"tbtcVault",
+		&result,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) ValidateAssetsUnlocked(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+) (bool, error) {
+	result, err := mb.contract.ValidateAssetsUnlocked(
+		mb.callerOptions,
+		arg_entry,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"validateAssetsUnlocked",
+			arg_entry,
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) ValidateAssetsUnlockedAtBlock(
+	arg_entry abi.MezoBridgeAssetsUnlocked,
+	blockNumber *big.Int,
+) (bool, error) {
+	var result bool
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"validateAssetsUnlocked",
+		&result,
+		arg_entry,
+	)
+
+	return result, err
+}
+
+func (mb *MezoBridge) WithdrawalFee() (*big.Int, error) {
+	result, err := mb.contract.WithdrawalFee(
+		mb.callerOptions,
+	)
+
+	if err != nil {
+		return result, mb.errorResolver.ResolveError(
+			err,
+			mb.callerOptions.From,
+			nil,
+			"withdrawalFee",
+		)
+	}
+
+	return result, err
+}
+
+func (mb *MezoBridge) WithdrawalFeeAtBlock(
+	blockNumber *big.Int,
+) (*big.Int, error) {
+	var result *big.Int
+
+	err := chainutil.CallAtBlock(
+		mb.callerOptions.From,
+		blockNumber,
+		nil,
+		mb.contractABI,
+		mb.caller,
+		mb.errorResolver,
+		mb.contractAddress,
+		"withdrawalFee",
 		&result,
 	)
 
@@ -2693,6 +5042,427 @@ func (mb *MezoBridge) PastAssetsLockedEvents(
 	}
 
 	events := make([]*abi.MezoBridgeAssetsLocked, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) AssetsUnlockAttestedEvent(
+	opts *ethereum.SubscribeOpts,
+	validatorFilter []common.Address,
+	unlockSequenceNumberFilter []*big.Int,
+) *MbAssetsUnlockAttestedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbAssetsUnlockAttestedSubscription{
+		mb,
+		opts,
+		validatorFilter,
+		unlockSequenceNumberFilter,
+	}
+}
+
+type MbAssetsUnlockAttestedSubscription struct {
+	contract                   *MezoBridge
+	opts                       *ethereum.SubscribeOpts
+	validatorFilter            []common.Address
+	unlockSequenceNumberFilter []*big.Int
+}
+
+type mezoBridgeAssetsUnlockAttestedFunc func(
+	Validator common.Address,
+	UnlockSequenceNumber *big.Int,
+	Recipient []byte,
+	Token common.Address,
+	Amount *big.Int,
+	Chain uint8,
+	blockNumber uint64,
+)
+
+func (auas *MbAssetsUnlockAttestedSubscription) OnEvent(
+	handler mezoBridgeAssetsUnlockAttestedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeAssetsUnlockAttested)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.Validator,
+					event.UnlockSequenceNumber,
+					event.Recipient,
+					event.Token,
+					event.Amount,
+					event.Chain,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := auas.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (auas *MbAssetsUnlockAttestedSubscription) Pipe(
+	sink chan *abi.MezoBridgeAssetsUnlockAttested,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(auas.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := auas.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - auas.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past AssetsUnlockAttested events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := auas.contract.PastAssetsUnlockAttestedEvents(
+					fromBlock,
+					nil,
+					auas.validatorFilter,
+					auas.unlockSequenceNumberFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past AssetsUnlockAttested events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := auas.contract.watchAssetsUnlockAttested(
+		sink,
+		auas.validatorFilter,
+		auas.unlockSequenceNumberFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchAssetsUnlockAttested(
+	sink chan *abi.MezoBridgeAssetsUnlockAttested,
+	validatorFilter []common.Address,
+	unlockSequenceNumberFilter []*big.Int,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchAssetsUnlockAttested(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			validatorFilter,
+			unlockSequenceNumberFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event AssetsUnlockAttested had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event AssetsUnlockAttested failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastAssetsUnlockAttestedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	validatorFilter []common.Address,
+	unlockSequenceNumberFilter []*big.Int,
+) ([]*abi.MezoBridgeAssetsUnlockAttested, error) {
+	iterator, err := mb.contract.FilterAssetsUnlockAttested(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		validatorFilter,
+		unlockSequenceNumberFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past AssetsUnlockAttested events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeAssetsUnlockAttested, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) AssetsUnlockConfirmedEvent(
+	opts *ethereum.SubscribeOpts,
+	unlockSequenceNumberFilter []*big.Int,
+	recipientFilter [][]byte,
+	tokenFilter []common.Address,
+) *MbAssetsUnlockConfirmedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbAssetsUnlockConfirmedSubscription{
+		mb,
+		opts,
+		unlockSequenceNumberFilter,
+		recipientFilter,
+		tokenFilter,
+	}
+}
+
+type MbAssetsUnlockConfirmedSubscription struct {
+	contract                   *MezoBridge
+	opts                       *ethereum.SubscribeOpts
+	unlockSequenceNumberFilter []*big.Int
+	recipientFilter            [][]byte
+	tokenFilter                []common.Address
+}
+
+type mezoBridgeAssetsUnlockConfirmedFunc func(
+	UnlockSequenceNumber *big.Int,
+	Recipient common.Hash,
+	Token common.Address,
+	Amount *big.Int,
+	Chain uint8,
+	blockNumber uint64,
+)
+
+func (aucs *MbAssetsUnlockConfirmedSubscription) OnEvent(
+	handler mezoBridgeAssetsUnlockConfirmedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeAssetsUnlockConfirmed)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.UnlockSequenceNumber,
+					event.Recipient,
+					event.Token,
+					event.Amount,
+					event.Chain,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := aucs.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (aucs *MbAssetsUnlockConfirmedSubscription) Pipe(
+	sink chan *abi.MezoBridgeAssetsUnlockConfirmed,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(aucs.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := aucs.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - aucs.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past AssetsUnlockConfirmed events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := aucs.contract.PastAssetsUnlockConfirmedEvents(
+					fromBlock,
+					nil,
+					aucs.unlockSequenceNumberFilter,
+					aucs.recipientFilter,
+					aucs.tokenFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past AssetsUnlockConfirmed events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := aucs.contract.watchAssetsUnlockConfirmed(
+		sink,
+		aucs.unlockSequenceNumberFilter,
+		aucs.recipientFilter,
+		aucs.tokenFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchAssetsUnlockConfirmed(
+	sink chan *abi.MezoBridgeAssetsUnlockConfirmed,
+	unlockSequenceNumberFilter []*big.Int,
+	recipientFilter [][]byte,
+	tokenFilter []common.Address,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchAssetsUnlockConfirmed(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			unlockSequenceNumberFilter,
+			recipientFilter,
+			tokenFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event AssetsUnlockConfirmed had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event AssetsUnlockConfirmed failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastAssetsUnlockConfirmedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	unlockSequenceNumberFilter []*big.Int,
+	recipientFilter [][]byte,
+	tokenFilter []common.Address,
+) ([]*abi.MezoBridgeAssetsUnlockConfirmed, error) {
+	iterator, err := mb.contract.FilterAssetsUnlockConfirmed(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		unlockSequenceNumberFilter,
+		recipientFilter,
+		tokenFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past AssetsUnlockConfirmed events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeAssetsUnlockConfirmed, 0)
 
 	for iterator.Next() {
 		event := iterator.Event
@@ -3093,6 +5863,758 @@ func (mb *MezoBridge) PastBTCDepositInitializedEvents(
 	return events, nil
 }
 
+func (mb *MezoBridge) BridgeValidatorAddedEvent(
+	opts *ethereum.SubscribeOpts,
+	validatorFilter []common.Address,
+	validatorIDFilter []uint8,
+) *MbBridgeValidatorAddedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbBridgeValidatorAddedSubscription{
+		mb,
+		opts,
+		validatorFilter,
+		validatorIDFilter,
+	}
+}
+
+type MbBridgeValidatorAddedSubscription struct {
+	contract          *MezoBridge
+	opts              *ethereum.SubscribeOpts
+	validatorFilter   []common.Address
+	validatorIDFilter []uint8
+}
+
+type mezoBridgeBridgeValidatorAddedFunc func(
+	Validator common.Address,
+	ValidatorID uint8,
+	blockNumber uint64,
+)
+
+func (bvas *MbBridgeValidatorAddedSubscription) OnEvent(
+	handler mezoBridgeBridgeValidatorAddedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeBridgeValidatorAdded)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.Validator,
+					event.ValidatorID,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := bvas.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (bvas *MbBridgeValidatorAddedSubscription) Pipe(
+	sink chan *abi.MezoBridgeBridgeValidatorAdded,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(bvas.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := bvas.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - bvas.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past BridgeValidatorAdded events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := bvas.contract.PastBridgeValidatorAddedEvents(
+					fromBlock,
+					nil,
+					bvas.validatorFilter,
+					bvas.validatorIDFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past BridgeValidatorAdded events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := bvas.contract.watchBridgeValidatorAdded(
+		sink,
+		bvas.validatorFilter,
+		bvas.validatorIDFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchBridgeValidatorAdded(
+	sink chan *abi.MezoBridgeBridgeValidatorAdded,
+	validatorFilter []common.Address,
+	validatorIDFilter []uint8,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchBridgeValidatorAdded(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			validatorFilter,
+			validatorIDFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event BridgeValidatorAdded had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event BridgeValidatorAdded failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastBridgeValidatorAddedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	validatorFilter []common.Address,
+	validatorIDFilter []uint8,
+) ([]*abi.MezoBridgeBridgeValidatorAdded, error) {
+	iterator, err := mb.contract.FilterBridgeValidatorAdded(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		validatorFilter,
+		validatorIDFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past BridgeValidatorAdded events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeBridgeValidatorAdded, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) BridgeValidatorRemovalModeDisabledEvent(
+	opts *ethereum.SubscribeOpts,
+) *MbBridgeValidatorRemovalModeDisabledSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbBridgeValidatorRemovalModeDisabledSubscription{
+		mb,
+		opts,
+	}
+}
+
+type MbBridgeValidatorRemovalModeDisabledSubscription struct {
+	contract *MezoBridge
+	opts     *ethereum.SubscribeOpts
+}
+
+type mezoBridgeBridgeValidatorRemovalModeDisabledFunc func(
+	blockNumber uint64,
+)
+
+func (bvrmds *MbBridgeValidatorRemovalModeDisabledSubscription) OnEvent(
+	handler mezoBridgeBridgeValidatorRemovalModeDisabledFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeBridgeValidatorRemovalModeDisabled)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := bvrmds.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (bvrmds *MbBridgeValidatorRemovalModeDisabledSubscription) Pipe(
+	sink chan *abi.MezoBridgeBridgeValidatorRemovalModeDisabled,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(bvrmds.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := bvrmds.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - bvrmds.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past BridgeValidatorRemovalModeDisabled events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := bvrmds.contract.PastBridgeValidatorRemovalModeDisabledEvents(
+					fromBlock,
+					nil,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past BridgeValidatorRemovalModeDisabled events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := bvrmds.contract.watchBridgeValidatorRemovalModeDisabled(
+		sink,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchBridgeValidatorRemovalModeDisabled(
+	sink chan *abi.MezoBridgeBridgeValidatorRemovalModeDisabled,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchBridgeValidatorRemovalModeDisabled(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event BridgeValidatorRemovalModeDisabled had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event BridgeValidatorRemovalModeDisabled failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastBridgeValidatorRemovalModeDisabledEvents(
+	startBlock uint64,
+	endBlock *uint64,
+) ([]*abi.MezoBridgeBridgeValidatorRemovalModeDisabled, error) {
+	iterator, err := mb.contract.FilterBridgeValidatorRemovalModeDisabled(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past BridgeValidatorRemovalModeDisabled events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeBridgeValidatorRemovalModeDisabled, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) BridgeValidatorRemovalModeEnabledEvent(
+	opts *ethereum.SubscribeOpts,
+) *MbBridgeValidatorRemovalModeEnabledSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbBridgeValidatorRemovalModeEnabledSubscription{
+		mb,
+		opts,
+	}
+}
+
+type MbBridgeValidatorRemovalModeEnabledSubscription struct {
+	contract *MezoBridge
+	opts     *ethereum.SubscribeOpts
+}
+
+type mezoBridgeBridgeValidatorRemovalModeEnabledFunc func(
+	blockNumber uint64,
+)
+
+func (bvrmes *MbBridgeValidatorRemovalModeEnabledSubscription) OnEvent(
+	handler mezoBridgeBridgeValidatorRemovalModeEnabledFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeBridgeValidatorRemovalModeEnabled)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := bvrmes.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (bvrmes *MbBridgeValidatorRemovalModeEnabledSubscription) Pipe(
+	sink chan *abi.MezoBridgeBridgeValidatorRemovalModeEnabled,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(bvrmes.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := bvrmes.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - bvrmes.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past BridgeValidatorRemovalModeEnabled events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := bvrmes.contract.PastBridgeValidatorRemovalModeEnabledEvents(
+					fromBlock,
+					nil,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past BridgeValidatorRemovalModeEnabled events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := bvrmes.contract.watchBridgeValidatorRemovalModeEnabled(
+		sink,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchBridgeValidatorRemovalModeEnabled(
+	sink chan *abi.MezoBridgeBridgeValidatorRemovalModeEnabled,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchBridgeValidatorRemovalModeEnabled(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event BridgeValidatorRemovalModeEnabled had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event BridgeValidatorRemovalModeEnabled failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastBridgeValidatorRemovalModeEnabledEvents(
+	startBlock uint64,
+	endBlock *uint64,
+) ([]*abi.MezoBridgeBridgeValidatorRemovalModeEnabled, error) {
+	iterator, err := mb.contract.FilterBridgeValidatorRemovalModeEnabled(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past BridgeValidatorRemovalModeEnabled events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeBridgeValidatorRemovalModeEnabled, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) BridgeValidatorRemovedEvent(
+	opts *ethereum.SubscribeOpts,
+	validatorFilter []common.Address,
+	validatorIDFilter []uint8,
+) *MbBridgeValidatorRemovedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbBridgeValidatorRemovedSubscription{
+		mb,
+		opts,
+		validatorFilter,
+		validatorIDFilter,
+	}
+}
+
+type MbBridgeValidatorRemovedSubscription struct {
+	contract          *MezoBridge
+	opts              *ethereum.SubscribeOpts
+	validatorFilter   []common.Address
+	validatorIDFilter []uint8
+}
+
+type mezoBridgeBridgeValidatorRemovedFunc func(
+	Validator common.Address,
+	ValidatorID uint8,
+	blockNumber uint64,
+)
+
+func (bvrs *MbBridgeValidatorRemovedSubscription) OnEvent(
+	handler mezoBridgeBridgeValidatorRemovedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeBridgeValidatorRemoved)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.Validator,
+					event.ValidatorID,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := bvrs.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (bvrs *MbBridgeValidatorRemovedSubscription) Pipe(
+	sink chan *abi.MezoBridgeBridgeValidatorRemoved,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(bvrs.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := bvrs.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - bvrs.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past BridgeValidatorRemoved events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := bvrs.contract.PastBridgeValidatorRemovedEvents(
+					fromBlock,
+					nil,
+					bvrs.validatorFilter,
+					bvrs.validatorIDFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past BridgeValidatorRemoved events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := bvrs.contract.watchBridgeValidatorRemoved(
+		sink,
+		bvrs.validatorFilter,
+		bvrs.validatorIDFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchBridgeValidatorRemoved(
+	sink chan *abi.MezoBridgeBridgeValidatorRemoved,
+	validatorFilter []common.Address,
+	validatorIDFilter []uint8,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchBridgeValidatorRemoved(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			validatorFilter,
+			validatorIDFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event BridgeValidatorRemoved had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event BridgeValidatorRemoved failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastBridgeValidatorRemovedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	validatorFilter []common.Address,
+	validatorIDFilter []uint8,
+) ([]*abi.MezoBridgeBridgeValidatorRemoved, error) {
+	iterator, err := mb.contract.FilterBridgeValidatorRemoved(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		validatorFilter,
+		validatorIDFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past BridgeValidatorRemoved events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeBridgeValidatorRemoved, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
 func (mb *MezoBridge) ERC20TokenDisabledEvent(
 	opts *ethereum.SubscribeOpts,
 	ERC20TokenFilter []common.Address,
@@ -3462,6 +6984,205 @@ func (mb *MezoBridge) PastERC20TokenEnabledEvents(
 	}
 
 	events := make([]*abi.MezoBridgeERC20TokenEnabled, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) FeeCollectorUpdatedEvent(
+	opts *ethereum.SubscribeOpts,
+	oldCollectorFilter []common.Address,
+	newCollectorFilter []common.Address,
+) *MbFeeCollectorUpdatedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbFeeCollectorUpdatedSubscription{
+		mb,
+		opts,
+		oldCollectorFilter,
+		newCollectorFilter,
+	}
+}
+
+type MbFeeCollectorUpdatedSubscription struct {
+	contract           *MezoBridge
+	opts               *ethereum.SubscribeOpts
+	oldCollectorFilter []common.Address
+	newCollectorFilter []common.Address
+}
+
+type mezoBridgeFeeCollectorUpdatedFunc func(
+	OldCollector common.Address,
+	NewCollector common.Address,
+	blockNumber uint64,
+)
+
+func (fcus *MbFeeCollectorUpdatedSubscription) OnEvent(
+	handler mezoBridgeFeeCollectorUpdatedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeFeeCollectorUpdated)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.OldCollector,
+					event.NewCollector,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := fcus.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (fcus *MbFeeCollectorUpdatedSubscription) Pipe(
+	sink chan *abi.MezoBridgeFeeCollectorUpdated,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(fcus.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := fcus.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - fcus.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past FeeCollectorUpdated events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := fcus.contract.PastFeeCollectorUpdatedEvents(
+					fromBlock,
+					nil,
+					fcus.oldCollectorFilter,
+					fcus.newCollectorFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past FeeCollectorUpdated events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := fcus.contract.watchFeeCollectorUpdated(
+		sink,
+		fcus.oldCollectorFilter,
+		fcus.newCollectorFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchFeeCollectorUpdated(
+	sink chan *abi.MezoBridgeFeeCollectorUpdated,
+	oldCollectorFilter []common.Address,
+	newCollectorFilter []common.Address,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchFeeCollectorUpdated(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			oldCollectorFilter,
+			newCollectorFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event FeeCollectorUpdated had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event FeeCollectorUpdated failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastFeeCollectorUpdatedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	oldCollectorFilter []common.Address,
+	newCollectorFilter []common.Address,
+) ([]*abi.MezoBridgeFeeCollectorUpdated, error) {
+	iterator, err := mb.contract.FilterFeeCollectorUpdated(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		oldCollectorFilter,
+		newCollectorFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past FeeCollectorUpdated events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeFeeCollectorUpdated, 0)
 
 	for iterator.Next() {
 		event := iterator.Event
@@ -4408,6 +8129,1142 @@ func (mb *MezoBridge) PastOwnershipTransferredEvents(
 	}
 
 	events := make([]*abi.MezoBridgeOwnershipTransferred, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) RefundAuthorizationAddedEvent(
+	opts *ethereum.SubscribeOpts,
+	receiverFilter []common.Address,
+) *MbRefundAuthorizationAddedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbRefundAuthorizationAddedSubscription{
+		mb,
+		opts,
+		receiverFilter,
+	}
+}
+
+type MbRefundAuthorizationAddedSubscription struct {
+	contract       *MezoBridge
+	opts           *ethereum.SubscribeOpts
+	receiverFilter []common.Address
+}
+
+type mezoBridgeRefundAuthorizationAddedFunc func(
+	Receiver common.Address,
+	blockNumber uint64,
+)
+
+func (raas *MbRefundAuthorizationAddedSubscription) OnEvent(
+	handler mezoBridgeRefundAuthorizationAddedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeRefundAuthorizationAdded)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.Receiver,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := raas.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (raas *MbRefundAuthorizationAddedSubscription) Pipe(
+	sink chan *abi.MezoBridgeRefundAuthorizationAdded,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(raas.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := raas.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - raas.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past RefundAuthorizationAdded events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := raas.contract.PastRefundAuthorizationAddedEvents(
+					fromBlock,
+					nil,
+					raas.receiverFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past RefundAuthorizationAdded events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := raas.contract.watchRefundAuthorizationAdded(
+		sink,
+		raas.receiverFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchRefundAuthorizationAdded(
+	sink chan *abi.MezoBridgeRefundAuthorizationAdded,
+	receiverFilter []common.Address,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchRefundAuthorizationAdded(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			receiverFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event RefundAuthorizationAdded had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event RefundAuthorizationAdded failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastRefundAuthorizationAddedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	receiverFilter []common.Address,
+) ([]*abi.MezoBridgeRefundAuthorizationAdded, error) {
+	iterator, err := mb.contract.FilterRefundAuthorizationAdded(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		receiverFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past RefundAuthorizationAdded events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeRefundAuthorizationAdded, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) RefundAuthorizationRemovedEvent(
+	opts *ethereum.SubscribeOpts,
+	receiverFilter []common.Address,
+) *MbRefundAuthorizationRemovedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbRefundAuthorizationRemovedSubscription{
+		mb,
+		opts,
+		receiverFilter,
+	}
+}
+
+type MbRefundAuthorizationRemovedSubscription struct {
+	contract       *MezoBridge
+	opts           *ethereum.SubscribeOpts
+	receiverFilter []common.Address
+}
+
+type mezoBridgeRefundAuthorizationRemovedFunc func(
+	Receiver common.Address,
+	blockNumber uint64,
+)
+
+func (rars *MbRefundAuthorizationRemovedSubscription) OnEvent(
+	handler mezoBridgeRefundAuthorizationRemovedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeRefundAuthorizationRemoved)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.Receiver,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := rars.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (rars *MbRefundAuthorizationRemovedSubscription) Pipe(
+	sink chan *abi.MezoBridgeRefundAuthorizationRemoved,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(rars.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := rars.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - rars.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past RefundAuthorizationRemoved events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := rars.contract.PastRefundAuthorizationRemovedEvents(
+					fromBlock,
+					nil,
+					rars.receiverFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past RefundAuthorizationRemoved events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := rars.contract.watchRefundAuthorizationRemoved(
+		sink,
+		rars.receiverFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchRefundAuthorizationRemoved(
+	sink chan *abi.MezoBridgeRefundAuthorizationRemoved,
+	receiverFilter []common.Address,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchRefundAuthorizationRemoved(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			receiverFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event RefundAuthorizationRemoved had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event RefundAuthorizationRemoved failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastRefundAuthorizationRemovedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	receiverFilter []common.Address,
+) ([]*abi.MezoBridgeRefundAuthorizationRemoved, error) {
+	iterator, err := mb.contract.FilterRefundAuthorizationRemoved(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		receiverFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past RefundAuthorizationRemoved events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeRefundAuthorizationRemoved, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) ReimbursementPoolUpdatedEvent(
+	opts *ethereum.SubscribeOpts,
+	oldReimbursementPoolFilter []common.Address,
+	newReimbursementPoolFilter []common.Address,
+) *MbReimbursementPoolUpdatedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbReimbursementPoolUpdatedSubscription{
+		mb,
+		opts,
+		oldReimbursementPoolFilter,
+		newReimbursementPoolFilter,
+	}
+}
+
+type MbReimbursementPoolUpdatedSubscription struct {
+	contract                   *MezoBridge
+	opts                       *ethereum.SubscribeOpts
+	oldReimbursementPoolFilter []common.Address
+	newReimbursementPoolFilter []common.Address
+}
+
+type mezoBridgeReimbursementPoolUpdatedFunc func(
+	OldReimbursementPool common.Address,
+	NewReimbursementPool common.Address,
+	blockNumber uint64,
+)
+
+func (rpus *MbReimbursementPoolUpdatedSubscription) OnEvent(
+	handler mezoBridgeReimbursementPoolUpdatedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeReimbursementPoolUpdated)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.OldReimbursementPool,
+					event.NewReimbursementPool,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := rpus.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (rpus *MbReimbursementPoolUpdatedSubscription) Pipe(
+	sink chan *abi.MezoBridgeReimbursementPoolUpdated,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(rpus.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := rpus.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - rpus.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past ReimbursementPoolUpdated events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := rpus.contract.PastReimbursementPoolUpdatedEvents(
+					fromBlock,
+					nil,
+					rpus.oldReimbursementPoolFilter,
+					rpus.newReimbursementPoolFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past ReimbursementPoolUpdated events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := rpus.contract.watchReimbursementPoolUpdated(
+		sink,
+		rpus.oldReimbursementPoolFilter,
+		rpus.newReimbursementPoolFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchReimbursementPoolUpdated(
+	sink chan *abi.MezoBridgeReimbursementPoolUpdated,
+	oldReimbursementPoolFilter []common.Address,
+	newReimbursementPoolFilter []common.Address,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchReimbursementPoolUpdated(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			oldReimbursementPoolFilter,
+			newReimbursementPoolFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event ReimbursementPoolUpdated had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event ReimbursementPoolUpdated failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastReimbursementPoolUpdatedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	oldReimbursementPoolFilter []common.Address,
+	newReimbursementPoolFilter []common.Address,
+) ([]*abi.MezoBridgeReimbursementPoolUpdated, error) {
+	iterator, err := mb.contract.FilterReimbursementPoolUpdated(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		oldReimbursementPoolFilter,
+		newReimbursementPoolFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past ReimbursementPoolUpdated events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeReimbursementPoolUpdated, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) TBTCRedeemerUpdatedEvent(
+	opts *ethereum.SubscribeOpts,
+) *MbTBTCRedeemerUpdatedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbTBTCRedeemerUpdatedSubscription{
+		mb,
+		opts,
+	}
+}
+
+type MbTBTCRedeemerUpdatedSubscription struct {
+	contract *MezoBridge
+	opts     *ethereum.SubscribeOpts
+}
+
+type mezoBridgeTBTCRedeemerUpdatedFunc func(
+	TbtcRedeemer common.Address,
+	blockNumber uint64,
+)
+
+func (tbtcrus *MbTBTCRedeemerUpdatedSubscription) OnEvent(
+	handler mezoBridgeTBTCRedeemerUpdatedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeTBTCRedeemerUpdated)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.TbtcRedeemer,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := tbtcrus.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (tbtcrus *MbTBTCRedeemerUpdatedSubscription) Pipe(
+	sink chan *abi.MezoBridgeTBTCRedeemerUpdated,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(tbtcrus.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := tbtcrus.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - tbtcrus.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past TBTCRedeemerUpdated events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := tbtcrus.contract.PastTBTCRedeemerUpdatedEvents(
+					fromBlock,
+					nil,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past TBTCRedeemerUpdated events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := tbtcrus.contract.watchTBTCRedeemerUpdated(
+		sink,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchTBTCRedeemerUpdated(
+	sink chan *abi.MezoBridgeTBTCRedeemerUpdated,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchTBTCRedeemerUpdated(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event TBTCRedeemerUpdated had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event TBTCRedeemerUpdated failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastTBTCRedeemerUpdatedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+) ([]*abi.MezoBridgeTBTCRedeemerUpdated, error) {
+	iterator, err := mb.contract.FilterTBTCRedeemerUpdated(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past TBTCRedeemerUpdated events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeTBTCRedeemerUpdated, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) WithdrawalFeeCollectedEvent(
+	opts *ethereum.SubscribeOpts,
+	tokenFilter []common.Address,
+	feeCollectorFilter []common.Address,
+) *MbWithdrawalFeeCollectedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbWithdrawalFeeCollectedSubscription{
+		mb,
+		opts,
+		tokenFilter,
+		feeCollectorFilter,
+	}
+}
+
+type MbWithdrawalFeeCollectedSubscription struct {
+	contract           *MezoBridge
+	opts               *ethereum.SubscribeOpts
+	tokenFilter        []common.Address
+	feeCollectorFilter []common.Address
+}
+
+type mezoBridgeWithdrawalFeeCollectedFunc func(
+	Token common.Address,
+	FeeCollector common.Address,
+	FeeAmount *big.Int,
+	blockNumber uint64,
+)
+
+func (wfcs *MbWithdrawalFeeCollectedSubscription) OnEvent(
+	handler mezoBridgeWithdrawalFeeCollectedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeWithdrawalFeeCollected)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.Token,
+					event.FeeCollector,
+					event.FeeAmount,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := wfcs.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (wfcs *MbWithdrawalFeeCollectedSubscription) Pipe(
+	sink chan *abi.MezoBridgeWithdrawalFeeCollected,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(wfcs.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := wfcs.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - wfcs.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past WithdrawalFeeCollected events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := wfcs.contract.PastWithdrawalFeeCollectedEvents(
+					fromBlock,
+					nil,
+					wfcs.tokenFilter,
+					wfcs.feeCollectorFilter,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past WithdrawalFeeCollected events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := wfcs.contract.watchWithdrawalFeeCollected(
+		sink,
+		wfcs.tokenFilter,
+		wfcs.feeCollectorFilter,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchWithdrawalFeeCollected(
+	sink chan *abi.MezoBridgeWithdrawalFeeCollected,
+	tokenFilter []common.Address,
+	feeCollectorFilter []common.Address,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchWithdrawalFeeCollected(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+			tokenFilter,
+			feeCollectorFilter,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event WithdrawalFeeCollected had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event WithdrawalFeeCollected failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastWithdrawalFeeCollectedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+	tokenFilter []common.Address,
+	feeCollectorFilter []common.Address,
+) ([]*abi.MezoBridgeWithdrawalFeeCollected, error) {
+	iterator, err := mb.contract.FilterWithdrawalFeeCollected(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+		tokenFilter,
+		feeCollectorFilter,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past WithdrawalFeeCollected events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeWithdrawalFeeCollected, 0)
+
+	for iterator.Next() {
+		event := iterator.Event
+		events = append(events, event)
+	}
+
+	return events, nil
+}
+
+func (mb *MezoBridge) WithdrawalFeeUpdatedEvent(
+	opts *ethereum.SubscribeOpts,
+) *MbWithdrawalFeeUpdatedSubscription {
+	if opts == nil {
+		opts = new(ethereum.SubscribeOpts)
+	}
+	if opts.Tick == 0 {
+		opts.Tick = chainutil.DefaultSubscribeOptsTick
+	}
+	if opts.PastBlocks == 0 {
+		opts.PastBlocks = chainutil.DefaultSubscribeOptsPastBlocks
+	}
+
+	return &MbWithdrawalFeeUpdatedSubscription{
+		mb,
+		opts,
+	}
+}
+
+type MbWithdrawalFeeUpdatedSubscription struct {
+	contract *MezoBridge
+	opts     *ethereum.SubscribeOpts
+}
+
+type mezoBridgeWithdrawalFeeUpdatedFunc func(
+	OldFee *big.Int,
+	NewFee *big.Int,
+	blockNumber uint64,
+)
+
+func (wfus *MbWithdrawalFeeUpdatedSubscription) OnEvent(
+	handler mezoBridgeWithdrawalFeeUpdatedFunc,
+) subscription.EventSubscription {
+	eventChan := make(chan *abi.MezoBridgeWithdrawalFeeUpdated)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-eventChan:
+				handler(
+					event.OldFee,
+					event.NewFee,
+					event.Raw.BlockNumber,
+				)
+			}
+		}
+	}()
+
+	sub := wfus.Pipe(eventChan)
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (wfus *MbWithdrawalFeeUpdatedSubscription) Pipe(
+	sink chan *abi.MezoBridgeWithdrawalFeeUpdated,
+) subscription.EventSubscription {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(wfus.opts.Tick)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				lastBlock, err := wfus.contract.blockCounter.CurrentBlock()
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+				}
+				fromBlock := lastBlock - wfus.opts.PastBlocks
+
+				mbLogger.Infof(
+					"subscription monitoring fetching past WithdrawalFeeUpdated events "+
+						"starting from block [%v]",
+					fromBlock,
+				)
+				events, err := wfus.contract.PastWithdrawalFeeUpdatedEvents(
+					fromBlock,
+					nil,
+				)
+				if err != nil {
+					mbLogger.Errorf(
+						"subscription failed to pull events: [%v]",
+						err,
+					)
+					continue
+				}
+				mbLogger.Infof(
+					"subscription monitoring fetched [%v] past WithdrawalFeeUpdated events",
+					len(events),
+				)
+
+				for _, event := range events {
+					sink <- event
+				}
+			}
+		}
+	}()
+
+	sub := wfus.contract.watchWithdrawalFeeUpdated(
+		sink,
+	)
+
+	return subscription.NewEventSubscription(func() {
+		sub.Unsubscribe()
+		cancelCtx()
+	})
+}
+
+func (mb *MezoBridge) watchWithdrawalFeeUpdated(
+	sink chan *abi.MezoBridgeWithdrawalFeeUpdated,
+) event.Subscription {
+	subscribeFn := func(ctx context.Context) (event.Subscription, error) {
+		return mb.contract.WatchWithdrawalFeeUpdated(
+			&bind.WatchOpts{Context: ctx},
+			sink,
+		)
+	}
+
+	thresholdViolatedFn := func(elapsed time.Duration) {
+		mbLogger.Warnf(
+			"subscription to event WithdrawalFeeUpdated had to be "+
+				"retried [%s] since the last attempt; please inspect "+
+				"host chain connectivity",
+			elapsed,
+		)
+	}
+
+	subscriptionFailedFn := func(err error) {
+		mbLogger.Errorf(
+			"subscription to event WithdrawalFeeUpdated failed "+
+				"with error: [%v]; resubscription attempt will be "+
+				"performed",
+			err,
+		)
+	}
+
+	return chainutil.WithResubscription(
+		chainutil.SubscriptionBackoffMax,
+		subscribeFn,
+		chainutil.SubscriptionAlertThreshold,
+		thresholdViolatedFn,
+		subscriptionFailedFn,
+	)
+}
+
+func (mb *MezoBridge) PastWithdrawalFeeUpdatedEvents(
+	startBlock uint64,
+	endBlock *uint64,
+) ([]*abi.MezoBridgeWithdrawalFeeUpdated, error) {
+	iterator, err := mb.contract.FilterWithdrawalFeeUpdated(
+		&bind.FilterOpts{
+			Start: startBlock,
+			End:   endBlock,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving past WithdrawalFeeUpdated events: [%v]",
+			err,
+		)
+	}
+
+	events := make([]*abi.MezoBridgeWithdrawalFeeUpdated, 0)
 
 	for iterator.Next() {
 		event := iterator.Event

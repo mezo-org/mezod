@@ -265,6 +265,89 @@ func (s *BridgeOutTestSuite) TestBridgeOutAmountValidation() {
 			basicPass: true,
 			output:    []interface{}{true},
 		},
+		{
+			name: "BTC bridge out - Bitcoin-specific minimum not set, uses token minimum",
+			run: func() []interface{} {
+				s.authzKeeper.SetAuthorization(
+					s.account1.SdkAddr,
+					sdk.AccAddress(bridgeAddress.Bytes()),
+					assetsbridge.SendMsgURL,
+					&banktypes.SendAuthorization{
+						SpendLimit: sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(1000))),
+					},
+					nil,
+				)
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
+				_ = s.extBridgeKeeper.SetMinBridgeOutAmount(s.ctx, testBTCToken.Bytes(), math.NewInt(300))
+				// Bitcoin-specific minimum not set, should use token minimum
+				return []interface{}{testBTCToken, big.NewInt(299), uint8(1), btcRecipient}
+			},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "amount below minimum bridgeable amount",
+		},
+		{
+			name: "BTC bridge out - Bitcoin-specific minimum set, amount below minimum",
+			run: func() []interface{} {
+				s.authzKeeper.SetAuthorization(
+					s.account1.SdkAddr,
+					sdk.AccAddress(bridgeAddress.Bytes()),
+					assetsbridge.SendMsgURL,
+					&banktypes.SendAuthorization{
+						SpendLimit: sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(1000))),
+					},
+					nil,
+				)
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
+				return []interface{}{testBTCToken, big.NewInt(499), uint8(1), btcRecipient}
+			},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "amount below minimum bridgeable amount for Bitcoin chain",
+		},
+		{
+			name: "BTC bridge out - Bitcoin-specific minimum set, amount meets minimum",
+			run: func() []interface{} {
+				s.authzKeeper.SetAuthorization(
+					s.account1.SdkAddr,
+					sdk.AccAddress(bridgeAddress.Bytes()),
+					assetsbridge.SendMsgURL,
+					&banktypes.SendAuthorization{
+						SpendLimit: sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(1000))),
+					},
+					nil,
+				)
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
+				return []interface{}{testBTCToken, big.NewInt(500), uint8(1), btcRecipient}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+		},
+		{
+			name: "BTC bridge out - Bitcoin-specific minimum set, amount above minimum",
+			run: func() []interface{} {
+				s.authzKeeper.SetAuthorization(
+					s.account1.SdkAddr,
+					sdk.AccAddress(bridgeAddress.Bytes()),
+					assetsbridge.SendMsgURL,
+					&banktypes.SendAuthorization{
+						SpendLimit: sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(1000))),
+					},
+					nil,
+				)
+				s.extBridgeKeeper.SetAssetsUnlockedSuccess(true)
+				s.extBridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(s.ctx, math.NewInt(500))
+				return []interface{}{testBTCToken, big.NewInt(750), uint8(1), btcRecipient}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+		},
 	}
 
 	s.RunMethodTestCasesWithKeepers(testcases, "bridgeOut")
