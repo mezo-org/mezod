@@ -1,15 +1,18 @@
 {
   "ethereum": {
-    "provider_url": "wss://eth-sepolia.g.alchemy.com/v2/<YOUR-KEY>",
-    "network": "sepolia",
+    "provider_url": "wss://eth-mainnet.g.alchemy.com/v2/<YOUR-KEY>",
+    "network": "mainnet",
     "account": {
-      "key_file": "/path/to/your/key/UTC--2025-08-27T11-04-59.227071000Z--88cb9ffaecaea3a566c00d633d2dcfcc6b9dd3a7"
+      "key_file": "/Users/tslabon/dummy_key/UTC--2025-08-27T11-04-59.227071000Z--88cb9ffaecaea3a566c00d633d2dcfcc6b9dd3a7"
     }
   },
   "bitcoin": {
-    "network": "testnet",
+    "network": "mainnet",
     "electrum": {
       "url": "wss://electrumx-server.tbtc.network:8443"
     }
+  },
+  "mezo": {
+    "assets_unlock_endpoint": "127.0.0.1:9090"
   }
 }

@@ -10,6 +10,8 @@ import (
 	"sort"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -559,7 +561,10 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 
 				// Preparing Bitcoin withdrawal data is time-consuming. Call it
 				// only once per event processing.
-				entry, walletPublicKeyHash, mainUTXO, err := bw.prepareBtcWithdrawal(event)
+				entry, walletPublicKeyHash, mainUTXO, err := bw.prepareBtcWithdrawal(
+					ctx,
+					event,
+				)
 				if err != nil {
 					withdrawalLogger.Error(
 						"failed to prepare withdrawal; re-queuing",
@@ -792,6 +797,7 @@ func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
 // needed to execute withdrawBTC: AssetsUnlock entry, wallet public key hash and
 // wallet main UTXO.
 func (bw *BridgeWorker) prepareBtcWithdrawal(
+	ctx context.Context,
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) (
 	*portal.MezoBridgeAssetsUnlocked,
@@ -799,12 +805,33 @@ func (bw *BridgeWorker) prepareBtcWithdrawal(
 	*portal.BitcoinTxUTXO, // main UTXO
 	error,
 ) {
-	// TODO: We must get the recipient from the `mezod` endpoint via gRPC call.
-	//       We cannot read recipient field from the `AssetsUnlockConfirmed`
-	//       as it does not contain recipient in plain text. See type difference
-	//       of recipient between `AssetsUnlockConfirmed` and `AssetsUnlocked`
-	//       events.
-	recipient := []byte{}
+	unlockSequence := event.UnlockSequenceNumber
+
+	assetsUnlockEvents, err := bw.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
+		ctx,
+		sdkmath.NewIntFromBigInt(new(big.Int).Set(unlockSequence)),
+		sdkmath.NewIntFromBigInt(new(big.Int).Add(
+			new(big.Int).Set(unlockSequence),
+			big.NewInt(1)),
+		),
+	)
+	if err != nil {
+		return nil, [20]byte{}, nil, fmt.Errorf(
+			"failed to get AssetsUnlock event from Mezo: [%w]",
+			err,
+		)
+	}
+
+	if len(assetsUnlockEvents) != 1 {
+		return nil, [20]byte{}, nil, fmt.Errorf(
+			"incorrect number of AssetsUnlock events returned from Mezo",
+		)
+	}
+
+	// We must get the recipient field from `mezod`. We cannot read it from
+	// the passed `AssetsUnlockConfirmed` event as it only contains a hash of
+	// recipient.
+	recipient := assetsUnlockEvents[0].Recipient
 
 	assetsUnlocked := portal.MezoBridgeAssetsUnlocked{
 		UnlockSequenceNumber: event.UnlockSequenceNumber,

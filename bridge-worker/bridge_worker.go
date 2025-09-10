@@ -7,6 +7,9 @@ import (
 	"sync"
 
 	"cosmossdk.io/log"
+	sdkmath "cosmossdk.io/math"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	mezodtypes "github.com/mezo-org/mezod/types"
 
 	bwconfig "github.com/mezo-org/mezod/bridge-worker/config"
 
@@ -18,10 +21,24 @@ import (
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
 // mezoBridgeName is the name of the MezoBridge contract.
 const mezoBridgeName = "MezoBridge"
+
+// AssetsUnlockedEndpoint is a client enabling communication with the `Mezo`
+// chain.
+type AssetsUnlockedEndpoint interface {
+	// GetAssetsUnlockedEvents gets the AssetsUnlocked events from the Mezo
+	// chain. The requested range of events is inclusive on the lower side and
+	// exclusive on the upper side.
+	GetAssetsUnlockedEvents(
+		ctx context.Context,
+		sequenceStart sdkmath.Int,
+		sequenceEnd sdkmath.Int,
+	) ([]bridgetypes.AssetsUnlockedEvent, error)
+}
 
 // BridgeWorker is a component responsible for tasks related to bridge-out
 // process.
@@ -55,6 +72,8 @@ type BridgeWorker struct {
 
 	withdrawalFinalityChecksMutex sync.Mutex
 	withdrawalFinalityChecks      map[string]*withdrawalFinalityCheck
+
+	assetsUnlockedEndpoint AssetsUnlockedEndpoint
 }
 
 func RunBridgeWorker(
@@ -120,6 +139,19 @@ func RunBridgeWorker(
 		panic(fmt.Sprintf("failed to initialize tBTC Bridge contract: %v", err))
 	}
 
+	// The messages handled by the bridge-worker contain custom types.
+	// Add codecs so that the messages can be marshaled/unmarshalled.
+	registry := codectypes.NewInterfaceRegistry()
+	mezodtypes.RegisterInterfaces(registry)
+
+	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
+		cfg.Mezo.AssetsUnlockEndpoint,
+		registry,
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
+	}
+
 	bw := &BridgeWorker{
 		logger:                   logger,
 		btcChain:                 btcChain,
@@ -131,6 +163,7 @@ func RunBridgeWorker(
 		liveWalletsReady:         make(chan struct{}),
 		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
 		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
+		assetsUnlockedEndpoint:   assetsUnlockedGrpcEndpoint,
 	}
 
 	go func() {

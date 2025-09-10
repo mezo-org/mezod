@@ -21,6 +21,7 @@ const (
 type Config struct {
 	Ethereum EthereumConfig `json:"ethereum"`
 	Bitcoin  BitcoinConfig  `json:"bitcoin"`
+	Mezo     MezoConfig     `json:"mezo"`
 }
 
 type BitcoinConfig struct {
@@ -39,6 +40,10 @@ type EthereumConfig struct {
 type EthereumAccount struct {
 	KeyFile         string `json:"key_file"`          // path to geth keystore JSON
 	KeyFilePassword string `json:"key_file_password"` // read from env
+}
+
+type MezoConfig struct {
+	AssetsUnlockEndpoint string `json:"assets_unlock_endpoint"` // e.g. "127.0.0.1:9090"
 }
 
 func (c *Config) applyDefaults() {
@@ -95,6 +100,11 @@ func (c *Config) validate() error {
 	}
 	if c.Bitcoin.Electrum.URL == "" {
 		return fmt.Errorf("bitcoin.electrum.url is required")
+	}
+
+	// Mezo
+	if c.Mezo.AssetsUnlockEndpoint == "" {
+		return fmt.Errorf("mezo.assets_unlock_endpoint is required")
 	}
 
 	return nil
