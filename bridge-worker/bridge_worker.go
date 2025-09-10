@@ -167,6 +167,33 @@ func RunBridgeWorker(
 		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
 	}
 
+	go func() {
+		// Test the connection to the assets unlocked endpoint by verifying we
+		// can successfully execute `GetAssetsUnlockedEvents`.
+		ctxWithTimeout, cancel := context.WithTimeout(
+			context.Background(),
+			requestTimeout,
+		)
+		defer cancel()
+
+		_, err := assetsUnlockedGrpcEndpoint.GetAssetsUnlockedEvents(
+			ctxWithTimeout,
+			sdkmath.NewInt(1),
+			sdkmath.NewInt(2),
+		)
+		if err != nil {
+			logger.Error(
+				"assets unlocked endpoint connection test failed; possible "+
+					"problem with configuration or connectivity",
+				"err", err,
+			)
+		} else {
+			logger.Info(
+				"assets unlocked endpoint connection test completed successfully",
+			)
+		}
+	}()
+
 	bw := &BridgeWorker{
 		logger:                   logger,
 		btcChain:                 btcChain,

@@ -13,6 +13,6 @@
     }
   },
   "mezo": {
-    "assets_unlock_endpoint": "127.0.0.1:9090"
+    "assets_unlock_endpoint": "mezo-node-0.test.mezo.org:9090"
   }
 }
