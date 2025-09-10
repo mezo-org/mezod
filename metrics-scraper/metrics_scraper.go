@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"time"
 )
@@ -14,10 +15,13 @@ type Config struct {
 	ChainID         string
 	NodePollRate    time.Duration
 	BridgePollRate  time.Duration
+	MezoRPCURL      string
+	EthereumRPCURL  string
 }
 
 func Start(config Config) error {
-	ctx := context.Background()
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
 
 	nodesConfig, err := loadNodesConfig(config.NodesConfigPath)
 	if err != nil {
@@ -30,7 +34,22 @@ func Start(config Config) error {
 		}(n)
 	}
 
-	go runBridgeMonitoring(ctx, config.ChainID, config.BridgePollRate)
+	go func() {
+		// If this routine exits, cancel the context to
+		// shutdown the entire process.
+		defer cancelCtx()
+
+		err := runBridgeMonitoring(
+			ctx,
+			config.ChainID,
+			config.BridgePollRate,
+			config.MezoRPCURL,
+			config.EthereumRPCURL,
+		)
+		if err != nil {
+			log.Printf("bridge monitoring routine exited with error: [%v]", err)
+		}
+	}()
 	go startPrometheus(config.PrometheusPort)
 
 	<-ctx.Done()

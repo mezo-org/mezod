@@ -226,3 +226,32 @@ func (k Keeper) SetMinBridgeOutAmount(
 	store.Set(types.GetMinBridgeOutAmountKey(mezoToken), bz)
 	return nil
 }
+
+func (k Keeper) GetMinBridgeOutAmountForBitcoinChain(ctx sdk.Context) math.Int {
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(types.MinBridgeOutAmountForBitcoinChainKey)
+	if len(bz) == 0 {
+		return math.ZeroInt()
+	}
+
+	var minAmount math.Int
+	err := minAmount.Unmarshal(bz)
+	if err != nil {
+		panic(err)
+	}
+
+	return minAmount
+}
+
+func (k Keeper) SetMinBridgeOutAmountForBitcoinChain(
+	ctx sdk.Context,
+	minAmount math.Int,
+) {
+	store := ctx.KVStore(k.storeKey)
+	bz, err := minAmount.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	store.Set(types.MinBridgeOutAmountForBitcoinChainKey, bz)
+}
