@@ -316,8 +316,7 @@ localnode-bin-start:
 ###############################################################################
 
 # List of NPM packages for which to generate bindings - expand if needed.
-# TODO for TET-1197: Remove version once we have a stable release.
-npm_packages := @mezo-org/euphrates-contracts@0.8.0-dev.1
+npm_packages := @mezo-org/euphrates-contracts
 
 # Working directory where contracts artifacts should be stored.
 contracts_dir := tmp/contracts
