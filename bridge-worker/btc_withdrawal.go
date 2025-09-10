@@ -805,6 +805,9 @@ func (bw *BridgeWorker) prepareBtcWithdrawal(
 	*portal.BitcoinTxUTXO, // main UTXO
 	error,
 ) {
+	// We must get the recipient field from `mezod`. We cannot read it from
+	// the passed `AssetsUnlockConfirmed` event as it only contains a hash of
+	// recipient.
 	unlockSequence := event.UnlockSequenceNumber
 
 	assetsUnlockEvents, err := bw.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
@@ -828,11 +831,9 @@ func (bw *BridgeWorker) prepareBtcWithdrawal(
 		)
 	}
 
-	// We must get the recipient field from `mezod`. We cannot read it from
-	// the passed `AssetsUnlockConfirmed` event as it only contains a hash of
-	// recipient.
 	recipient := assetsUnlockEvents[0].Recipient
 
+	// Build the AssetsUnlocked entry.
 	assetsUnlocked := portal.MezoBridgeAssetsUnlocked{
 		UnlockSequenceNumber: event.UnlockSequenceNumber,
 		Recipient:            recipient,
@@ -851,6 +852,7 @@ func (bw *BridgeWorker) prepareBtcWithdrawal(
 
 	bw.liveWalletsMutex.Unlock()
 
+	// Select a wallet that can cover the redemption.
 	for _, walletPublicKeyHash := range walletPublicKeyHashes {
 		wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
 		if err != nil {
