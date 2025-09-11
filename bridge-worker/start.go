@@ -19,8 +19,8 @@ func Start(configPath string) {
 	}
 
 	privateKey, err := bwconfig.DecryptKeyFile(
-		cfg.Account.KeyFile,
-		cfg.Account.KeyFilePassword,
+		cfg.Ethereum.Account.KeyFile,
+		cfg.Ethereum.Account.KeyFilePassword,
 	)
 	if err != nil {
 		panic(fmt.Sprintf("keyfile load error: %v", err))
@@ -34,10 +34,7 @@ func Start(configPath string) {
 
 	RunBridgeWorker(
 		logger,
-		cfg.ProviderURL,
-		cfg.EthereumNetwork,
-		cfg.BatchSize,
-		cfg.RequestsPerMinute,
+		*cfg,
 		privateKey,
 	)
 }

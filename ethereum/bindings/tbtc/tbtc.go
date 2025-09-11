@@ -3,6 +3,7 @@ package tbtc
 import (
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	mainnetgen "github.com/mezo-org/mezod/ethereum/bindings/tbtc/mainnet/gen"
+	mainnetabi "github.com/mezo-org/mezod/ethereum/bindings/tbtc/mainnet/gen/abi"
 	mainnetcontract "github.com/mezo-org/mezod/ethereum/bindings/tbtc/mainnet/gen/contract"
 	sepoliagen "github.com/mezo-org/mezod/ethereum/bindings/tbtc/sepolia/gen"
 )
@@ -58,6 +59,9 @@ func BridgeAddress(network ethconfig.Network) string {
 }
 
 // Use mainnet bindings.
-type Bridge = mainnetcontract.Bridge
+type (
+	Bridge                    = mainnetcontract.Bridge
+	BridgeNewWalletRegistered = mainnetabi.BridgeNewWalletRegistered
+)
 
 var NewTbtcBridge = mainnetcontract.NewBridge

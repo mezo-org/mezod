@@ -13,7 +13,8 @@ require (
 	cosmossdk.io/tools/confix v0.1.2
 	cosmossdk.io/x/tx v0.13.5
 	cosmossdk.io/x/upgrade v0.1.4
-	github.com/btcsuite/btcd v0.22.2
+	github.com/btcsuite/btcd v0.24.2
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cometbft/cometbft v0.38.17
 	github.com/cosmos/btcutil v1.0.5
@@ -70,6 +71,11 @@ require (
 )
 
 require (
+	github.com/btcsuite/btcd/v2 v2.0.0-00010101000000-000000000000
+	github.com/checksum0/go-electrum v0.0.0-00010101000000-000000000000
+)
+
+require (
 	cloud.google.com/go v0.115.0 // indirect
 	cloud.google.com/go/auth v0.7.2 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect
@@ -97,7 +103,7 @@ require (
 	github.com/bgentry/speakeasy v0.1.1-0.20220910012023-760eaf8b6816 // indirect
 	github.com/bits-and-blooms/bitset v1.14.2 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
+	github.com/btcsuite/btcd/btcutil v1.1.6 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -271,6 +277,14 @@ replace (
 
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
+
+	// btcd in version v.0.23 extracted `btcd/btcec` to a separate package `btcd/btcec/v2`.
+	// Some of the dependencies still require the old version, which we workaround
+	// here:
+	github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.22.3
+	github.com/btcsuite/btcd/v2 => github.com/btcsuite/btcd v0.23.4
+	github.com/checksum0/go-electrum => github.com/keep-network/go-electrum v0.0.0-20240206170935-6038cb594daa
+
 	// use mezo geth fork
 	github.com/ethereum/go-ethereum => github.com/mezo-org/go-ethereum v1.14.8-mezo2
 	// Security Advisory https://github.com/advisories/GHSA-h395-qcrw-5vmq
@@ -279,5 +293,4 @@ replace (
 	github.com/keep-network/keep-common => github.com/mezo-org/keep-common v1.8.0
 
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-
 )
