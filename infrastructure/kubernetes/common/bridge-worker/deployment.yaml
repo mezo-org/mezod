@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: bridge-worker
-          image: mezo/bridge-worker:latest
+          image: mezo/bridge-worker@sha256:5ecdf177a50adc881554acad8db5da44d73a3cfe20317c357e0f3ba7a3c9e338
           imagePullPolicy: Always
           args:
             - --log.format-json
