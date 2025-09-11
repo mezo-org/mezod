@@ -141,10 +141,7 @@ func (bw *BridgeWorker) fetchNewWalletRegisteredEvents(
 		batchStartBlock := startBlock
 
 		for batchStartBlock <= endBlock {
-			batchEndBlock := batchStartBlock + bw.batchSize
-			if batchEndBlock > endBlock {
-				batchEndBlock = endBlock
-			}
+			batchEndBlock := min(batchStartBlock+bw.batchSize, endBlock)
 
 			bw.logger.Info(
 				"fetching a batch of NewWalletRegistered events from range",
@@ -411,10 +408,7 @@ func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
 		batchStartBlock := startBlock
 
 		for batchStartBlock <= endBlock {
-			batchEndBlock := batchStartBlock + bw.batchSize
-			if batchEndBlock > endBlock {
-				batchEndBlock = endBlock
-			}
+			batchEndBlock := min(batchStartBlock+bw.batchSize, endBlock)
 
 			bw.logger.Info(
 				"fetching a batch of AssetsUnlockConfirmed events from range",
