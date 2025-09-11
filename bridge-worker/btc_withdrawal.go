@@ -179,10 +179,20 @@ func (bw *BridgeWorker) fetchNewWalletRegisteredEvents(
 }
 
 func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
+	// Work on a copy of live wallets to avoid blocking for too long.
+	// Live wallets are represented by `[20]byte` arrays, so `copy` will
+	// deep-copy them.
+	bw.liveWalletsMutex.Lock()
+
+	walletPublicKeyHashes := make([][20]byte, len(bw.liveWallets))
+	copy(walletPublicKeyHashes, bw.liveWallets)
+
+	bw.liveWalletsMutex.Unlock()
+
 	// Keep only wallets which are still live.
 	updatedLiveWallets := [][20]byte{}
 
-	for _, walletPublicKeyHash := range bw.liveWallets {
+	for _, walletPublicKeyHash := range walletPublicKeyHashes {
 		wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
 		if err != nil {
 			return fmt.Errorf("failed to get wallet: [%w]", err)
