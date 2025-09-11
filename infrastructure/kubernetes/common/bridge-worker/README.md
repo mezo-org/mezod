@@ -30,4 +30,4 @@ where:
 - `ETHEREUM_NETWORK` is the network of the Ethereum provider (must be sepolia, mainnet, or developer)
 - `BITCOIN_NETWORK` is the network of the Bitcoin provider (must be mainnet, testnet, or regtest)
 - `BITCOIN_ELECTRUM_URL` is the URL of the Bitcoin Electrum server
-- `MEZO_ASSETS_UNLOCK_ENDPOINT` is the endpoint of the Mezo assets unlock service (must be the gRPC endpoint of a mezod nod)e
+- `MEZO_ASSETS_UNLOCK_ENDPOINT` is the endpoint of the Mezo assets unlock service (must be the gRPC endpoint of a mezod node)
