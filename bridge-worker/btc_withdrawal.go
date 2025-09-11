@@ -763,9 +763,9 @@ func (bw *BridgeWorker) queueWithdrawalFinalityCheck(
 	)
 }
 
-// processWithdrawalFinalityChecks selects Bitcoin withdrawal finality checks
+// processBTCWithdrawalFinalityChecks selects Bitcoin withdrawal finality checks
 // that have reached their scheduled height and executes them.
-func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
+func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) {
 	tickerChan := bw.chain.WatchBlocks(ctx)
 
 	for {
