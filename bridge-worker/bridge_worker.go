@@ -250,7 +250,7 @@ func RunBridgeWorker(
 
 	go func() {
 		defer cancelCtx()
-		bw.processWithdrawalFinalityChecks(ctx)
+		bw.processBTCWithdrawalFinalityChecks(ctx)
 		bw.logger.Warn("Bitcoin withdrawal finality checks loop stopped")
 	}()
 

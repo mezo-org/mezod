@@ -29,6 +29,10 @@ const (
 	// how far back we look when searching for events.
 	assetsUnlockConfirmedLookBackBlocks = 216000 // ~30 days
 
+	// assetsUnlockConfirmedProcessingPeriod is the time period defining how
+	// frequently new AssetsUnlockConfirmed events should be processed.
+	assetsUnlockConfirmedProcessingPeriod = 1 * time.Minute
+
 	// withdrawalProcessBackoff is a backoff time used between retries when
 	// submitting a withdrawBTC transaction.
 	withdrawalProcessBackoff = 1 * time.Minute
@@ -141,10 +145,7 @@ func (bw *BridgeWorker) fetchNewWalletRegisteredEvents(
 		batchStartBlock := startBlock
 
 		for batchStartBlock <= endBlock {
-			batchEndBlock := batchStartBlock + bw.batchSize
-			if batchEndBlock > endBlock {
-				batchEndBlock = endBlock
-			}
+			batchEndBlock := min(batchStartBlock+bw.batchSize, endBlock)
 
 			bw.logger.Info(
 				"fetching a batch of NewWalletRegistered events from range",
@@ -312,12 +313,13 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 
 	bw.logger.Info(
 		"initial search for pending BTC withdrawals done",
-		"confirmed_withdrawal_events", len(recentEvents),
+		"assets_unlock_confirmed_events", len(recentEvents),
 		"pending_btc_withdrawals", pendingWithdrawalCount,
 	)
 
-	// Start a ticker to periodically check the current block number
-	tickerChan := bw.chain.WatchBlocks(ctx)
+	// Start a ticker to process the new events periodically.
+	ticker := time.NewTicker(assetsUnlockConfirmedProcessingPeriod)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -326,7 +328,7 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 				"stopping BTC withdrawals routine due to context cancellation",
 			)
 			return nil
-		case <-tickerChan:
+		case <-ticker.C:
 			// Process incoming AssetsUnlockedConfirmed events
 			err := bw.processNewAssetsUnlockConfirmedEvents(ctx)
 			if err != nil {
@@ -411,10 +413,7 @@ func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
 		batchStartBlock := startBlock
 
 		for batchStartBlock <= endBlock {
-			batchEndBlock := batchStartBlock + bw.batchSize
-			if batchEndBlock > endBlock {
-				batchEndBlock = endBlock
-			}
+			batchEndBlock := min(batchStartBlock+bw.batchSize, endBlock)
 
 			bw.logger.Info(
 				"fetching a batch of AssetsUnlockConfirmed events from range",
@@ -763,9 +762,9 @@ func (bw *BridgeWorker) queueWithdrawalFinalityCheck(
 	)
 }
 
-// processWithdrawalFinalityChecks selects Bitcoin withdrawal finality checks
+// processBTCWithdrawalFinalityChecks selects Bitcoin withdrawal finality checks
 // that have reached their scheduled height and executes them.
-func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
+func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) {
 	tickerChan := bw.chain.WatchBlocks(ctx)
 
 	for {
