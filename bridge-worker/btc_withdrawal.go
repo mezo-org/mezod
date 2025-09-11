@@ -601,7 +601,7 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Contex
 // AssetsUnlockConfirmed events from the queue, prepares data needed to perform
 // a withdrawal and submit the withdrawBTC transaction.
 func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(bw.btcWithdrawalQueueCheckFrequency)
 	defer ticker.Stop()
 
 	for {

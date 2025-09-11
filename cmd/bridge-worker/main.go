@@ -121,18 +121,27 @@ func parseFlags(cmd *cobra.Command) (bridgeworker.ConfigProperties, error) {
 		return bridgeworker.ConfigProperties{}, fmt.Errorf("mezo assets unlock endpoint is not valid: [%w]", err)
 	}
 
+	jobBTCWithdrawalQueueCheckFrequency, err := cmd.Flags().GetDuration(flagJobBTCWithdrawalQueueCheckFrequency)
+	if err != nil {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf("failed to get BTC withdrawal job queue check frequency: [%w]", err)
+	}
+	if jobBTCWithdrawalQueueCheckFrequency == 0 {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf("BTC withdrawal job queue check frequency must be greater than 0")
+	}
+
 	return bridgeworker.ConfigProperties{
-		LogLevel:                       logLevel,
-		LogFormatJSON:                  logFormatJSON,
-		EthereumProviderURL:            ethereumProviderURL,
-		EthereumNetwork:                ethereumNetwork,
-		EthereumBatchSize:              ethereumBatchSize,
-		EthereumRequestsPerMinute:      ethereumRequestsPerMinute,
-		EthereumAccountKeyFile:         ethereumAccountKeyFile,
-		EthereumAccountKeyFilePassword: ethereumAccountKeyFilePassword,
-		BitcoinNetwork:                 bitcoinNetwork,
-		BitcoinElectrumURL:             bitcoinElectrumURL,
-		MezoAssetsUnlockEndpoint:       mezoAssetsUnlockEndpoint,
+		LogLevel:                            logLevel,
+		LogFormatJSON:                       logFormatJSON,
+		EthereumProviderURL:                 ethereumProviderURL,
+		EthereumNetwork:                     ethereumNetwork,
+		EthereumBatchSize:                   ethereumBatchSize,
+		EthereumRequestsPerMinute:           ethereumRequestsPerMinute,
+		EthereumAccountKeyFile:              ethereumAccountKeyFile,
+		EthereumAccountKeyFilePassword:      ethereumAccountKeyFilePassword,
+		BitcoinNetwork:                      bitcoinNetwork,
+		BitcoinElectrumURL:                  bitcoinElectrumURL,
+		MezoAssetsUnlockEndpoint:            mezoAssetsUnlockEndpoint,
+		JobBTCWithdrawalQueueCheckFrequency: jobBTCWithdrawalQueueCheckFrequency,
 	}, nil
 }
 

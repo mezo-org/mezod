@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"sync"
+	"time"
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
@@ -70,6 +71,8 @@ type BridgeWorker struct {
 
 	withdrawalFinalityChecksMutex sync.Mutex
 	withdrawalFinalityChecks      map[string]*withdrawalFinalityCheck
+
+	btcWithdrawalQueueCheckFrequency time.Duration
 }
 
 func RunBridgeWorker(
@@ -188,17 +191,18 @@ func RunBridgeWorker(
 	}()
 
 	bw := &BridgeWorker{
-		logger:                   logger,
-		mezoBridgeContract:       mezoBridgeContract,
-		tbtcBridgeContract:       tbtcBridgeContract,
-		chain:                    chain,
-		batchSize:                cfg.Ethereum.BatchSize,
-		requestsPerMinute:        cfg.Ethereum.RequestsPerMinute,
-		btcChain:                 btcChain,
-		assetsUnlockedEndpoint:   assetsUnlockedGrpcEndpoint,
-		liveWalletsReady:         make(chan struct{}),
-		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
-		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
+		logger:                           logger,
+		mezoBridgeContract:               mezoBridgeContract,
+		tbtcBridgeContract:               tbtcBridgeContract,
+		chain:                            chain,
+		batchSize:                        cfg.Ethereum.BatchSize,
+		requestsPerMinute:                cfg.Ethereum.RequestsPerMinute,
+		btcChain:                         btcChain,
+		assetsUnlockedEndpoint:           assetsUnlockedGrpcEndpoint,
+		liveWalletsReady:                 make(chan struct{}),
+		btcWithdrawalQueue:               []portal.MezoBridgeAssetsUnlockConfirmed{},
+		withdrawalFinalityChecks:         map[string]*withdrawalFinalityCheck{},
+		btcWithdrawalQueueCheckFrequency: cfg.Job.BTCWithdrawal.QueueCheckFrequency,
 	}
 
 	go func() {

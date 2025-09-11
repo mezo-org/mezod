@@ -7,8 +7,8 @@ import (
 
 // Flags list
 const (
-	flagLogLevel      = "log-level"
-	flagLogFormatJSON = "log-format-json"
+	flagLogLevel      = "log.level"
+	flagLogFormatJSON = "log.format-json"
 
 	flagEthereumProviderURL       = "ethereum.provider-url"
 	flagEthereumNetwork           = "ethereum.network"
@@ -20,6 +20,8 @@ const (
 	flagBitcoinElectrumURL = "bitcoin.electrum.url"
 
 	flagMezoAssetsUnlockEndpoint = "mezo.assets-unlock-endpoint"
+
+	flagJobBTCWithdrawalQueueCheckFrequency = "job.btc-withdrawal.queue-check-frequency"
 )
 
 // Flags default values
@@ -29,6 +31,8 @@ const (
 
 	flagEthereumBatchSizeDefault         = bridgeworker.DefaultEthereumBatchSize
 	flagEthereumRequestsPerMinuteDefault = bridgeworker.DefaultEthereumRequestsPerMinute
+
+	flagJobBTCWithdrawalQueueCheckFrequencyDefault = bridgeworker.DefaultBTCWithdrawalQueueCheckFrequency
 )
 
 func newFlagSet() *flag.FlagSet {
@@ -43,7 +47,7 @@ func newFlagSet() *flag.FlagSet {
 	fs.Bool(
 		flagLogFormatJSON,
 		flagLogFormatJSONDefault,
-		"Format logs as JSON (true or false)",
+		"Format logs as JSON",
 	)
 
 	fs.String(
@@ -92,6 +96,12 @@ func newFlagSet() *flag.FlagSet {
 		flagMezoAssetsUnlockEndpoint,
 		"",
 		"Mezo assets unlock endpoint (must be the gRPC endpoint of a mezod node; e.g. localhost:9090)",
+	)
+
+	fs.Duration(
+		flagJobBTCWithdrawalQueueCheckFrequency,
+		flagJobBTCWithdrawalQueueCheckFrequencyDefault,
+		"Frequency of the queue check made by the BTC withdrawal job",
 	)
 
 	return fs

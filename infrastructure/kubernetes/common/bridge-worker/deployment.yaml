@@ -17,7 +17,7 @@ spec:
           image: mezo/bridge-worker:latest
           imagePullPolicy: Always
           args:
-            - --log-format-json
+            - --log.format-json
             - --ethereum.provider-url=$(ETHEREUM_PROVIDER_URL)
             - --ethereum.network=$(ETHEREUM_NETWORK)
             - --ethereum.account.key-file=/etc/bridge-worker/ethereum-account-key-file

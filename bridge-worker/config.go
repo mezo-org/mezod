@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 
@@ -14,6 +15,8 @@ import (
 const (
 	DefaultEthereumBatchSize         = 1000
 	DefaultEthereumRequestsPerMinute = 600
+
+	DefaultBTCWithdrawalQueueCheckFrequency = 1 * time.Minute
 )
 
 type ConfigProperties struct {
@@ -31,12 +34,15 @@ type ConfigProperties struct {
 	BitcoinElectrumURL string
 
 	MezoAssetsUnlockEndpoint string
+
+	JobBTCWithdrawalQueueCheckFrequency time.Duration
 }
 
 type Config struct {
 	Ethereum EthereumConfig
 	Bitcoin  BitcoinConfig
 	Mezo     MezoConfig
+	Job      JobConfig
 }
 
 type BitcoinConfig struct {
@@ -59,6 +65,14 @@ type EthereumAccount struct {
 
 type MezoConfig struct {
 	AssetsUnlockEndpoint string // e.g. "127.0.0.1:9090"
+}
+
+type JobConfig struct {
+	BTCWithdrawal BTCWithdrawalConfig
+}
+
+type BTCWithdrawalConfig struct {
+	QueueCheckFrequency time.Duration
 }
 
 func (c *Config) applyDefaults() {
@@ -172,6 +186,12 @@ func FromProperties(properties ConfigProperties) (*Config, error) {
 
 	cfg.Mezo = MezoConfig{
 		AssetsUnlockEndpoint: properties.MezoAssetsUnlockEndpoint,
+	}
+
+	cfg.Job = JobConfig{
+		BTCWithdrawal: BTCWithdrawalConfig{
+			QueueCheckFrequency: properties.JobBTCWithdrawalQueueCheckFrequency,
+		},
 	}
 
 	cfg.applyDefaults()
