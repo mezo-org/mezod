@@ -76,14 +76,14 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 
 	bw.liveWalletsLastProcessedBlock = endBlock
 
-	bw.liveWalletsMutex.Lock()
-	bw.liveWallets = liveWallets
-	bw.liveWalletsMutex.Unlock()
-
 	bw.logger.Info(
 		"finished initial search for live wallets",
 		"number_of_live_wallets", len(liveWallets),
 	)
+
+	bw.liveWalletsMutex.Lock()
+	bw.liveWallets = liveWallets
+	bw.liveWalletsMutex.Unlock()
 
 	// Signal that initial fetching of wallets ready.
 	close(bw.liveWalletsReady)
@@ -229,14 +229,14 @@ func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
 		bw.liveWalletsLastProcessedBlock = endBlock
 	}
 
+	bw.logger.Info(
+		"finished updating live wallets",
+		"number_of_live_wallets", len(updatedLiveWallets),
+	)
+
 	bw.liveWalletsMutex.Lock()
 	bw.liveWallets = updatedLiveWallets
 	bw.liveWalletsMutex.Unlock()
-
-	bw.logger.Info(
-		"finished updating live wallets",
-		"number_of_live_wallets", len(bw.liveWallets),
-	)
 
 	return nil
 }
@@ -1030,8 +1030,8 @@ func (bw *BridgeWorker) determineWalletMainUtxo(
 }
 
 // btcToErc20Amount converts amount in Bitcoin precision (1e8) to ERC20 token
-// precision (1e18). It effectively multiplies the Bitcoin precision
-// amount by 1e10.
+// precision (1e18). It effectively multiplies the Bitcoin precision amount by
+// 1e10.
 func btcToErc20Amount(btcPrecisionAmount *big.Int) *big.Int {
 	return new(big.Int).Mul(
 		new(big.Int).Set(btcPrecisionAmount),
