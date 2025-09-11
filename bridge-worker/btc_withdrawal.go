@@ -504,7 +504,7 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 	}
 
 	redemptionParameters, err := bw.tbtcBridgeContract.RedemptionParameters()
-		if err != nil {
+	if err != nil {
 		return false, fmt.Errorf(
 			"failed to get redemption parameters: [%w]",
 			err,
