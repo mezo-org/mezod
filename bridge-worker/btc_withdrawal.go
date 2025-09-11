@@ -29,6 +29,10 @@ const (
 	// how far back we look when searching for events.
 	assetsUnlockConfirmedLookBackBlocks = 216000 // ~30 days
 
+	// assetsUnlockConfirmedProcessingPeriod is the time period defining how
+	// frequently new AssetsUnlockConfirmed events should be processed.
+	assetsUnlockConfirmedProcessingPeriod = 1 * time.Minute
+
 	// withdrawalProcessBackoff is a backoff time used between retries when
 	// submitting a withdrawBTC transaction.
 	withdrawalProcessBackoff = 1 * time.Minute
@@ -313,8 +317,9 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 		"pending_btc_withdrawals", pendingWithdrawalCount,
 	)
 
-	// Start a ticker to periodically check the current block number
-	tickerChan := bw.chain.WatchBlocks(ctx)
+	// Start a ticker to process the new events periodically.
+	ticker := time.NewTicker(assetsUnlockConfirmedProcessingPeriod)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -323,7 +328,7 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 				"stopping BTC withdrawals routine due to context cancellation",
 			)
 			return nil
-		case <-tickerChan:
+		case <-ticker.C:
 			// Process incoming AssetsUnlockedConfirmed events
 			err := bw.processNewAssetsUnlockConfirmedEvents(ctx)
 			if err != nil {
