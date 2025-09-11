@@ -346,6 +346,11 @@ func (bw *BridgeWorker) enqueueBtcWithdrawal(
 			bw.btcWithdrawalQueue[j].UnlockSequenceNumber,
 		) < 0
 	})
+
+	bw.logger.Debug(
+		"enqueued BTC withdrawal",
+		"unlock_sequence", event.UnlockSequenceNumber.String(),
+	)
 }
 
 // dequeueBtcWithdrawal removes an AssetsUnlockConfirmed event representing
@@ -359,6 +364,11 @@ func (bw *BridgeWorker) dequeueBtcWithdrawal() *portal.MezoBridgeAssetsUnlockCon
 
 	event := bw.btcWithdrawalQueue[0]
 	bw.btcWithdrawalQueue = bw.btcWithdrawalQueue[1:]
+
+	bw.logger.Debug(
+		"dequeued BTC withdrawal",
+		"unlock_sequence", event.UnlockSequenceNumber.String(),
+	)
 
 	return &event
 }
@@ -497,7 +507,37 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 		)
 	}
 
-	return isPendingBTCWithdrawal, nil
+	if !isPendingBTCWithdrawal {
+		return false, nil
+	}
+
+	redemptionParameters, err := bw.tbtcBridgeContract.RedemptionParameters()
+		if err != nil {
+		return false, fmt.Errorf(
+			"failed to get redemption parameters: [%w]",
+			err,
+		)
+	}
+
+	redemptionDustThresholdBtcPrecision := new(big.Int).SetUint64(
+		redemptionParameters.RedemptionDustThreshold,
+	)
+	redemptionDustThresholdErc20Precision := btcToErc20Amount(
+		redemptionDustThresholdBtcPrecision,
+	)
+
+	if event.Amount.Cmp(redemptionDustThresholdErc20Precision) < 0 {
+		bw.logger.Warn(
+			"found BTC withdrawal below redemption dust threshold",
+			"unlock_sequence", event.UnlockSequenceNumber.String(),
+			"amount", event.Amount,
+			"redemption_dust_threshold_erc20_precision", redemptionDustThresholdErc20Precision,
+		)
+
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // processNewAssetsUnlockConfirmedEvents fetches new AssetsUnlockConfirmed
