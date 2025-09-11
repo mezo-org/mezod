@@ -193,3 +193,4 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v1.0.0` | 1       | N/A                                  | Initial genesis version.                                                      |
 | `v2.0.0` | 706500  | Planned upgrade with chain halt      | [v2.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v2.0.0) |
 | `v3.0.0` | 1735000 | Planned upgrade with chain halt      | [v3.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v3.0.0) |
+| `v4.0.0` | 3194000 | Planned upgrade with chain halt      | [v4.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v4.0.0) |
