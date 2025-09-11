@@ -309,7 +309,7 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 
 	bw.logger.Info(
 		"initial search for pending BTC withdrawals done",
-		"confirmed_withdrawal_events", len(recentEvents),
+		"assets_unlock_confirmed_events", len(recentEvents),
 		"pending_btc_withdrawals", pendingWithdrawalCount,
 	)
 
