@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"sort"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
@@ -331,7 +330,7 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 }
 
 // enqueueBtcWithdrawal puts AssetsUnlockConfirmed events representing Bitcoin
-// withdrawals into a queue.
+// withdrawals at the end of the queue.
 func (bw *BridgeWorker) enqueueBtcWithdrawal(
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) {
@@ -340,13 +339,6 @@ func (bw *BridgeWorker) enqueueBtcWithdrawal(
 
 	bw.btcWithdrawalQueue = append(bw.btcWithdrawalQueue, *event)
 
-	// order events by unlock sequence in ascending order
-	sort.Slice(bw.btcWithdrawalQueue, func(i, j int) bool {
-		return bw.btcWithdrawalQueue[i].UnlockSequenceNumber.Cmp(
-			bw.btcWithdrawalQueue[j].UnlockSequenceNumber,
-		) < 0
-	})
-
 	bw.logger.Debug(
 		"enqueued BTC withdrawal",
 		"unlock_sequence", event.UnlockSequenceNumber.String(),
@@ -354,7 +346,7 @@ func (bw *BridgeWorker) enqueueBtcWithdrawal(
 }
 
 // dequeueBtcWithdrawal removes an AssetsUnlockConfirmed event representing
-// a Bitcoin withdrawals from the queue.
+// a Bitcoin withdrawal from the front of the queue.
 func (bw *BridgeWorker) dequeueBtcWithdrawal() *portal.MezoBridgeAssetsUnlockConfirmed {
 	bw.btcWithdrawalMutex.Lock()
 	defer bw.btcWithdrawalMutex.Unlock()
