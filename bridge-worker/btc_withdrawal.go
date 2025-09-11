@@ -285,7 +285,7 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 	pendingWithdrawalCount := 0
 
 	for _, event := range recentEvents {
-		isPendingWithdrawal, err := bw.isPendingBTCWithdrawal(event)
+		isPendingWithdrawal, err := bw.isPendingBTCWithdrawal(ctx, event)
 		if err != nil {
 			return fmt.Errorf(
 				"failed to check if event represents pending BTC withdrawal: [%w]",
@@ -319,7 +319,7 @@ func (bw *BridgeWorker) observeBitcoinWithdrawals(ctx context.Context) error {
 			return nil
 		case <-tickerChan:
 			// Process incoming AssetsUnlockedConfirmed events
-			err := bw.processNewAssetsUnlockConfirmedEvents()
+			err := bw.processNewAssetsUnlockConfirmedEvents(ctx)
 			if err != nil {
 				bw.logger.Error(
 					"failed to process newly emitted AssetsUnlockConfirmed events",
@@ -440,15 +440,44 @@ func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
 // isPendingBTCWithdrawal checks whether an AssetsUnlockConfirmed event
 // represents a pending Bitcoin withdrawal.
 func (bw *BridgeWorker) isPendingBTCWithdrawal(
+	ctx context.Context,
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) (bool, error) {
 	if event.Chain != bitcoinTargetChain {
 		return false, nil
 	}
 
+	// When calculating the attestation key, we must get the recipient field
+	// from `mezod`. We cannot read it from the passed `AssetsUnlockConfirmed`
+	// event as it only contains a hash of recipient.
+	unlockSequence := event.UnlockSequenceNumber
+
+	assetsUnlockEvents, err := bw.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
+		ctx,
+		sdkmath.NewIntFromBigInt(new(big.Int).Set(unlockSequence)),
+		sdkmath.NewIntFromBigInt(new(big.Int).Add(
+			new(big.Int).Set(unlockSequence),
+			big.NewInt(1)),
+		),
+	)
+	if err != nil {
+		return false, fmt.Errorf(
+			"failed to get AssetsUnlock event from Mezo: [%w]",
+			err,
+		)
+	}
+
+	if len(assetsUnlockEvents) != 1 {
+		return false, fmt.Errorf(
+			"incorrect number of AssetsUnlock events returned from Mezo",
+		)
+	}
+
+	recipient := assetsUnlockEvents[0].Recipient
+
 	hash, err := computeAttestationKey(
 		event.UnlockSequenceNumber,
-		event.Recipient[:],
+		recipient,
 		event.Token,
 		event.Amount,
 		event.Chain,
@@ -474,7 +503,7 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 // processNewAssetsUnlockConfirmedEvents fetches new AssetsUnlockConfirmed
 // events representing pending Bitcoin withdrawals and puts them into a queue.
 // It is intended to be run periodically.
-func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
+func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Context) error {
 	// Use the current block rather than finalized block to speed up event
 	// processing. Event processing should handle the effects of a possible
 	// reorg (e.g. an event being duplicated in a queue), although there is a
@@ -500,7 +529,7 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents() error {
 		}
 
 		for _, event := range events {
-			isPendingWithdrawal, err := bw.isPendingBTCWithdrawal(event)
+			isPendingWithdrawal, err := bw.isPendingBTCWithdrawal(ctx, event)
 			if err != nil {
 				return fmt.Errorf(
 					"failed to check if event represents pending BTC "+
@@ -542,7 +571,7 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 				)
 
 				// verify if still pending
-				isPending, err := bw.isPendingBTCWithdrawal(event)
+				isPending, err := bw.isPendingBTCWithdrawal(ctx, event)
 				if err != nil {
 					withdrawalLogger.Error(
 						"failed to check if withdrawal is pending; re-queuing",
@@ -604,7 +633,7 @@ func (bw *BridgeWorker) processBtcWithdrawalQueue(ctx context.Context) {
 					}
 
 					// check if still pending
-					ok, err := bw.isPendingBTCWithdrawal(event)
+					ok, err := bw.isPendingBTCWithdrawal(ctx, event)
 					if err != nil {
 						withdrawalProcessLogger.Error(
 							"failed to check if pending; retrying",
@@ -751,7 +780,7 @@ func (bw *BridgeWorker) processWithdrawalFinalityChecks(ctx context.Context) {
 					"current_finalized_block", currentFinalizedBlock.String(),
 				)
 
-				pending, err := bw.isPendingBTCWithdrawal(check.event)
+				pending, err := bw.isPendingBTCWithdrawal(ctx, check.event)
 				if err != nil {
 					checkLogger.Error(
 						"error while checking Bitcoin withdrawal finality - retry will be "+
