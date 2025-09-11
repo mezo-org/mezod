@@ -16,9 +16,16 @@ func Start(properties ConfigProperties) error {
 		return fmt.Errorf("invalid log level: [%w]", err)
 	}
 
+	logOptions := []log.Option{
+		log.LevelOption(logLevel),
+	}
+	if properties.LogFormatJSON {
+		logOptions = append(logOptions, log.OutputJSONOption())
+	}
+
 	logger := log.NewLogger(
 		os.Stdout,
-		log.LevelOption(logLevel),
+		logOptions...,
 	).With(log.ModuleKey, "bridge-worker")
 
 	cfg, err := FromProperties(properties)

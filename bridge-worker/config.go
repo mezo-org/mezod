@@ -17,7 +17,8 @@ const (
 )
 
 type ConfigProperties struct {
-	LogLevel string
+	LogLevel      string
+	LogFormatJSON bool
 
 	EthereumProviderURL            string
 	EthereumNetwork                string

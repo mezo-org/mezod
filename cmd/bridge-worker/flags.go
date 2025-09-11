@@ -7,7 +7,8 @@ import (
 
 // Flags list
 const (
-	flagLogLevel = "log-level"
+	flagLogLevel      = "log-level"
+	flagLogFormatJSON = "log-format-json"
 
 	flagEthereumProviderURL       = "ethereum.provider-url"
 	flagEthereumNetwork           = "ethereum.network"
@@ -23,7 +24,8 @@ const (
 
 // Flags default values
 const (
-	flagLogLevelDefault = "info"
+	flagLogLevelDefault      = "info"
+	flagLogFormatJSONDefault = false
 
 	flagEthereumBatchSizeDefault         = bridgeworker.DefaultEthereumBatchSize
 	flagEthereumRequestsPerMinuteDefault = bridgeworker.DefaultEthereumRequestsPerMinute
@@ -36,6 +38,12 @@ func newFlagSet() *flag.FlagSet {
 		flagLogLevel,
 		flagLogLevelDefault,
 		"Log level",
+	)
+
+	fs.Bool(
+		flagLogFormatJSON,
+		flagLogFormatJSONDefault,
+		"Format logs as JSON (true or false)",
 	)
 
 	fs.String(

@@ -32,12 +32,17 @@ func newRootCmd() *cobra.Command {
 }
 
 func parseFlags(cmd *cobra.Command) (bridgeworker.ConfigProperties, error) {
-	LogLevel, err := cmd.Flags().GetString(flagLogLevel)
+	logLevel, err := cmd.Flags().GetString(flagLogLevel)
 	if err != nil {
 		return bridgeworker.ConfigProperties{}, fmt.Errorf("failed to get log level: [%w]", err)
 	}
-	if len(LogLevel) == 0 {
+	if len(logLevel) == 0 {
 		return bridgeworker.ConfigProperties{}, fmt.Errorf("log level is required")
+	}
+
+	logFormatJSON, err := cmd.Flags().GetBool(flagLogFormatJSON)
+	if err != nil {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf("failed to get log JSON: [%w]", err)
 	}
 
 	ethereumProviderURL, err := cmd.Flags().GetString(flagEthereumProviderURL)
@@ -117,7 +122,8 @@ func parseFlags(cmd *cobra.Command) (bridgeworker.ConfigProperties, error) {
 	}
 
 	return bridgeworker.ConfigProperties{
-		LogLevel:                       LogLevel,
+		LogLevel:                       logLevel,
+		LogFormatJSON:                  logFormatJSON,
 		EthereumProviderURL:            ethereumProviderURL,
 		EthereumNetwork:                ethereumNetwork,
 		EthereumBatchSize:              ethereumBatchSize,
