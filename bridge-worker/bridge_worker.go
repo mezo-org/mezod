@@ -5,12 +5,11 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"sync"
+	"time"
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-
-	bwconfig "github.com/mezo-org/mezod/bridge-worker/config"
 
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin/electrum"
@@ -72,13 +71,15 @@ type BridgeWorker struct {
 
 	withdrawalFinalityChecksMutex sync.Mutex
 	withdrawalFinalityChecks      map[string]*withdrawalFinalityCheck
+
+	btcWithdrawalQueueCheckFrequency time.Duration
 }
 
 func RunBridgeWorker(
 	logger log.Logger,
-	cfg bwconfig.Config,
+	cfg Config,
 	ethPrivateKey *ecdsa.PrivateKey,
-) {
+) error {
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
 
@@ -190,17 +191,18 @@ func RunBridgeWorker(
 	}()
 
 	bw := &BridgeWorker{
-		logger:                   logger,
-		mezoBridgeContract:       mezoBridgeContract,
-		tbtcBridgeContract:       tbtcBridgeContract,
-		chain:                    chain,
-		batchSize:                cfg.Ethereum.BatchSize,
-		requestsPerMinute:        cfg.Ethereum.RequestsPerMinute,
-		btcChain:                 btcChain,
-		assetsUnlockedEndpoint:   assetsUnlockedGrpcEndpoint,
-		liveWalletsReady:         make(chan struct{}),
-		btcWithdrawalQueue:       []portal.MezoBridgeAssetsUnlockConfirmed{},
-		withdrawalFinalityChecks: map[string]*withdrawalFinalityCheck{},
+		logger:                           logger,
+		mezoBridgeContract:               mezoBridgeContract,
+		tbtcBridgeContract:               tbtcBridgeContract,
+		chain:                            chain,
+		batchSize:                        cfg.Ethereum.BatchSize,
+		requestsPerMinute:                cfg.Ethereum.RequestsPerMinute,
+		btcChain:                         btcChain,
+		assetsUnlockedEndpoint:           assetsUnlockedGrpcEndpoint,
+		liveWalletsReady:                 make(chan struct{}),
+		btcWithdrawalQueue:               []portal.MezoBridgeAssetsUnlockConfirmed{},
+		withdrawalFinalityChecks:         map[string]*withdrawalFinalityCheck{},
+		btcWithdrawalQueueCheckFrequency: cfg.Job.BTCWithdrawal.QueueCheckFrequency,
 	}
 
 	go func() {
@@ -226,7 +228,7 @@ func RunBridgeWorker(
 			"context canceled while waiting; exiting without launching " +
 				"Bitcoin withdrawal routines",
 		)
-		return
+		return ctx.Err()
 	}
 
 	go func() {
@@ -257,6 +259,8 @@ func RunBridgeWorker(
 	<-ctx.Done()
 
 	bw.logger.Info("bridge worker stopped")
+
+	return nil
 }
 
 // Construct a new instance of the Ethereum MezoBridge contract.

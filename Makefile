@@ -147,6 +147,9 @@ build-docker-linux-local:
 build-docker-metrics-scraper:
 	$(DOCKER) buildx build --platform linux/amd64 -t metrics-scraper -f Dockerfile.metrics-scraper .
 
+build-docker-bridge-worker:
+	$(DOCKER) buildx build --platform linux/amd64 -t bridge-worker -f Dockerfile.bridge-worker .	
+
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
 
