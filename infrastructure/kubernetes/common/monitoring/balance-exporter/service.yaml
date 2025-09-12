@@ -7,6 +7,10 @@ spec:
   selector:
     app: balance-exporter
   ports:
-    - port: 9115
+    - name: mezo
+      port: 9115
       targetPort: 9115
+    - name: ethereum
+      port: 9116
+      targetPort: 9116
   type: ClusterIP

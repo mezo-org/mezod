@@ -19,7 +19,7 @@ spec:
         fsGroup: 1000
         runAsNonRoot: true
       containers:
-        - name: balance-exporter
+        - name: balance-exporter-mezo
           # TODO: Use the mezo/balance-exporter image once it is published
           image: nkuba/balance-exporter
           ports:
@@ -31,7 +31,7 @@ spec:
             - name: PORT
               value: "9115"
             - name: ADDRESSES_FILE
-              value: /etc/balance-exporter/addresses.txt
+              value: /etc/balance-exporter/addresses-mezo.txt
             - name: PREFIX
               value: mezo_
             - name: CHAIN_RPC_URL
@@ -39,6 +39,25 @@ spec:
                 secretKeyRef:
                   name: rpc-url
                   key: MEZO
+        - name: balance-exporter-ethereum
+          image: nkuba/balance-exporter
+          ports:
+            - containerPort: 9116
+          volumeMounts:
+            - name: balance-exporter-config
+              mountPath: /etc/balance-exporter
+          env:
+            - name: PORT
+              value: "9116"
+            - name: ADDRESSES_FILE
+              value: /etc/balance-exporter/addresses-ethereum.txt
+            - name: PREFIX
+              value: ethereum_
+            - name: CHAIN_RPC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rpc-url
+                  key: ETHEREUM          
 
       volumes:
         - name: balance-exporter-config
