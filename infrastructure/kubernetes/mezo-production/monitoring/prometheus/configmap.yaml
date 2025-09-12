@@ -34,4 +34,4 @@ data:
       - job_name: 'balance-exporter'
         metrics_path: /metrics
         static_configs:
-          - targets: ['balance-exporter:9115']
+          - targets: ['balance-exporter:9115', 'balance-exporter:9116']
