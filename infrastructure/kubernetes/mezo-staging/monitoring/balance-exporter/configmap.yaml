@@ -9,3 +9,5 @@ data:
   addresses-ethereum.txt: |
     bridge-reimbursement-pool:0xF6A9d3B42615ACcc70A4e60b389c851C8FB1524d
     bridge-worker:0x419b505186fe3880Ac6407AcD14dD0398d6e8Ec8
+  contracts.txt: |
+    PCV|0x4dDD70f4C603b6089c07875Be02fEdFD626b80Af|[{"inputs":[],"name":"debtToPay","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]|debtToPay
