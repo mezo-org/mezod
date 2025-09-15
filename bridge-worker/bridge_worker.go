@@ -69,8 +69,8 @@ type BridgeWorker struct {
 	btcWithdrawalMutex sync.Mutex
 	btcWithdrawalQueue []portal.MezoBridgeAssetsUnlockConfirmed
 
-	withdrawalFinalityChecksMutex sync.Mutex
-	withdrawalFinalityChecks      map[string]*withdrawalFinalityCheck
+	btcWithdrawalFinalityChecksMutex sync.Mutex
+	btcWithdrawalFinalityChecks      map[string]*btcWithdrawalFinalityCheck
 
 	btcWithdrawalQueueCheckFrequency time.Duration
 }
@@ -181,7 +181,7 @@ func RunBridgeWorker(
 			logger.Error(
 				"assets unlocked endpoint connection test failed; possible "+
 					"problem with configuration or connectivity",
-				"err", err,
+				"error", err,
 			)
 		} else {
 			logger.Info(
@@ -201,7 +201,7 @@ func RunBridgeWorker(
 		assetsUnlockedEndpoint:           assetsUnlockedGrpcEndpoint,
 		liveWalletsReady:                 make(chan struct{}),
 		btcWithdrawalQueue:               []portal.MezoBridgeAssetsUnlockConfirmed{},
-		withdrawalFinalityChecks:         map[string]*withdrawalFinalityCheck{},
+		btcWithdrawalFinalityChecks:      map[string]*btcWithdrawalFinalityCheck{},
 		btcWithdrawalQueueCheckFrequency: cfg.Job.BTCWithdrawal.QueueCheckFrequency,
 	}
 
@@ -211,7 +211,7 @@ func RunBridgeWorker(
 		if err != nil {
 			bw.logger.Error(
 				"live wallets observation routine failed",
-				"err", err,
+				"error", err,
 			)
 		}
 
@@ -226,34 +226,34 @@ func RunBridgeWorker(
 	case <-ctx.Done():
 		bw.logger.Warn(
 			"context canceled while waiting; exiting without launching " +
-				"Bitcoin withdrawal routines",
+				"BTC withdrawal routines",
 		)
 		return ctx.Err()
 	}
 
 	go func() {
 		defer cancelCtx()
-		err := bw.observeBitcoinWithdrawals(ctx)
+		err := bw.observeBTCWithdrawals(ctx)
 		if err != nil {
 			bw.logger.Error(
-				"Bitcoin withdrawal observation routine failed",
-				"err", err,
+				"BTC withdrawal observation routine failed",
+				"error", err,
 			)
 		}
 
-		bw.logger.Warn("Bitcoin withdrawal observation routine stopped")
+		bw.logger.Warn("BTC withdrawal observation routine stopped")
 	}()
 
 	go func() {
 		defer cancelCtx()
-		bw.processBtcWithdrawalQueue(ctx)
-		bw.logger.Warn("Bitcoin withdrawal processing loop stopped")
+		bw.processBTCWithdrawalQueue(ctx)
+		bw.logger.Warn("BTC withdrawal processing loop stopped")
 	}()
 
 	go func() {
 		defer cancelCtx()
 		bw.processBTCWithdrawalFinalityChecks(ctx)
-		bw.logger.Warn("Bitcoin withdrawal finality checks loop stopped")
+		bw.logger.Warn("BTC withdrawal finality checks loop stopped")
 	}()
 
 	<-ctx.Done()
