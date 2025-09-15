@@ -4,5 +4,8 @@ metadata:
   name: balance-exporter-config
   namespace: monitoring
 data:
-  addresses.txt: |
+  addresses-mezo.txt: |
     passport-mezo-relayer:0xf35c1a20303ddcA464Ebf5b3b023588Cf3181c8a
+  addresses-ethereum.txt: |
+    bridge-reimbursement-pool:0x700C8840aCDd035cFE35847bFD928C576f9C92A7
+    bridge-worker:0x419b505186fe3880Ac6407AcD14dD0398d6e8Ec8

@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bridge-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bridge-worker
+  template:
+    metadata:
+      labels:
+        app: bridge-worker
+    spec:
+      containers:
+        - name: bridge-worker
+          image: mezo/bridge-worker@sha256:5ecdf177a50adc881554acad8db5da44d73a3cfe20317c357e0f3ba7a3c9e338
+          imagePullPolicy: Always
+          args:
+            - --log.format-json
+            - --ethereum.provider-url=$(ETHEREUM_PROVIDER_URL)
+            - --ethereum.network=$(ETHEREUM_NETWORK)
+            - --ethereum.account.key-file=/etc/bridge-worker/ethereum-account-key-file
+            - --bitcoin.network=$(BITCOIN_NETWORK)
+            - --bitcoin.electrum.url=$(BITCOIN_ELECTRUM_URL)
+            - --mezo.assets-unlock-endpoint=$(MEZO_ASSETS_UNLOCK_ENDPOINT)
+          env:
+            - name: ETHEREUM_ACCOUNT_KEY_FILE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-worker-config
+                  key: ethereum-account-key-file-password
+            - name: ETHEREUM_PROVIDER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-worker-config
+                  key: ethereum-provider-url
+            - name: ETHEREUM_NETWORK
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-worker-config
+                  key: ethereum-network
+            - name: BITCOIN_NETWORK
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-worker-config
+                  key: bitcoin-network
+            - name: BITCOIN_ELECTRUM_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-worker-config
+                  key: bitcoin-electrum-url
+            - name: MEZO_ASSETS_UNLOCK_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: bridge-worker-config
+                  key: mezo-assets-unlock-endpoint
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: bridge-worker-config
+              mountPath: /etc/bridge-worker
+      volumes:
+        - name: bridge-worker-config
+          secret:
+            secretName: bridge-worker-config
+            items:
+              - key: ethereum-account-key-file
+                path: ethereum-account-key-file

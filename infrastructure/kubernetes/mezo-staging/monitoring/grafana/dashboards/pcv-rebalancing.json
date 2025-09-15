@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 7,
+  "id": 8,
   "links": [],
   "panels": [
     {
@@ -52,7 +52,7 @@
             "lineStyle": {
               "fill": "solid"
             },
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -72,25 +72,20 @@
             "mode": "absolute",
             "steps": [
               {
+                "color": "green"
+              },
+              {
                 "color": "red",
-                "value": 0
-              },
-              {
-                "color": "yellow",
-                "value": 0.01
-              },
-              {
-                "color": "green",
-                "value": 0.02
+                "value": 1
               }
             ]
           },
-          "unit": "BTC"
+          "unit": "currencyUSD"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 0
@@ -102,16 +97,14 @@
             "lastNotNull"
           ],
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -120,16 +113,15 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "mezo_account_balance",
+          "expr": "mezo_contract_function_result{contract=\"PCV\",function=\"debtToPay\"} / 1000000000000000000",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{name}}",
+          "legendFormat": "PCV Debt to Pay",
           "range": true,
-          "refId": "A",
-          "useBackend": false
+          "refId": "A"
         }
       ],
-      "title": "Account Balances on Mezo",
+      "title": "PCV Debt to Pay",
       "type": "timeseries"
     },
     {
@@ -140,89 +132,51 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "stepBefore",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
+                "color": "green"
+              },
+              {
                 "color": "red",
-                "value": 0
-              },
-              {
-                "color": "yellow",
-                "value": 0.01
-              },
-              {
-                "color": "green",
-                "value": 0.02
+                "value": 1
               }
             ]
           },
-          "unit": "ETH"
+          "unit": "currencyUSD"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
+        "h": 8,
+        "w": 12,
         "x": 0,
-        "y": 10
+        "y": 12
       },
       "id": 2,
       "options": {
-        "legend": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
+        "showPercentChange": false,
+        "text": {},
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.0.1",
       "targets": [
         {
           "datasource": {
@@ -231,32 +185,36 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "ethereum_account_balance",
+          "expr": "mezo_contract_function_result{contract=\"PCV\",function=\"debtToPay\"} / 1000000000000000000",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{name}}",
+          "legendFormat": "Current Debt",
           "range": true,
-          "refId": "A",
-          "useBackend": false
+          "refId": "A"
         }
       ],
-      "title": "Account Balances on Ethereum",
-      "type": "timeseries"
+      "title": "Current PCV Debt",
+      "type": "stat"
     }
   ],
-  "preload": false,
-  "schemaVersion": 41,
-  "tags": [],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "PCV",
+    "Rebalancing",
+    "Monitoring"
+  ],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Accounts",
-  "uid": "1677fdcb-9c1c-499e-ae90-28f0654a74f7",
-  "version": 10
+  "title": "PCV Rebalancing Dashboard",
+  "uid": "pcv-rebalancing-dashboard",
+  "version": 1,
+  "weekStart": ""
 }

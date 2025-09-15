@@ -5,25 +5,40 @@ import (
 	"os"
 
 	"cosmossdk.io/log"
+	"github.com/rs/zerolog"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	bwconfig "github.com/mezo-org/mezod/bridge-worker/config"
 )
 
-func Start(configPath string) {
-	logger := log.NewLogger(os.Stdout).With(log.ModuleKey, "bridge-worker")
-
-	cfg, err := bwconfig.ReadConfig(configPath)
+func Start(properties ConfigProperties) error {
+	logLevel, err := zerolog.ParseLevel(properties.LogLevel)
 	if err != nil {
-		panic(fmt.Sprintf("config error: %v", err))
+		return fmt.Errorf("invalid log level: [%w]", err)
 	}
 
-	privateKey, err := bwconfig.DecryptKeyFile(
+	logOptions := []log.Option{
+		log.LevelOption(logLevel),
+	}
+	if properties.LogFormatJSON {
+		logOptions = append(logOptions, log.OutputJSONOption())
+	}
+
+	logger := log.NewLogger(
+		os.Stdout,
+		logOptions...,
+	).With(log.ModuleKey, "bridge-worker")
+
+	cfg, err := FromProperties(properties)
+	if err != nil {
+		return fmt.Errorf("config error: [%w]", err)
+	}
+
+	privateKey, err := DecryptKeyFile(
 		cfg.Ethereum.Account.KeyFile,
 		cfg.Ethereum.Account.KeyFilePassword,
 	)
 	if err != nil {
-		panic(fmt.Sprintf("keyfile load error: %v", err))
+		return fmt.Errorf("keyfile load error: [%w]", err)
 	}
 
 	accountAddress := crypto.PubkeyToAddress(privateKey.PublicKey).Hex()
@@ -32,7 +47,7 @@ func Start(configPath string) {
 		"account_address", accountAddress,
 	)
 
-	RunBridgeWorker(
+	return RunBridgeWorker(
 		logger,
 		*cfg,
 		privateKey,

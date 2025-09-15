@@ -9,6 +9,9 @@ data:
       scrape_interval: 2s
       evaluation_interval: 2s
 
+    rule_files:
+      - "alert_rules.yml"
+
     scrape_configs:
       - job_name: 'metrics-scraper'
         static_configs:
@@ -34,5 +37,19 @@ data:
       - job_name: 'balance-exporter'
         metrics_path: /metrics
         static_configs:
-          - targets: ['balance-exporter:9115']
+          - targets: ['balance-exporter:9115', 'balance-exporter:9116']
+
+  alert_rules.yml: |
+    groups:
+      - name: musd_alerts
+        rules:
+          - alert: PCVDebtToPayZero
+            expr: mezo_contract_function_result{contract="PCV",function="debtToPay"} == 0
+            for: 1m
+            labels:
+              severity: warning
+              contract: PCV
+            annotations:
+              summary: "PCV contract debt to pay is zero"
+              description: "The PCV contract debtToPay function returned 0."
 
