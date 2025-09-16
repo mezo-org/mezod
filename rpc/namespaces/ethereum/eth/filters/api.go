@@ -70,12 +70,8 @@ type Backend interface {
 	RPCFilterCap() int32
 	RPCLogsCap() int32
 	RPCBlockRangeCap() int32
+	RPCLogsFilterAddrCap() int32
 }
-
-const (
-	// A maximum amount of addresses allowed when filtering an eth_getLogs call
-	defaultMaxAddressesFilter = 10
-)
 
 // consider a filter inactive if it has not been polled for within deadline
 var deadline = 5 * time.Minute
@@ -105,12 +101,21 @@ type PublicFilterAPI struct {
 // NewPublicAPI returns a new PublicFilterAPI instance.
 func NewPublicAPI(logger log.Logger, clientCtx client.Context, cometWSClient *mezodtypes.CometWSClient, backend Backend) *PublicFilterAPI {
 	logger = logger.With("api", "filter")
+
+	eventSystem := NewEventSystem(
+		logger,
+		cometWSClient,
+		EventSystemConfig{
+			RPCLogsFilterAddrCap: backend.RPCLogsFilterAddrCap(),
+		},
+	)
+
 	api := &PublicFilterAPI{
 		logger:    logger,
 		clientCtx: clientCtx,
 		backend:   backend,
 		filters:   make(map[rpc.ID]*filter),
-		events:    NewEventSystem(logger, cometWSClient),
+		events:    eventSystem,
 	}
 
 	go api.timeoutLoop()
@@ -530,8 +535,8 @@ func (api *PublicFilterAPI) NewFilter(criteria filters.FilterCriteria) (rpc.ID, 
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getlogs
 func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit filters.FilterCriteria) ([]*ethtypes.Log, error) {
-	if len(crit.Addresses) > defaultMaxAddressesFilter {
-		return nil, fmt.Errorf("max number of addresses exceeded (max allowed %v)", defaultMaxAddressesFilter)
+	if c := api.backend.RPCLogsFilterAddrCap(); c > 0 && len(crit.Addresses) > int(c) {
+		return nil, fmt.Errorf("max number of addresses exceeded (max allowed %v)", c)
 	}
 
 	var filter *Filter
