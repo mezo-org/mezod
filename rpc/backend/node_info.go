@@ -347,3 +347,9 @@ func (b *Backend) RPCMinGasPrice() int64 {
 
 	return amt
 }
+
+// RPCLogsFilterAddrCap returns the maximum number of contract addresses in the filter query for
+// logs calls (`eth_getLogs` and `eth_subscribe` with `logs` parameter).
+func (b *Backend) RPCLogsFilterAddrCap() int32 {
+	return b.cfg.JSONRPC.LogsFilterAddrCap
+}

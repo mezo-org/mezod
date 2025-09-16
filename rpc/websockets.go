@@ -99,7 +99,7 @@ func NewWebsocketsServer(clientCtx client.Context, logger log.Logger, cometWSCli
 		wsAddr:   cfg.JSONRPC.WsAddress,
 		certFile: cfg.TLS.CertificatePath,
 		keyFile:  cfg.TLS.KeyPath,
-		api:      newPubSubAPI(clientCtx, logger, cometWSClient),
+		api:      newPubSubAPI(clientCtx, logger, cometWSClient, cfg),
 		logger:   logger,
 	}
 }
@@ -379,10 +379,24 @@ type pubSubAPI struct {
 }
 
 // newPubSubAPI creates an instance of the ethereum PubSub API.
-func newPubSubAPI(clientCtx client.Context, logger log.Logger, cometWSClient *mezodtypes.CometWSClient) *pubSubAPI {
+func newPubSubAPI(
+	clientCtx client.Context,
+	logger log.Logger,
+	cometWSClient *mezodtypes.CometWSClient,
+	cfg *config.Config,
+) *pubSubAPI {
 	logger = logger.With("module", "websocket-client")
+
+	eventSystem := rpcfilters.NewEventSystem(
+		logger,
+		cometWSClient,
+		rpcfilters.EventSystemConfig{
+			RPCLogsFilterAddrCap: cfg.JSONRPC.LogsFilterAddrCap,
+		},
+	)
+
 	return &pubSubAPI{
-		events:    rpcfilters.NewEventSystem(logger, cometWSClient),
+		events:    eventSystem,
 		logger:    logger,
 		clientCtx: clientCtx,
 	}
