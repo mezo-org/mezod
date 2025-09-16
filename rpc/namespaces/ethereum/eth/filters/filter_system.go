@@ -50,6 +50,13 @@ var (
 	headerEvents = tmtypes.QueryForEvent(tmtypes.EventNewBlockHeader).String()
 )
 
+// EventSystemConfig is the configuration for the EventSystem.
+type EventSystemConfig struct {
+	// RPCLogsFilterAddrCap returns the maximum number of contract addresses in the filter query for
+	// logs calls (`eth_getLogs` and `eth_subscribe` with `logs` parameter).
+	RPCLogsFilterAddrCap int32
+}
+
 // EventSystem creates subscriptions, processes events and broadcasts them to the
 // subscription which match the subscription criteria using the Tendermint's RPC client.
 type EventSystem struct {
@@ -67,6 +74,8 @@ type EventSystem struct {
 	// Channels
 	uninstall chan *Subscription // remove filter for event notification
 	eventBus  pubsub.EventBus
+
+	config EventSystemConfig
 }
 
 // NewEventSystem creates a new manager that listens for event on the given mux,
@@ -75,7 +84,7 @@ type EventSystem struct {
 //
 // The returned manager has a loop that needs to be stopped with the Stop function
 // or by stopping the given mux.
-func NewEventSystem(logger log.Logger, cometWSClient *mezodtypes.CometWSClient) *EventSystem {
+func NewEventSystem(logger log.Logger, cometWSClient *mezodtypes.CometWSClient, config EventSystemConfig) *EventSystem {
 	index := make(filterIndex)
 	for i := filters.UnknownSubscription; i < filters.LastIndexSubscription; i++ {
 		index[i] = make(map[rpc.ID]*Subscription)
@@ -91,6 +100,7 @@ func NewEventSystem(logger log.Logger, cometWSClient *mezodtypes.CometWSClient) 
 		indexMux:      new(sync.RWMutex),
 		uninstall:     make(chan *Subscription),
 		eventBus:      pubsub.NewEventBus(),
+		config:        config,
 	}
 
 	go es.uninstallLoop()
@@ -197,8 +207,8 @@ func (es *EventSystem) subscribe(sub *Subscription) (*Subscription, pubsub.Unsub
 // block is "latest". If the fromBlock > toBlock an error is returned.
 
 func (es *EventSystem) SubscribeLogs(crit filters.FilterCriteria) (*Subscription, pubsub.UnsubscribeFunc, error) {
-	if len(crit.Addresses) > defaultMaxAddressesFilter {
-		return nil, nil, fmt.Errorf("max number of addresses exceeded (max allowed %v)", defaultMaxAddressesFilter)
+	if c := es.config.RPCLogsFilterAddrCap; c > 0 && len(crit.Addresses) > int(c) {
+		return nil, nil, fmt.Errorf("max number of addresses exceeded (max allowed %v)", c)
 	}
 
 	var from, to rpc.BlockNumber
