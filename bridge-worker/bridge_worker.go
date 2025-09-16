@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -71,6 +72,10 @@ type BridgeWorker struct {
 
 	btcWithdrawalFinalityChecksMutex sync.Mutex
 	btcWithdrawalFinalityChecks      map[string]*btcWithdrawalFinalityCheck
+
+	// The `redemptionDustThreshold` parameter from tBTC Bridge changes very
+	// rarely. Therefore we only read it once, at program start.
+	redemptionDustThresholdErc20Precision *big.Int
 
 	btcWithdrawalQueueCheckFrequency time.Duration
 }
@@ -190,19 +195,29 @@ func RunBridgeWorker(
 		}
 	}()
 
+	redemptionParameters, err := tbtcBridgeContract.RedemptionParameters()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get tBTC bridge redemption parameters: %v", err))
+	}
+
+	redemptionDustThresholdErc20Precision := btcToErc20Amount(
+		new(big.Int).SetUint64(redemptionParameters.RedemptionDustThreshold),
+	)
+
 	bw := &BridgeWorker{
-		logger:                           logger,
-		mezoBridgeContract:               mezoBridgeContract,
-		tbtcBridgeContract:               tbtcBridgeContract,
-		chain:                            chain,
-		batchSize:                        cfg.Ethereum.BatchSize,
-		requestsPerMinute:                cfg.Ethereum.RequestsPerMinute,
-		btcChain:                         btcChain,
-		assetsUnlockedEndpoint:           assetsUnlockedGrpcEndpoint,
-		liveWalletsReady:                 make(chan struct{}),
-		btcWithdrawalQueue:               []portal.MezoBridgeAssetsUnlockConfirmed{},
-		btcWithdrawalFinalityChecks:      map[string]*btcWithdrawalFinalityCheck{},
-		btcWithdrawalQueueCheckFrequency: cfg.Job.BTCWithdrawal.QueueCheckFrequency,
+		logger:                                logger,
+		mezoBridgeContract:                    mezoBridgeContract,
+		tbtcBridgeContract:                    tbtcBridgeContract,
+		chain:                                 chain,
+		batchSize:                             cfg.Ethereum.BatchSize,
+		requestsPerMinute:                     cfg.Ethereum.RequestsPerMinute,
+		btcChain:                              btcChain,
+		assetsUnlockedEndpoint:                assetsUnlockedGrpcEndpoint,
+		liveWalletsReady:                      make(chan struct{}),
+		btcWithdrawalQueue:                    []portal.MezoBridgeAssetsUnlockConfirmed{},
+		btcWithdrawalFinalityChecks:           map[string]*btcWithdrawalFinalityCheck{},
+		btcWithdrawalQueueCheckFrequency:      cfg.Job.BTCWithdrawal.QueueCheckFrequency,
+		redemptionDustThresholdErc20Precision: redemptionDustThresholdErc20Precision,
 	}
 
 	go func() {
