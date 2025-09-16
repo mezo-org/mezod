@@ -244,6 +244,7 @@ func pendingAssetsLocked(
 ) (err error) {
 	defer func() {
 		if err != nil {
+			log.Printf("error while determining pending AssetsLocked: [%v]", err)
 			// set gauge to -1 to indicate error
 			pendingAssetsLockedGauge.WithLabelValues(mezoChainID).Set(-1)
 		}
@@ -285,6 +286,7 @@ func pendingAssetsUnlocked(
 ) (err error) {
 	defer func() {
 		if err != nil {
+			log.Printf("error while determining pending AssetsUnlocked: [%v]", err)
 			// set gauge to -1 to indicate error
 			pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(-1)
 		}
@@ -292,10 +294,11 @@ func pendingAssetsUnlocked(
 
 	requestedUnlockSeqnos, err := mezo.requestedUnlockSeqnos(ctx)
 	if err != nil {
-		return fmt.Errorf(
+		err = fmt.Errorf(
 			"failed to get requested unlock sequence numbers from Mezo: [%w]",
 			err,
 		)
+		return
 	}
 
 	// Populate the cache with all requested unlock seqnos.
@@ -305,10 +308,11 @@ func pendingAssetsUnlocked(
 
 	processedUnlockSeqnos, err := ethereum.processedUnlockSeqnos(ctx)
 	if err != nil {
-		return fmt.Errorf(
+		err = fmt.Errorf(
 			"failed to get processed unlock sequence numbers from Ethereum: [%w]",
 			err,
 		)
+		return
 	}
 
 	// Remove processed unlock seqnos from the cache.
@@ -340,7 +344,7 @@ func pendingAssetsUnlocked(
 
 	pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(float64(pending))
 
-	return nil
+	return
 }
 
 func (mc *mezoChain) requestedUnlockSeqnos(ctx context.Context) ([]*big.Int, error) {
