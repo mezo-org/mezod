@@ -519,6 +519,7 @@ func ethereumBridgeValsBalance(
 	ethereumBridgeValBalanceGauge.Reset()
 
 	for i := uint64(0); i < validatorsCount.Uint64(); i++ {
+		//nolint:gosec
 		validator, err := ethereum.mezoBridge.BridgeValidators(big.NewInt(int64(i)))
 		if err != nil {
 			return fmt.Errorf(
