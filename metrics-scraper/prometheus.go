@@ -74,6 +74,14 @@ var (
 		},
 		[]string{"chain_id"},
 	)
+
+	ethereumBridgeValBalanceGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ethereum_bridge_val_balance",
+			Help: "the Ethereum balance of the bridge validator",
+		},
+		[]string{"address", "chain_id"},
+	)
 )
 
 func startPrometheus(port uint) {

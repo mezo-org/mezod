@@ -234,6 +234,14 @@ func pollBridgeData(
 		errs = append(errs, err)
 	}
 
+	err = ethereumBridgeValsBalance(
+		mezoChainID,
+		ethereum,
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
 	return errors.Join(errs...)
 }
 
@@ -244,6 +252,7 @@ func pendingAssetsLocked(
 ) (err error) {
 	defer func() {
 		if err != nil {
+			log.Printf("error while determining pending AssetsLocked: [%v]", err)
 			// set gauge to -1 to indicate error
 			pendingAssetsLockedGauge.WithLabelValues(mezoChainID).Set(-1)
 		}
@@ -285,6 +294,7 @@ func pendingAssetsUnlocked(
 ) (err error) {
 	defer func() {
 		if err != nil {
+			log.Printf("error while determining pending AssetsUnlocked: [%v]", err)
 			// set gauge to -1 to indicate error
 			pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(-1)
 		}
@@ -292,10 +302,12 @@ func pendingAssetsUnlocked(
 
 	requestedUnlockSeqnos, err := mezo.requestedUnlockSeqnos(ctx)
 	if err != nil {
-		return fmt.Errorf(
+		err = fmt.Errorf(
 			"failed to get requested unlock sequence numbers from Mezo: [%w]",
 			err,
 		)
+		//nolint:nakedret
+		return err
 	}
 
 	// Populate the cache with all requested unlock seqnos.
@@ -305,10 +317,12 @@ func pendingAssetsUnlocked(
 
 	processedUnlockSeqnos, err := ethereum.processedUnlockSeqnos(ctx)
 	if err != nil {
-		return fmt.Errorf(
+		err = fmt.Errorf(
 			"failed to get processed unlock sequence numbers from Ethereum: [%w]",
 			err,
 		)
+		//nolint:nakedret
+		return
 	}
 
 	// Remove processed unlock seqnos from the cache.
@@ -340,7 +354,8 @@ func pendingAssetsUnlocked(
 
 	pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(float64(pending))
 
-	return nil
+	//nolint:nakedret
+	return
 }
 
 func (mc *mezoChain) requestedUnlockSeqnos(ctx context.Context) ([]*big.Int, error) {
@@ -488,4 +503,46 @@ func withBatchFetch[T any](
 	}
 
 	return result, nil
+}
+
+func ethereumBridgeValsBalance(
+	mezoChainID string,
+	ethereum *ethereumChain,
+) error {
+	validatorsCount, err := ethereum.mezoBridge.BridgeValidatorsCount()
+	if err != nil {
+		return fmt.Errorf("failed to get bridge validators count from Ethereum: [%w]", err)
+	}
+
+	ctx := context.Background()
+
+	ethereumBridgeValBalanceGauge.Reset()
+
+	for i := uint64(0); i < validatorsCount.Uint64(); i++ {
+		//nolint:gosec
+		validator, err := ethereum.mezoBridge.BridgeValidators(big.NewInt(int64(i)))
+		if err != nil {
+			return fmt.Errorf(
+				"failed to get bridge validator [%d] address from Ethereum: [%w]",
+				i,
+				err,
+			)
+		}
+
+		balance, err := ethereum.client.Client().BalanceAt(ctx, validator, nil)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to get bridge validator [%s] balance from Ethereum: [%w]",
+				validator.Hex(),
+				err,
+			)
+		}
+
+		ethValue := new(big.Float).Quo(new(big.Float).SetInt(balance), big.NewFloat(1e18))
+		ethValueFloat, _ := ethValue.Float64()
+
+		ethereumBridgeValBalanceGauge.WithLabelValues(validator.Hex(), mezoChainID).Set(ethValueFloat)
+	}
+
+	return nil
 }
