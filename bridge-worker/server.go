@@ -206,7 +206,8 @@ func toPortalAssetsUnlock(entry *bridgetypes.AssetsUnlockedEvent) *portal.MezoBr
 		Recipient:            entry.Recipient,
 		Token:                common.HexToAddress(entry.Token),
 		Amount:               entry.Amount.BigInt(),
-		Chain:                uint8(entry.Chain),
+		//nolint:gosec // G115: Safe conversion
+		Chain: uint8(entry.Chain),
 	}
 }
 

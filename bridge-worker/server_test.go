@@ -52,7 +52,7 @@ func TestServer_submitAttestation(t *testing.T) {
 			Recipient:            entry.Recipient,
 			Token:                common.HexToAddress(entry.Token),
 			Amount:               entry.Amount.BigInt(),
-			Chain:                uint8(entry.Chain),
+			Chain:                uint8(entry.Chain), //nolint:gosec
 		}
 
 		hash, err := portal.AttestationDigestHash(attestation, chainID)
@@ -99,16 +99,16 @@ func TestServer_submitAttestation(t *testing.T) {
 			requestBody:     "invalid-json",
 			expectedStatus:  http.StatusBadRequest,
 			expectedError:   "invalid json format",
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:            "Empty request body",
 			requestBody:     "",
 			expectedStatus:  http.StatusBadRequest,
 			expectedError:   "invalid json format",
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Missing Entry field",
@@ -120,8 +120,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: "0x" + strings.Repeat("00", 65),
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Missing signature",
@@ -133,8 +133,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: "",
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Missing 0x prefix in signature",
@@ -146,8 +146,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: strings.Repeat("00", 65),
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid hex encoding in signature",
@@ -159,8 +159,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: "0x" + strings.Repeat("zz", 65),
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Wrong signature length",
@@ -172,8 +172,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: "0x" + strings.Repeat("00", 32), // Too short
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Missing sequence number",
@@ -188,8 +188,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid sequence number (zero)",
@@ -204,8 +204,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid sequence number (negative)",
@@ -220,8 +220,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid recipient (empty)",
@@ -236,8 +236,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Valid entry but invalid signature for recovery",
@@ -253,8 +253,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Missing amount",
@@ -269,8 +269,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid amount (zero)",
@@ -285,8 +285,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid amount (negative)",
@@ -301,8 +301,8 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid chain (out of range)",
@@ -317,10 +317,9 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
-			setupBridgeMock: func(mockBridge *MockMezoBridge) {},
-			setupStoreMock:  func(mockStore *MockStore) {},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
 		},
-		// New test cases for the added validations
 		{
 			name:           "Unauthorized validator",
 			expectedStatus: http.StatusUnauthorized,
@@ -337,7 +336,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				// Return 0 for validator ID to simulate unauthorized validator
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(0), nil)
 			},
-			setupStoreMock: func(mockStore *MockStore) {},
+			setupStoreMock: func(_ *MockStore) {},
 		},
 		{
 			name:           "Validator ID lookup error",
@@ -355,7 +354,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				// Return error when looking up validator ID
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(0), errors.New("validator lookup error"))
 			},
-			setupStoreMock: func(mockStore *MockStore) {},
+			setupStoreMock: func(_ *MockStore) {},
 		},
 		{
 			name:           "Already confirmed unlock",
@@ -374,7 +373,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				// Return true to simulate already confirmed unlock
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(true, nil)
 			},
-			setupStoreMock: func(mockStore *MockStore) {},
+			setupStoreMock: func(_ *MockStore) {},
 		},
 		{
 			name:           "Confirmed unlocks lookup error",
@@ -393,7 +392,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				// Return error when checking confirmed unlocks
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, errors.New("unlock check error"))
 			},
-			setupStoreMock: func(mockStore *MockStore) {},
+			setupStoreMock: func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid assets unlocked validation",
@@ -413,7 +412,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				// Return false to simulate invalid assets unlocked
 				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(false, nil)
 			},
-			setupStoreMock: func(mockStore *MockStore) {},
+			setupStoreMock: func(_ *MockStore) {},
 		},
 		{
 			name:           "Assets unlocked validation error",
@@ -433,9 +432,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				// Return error during validation
 				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(false, errors.New("validation error"))
 			},
-			setupStoreMock: func(mockStore *MockStore) {},
+			setupStoreMock: func(_ *MockStore) {},
 		},
-		// Store operation test cases
 		{
 			name:           "Store SaveAttestation failure",
 			expectedStatus: http.StatusInternalServerError,
@@ -551,7 +549,7 @@ func signAssetUnlock(
 		Recipient:            entry.Recipient,
 		Token:                common.HexToAddress(entry.Token),
 		Amount:               entry.Amount.BigInt(),
-		Chain:                uint8(entry.Chain),
+		Chain:                uint8(entry.Chain), //nolint:gosec
 	}
 
 	hash, err := portal.AttestationDigestHash(attestation, chainID)

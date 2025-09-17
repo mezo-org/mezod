@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	ASSETS_UNLOCKED_EVENTS_TABLE = "assets_unlocked_events"
-	ATTESATIONS_SIGNATURES       = "attestations_signatures"
+	AssetsUnlockedEventsTable  = "assets_unlocked_events"
+	AttestationSignaturesTable = "attestations_signatures"
 )
 
 type SupabaseStore struct {
@@ -21,10 +21,10 @@ type SupabaseStore struct {
 
 func NewSupabaseStore(
 	logger log.Logger,
-	databaseUrl string,
+	databaseURL string,
 	anonKey string,
 ) (*SupabaseStore, error) {
-	client, err := supabase.NewClient(databaseUrl, anonKey, &supabase.ClientOptions{})
+	client, err := supabase.NewClient(databaseURL, anonKey, &supabase.ClientOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create supabase client: %w", err)
 	}
@@ -37,13 +37,13 @@ func NewSupabaseStore(
 
 // SaveAttestation will save an attestation in the database
 // because there's no good atomic way of checking the error that
-// occured, we take an optimistic approach, meaning:
+// occurred, we take an optimistic approach, meaning:
 // we first try to insert
 // if we have an error we then try to get the entry
 // if we are successful at loading the entry, then we return no error
 // if we are not then we return the initial error
 func (s *SupabaseStore) SaveAttestation(entry *bridgetypes.AssetsUnlockedEvent) error {
-	_, _, err := s.client.From(ASSETS_UNLOCKED_EVENTS_TABLE).Insert(entry, false, "", "", "").Execute()
+	_, _, err := s.client.From(AssetsUnlockedEventsTable).Insert(entry, false, "", "", "").Execute()
 	if err != nil {
 		// we've had an error, let's try to load it as well
 		// if it succeed that means it was inserted before
@@ -70,7 +70,7 @@ func (s *SupabaseStore) LoadAttestation(unlockSequence math.Int) (*bridgetypes.A
 	// because the sequence number is unique in DB and with
 	// filter on it, if it's 0 then we return nil, meaning it doesn't
 	// exists
-	_, err := s.client.From(ASSETS_UNLOCKED_EVENTS_TABLE).
+	_, err := s.client.From(AssetsUnlockedEventsTable).
 		Select("*", "", false).
 		Eq("unlock_sequence", unlockSequence.String()).
 		ExecuteTo(&attestations)
@@ -95,7 +95,7 @@ func (s *SupabaseStore) SaveSignature(unlockSequence math.Int, sig string) error
 		UnlockSequence: unlockSequence,
 		Signature:      sig,
 	}
-	_, _, err := s.client.From(ATTESATIONS_SIGNATURES).Insert(signature, false, "", "", "").Execute()
+	_, _, err := s.client.From(AttestationSignaturesTable).Insert(signature, false, "", "", "").Execute()
 	if err != nil {
 		return fmt.Errorf("couldn't save signature: %w", err)
 	}
@@ -105,7 +105,7 @@ func (s *SupabaseStore) SaveSignature(unlockSequence math.Int, sig string) error
 
 func (s *SupabaseStore) LoadSignature(unlockSequence math.Int) ([]string, error) {
 	rawSignatures := []signature{}
-	_, err := s.client.From(ATTESATIONS_SIGNATURES).
+	_, err := s.client.From(AttestationSignaturesTable).
 		Select("*", "", false).
 		Eq("unlock_sequence", unlockSequence.String()).
 		ExecuteTo(&rawSignatures)

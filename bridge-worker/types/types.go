@@ -2,7 +2,6 @@ package types
 
 import (
 	"errors"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -12,8 +11,6 @@ var (
 	ErrInvalidSignatureFormat     = errors.New("invalid signature format")
 	ErrMissingAssetsUnlockedEntry = errors.New("missing assets unlocked entry")
 	ErrInvalidAssetsUnlockedEntry = errors.New("invalid assets unlocked entry")
-
-	zero = big.NewInt(0)
 )
 
 type SubmitAttestationRequest struct {

@@ -167,7 +167,7 @@ func RunBridgeWorker(
 
 	store, err := NewSupabaseStore(logger, cfg.Supabase.URL, cfg.Supabase.Key)
 	if err != nil {
-		panic(fmt.Sprintf("couldn't initialise supabase store: %v", err))
+		panic(fmt.Sprintf("couldn't initialize supabase store: %v", err))
 	}
 
 	go func() {
@@ -272,7 +272,10 @@ func RunBridgeWorker(
 
 	<-ctx.Done()
 
-	bw.server.Stop(ctx)
+	err = bw.server.Stop(ctx)
+	if err != nil {
+		bw.logger.Error("couldn't shutdown the http server properly", "error", err)
+	}
 
 	bw.logger.Info("bridge worker stopped")
 
