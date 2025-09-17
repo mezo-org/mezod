@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
+	"cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -25,11 +26,17 @@ type MezoBridge interface {
 	ConfirmedUnlocks(*big.Int) (bool, error)
 }
 
+type Store interface {
+	SaveAttestation(entry *bridgetypes.AssetsUnlockedEvent) error
+	SaveSignature(unlockSequence math.Int, sig string) error
+}
+
 type Server struct {
 	logger     log.Logger
 	server     *http.Server
 	chainID    *big.Int
 	mezoBridge MezoBridge
+	store      Store
 }
 
 func NewServer(
@@ -37,11 +44,13 @@ func NewServer(
 	port uint16,
 	chainID *big.Int,
 	mezoBridge MezoBridge,
+	store Store,
 ) *Server {
 	s := &Server{
 		logger:     logger,
 		chainID:    chainID,
 		mezoBridge: mezoBridge,
+		store:      store,
 	}
 
 	mux := http.NewServeMux()
@@ -125,7 +134,7 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	attestation := toPortalAssetsUnlock(req.Entry)
 	ok, err := s.mezoBridge.ValidateAssetsUnlocked(*attestation)
 	if err != nil {
-		s.logger.Error("couldn't validate assets unlocked", "error", err)
+		s.logger.Error("couldn't validate assets unlock event", "error", err)
 		s.writeSubmitAttestationError(w, err, http.StatusInternalServerError)
 		return
 	}
@@ -133,6 +142,19 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	// if already confirmed, nothing to do
 	if !ok {
 		s.writeSubmitAttestationError(w, errors.New("not a valide asset unlocked event"), http.StatusBadRequest)
+		return
+	}
+
+	// now we save it into the store
+	if err := s.store.SaveAttestation(req.Entry); err != nil {
+		s.logger.Error("couldn't save assets unlock event", "error", err)
+		s.writeSubmitAttestationError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	if err := s.store.SaveSignature(req.Entry.UnlockSequence, req.Signature); err != nil {
+		s.logger.Error("couldn't save signature", "error", err)
+		s.writeSubmitAttestationError(w, err, http.StatusInternalServerError)
 		return
 	}
 
