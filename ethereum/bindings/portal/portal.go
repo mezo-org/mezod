@@ -1,6 +1,12 @@
 package portal
 
 import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	ethereumgen "github.com/mezo-org/mezod/ethereum/bindings/portal/ethereum/gen"
 	ethereumabi "github.com/mezo-org/mezod/ethereum/bindings/portal/ethereum/gen/abi"
@@ -44,3 +50,68 @@ type (
 )
 
 var NewMezoBridge = ethereumcontract.NewMezoBridge
+
+func AttestationDigestHash(attestation *MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
+	abiEncoded, err := AbiEncodeAttestationWithChainID(attestation, chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	digest := crypto.Keccak256(abiEncoded)
+
+	return accounts.TextHash(digest), nil
+}
+
+func AbiEncodeAttestation(attestation *MezoBridgeAssetsUnlocked) ([]byte, error) {
+	return AbiEncodeAttestationWithChainID(attestation, nil)
+}
+
+// abiEncodeAttestationWithChainID is used to encode the attestation with the chain ID
+// which is used to produce a signature for the batch attestation process.
+func AbiEncodeAttestationWithChainID(attestation *MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
+	var argumentsTypes abi.Arguments
+	var arguments []any
+
+	if chainID != nil {
+		uint256Type, err := abi.NewType("uint256", "uint256", nil)
+		if err != nil {
+			return nil, err
+		}
+		argumentsTypes = append(argumentsTypes, abi.Argument{Type: uint256Type})
+		arguments = append(arguments, chainID)
+	}
+
+	// Create tuple type for AssetsUnlocked struct
+	tupleType, err := abi.NewType("tuple", "tuple", []abi.ArgumentMarshaling{
+		{Name: "unlockSequenceNumber", Type: "uint256"},
+		{Name: "recipient", Type: "bytes"},
+		{Name: "token", Type: "address"},
+		{Name: "amount", Type: "uint256"},
+		{Name: "chain", Type: "uint8"},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Add the tuple as a single argument instead of individual fields
+	argumentsTypes = append(argumentsTypes, abi.Argument{Type: tupleType})
+
+	// Create the struct as a single tuple argument
+	assetsUnlockedTuple := struct {
+		UnlockSequenceNumber *big.Int
+		Recipient            []byte
+		Token                common.Address
+		Amount               *big.Int
+		Chain                uint8
+	}{
+		UnlockSequenceNumber: attestation.UnlockSequenceNumber,
+		Recipient:            attestation.Recipient,
+		Token:                attestation.Token,
+		Amount:               attestation.Amount,
+		Chain:                attestation.Chain,
+	}
+
+	arguments = append(arguments, assetsUnlockedTuple)
+
+	return argumentsTypes.Pack(arguments...)
+}

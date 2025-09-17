@@ -11,12 +11,11 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/bridge-worker/types"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
@@ -91,13 +90,18 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) recoverAddress(entry *bridgetypes.AssetsUnlockedEvent, signature string) (common.Address, error) {
-	abiEncoded, err := abiEncodeAttestationWithChainID(entry, s.chainID)
+	attestation := &portal.MezoBridgeAssetsUnlocked{
+		UnlockSequenceNumber: entry.UnlockSequence.BigInt(),
+		Recipient:            entry.Recipient,
+		Token:                common.HexToAddress(entry.Token),
+		Amount:               entry.Amount.BigInt(),
+		Chain:                uint8(entry.Chain),
+	}
+
+	hash, err := portal.AttestationDigestHash(attestation, s.chainID)
 	if err != nil {
 		return common.Address{}, err
 	}
-
-	// Apply the same TextHash transformation
-	hash := accounts.TextHash(abiEncoded)
 
 	// Decode the signature from hex
 	signatureBytes, err := hexutil.Decode(signature)
@@ -143,54 +147,4 @@ func writeSuccess(w http.ResponseWriter, status int) {
 	_ = json.NewEncoder(w).Encode(types.SubmitAttestationResponse{
 		Success: true,
 	})
-}
-
-// abiEncodeAttestationWithChainID is used to encode the attestation with the chain ID
-// which is used to produce a signature for the batch attestation process.
-func abiEncodeAttestationWithChainID(attestation *bridgetypes.AssetsUnlockedEvent, chainID *big.Int) ([]byte, error) {
-	var argumentsTypes abi.Arguments
-	var arguments []any
-
-	if chainID != nil {
-		uint256Type, err := abi.NewType("uint256", "uint256", nil)
-		if err != nil {
-			return nil, err
-		}
-		argumentsTypes = append(argumentsTypes, abi.Argument{Type: uint256Type})
-		arguments = append(arguments, chainID)
-	}
-
-	// Create tuple type for AssetsUnlocked struct
-	tupleType, err := abi.NewType("tuple", "tuple", []abi.ArgumentMarshaling{
-		{Name: "unlockSequenceNumber", Type: "uint256"},
-		{Name: "recipient", Type: "bytes"},
-		{Name: "token", Type: "address"},
-		{Name: "amount", Type: "uint256"},
-		{Name: "chain", Type: "uint8"},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Add the tuple as a single argument instead of individual fields
-	argumentsTypes = append(argumentsTypes, abi.Argument{Type: tupleType})
-
-	// Create the struct as a single tuple argument
-	assetsUnlockedTuple := struct {
-		UnlockSequenceNumber *big.Int
-		Recipient            []byte
-		Token                common.Address
-		Amount               *big.Int
-		Chain                uint8
-	}{
-		UnlockSequenceNumber: attestation.UnlockSequence.BigInt(),
-		Recipient:            attestation.Recipient,
-		Token:                common.HexToAddress(attestation.Token),
-		Amount:               attestation.Amount.BigInt(),
-		Chain:                uint8(attestation.Chain),
-	}
-
-	arguments = append(arguments, assetsUnlockedTuple)
-
-	return argumentsTypes.Pack(arguments...)
 }

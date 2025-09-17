@@ -12,10 +12,11 @@ import (
 
 	"cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
-	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/bridge-worker/types"
+	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,10 +45,17 @@ func TestServer_submitSignature(t *testing.T) {
 
 	// Helper function to create a valid signature for an entry
 	createValidSignature := func(entry *bridgetypes.AssetsUnlockedEvent, privKey *ecdsa.PrivateKey) string {
-		abiEncoded, err := abiEncodeAttestationWithChainID(entry, chainID)
+		attestation := &portal.MezoBridgeAssetsUnlocked{
+			UnlockSequenceNumber: entry.UnlockSequence.BigInt(),
+			Recipient:            entry.Recipient,
+			Token:                common.HexToAddress(entry.Token),
+			Amount:               entry.Amount.BigInt(),
+			Chain:                uint8(entry.Chain),
+		}
+
+		hash, err := portal.AttestationDigestHash(attestation, chainID)
 		require.NoError(t, err)
 
-		hash := accounts.TextHash(abiEncoded)
 		signature, err := crypto.Sign(hash, privKey)
 		require.NoError(t, err)
 
@@ -333,10 +341,17 @@ func TestServer_recoverAddress(t *testing.T) {
 		BlockTime:      1000,
 	}
 
-	abiEncoded, err := abiEncodeAttestationWithChainID(entry, chainID)
+	attestation := &portal.MezoBridgeAssetsUnlocked{
+		UnlockSequenceNumber: entry.UnlockSequence.BigInt(),
+		Recipient:            entry.Recipient,
+		Token:                common.HexToAddress(entry.Token),
+		Amount:               entry.Amount.BigInt(),
+		Chain:                uint8(entry.Chain),
+	}
+
+	hash, err := portal.AttestationDigestHash(attestation, chainID)
 	require.NoError(t, err)
 
-	hash := accounts.TextHash(abiEncoded)
 	signature, err := crypto.Sign(hash, privateKey)
 	require.NoError(t, err)
 

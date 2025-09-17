@@ -233,7 +233,7 @@ func TestAttestationDigestHash(t *testing.T) {
 		Chain:                0,
 	}
 
-	digestHash, err := attestationDigestHash(attestation, big.NewInt(1))
+	digestHash, err := portal.AttestationDigestHash(attestation, big.NewInt(1))
 	assert.NoError(t, err)
 
 	// Expected digest hash computed using Solidity's `keccak256(abi.encode(1, AssetsUnlocked)).toEthSignedMessageHash()`

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
@@ -133,19 +132,8 @@ func (ba *batchAttestation) sendPayload(
 	}
 }
 
-func attestationDigestHash(attestation *portal.MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
-	abiEncoded, err := abiEncodeAttestationWithChainID(attestation, chainID)
-	if err != nil {
-		return nil, err
-	}
-
-	digest := crypto.Keccak256(abiEncoded)
-
-	return accounts.TextHash(digest), nil
-}
-
 func (ba *batchAttestation) signPayload(attestation *portal.MezoBridgeAssetsUnlocked) (string, error) {
-	digestHash, err := attestationDigestHash(attestation, ba.chainID)
+	digestHash, err := portal.AttestationDigestHash(attestation, ba.chainID)
 	if err != nil {
 		return "", err
 	}
