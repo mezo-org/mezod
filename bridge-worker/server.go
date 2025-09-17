@@ -75,12 +75,12 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 
 	req, err := readSubmitAttestationRequest(r)
 	if err != nil {
-		writeError(w, err, http.StatusBadRequest)
+		s.writeSubmitAttestationError(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		writeError(w, err, http.StatusBadRequest)
+		s.writeSubmitAttestationError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -89,7 +89,7 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	// first recover the address out of the signature
 	address, err := s.recoverAddress(req.Entry, req.Signature)
 	if err != nil {
-		writeError(w, err, http.StatusBadRequest)
+		s.writeSubmitAttestationError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -97,13 +97,13 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	index, err := s.mezoBridge.ValidatorIDs(address)
 	if err != nil {
 		s.logger.Error("couldn't get bridge validator ID", "error", err)
-		writeError(w, err, http.StatusInternalServerError)
+		s.writeSubmitAttestationError(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	// if default value, then address is not a validator
 	if index == 0 {
-		writeError(w, errors.New("not an authorized validator"), http.StatusUnauthorized)
+		s.writeSubmitAttestationError(w, errors.New("not an authorized validator"), http.StatusUnauthorized)
 		return
 	}
 
@@ -111,13 +111,13 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	isConfirmed, err := s.mezoBridge.ConfirmedUnlocks(req.Entry.UnlockSequence.BigInt())
 	if err != nil {
 		s.logger.Error("couldn't confirm unlock", "error", err)
-		writeError(w, err, http.StatusInternalServerError)
+		s.writeSubmitAttestationError(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	// if already confirmed, nothing to do
 	if isConfirmed {
-		writeError(w, errors.New("already confirmed"), http.StatusBadRequest)
+		s.writeSubmitAttestationError(w, errors.New("already confirmed"), http.StatusBadRequest)
 		return
 	}
 
@@ -126,17 +126,32 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	ok, err := s.mezoBridge.ValidateAssetsUnlocked(*attestation)
 	if err != nil {
 		s.logger.Error("couldn't validate assets unlocked", "error", err)
-		writeError(w, err, http.StatusInternalServerError)
+		s.writeSubmitAttestationError(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	// if already confirmed, nothing to do
 	if !ok {
-		writeError(w, errors.New("not a valide asset unlocked event"), http.StatusBadRequest)
+		s.writeSubmitAttestationError(w, errors.New("not a valide asset unlocked event"), http.StatusBadRequest)
 		return
 	}
 
-	writeSuccess(w, http.StatusAccepted)
+	s.writeSubmitAttestationSuccess(w, http.StatusAccepted)
+}
+
+func (s *Server) writeSubmitAttestationError(w http.ResponseWriter, err error, status int) {
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(types.SubmitAttestationResponse{
+		Error:   err.Error(),
+		Success: false,
+	})
+}
+
+func (s *Server) writeSubmitAttestationSuccess(w http.ResponseWriter, status int) {
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(types.SubmitAttestationResponse{
+		Success: true,
+	})
 }
 
 func (s *Server) recoverAddress(entry *bridgetypes.AssetsUnlockedEvent, signature string) (common.Address, error) {
@@ -186,19 +201,4 @@ func readSubmitAttestationRequest(r *http.Request) (*types.SubmitAttestationRequ
 	}
 
 	return &req, nil
-}
-
-func writeError(w http.ResponseWriter, err error, status int) {
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(types.SubmitAttestationResponse{
-		Error:   err.Error(),
-		Success: false,
-	})
-}
-
-func writeSuccess(w http.ResponseWriter, status int) {
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(types.SubmitAttestationResponse{
-		Success: true,
-	})
 }
