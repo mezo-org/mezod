@@ -4,13 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math/big"
-	"sync"
-	"time"
 
 	"cosmossdk.io/log"
-	sdkmath "cosmossdk.io/math"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin/electrum"
@@ -20,28 +15,18 @@ import (
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
-	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
 // mezoBridgeName is the name of the MezoBridge contract.
 const mezoBridgeName = "MezoBridge"
 
-// AssetsUnlockedEndpoint is a client enabling communication with the `Mezo`
-// chain.
-type AssetsUnlockedEndpoint interface {
-	// GetAssetsUnlockedEvents gets the AssetsUnlocked events from the Mezo
-	// chain. The requested range of events is inclusive on the lower side and
-	// exclusive on the upper side.
-	GetAssetsUnlockedEvents(
-		ctx context.Context,
-		sequenceStart sdkmath.Int,
-		sequenceEnd sdkmath.Int,
-	) ([]bridgetypes.AssetsUnlockedEvent, error)
+// bridgeWorkerJob represent a bridge worker job.
+type bridgeWorkerJob interface {
+	run(ctx context.Context)
 }
 
-// BridgeWorker is a component responsible for tasks related to bridge-out
-// process.
-type BridgeWorker struct {
+// environment groups common elements for all bridge worker jobs.
+type environment struct {
 	logger log.Logger
 
 	mezoBridgeContract *portal.MezoBridge
@@ -52,32 +37,7 @@ type BridgeWorker struct {
 	batchSize         uint64
 	requestsPerMinute uint64
 
-	btcChain               bitcoin.Chain
-	assetsUnlockedEndpoint AssetsUnlockedEndpoint
-
-	// Channel used to indicate whether the initial fetching of live wallets
-	// is done. Once this channel is closed we can proceed with the Bitcoin
-	// withdrawing routines.
-	liveWalletsReady chan struct{}
-
-	liveWalletsMutex sync.Mutex
-	liveWallets      [][20]byte
-
-	liveWalletsLastProcessedBlock uint64 // single-routine use; no mutex locking needed.
-
-	btcWithdrawalLastProcessedBlock uint64
-
-	btcWithdrawalMutex sync.Mutex
-	btcWithdrawalQueue []portal.MezoBridgeAssetsUnlockConfirmed
-
-	btcWithdrawalFinalityChecksMutex sync.Mutex
-	btcWithdrawalFinalityChecks      map[string]*btcWithdrawalFinalityCheck
-
-	// The `redemptionDustThreshold` parameter from tBTC Bridge changes very
-	// rarely. Therefore we only read it once, at program start.
-	redemptionDustThresholdErc20Precision *big.Int
-
-	btcWithdrawalQueueCheckFrequency time.Duration
+	btcChain bitcoin.Chain
 }
 
 func RunBridgeWorker(
@@ -153,127 +113,34 @@ func RunBridgeWorker(
 		panic(fmt.Sprintf("could not connect to Electrum chain: %v", err))
 	}
 
-	logger.Info(
-		"connecting to Mezo assets unlock endpoint",
-		"endpoint", cfg.Mezo.AssetsUnlockEndpoint,
-	)
-
-	// The messages handled by the bridge-worker contain custom types.
-	// Add codecs so that the messages can be marshaled/unmarshalled.
-	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
-		cfg.Mezo.AssetsUnlockEndpoint,
-		codectypes.NewInterfaceRegistry(),
-	)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
+	env := &environment{
+		logger:             logger,
+		mezoBridgeContract: mezoBridgeContract,
+		tbtcBridgeContract: tbtcBridgeContract,
+		chain:              chain,
+		batchSize:          cfg.Ethereum.BatchSize,
+		requestsPerMinute:  cfg.Ethereum.RequestsPerMinute,
+		btcChain:           btcChain,
 	}
 
-	go func() {
-		// Test the connection to the assets unlocked endpoint by verifying we
-		// can successfully execute `GetAssetsUnlockedEvents`.
-		ctxWithTimeout, cancel := context.WithTimeout(
-			context.Background(),
-			requestTimeout,
-		)
-		defer cancel()
-
-		_, err := assetsUnlockedGrpcEndpoint.GetAssetsUnlockedEvents(
-			ctxWithTimeout,
-			sdkmath.NewInt(1),
-			sdkmath.NewInt(2),
-		)
-		if err != nil {
-			logger.Error(
-				"assets unlocked endpoint connection test failed; possible "+
-					"problem with configuration or connectivity",
-				"error", err,
-			)
-		} else {
-			logger.Info(
-				"assets unlocked endpoint connection test completed successfully",
-			)
-		}
-	}()
-
-	redemptionParameters, err := tbtcBridgeContract.RedemptionParameters()
-	if err != nil {
-		panic(fmt.Sprintf("failed to get tBTC bridge redemption parameters: %v", err))
+	jobs := []bridgeWorkerJob{
+		newBTCWithdrawalJob(
+			env,
+			cfg.Mezo.AssetsUnlockEndpoint,
+			cfg.Job.BTCWithdrawal.QueueCheckFrequency,
+		),
 	}
 
-	redemptionDustThresholdErc20Precision := btcToErc20Amount(
-		new(big.Int).SetUint64(redemptionParameters.RedemptionDustThreshold),
-	)
-
-	bw := &BridgeWorker{
-		logger:                                logger,
-		mezoBridgeContract:                    mezoBridgeContract,
-		tbtcBridgeContract:                    tbtcBridgeContract,
-		chain:                                 chain,
-		batchSize:                             cfg.Ethereum.BatchSize,
-		requestsPerMinute:                     cfg.Ethereum.RequestsPerMinute,
-		btcChain:                              btcChain,
-		assetsUnlockedEndpoint:                assetsUnlockedGrpcEndpoint,
-		liveWalletsReady:                      make(chan struct{}),
-		btcWithdrawalQueue:                    []portal.MezoBridgeAssetsUnlockConfirmed{},
-		btcWithdrawalFinalityChecks:           map[string]*btcWithdrawalFinalityCheck{},
-		btcWithdrawalQueueCheckFrequency:      cfg.Job.BTCWithdrawal.QueueCheckFrequency,
-		redemptionDustThresholdErc20Precision: redemptionDustThresholdErc20Precision,
+	for _, job := range jobs {
+		go func(j bridgeWorkerJob) {
+			j.run(ctx)
+			cancelCtx()
+		}(job)
 	}
-
-	go func() {
-		defer cancelCtx()
-		err := bw.observeLiveWallets(ctx)
-		if err != nil {
-			bw.logger.Error(
-				"live wallets observation routine failed",
-				"error", err,
-			)
-		}
-
-		bw.logger.Warn("live wallets observation routine stopped")
-	}()
-
-	// Wait until the initial fetching of live wallets is done.
-	bw.logger.Info("waiting for initial fetching of live wallet")
-	select {
-	case <-bw.liveWalletsReady:
-		bw.logger.Info("initial fetching of live wallets completed")
-	case <-ctx.Done():
-		bw.logger.Warn(
-			"context canceled while waiting; exiting without launching " +
-				"BTC withdrawal routines",
-		)
-		return ctx.Err()
-	}
-
-	go func() {
-		defer cancelCtx()
-		err := bw.observeBTCWithdrawals(ctx)
-		if err != nil {
-			bw.logger.Error(
-				"BTC withdrawal observation routine failed",
-				"error", err,
-			)
-		}
-
-		bw.logger.Warn("BTC withdrawal observation routine stopped")
-	}()
-
-	go func() {
-		defer cancelCtx()
-		bw.processBTCWithdrawalQueue(ctx)
-		bw.logger.Warn("BTC withdrawal processing loop stopped")
-	}()
-
-	go func() {
-		defer cancelCtx()
-		bw.processBTCWithdrawalFinalityChecks(ctx)
-		bw.logger.Warn("BTC withdrawal finality checks loop stopped")
-	}()
 
 	<-ctx.Done()
 
-	bw.logger.Info("bridge worker stopped")
+	logger.Info("bridge worker stopped")
 
 	return nil
 }

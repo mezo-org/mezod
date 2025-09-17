@@ -7,9 +7,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	sdkmath "cosmossdk.io/math"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,6 +21,7 @@ import (
 	"github.com/mezo-org/mezod/bridge-worker/utils"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
 const (
@@ -46,19 +49,183 @@ const (
 	walletStateLive = uint8(1)
 )
 
-func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
-	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
+// AssetsUnlockedEndpoint is a client enabling communication with the `Mezo`
+// chain.
+type AssetsUnlockedEndpoint interface {
+	// GetAssetsUnlockedEvents gets the AssetsUnlocked events from the Mezo
+	// chain. The requested range of events is inclusive on the lower side and
+	// exclusive on the upper side.
+	GetAssetsUnlockedEvents(
+		ctx context.Context,
+		sequenceStart sdkmath.Int,
+		sequenceEnd sdkmath.Int,
+	) ([]bridgetypes.AssetsUnlockedEvent, error)
+}
+
+func newBTCWithdrawalJob(
+	env *environment,
+	assetsUnlockEndpoint string,
+	queueCheckFrequency time.Duration,
+) *btcWithdrawalJob {
+	// The messages handled by the bridge-worker contain custom types.
+	// Add codecs so that the messages can be marshaled/unmarshalled.
+	assetsUnlockedGrpcEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
+		assetsUnlockEndpoint,
+		codectypes.NewInterfaceRegistry(),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
+	}
+
+	go func() {
+		// Test the connection to the assets unlocked endpoint by verifying we
+		// can successfully execute `GetAssetsUnlockedEvents`.
+		ctxWithTimeout, cancel := context.WithTimeout(
+			context.Background(),
+			requestTimeout,
+		)
+		defer cancel()
+
+		_, err := assetsUnlockedGrpcEndpoint.GetAssetsUnlockedEvents(
+			ctxWithTimeout,
+			sdkmath.NewInt(1),
+			sdkmath.NewInt(2),
+		)
+		if err != nil {
+			env.logger.Error(
+				"assets unlocked endpoint connection test failed; possible "+
+					"problem with configuration or connectivity",
+				"error", err,
+			)
+		} else {
+			env.logger.Info(
+				"assets unlocked endpoint connection test completed successfully",
+			)
+		}
+	}()
+
+	redemptionParameters, err := env.tbtcBridgeContract.RedemptionParameters()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get tBTC bridge redemption parameters: %v", err))
+	}
+
+	redemptionDustThresholdErc20Precision := btcToErc20Amount(
+		new(big.Int).SetUint64(redemptionParameters.RedemptionDustThreshold),
+	)
+
+	return &btcWithdrawalJob{
+		env:                                   env,
+		assetsUnlockedEndpoint:                assetsUnlockedGrpcEndpoint,
+		liveWalletsReady:                      make(chan struct{}),
+		btcWithdrawalQueue:                    []portal.MezoBridgeAssetsUnlockConfirmed{},
+		btcWithdrawalFinalityChecks:           map[string]*btcWithdrawalFinalityCheck{},
+		btcWithdrawalQueueCheckFrequency:      queueCheckFrequency,
+		redemptionDustThresholdErc20Precision: redemptionDustThresholdErc20Precision,
+	}
+}
+
+type btcWithdrawalJob struct {
+	env *environment
+
+	assetsUnlockedEndpoint AssetsUnlockedEndpoint
+
+	// Channel used to indicate whether the initial fetching of live wallets
+	// is done. Once this channel is closed we can proceed with the Bitcoin
+	// withdrawing routines.
+	liveWalletsReady chan struct{}
+
+	liveWalletsMutex sync.Mutex
+	liveWallets      [][20]byte
+
+	liveWalletsLastProcessedBlock uint64 // single-routine use; no mutex locking needed.
+
+	btcWithdrawalLastProcessedBlock uint64
+
+	btcWithdrawalMutex sync.Mutex
+	btcWithdrawalQueue []portal.MezoBridgeAssetsUnlockConfirmed
+
+	btcWithdrawalFinalityChecksMutex sync.Mutex
+	btcWithdrawalFinalityChecks      map[string]*btcWithdrawalFinalityCheck
+
+	btcWithdrawalQueueCheckFrequency time.Duration
+
+	// The `redemptionDustThreshold` parameter from tBTC Bridge changes very
+	// rarely. Therefore we only read it once, at program start.
+	redemptionDustThresholdErc20Precision *big.Int
+}
+
+func (bwj *btcWithdrawalJob) run(ctx context.Context) {
+	runCtx, cancelRunCtx := context.WithCancel(ctx)
+	defer cancelRunCtx()
+
+	go func() {
+		defer cancelRunCtx()
+		err := bwj.observeLiveWallets(runCtx)
+		if err != nil {
+			bwj.env.logger.Error(
+				"live wallets observation routine failed",
+				"error", err,
+			)
+		}
+
+		bwj.env.logger.Warn("live wallets observation routine stopped")
+	}()
+
+	// Wait until the initial fetching of live wallets is done.
+	bwj.env.logger.Info("waiting for initial fetching of live wallet")
+	select {
+	case <-bwj.liveWalletsReady:
+		bwj.env.logger.Info("initial fetching of live wallets completed")
+	case <-runCtx.Done():
+		bwj.env.logger.Warn(
+			"context canceled while waiting; exiting without launching " +
+				"BTC withdrawal routines",
+		)
+		return
+	}
+
+	go func() {
+		defer cancelRunCtx()
+		err := bwj.observeBTCWithdrawals(runCtx)
+		if err != nil {
+			bwj.env.logger.Error(
+				"BTC withdrawal observation routine failed",
+				"error", err,
+			)
+		}
+
+		bwj.env.logger.Warn("BTC withdrawal observation routine stopped")
+	}()
+
+	go func() {
+		defer cancelRunCtx()
+		bwj.processBTCWithdrawalQueue(runCtx)
+		bwj.env.logger.Warn("BTC withdrawal processing loop stopped")
+	}()
+
+	go func() {
+		defer cancelRunCtx()
+		bwj.processBTCWithdrawalFinalityChecks(runCtx)
+		bwj.env.logger.Warn("BTC withdrawal finality checks loop stopped")
+	}()
+
+	<-runCtx.Done()
+	bwj.env.logger.Info("BTC withdrawal job stopped")
+}
+
+func (bwj *btcWithdrawalJob) observeLiveWallets(ctx context.Context) error {
+	finalizedBlock, err := bwj.env.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get finalized block: [%w]", err)
 	}
 	endBlock := finalizedBlock.Uint64()
 
 	recentEvents, err := utils.WithBatchFetch(
-		bw.newWalletRegisteredEvents,
+		bwj.newWalletRegisteredEvents,
 		0,
 		endBlock,
-		bw.requestsPerMinute,
-		bw.batchSize,
+		bwj.env.requestsPerMinute,
+		bwj.env.batchSize,
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -71,7 +238,7 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 	for _, event := range recentEvents {
 		walletPublicKeyHash := event.WalletPubKeyHash
 
-		wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+		wallet, err := bwj.env.tbtcBridgeContract.Wallets(walletPublicKeyHash)
 		if err != nil {
 			return fmt.Errorf("failed to get wallet: [%w]", err)
 		}
@@ -81,19 +248,19 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 		}
 	}
 
-	bw.liveWalletsLastProcessedBlock = endBlock
+	bwj.liveWalletsLastProcessedBlock = endBlock
 
-	bw.logger.Info(
+	bwj.env.logger.Info(
 		"finished initial search for live wallets",
 		"number_of_live_wallets", len(liveWallets),
 	)
 
-	bw.liveWalletsMutex.Lock()
-	bw.liveWallets = liveWallets
-	bw.liveWalletsMutex.Unlock()
+	bwj.liveWalletsMutex.Lock()
+	bwj.liveWallets = liveWallets
+	bwj.liveWalletsMutex.Unlock()
 
 	// Signal that initial fetching of wallets ready.
-	close(bw.liveWalletsReady)
+	close(bwj.liveWalletsReady)
 
 	// Start a ticker to periodically update the wallets.
 	ticker := time.NewTicker(liveWalletsUpdatePeriod)
@@ -103,14 +270,14 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done(): // Handle context cancellation
-			bw.logger.Warn(
+			bwj.env.logger.Warn(
 				"stopping live wallet observation due to context cancellation",
 			)
 			return nil
 		case <-tickerChan:
-			err := bw.updateLiveWallets(ctx)
+			err := bwj.updateLiveWallets(ctx)
 			if err != nil {
-				bw.logger.Error(
+				bwj.env.logger.Error(
 					"failed to update live wallets",
 					"error", err,
 				)
@@ -119,22 +286,22 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 	}
 }
 
-func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
+func (bwj *btcWithdrawalJob) updateLiveWallets(ctx context.Context) error {
 	// Work on a copy of live wallets to avoid blocking for too long.
 	// Live wallets are represented by `[20]byte` arrays, so `copy` will
 	// deep-copy them.
-	bw.liveWalletsMutex.Lock()
+	bwj.liveWalletsMutex.Lock()
 
-	walletPublicKeyHashes := make([][20]byte, len(bw.liveWallets))
-	copy(walletPublicKeyHashes, bw.liveWallets)
+	walletPublicKeyHashes := make([][20]byte, len(bwj.liveWallets))
+	copy(walletPublicKeyHashes, bwj.liveWallets)
 
-	bw.liveWalletsMutex.Unlock()
+	bwj.liveWalletsMutex.Unlock()
 
 	// Keep only wallets which are still live.
 	updatedLiveWallets := [][20]byte{}
 
 	for _, walletPublicKeyHash := range walletPublicKeyHashes {
-		wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+		wallet, err := bwj.env.tbtcBridgeContract.Wallets(walletPublicKeyHash)
 		if err != nil {
 			return fmt.Errorf("failed to get wallet: [%w]", err)
 		}
@@ -145,19 +312,19 @@ func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
 	}
 
 	// Look for new live wallets.
-	finalizedBlock, err := bw.chain.FinalizedBlock(ctx)
+	finalizedBlock, err := bwj.env.chain.FinalizedBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get finalized block: [%w]", err)
 	}
 	endBlock := finalizedBlock.Uint64()
 
-	if endBlock > bw.liveWalletsLastProcessedBlock {
+	if endBlock > bwj.liveWalletsLastProcessedBlock {
 		events, err := utils.WithBatchFetch(
-			bw.newWalletRegisteredEvents,
-			bw.liveWalletsLastProcessedBlock+1,
+			bwj.newWalletRegisteredEvents,
+			bwj.liveWalletsLastProcessedBlock+1,
 			endBlock,
-			bw.requestsPerMinute,
-			bw.batchSize,
+			bwj.env.requestsPerMinute,
+			bwj.env.batchSize,
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -169,7 +336,7 @@ func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
 		for _, event := range events {
 			walletPublicKeyHash := event.WalletPubKeyHash
 
-			wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+			wallet, err := bwj.env.tbtcBridgeContract.Wallets(walletPublicKeyHash)
 			if err != nil {
 				return fmt.Errorf("failed to get wallet: [%w]", err)
 			}
@@ -179,17 +346,17 @@ func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
 			}
 		}
 
-		bw.liveWalletsLastProcessedBlock = endBlock
+		bwj.liveWalletsLastProcessedBlock = endBlock
 	}
 
-	bw.logger.Info(
+	bwj.env.logger.Info(
 		"finished updating live wallets",
 		"number_of_live_wallets", len(updatedLiveWallets),
 	)
 
-	bw.liveWalletsMutex.Lock()
-	bw.liveWallets = updatedLiveWallets
-	bw.liveWalletsMutex.Unlock()
+	bwj.liveWalletsMutex.Lock()
+	bwj.liveWallets = updatedLiveWallets
+	bwj.liveWalletsMutex.Unlock()
 
 	return nil
 }
@@ -208,13 +375,13 @@ func (wfc *btcWithdrawalFinalityCheck) key() string {
 
 // observeBTCWithdrawals monitors AssetsUnlockConfirmed events, filters
 // events representing pending BTC withdrawals and puts them into a queue.
-func (bw *BridgeWorker) observeBTCWithdrawals(ctx context.Context) error {
+func (bwj *btcWithdrawalJob) observeBTCWithdrawals(ctx context.Context) error {
 	// Use the current block rather than finalized block to speed up event
 	// processing. Event processing should handle the effects of a possible
 	// reorg (e.g. an event being duplicated in a queue), although there is a
 	// small risk of skipping an event. In that case it would require a manual
 	// execution of `withdrawBTC`.
-	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
+	currentBlock, err := bwj.env.chain.BlockCounter().CurrentBlock()
 	if err != nil {
 		return fmt.Errorf("failed to get current block: [%w]", err)
 	}
@@ -225,11 +392,11 @@ func (bw *BridgeWorker) observeBTCWithdrawals(ctx context.Context) error {
 	}
 
 	recentEvents, err := utils.WithBatchFetch(
-		bw.assetsUnlockConfirmedEvents,
+		bwj.assetsUnlockConfirmedEvents,
 		startBlock,
 		currentBlock,
-		bw.requestsPerMinute,
-		bw.batchSize,
+		bwj.env.requestsPerMinute,
+		bwj.env.batchSize,
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -241,7 +408,7 @@ func (bw *BridgeWorker) observeBTCWithdrawals(ctx context.Context) error {
 	pendingBTCWithdrawalCount := 0
 
 	for _, event := range recentEvents {
-		isPendingBTCWithdrawal, err := bw.isPendingBTCWithdrawal(ctx, event)
+		isPendingBTCWithdrawal, err := bwj.isPendingBTCWithdrawal(ctx, event)
 		if err != nil {
 			return fmt.Errorf(
 				"failed to check if event represents pending BTC withdrawal: [%w]",
@@ -250,14 +417,14 @@ func (bw *BridgeWorker) observeBTCWithdrawals(ctx context.Context) error {
 		}
 
 		if isPendingBTCWithdrawal {
-			bw.enqueueBTCWithdrawal(event)
+			bwj.enqueueBTCWithdrawal(event)
 			pendingBTCWithdrawalCount++
 		}
 	}
 
-	bw.btcWithdrawalLastProcessedBlock = currentBlock
+	bwj.btcWithdrawalLastProcessedBlock = currentBlock
 
-	bw.logger.Info(
+	bwj.env.logger.Info(
 		"initial search for pending BTC withdrawals done",
 		"assets_unlock_confirmed_events", len(recentEvents),
 		"pending_btc_withdrawals", pendingBTCWithdrawalCount,
@@ -270,15 +437,15 @@ func (bw *BridgeWorker) observeBTCWithdrawals(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done(): // Handle context cancellation
-			bw.logger.Warn(
+			bwj.env.logger.Warn(
 				"stopping BTC withdrawals routine due to context cancellation",
 			)
 			return nil
 		case <-ticker.C:
 			// Process incoming AssetsUnlockedConfirmed events
-			err := bw.processNewAssetsUnlockConfirmedEvents(ctx)
+			err := bwj.processNewAssetsUnlockConfirmedEvents(ctx)
 			if err != nil {
-				bw.logger.Error(
+				bwj.env.logger.Error(
 					"failed to process newly emitted AssetsUnlockConfirmed events",
 					"error", err,
 				)
@@ -289,15 +456,15 @@ func (bw *BridgeWorker) observeBTCWithdrawals(ctx context.Context) error {
 
 // enqueueBTCWithdrawal puts AssetsUnlockConfirmed events representing BTC
 // withdrawals at the end of the queue.
-func (bw *BridgeWorker) enqueueBTCWithdrawal(
+func (bwj *btcWithdrawalJob) enqueueBTCWithdrawal(
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) {
-	bw.btcWithdrawalMutex.Lock()
-	defer bw.btcWithdrawalMutex.Unlock()
+	bwj.btcWithdrawalMutex.Lock()
+	defer bwj.btcWithdrawalMutex.Unlock()
 
-	bw.btcWithdrawalQueue = append(bw.btcWithdrawalQueue, *event)
+	bwj.btcWithdrawalQueue = append(bwj.btcWithdrawalQueue, *event)
 
-	bw.logger.Debug(
+	bwj.env.logger.Debug(
 		"enqueued BTC withdrawal",
 		"unlock_sequence", event.UnlockSequenceNumber.String(),
 	)
@@ -305,17 +472,17 @@ func (bw *BridgeWorker) enqueueBTCWithdrawal(
 
 // dequeueBTCWithdrawal removes an AssetsUnlockConfirmed event representing
 // a BTC withdrawal from the front of the queue.
-func (bw *BridgeWorker) dequeueBTCWithdrawal() *portal.MezoBridgeAssetsUnlockConfirmed {
-	bw.btcWithdrawalMutex.Lock()
-	defer bw.btcWithdrawalMutex.Unlock()
-	if len(bw.btcWithdrawalQueue) == 0 {
+func (bwj *btcWithdrawalJob) dequeueBTCWithdrawal() *portal.MezoBridgeAssetsUnlockConfirmed {
+	bwj.btcWithdrawalMutex.Lock()
+	defer bwj.btcWithdrawalMutex.Unlock()
+	if len(bwj.btcWithdrawalQueue) == 0 {
 		return nil
 	}
 
-	event := bw.btcWithdrawalQueue[0]
-	bw.btcWithdrawalQueue = bw.btcWithdrawalQueue[1:]
+	event := bwj.btcWithdrawalQueue[0]
+	bwj.btcWithdrawalQueue = bwj.btcWithdrawalQueue[1:]
 
-	bw.logger.Debug(
+	bwj.env.logger.Debug(
 		"dequeued BTC withdrawal",
 		"unlock_sequence", event.UnlockSequenceNumber.String(),
 	)
@@ -325,7 +492,7 @@ func (bw *BridgeWorker) dequeueBTCWithdrawal() *portal.MezoBridgeAssetsUnlockCon
 
 // isPendingBTCWithdrawal checks whether an AssetsUnlockConfirmed event
 // represents a pending BTC withdrawal.
-func (bw *BridgeWorker) isPendingBTCWithdrawal(
+func (bwj *btcWithdrawalJob) isPendingBTCWithdrawal(
 	ctx context.Context,
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) (bool, error) {
@@ -338,7 +505,7 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 	// event as it only contains a hash of recipient.
 	unlockSequence := event.UnlockSequenceNumber
 
-	assetsUnlockEvents, err := bw.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
+	assetsUnlockEvents, err := bwj.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
 		ctx,
 		sdkmath.NewIntFromBigInt(new(big.Int).Set(unlockSequence)),
 		sdkmath.NewIntFromBigInt(new(big.Int).Add(
@@ -375,7 +542,7 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 		)
 	}
 
-	isPendingBTCWithdrawal, err := bw.mezoBridgeContract.PendingBTCWithdrawals(hash)
+	isPendingBTCWithdrawal, err := bwj.env.mezoBridgeContract.PendingBTCWithdrawals(hash)
 	if err != nil {
 		return false, fmt.Errorf(
 			"failed to get pending BTC withdrawals info: [%w]",
@@ -387,12 +554,12 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 		return false, nil
 	}
 
-	if event.Amount.Cmp(bw.redemptionDustThresholdErc20Precision) < 0 {
-		bw.logger.Warn(
+	if event.Amount.Cmp(bwj.redemptionDustThresholdErc20Precision) < 0 {
+		bwj.env.logger.Warn(
 			"found BTC withdrawal below redemption dust threshold",
 			"unlock_sequence", event.UnlockSequenceNumber.String(),
 			"amount", event.Amount.String(),
-			"redemption_dust_threshold_erc20_precision", bw.redemptionDustThresholdErc20Precision.String(),
+			"redemption_dust_threshold_erc20_precision", bwj.redemptionDustThresholdErc20Precision.String(),
 		)
 
 		return false, nil
@@ -404,26 +571,26 @@ func (bw *BridgeWorker) isPendingBTCWithdrawal(
 // processNewAssetsUnlockConfirmedEvents fetches new AssetsUnlockConfirmed
 // events representing pending BTC withdrawals and puts them into a queue.
 // It is intended to be run periodically.
-func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Context) error {
+func (bwj *btcWithdrawalJob) processNewAssetsUnlockConfirmedEvents(ctx context.Context) error {
 	// Use the current block rather than finalized block to speed up event
 	// processing. Event processing should handle the effects of a possible
 	// reorg (e.g. an event being duplicated in a queue), although there is a
 	// small risk of skipping an event. In that case it would require a manual
 	// execution of `withdrawBTC`.
-	currentBlock, err := bw.chain.BlockCounter().CurrentBlock()
+	currentBlock, err := bwj.env.chain.BlockCounter().CurrentBlock()
 	if err != nil {
 		return fmt.Errorf("cannot get current block: [%w]", err)
 	}
 
 	newPendingBTCWithdrawals := 0
 
-	if currentBlock > bw.btcWithdrawalLastProcessedBlock {
+	if currentBlock > bwj.btcWithdrawalLastProcessedBlock {
 		events, err := utils.WithBatchFetch(
-			bw.assetsUnlockConfirmedEvents,
-			bw.btcWithdrawalLastProcessedBlock+1,
+			bwj.assetsUnlockConfirmedEvents,
+			bwj.btcWithdrawalLastProcessedBlock+1,
 			currentBlock,
-			bw.requestsPerMinute,
-			bw.batchSize,
+			bwj.env.requestsPerMinute,
+			bwj.env.batchSize,
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -433,7 +600,7 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Contex
 		}
 
 		for _, event := range events {
-			isPendingBTCWithdrawal, err := bw.isPendingBTCWithdrawal(ctx, event)
+			isPendingBTCWithdrawal, err := bwj.isPendingBTCWithdrawal(ctx, event)
 			if err != nil {
 				return fmt.Errorf(
 					"failed to check if event represents pending BTC "+
@@ -443,15 +610,15 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Contex
 			}
 
 			if isPendingBTCWithdrawal {
-				bw.enqueueBTCWithdrawal(event)
+				bwj.enqueueBTCWithdrawal(event)
 				newPendingBTCWithdrawals++
 			}
 		}
 
-		bw.btcWithdrawalLastProcessedBlock = currentBlock
+		bwj.btcWithdrawalLastProcessedBlock = currentBlock
 	}
 
-	bw.logger.Info(
+	bwj.env.logger.Info(
 		"search for new pending BTC withdrawals done",
 		"new_pending_btc_withdrawals", newPendingBTCWithdrawals,
 	)
@@ -459,51 +626,51 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Contex
 	return nil
 }
 
-func (bw *BridgeWorker) newWalletRegisteredEvents(
+func (bwj *btcWithdrawalJob) newWalletRegisteredEvents(
 	startHeight, endHeight uint64,
 ) ([]*tbtc.BridgeNewWalletRegistered, error) {
-	bw.logger.Info(
+	bwj.env.logger.Info(
 		"fetching NewWalletRegistered events",
 		"start_height", startHeight,
 		"end_height", endHeight,
 	)
-	return bw.tbtcBridgeContract.PastNewWalletRegisteredEvents(startHeight, &endHeight, nil, nil)
+	return bwj.env.tbtcBridgeContract.PastNewWalletRegisteredEvents(startHeight, &endHeight, nil, nil)
 }
 
-func (bw *BridgeWorker) assetsUnlockConfirmedEvents(
+func (bwj *btcWithdrawalJob) assetsUnlockConfirmedEvents(
 	startHeight, endHeight uint64,
 ) ([]*portal.MezoBridgeAssetsUnlockConfirmed, error) {
-	bw.logger.Info(
+	bwj.env.logger.Info(
 		"fetching AssetsUnlockConfirmed events",
 		"start_height", startHeight,
 		"end_height", endHeight,
 	)
-	return bw.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(startHeight, &endHeight, nil, nil, nil)
+	return bwj.env.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(startHeight, &endHeight, nil, nil, nil)
 }
 
 // processBTCWithdrawalQueue processes pending BTC withdrawals. It removes
 // AssetsUnlockConfirmed events from the queue, prepares data needed to perform
 // a BTC withdrawal and submit the withdrawBTC transaction.
-func (bw *BridgeWorker) processBTCWithdrawalQueue(ctx context.Context) {
-	ticker := time.NewTicker(bw.btcWithdrawalQueueCheckFrequency)
+func (bwj *btcWithdrawalJob) processBTCWithdrawalQueue(ctx context.Context) {
+	ticker := time.NewTicker(bwj.btcWithdrawalQueueCheckFrequency)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			for event := bw.dequeueBTCWithdrawal(); event != nil; event = bw.dequeueBTCWithdrawal() {
-				btcWithdrawalLogger := bw.logger.With(
+			for event := bwj.dequeueBTCWithdrawal(); event != nil; event = bwj.dequeueBTCWithdrawal() {
+				btcWithdrawalLogger := bwj.env.logger.With(
 					"unlock_sequence", event.UnlockSequenceNumber.String(),
 				)
 
 				// verify if still pending
-				isPending, err := bw.isPendingBTCWithdrawal(ctx, event)
+				isPending, err := bwj.isPendingBTCWithdrawal(ctx, event)
 				if err != nil {
 					btcWithdrawalLogger.Error(
 						"failed to check if BTC withdrawal is pending; re-queuing",
 						"error", err,
 					)
-					bw.enqueueBTCWithdrawal(event)
+					bwj.enqueueBTCWithdrawal(event)
 					continue
 				}
 
@@ -518,7 +685,7 @@ func (bw *BridgeWorker) processBTCWithdrawalQueue(ctx context.Context) {
 
 				// Preparing BTC withdrawal data is time-consuming. Call it
 				// only once per event processing.
-				entry, walletPublicKeyHash, mainUTXO, err := bw.prepareBTCWithdrawal(
+				entry, walletPublicKeyHash, mainUTXO, err := bwj.prepareBTCWithdrawal(
 					ctx,
 					event,
 				)
@@ -528,7 +695,7 @@ func (bw *BridgeWorker) processBTCWithdrawalQueue(ctx context.Context) {
 						"error",
 						err,
 					)
-					bw.enqueueBTCWithdrawal(event)
+					bwj.enqueueBTCWithdrawal(event)
 					continue
 				}
 
@@ -561,7 +728,7 @@ func (bw *BridgeWorker) processBTCWithdrawalQueue(ctx context.Context) {
 					}
 
 					// check if still pending
-					ok, err := bw.isPendingBTCWithdrawal(ctx, event)
+					ok, err := bwj.isPendingBTCWithdrawal(ctx, event)
 					if err != nil {
 						btcWithdrawalProcessLogger.Error(
 							"failed to check if BTC withdrawal is pending; "+
@@ -582,7 +749,7 @@ func (bw *BridgeWorker) processBTCWithdrawalQueue(ctx context.Context) {
 						"submitting BTC withdrawal transaction",
 					)
 
-					tx, err := bw.mezoBridgeContract.WithdrawBTC(
+					tx, err := bwj.env.mezoBridgeContract.WithdrawBTC(
 						*entry,
 						walletPublicKeyHash,
 						*mainUTXO,
@@ -597,7 +764,7 @@ func (bw *BridgeWorker) processBTCWithdrawalQueue(ctx context.Context) {
 					}
 
 					// schedule finality check
-					bw.queueBTCWithdrawalFinalityCheck(event)
+					bwj.queueBTCWithdrawalFinalityCheck(event)
 
 					withdrawingSuccessful = true
 
@@ -612,11 +779,11 @@ func (bw *BridgeWorker) processBTCWithdrawalQueue(ctx context.Context) {
 					btcWithdrawalLogger.Error(
 						"all BTC withdrawal attempts failed; re-queuing",
 					)
-					bw.enqueueBTCWithdrawal(event)
+					bwj.enqueueBTCWithdrawal(event)
 				}
 			}
 		case <-ctx.Done():
-			bw.logger.Warn(
+			bwj.env.logger.Warn(
 				"stopping BTC withdrawal queue loop due to context " +
 					"cancellation",
 			)
@@ -627,11 +794,11 @@ func (bw *BridgeWorker) processBTCWithdrawalQueue(ctx context.Context) {
 
 // queueBTCWithdrawalFinalityCheck constructs a BTC withdrawal finality check
 // and puts it into a queue.
-func (bw *BridgeWorker) queueBTCWithdrawalFinalityCheck(
+func (bwj *btcWithdrawalJob) queueBTCWithdrawalFinalityCheck(
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) {
-	bw.btcWithdrawalFinalityChecksMutex.Lock()
-	defer bw.btcWithdrawalFinalityChecksMutex.Unlock()
+	bwj.btcWithdrawalFinalityChecksMutex.Lock()
+	defer bwj.btcWithdrawalFinalityChecksMutex.Unlock()
 
 	check := &btcWithdrawalFinalityCheck{
 		event:             event,
@@ -639,13 +806,13 @@ func (bw *BridgeWorker) queueBTCWithdrawalFinalityCheck(
 	}
 
 	// This should never happen. Check just in case.
-	if _, ok := bw.btcWithdrawalFinalityChecks[check.key()]; ok {
+	if _, ok := bwj.btcWithdrawalFinalityChecks[check.key()]; ok {
 		return
 	}
 
-	bw.btcWithdrawalFinalityChecks[check.key()] = check
+	bwj.btcWithdrawalFinalityChecks[check.key()] = check
 
-	bw.logger.Info(
+	bwj.env.logger.Info(
 		"queued BTC withdrawal finality check",
 		"unlock_sequence", event.UnlockSequenceNumber.String(),
 	)
@@ -653,15 +820,15 @@ func (bw *BridgeWorker) queueBTCWithdrawalFinalityCheck(
 
 // processBTCWithdrawalFinalityChecks selects Bitcoin withdrawal finality checks
 // that have reached their scheduled height and executes them.
-func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) {
-	tickerChan := bw.chain.WatchBlocks(ctx)
+func (bwj *btcWithdrawalJob) processBTCWithdrawalFinalityChecks(ctx context.Context) {
+	tickerChan := bwj.env.chain.WatchBlocks(ctx)
 
 	for {
 		select {
 		case height := <-tickerChan:
-			currentFinalizedBlock, err := bw.chain.FinalizedBlock(ctx)
+			currentFinalizedBlock, err := bwj.env.chain.FinalizedBlock(ctx)
 			if err != nil {
-				bw.logger.Error(
+				bwj.env.logger.Error(
 					"cannot get finalized block during BTC withdrawal finality "+
 						"checks - skipping current iteration",
 					"error", err,
@@ -673,9 +840,9 @@ func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) 
 
 			// Lock the mutex but do not hold it for too long. Just schedule
 			// new checks and determine which ones are ready to be executed.
-			bw.btcWithdrawalFinalityChecksMutex.Lock()
-			for _, check := range bw.btcWithdrawalFinalityChecks {
-				checkLogger := bw.logger.With(
+			bwj.btcWithdrawalFinalityChecksMutex.Lock()
+			for _, check := range bwj.btcWithdrawalFinalityChecks {
+				checkLogger := bwj.env.logger.With(
 					"unlock_sequence", check.event.UnlockSequenceNumber.String(),
 				)
 
@@ -697,10 +864,10 @@ func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) 
 					checksToExecute = append(checksToExecute, check)
 				}
 			}
-			bw.btcWithdrawalFinalityChecksMutex.Unlock()
+			bwj.btcWithdrawalFinalityChecksMutex.Unlock()
 
 			for _, check := range checksToExecute {
-				checkLogger := bw.logger.With(
+				checkLogger := bwj.env.logger.With(
 					"unlock_sequence", check.event.UnlockSequenceNumber.String(),
 				)
 
@@ -710,7 +877,7 @@ func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) 
 					"current_finalized_block", currentFinalizedBlock.String(),
 				)
 
-				pending, err := bw.isPendingBTCWithdrawal(ctx, check.event)
+				pending, err := bwj.isPendingBTCWithdrawal(ctx, check.event)
 				if err != nil {
 					checkLogger.Error(
 						"error while checking BTC withdrawal finality - retry will be "+
@@ -730,7 +897,7 @@ func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) 
 				} else {
 					// If the withdrawal is still pending, we need to re-queue it
 					// so the withdrawal loop can pick it up again.
-					bw.enqueueBTCWithdrawal(check.event)
+					bwj.enqueueBTCWithdrawal(check.event)
 					checkLogger.Info(
 						"BTC withdrawal still pending during finality check; " +
 							"re-queued",
@@ -738,12 +905,12 @@ func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) 
 				}
 
 				// Withdrawal check is done, remove the check from the queue.
-				bw.btcWithdrawalFinalityChecksMutex.Lock()
-				delete(bw.btcWithdrawalFinalityChecks, check.key())
-				bw.btcWithdrawalFinalityChecksMutex.Unlock()
+				bwj.btcWithdrawalFinalityChecksMutex.Lock()
+				delete(bwj.btcWithdrawalFinalityChecks, check.key())
+				bwj.btcWithdrawalFinalityChecksMutex.Unlock()
 			}
 		case <-ctx.Done():
-			bw.logger.Warn(
+			bwj.env.logger.Warn(
 				"stopping BTC withdrawal finality checks due to context " +
 					"cancellation",
 			)
@@ -755,7 +922,7 @@ func (bw *BridgeWorker) processBTCWithdrawalFinalityChecks(ctx context.Context) 
 // prepareBTCWithdrawal selects the redeeming wallet and prepares arguments
 // needed to execute withdrawBTC: AssetsUnlock entry, wallet public key hash and
 // wallet main UTXO.
-func (bw *BridgeWorker) prepareBTCWithdrawal(
+func (bwj *btcWithdrawalJob) prepareBTCWithdrawal(
 	ctx context.Context,
 	event *portal.MezoBridgeAssetsUnlockConfirmed,
 ) (
@@ -769,7 +936,7 @@ func (bw *BridgeWorker) prepareBTCWithdrawal(
 	// recipient.
 	unlockSequence := event.UnlockSequenceNumber
 
-	assetsUnlockEvents, err := bw.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
+	assetsUnlockEvents, err := bwj.assetsUnlockedEndpoint.GetAssetsUnlockedEvents(
 		ctx,
 		sdkmath.NewIntFromBigInt(new(big.Int).Set(unlockSequence)),
 		sdkmath.NewIntFromBigInt(new(big.Int).Add(
@@ -804,16 +971,16 @@ func (bw *BridgeWorker) prepareBTCWithdrawal(
 	// Work on a copy of live wallets to avoid blocking for too long.
 	// Live wallets are represented by `[20]byte` arrays, so `copy` will
 	// deep-copy them.
-	bw.liveWalletsMutex.Lock()
+	bwj.liveWalletsMutex.Lock()
 
-	walletPublicKeyHashes := make([][20]byte, len(bw.liveWallets))
-	copy(walletPublicKeyHashes, bw.liveWallets)
+	walletPublicKeyHashes := make([][20]byte, len(bwj.liveWallets))
+	copy(walletPublicKeyHashes, bwj.liveWallets)
 
-	bw.liveWalletsMutex.Unlock()
+	bwj.liveWalletsMutex.Unlock()
 
 	// Select a wallet that can cover the redemption.
 	for _, walletPublicKeyHash := range walletPublicKeyHashes {
-		wallet, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+		wallet, err := bwj.env.tbtcBridgeContract.Wallets(walletPublicKeyHash)
 		if err != nil {
 			return nil, [20]byte{}, nil, fmt.Errorf(
 				"failed to get wallet: [%w]",
@@ -826,7 +993,7 @@ func (bw *BridgeWorker) prepareBTCWithdrawal(
 			continue
 		}
 
-		mainUTXO, err := bw.determineWalletMainUtxo(walletPublicKeyHash)
+		mainUTXO, err := bwj.determineWalletMainUtxo(walletPublicKeyHash)
 		if err != nil {
 			return nil, [20]byte{}, nil, fmt.Errorf(
 				"failed to determine wallet main UTXO: [%w]",
@@ -875,7 +1042,7 @@ func (bw *BridgeWorker) prepareBTCWithdrawal(
 			)
 		}
 
-		redemptionRequest, err := bw.tbtcBridgeContract.PendingRedemptions(redemptionKey)
+		redemptionRequest, err := bwj.env.tbtcBridgeContract.PendingRedemptions(redemptionKey)
 		if err != nil {
 			return nil, [20]byte{}, nil, fmt.Errorf(
 				"failed to get pending redemption request: [%w]",
@@ -906,10 +1073,10 @@ func (bw *BridgeWorker) prepareBTCWithdrawal(
 // currently registered in the Bridge on-chain contract. The returned
 // main UTXO can be nil if the wallet does not have a main UTXO registered
 // in the Bridge at the moment.
-func (bw *BridgeWorker) determineWalletMainUtxo(
+func (bwj *btcWithdrawalJob) determineWalletMainUtxo(
 	walletPublicKeyHash [20]byte,
 ) (*bitcoin.UnspentTransactionOutput, error) {
-	walletChainData, err := bw.tbtcBridgeContract.Wallets(walletPublicKeyHash)
+	walletChainData, err := bwj.env.tbtcBridgeContract.Wallets(walletPublicKeyHash)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get on-chain data for wallet: [%v]", err)
 	}
@@ -932,7 +1099,7 @@ func (bw *BridgeWorker) determineWalletMainUtxo(
 	// fetch full transaction data (time-consuming calls) starting from
 	// the most recent transactions as there is a high chance the main UTXO
 	// comes from there.
-	txHashes, err := bw.btcChain.GetTxHashesForPublicKeyHash(walletPublicKeyHash)
+	txHashes, err := bwj.env.btcChain.GetTxHashesForPublicKeyHash(walletPublicKeyHash)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get transactions history for wallet: [%v]", err)
 	}
@@ -951,7 +1118,7 @@ func (bw *BridgeWorker) determineWalletMainUtxo(
 	for i := len(txHashes) - 1; i >= 0; i-- {
 		txHash := txHashes[i]
 
-		transaction, err := bw.btcChain.GetTransaction(txHash)
+		transaction, err := bwj.env.btcChain.GetTransaction(txHash)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"cannot get transaction with hash [%s]: [%v]",
