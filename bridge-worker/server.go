@@ -19,20 +19,29 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
+type MezoBridge interface {
+	ValidatorIDs(common.Address) (uint8, error)
+	ValidateAssetsUnlocked(portal.MezoBridgeAssetsUnlocked) (bool, error)
+	ConfirmedUnlocks(*big.Int) (bool, error)
+}
+
 type Server struct {
-	logger  log.Logger
-	server  *http.Server
-	chainID *big.Int
+	logger     log.Logger
+	server     *http.Server
+	chainID    *big.Int
+	mezoBridge MezoBridge
 }
 
 func NewServer(
 	logger log.Logger,
 	port uint16,
 	chainID *big.Int,
+	mezoBridge MezoBridge,
 ) *Server {
 	s := &Server{
-		logger:  logger,
-		chainID: chainID,
+		logger:     logger,
+		chainID:    chainID,
+		mezoBridge: mezoBridge,
 	}
 
 	mux := http.NewServeMux()
@@ -75,28 +84,63 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: ensure this is a valid attestation
+
+	// first recover the address out of the signature
 	address, err := s.recoverAddress(req.Entry, req.Signature)
 	if err != nil {
 		writeError(w, err, http.StatusBadRequest)
 		return
 	}
 
-	// now do call some other service which will
-	// process the asset unlock if the address is a
-	// valid signer
-	_ = address
+	// now validate the address is a registered validator address
+	index, err := s.mezoBridge.ValidatorIDs(address)
+	if err != nil {
+		s.logger.Error("couldn't get bridge validator ID", "error", err)
+		writeError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// if default value, then address is not a validator
+	if index == 0 {
+		writeError(w, errors.New("not an authorized validator"), http.StatusUnauthorized)
+		return
+	}
+
+	// then the attestation has not been confirmed yet
+	isConfirmed, err := s.mezoBridge.ConfirmedUnlocks(req.Entry.UnlockSequence.BigInt())
+	if err != nil {
+		s.logger.Error("couldn't confirm unlock", "error", err)
+		writeError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// if already confirmed, nothing to do
+	if isConfirmed {
+		writeError(w, errors.New("already confirmed"), http.StatusBadRequest)
+		return
+	}
+
+	// finally, is it a valid attestation
+	attestation := toPortalAssetsUnlock(req.Entry)
+	ok, err := s.mezoBridge.ValidateAssetsUnlocked(*attestation)
+	if err != nil {
+		s.logger.Error("couldn't validate assets unlocked", "error", err)
+		writeError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// if already confirmed, nothing to do
+	if !ok {
+		writeError(w, errors.New("not a valide asset unlocked event"), http.StatusBadRequest)
+		return
+	}
 
 	writeSuccess(w, http.StatusAccepted)
 }
 
 func (s *Server) recoverAddress(entry *bridgetypes.AssetsUnlockedEvent, signature string) (common.Address, error) {
-	attestation := &portal.MezoBridgeAssetsUnlocked{
-		UnlockSequenceNumber: entry.UnlockSequence.BigInt(),
-		Recipient:            entry.Recipient,
-		Token:                common.HexToAddress(entry.Token),
-		Amount:               entry.Amount.BigInt(),
-		Chain:                uint8(entry.Chain),
-	}
+	attestation := toPortalAssetsUnlock(entry)
 
 	hash, err := portal.AttestationDigestHash(attestation, s.chainID)
 	if err != nil {
@@ -117,6 +161,16 @@ func (s *Server) recoverAddress(entry *bridgetypes.AssetsUnlockedEvent, signatur
 
 	// Convert public key to address
 	return crypto.PubkeyToAddress(*publicKeyBytes), nil
+}
+
+func toPortalAssetsUnlock(entry *bridgetypes.AssetsUnlockedEvent) *portal.MezoBridgeAssetsUnlocked {
+	return &portal.MezoBridgeAssetsUnlocked{
+		UnlockSequenceNumber: entry.UnlockSequence.BigInt(),
+		Recipient:            entry.Recipient,
+		Token:                common.HexToAddress(entry.Token),
+		Amount:               entry.Amount.BigInt(),
+		Chain:                uint8(entry.Chain),
+	}
 }
 
 func readSubmitAttestationRequest(r *http.Request) (*types.SubmitAttestationRequest, error) {

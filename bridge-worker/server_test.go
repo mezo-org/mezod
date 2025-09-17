@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -20,15 +21,16 @@ import (
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-func TestServer_submitSignature(t *testing.T) {
+func TestServer_submitAttestation(t *testing.T) {
 	chainID := big.NewInt(1)
-	server := NewServer(log.NewNopLogger(), 8080, chainID)
-
+	
 	// Generate a test private key for creating valid signatures
 	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
+	validatorAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
 	// Helper function to create a valid AssetsUnlocked entry
 	createValidEntry := func() *bridgetypes.AssetsUnlockedEvent {
@@ -68,6 +70,7 @@ func TestServer_submitSignature(t *testing.T) {
 		expectedStatus int
 		expectedError  string
 		setupRequest   func() *types.SubmitAttestationRequest
+		setupMock      func(*MockMezoBridge)
 	}{
 		{
 			name:           "Valid signature submission",
@@ -80,18 +83,25 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {
+				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
+				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(true, nil)
+			},
 		},
 		{
 			name:           "Invalid JSON body",
 			requestBody:    "invalid-json",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid json format",
+			setupMock:      func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Empty request body",
 			requestBody:    "",
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "invalid json format",
+			setupMock:      func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Missing Entry field",
@@ -103,6 +113,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: "0x" + strings.Repeat("00", 65),
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Missing signature",
@@ -114,6 +125,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: "",
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Missing 0x prefix in signature",
@@ -125,6 +137,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: strings.Repeat("00", 65),
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Invalid hex encoding in signature",
@@ -136,6 +149,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: "0x" + strings.Repeat("zz", 65),
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Wrong signature length",
@@ -147,6 +161,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: "0x" + strings.Repeat("00", 32), // Too short
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Missing sequence number",
@@ -161,6 +176,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Invalid sequence number (zero)",
@@ -175,6 +191,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Invalid sequence number (negative)",
@@ -189,6 +206,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Invalid recipient (empty)",
@@ -203,6 +221,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Valid entry but invalid signature for recovery",
@@ -218,6 +237,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Missing amount",
@@ -232,6 +252,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Invalid amount (zero)",
@@ -246,6 +267,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Invalid amount (negative)",
@@ -260,6 +282,7 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
 		},
 		{
 			name:           "Invalid chain (out of range)",
@@ -274,11 +297,130 @@ func TestServer_submitSignature(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupMock: func(mockBridge *MockMezoBridge) {},
+		},
+		// New test cases for the added validations
+		{
+			name:           "Unauthorized validator",
+			expectedStatus: http.StatusUnauthorized,
+			expectedError:  "not an authorized validator",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupMock: func(mockBridge *MockMezoBridge) {
+				// Return 0 for validator ID to simulate unauthorized validator
+				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(0), nil)
+			},
+		},
+		{
+			name:           "Validator ID lookup error",
+			expectedStatus: http.StatusInternalServerError,
+			expectedError:  "validator lookup error",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupMock: func(mockBridge *MockMezoBridge) {
+				// Return error when looking up validator ID
+				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(0), errors.New("validator lookup error"))
+			},
+		},
+		{
+			name:           "Already confirmed unlock",
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "already confirmed",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupMock: func(mockBridge *MockMezoBridge) {
+				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				// Return true to simulate already confirmed unlock
+				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(true, nil)
+			},
+		},
+		{
+			name:           "Confirmed unlocks lookup error",
+			expectedStatus: http.StatusInternalServerError,
+			expectedError:  "unlock check error",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupMock: func(mockBridge *MockMezoBridge) {
+				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				// Return error when checking confirmed unlocks
+				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, errors.New("unlock check error"))
+			},
+		},
+		{
+			name:           "Invalid assets unlocked validation",
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "not a valide asset unlocked event",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupMock: func(mockBridge *MockMezoBridge) {
+				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
+				// Return false to simulate invalid assets unlocked
+				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(false, nil)
+			},
+		},
+		{
+			name:           "Assets unlocked validation error",
+			expectedStatus: http.StatusInternalServerError,
+			expectedError:  "validation error",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupMock: func(mockBridge *MockMezoBridge) {
+				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
+				// Return error during validation
+				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(false, errors.New("validation error"))
+			},
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
+			// Setup mock
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			mockBridge := NewMockMezoBridge(ctrl)
+			testCase.setupMock(mockBridge)
+
+			// Create server with mock
+			server := NewServer(log.NewNopLogger(), 8080, chainID, mockBridge)
+
 			var requestBody []byte
 			var err error
 
@@ -295,7 +437,7 @@ func TestServer_submitSignature(t *testing.T) {
 				}
 			}
 
-			req := httptest.NewRequest(http.MethodPost, "/submit-signature", bytes.NewReader(requestBody))
+			req := httptest.NewRequest(http.MethodPost, "/attestations", bytes.NewReader(requestBody))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -350,7 +492,13 @@ func signAssetUnlock(
 
 func TestServer_recoverAddress(t *testing.T) {
 	chainID := big.NewInt(1)
-	server := NewServer(log.NewNopLogger(), 8080, chainID)
+	
+	// Setup mock (not needed for this test, but required for constructor)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockBridge := NewMockMezoBridge(ctrl)
+	
+	server := NewServer(log.NewNopLogger(), 8080, chainID, mockBridge)
 
 	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
