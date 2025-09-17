@@ -113,6 +113,11 @@ func newBTCWithdrawalJob(
 		new(big.Int).SetUint64(redemptionParameters.RedemptionDustThreshold),
 	)
 
+	tbtcToken, err := env.mezoBridgeContract.TbtcToken()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get tBTC token: %v", err))
+	}
+
 	return &btcWithdrawalJob{
 		env:                                   env,
 		assetsUnlockedEndpoint:                assetsUnlockedGrpcEndpoint,
@@ -121,6 +126,7 @@ func newBTCWithdrawalJob(
 		btcWithdrawalFinalityChecks:           map[string]*btcWithdrawalFinalityCheck{},
 		btcWithdrawalQueueCheckFrequency:      queueCheckFrequency,
 		redemptionDustThresholdErc20Precision: redemptionDustThresholdErc20Precision,
+		tbtcToken:                             tbtcToken,
 	}
 }
 
@@ -149,9 +155,10 @@ type btcWithdrawalJob struct {
 
 	btcWithdrawalQueueCheckFrequency time.Duration
 
-	// The `redemptionDustThreshold` parameter from tBTC Bridge changes very
-	// rarely. Therefore we only read it once, at program start.
+	// The `redemptionDustThreshold` and `tbtcToken` parameters change very
+	// rarely. Therefore we only read them only once, at program start.
 	redemptionDustThresholdErc20Precision *big.Int
+	tbtcToken                             common.Address
 }
 
 func (bwj *btcWithdrawalJob) run(ctx context.Context) {
@@ -645,7 +652,13 @@ func (bwj *btcWithdrawalJob) assetsUnlockConfirmedEvents(
 		"start_height", startHeight,
 		"end_height", endHeight,
 	)
-	return bwj.env.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(startHeight, &endHeight, nil, nil, nil)
+	return bwj.env.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(
+		startHeight,
+		&endHeight,
+		nil,
+		nil,
+		[]common.Address{bwj.tbtcToken}, // fetch only events with tBTC as token
+	)
 }
 
 // processBTCWithdrawalQueue processes pending BTC withdrawals. It removes
