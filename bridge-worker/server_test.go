@@ -322,24 +322,14 @@ func TestServer_submitSignature(t *testing.T) {
 	}
 }
 
-func TestServer_recoverAddress(t *testing.T) {
+func signAssetUnlock(
+	t *testing.T,
+	entry *bridgetypes.AssetsUnlockedEvent,
+	signer *ecdsa.PrivateKey,
+) string {
+	t.Helper()
+
 	chainID := big.NewInt(1)
-	server := NewServer(log.NewNopLogger(), 8080, chainID)
-
-	privateKey, err := crypto.GenerateKey()
-	require.NoError(t, err)
-
-	expectedAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-
-	entry := &bridgetypes.AssetsUnlockedEvent{
-		UnlockSequence: sdkmath.NewInt(1),
-		Recipient:      []byte("test-recipient"), // doesn't matter here
-		Token:          "0x1234567890123456789012345678901234567890",
-		Sender:         "0x9876543210987654321098765432109876543210",
-		Amount:         sdkmath.NewInt(1000),
-		Chain:          0,
-		BlockTime:      1000,
-	}
 
 	attestation := &portal.MezoBridgeAssetsUnlocked{
 		UnlockSequenceNumber: entry.UnlockSequence.BigInt(),
@@ -352,20 +342,149 @@ func TestServer_recoverAddress(t *testing.T) {
 	hash, err := portal.AttestationDigestHash(attestation, chainID)
 	require.NoError(t, err)
 
-	signature, err := crypto.Sign(hash, privateKey)
+	signature, err := crypto.Sign(hash, signer)
 	require.NoError(t, err)
 
-	signatureHex := hexutil.Encode(signature)
+	return hexutil.Encode(signature)
+}
 
-	recoveredAddress, err := server.recoverAddress(entry, signatureHex)
+func TestServer_recoverAddress(t *testing.T) {
+	chainID := big.NewInt(1)
+	server := NewServer(log.NewNopLogger(), 8080, chainID)
+
+	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
-	assert.Equal(t, expectedAddress, recoveredAddress)
+	expectedAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	_, err = server.recoverAddress(entry, "invalid-signature")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "hex string without 0x prefix")
+	privateKey2, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	expectedAddress2 := crypto.PubkeyToAddress(privateKey2.PublicKey)
 
-	invalidSignature := "0x" + strings.Repeat("00", 65)
-	_, err = server.recoverAddress(entry, invalidSignature)
-	assert.Error(t, err)
+	createValidEntry := func() *bridgetypes.AssetsUnlockedEvent {
+		return &bridgetypes.AssetsUnlockedEvent{
+			UnlockSequence: sdkmath.NewInt(1),
+			Recipient:      []byte("test-recipient"),
+			Token:          "0x1234567890123456789012345678901234567890",
+			Sender:         "0x9876543210987654321098765432109876543210",
+			Amount:         sdkmath.NewInt(1000),
+			Chain:          0,
+			BlockTime:      1000,
+		}
+	}
+
+	testCases := []struct {
+		name            string
+		entry           *bridgetypes.AssetsUnlockedEvent
+		signature       string
+		expectedAddress *common.Address
+		expectError     bool
+		expectedError   string
+		setupSignature  func() string
+	}{
+		{
+			name:            "Valid signature recovery",
+			entry:           createValidEntry(),
+			expectedAddress: &expectedAddress,
+			expectError:     false,
+			setupSignature: func() string {
+				return signAssetUnlock(t, createValidEntry(), privateKey)
+			},
+		},
+		{
+			name:            "Valid signature recovery with different key",
+			entry:           createValidEntry(),
+			expectedAddress: &expectedAddress2,
+			expectError:     false,
+			setupSignature: func() string {
+				return signAssetUnlock(t, createValidEntry(), privateKey2)
+			},
+		},
+		{
+			name: "Altered entry results in different recovered address",
+			setupSignature: func() string {
+				return signAssetUnlock(t, createValidEntry(), privateKey)
+			},
+			entry: func() *bridgetypes.AssetsUnlockedEvent {
+				// But try to recover with modified entry
+				modifiedEntry := createValidEntry()
+				modifiedEntry.Amount = sdkmath.NewInt(2000) // Modified amount
+				return modifiedEntry
+			}(),
+			expectError: false,
+			// We don't specify expectedAddress because we expect it to be
+			// different from the original signer
+		},
+		// then test signature format validations
+		{
+			name:          "Invalid signature - missing 0x prefix",
+			entry:         createValidEntry(),
+			signature:     strings.Repeat("00", 65),
+			expectError:   true,
+			expectedError: "hex string without 0x prefix",
+		},
+		{
+			name:          "Invalid signature - empty string",
+			entry:         createValidEntry(),
+			signature:     "",
+			expectError:   true,
+			expectedError: "empty hex string",
+		},
+		{
+			name:          "Invalid signature - invalid hex",
+			entry:         createValidEntry(),
+			signature:     "0x" + strings.Repeat("zz", 65),
+			expectError:   true,
+			expectedError: "invalid hex string",
+		},
+		{
+			name:          "Invalid signature - wrong length (too short)",
+			entry:         createValidEntry(),
+			signature:     "0x" + strings.Repeat("00", 32),
+			expectError:   true,
+			expectedError: "invalid signature length",
+		},
+		{
+			name:          "Invalid signature - wrong length (too long)",
+			entry:         createValidEntry(),
+			signature:     "0x" + strings.Repeat("00", 100),
+			expectError:   true,
+			expectedError: "invalid signature length",
+		},
+		{
+			name:          "Invalid signature - all zeros (recovery fails)",
+			entry:         createValidEntry(),
+			signature:     "0x" + strings.Repeat("00", 65),
+			expectError:   true,
+			expectedError: "recovery failed",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			var signature string
+			if testCase.setupSignature != nil {
+				signature = testCase.setupSignature()
+			} else {
+				signature = testCase.signature
+			}
+
+			recoveredAddress, err := server.recoverAddress(testCase.entry, signature)
+
+			if testCase.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), testCase.expectedError)
+				assert.Equal(t, common.Address{}, recoveredAddress)
+			} else {
+
+				// no error, so we either have a valid address recovered
+				require.NoError(t, err)
+				if testCase.expectedAddress != nil {
+					assert.Equal(t, *testCase.expectedAddress, recoveredAddress)
+				} else { // or a different address which is due to the parameter swap
+					assert.NotEqual(t, common.Address{}, recoveredAddress)
+					assert.NotEqual(t, expectedAddress, recoveredAddress)
+				}
+			}
+		})
+	}
 }
