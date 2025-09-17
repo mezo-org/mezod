@@ -12,9 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	bwtypes "github.com/mezo-org/mezod/bridge-worker/types"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
 var (
@@ -28,7 +28,7 @@ var (
 type BridgeWorker interface {
 	// expect no returned payload,
 	// just an error eventually
-	SubmitAttestation(attestation *bwtypes.AssetsUnlocked, signature string) error
+	SubmitAttestation(attestation *bridgetypes.AssetsUnlockedEvent, signature string) error
 }
 
 type batchAttestation struct {
@@ -59,6 +59,7 @@ func newBatchAttestation(
 // validated before being called.
 func (ba *batchAttestation) TryAttest(
 	ctx context.Context,
+	originalAttestation *bridgetypes.AssetsUnlockedEvent,
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) (bool, error) {
 	if ba.bridgeWorker == nil {
@@ -71,7 +72,7 @@ func (ba *batchAttestation) TryAttest(
 
 	// first send the attestestation signature.
 	// if there's an error we can fallback to
-	err := ba.sendPayload(attestCtx, attestation)
+	err := ba.sendPayload(attestCtx, originalAttestation, attestation)
 	if err != nil {
 		return false, fmt.Errorf("failed to send payload: %w", err)
 	}
@@ -95,6 +96,7 @@ func (ba *batchAttestation) TryAttest(
 
 func (ba *batchAttestation) sendPayload(
 	ctx context.Context,
+	originalAttestation *bridgetypes.AssetsUnlockedEvent,
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) error {
 	signature, err := ba.signPayload(attestation)
@@ -112,12 +114,10 @@ func (ba *batchAttestation) sendPayload(
 	sendCtx, cancelSendCtx := context.WithTimeout(ctx, batchAttestationTimeout/5)
 	defer cancelSendCtx()
 
-	bwAttestation := bwtypes.AssetsUnlockedFromPortal(attestation)
-
 	for {
 		select {
 		case <-retryTicker.C:
-			err := ba.bridgeWorker.SubmitAttestation(bwAttestation, signature)
+			err := ba.bridgeWorker.SubmitAttestation(originalAttestation, signature)
 			if err != nil {
 				ba.logger.Warn(
 					"failed to send attestation signature to the bridge worker",

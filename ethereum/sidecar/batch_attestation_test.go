@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
+	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/assert"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -201,7 +203,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			ctx := testCase.ctx()
 
 			// Execute the transaction
-			success, err := tba.TryAttest(ctx, testCase.attestation)
+			success, err := tba.TryAttest(ctx, defaultAssetsUnlockedEvent(), testCase.attestation)
 
 			// Verify results
 			assert.Equal(t, testCase.expectedSuccess, success, "unexpected success value")
@@ -237,4 +239,15 @@ func TestAttestationDigestHash(t *testing.T) {
 	// Expected digest hash computed using Solidity's `keccak256(abi.encode(1, AssetsUnlocked)).toEthSignedMessageHash()`
 	expectedDigestHash := common.HexToHash("0xcb97fcb7f22cc5aadd1b5e6497d547723d4a652d31cf38e78d3644b44a71846d").Bytes()
 	assert.Equal(t, expectedDigestHash, digestHash)
+}
+
+func defaultAssetsUnlockedEvent() *bridgetypes.AssetsUnlockedEvent {
+	return &bridgetypes.AssetsUnlockedEvent{
+		UnlockSequence: sdkmath.NewInt(1),
+		Recipient:      []byte{},
+		Token:          "",
+		Amount:         sdkmath.NewInt(100),
+		Chain:          0,
+		BlockTime:      9000,
+	}
 }

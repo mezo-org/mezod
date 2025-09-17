@@ -1069,7 +1069,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 				attestationLogger.Info("starting batch attestation process")
 
-				ok, err = s.batchAttestation.TryAttest(ctx, bridgeAssetsUnlocked)
+				ok, err = s.batchAttestation.TryAttest(ctx, attestation, bridgeAssetsUnlocked)
 				if err != nil {
 					attestationLogger.Warn(
 						"batch attestation process failed - falling back to "+

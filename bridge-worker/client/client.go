@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/mezo-org/mezod/bridge-worker/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
 var submitAttestationEndpoint = func(baseURL string) string {
@@ -26,7 +27,7 @@ func NewClient(url string) *Client {
 	}
 }
 
-func (c *Client) SubmitAttestation(attestation *types.AssetsUnlocked, signature string) error {
+func (c *Client) SubmitAttestation(attestation *bridgetypes.AssetsUnlockedEvent, signature string) error {
 	request := &types.SubmitAttestationRequest{
 		Entry:     attestation,
 		Signature: signature,

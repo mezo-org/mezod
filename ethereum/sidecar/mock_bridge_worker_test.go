@@ -12,7 +12,7 @@ package sidecar
 import (
 	reflect "reflect"
 
-	types "github.com/mezo-org/mezod/bridge-worker/types"
+	types "github.com/mezo-org/mezod/x/bridge/types"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,7 +41,7 @@ func (m *MockBridgeWorker) EXPECT() *MockBridgeWorkerMockRecorder {
 }
 
 // SubmitAttestation mocks base method.
-func (m *MockBridgeWorker) SubmitAttestation(attestation *types.AssetsUnlocked, signature string) error {
+func (m *MockBridgeWorker) SubmitAttestation(attestation *types.AssetsUnlockedEvent, signature string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitAttestation", attestation, signature)
 	ret0, _ := ret[0].(error)

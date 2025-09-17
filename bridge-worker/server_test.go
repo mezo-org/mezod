@@ -11,11 +11,12 @@ import (
 	"testing"
 
 	"cosmossdk.io/log"
+	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/bridge-worker/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,18 +30,20 @@ func TestServer_submitSignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// Helper function to create a valid AssetsUnlocked entry
-	createValidEntry := func() *types.AssetsUnlocked {
-		return &types.AssetsUnlocked{
-			UnlockSequenceNumber: big.NewInt(1),
-			Recipient:            []byte("test-recipient"),
-			Token:                common.HexToAddress("0x1234567890123456789012345678901234567890"),
-			Amount:               big.NewInt(1000),
-			Chain:                0, // Ethereum
+	createValidEntry := func() *bridgetypes.AssetsUnlockedEvent {
+		return &bridgetypes.AssetsUnlockedEvent{
+			UnlockSequence: sdkmath.NewInt(1),
+			Recipient:      []byte("test-recipient"),
+			Token:          "0x1234567890123456789012345678901234567890",
+			Sender:         "0x9876543210987654321098765432109876543210",
+			Amount:         sdkmath.NewInt(1000),
+			Chain:          0,
+			BlockTime:      1000,
 		}
 	}
 
 	// Helper function to create a valid signature for an entry
-	createValidSignature := func(entry *types.AssetsUnlocked, privKey *ecdsa.PrivateKey) string {
+	createValidSignature := func(entry *bridgetypes.AssetsUnlockedEvent, privKey *ecdsa.PrivateKey) string {
 		abiEncoded, err := abiEncodeAttestationWithChainID(entry, chainID)
 		require.NoError(t, err)
 
@@ -96,7 +99,7 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Missing signature",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid signature format",
+			expectedError:  "empty hex string",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				return &types.SubmitAttestationRequest{
 					Entry:     createValidEntry(),
@@ -107,7 +110,7 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Missing 0x prefix in signature",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid signature format",
+			expectedError:  "hex string without 0x prefix",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				return &types.SubmitAttestationRequest{
 					Entry:     createValidEntry(),
@@ -118,7 +121,7 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Invalid hex encoding in signature",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid signature format",
+			expectedError:  "invalid hex string",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				return &types.SubmitAttestationRequest{
 					Entry:     createValidEntry(),
@@ -129,7 +132,7 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Wrong signature length",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid signature format",
+			expectedError:  "invalid signature length",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				return &types.SubmitAttestationRequest{
 					Entry:     createValidEntry(),
@@ -140,10 +143,10 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Missing sequence number",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "missing sequence number",
+			expectedError:  "invalid assets unlocked entry",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
-				entry.UnlockSequenceNumber = nil
+				entry.UnlockSequence = sdkmath.Int{}
 				signature := "0x" + strings.Repeat("00", 65)
 				return &types.SubmitAttestationRequest{
 					Entry:     entry,
@@ -154,10 +157,10 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Invalid sequence number (zero)",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid sequence number",
+			expectedError:  "invalid assets unlocked entry",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
-				entry.UnlockSequenceNumber = big.NewInt(0)
+				entry.UnlockSequence = sdkmath.NewInt(0)
 				signature := "0x" + strings.Repeat("00", 65)
 				return &types.SubmitAttestationRequest{
 					Entry:     entry,
@@ -168,10 +171,10 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Invalid sequence number (negative)",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid sequence number",
+			expectedError:  "invalid assets unlocked entry",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
-				entry.UnlockSequenceNumber = big.NewInt(-1)
+				entry.UnlockSequence = sdkmath.NewInt(-1)
 				signature := "0x" + strings.Repeat("00", 65)
 				return &types.SubmitAttestationRequest{
 					Entry:     entry,
@@ -182,7 +185,7 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Invalid recipient (empty)",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid recipient",
+			expectedError:  "invalid assets unlocked entry",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.Recipient = []byte{}
@@ -211,10 +214,10 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Missing amount",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "missing amount",
+			expectedError:  "invalid assets unlocked entry",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
-				entry.Amount = nil
+				entry.Amount = sdkmath.Int{}
 				signature := "0x" + strings.Repeat("00", 65)
 				return &types.SubmitAttestationRequest{
 					Entry:     entry,
@@ -225,10 +228,10 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Invalid amount (zero)",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid amount",
+			expectedError:  "invalid assets unlocked entry",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
-				entry.Amount = big.NewInt(0)
+				entry.Amount = sdkmath.NewInt(0)
 				signature := "0x" + strings.Repeat("00", 65)
 				return &types.SubmitAttestationRequest{
 					Entry:     entry,
@@ -239,10 +242,10 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Invalid amount (negative)",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid amount",
+			expectedError:  "invalid assets unlocked entry",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
-				entry.Amount = big.NewInt(-1)
+				entry.Amount = sdkmath.NewInt(-1)
 				signature := "0x" + strings.Repeat("00", 65)
 				return &types.SubmitAttestationRequest{
 					Entry:     entry,
@@ -253,7 +256,7 @@ func TestServer_submitSignature(t *testing.T) {
 		{
 			name:           "Invalid chain (out of range)",
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid chain",
+			expectedError:  "invalid assets unlocked entry",
 			setupRequest: func() *types.SubmitAttestationRequest {
 				entry := createValidEntry()
 				entry.Chain = 99 // Invalid chain value
@@ -320,12 +323,14 @@ func TestServer_recoverAddress(t *testing.T) {
 
 	expectedAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	entry := &types.AssetsUnlocked{
-		UnlockSequenceNumber: big.NewInt(1),
-		Recipient:            []byte("test-recipient"), // doesn't matter here
-		Token:                common.HexToAddress("0x1234567890123456789012345678901234567890"),
-		Amount:               big.NewInt(1000),
-		Chain:                0,
+	entry := &bridgetypes.AssetsUnlockedEvent{
+		UnlockSequence: sdkmath.NewInt(1),
+		Recipient:      []byte("test-recipient"), // doesn't matter here
+		Token:          "0x1234567890123456789012345678901234567890",
+		Sender:         "0x9876543210987654321098765432109876543210",
+		Amount:         sdkmath.NewInt(1000),
+		Chain:          0,
+		BlockTime:      1000,
 	}
 
 	abiEncoded, err := abiEncodeAttestationWithChainID(entry, chainID)

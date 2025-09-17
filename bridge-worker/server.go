@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/bridge-worker/types"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
 type Server struct {
@@ -89,7 +90,7 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	writeSuccess(w, http.StatusAccepted)
 }
 
-func (s *Server) recoverAddress(entry *types.AssetsUnlocked, signature string) (common.Address, error) {
+func (s *Server) recoverAddress(entry *bridgetypes.AssetsUnlockedEvent, signature string) (common.Address, error) {
 	abiEncoded, err := abiEncodeAttestationWithChainID(entry, s.chainID)
 	if err != nil {
 		return common.Address{}, err
@@ -146,7 +147,7 @@ func writeSuccess(w http.ResponseWriter, status int) {
 
 // abiEncodeAttestationWithChainID is used to encode the attestation with the chain ID
 // which is used to produce a signature for the batch attestation process.
-func abiEncodeAttestationWithChainID(attestation *types.AssetsUnlocked, chainID *big.Int) ([]byte, error) {
+func abiEncodeAttestationWithChainID(attestation *bridgetypes.AssetsUnlockedEvent, chainID *big.Int) ([]byte, error) {
 	var argumentsTypes abi.Arguments
 	var arguments []any
 
@@ -182,11 +183,11 @@ func abiEncodeAttestationWithChainID(attestation *types.AssetsUnlocked, chainID 
 		Amount               *big.Int
 		Chain                uint8
 	}{
-		UnlockSequenceNumber: attestation.UnlockSequenceNumber,
+		UnlockSequenceNumber: attestation.UnlockSequence.BigInt(),
 		Recipient:            attestation.Recipient,
-		Token:                attestation.Token,
-		Amount:               attestation.Amount,
-		Chain:                attestation.Chain,
+		Token:                common.HexToAddress(attestation.Token),
+		Amount:               attestation.Amount.BigInt(),
+		Chain:                uint8(attestation.Chain),
 	}
 
 	arguments = append(arguments, assetsUnlockedTuple)
