@@ -21,7 +21,7 @@ import (
 )
 
 type MezoBridge interface {
-	ValidatorIDs(common.Address) (uint8, error)
+	BridgeValidatorIDs(common.Address) (uint8, error)
 	ValidateAssetsUnlocked(portal.MezoBridgeAssetsUnlocked) (bool, error)
 	ConfirmedUnlocks(*big.Int) (bool, error)
 }
@@ -103,7 +103,7 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// now validate the address is a registered validator address
-	index, err := s.mezoBridge.ValidatorIDs(address)
+	index, err := s.mezoBridge.BridgeValidatorIDs(address)
 	if err != nil {
 		s.logger.Error("couldn't get bridge validator ID", "error", err)
 		s.writeSubmitAttestationError(w, err, http.StatusInternalServerError)

@@ -36,6 +36,11 @@ type ConfigProperties struct {
 	MezoAssetsUnlockEndpoint string
 
 	JobBTCWithdrawalQueueCheckFrequency time.Duration
+
+	ServerPort uint16
+
+	SupabaseURL string
+	SupbaseKey  string
 }
 
 type Config struct {
@@ -43,6 +48,17 @@ type Config struct {
 	Bitcoin  BitcoinConfig
 	Mezo     MezoConfig
 	Job      JobConfig
+	Server   ServerConfig
+	Supabase SupabaseConfig
+}
+
+type ServerConfig struct {
+	Port uint16
+}
+
+type SupabaseConfig struct {
+	URL string
+	Key string
 }
 
 type BitcoinConfig struct {
@@ -136,6 +152,17 @@ func (c *Config) validate() error {
 		return fmt.Errorf("mezo assets unlock endpoint is required")
 	}
 
+	if c.Server.Port == 0 {
+		return fmt.Errorf("server port is required")
+	}
+
+	if len(c.Supabase.URL) == 0 {
+		return fmt.Errorf("supabase URL is required")
+	}
+	if len(c.Supabase.Key) == 0 {
+		return fmt.Errorf("supabase Key is required")
+	}
+
 	return nil
 }
 
@@ -192,6 +219,15 @@ func FromProperties(properties ConfigProperties) (*Config, error) {
 		BTCWithdrawal: BTCWithdrawalConfig{
 			QueueCheckFrequency: properties.JobBTCWithdrawalQueueCheckFrequency,
 		},
+	}
+
+	cfg.Server = ServerConfig{
+		Port: properties.ServerPort,
+	}
+
+	cfg.Supabase = SupabaseConfig{
+		URL: properties.SupabaseURL,
+		Key: properties.SupbaseKey,
 	}
 
 	cfg.applyDefaults()

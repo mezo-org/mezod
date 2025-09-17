@@ -72,17 +72,17 @@ func (mr *MockMezoBridgeMockRecorder) ValidateAssetsUnlocked(arg0 any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateAssetsUnlocked", reflect.TypeOf((*MockMezoBridge)(nil).ValidateAssetsUnlocked), arg0)
 }
 
-// ValidatorIDs mocks base method.
-func (m *MockMezoBridge) ValidatorIDs(arg0 common.Address) (uint8, error) {
+// BridgeValidatorIDs mocks base method.
+func (m *MockMezoBridge) BridgeValidatorIDs(arg0 common.Address) (uint8, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidatorIDs", arg0)
+	ret := m.ctrl.Call(m, "BridgeValidatorIDs", arg0)
 	ret0, _ := ret[0].(uint8)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ValidatorIDs indicates an expected call of ValidatorIDs.
-func (mr *MockMezoBridgeMockRecorder) ValidatorIDs(arg0 any) *gomock.Call {
+// BridgeValidatorIDs indicates an expected call of ValidatorIDs.
+func (mr *MockMezoBridgeMockRecorder) BridgeValidatorIDs(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidatorIDs", reflect.TypeOf((*MockMezoBridge)(nil).ValidatorIDs), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BridgeValidatorIDs", reflect.TypeOf((*MockMezoBridge)(nil).BridgeValidatorIDs), arg0)
 }

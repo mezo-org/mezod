@@ -10,7 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const EthereumAccountKeyFilePasswordEnv = "ETHEREUM_ACCOUNT_KEY_FILE_PASSWORD"
+const (
+	EthereumAccountKeyFilePasswordEnv = "ETHEREUM_ACCOUNT_KEY_FILE_PASSWORD"
+	SupabaseKeyEnv                    = "SUPABASE_KEY"
+)
 
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -129,6 +132,27 @@ func parseFlags(cmd *cobra.Command) (bridgeworker.ConfigProperties, error) {
 		return bridgeworker.ConfigProperties{}, fmt.Errorf("BTC withdrawal job queue check frequency must be greater than 0")
 	}
 
+	serverPort, err := cmd.Flags().GetUint16(flagHTTPServerPort)
+	if err != nil {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf("failed to get http server port: [%w]", err)
+	}
+
+	supabaseURL, err := cmd.Flags().GetString(flagSupabaseURL)
+	if err != nil {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf("failed to get the supabase URL: [%w]", err)
+	}
+	if len(supabaseURL) == 0 {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf("supabase URL is required")
+	}
+
+	supabaseKey := os.Getenv(SupabaseKeyEnv)
+	if len(supabaseKey) == 0 {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf(
+			"supabase key is required; make sure the %s environment variable is set",
+			SupabaseKeyEnv,
+		)
+	}
+
 	return bridgeworker.ConfigProperties{
 		LogLevel:                            logLevel,
 		LogFormatJSON:                       logFormatJSON,
@@ -142,6 +166,9 @@ func parseFlags(cmd *cobra.Command) (bridgeworker.ConfigProperties, error) {
 		BitcoinElectrumURL:                  bitcoinElectrumURL,
 		MezoAssetsUnlockEndpoint:            mezoAssetsUnlockEndpoint,
 		JobBTCWithdrawalQueueCheckFrequency: jobBTCWithdrawalQueueCheckFrequency,
+		ServerPort:                          serverPort,
+		SupabaseURL:                         supabaseURL,
+		SupbaseKey:                          supabaseKey,
 	}, nil
 }
 

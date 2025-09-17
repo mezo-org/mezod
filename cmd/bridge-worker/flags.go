@@ -22,6 +22,10 @@ const (
 	flagMezoAssetsUnlockEndpoint = "mezo.assets-unlock-endpoint"
 
 	flagJobBTCWithdrawalQueueCheckFrequency = "job.btc-withdrawal.queue-check-frequency"
+
+	flagSupabaseURL = "supabase.url"
+
+	flagHTTPServerPort = "server.port"
 )
 
 // Flags default values
@@ -33,6 +37,8 @@ const (
 	flagEthereumRequestsPerMinuteDefault = bridgeworker.DefaultEthereumRequestsPerMinute
 
 	flagJobBTCWithdrawalQueueCheckFrequencyDefault = bridgeworker.DefaultBTCWithdrawalQueueCheckFrequency
+
+	flagHTTPServerPortDefault = 8080
 )
 
 func newFlagSet() *flag.FlagSet {
@@ -102,6 +108,18 @@ func newFlagSet() *flag.FlagSet {
 		flagJobBTCWithdrawalQueueCheckFrequency,
 		flagJobBTCWithdrawalQueueCheckFrequencyDefault,
 		"Frequency of the queue check made by the BTC withdrawal job",
+	)
+
+	fs.String(
+		flagSupabaseURL,
+		"",
+		"The Supabase URL",
+	)
+
+	fs.Uint16(
+		flagSupabaseURL,
+		flagHTTPServerPortDefault,
+		"The HTTP server port",
 	)
 
 	return fs

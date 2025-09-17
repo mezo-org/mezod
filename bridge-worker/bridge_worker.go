@@ -73,6 +73,8 @@ type BridgeWorker struct {
 	withdrawalFinalityChecks      map[string]*withdrawalFinalityCheck
 
 	btcWithdrawalQueueCheckFrequency time.Duration
+
+	server *Server
 }
 
 func RunBridgeWorker(
@@ -163,6 +165,11 @@ func RunBridgeWorker(
 		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
 	}
 
+	store, err := NewSupabaseStore(logger, cfg.Supabase.URL, cfg.Supabase.Key)
+	if err != nil {
+		panic(fmt.Sprintf("couldn't initialise supabase store: %v", err))
+	}
+
 	go func() {
 		// Test the connection to the assets unlocked endpoint by verifying we
 		// can successfully execute `GetAssetsUnlockedEvents`.
@@ -203,6 +210,7 @@ func RunBridgeWorker(
 		btcWithdrawalQueue:               []portal.MezoBridgeAssetsUnlockConfirmed{},
 		withdrawalFinalityChecks:         map[string]*withdrawalFinalityCheck{},
 		btcWithdrawalQueueCheckFrequency: cfg.Job.BTCWithdrawal.QueueCheckFrequency,
+		server:                           NewServer(logger, cfg.Server.Port, chain.ChainID(), mezoBridgeContract, store),
 	}
 
 	go func() {
@@ -256,7 +264,15 @@ func RunBridgeWorker(
 		bw.logger.Warn("Bitcoin withdrawal finality checks loop stopped")
 	}()
 
+	go func() {
+		defer cancelCtx()
+		bw.server.Start()
+		bw.logger.Warn("Http server stopped")
+	}()
+
 	<-ctx.Done()
+
+	bw.server.Stop(ctx)
 
 	bw.logger.Info("bridge worker stopped")
 

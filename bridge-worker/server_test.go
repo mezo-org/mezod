@@ -85,7 +85,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
 				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(true, nil)
 			},
@@ -335,7 +335,7 @@ func TestServer_submitAttestation(t *testing.T) {
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				// Return 0 for validator ID to simulate unauthorized validator
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(0), nil)
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(0), nil)
 			},
 			setupStoreMock: func(mockStore *MockStore) {},
 		},
@@ -353,7 +353,7 @@ func TestServer_submitAttestation(t *testing.T) {
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				// Return error when looking up validator ID
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(0), errors.New("validator lookup error"))
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(0), errors.New("validator lookup error"))
 			},
 			setupStoreMock: func(mockStore *MockStore) {},
 		},
@@ -370,7 +370,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				// Return true to simulate already confirmed unlock
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(true, nil)
 			},
@@ -389,7 +389,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				// Return error when checking confirmed unlocks
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, errors.New("unlock check error"))
 			},
@@ -408,7 +408,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
 				// Return false to simulate invalid assets unlocked
 				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(false, nil)
@@ -428,7 +428,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
 				// Return error during validation
 				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(false, errors.New("validation error"))
@@ -449,7 +449,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
 				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(true, nil)
 			},
@@ -470,7 +470,7 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
-				mockBridge.EXPECT().ValidatorIDs(validatorAddress).Return(uint8(1), nil)
+				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
 				mockBridge.EXPECT().ValidateAssetsUnlocked(gomock.Any()).Return(true, nil)
 			},
