@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
+	"github.com/mezo-org/mezod/bridge-worker/utils"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
 )
@@ -52,9 +53,12 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 	}
 	endBlock := finalizedBlock.Uint64()
 
-	recentEvents, err := bw.fetchNewWalletRegisteredEvents(
+	recentEvents, err := utils.WithBatchFetch(
+		bw.newWalletRegisteredEvents,
 		0,
 		endBlock,
+		bw.requestsPerMinute,
+		bw.batchSize,
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -115,73 +119,6 @@ func (bw *BridgeWorker) observeLiveWallets(ctx context.Context) error {
 	}
 }
 
-func (bw *BridgeWorker) fetchNewWalletRegisteredEvents(
-	startBlock uint64,
-	endBlock uint64,
-) ([]*tbtc.BridgeNewWalletRegistered, error) {
-	bw.logger.Info(
-		"fetching NewWalletRegistered events from range",
-		"start_block", startBlock,
-		"end_block", endBlock,
-	)
-
-	result := make([]*tbtc.BridgeNewWalletRegistered, 0)
-
-	ticker := time.NewTicker(time.Minute / time.Duration(bw.requestsPerMinute)) //nolint:gosec
-	defer ticker.Stop()
-
-	events, err := bw.tbtcBridgeContract.PastNewWalletRegisteredEvents(
-		startBlock,
-		&endBlock,
-		nil,
-		nil,
-	)
-	if err != nil {
-		bw.logger.Warn(
-			"failed to fetch NewWalletRegistered events from the entire "+
-				"range; falling back to batched events fetch",
-			"start_block", startBlock,
-			"end_block", endBlock,
-			"error", err,
-		)
-
-		batchStartBlock := startBlock
-
-		for batchStartBlock <= endBlock {
-			batchEndBlock := min(batchStartBlock+bw.batchSize, endBlock)
-
-			bw.logger.Info(
-				"fetching a batch of NewWalletRegistered events from range",
-				"batch_start_block", batchStartBlock,
-				"batch_end_block", batchEndBlock,
-			)
-
-			<-ticker.C
-
-			batchEvents, batchErr := bw.tbtcBridgeContract.PastNewWalletRegisteredEvents(
-				batchStartBlock,
-				&batchEndBlock,
-				nil,
-				nil,
-			)
-			if batchErr != nil {
-				return nil, fmt.Errorf(
-					"batched NewWalletRegistered fetch failed: [%w]; giving up",
-					batchErr,
-				)
-			}
-
-			result = append(result, batchEvents...)
-
-			batchStartBlock = batchEndBlock + 1
-		}
-	} else {
-		result = append(result, events...)
-	}
-
-	return result, nil
-}
-
 func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
 	// Work on a copy of live wallets to avoid blocking for too long.
 	// Live wallets are represented by `[20]byte` arrays, so `copy` will
@@ -215,9 +152,12 @@ func (bw *BridgeWorker) updateLiveWallets(ctx context.Context) error {
 	endBlock := finalizedBlock.Uint64()
 
 	if endBlock > bw.liveWalletsLastProcessedBlock {
-		events, err := bw.fetchNewWalletRegisteredEvents(
+		events, err := utils.WithBatchFetch(
+			bw.newWalletRegisteredEvents,
 			bw.liveWalletsLastProcessedBlock+1,
 			endBlock,
+			bw.requestsPerMinute,
+			bw.batchSize,
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -284,9 +224,12 @@ func (bw *BridgeWorker) observeBTCWithdrawals(ctx context.Context) error {
 		startBlock = currentBlock - assetsUnlockConfirmedLookBackBlocks
 	}
 
-	recentEvents, err := bw.fetchAssetsUnlockConfirmedEvents(
+	recentEvents, err := utils.WithBatchFetch(
+		bw.assetsUnlockConfirmedEvents,
 		startBlock,
 		currentBlock,
+		bw.requestsPerMinute,
+		bw.batchSize,
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -378,77 +321,6 @@ func (bw *BridgeWorker) dequeueBTCWithdrawal() *portal.MezoBridgeAssetsUnlockCon
 	)
 
 	return &event
-}
-
-// fetchAssetsUnlockConfirmedEvents fetches AssetsUnlockConfirmed events from
-// the Ethereum MezoBridge contract from the given range.
-func (bw *BridgeWorker) fetchAssetsUnlockConfirmedEvents(
-	startBlock uint64,
-	endBlock uint64,
-) ([]*portal.MezoBridgeAssetsUnlockConfirmed, error) {
-	bw.logger.Info(
-		"fetching AssetsUnlockConfirmed events from range",
-		"start_block", startBlock,
-		"end_block", endBlock,
-	)
-
-	result := make([]*portal.MezoBridgeAssetsUnlockConfirmed, 0)
-
-	ticker := time.NewTicker(time.Minute / time.Duration(bw.requestsPerMinute)) //nolint:gosec
-	defer ticker.Stop()
-
-	events, err := bw.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(
-		startBlock,
-		&endBlock,
-		nil,
-		nil,
-		nil,
-	)
-	if err != nil {
-		bw.logger.Warn(
-			"failed to fetch AssetsUnlockConfirmed events from the entire "+
-				"range; falling back to batched events fetch",
-			"start_block", startBlock,
-			"end_block", endBlock,
-			"error", err,
-		)
-
-		batchStartBlock := startBlock
-
-		for batchStartBlock <= endBlock {
-			batchEndBlock := min(batchStartBlock+bw.batchSize, endBlock)
-
-			bw.logger.Info(
-				"fetching a batch of AssetsUnlockConfirmed events from range",
-				"batch_start_block", batchStartBlock,
-				"batch_end_block", batchEndBlock,
-			)
-
-			<-ticker.C
-
-			batchEvents, batchErr := bw.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(
-				batchStartBlock,
-				&batchEndBlock,
-				nil,
-				nil,
-				nil,
-			)
-			if batchErr != nil {
-				return nil, fmt.Errorf(
-					"batched AssetsUnlockConfirmed fetch failed: [%w]; giving up",
-					batchErr,
-				)
-			}
-
-			result = append(result, batchEvents...)
-
-			batchStartBlock = batchEndBlock + 1
-		}
-	} else {
-		result = append(result, events...)
-	}
-
-	return result, nil
 }
 
 // isPendingBTCWithdrawal checks whether an AssetsUnlockConfirmed event
@@ -546,9 +418,12 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Contex
 	newPendingBTCWithdrawals := 0
 
 	if currentBlock > bw.btcWithdrawalLastProcessedBlock {
-		events, err := bw.fetchAssetsUnlockConfirmedEvents(
+		events, err := utils.WithBatchFetch(
+			bw.assetsUnlockConfirmedEvents,
 			bw.btcWithdrawalLastProcessedBlock+1,
 			currentBlock,
+			bw.requestsPerMinute,
+			bw.batchSize,
 		)
 		if err != nil {
 			return fmt.Errorf(
@@ -582,6 +457,28 @@ func (bw *BridgeWorker) processNewAssetsUnlockConfirmedEvents(ctx context.Contex
 	)
 
 	return nil
+}
+
+func (bw *BridgeWorker) newWalletRegisteredEvents(
+	startHeight, endHeight uint64,
+) ([]*tbtc.BridgeNewWalletRegistered, error) {
+	bw.logger.Info(
+		"fetching NewWalletRegistered events",
+		"start_height", startHeight,
+		"end_height", endHeight,
+	)
+	return bw.tbtcBridgeContract.PastNewWalletRegisteredEvents(startHeight, &endHeight, nil, nil)
+}
+
+func (bw *BridgeWorker) assetsUnlockConfirmedEvents(
+	startHeight, endHeight uint64,
+) ([]*portal.MezoBridgeAssetsUnlockConfirmed, error) {
+	bw.logger.Info(
+		"fetching AssetsUnlockConfirmed events",
+		"start_height", startHeight,
+		"end_height", endHeight,
+	)
+	return bw.mezoBridgeContract.PastAssetsUnlockConfirmedEvents(startHeight, &endHeight, nil, nil, nil)
 }
 
 // processBTCWithdrawalQueue processes pending BTC withdrawals. It removes
