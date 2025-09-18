@@ -18,9 +18,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
-	"github.com/mezo-org/mezod/bridge-worker/utils"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
+	"github.com/mezo-org/mezod/utils"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
@@ -227,7 +227,7 @@ func (bwj *btcWithdrawalJob) observeLiveWallets(ctx context.Context) error {
 	}
 	endBlock := finalizedBlock.Uint64()
 
-	recentEvents, err := utils.WithBatchFetch(
+	recentEvents, err := utils.WithBatchEventFetch(
 		bwj.newWalletRegisteredEvents,
 		0,
 		endBlock,
@@ -326,7 +326,7 @@ func (bwj *btcWithdrawalJob) updateLiveWallets(ctx context.Context) error {
 	endBlock := finalizedBlock.Uint64()
 
 	if endBlock > bwj.liveWalletsLastProcessedBlock {
-		events, err := utils.WithBatchFetch(
+		events, err := utils.WithBatchEventFetch(
 			bwj.newWalletRegisteredEvents,
 			bwj.liveWalletsLastProcessedBlock+1,
 			endBlock,
@@ -398,7 +398,7 @@ func (bwj *btcWithdrawalJob) observeBTCWithdrawals(ctx context.Context) error {
 		startBlock = currentBlock - assetsUnlockConfirmedLookBackBlocks
 	}
 
-	recentEvents, err := utils.WithBatchFetch(
+	recentEvents, err := utils.WithBatchEventFetch(
 		bwj.assetsUnlockConfirmedEvents,
 		startBlock,
 		currentBlock,
@@ -592,7 +592,7 @@ func (bwj *btcWithdrawalJob) processNewAssetsUnlockConfirmedEvents(ctx context.C
 	newPendingBTCWithdrawals := 0
 
 	if currentBlock > bwj.btcWithdrawalLastProcessedBlock {
-		events, err := utils.WithBatchFetch(
+		events, err := utils.WithBatchEventFetch(
 			bwj.assetsUnlockConfirmedEvents,
 			bwj.btcWithdrawalLastProcessedBlock+1,
 			currentBlock,

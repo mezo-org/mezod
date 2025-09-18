@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-// WithBatchFetch fetches events from the given range using the provided
+// WithBatchEventFetch fetches events from the given range using the provided
 // fetch function. It first tries to fetch the events from the entire range and
 // if it fails it switches to batch fetching.
-func WithBatchFetch[T any](
+func WithBatchEventFetch[T any](
 	fetchFunc func(batchStartHeight, batchEndHeight uint64) ([]T, error),
 	startHeight uint64,
 	endHeight uint64,
