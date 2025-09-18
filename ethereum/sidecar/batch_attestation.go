@@ -9,17 +9,17 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
 
 var (
 	batchAttestationTimeout = 10 * time.Minute
 	batchAttestationCheck   = 15 * time.Second
-	retrySendSignature      = 5 * time.Second
+	retrySubmitAttestation  = 5 * time.Second
 
 	ErrBridgeWorkerNotSet = errors.New("bridge worker not set")
 )
@@ -27,7 +27,7 @@ var (
 type BridgeWorker interface {
 	// expect no returned payload,
 	// just an error eventually
-	SendSignature(attestation *portal.MezoBridgeAssetsUnlocked, signature string) error
+	SubmitAttestation(attestation *bridgetypes.AssetsUnlockedEvent, signature string) error
 }
 
 type batchAttestation struct {
@@ -58,6 +58,7 @@ func newBatchAttestation(
 // validated before being called.
 func (ba *batchAttestation) TryAttest(
 	ctx context.Context,
+	originalAttestation *bridgetypes.AssetsUnlockedEvent,
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) (bool, error) {
 	if ba.bridgeWorker == nil {
@@ -70,7 +71,7 @@ func (ba *batchAttestation) TryAttest(
 
 	// first send the attestestation signature.
 	// if there's an error we can fallback to
-	err := ba.sendPayload(attestCtx, attestation)
+	err := ba.sendPayload(attestCtx, originalAttestation, attestation)
 	if err != nil {
 		return false, fmt.Errorf("failed to send payload: %w", err)
 	}
@@ -94,6 +95,7 @@ func (ba *batchAttestation) TryAttest(
 
 func (ba *batchAttestation) sendPayload(
 	ctx context.Context,
+	originalAttestation *bridgetypes.AssetsUnlockedEvent,
 	attestation *portal.MezoBridgeAssetsUnlocked,
 ) error {
 	signature, err := ba.signPayload(attestation)
@@ -105,7 +107,7 @@ func (ba *batchAttestation) sendPayload(
 
 	// we operate this in a loop just to handle retries in case
 	// of transcient network failure.
-	retryTicker := time.NewTicker(retrySendSignature)
+	retryTicker := time.NewTicker(retrySubmitAttestation)
 	defer retryTicker.Stop()
 
 	sendCtx, cancelSendCtx := context.WithTimeout(ctx, batchAttestationTimeout/5)
@@ -114,7 +116,7 @@ func (ba *batchAttestation) sendPayload(
 	for {
 		select {
 		case <-retryTicker.C:
-			err := ba.bridgeWorker.SendSignature(attestation, signature)
+			err := ba.bridgeWorker.SubmitAttestation(originalAttestation, signature)
 			if err != nil {
 				ba.logger.Warn(
 					"failed to send attestation signature to the bridge worker",
@@ -130,19 +132,8 @@ func (ba *batchAttestation) sendPayload(
 	}
 }
 
-func attestationDigestHash(attestation *portal.MezoBridgeAssetsUnlocked, chainID *big.Int) ([]byte, error) {
-	abiEncoded, err := abiEncodeAttestationWithChainID(attestation, chainID)
-	if err != nil {
-		return nil, err
-	}
-
-	digest := crypto.Keccak256(abiEncoded)
-
-	return accounts.TextHash(digest), nil
-}
-
 func (ba *batchAttestation) signPayload(attestation *portal.MezoBridgeAssetsUnlocked) (string, error) {
-	digestHash, err := attestationDigestHash(attestation, ba.chainID)
+	digestHash, err := portal.AttestationDigestHash(attestation, ba.chainID)
 	if err != nil {
 		return "", err
 	}

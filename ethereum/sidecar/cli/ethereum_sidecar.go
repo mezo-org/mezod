@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
+	bwclient "github.com/mezo-org/mezod/bridge-worker/client"
 	clientkeys "github.com/mezo-org/mezod/client/keys"
 	"github.com/mezo-org/mezod/ethereum/sidecar"
 	"github.com/spf13/cobra"
@@ -108,6 +109,11 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// TODO: actually instantiate this later
+	// for we keep it nil, so done the line
+	// we skip the batch attestation phase.
+	var bridgeWorkerClient *bwclient.Client
+
 	sidecar.RunServer(
 		logger,
 		grpcAddress,
@@ -118,6 +124,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		assetsUnlockedEndpoint,
 		clientCtx.InterfaceRegistry,
 		privateKey,
+		bridgeWorkerClient,
 	)
 
 	return nil

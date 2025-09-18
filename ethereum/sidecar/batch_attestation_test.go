@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"cosmossdk.io/log"
+	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/assert"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -71,12 +73,12 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 		timeout         time.Duration
 	}{
 		{
-			name:        "SendSignature fails repeatedly until timeout",
+			name:        "SubmitAttestation fails repeatedly until timeout",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				expectedError := errors.New("network error")
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitAttestation(gomock.Any(), gomock.Any()).
 					Return(expectedError).
 					AnyTimes()
 			},
@@ -86,11 +88,11 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			timeout:         100 * time.Millisecond, // Short timeout for testing
 		},
 		{
-			name:        "SendSignature succeeds but confirmation never comes",
+			name:        "SubmitAttestation succeeds but confirmation never comes",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitAttestation(gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				tba.mockBridgeContract.EXPECT().
@@ -104,11 +106,11 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			timeout:         100 * time.Millisecond,
 		},
 		{
-			name:        "SendSignature succeeds and confirmation comes immediately",
+			name:        "SubmitAttestation succeeds and confirmation comes immediately",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitAttestation(gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				tba.mockBridgeContract.EXPECT().
@@ -122,11 +124,11 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			timeout:         5 * time.Second,
 		},
 		{
-			name:        "SendSignature succeeds and confirmation comes after delay",
+			name:        "SubmitAttestation succeeds and confirmation comes after delay",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitAttestation(gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				// First few calls return false, then true
@@ -147,11 +149,11 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			timeout:         5 * time.Second,
 		},
 		{
-			name:        "SendSignature succeeds but ConfirmedUnlocks returns error",
+			name:        "SubmitAttestation succeeds but ConfirmedUnlocks returns error",
 			attestation: defaultUnlockAttestation(),
 			pre: func(tba *testBatchAttestation) {
 				tba.mockBridgeWorker.EXPECT().
-					SendSignature(defaultUnlockAttestation(), gomock.Any()).
+					SubmitAttestation(gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 				expectedError := errors.New("contract error")
@@ -192,7 +194,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			batchAttestationCheck = 10 * time.Millisecond
 
 			// Set a shorter retry interval
-			retrySendSignature = 10 * time.Millisecond
+			retrySubmitAttestation = 10 * time.Millisecond
 
 			// Prepare the test
 			testCase.pre(tba)
@@ -201,7 +203,7 @@ func TestBatchAttestation_TryAttest(t *testing.T) {
 			ctx := testCase.ctx()
 
 			// Execute the transaction
-			success, err := tba.TryAttest(ctx, testCase.attestation)
+			success, err := tba.TryAttest(ctx, defaultAssetsUnlockedEvent(), testCase.attestation)
 
 			// Verify results
 			assert.Equal(t, testCase.expectedSuccess, success, "unexpected success value")
@@ -231,10 +233,21 @@ func TestAttestationDigestHash(t *testing.T) {
 		Chain:                0,
 	}
 
-	digestHash, err := attestationDigestHash(attestation, big.NewInt(1))
+	digestHash, err := portal.AttestationDigestHash(attestation, big.NewInt(1))
 	assert.NoError(t, err)
 
 	// Expected digest hash computed using Solidity's `keccak256(abi.encode(1, AssetsUnlocked)).toEthSignedMessageHash()`
 	expectedDigestHash := common.HexToHash("0xcb97fcb7f22cc5aadd1b5e6497d547723d4a652d31cf38e78d3644b44a71846d").Bytes()
 	assert.Equal(t, expectedDigestHash, digestHash)
+}
+
+func defaultAssetsUnlockedEvent() *bridgetypes.AssetsUnlockedEvent {
+	return &bridgetypes.AssetsUnlockedEvent{
+		UnlockSequence: sdkmath.NewInt(1),
+		Recipient:      []byte{},
+		Token:          "",
+		Amount:         sdkmath.NewInt(100),
+		Chain:          0,
+		BlockTime:      9000,
+	}
 }

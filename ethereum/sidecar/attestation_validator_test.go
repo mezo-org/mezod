@@ -173,7 +173,7 @@ func TestAbiEncodeAttestation(t *testing.T) {
 		Chain:                0,
 	}
 
-	encoded, err := abiEncodeAttestation(attestation)
+	encoded, err := portal.AbiEncodeAttestation(attestation)
 	assert.NoError(t, err)
 
 	hash := crypto.Keccak256Hash(encoded)
@@ -192,7 +192,7 @@ func TestAbiEncodeAttestationWithChainID(t *testing.T) {
 		Chain:                0,
 	}
 
-	encoded, err := abiEncodeAttestationWithChainID(attestation, big.NewInt(1))
+	encoded, err := portal.AbiEncodeAttestationWithChainID(attestation, big.NewInt(1))
 	assert.NoError(t, err)
 
 	hash := crypto.Keccak256Hash(encoded)

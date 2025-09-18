@@ -172,6 +172,7 @@ func RunServer(
 	assetsUnlockedEndpoint string,
 	registry codectypes.InterfaceRegistry,
 	privateKey *ecdsa.PrivateKey,
+	bridgeWorker BridgeWorker,
 ) {
 	network := ethconnect.NetworkFromString(ethereumNetwork)
 	mezoBridgeAddress := portal.MezoBridgeAddress(network)
@@ -224,8 +225,7 @@ func RunServer(
 	batchAttestation := newBatchAttestation(
 		logger,
 		privateKey,
-		// TODO: pass the bridge worked here when implemented
-		nil,
+		bridgeWorker,
 		bridgeContract,
 		chain.ChainID(),
 	)
@@ -1064,7 +1064,7 @@ func (s *Server) attestAssetsUnlockedEvents(ctx context.Context) {
 
 				attestationLogger.Info("starting batch attestation process")
 
-				ok, err = s.batchAttestation.TryAttest(ctx, bridgeAssetsUnlocked)
+				ok, err = s.batchAttestation.TryAttest(ctx, attestation, bridgeAssetsUnlocked)
 				if err != nil {
 					attestationLogger.Warn(
 						"batch attestation process failed - falling back to "+
