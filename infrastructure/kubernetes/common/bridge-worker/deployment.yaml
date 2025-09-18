@@ -55,6 +55,8 @@ spec:
                 secretKeyRef:
                   name: bridge-worker-config
                   key: mezo-assets-unlock-endpoint
+          ports:
+            - containerPort: 2112        
           resources:
             limits:
               cpu: 500m
