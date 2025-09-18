@@ -51,9 +51,9 @@ type GenesisState struct {
 	// assets_unlocked_events are all the AssetsUnlockedEvents processed
 	// by the networks' bridge.
 	AssetsUnlockedEvents []*AssetsUnlockedEvent `protobuf:"bytes,7,rep,name=assets_unlocked_events,json=assetsUnlockedEvents,proto3" json:"assets_unlocked_events,omitempty"`
-	// min_bridge_out_amount_for_bitcoin_chain is the minimum amount required
+	// bitcoin_chain_min_bridge_out_amount is the minimum amount required
 	// for bridging out to the Bitcoin chain.
-	MinBridgeOutAmountForBitcoinChain cosmossdk_io_math.Int `protobuf:"bytes,8,opt,name=min_bridge_out_amount_for_bitcoin_chain,json=minBridgeOutAmountForBitcoinChain,proto3,customtype=cosmossdk.io/math.Int" json:"min_bridge_out_amount_for_bitcoin_chain"`
+	BitcoinChainMinBridgeOutAmount cosmossdk_io_math.Int `protobuf:"bytes,8,opt,name=bitcoin_chain_min_bridge_out_amount,json=bitcoinChainMinBridgeOutAmount,proto3,customtype=cosmossdk.io/math.Int" json:"bitcoin_chain_min_bridge_out_amount"`
 	// token_min_bridge_out_amounts is the list of minimum bridge out amounts
 	// per token for the Bitcoin chain.
 	TokenMinBridgeOutAmounts []*TokenMinBridgeOutAmount `protobuf:"bytes,9,rep,name=token_min_bridge_out_amounts,json=tokenMinBridgeOutAmounts,proto3" json:"token_min_bridge_out_amounts,omitempty"`
@@ -247,9 +247,9 @@ func (m *GenesisState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		}
 	}
 	{
-		size := m.MinBridgeOutAmountForBitcoinChain.Size()
+		size := m.BitcoinChainMinBridgeOutAmount.Size()
 		i -= size
-		if _, err := m.MinBridgeOutAmountForBitcoinChain.MarshalTo(dAtA[i:]); err != nil {
+		if _, err := m.BitcoinChainMinBridgeOutAmount.MarshalTo(dAtA[i:]); err != nil {
 			return 0, err
 		}
 		i = encodeVarintGenesis(dAtA, i, uint64(size))
@@ -375,7 +375,7 @@ func (m *GenesisState) Size() (n int) {
 			n += 1 + l + sovGenesis(uint64(l))
 		}
 	}
-	l = m.MinBridgeOutAmountForBitcoinChain.Size()
+	l = m.BitcoinChainMinBridgeOutAmount.Size()
 	n += 1 + l + sovGenesis(uint64(l))
 	if len(m.TokenMinBridgeOutAmounts) > 0 {
 		for _, e := range m.TokenMinBridgeOutAmounts {
@@ -658,7 +658,7 @@ func (m *GenesisState) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 8:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MinBridgeOutAmountForBitcoinChain", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BitcoinChainMinBridgeOutAmount", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -686,7 +686,7 @@ func (m *GenesisState) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.MinBridgeOutAmountForBitcoinChain.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.BitcoinChainMinBridgeOutAmount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

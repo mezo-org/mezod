@@ -48,9 +48,9 @@ message GenesisState {
   // by the networks' bridge.
   repeated AssetsUnlockedEvent assets_unlocked_events = 7;
 
-  // min_bridge_out_amount_for_bitcoin_chain is the minimum amount required
+  // bitcoin_chain_min_bridge_out_amount is the minimum amount required
   // for bridging out to the Bitcoin chain.
-  string min_bridge_out_amount_for_bitcoin_chain = 8 [
+  string bitcoin_chain_min_bridge_out_amount = 8 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
