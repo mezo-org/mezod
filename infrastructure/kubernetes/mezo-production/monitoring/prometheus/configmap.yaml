@@ -15,7 +15,7 @@ data:
           - targets: ['metrics-scraper:2112']
       - job_name: 'bridge-worker'
         static_configs:
-          - targets: ['bridge-worker:2112']    
+          - targets: ['bridge-worker.default.svc.cluster.local:2112']    
       - job_name: 'api-metrics'
         metrics_path: /api/v2/metrics
         static_configs:
