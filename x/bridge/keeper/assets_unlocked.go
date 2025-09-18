@@ -7,11 +7,30 @@ import (
 	"math/big"
 
 	"cosmossdk.io/math"
-
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
+
+// GetAllAssetsUnlockedEvents returns all assets unlocked events processed by the bridge.
+func (k Keeper) GetAllAssetsUnlockedEvents(ctx sdk.Context) []*types.AssetsUnlockedEvent {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(store, types.AssetsUnlockedKeyPrefix)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var events []*types.AssetsUnlockedEvent
+
+	for ; iterator.Valid(); iterator.Next() {
+		event := types.MustUnmarshalAssetsUnlockedEvent(k.cdc, iterator.Value())
+		events = append(events, &event)
+	}
+
+	return events
+}
 
 // GetAssetsUnlockedSequenceTip returns the current sequence tip for the
 // AssetsUnlocked events. The tip denotes the sequence number of the last event
@@ -194,6 +213,37 @@ func (k Keeper) BurnERC20(
 	}
 
 	return nil
+}
+
+func (k Keeper) GetAllMinBridgeOutAmount(ctx sdk.Context) []*types.TokenMinBridgeOutAmount {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(store, types.MinBridgeOutAmountKeyPrefix)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var tokenMinBridgeOutAmount []*types.TokenMinBridgeOutAmount
+
+	for ; iterator.Valid(); iterator.Next() {
+		token := iterator.Key()[len(types.MinBridgeOutAmountKeyPrefix):]
+
+		var minAmount math.Int
+		err := minAmount.Unmarshal(iterator.Value())
+		if err != nil {
+			panic(err)
+		}
+
+		tokenMinBridgeOutAmount = append(
+			tokenMinBridgeOutAmount,
+			&types.TokenMinBridgeOutAmount{
+				Token:  token,
+				Amount: minAmount,
+			},
+		)
+	}
+
+	return tokenMinBridgeOutAmount
 }
 
 func (k Keeper) GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) math.Int {

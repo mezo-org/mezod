@@ -43,4 +43,32 @@ message GenesisState {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
+
+  // assets_unlocked_events are all the AssetsUnlockedEvents processed
+  // by the networks' bridge.
+  repeated AssetsUnlockedEvent assets_unlocked_events = 7;
+
+  // min_bridge_out_amount_for_bitcoin_chain is the minimum amount required
+  // for bridging out to the Bitcoin chain.
+  string min_bridge_out_amount_for_bitcoin_chain = 8 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // token_min_bridge_out_amounts is the list of minimum bridge out amounts
+  // per token for the Bitcoin chain.
+  repeated TokenMinBridgeOutAmount token_min_bridge_out_amounts = 9;
+}
+
+// TokenMinBridgeOutAmount defines the minimum bridge out amount for a specific
+// token.
+message TokenMinBridgeOutAmount {
+  // token is the token address as bytes.
+  bytes token = 1;
+
+  // amount is the minimum amount required for bridging out this specific token.
+  string amount = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
 }
