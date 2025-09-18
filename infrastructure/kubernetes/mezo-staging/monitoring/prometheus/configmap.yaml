@@ -16,6 +16,9 @@ data:
       - job_name: 'metrics-scraper'
         static_configs:
           - targets: ['metrics-scraper:2112']
+      - job_name: 'bridge-worker'
+        static_configs:
+          - targets: ['bridge-worker:2112']    
       - job_name: 'api-metrics'
         metrics_path: /api/v2/metrics
         static_configs:
