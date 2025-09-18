@@ -353,6 +353,8 @@ func (bw *BridgeWorker) enqueueBtcWithdrawal(
 		"enqueued BTC withdrawal",
 		"unlock_sequence", event.UnlockSequenceNumber.String(),
 	)
+
+	pendingBTCWithdrawalsGauge.Inc()
 }
 
 // dequeueBtcWithdrawal removes an AssetsUnlockConfirmed event representing
@@ -371,6 +373,8 @@ func (bw *BridgeWorker) dequeueBtcWithdrawal() *portal.MezoBridgeAssetsUnlockCon
 		"dequeued BTC withdrawal",
 		"unlock_sequence", event.UnlockSequenceNumber.String(),
 	)
+
+	pendingBTCWithdrawalsGauge.Dec()
 
 	return &event
 }

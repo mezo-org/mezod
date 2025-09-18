@@ -129,6 +129,14 @@ func parseFlags(cmd *cobra.Command) (bridgeworker.ConfigProperties, error) {
 		return bridgeworker.ConfigProperties{}, fmt.Errorf("BTC withdrawal job queue check frequency must be greater than 0")
 	}
 
+	prometheusPort, err := cmd.Flags().GetUint(flagPrometheusPort)
+	if err != nil {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf("failed to get prometheus port: [%w]", err)
+	}
+	if prometheusPort == 0 {
+		return bridgeworker.ConfigProperties{}, fmt.Errorf("prometheus port must be greater than 0")
+	}
+
 	return bridgeworker.ConfigProperties{
 		LogLevel:                            logLevel,
 		LogFormatJSON:                       logFormatJSON,
@@ -142,6 +150,7 @@ func parseFlags(cmd *cobra.Command) (bridgeworker.ConfigProperties, error) {
 		BitcoinElectrumURL:                  bitcoinElectrumURL,
 		MezoAssetsUnlockEndpoint:            mezoAssetsUnlockEndpoint,
 		JobBTCWithdrawalQueueCheckFrequency: jobBTCWithdrawalQueueCheckFrequency,
+		PrometheusPort:                      prometheusPort,
 	}, nil
 }
 

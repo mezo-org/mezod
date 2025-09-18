@@ -36,6 +36,8 @@ type ConfigProperties struct {
 	MezoAssetsUnlockEndpoint string
 
 	JobBTCWithdrawalQueueCheckFrequency time.Duration
+
+	PrometheusPort uint
 }
 
 type Config struct {
