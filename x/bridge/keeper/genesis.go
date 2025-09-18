@@ -38,7 +38,10 @@ func (k Keeper) InitGenesis(
 
 	// Initialize token minimum bridge out amounts
 	for _, tokenAmount := range genState.TokenMinBridgeOutAmounts {
-		k.SetMinBridgeOutAmount(ctx, tokenAmount.Token, tokenAmount.Amount)
+		err := k.SetMinBridgeOutAmount(ctx, tokenAmount.Token, tokenAmount.Amount)
+		if err != nil {
+			panic(errorsmod.Wrapf(err, "error setting min bridge out amount"))
+		}
 	}
 
 	err = k.IncreaseBTCMinted(ctx, genState.InitialBtcSupply)
