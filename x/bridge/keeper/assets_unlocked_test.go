@@ -899,8 +899,8 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 		require.Len(t, amounts, 3)
 
 		expectedAmounts := map[string]math.Int{
-			hex.EncodeToString(token1):  minAmount1,
-			hex.EncodeToString(token2):  minAmount2,
+			hex.EncodeToString(token1):   minAmount1,
+			hex.EncodeToString(token2):   minAmount2,
 			hex.EncodeToString(btcToken): minAmountBTC,
 		}
 
