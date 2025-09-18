@@ -133,8 +133,8 @@ func RunBridgeWorker(
 
 	for _, job := range jobs {
 		go func(j bridgeWorkerJob) {
+			defer cancelCtx()
 			j.run(ctx)
-			cancelCtx()
 		}(job)
 	}
 
