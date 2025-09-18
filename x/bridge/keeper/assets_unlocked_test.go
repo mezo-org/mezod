@@ -755,3 +755,200 @@ func TestSetMinBridgeOutAmountForBitcoinChain(t *testing.T) {
 		})
 	}
 }
+
+func TestGetAllAssetsUnlockedEvents(t *testing.T) {
+	cfg := sdk.GetConfig()
+	config.SetBech32Prefixes(cfg)
+
+	toBytes := func(address string) sdk.AccAddress {
+		account, err := sdk.AccAddressFromBech32(address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return account
+	}
+
+	t.Run("returns empty slice when no events exist", func(t *testing.T) {
+		ctx, k := mockContext()
+
+		events := k.GetAllAssetsUnlockedEvents(ctx)
+		require.Empty(t, events)
+	})
+
+	t.Run("returns single event when one exists", func(t *testing.T) {
+		ctx, k := mockContext()
+
+		event := &types.AssetsUnlockedEvent{
+			UnlockSequence: math.NewInt(1),
+			Recipient:      toBytes(recipient1),
+			Token:          testSourceERC20Token1,
+			Sender:         sender,
+			Amount:         math.NewInt(100),
+			Chain:          0,
+			BlockTime:      12345,
+		}
+
+		k.saveAssetsUnlocked(ctx, event)
+
+		events := k.GetAllAssetsUnlockedEvents(ctx)
+		require.Len(t, events, 1)
+		require.Equal(t, event, events[0])
+	})
+
+	t.Run("returns multiple events when they exist", func(t *testing.T) {
+		ctx, k := mockContext()
+
+		event1 := &types.AssetsUnlockedEvent{
+			UnlockSequence: math.NewInt(1),
+			Recipient:      toBytes(recipient1),
+			Token:          testSourceERC20Token1,
+			Sender:         sender,
+			Amount:         math.NewInt(100),
+			Chain:          0,
+			BlockTime:      12345,
+		}
+
+		event2 := &types.AssetsUnlockedEvent{
+			UnlockSequence: math.NewInt(2),
+			Recipient:      toBytes(recipient2),
+			Token:          testSourceERC20Token2,
+			Sender:         sender,
+			Amount:         math.NewInt(200),
+			Chain:          1,
+			BlockTime:      12346,
+		}
+
+		event3 := &types.AssetsUnlockedEvent{
+			UnlockSequence: math.NewInt(3),
+			Recipient:      toBytes(recipient1),
+			Token:          testSourceBTCToken,
+			Sender:         sender,
+			Amount:         math.NewInt(300),
+			Chain:          2,
+			BlockTime:      12347,
+		}
+
+		k.saveAssetsUnlocked(ctx, event1)
+		k.saveAssetsUnlocked(ctx, event2)
+		k.saveAssetsUnlocked(ctx, event3)
+
+		events := k.GetAllAssetsUnlockedEvents(ctx)
+		require.Len(t, events, 3)
+
+		expectedEvents := []*types.AssetsUnlockedEvent{event1, event2, event3}
+		for _, expected := range expectedEvents {
+			found := false
+			for _, actual := range events {
+				if expected.UnlockSequence.Equal(actual.UnlockSequence) {
+					require.Equal(t, expected, actual)
+					found = true
+					break
+				}
+			}
+			require.True(t, found, "expected event with sequence %s not found", expected.UnlockSequence.String())
+		}
+	})
+}
+
+func TestGetAllMinBridgeOutAmount(t *testing.T) {
+	t.Run("returns empty slice when no min amounts are set", func(t *testing.T) {
+		ctx, k := mockContext()
+
+		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		require.Empty(t, amounts)
+	})
+
+	t.Run("returns single token min amount when one is set", func(t *testing.T) {
+		ctx, k := mockContext()
+
+		token1, err := hex.DecodeString(testMezoERC20Token1[2:])
+		require.NoError(t, err)
+		minAmount1 := math.NewInt(1000)
+
+		err = k.SetMinBridgeOutAmount(ctx, token1, minAmount1)
+		require.NoError(t, err)
+
+		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		require.Len(t, amounts, 1)
+		require.Equal(t, token1, amounts[0].Token)
+		require.Equal(t, minAmount1, amounts[0].Amount)
+	})
+
+	t.Run("returns multiple token min amounts when multiple are set", func(t *testing.T) {
+		ctx, k := mockContext()
+
+		token1, err := hex.DecodeString(testMezoERC20Token1[2:])
+		require.NoError(t, err)
+		minAmount1 := math.NewInt(1000)
+
+		token2, err := hex.DecodeString(testMezoERC20Token2[2:])
+		require.NoError(t, err)
+		minAmount2 := math.NewInt(2000)
+
+		btcToken := evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress)
+		minAmountBTC := math.NewInt(5000)
+
+		err = k.SetMinBridgeOutAmount(ctx, token1, minAmount1)
+		require.NoError(t, err)
+		err = k.SetMinBridgeOutAmount(ctx, token2, minAmount2)
+		require.NoError(t, err)
+		err = k.SetMinBridgeOutAmount(ctx, btcToken, minAmountBTC)
+		require.NoError(t, err)
+
+		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		require.Len(t, amounts, 3)
+
+		expectedAmounts := map[string]math.Int{
+			hex.EncodeToString(token1):  minAmount1,
+			hex.EncodeToString(token2):  minAmount2,
+			hex.EncodeToString(btcToken): minAmountBTC,
+		}
+
+		for _, amount := range amounts {
+			tokenHex := hex.EncodeToString(amount.Token)
+			expectedAmount, found := expectedAmounts[tokenHex]
+			require.True(t, found, "unexpected token %s", tokenHex)
+			require.Equal(t, expectedAmount, amount.Amount, "wrong amount for token %s", tokenHex)
+		}
+	})
+
+	t.Run("returns updated amounts after modification", func(t *testing.T) {
+		ctx, k := mockContext()
+
+		token1, err := hex.DecodeString(testMezoERC20Token1[2:])
+		require.NoError(t, err)
+		initialAmount := math.NewInt(1000)
+		updatedAmount := math.NewInt(2500)
+
+		err = k.SetMinBridgeOutAmount(ctx, token1, initialAmount)
+		require.NoError(t, err)
+
+		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		require.Len(t, amounts, 1)
+		require.Equal(t, initialAmount, amounts[0].Amount)
+
+		err = k.SetMinBridgeOutAmount(ctx, token1, updatedAmount)
+		require.NoError(t, err)
+
+		amounts = k.GetAllMinBridgeOutAmount(ctx)
+		require.Len(t, amounts, 1)
+		require.Equal(t, token1, amounts[0].Token)
+		require.Equal(t, updatedAmount, amounts[0].Amount)
+	})
+
+	t.Run("handles zero amounts correctly", func(t *testing.T) {
+		ctx, k := mockContext()
+
+		token1, err := hex.DecodeString(testMezoERC20Token1[2:])
+		require.NoError(t, err)
+		zeroAmount := math.ZeroInt()
+
+		err = k.SetMinBridgeOutAmount(ctx, token1, zeroAmount)
+		require.NoError(t, err)
+
+		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		require.Len(t, amounts, 1)
+		require.Equal(t, token1, amounts[0].Token)
+		require.Equal(t, zeroAmount, amounts[0].Amount)
+	})
+}

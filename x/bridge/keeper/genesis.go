@@ -28,6 +28,19 @@ func (k Keeper) InitGenesis(
 	k.SetSourceBTCToken(ctx, evmtypes.HexAddressToBytes(genState.SourceBtcToken))
 	k.setERC20TokensMappings(ctx, genState.Erc20TokensMappings)
 
+	// Initialize assets unlocked events
+	for _, event := range genState.AssetsUnlockedEvents {
+		k.saveAssetsUnlocked(ctx, event)
+	}
+
+	// Initialize minimum bridge out amount for Bitcoin chain
+	k.SetMinBridgeOutAmountForBitcoinChain(ctx, genState.MinBridgeOutAmountForBitcoinChain)
+
+	// Initialize token minimum bridge out amounts
+	for _, tokenAmount := range genState.TokenMinBridgeOutAmounts {
+		k.SetMinBridgeOutAmount(ctx, tokenAmount.Token, tokenAmount.Amount)
+	}
+
 	err = k.IncreaseBTCMinted(ctx, genState.InitialBtcSupply)
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting params"))
@@ -37,11 +50,14 @@ func (k Keeper) InitGenesis(
 // ExportGenesis returns the module's exported genesis
 func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 	return &types.GenesisState{
-		Params:                    k.GetParams(ctx),
-		AssetsLockedSequenceTip:   k.GetAssetsLockedSequenceTip(ctx),
-		AssetsUnlockedSequenceTip: k.GetAssetsUnlockedSequenceTip(ctx),
-		SourceBtcToken:            evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx)),
-		Erc20TokensMappings:       k.GetERC20TokensMappings(ctx),
-		InitialBtcSupply:          k.GetBTCMinted(ctx).Sub(k.GetBTCBurnt(ctx)),
+		Params:                            k.GetParams(ctx),
+		AssetsLockedSequenceTip:           k.GetAssetsLockedSequenceTip(ctx),
+		AssetsUnlockedSequenceTip:         k.GetAssetsUnlockedSequenceTip(ctx),
+		SourceBtcToken:                    evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx)),
+		Erc20TokensMappings:               k.GetERC20TokensMappings(ctx),
+		InitialBtcSupply:                  k.GetBTCMinted(ctx).Sub(k.GetBTCBurnt(ctx)),
+		AssetsUnlockedEvents:              k.GetAllAssetsUnlockedEvents(ctx),
+		MinBridgeOutAmountForBitcoinChain: k.GetMinBridgeOutAmountForBitcoinChain(ctx),
+		TokenMinBridgeOutAmounts:          k.GetAllMinBridgeOutAmount(ctx),
 	}
 }

@@ -4,13 +4,14 @@
 package types
 
 import (
-	cosmossdk_io_math "cosmossdk.io/math"
 	fmt "fmt"
-	_ "github.com/cosmos/gogoproto/gogoproto"
-	proto "github.com/cosmos/gogoproto/proto"
 	io "io"
 	math "math"
 	math_bits "math/bits"
+
+	cosmossdk_io_math "cosmossdk.io/math"
+	_ "github.com/cosmos/gogoproto/gogoproto"
+	proto "github.com/cosmos/gogoproto/proto"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -47,6 +48,15 @@ type GenesisState struct {
 	// AssetsUnlocked events. The tip denotes the sequence number of the last
 	// event processed by the x/bridge module.
 	AssetsUnlockedSequenceTip cosmossdk_io_math.Int `protobuf:"bytes,6,opt,name=assets_unlocked_sequence_tip,json=assetsUnlockedSequenceTip,proto3,customtype=cosmossdk.io/math.Int" json:"assets_unlocked_sequence_tip"`
+	// assets_unlocked_events are all the AssetsUnlockedEvents processed
+	// by the networks' bridge.
+	AssetsUnlockedEvents []*AssetsUnlockedEvent `protobuf:"bytes,7,rep,name=assets_unlocked_events,json=assetsUnlockedEvents,proto3" json:"assets_unlocked_events,omitempty"`
+	// min_bridge_out_amount_for_bitcoin_chain is the minimum amount required
+	// for bridging out to the Bitcoin chain.
+	MinBridgeOutAmountForBitcoinChain cosmossdk_io_math.Int `protobuf:"bytes,8,opt,name=min_bridge_out_amount_for_bitcoin_chain,json=minBridgeOutAmountForBitcoinChain,proto3,customtype=cosmossdk.io/math.Int" json:"min_bridge_out_amount_for_bitcoin_chain"`
+	// token_min_bridge_out_amounts is the list of minimum bridge out amounts
+	// per token for the Bitcoin chain.
+	TokenMinBridgeOutAmounts []*TokenMinBridgeOutAmount `protobuf:"bytes,9,rep,name=token_min_bridge_out_amounts,json=tokenMinBridgeOutAmounts,proto3" json:"token_min_bridge_out_amounts,omitempty"`
 }
 
 func (m *GenesisState) Reset()         { *m = GenesisState{} }
@@ -103,8 +113,72 @@ func (m *GenesisState) GetErc20TokensMappings() []*ERC20TokenMapping {
 	return nil
 }
 
+func (m *GenesisState) GetAssetsUnlockedEvents() []*AssetsUnlockedEvent {
+	if m != nil {
+		return m.AssetsUnlockedEvents
+	}
+	return nil
+}
+
+func (m *GenesisState) GetTokenMinBridgeOutAmounts() []*TokenMinBridgeOutAmount {
+	if m != nil {
+		return m.TokenMinBridgeOutAmounts
+	}
+	return nil
+}
+
+// TokenMinBridgeOutAmount defines the minimum bridge out amount for a specific
+// token.
+type TokenMinBridgeOutAmount struct {
+	// token is the token address as bytes.
+	Token []byte `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// amount is the minimum amount required for bridging out this specific token.
+	Amount cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
+}
+
+func (m *TokenMinBridgeOutAmount) Reset()         { *m = TokenMinBridgeOutAmount{} }
+func (m *TokenMinBridgeOutAmount) String() string { return proto.CompactTextString(m) }
+func (*TokenMinBridgeOutAmount) ProtoMessage()    {}
+func (*TokenMinBridgeOutAmount) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c6a9d1c622979efc, []int{1}
+}
+func (m *TokenMinBridgeOutAmount) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TokenMinBridgeOutAmount) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TokenMinBridgeOutAmount.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *TokenMinBridgeOutAmount) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TokenMinBridgeOutAmount.Merge(m, src)
+}
+func (m *TokenMinBridgeOutAmount) XXX_Size() int {
+	return m.Size()
+}
+func (m *TokenMinBridgeOutAmount) XXX_DiscardUnknown() {
+	xxx_messageInfo_TokenMinBridgeOutAmount.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TokenMinBridgeOutAmount proto.InternalMessageInfo
+
+func (m *TokenMinBridgeOutAmount) GetToken() []byte {
+	if m != nil {
+		return m.Token
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*GenesisState)(nil), "mezo.bridge.v1.GenesisState")
+	proto.RegisterType((*TokenMinBridgeOutAmount)(nil), "mezo.bridge.v1.TokenMinBridgeOutAmount")
 }
 
 func init() { proto.RegisterFile("mezo/bridge/v1/genesis.proto", fileDescriptor_c6a9d1c622979efc) }
@@ -158,6 +232,44 @@ func (m *GenesisState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.TokenMinBridgeOutAmounts) > 0 {
+		for iNdEx := len(m.TokenMinBridgeOutAmounts) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.TokenMinBridgeOutAmounts[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x4a
+		}
+	}
+	{
+		size := m.MinBridgeOutAmountForBitcoinChain.Size()
+		i -= size
+		if _, err := m.MinBridgeOutAmountForBitcoinChain.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x42
+	if len(m.AssetsUnlockedEvents) > 0 {
+		for iNdEx := len(m.AssetsUnlockedEvents) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.AssetsUnlockedEvents[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x3a
+		}
+	}
 	{
 		size := m.AssetsUnlockedSequenceTip.Size()
 		i -= size
@@ -257,6 +369,20 @@ func (m *GenesisState) Size() (n int) {
 	n += 1 + l + sovGenesis(uint64(l))
 	l = m.AssetsUnlockedSequenceTip.Size()
 	n += 1 + l + sovGenesis(uint64(l))
+	if len(m.AssetsUnlockedEvents) > 0 {
+		for _, e := range m.AssetsUnlockedEvents {
+			l = e.Size()
+			n += 1 + l + sovGenesis(uint64(l))
+		}
+	}
+	l = m.MinBridgeOutAmountForBitcoinChain.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	if len(m.TokenMinBridgeOutAmounts) > 0 {
+		for _, e := range m.TokenMinBridgeOutAmounts {
+			l = e.Size()
+			n += 1 + l + sovGenesis(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -496,6 +622,108 @@ func (m *GenesisState) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AssetsUnlockedEvents", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AssetsUnlockedEvents = append(m.AssetsUnlockedEvents, &AssetsUnlockedEvent{})
+			if err := m.AssetsUnlockedEvents[len(m.AssetsUnlockedEvents)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinBridgeOutAmountForBitcoinChain", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.MinBridgeOutAmountForBitcoinChain.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TokenMinBridgeOutAmounts", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TokenMinBridgeOutAmounts = append(m.TokenMinBridgeOutAmounts, &TokenMinBridgeOutAmount{})
+			if err := m.TokenMinBridgeOutAmounts[len(m.TokenMinBridgeOutAmounts)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGenesis(dAtA[iNdEx:])
@@ -594,6 +822,180 @@ func skipGenesis(dAtA []byte) (n int, err error) {
 		}
 	}
 	return 0, io.ErrUnexpectedEOF
+}
+
+func (m *TokenMinBridgeOutAmount) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TokenMinBridgeOutAmount) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TokenMinBridgeOutAmount) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size := m.Amount.Size()
+		i -= size
+		if _, err := m.Amount.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	if len(m.Token) > 0 {
+		i -= len(m.Token)
+		copy(dAtA[i:], m.Token)
+		i = encodeVarintGenesis(dAtA, i, uint64(len(m.Token)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *TokenMinBridgeOutAmount) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Token)
+	if l > 0 {
+		n += 1 + l + sovGenesis(uint64(l))
+	}
+	l = m.Amount.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	return n
+}
+
+func (m *TokenMinBridgeOutAmount) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenesis
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TokenMinBridgeOutAmount: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TokenMinBridgeOutAmount: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Token = append(m.Token[:0], dAtA[iNdEx:postIndex]...)
+			if m.Token == nil {
+				m.Token = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenesis(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
 }
 
 var (

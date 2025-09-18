@@ -55,3 +55,35 @@ func UnmarshalERC20TokenMapping(
 	err := cdc.Unmarshal(value, &mapping)
 	return mapping, err
 }
+
+// MustMarshalAssetsUnlockedEvent marshals an AssetsUnlockedEvent to bytes.
+// It panics on error.
+func MustMarshalAssetsUnlockedEvent(
+	cdc codec.BinaryCodec,
+	event AssetsUnlockedEvent,
+) []byte {
+	return cdc.MustMarshal(&event)
+}
+
+// MustUnmarshalAssetsUnlockedEvent unmarshals an AssetsUnlockedEvent from bytes.
+// It panics on error.
+func MustUnmarshalAssetsUnlockedEvent(
+	cdc codec.BinaryCodec,
+	value []byte,
+) AssetsUnlockedEvent {
+	event, err := UnmarshalAssetsUnlockedEvent(cdc, value)
+	if err != nil {
+		panic(err)
+	}
+	return event
+}
+
+// UnmarshalAssetsUnlockedEvent unmarshals an AssetsUnlockedEvent from bytes.
+func UnmarshalAssetsUnlockedEvent(
+	cdc codec.BinaryCodec,
+	value []byte,
+) (AssetsUnlockedEvent, error) {
+	var event AssetsUnlockedEvent
+	err := cdc.Unmarshal(value, &event)
+	return event, err
+}
