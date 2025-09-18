@@ -12,6 +12,8 @@ global:
       postgresPassword: secretref+k8s://v1/Secret/default/postgresql/postgres-password
 
 image:
+  # Repository changed due to https://github.com/bitnami/charts/issues/35164
+  repository: bitnamilegacy/postgresql
   tag: 15 # Use version supported by Blockscout
 
 primary:
@@ -21,3 +23,13 @@ primary:
       value: "200"
   persistence:
     size: 100Gi # Default is only 8Gi
+
+volumePermissions:
+  image:
+    # Repository changed due to https://github.com/bitnami/charts/issues/35164
+    repository: bitnamilegacy/os-shell
+
+metrics:
+  image:
+    # Repository changed due to https://github.com/bitnami/charts/issues/35164
+    repository: bitnamilegacy/postgres-exporter
