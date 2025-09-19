@@ -1,5 +1,8 @@
 package bitcoin
 
+// The `bitcoin` package and its sub-packages were ported from `keep-core` with
+// some minimal changes. See https://github.com/threshold-network/keep-core/tree/main/pkg/bitcoin.
+
 import (
 	"bytes"
 	"encoding/json"
