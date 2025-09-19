@@ -9,6 +9,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -16,6 +17,7 @@ import (
 	keepethereum "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	mezodethereum "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/utils"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -33,8 +35,9 @@ const (
 var pendingAssetsUnlockedCache = map[string]bool{} // unlock seqno -> bool
 
 type ethereumChain struct {
-	client     *mezodethereum.BaseChain
-	mezoBridge *portal.MezoBridge
+	client          *mezodethereum.BaseChain
+	mezoBridge      *portal.MezoBridge
+	tbtcBankAddress common.Address
 
 	assetsUnlockedConfirmedCheckpointHeight uint64
 }
@@ -152,9 +155,35 @@ func connectEthereum(
 		return nil, fmt.Errorf("failed to attach to MezoBridge contract: [%w]", err)
 	}
 
+	tbtcBridgeAddress := tbtc.BridgeAddress(ethereumNetwork)
+	if len(tbtcBridgeAddress) == 0 {
+		// If this happened, bindings are broken and the only option is to panic.
+		panic("cannot get address of the tBTC Bridge contract on Ethereum")
+	}
+
+	tbtcBridge, err := tbtc.NewTbtcBridge(
+		common.HexToAddress(tbtcBridgeAddress),
+		client.ChainID(),
+		client.Key(),
+		client.Client(),
+		client.NonceManager(),
+		client.MiningWaiter(),
+		client.BlockCounter(),
+		client.TransactionMutex(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach to tBTC Bridge contract: [%w]", err)
+	}
+
+	tbtcContractReferences, err := tbtcBridge.ContractReferences()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get contract references from tBTC Bridge contract: [%w]", err)
+	}
+
 	return &ethereumChain{
-		client:     client,
-		mezoBridge: mezoBridge,
+		client:          client,
+		mezoBridge:      mezoBridge,
+		tbtcBankAddress: tbtcContractReferences.Bank,
 	}, nil
 }
 
@@ -234,6 +263,24 @@ func pollBridgeData(
 		errs = append(errs, err)
 	}
 
+	err = ethereumBridgeValsBalance(
+		ctx,
+		mezoChainID,
+		ethereum,
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	err = tbtcRedeemerBankBalance(
+		ctx,
+		mezoChainID,
+		ethereum,
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
 	return errors.Join(errs...)
 }
 
@@ -244,6 +291,7 @@ func pendingAssetsLocked(
 ) (err error) {
 	defer func() {
 		if err != nil {
+			log.Printf("error while determining pending AssetsLocked: [%v]", err)
 			// set gauge to -1 to indicate error
 			pendingAssetsLockedGauge.WithLabelValues(mezoChainID).Set(-1)
 		}
@@ -285,6 +333,7 @@ func pendingAssetsUnlocked(
 ) (err error) {
 	defer func() {
 		if err != nil {
+			log.Printf("error while determining pending AssetsUnlocked: [%v]", err)
 			// set gauge to -1 to indicate error
 			pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(-1)
 		}
@@ -292,10 +341,12 @@ func pendingAssetsUnlocked(
 
 	requestedUnlockSeqnos, err := mezo.requestedUnlockSeqnos(ctx)
 	if err != nil {
-		return fmt.Errorf(
+		err = fmt.Errorf(
 			"failed to get requested unlock sequence numbers from Mezo: [%w]",
 			err,
 		)
+		//nolint:nakedret
+		return err
 	}
 
 	// Populate the cache with all requested unlock seqnos.
@@ -305,10 +356,12 @@ func pendingAssetsUnlocked(
 
 	processedUnlockSeqnos, err := ethereum.processedUnlockSeqnos(ctx)
 	if err != nil {
-		return fmt.Errorf(
+		err = fmt.Errorf(
 			"failed to get processed unlock sequence numbers from Ethereum: [%w]",
 			err,
 		)
+		//nolint:nakedret
+		return
 	}
 
 	// Remove processed unlock seqnos from the cache.
@@ -340,7 +393,8 @@ func pendingAssetsUnlocked(
 
 	pendingAssetsUnlockedGauge.WithLabelValues(mezoChainID).Set(float64(pending))
 
-	return nil
+	//nolint:nakedret
+	return
 }
 
 func (mc *mezoChain) requestedUnlockSeqnos(ctx context.Context) ([]*big.Int, error) {
@@ -488,4 +542,108 @@ func withBatchFetch[T any](
 	}
 
 	return result, nil
+}
+
+func ethereumBridgeValsBalance(
+	ctx context.Context,
+	mezoChainID string,
+	ethereum *ethereumChain,
+) error {
+	validatorsCount, err := ethereum.mezoBridge.BridgeValidatorsCount()
+	if err != nil {
+		return fmt.Errorf("failed to get bridge validators count from Ethereum: [%w]", err)
+	}
+
+	ethereumBridgeValBalanceGauge.Reset()
+
+	for i := uint64(0); i < validatorsCount.Uint64(); i++ {
+		//nolint:gosec
+		validator, err := ethereum.mezoBridge.BridgeValidators(big.NewInt(int64(i)))
+		if err != nil {
+			return fmt.Errorf(
+				"failed to get bridge validator [%d] address from Ethereum: [%w]",
+				i,
+				err,
+			)
+		}
+
+		balance, err := ethereum.client.Client().BalanceAt(ctx, validator, nil)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to get bridge validator [%s] balance from Ethereum: [%w]",
+				validator.Hex(),
+				err,
+			)
+		}
+
+		ethValue := new(big.Float).Quo(new(big.Float).SetInt(balance), big.NewFloat(1e18))
+		ethValueFloat, _ := ethValue.Float64()
+
+		ethereumBridgeValBalanceGauge.WithLabelValues(validator.Hex(), mezoChainID).Set(ethValueFloat)
+	}
+
+	return nil
+}
+
+func tbtcRedeemerBankBalance(
+	ctx context.Context,
+	mezoChainID string,
+	ethereum *ethereumChain,
+) (err error) {
+	defer func() {
+		if err != nil {
+			log.Printf("error while determining tBTC Redeemer bank balance: [%v]", err)
+			// set gauge to -1 to indicate error
+			tbtcRedeemerBankBalanceGauge.WithLabelValues(mezoChainID).Set(-1)
+		}
+	}()
+
+	tbtcRedeemer, err := ethereum.mezoBridge.TbtcRedeemer()
+	if err != nil {
+		err = fmt.Errorf("failed to get tBTC redeemer address from Ethereum: [%w]", err)
+		return
+	}
+
+	balance, err := ethereum.tbtcBankBalanceOf(ctx, tbtcRedeemer)
+	if err != nil {
+		err = fmt.Errorf("failed to get tBTC Bank balance from Ethereum: [%w]", err)
+		return
+	}
+
+	btcValue := new(big.Float).Quo(new(big.Float).SetInt(balance), big.NewFloat(1e8))
+	btcValueFloat, _ := btcValue.Float64()
+
+	tbtcRedeemerBankBalanceGauge.WithLabelValues(mezoChainID).Set(btcValueFloat)
+
+	return
+}
+
+func (ec *ethereumChain) tbtcBankBalanceOf(ctx context.Context, account common.Address) (*big.Int, error) {
+	// Create the balanceOf function call data
+	// Function signature: balanceOf(address) -> uint256
+	balanceOfSig := crypto.Keccak256([]byte("balanceOf(address)"))[:4]
+
+	// Encode the address parameter (pad to 32 bytes)
+	addressParam := common.LeftPadBytes(account.Bytes(), 32)
+
+	// Combine function signature and parameters
+	//nolint:gocritic
+	callData := append(balanceOfSig, addressParam...)
+
+	// Create the call message
+	msg := ethereum.CallMsg{
+		To:   &ec.tbtcBankAddress,
+		Data: callData,
+	}
+
+	// Make the contract call
+	result, err := ec.client.Client().CallContract(ctx, msg, nil)
+	if err != nil {
+		return nil, fmt.Errorf("tBTC Bank balanceOf contract call failed: %w", err)
+	}
+
+	// Convert the result to *big.Int
+	balance := new(big.Int).SetBytes(result)
+
+	return balance, nil
 }

@@ -114,6 +114,10 @@ const (
 	// DefaultConnectOraclePriceTTL is the maximum age of the latest price
 	// response before it is considered stale.
 	DefaultConnectOraclePriceTTL = 10 * time.Second
+
+	// DefaultLogsFilterAddrCap is the default maximum number of contract addresses in the
+	// filter query for logs calls (`eth_getLogs` and `eth_subscribe` with `logs` parameter).
+	DefaultLogsFilterAddrCap = 30
 )
 
 var evmTracers = []string{"json", "markdown", "struct", "access_list"}
@@ -179,6 +183,9 @@ type JSONRPCConfig struct {
 	MetricsAddress string `mapstructure:"metrics-address"`
 	// FixRevertGasRefundHeight defines the upgrade height for fix of revert gas refund logic when transaction reverted
 	FixRevertGasRefundHeight int64 `mapstructure:"fix-revert-gas-refund-height"`
+	// LogsFilterAddrCap returns the maximum number of contract addresses in the filter query for
+	// logs calls (`eth_getLogs` and `eth_subscribe` with `logs` parameter).
+	LogsFilterAddrCap int32 `mapstructure:"logs-filter-addr-cap"`
 }
 
 // TLSConfig defines the certificate and matching private key for the server.
@@ -305,6 +312,7 @@ func DefaultJSONRPCConfig() *JSONRPCConfig {
 		EnableIndexer:            false,
 		MetricsAddress:           DefaultJSONRPCMetricsAddress,
 		FixRevertGasRefundHeight: DefaultFixRevertGasRefundHeight,
+		LogsFilterAddrCap:        DefaultLogsFilterAddrCap,
 	}
 }
 
@@ -344,6 +352,10 @@ func (c JSONRPCConfig) Validate() error {
 
 	if c.HTTPIdleTimeout < 0 {
 		return errors.New("JSON-RPC HTTP idle timeout duration cannot be negative")
+	}
+
+	if c.LogsFilterAddrCap < 0 {
+		return errors.New("JSON-RPC logs filter address cap cannot be negative")
 	}
 
 	// check for duplicates
@@ -451,6 +463,7 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			MetricsAddress:           v.GetString("json-rpc.metrics-address"),
 			FixRevertGasRefundHeight: v.GetInt64("json-rpc.fix-revert-gas-refund-height"),
 			AllowUnprotectedTxs:      v.GetBool("json-rpc.allow-unprotected-txs"),
+			LogsFilterAddrCap:        v.GetInt32("json-rpc.logs-filter-addr-cap"),
 		},
 		TLS: TLSConfig{
 			CertificatePath: v.GetString("tls.certificate-path"),

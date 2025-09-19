@@ -95,6 +95,10 @@ metrics-address = "{{ .JSONRPC.MetricsAddress }}"
 # Upgrade height for fix of revert gas refund logic when transaction reverted.
 fix-revert-gas-refund-height = {{ .JSONRPC.FixRevertGasRefundHeight }}
 
+# LogsFilterAddrCap defines the maximum number of contract addresses in the filter query for
+# logs calls ('eth_getLogs' and 'eth_subscribe' with 'logs' parameter). Value 0 means no cap.
+logs-filter-addr-cap = {{ .JSONRPC.LogsFilterAddrCap }}
+
 ###############################################################################
 ###                             TLS Configuration                           ###
 ###############################################################################

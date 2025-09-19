@@ -22,6 +22,8 @@ const (
 	flagMezoAssetsUnlockEndpoint = "mezo.assets-unlock-endpoint"
 
 	flagJobBTCWithdrawalQueueCheckFrequency = "job.btc-withdrawal.queue-check-frequency"
+
+	flagPrometheusPort = "prometheus-port"
 )
 
 // Flags default values
@@ -33,6 +35,8 @@ const (
 	flagEthereumRequestsPerMinuteDefault = bridgeworker.DefaultEthereumRequestsPerMinute
 
 	flagJobBTCWithdrawalQueueCheckFrequencyDefault = bridgeworker.DefaultBTCWithdrawalQueueCheckFrequency
+
+	flagPrometheusPortDefault = 2112
 )
 
 func newFlagSet() *flag.FlagSet {
@@ -102,6 +106,12 @@ func newFlagSet() *flag.FlagSet {
 		flagJobBTCWithdrawalQueueCheckFrequency,
 		flagJobBTCWithdrawalQueueCheckFrequencyDefault,
 		"Frequency of the queue check made by the BTC withdrawal job",
+	)
+
+	fs.Uint(
+		flagPrometheusPort,
+		flagPrometheusPortDefault,
+		"Port to expose Prometheus metrics on",
 	)
 
 	return fs
