@@ -4,7 +4,7 @@
 
 [RFC-3: Bridging non-Bitcoin assets to Mezo](./rfc-3.md) was the first attempt
 to describe the mechanism to support the operation of bridging non-Bitcoin
-assets to Mezo minimizing the fragmentation of liquidity . While all of the
+assets to Mezo minimizing the fragmentation of liquidity. While all of the
 concepts presented in RFC-3 are still technically correct, the RFC-3 proposal is
 based on the existence of a Bridging Partner ready to perform to-Mezo bridging
 on day one, and this assumption is quite risky in practice.
@@ -12,7 +12,7 @@ on day one, and this assumption is quite risky in practice.
 RFC-4 proposes an extension to the Bitcoin bridge mechanism described in
 [RFC-2: Bridging Bitcoin to Mezo](./rfc-2.md) to support a small, selected group
 of non-Bitcoin assets in the native bridge. The non-Bitcoin assets not supported
-by the native bridge described in RFC-4 will be bridgable in the future, most
+by the native bridge described in RFC-4 will be bridgeable in the future, most
 probably using a mechanism described in RFC-3.
 
 ## Proposal
@@ -50,7 +50,7 @@ This RFC does not enforce any specific implementation choices in regards to how
 to organize the contract code. One interesting option is to separate Bitcoin and
 ERC20 bridging operations into two parent contracts for `MezoBridge`:
 `BitcoinBridge` and `ERC20Bridge`. In this setup, some of the fields, events,
-and, errors in the `BitcoinBridge` contract will have to be renamed to clearly
+and errors in the `BitcoinBridge` contract will have to be renamed to clearly
 indicate they are used for Bitcoin bridging.
 
 Only a small selected set of ERC20 tokens should be accepted by the `MezoBridge`
@@ -130,7 +130,7 @@ about the asset that got bridged.
 
 ### Supported Tokens
 
-Based on the current knowledge, about 10 ERC-20 tokens should be bridgable to
+Based on the current knowledge, about 10 ERC-20 tokens should be bridgeable to
 Mezo on day one. Each token can have separate conversion rules. For example,
 USDC and USDT are converted to M but then bridged separately as mUSDC and mUSDT.
 ETH is wrapped to stETH but bridged as mETH. All those conversions are out of
