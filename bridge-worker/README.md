@@ -11,6 +11,7 @@ Migrations are managed via the supabase CLI, instructions on how to install it c
 
 You will need the project reference and an access token. Both can be found from the supabase UI. Then run
 the following make rule:
+
 ```
 SUPABASE_ACCESS_TOKEN=<sbp_NNNNNNN> SUPABASE_PROJECT_REF=<PROJECT_REF> make supabase-deploy
 ```
