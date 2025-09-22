@@ -148,15 +148,15 @@ func RunBridgeWorker(
 
 	go func() {
 		defer cancelCtx()
-		bw.server.Start()
-		bw.logger.Warn("Http server stopped")
+		env.server.Start()
+		env.logger.Warn("Http server stopped")
 	}()
 
 	<-ctx.Done()
 
-	err = bw.server.Stop(ctx)
+	err = env.server.Stop(ctx)
 	if err != nil {
-		bw.logger.Error("couldn't shutdown the http server properly", "error", err)
+		env.logger.Error("couldn't shutdown the http server properly", "error", err)
 	}
 
 	logger.Info("bridge worker stopped")
