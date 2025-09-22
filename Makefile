@@ -14,6 +14,7 @@ PROJECT := mezod
 DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DOCKER_TAG := $(COMMIT_HASH)
+SUPABASE_PROJECT_REF ?= $(SUPABASE_PROJECT_REF)
 
 export GO111MODULE = on
 
@@ -148,7 +149,7 @@ build-docker-metrics-scraper:
 	$(DOCKER) buildx build --platform linux/amd64 -t metrics-scraper -f Dockerfile.metrics-scraper .
 
 build-docker-bridge-worker:
-	$(DOCKER) buildx build --platform linux/amd64 -t bridge-worker -f Dockerfile.bridge-worker .	
+	$(DOCKER) buildx build --platform linux/amd64 -t bridge-worker -f Dockerfile.bridge-worker .
 
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
@@ -351,3 +352,13 @@ generate:
 
 bindings: get_npm_packages generate
 	$(info Bindings generated)
+
+###############################################################################
+###                         Supabase migrations                             ###
+###############################################################################
+
+supabase-deploy:
+	# link the project
+	supabase link --project-ref=$(SUPABASE_PROJECT_REF) --dns-resolver https
+	# deploy the changes
+	supabase db push --linked
