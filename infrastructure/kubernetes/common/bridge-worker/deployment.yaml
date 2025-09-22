@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: bridge-worker
-          image: mezo/bridge-worker@sha256:5ecdf177a50adc881554acad8db5da44d73a3cfe20317c357e0f3ba7a3c9e338
+          image: mezo/bridge-worker@sha256:1dbec1b54e5c8c5bf439790884aa5549ecaec59db984f51946e0c2368ba62ef9
           imagePullPolicy: Always
           args:
             - --log.format-json
@@ -55,6 +55,8 @@ spec:
                 secretKeyRef:
                   name: bridge-worker-config
                   key: mezo-assets-unlock-endpoint
+          ports:
+            - containerPort: 2112        
           resources:
             limits:
               cpu: 500m

@@ -41,6 +41,8 @@ type ConfigProperties struct {
 
 	SupabaseURL string
 	SupbaseKey  string
+
+	PrometheusPort uint
 }
 
 type Config struct {

@@ -47,6 +47,8 @@ func Start(properties ConfigProperties) error {
 		"account_address", accountAddress,
 	)
 
+	go startPrometheus(properties.PrometheusPort)
+
 	return RunBridgeWorker(
 		logger,
 		*cfg,

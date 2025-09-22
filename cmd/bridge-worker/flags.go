@@ -26,6 +26,8 @@ const (
 	flagSupabaseURL = "supabase.url"
 
 	flagHTTPServerPort = "server.port"
+
+	flagPrometheusPort = "prometheus-port"
 )
 
 // Flags default values
@@ -39,6 +41,8 @@ const (
 	flagJobBTCWithdrawalQueueCheckFrequencyDefault = bridgeworker.DefaultBTCWithdrawalQueueCheckFrequency
 
 	flagHTTPServerPortDefault = 8080
+
+	flagPrometheusPortDefault = 2112
 )
 
 func newFlagSet() *flag.FlagSet {
@@ -120,6 +124,12 @@ func newFlagSet() *flag.FlagSet {
 		flagSupabaseURL,
 		flagHTTPServerPortDefault,
 		"The HTTP server port",
+	)
+
+	fs.Uint(
+		flagPrometheusPort,
+		flagPrometheusPortDefault,
+		"Port to expose Prometheus metrics on",
 	)
 
 	return fs

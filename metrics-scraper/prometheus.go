@@ -82,6 +82,14 @@ var (
 		},
 		[]string{"address", "chain_id"},
 	)
+
+	tbtcRedeemerBankBalanceGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "tbtc_redeemer_bank_balance",
+			Help: "the balance of the bridge's tBTC redeemer in the tBTC Bank",
+		},
+		[]string{"chain_id"},
+	)
 )
 
 func startPrometheus(port uint) {
