@@ -1,6 +1,8 @@
 package types
 
 import (
+	"bytes"
+
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -79,4 +81,14 @@ func (aue AssetsUnlockedEvents) IsValid() bool {
 	}
 
 	return aue.IsStrictlyIncreasingSequence()
+}
+
+func (aue *AssetsUnlockedEvent) Equal(oth *AssetsUnlockedEvent) bool {
+	return aue.UnlockSequence.Equal(oth.UnlockSequence) &&
+		bytes.Equal(aue.Recipient, oth.Recipient) &&
+		aue.Token == oth.Token &&
+		aue.Sender == oth.Sender &&
+		aue.Amount.Equal(oth.Amount) &&
+		aue.Chain == oth.Chain &&
+		aue.BlockTime == oth.BlockTime
 }

@@ -65,13 +65,14 @@ func TestServer_submitAttestation(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name            string
-		requestBody     interface{}
-		expectedStatus  int
-		expectedError   string
-		setupRequest    func() *types.SubmitAttestationRequest
-		setupBridgeMock func(*MockMezoBridge)
-		setupStoreMock  func(*MockStore)
+		name                           string
+		requestBody                    interface{}
+		expectedStatus                 int
+		expectedError                  string
+		setupRequest                   func() *types.SubmitAttestationRequest
+		setupBridgeMock                func(*MockMezoBridge)
+		setupStoreMock                 func(*MockStore)
+		setupAssetsUnlockedClientMock  func(*MockAssetsUnlockedEndpointClient)
 	}{
 		{
 			name:           "Valid signature submission",
@@ -83,6 +84,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Entry:     entry,
 					Signature: signature,
 				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
@@ -99,6 +105,7 @@ func TestServer_submitAttestation(t *testing.T) {
 			requestBody:     "invalid-json",
 			expectedStatus:  http.StatusBadRequest,
 			expectedError:   "invalid json format",
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -107,6 +114,7 @@ func TestServer_submitAttestation(t *testing.T) {
 			requestBody:     "",
 			expectedStatus:  http.StatusBadRequest,
 			expectedError:   "invalid json format",
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -120,6 +128,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: "0x" + strings.Repeat("00", 65),
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -133,6 +142,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: "",
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -146,6 +156,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: strings.Repeat("00", 65),
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -159,6 +170,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: "0x" + strings.Repeat("zz", 65),
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -171,6 +183,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Entry:     createValidEntry(),
 					Signature: "0x" + strings.Repeat("00", 32), // Too short
 				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
 			},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
@@ -188,6 +205,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -204,6 +222,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -220,6 +239,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -236,6 +256,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -253,6 +274,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
+			},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -269,6 +295,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -285,6 +312,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -301,6 +329,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -317,6 +346,7 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
 			setupBridgeMock: func(_ *MockMezoBridge) {},
 			setupStoreMock:  func(_ *MockStore) {},
 		},
@@ -331,6 +361,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Entry:     entry,
 					Signature: signature,
 				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				// Return 0 for validator ID to simulate unauthorized validator
@@ -350,6 +385,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
+			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				// Return error when looking up validator ID
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(0), errors.New("validator lookup error"))
@@ -367,6 +407,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Entry:     entry,
 					Signature: signature,
 				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
@@ -387,6 +432,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
+			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				// Return error when checking confirmed unlocks
@@ -405,6 +455,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Entry:     entry,
 					Signature: signature,
 				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
@@ -426,6 +481,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
+			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
@@ -445,6 +505,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Entry:     entry,
 					Signature: signature,
 				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
 			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
@@ -467,6 +532,11 @@ func TestServer_submitAttestation(t *testing.T) {
 					Signature: signature,
 				}
 			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
+			},
 			setupBridgeMock: func(mockBridge *MockMezoBridge) {
 				mockBridge.EXPECT().BridgeValidatorIDs(validatorAddress).Return(uint8(1), nil)
 				mockBridge.EXPECT().ConfirmedUnlocks(big.NewInt(1)).Return(false, nil)
@@ -477,6 +547,88 @@ func TestServer_submitAttestation(t *testing.T) {
 				mockStore.EXPECT().SaveSignature(gomock.Any(), gomock.Any()).Return(errors.New("save signature error"))
 			},
 		},
+		{
+			name:           "GetAssetsUnlockedEvents returns error",
+			expectedStatus: http.StatusInternalServerError,
+			expectedError:  "assets unlock endpoint error",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(nil, errors.New("assets unlock endpoint error"))
+			},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
+		},
+		{
+			name:           "GetAssetsUnlockedEvents returns no events",
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "invalid attestation",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
+			},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
+		},
+		{
+			name:           "GetAssetsUnlockedEvents returns multiple events",
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "invalid attestation",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				events := []bridgetypes.AssetsUnlockedEvent{*entry, *entry}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
+			},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
+		},
+		{
+			name:           "GetAssetsUnlockedEvents returns mismatched event",
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "invalid attestation",
+			setupRequest: func() *types.SubmitAttestationRequest {
+				entry := createValidEntry()
+				signature := createValidSignature(entry, privateKey)
+				return &types.SubmitAttestationRequest{
+					Entry:     entry,
+					Signature: signature,
+				}
+			},
+			setupAssetsUnlockedClientMock: func(mockClient *MockAssetsUnlockedEndpointClient) {
+				entry := createValidEntry()
+				// Create a different event that won't match the request
+				differentEvent := createValidEntry()
+				differentEvent.Amount = sdkmath.NewInt(2000) // Different amount
+				events := []bridgetypes.AssetsUnlockedEvent{*differentEvent}
+				mockClient.EXPECT().GetAssetsUnlockedEvents(gomock.Any(), entry.UnlockSequence, entry.UnlockSequence.AddRaw(1)).Return(events, nil)
+			},
+			setupBridgeMock: func(_ *MockMezoBridge) {},
+			setupStoreMock:  func(_ *MockStore) {},
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -486,11 +638,13 @@ func TestServer_submitAttestation(t *testing.T) {
 			defer ctrl.Finish()
 			mockBridge := NewMockMezoBridge(ctrl)
 			mockStore := NewMockStore(ctrl)
+			mockAssetsUnlockedClient := NewMockAssetsUnlockedEndpointClient(ctrl)
 			testCase.setupBridgeMock(mockBridge)
 			testCase.setupStoreMock(mockStore)
+			testCase.setupAssetsUnlockedClientMock(mockAssetsUnlockedClient)
 
 			// Create server with mocks
-			server := NewServer(log.NewNopLogger(), 8080, chainID, mockBridge, mockStore)
+			server := NewServer(log.NewNopLogger(), 8080, chainID, mockBridge, mockStore, mockAssetsUnlockedClient)
 
 			var requestBody []byte
 			var err error
@@ -570,7 +724,8 @@ func TestServer_recoverAddress(t *testing.T) {
 	mockBridge := NewMockMezoBridge(ctrl)
 	mockStore := NewMockStore(ctrl)
 
-	server := NewServer(log.NewNopLogger(), 8080, chainID, mockBridge, mockStore)
+	mockAssetsUnlockedClient := NewMockAssetsUnlockedEndpointClient(ctrl)
+	server := NewServer(log.NewNopLogger(), 8080, chainID, mockBridge, mockStore, mockAssetsUnlockedClient)
 
 	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)

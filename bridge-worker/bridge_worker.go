@@ -6,12 +6,11 @@ import (
 	"fmt"
 
 	"cosmossdk.io/log"
-
-	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
-	"github.com/mezo-org/mezod/bridge-worker/bitcoin/electrum"
-
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
+	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
+	"github.com/mezo-org/mezod/bridge-worker/bitcoin/electrum"
 	ethconnect "github.com/mezo-org/mezod/ethereum"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
@@ -115,6 +114,16 @@ func RunBridgeWorker(
 		panic(fmt.Sprintf("could not connect to Electrum chain: %v", err))
 	}
 
+	// The messages handled by the bridge-worker contain custom types.
+	// Add codecs so that the messages can be marshaled/unmarshalled.
+	assetsUnlockEndpoint, err := NewAssetsUnlockedGrpcEndpoint(
+		cfg.Mezo.AssetsUnlockEndpoint,
+		codectypes.NewInterfaceRegistry(),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create assets unlocked endpoint: %v", err))
+	}
+
 	store, err := NewSupabaseStore(logger, cfg.Supabase.URL, cfg.Supabase.Key)
 	if err != nil {
 		panic(fmt.Sprintf("couldn't initialize supabase store: %v", err))
@@ -128,7 +137,7 @@ func RunBridgeWorker(
 		batchSize:          cfg.Ethereum.BatchSize,
 		requestsPerMinute:  cfg.Ethereum.RequestsPerMinute,
 		btcChain:           btcChain,
-		server:             NewServer(logger, cfg.Server.Port, chain.ChainID(), mezoBridgeContract, store),
+		server:             NewServer(logger, cfg.Server.Port, chain.ChainID(), mezoBridgeContract, store, assetsUnlockEndpoint),
 	}
 
 	jobs := []bridgeWorkerJob{

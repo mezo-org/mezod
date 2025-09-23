@@ -12,6 +12,7 @@ import (
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -19,6 +20,14 @@ import (
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 )
+
+type AssetsUnlockedEndpointClient interface {
+	GetAssetsUnlockedEvents(
+		ctx context.Context,
+		sequenceStart sdkmath.Int,
+		sequenceEnd sdkmath.Int,
+	) ([]bridgetypes.AssetsUnlockedEvent, error)
+}
 
 type MezoBridge interface {
 	BridgeValidatorIDs(common.Address) (uint8, error)
@@ -32,11 +41,12 @@ type Store interface {
 }
 
 type Server struct {
-	logger     log.Logger
-	server     *http.Server
-	chainID    *big.Int
-	mezoBridge MezoBridge
-	store      Store
+	logger               log.Logger
+	server               *http.Server
+	chainID              *big.Int
+	mezoBridge           MezoBridge
+	store                Store
+	assetsUnlockEndpoint AssetsUnlockedEndpointClient
 }
 
 func NewServer(
@@ -45,12 +55,14 @@ func NewServer(
 	chainID *big.Int,
 	mezoBridge MezoBridge,
 	store Store,
+	assetsUnlockedClient AssetsUnlockedEndpointClient,
 ) *Server {
 	s := &Server{
-		logger:     logger,
-		chainID:    chainID,
-		mezoBridge: mezoBridge,
-		store:      store,
+		logger:               logger,
+		chainID:              chainID,
+		mezoBridge:           mezoBridge,
+		store:                store,
+		assetsUnlockEndpoint: assetsUnlockedClient,
 	}
 
 	mux := http.NewServeMux()
@@ -93,7 +105,22 @@ func (s *Server) submitAttestation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: ensure this is a valid attestation
+	events, err := s.assetsUnlockEndpoint.GetAssetsUnlockedEvents(r.Context(), req.Entry.UnlockSequence, req.Entry.UnlockSequence.AddRaw(1))
+	if err != nil {
+		s.writeSubmitAttestationError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// should have exactly one event
+	if len(events) != 1 {
+		s.writeSubmitAttestationError(w, errors.New("invalid attestation"), http.StatusBadRequest)
+		return
+	}
+
+	if !events[0].Equal(req.Entry) {
+		s.writeSubmitAttestationError(w, errors.New("invalid attestation"), http.StatusBadRequest)
+		return
+	}
 
 	// first recover the address out of the signature
 	address, err := s.recoverAddress(req.Entry, req.Signature)
