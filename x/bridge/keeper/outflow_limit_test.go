@@ -210,7 +210,7 @@ func TestGetAllCurrentOutflowLimits(t *testing.T) {
 		// Verify limits are correct (note: order may vary due to store iteration)
 		limitsByToken := make(map[string]*types.CurrentOutflowLimit)
 		for _, limit := range limits {
-			limitsByToken[common.BytesToAddress(limit.Token).Hex()] = limit
+			limitsByToken[limit.Token] = limit
 		}
 
 		require.Equal(t, math.NewInt(1000), limitsByToken[common.BytesToAddress(tokenAddr1).Hex()].Limit)
@@ -228,7 +228,7 @@ func TestGetAllCurrentOutflowLimits(t *testing.T) {
 		// Find the updated limit
 		var updatedLimit *types.CurrentOutflowLimit
 		for _, limit := range limits {
-			if common.BytesToAddress(limit.Token).Hex() == common.BytesToAddress(tokenAddr1).Hex() {
+			if limit.Token == common.BytesToAddress(tokenAddr1).Hex() {
 				updatedLimit = limit
 				break
 			}
@@ -262,7 +262,7 @@ func TestGetAllCurrentOutflowAmounts(t *testing.T) {
 		// Verify amounts are correct (note: order may vary due to store iteration)
 		amountsByToken := make(map[string]*types.CurrentOutflowAmount)
 		for _, amount := range amounts {
-			amountsByToken[common.BytesToAddress(amount.Token).Hex()] = amount
+			amountsByToken[amount.Token] = amount
 		}
 
 		require.Equal(t, math.NewInt(100), amountsByToken[common.BytesToAddress(tokenAddr1).Hex()].Amount)
@@ -280,7 +280,7 @@ func TestGetAllCurrentOutflowAmounts(t *testing.T) {
 		// Find the updated amount
 		var updatedAmount *types.CurrentOutflowAmount
 		for _, amount := range amounts {
-			if common.BytesToAddress(amount.Token).Hex() == common.BytesToAddress(tokenAddr1).Hex() {
+			if amount.Token == common.BytesToAddress(tokenAddr1).Hex() {
 				updatedAmount = amount
 				break
 			}

@@ -5,6 +5,7 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // OutflowResetBlocks is the number of blocks after which the outflow limit is reset.
@@ -33,7 +34,7 @@ func (k Keeper) GetAllCurrentOutflowLimits(ctx sdk.Context) []*types.CurrentOutf
 		out = append(
 			out,
 			&types.CurrentOutflowLimit{
-				Token: token,
+				Token: evmtypes.BytesToHexAddress(token),
 				Limit: limit,
 			},
 		)
@@ -65,7 +66,7 @@ func (k Keeper) GetAllCurrentOutflowAmounts(ctx sdk.Context) []*types.CurrentOut
 		out = append(
 			out,
 			&types.CurrentOutflowAmount{
-				Token:  token,
+				Token:  evmtypes.BytesToHexAddress(token),
 				Amount: amount,
 			},
 		)

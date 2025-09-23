@@ -237,7 +237,7 @@ func (k Keeper) GetAllMinBridgeOutAmount(ctx sdk.Context) []*types.TokenMinBridg
 		tokenMinBridgeOutAmount = append(
 			tokenMinBridgeOutAmount,
 			&types.TokenMinBridgeOutAmount{
-				Token:  token,
+				Token:  evmtypes.BytesToHexAddress(token),
 				Amount: minAmount,
 			},
 		)

@@ -870,7 +870,7 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 
 		amounts := k.GetAllMinBridgeOutAmount(ctx)
 		require.Len(t, amounts, 1)
-		require.Equal(t, token1, amounts[0].Token)
+		require.Equal(t, testMezoERC20Token1, amounts[0].Token)
 		require.Equal(t, minAmount1, amounts[0].Amount)
 	})
 
@@ -899,16 +899,15 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 		require.Len(t, amounts, 3)
 
 		expectedAmounts := map[string]math.Int{
-			hex.EncodeToString(token1):   minAmount1,
-			hex.EncodeToString(token2):   minAmount2,
-			hex.EncodeToString(btcToken): minAmountBTC,
+			testMezoERC20Token1:                           minAmount1,
+			testMezoERC20Token2:                           minAmount2,
+			"0x7b7C000000000000000000000000000000000000": minAmountBTC,
 		}
 
 		for _, amount := range amounts {
-			tokenHex := hex.EncodeToString(amount.Token)
-			expectedAmount, found := expectedAmounts[tokenHex]
-			require.True(t, found, "unexpected token %s", tokenHex)
-			require.Equal(t, expectedAmount, amount.Amount, "wrong amount for token %s", tokenHex)
+			expectedAmount, found := expectedAmounts[amount.Token]
+			require.True(t, found, "unexpected token %s", amount.Token)
+			require.Equal(t, expectedAmount, amount.Amount, "wrong amount for token %s", amount.Token)
 		}
 	})
 
@@ -932,7 +931,7 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 
 		amounts = k.GetAllMinBridgeOutAmount(ctx)
 		require.Len(t, amounts, 1)
-		require.Equal(t, token1, amounts[0].Token)
+		require.Equal(t, testMezoERC20Token1, amounts[0].Token)
 		require.Equal(t, updatedAmount, amounts[0].Amount)
 	})
 
@@ -948,7 +947,7 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 
 		amounts := k.GetAllMinBridgeOutAmount(ctx)
 		require.Len(t, amounts, 1)
-		require.Equal(t, token1, amounts[0].Token)
+		require.Equal(t, testMezoERC20Token1, amounts[0].Token)
 		require.Equal(t, zeroAmount, amounts[0].Amount)
 	})
 }

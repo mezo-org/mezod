@@ -38,21 +38,21 @@ func (k Keeper) InitGenesis(
 
 	// Initialize token minimum bridge out amounts
 	for _, tokenAmount := range genState.TokenMinBridgeOutAmounts {
-		err := k.SetMinBridgeOutAmount(ctx, tokenAmount.Token, tokenAmount.Amount)
+		err := k.SetMinBridgeOutAmount(ctx, evmtypes.HexAddressToBytes(tokenAmount.Token), tokenAmount.Amount)
 		if err != nil {
 			panic(errorsmod.Wrapf(err, "error setting min bridge out amount"))
 		}
 	}
 
-	k.SetPauser(ctx, genState.Pauser)
+	k.SetPauser(ctx, evmtypes.HexAddressToBytes(genState.Pauser))
 	k.setLastOutflowReset(ctx, genState.LastOutflowReset)
 
 	for _, outflowLimit := range genState.CurrentOutflowLimits {
-		k.SetOutflowLimit(ctx, outflowLimit.Token, outflowLimit.Limit)
+		k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(outflowLimit.Token), outflowLimit.Limit)
 	}
 
 	for _, outflowAmount := range genState.CurrentOutflowAmounts {
-		k.increaseCurrentOutflow(ctx, outflowAmount.Token, outflowAmount.Amount)
+		k.increaseCurrentOutflow(ctx, evmtypes.HexAddressToBytes(outflowAmount.Token), outflowAmount.Amount)
 	}
 
 	err = k.IncreaseBTCMinted(ctx, genState.InitialBtcSupply)
@@ -73,7 +73,7 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		AssetsUnlockedEvents:           k.GetAllAssetsUnlockedEvents(ctx),
 		BitcoinChainMinBridgeOutAmount: k.GetMinBridgeOutAmountForBitcoinChain(ctx),
 		TokenMinBridgeOutAmounts:       k.GetAllMinBridgeOutAmount(ctx),
-		Pauser:                         k.GetPauser(ctx),
+		Pauser:                         evmtypes.BytesToHexAddress(k.GetPauser(ctx)),
 		LastOutflowReset:               k.getLastOutflowReset(ctx),
 		CurrentOutflowLimits:           k.GetAllCurrentOutflowLimits(ctx),
 		CurrentOutflowAmounts:          k.GetAllCurrentOutflowAmounts(ctx),

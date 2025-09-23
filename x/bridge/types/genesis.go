@@ -24,7 +24,7 @@ func DefaultGenesis() *GenesisState {
 		AssetsUnlockedEvents:           nil,
 		BitcoinChainMinBridgeOutAmount: sdkmath.NewInt(0),
 		TokenMinBridgeOutAmounts:       nil,
-		Pauser:                         evmtypes.HexAddressToBytes(evmtypes.ZeroHexAddress()),
+		Pauser:                         evmtypes.ZeroHexAddress(),
 		LastOutflowReset:               0,
 		CurrentOutflowLimits:           nil,
 		CurrentOutflowAmounts:          nil,
