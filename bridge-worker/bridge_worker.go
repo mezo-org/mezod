@@ -4,10 +4,15 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 
 	"cosmossdk.io/log"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/mezo-org/mezod/bridge-worker/ethereum"
+
 	ethconfig "github.com/keep-network/keep-common/pkg/chain/ethereum"
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin/electrum"
@@ -19,6 +24,44 @@ import (
 // mezoBridgeName is the name of the MezoBridge contract.
 const mezoBridgeName = "MezoBridge"
 
+// EthereumChain provides basic information about the Ethereum chain.
+type EthereumChain interface {
+	FinalizedBlock(ctx context.Context) (*big.Int, error)
+	CurrentBlock() (uint64, error)
+	WatchBlocks(ctx context.Context) <-chan uint64
+}
+
+// MezoBridgeContract represents a handle to the MezoBridge smart contract.
+type MezoBridgeContract interface {
+	PastAssetsUnlockConfirmedEvents(
+		startBlock uint64,
+		endBlock *uint64,
+		unlockSequenceNumber []*big.Int,
+		recipient [][]byte,
+		token []common.Address,
+	) ([]*portal.MezoBridgeAssetsUnlockConfirmed, error)
+	TbtcToken() (common.Address, error)
+	PendingBTCWithdrawals([32]byte) (bool, error)
+	WithdrawBTC(
+		entry portal.MezoBridgeAssetsUnlocked,
+		walletPubKeyHash [20]byte,
+		mainUtxo portal.BitcoinTxUTXO,
+	) (*types.Transaction, error)
+}
+
+// TbtcBridgeContract represents a handle to the tBTC Bridge smart contract.
+type TbtcBridgeContract interface {
+	PastNewWalletRegisteredEvents(
+		startBlock uint64,
+		endBlock *uint64,
+		ecdsaWalletID [][32]byte,
+		walletPubKeyHash [][20]byte,
+	) ([]*tbtc.BridgeNewWalletRegistered, error)
+	Wallets(walletPublicKeyHash [20]byte) (tbtc.Wallet, error)
+	PendingRedemptions(redemptionKey *big.Int) (tbtc.RedemptionRequest, error)
+	RedemptionDustThreshold() (uint64, error)
+}
+
 // bridgeWorkerJob represent a bridge worker job.
 type bridgeWorkerJob interface {
 	run(ctx context.Context)
@@ -28,10 +71,10 @@ type bridgeWorkerJob interface {
 type environment struct {
 	logger log.Logger
 
-	mezoBridgeContract *portal.MezoBridge
-	tbtcBridgeContract *tbtc.Bridge
+	mezoBridgeContract MezoBridgeContract
+	tbtcBridgeContract TbtcBridgeContract
 
-	chain *ethconnect.BaseChain
+	chain EthereumChain
 
 	batchSize         uint64
 	requestsPerMinute uint64
@@ -88,16 +131,20 @@ func RunBridgeWorker(
 	}
 
 	// Initialize the MezoBridge contract instance.
-	mezoBridgeContract, err := initializeMezoBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
+	mezoBridgeContractBindings, err := initializeMezoBridgeContract(common.HexToAddress(mezoBridgeAddress), chain)
 	if err != nil {
-		panic(fmt.Sprintf("failed to initialize MezoBridge contract: %v", err))
+		panic(fmt.Sprintf("failed to initialize MezoBridge contract bindings: %v", err))
 	}
 
+	mezoBridgeContract := ethereum.NewMezoBridgeContract(mezoBridgeContractBindings)
+
 	// Initialize the tBTC Bridge contract instance.
-	tbtcBridgeContract, err := initializeTbtcBridgeContract(common.HexToAddress(tbtcBridgeAddress), chain)
+	tbtcBridgeContractBindings, err := initializeTbtcBridgeContract(common.HexToAddress(tbtcBridgeAddress), chain)
 	if err != nil {
-		panic(fmt.Sprintf("failed to initialize tBTC Bridge contract: %v", err))
+		panic(fmt.Sprintf("failed to initialize tBTC Bridge contract bindings: %v", err))
 	}
+
+	tbtcBridgeContract := ethereum.NewTbtcBridgeContract(tbtcBridgeContractBindings)
 
 	logger.Info(
 		"connecting to electrum node",
