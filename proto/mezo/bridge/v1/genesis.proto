@@ -58,6 +58,42 @@ message GenesisState {
   // token_min_bridge_out_amounts is the list of minimum bridge out amounts
   // per token for the Bitcoin chain.
   repeated TokenMinBridgeOutAmount token_min_bridge_out_amounts = 9;
+
+  // pauser is the address that has the authority to pause bridge operations.
+  bytes pauser = 10;
+
+  // last_outflow_reset is the timestamp of the last outflow limit reset.
+  uint64 last_outflow_reset = 11;
+
+  // current_outflow_amounts tracks the current outflow amount for each token.
+  repeated CurrentOutflowAmount current_outflow_amounts = 12;
+
+  // current_outflow_limits tracks the current outflow limit for each token.
+  repeated CurrentOutflowLimit current_outflow_limits = 13;
+}
+
+// CurrentOutflowAmount tracks the current outflow amount for a specific token.
+message CurrentOutflowAmount {
+  // token is the token address as bytes.
+  bytes token = 1;
+
+  // amount is the current outflow amount for this token.
+  string amount = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+// CurrentOutflowLimit tracks the current outflow limit for a specific token.
+message CurrentOutflowLimit {
+  // token is the token address as bytes.
+  bytes token = 1;
+
+  // limit is the current outflow limit for this token.
+  string limit = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
 }
 
 // TokenMinBridgeOutAmount defines the minimum bridge out amount for a specific

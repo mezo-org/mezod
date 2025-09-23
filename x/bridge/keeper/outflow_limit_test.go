@@ -185,3 +185,115 @@ func TestResetAllOutflows(t *testing.T) {
 		keeper.resetAllOutflows(ctx)
 	})
 }
+
+func TestGetAllCurrentOutflowLimits(t *testing.T) {
+	ctx, keeper := mockContext()
+	tokenAddr1 := common.HexToAddress("0x1111111111111111111111111111111111111111").Bytes()
+	tokenAddr2 := common.HexToAddress("0x2222222222222222222222222222222222222222").Bytes()
+	tokenAddr3 := common.HexToAddress("0x3333333333333333333333333333333333333333").Bytes()
+
+	t.Run("GetAllCurrentOutflowLimits with no limits", func(t *testing.T) {
+		limits := keeper.GetAllCurrentOutflowLimits(ctx)
+		require.Empty(t, limits, "should return empty slice when no limits are set")
+	})
+
+	t.Run("GetAllCurrentOutflowLimits with multiple limits", func(t *testing.T) {
+		// Set multiple outflow limits
+		keeper.SetOutflowLimit(ctx, tokenAddr1, math.NewInt(1000))
+		keeper.SetOutflowLimit(ctx, tokenAddr2, math.NewInt(2000))
+		keeper.SetOutflowLimit(ctx, tokenAddr3, math.NewInt(3000))
+
+		// Get all limits
+		limits := keeper.GetAllCurrentOutflowLimits(ctx)
+		require.Len(t, limits, 3, "should return all set limits")
+
+		// Verify limits are correct (note: order may vary due to store iteration)
+		limitsByToken := make(map[string]*types.CurrentOutflowLimit)
+		for _, limit := range limits {
+			limitsByToken[common.BytesToAddress(limit.Token).Hex()] = limit
+		}
+
+		require.Equal(t, math.NewInt(1000), limitsByToken[common.BytesToAddress(tokenAddr1).Hex()].Limit)
+		require.Equal(t, math.NewInt(2000), limitsByToken[common.BytesToAddress(tokenAddr2).Hex()].Limit)
+		require.Equal(t, math.NewInt(3000), limitsByToken[common.BytesToAddress(tokenAddr3).Hex()].Limit)
+	})
+
+	t.Run("GetAllCurrentOutflowLimits after updating limits", func(t *testing.T) {
+		// Update one limit
+		keeper.SetOutflowLimit(ctx, tokenAddr1, math.NewInt(5000))
+
+		limits := keeper.GetAllCurrentOutflowLimits(ctx)
+		require.Len(t, limits, 3)
+
+		// Find the updated limit
+		var updatedLimit *types.CurrentOutflowLimit
+		for _, limit := range limits {
+			if common.BytesToAddress(limit.Token).Hex() == common.BytesToAddress(tokenAddr1).Hex() {
+				updatedLimit = limit
+				break
+			}
+		}
+		require.NotNil(t, updatedLimit, "should find the updated limit")
+		require.Equal(t, math.NewInt(5000), updatedLimit.Limit, "limit should be updated")
+	})
+}
+
+func TestGetAllCurrentOutflowAmounts(t *testing.T) {
+	ctx, keeper := mockContext()
+	tokenAddr1 := common.HexToAddress("0x1111111111111111111111111111111111111111").Bytes()
+	tokenAddr2 := common.HexToAddress("0x2222222222222222222222222222222222222222").Bytes()
+	tokenAddr3 := common.HexToAddress("0x3333333333333333333333333333333333333333").Bytes()
+
+	t.Run("GetAllCurrentOutflowAmounts with no outflows", func(t *testing.T) {
+		amounts := keeper.GetAllCurrentOutflowAmounts(ctx)
+		require.Empty(t, amounts, "should return empty slice when no outflows exist")
+	})
+
+	t.Run("GetAllCurrentOutflowAmounts with multiple outflows", func(t *testing.T) {
+		// Set multiple outflow amounts
+		keeper.increaseCurrentOutflow(ctx, tokenAddr1, math.NewInt(100))
+		keeper.increaseCurrentOutflow(ctx, tokenAddr2, math.NewInt(200))
+		keeper.increaseCurrentOutflow(ctx, tokenAddr3, math.NewInt(300))
+
+		// Get all amounts
+		amounts := keeper.GetAllCurrentOutflowAmounts(ctx)
+		require.Len(t, amounts, 3, "should return all outflow amounts")
+
+		// Verify amounts are correct (note: order may vary due to store iteration)
+		amountsByToken := make(map[string]*types.CurrentOutflowAmount)
+		for _, amount := range amounts {
+			amountsByToken[common.BytesToAddress(amount.Token).Hex()] = amount
+		}
+
+		require.Equal(t, math.NewInt(100), amountsByToken[common.BytesToAddress(tokenAddr1).Hex()].Amount)
+		require.Equal(t, math.NewInt(200), amountsByToken[common.BytesToAddress(tokenAddr2).Hex()].Amount)
+		require.Equal(t, math.NewInt(300), amountsByToken[common.BytesToAddress(tokenAddr3).Hex()].Amount)
+	})
+
+	t.Run("GetAllCurrentOutflowAmounts after increasing amounts", func(t *testing.T) {
+		// Increase one amount
+		keeper.increaseCurrentOutflow(ctx, tokenAddr1, math.NewInt(50))
+
+		amounts := keeper.GetAllCurrentOutflowAmounts(ctx)
+		require.Len(t, amounts, 3)
+
+		// Find the updated amount
+		var updatedAmount *types.CurrentOutflowAmount
+		for _, amount := range amounts {
+			if common.BytesToAddress(amount.Token).Hex() == common.BytesToAddress(tokenAddr1).Hex() {
+				updatedAmount = amount
+				break
+			}
+		}
+		require.NotNil(t, updatedAmount, "should find the updated amount")
+		require.Equal(t, math.NewInt(150), updatedAmount.Amount, "amount should be increased (100 + 50)")
+	})
+
+	t.Run("GetAllCurrentOutflowAmounts after reset", func(t *testing.T) {
+		// Reset all outflows
+		keeper.resetAllOutflows(ctx)
+
+		amounts := keeper.GetAllCurrentOutflowAmounts(ctx)
+		require.Empty(t, amounts, "should return empty slice after reset")
+	})
+}

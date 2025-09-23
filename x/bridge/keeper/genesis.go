@@ -44,6 +44,17 @@ func (k Keeper) InitGenesis(
 		}
 	}
 
+	k.SetPauser(ctx, genState.Pauser)
+	k.setLastOutflowReset(ctx, genState.LastOutflowReset)
+
+	for _, outflowLimit := range genState.CurrentOutflowLimits {
+		k.SetOutflowLimit(ctx, outflowLimit.Token, outflowLimit.Limit)
+	}
+
+	for _, outflowAmount := range genState.CurrentOutflowAmounts {
+		k.increaseCurrentOutflow(ctx, outflowAmount.Token, outflowAmount.Amount)
+	}
+
 	err = k.IncreaseBTCMinted(ctx, genState.InitialBtcSupply)
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting params"))
@@ -62,5 +73,9 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		AssetsUnlockedEvents:           k.GetAllAssetsUnlockedEvents(ctx),
 		BitcoinChainMinBridgeOutAmount: k.GetMinBridgeOutAmountForBitcoinChain(ctx),
 		TokenMinBridgeOutAmounts:       k.GetAllMinBridgeOutAmount(ctx),
+		Pauser:                         k.GetPauser(ctx),
+		LastOutflowReset:               k.getLastOutflowReset(ctx),
+		CurrentOutflowLimits:           k.GetAllCurrentOutflowLimits(ctx),
+		CurrentOutflowAmounts:          k.GetAllCurrentOutflowAmounts(ctx),
 	}
 }
