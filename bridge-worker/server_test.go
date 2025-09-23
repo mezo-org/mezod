@@ -65,14 +65,14 @@ func TestServer_submitAttestation(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name                           string
-		requestBody                    interface{}
-		expectedStatus                 int
-		expectedError                  string
-		setupRequest                   func() *types.SubmitAttestationRequest
-		setupBridgeMock                func(*MockMezoBridge)
-		setupStoreMock                 func(*MockStore)
-		setupAssetsUnlockedClientMock  func(*MockAssetsUnlockedEndpointClient)
+		name                          string
+		requestBody                   interface{}
+		expectedStatus                int
+		expectedError                 string
+		setupRequest                  func() *types.SubmitAttestationRequest
+		setupBridgeMock               func(*MockMezoBridge)
+		setupStoreMock                func(*MockStore)
+		setupAssetsUnlockedClientMock func(*MockAssetsUnlockedEndpointClient)
 	}{
 		{
 			name:           "Valid signature submission",
@@ -101,22 +101,22 @@ func TestServer_submitAttestation(t *testing.T) {
 			},
 		},
 		{
-			name:            "Invalid JSON body",
-			requestBody:     "invalid-json",
-			expectedStatus:  http.StatusBadRequest,
-			expectedError:   "invalid json format",
+			name:                          "Invalid JSON body",
+			requestBody:                   "invalid-json",
+			expectedStatus:                http.StatusBadRequest,
+			expectedError:                 "invalid json format",
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
-			name:            "Empty request body",
-			requestBody:     "",
-			expectedStatus:  http.StatusBadRequest,
-			expectedError:   "invalid json format",
+			name:                          "Empty request body",
+			requestBody:                   "",
+			expectedStatus:                http.StatusBadRequest,
+			expectedError:                 "invalid json format",
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Missing Entry field",
@@ -129,8 +129,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Missing signature",
@@ -143,8 +143,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Missing 0x prefix in signature",
@@ -157,8 +157,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid hex encoding in signature",
@@ -171,8 +171,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Wrong signature length",
@@ -206,8 +206,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid sequence number (zero)",
@@ -223,8 +223,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid sequence number (negative)",
@@ -240,8 +240,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid recipient (empty)",
@@ -257,8 +257,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Valid entry but invalid signature for recovery",
@@ -296,8 +296,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid amount (zero)",
@@ -313,8 +313,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid amount (negative)",
@@ -330,8 +330,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Invalid chain (out of range)",
@@ -347,8 +347,8 @@ func TestServer_submitAttestation(t *testing.T) {
 				}
 			},
 			setupAssetsUnlockedClientMock: func(_ *MockAssetsUnlockedEndpointClient) {},
-			setupBridgeMock: func(_ *MockMezoBridge) {},
-			setupStoreMock:  func(_ *MockStore) {},
+			setupBridgeMock:               func(_ *MockMezoBridge) {},
+			setupStoreMock:                func(_ *MockStore) {},
 		},
 		{
 			name:           "Unauthorized validator",

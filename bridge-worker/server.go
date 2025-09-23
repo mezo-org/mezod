@@ -12,7 +12,6 @@ import (
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/math"
-	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -24,8 +23,8 @@ import (
 type AssetsUnlockedEndpointClient interface {
 	GetAssetsUnlockedEvents(
 		ctx context.Context,
-		sequenceStart sdkmath.Int,
-		sequenceEnd sdkmath.Int,
+		sequenceStart math.Int,
+		sequenceEnd math.Int,
 	) ([]bridgetypes.AssetsUnlockedEvent, error)
 }
 
