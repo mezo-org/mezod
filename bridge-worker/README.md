@@ -1,6 +1,5 @@
 # Bridge-worker
 
-
 ## Supabase migrations
 
 ### Install the supabase CLI
