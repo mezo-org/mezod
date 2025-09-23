@@ -76,6 +76,7 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 	requestsPerMinute, _ := cmd.Flags().GetUint64(FlagServerRequestsPerMinute)
 	assetsUnlockedEndpoint, _ := cmd.Flags().GetString(FlagServerAssetsUnlockedEndpoint)
 	keyName, _ := cmd.Flags().GetString(FlagKeyName)
+	bridgeWorkerBaseURL, _ := cmd.Flags().GetString(FlagServerBridgeWorkerBaseURL)
 
 	clientCtx, err := client.GetClientQueryContext(cmd)
 	if err != nil {
@@ -109,10 +110,10 @@ func runEthereumSidecar(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// TODO: actually instantiate this later
-	// for we keep it nil, so done the line
-	// we skip the batch attestation phase.
 	var bridgeWorkerClient *bwclient.Client
+	if len(bridgeWorkerBaseURL) > 0 {
+		bridgeWorkerClient = bwclient.NewClient(bridgeWorkerBaseURL)
+	}
 
 	sidecar.RunServer(
 		logger,

@@ -13,6 +13,7 @@ const (
 	FlagServerBatchSize              = "ethereum-sidecar.server.batch-size"
 	FlagServerRequestsPerMinute      = "ethereum-sidecar.server.requests-per-minute"
 	FlagServerAssetsUnlockedEndpoint = "ethereum-sidecar.server.assets-unlocked-endpoint"
+	FlagServerBridgeWorkerBaseURL    = "ethereum-sidecar.server.bridge-work.base-url"
 	FlagKeyringBackend               = "keyring-backend"
 	FlagKeyringDir                   = "keyring-dir"
 	FlagKeyName                      = "key-name"
@@ -92,6 +93,12 @@ func NewFlagSetEthereumSidecar(
 		FlagKeyName,
 		defaultKeyName,
 		"Name of the key to extract from keyring (mandatory for bridge validator nodes, optional for other node types)",
+	)
+
+	fs.String(
+		FlagServerBridgeWorkerBaseURL,
+		"",
+		"The base URL of the bridge worker, if not set the bridge-worker will not be used",
 	)
 
 	return fs

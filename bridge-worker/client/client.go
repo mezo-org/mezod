@@ -20,9 +20,9 @@ type Client struct {
 	httpClient *http.Client
 }
 
-func NewClient(url string) *Client {
+func NewClient(baseURL string) *Client {
 	return &Client{
-		baseURL:    url,
+		baseURL:    baseURL,
 		httpClient: &http.Client{},
 	}
 }
