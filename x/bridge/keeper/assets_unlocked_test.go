@@ -899,8 +899,8 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 		require.Len(t, amounts, 3)
 
 		expectedAmounts := map[string]math.Int{
-			testMezoERC20Token1:                           minAmount1,
-			testMezoERC20Token2:                           minAmount2,
+			testMezoERC20Token1:                          minAmount1,
+			testMezoERC20Token2:                          minAmount2,
 			"0x7b7C000000000000000000000000000000000000": minAmountBTC,
 		}
 
