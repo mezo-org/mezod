@@ -37,3 +37,11 @@ The deployment requires a secret named `pyth-scheduler-config` with the followin
   ```
 
 3. Navigate to mezo-<environment> direcotry and apply the manifests: `kubectl apply -k .`
+
+## Update configuration commands
+
+```Shell
+  kubectl delete configmap pyth-scheduler-price-config -n default
+  kubectl apply -k .
+  kubectl rollout restart deployment/pyth-scheduler -n default
+```
