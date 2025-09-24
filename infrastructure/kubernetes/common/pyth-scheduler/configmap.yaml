@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pyth-scheduler-price-config
+  labels:
+    app: pyth-scheduler
+data:
+  price-config.yaml: |
+    - alias: SolvBTC/USD
+      id: "0xf253cf87dc7d5ed5aa14cba5a6e79aee8bcfaef885a0e1b807035a0bbecc36fa"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
