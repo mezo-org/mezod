@@ -146,6 +146,11 @@ func RunBridgeWorker(
 			cfg.Mezo.AssetsUnlockEndpoint,
 			cfg.Job.BTCWithdrawal.QueueCheckFrequency,
 		),
+		newBatchAttestationJob(
+			env,
+			// TODO: Make sure that `Server` is properly set up and started.
+			NewServer(logger, cfg.Server.Port, chain.ChainID(), mezoBridgeContract, store, assetsUnlockEndpoint),
+		),
 	}
 
 	for _, job := range jobs {
