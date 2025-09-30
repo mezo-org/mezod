@@ -228,22 +228,29 @@ func (s *Server) recoverAddress(entry *bridgetypes.AssetsUnlockedEvent, signatur
 
 func (s *Server) getBatchAttestationReadyUnlockSequences() ([]math.Int, error) {
 	// TODO: Return unlock sequences of all `AssetsUnlock` entries that have
-	//       gathered enough signatures and that have not yet been market as processed.
+	//       gathered enough signatures and that have not yet been marked as processed.
+	//       Check if splitting getting unlock sequences and getting
+	//       attestation data (`AssetsUnlock` entry + signatures) is faster
+	//       than getting attestation data with just a single command. If it's
+	//       so just use a single function.
 	return nil, fmt.Errorf("unimplemented")
 }
 
 func (s *Server) getBatchAttestationData(_ math.Int) (*bridgetypes.AssetsUnlockedEvent, []string, error) {
 	// TODO: Get data (`AssetsUnlock` entry + signatures) for the given unlock
-	//       sequence.
+	//       sequence. Notice that the signatures must be in an order enforced
+	//       by the `attestBridgeOutWithSignatures` function from the `MezoBridge`
+	//       contract: the signer addresses extracted from signatures must be in
+	//       strictly increasing order.
 	return nil, nil, fmt.Errorf("unimplemented")
 }
 
 func (s *Server) setBatchAttestationStatus(_ math.Int, _ string) error {
 	// TODO: Implement setting status for the given `AssetsUnlock` for the given
 	//       unlock sequence. The possible values for the status could be:
-	//       - `gathering_signatures`: for entries still gathering signatures
-	//       - `ready_for_submission`: for entries having enough signatures
-	//       - `processed`: for entries that where attested and having enough confirmations
+	//       - "gathering_signatures": for entries still gathering signatures
+	//       - "ready_for_submission": for entries having enough signatures
+	//       - "processed": for entries that were attested and having enough confirmations
 	return fmt.Errorf("unimplemented")
 }
 
