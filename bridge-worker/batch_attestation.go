@@ -27,7 +27,7 @@ const (
 	batchAttestationSubmissionBackoff = 1 * time.Minute
 )
 
-// batchAttestationFinalityCheck is a struct that contains an AssetsUnlock event
+// batchAttestationFinalityCheck is a struct that contains an AssetsUnlocked event
 // and the Ethereum height at which the batch attestation finality check for it
 // was scheduled.
 type batchAttestationFinalityCheck struct {
@@ -90,7 +90,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 			if err != nil {
 				baj.env.logger.Error(
 					"failed to get unlock sequences for batch attestation",
-					"err", err,
+					"error", err,
 				)
 				continue
 			}
@@ -111,7 +111,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 				if err != nil {
 					batchAttestationLogger.Error(
 						"failed to get batch attestation data",
-						"err", err,
+						"error", err,
 					)
 					continue
 				}
@@ -130,7 +130,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 				if err != nil {
 					batchAttestationLogger.Error(
 						"failed to check if unlock entry is already confirmed",
-						"err", err,
+						"error", err,
 					)
 					continue
 				}
@@ -144,7 +144,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 					if err != nil {
 						batchAttestationLogger.Error(
 							"failed to set batch attestation status",
-							"err", err,
+							"error", err,
 						)
 					}
 
@@ -161,7 +161,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 				if err != nil {
 					batchAttestationLogger.Error(
 						"failed to get attestation threshold",
-						"err", err,
+						"error", err,
 					)
 					continue
 				}
@@ -184,7 +184,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 				if err != nil {
 					batchAttestationLogger.Error(
 						"failed to concatenate signatures",
-						"err", err,
+						"error", err,
 					)
 					continue
 				}
@@ -230,7 +230,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 						batchAttestationSubmissionLogger.Error(
 							"failed to check if unlock is still unconfirmed; "+
 								"retrying",
-							"err", err,
+							"error", err,
 						)
 						continue
 					}
@@ -246,7 +246,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 						if err != nil {
 							batchAttestationSubmissionLogger.Error(
 								"failed to set batch attestation status",
-								"err", err,
+								"error", err,
 							)
 						}
 
@@ -271,7 +271,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 						batchAttestationSubmissionLogger.Error(
 							"batch attestation transaction submission failed; "+
 								"retrying",
-							"err", err,
+							"error", err,
 						)
 						continue
 					}
@@ -281,7 +281,7 @@ func (baj *batchAttestationJob) submitBatchAttestations(ctx context.Context) {
 					if err != nil {
 						batchAttestationSubmissionLogger.Error(
 							"failed to set batch attestation status",
-							"err", err,
+							"error", err,
 						)
 					}
 
@@ -381,7 +381,7 @@ func (baj *batchAttestationJob) processBatchAttestationFinalityChecks(ctx contex
 				baj.env.logger.Error(
 					"cannot get finalized block during batch attestation "+
 						"finality checks - skipping current iteration",
-					"err", err,
+					"error", err,
 				)
 				continue
 			}
@@ -457,7 +457,7 @@ func (baj *batchAttestationJob) processBatchAttestationFinalityChecks(ctx contex
 					if err != nil {
 						checkLogger.Error(
 							"failed to set batch attestation status",
-							"err", err,
+							"error", err,
 						)
 					}
 

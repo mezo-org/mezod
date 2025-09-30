@@ -37,8 +37,6 @@ type environment struct {
 	requestsPerMinute uint64
 
 	btcChain bitcoin.Chain
-
-	server *Server
 }
 
 func RunBridgeWorker(
@@ -137,8 +135,16 @@ func RunBridgeWorker(
 		batchSize:          cfg.Ethereum.BatchSize,
 		requestsPerMinute:  cfg.Ethereum.RequestsPerMinute,
 		btcChain:           btcChain,
-		server:             NewServer(logger, cfg.Server.Port, chain.ChainID(), mezoBridgeContract, store, assetsUnlockEndpoint),
 	}
+
+	server := NewServer(
+		logger,
+		cfg.Server.Port,
+		chain.ChainID(),
+		mezoBridgeContract,
+		store,
+		assetsUnlockEndpoint,
+	)
 
 	jobs := []bridgeWorkerJob{
 		newBTCWithdrawalJob(
@@ -148,8 +154,7 @@ func RunBridgeWorker(
 		),
 		newBatchAttestationJob(
 			env,
-			// TODO: Make sure that `Server` is properly set up and started.
-			NewServer(logger, cfg.Server.Port, chain.ChainID(), mezoBridgeContract, store, assetsUnlockEndpoint),
+			server,
 		),
 	}
 
@@ -162,13 +167,13 @@ func RunBridgeWorker(
 
 	go func() {
 		defer cancelCtx()
-		env.server.Start()
+		server.Start()
 		env.logger.Warn("Http server stopped")
 	}()
 
 	<-ctx.Done()
 
-	err = env.server.Stop(ctx)
+	err = server.Stop(ctx)
 	if err != nil {
 		env.logger.Error("couldn't shutdown the http server properly", "error", err)
 	}
