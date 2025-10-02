@@ -11,3 +11,13 @@ data:
       time_difference: 3600
       price_deviation: 1
       confidence_ratio: 75
+    - alias: BTC/USD
+      id: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
+    - alias: MUSD/USD
+      id: "0x0617a9b725011a126a2b9fd53563f4236501f32cf76d877644b943394606c6de"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
