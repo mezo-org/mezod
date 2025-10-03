@@ -21,3 +21,18 @@ data:
       time_difference: 3600
       price_deviation: 1
       confidence_ratio: 75
+    - alias: cbBTC/USD
+      id: "0x2817d7bfe5c64b8ea956e9a26f573ef64e72e4d7891f2d6af9bcc93f7aff9a97"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
+    - alias: USDC/USD
+      id: "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
+    - alias: USDT/USD
+      id: "0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
