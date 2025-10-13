@@ -215,7 +215,7 @@ func (k Keeper) BurnERC20(
 	return nil
 }
 
-func (k Keeper) GetAllMinBridgeOutAmount(ctx sdk.Context) []*types.TokenMinBridgeOutAmount {
+func (k Keeper) GetAllMinBridgeOutAmounts(ctx sdk.Context) []*types.TokenMinBridgeOutAmount {
 	store := ctx.KVStore(k.storeKey)
 
 	iterator := storetypes.KVStorePrefixIterator(store, types.MinBridgeOutAmountKeyPrefix)

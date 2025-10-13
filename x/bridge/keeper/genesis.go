@@ -72,7 +72,7 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		InitialBtcSupply:               k.GetBTCMinted(ctx).Sub(k.GetBTCBurnt(ctx)),
 		AssetsUnlockedEvents:           k.GetAllAssetsUnlockedEvents(ctx),
 		BitcoinChainMinBridgeOutAmount: k.GetMinBridgeOutAmountForBitcoinChain(ctx),
-		TokenMinBridgeOutAmounts:       k.GetAllMinBridgeOutAmount(ctx),
+		TokenMinBridgeOutAmounts:       k.GetAllMinBridgeOutAmounts(ctx),
 		Pauser:                         evmtypes.BytesToHexAddress(k.GetPauser(ctx)),
 		LastOutflowReset:               k.getLastOutflowReset(ctx),
 		CurrentOutflowLimits:           k.GetAllCurrentOutflowLimits(ctx),
