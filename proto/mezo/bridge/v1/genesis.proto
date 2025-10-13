@@ -74,7 +74,7 @@ message GenesisState {
 
 // CurrentOutflowAmount tracks the current outflow amount for a specific token.
 message CurrentOutflowAmount {
-  // token is the token address as bytes.
+  // token is the token's hex-encoded EVM address.
   string token = 1;
 
   // amount is the current outflow amount for this token.
@@ -86,7 +86,7 @@ message CurrentOutflowAmount {
 
 // CurrentOutflowLimit tracks the current outflow limit for a specific token.
 message CurrentOutflowLimit {
-  // token is the token address as bytes.
+  // token is the token's hex-encoded EVM address.
   string token = 1;
 
   // limit is the current outflow limit for this token.
@@ -99,7 +99,7 @@ message CurrentOutflowLimit {
 // TokenMinBridgeOutAmount defines the minimum bridge out amount for a specific
 // token.
 message TokenMinBridgeOutAmount {
-  // token is the token address as bytes.
+  // token is the token's hex-encoded EVM address.
   string token = 1;
 
   // amount is the minimum amount required for bridging out this specific token.

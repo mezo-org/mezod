@@ -164,7 +164,7 @@ func (m *GenesisState) GetCurrentOutflowLimits() []*CurrentOutflowLimit {
 
 // CurrentOutflowAmount tracks the current outflow amount for a specific token.
 type CurrentOutflowAmount struct {
-	// token is the token address as bytes.
+	// token is the token's hex-encoded EVM address.
 	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	// amount is the current outflow amount for this token.
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
@@ -212,7 +212,7 @@ func (m *CurrentOutflowAmount) GetToken() string {
 
 // CurrentOutflowLimit tracks the current outflow limit for a specific token.
 type CurrentOutflowLimit struct {
-	// token is the token address as bytes.
+	// token is the token's hex-encoded EVM address.
 	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	// limit is the current outflow limit for this token.
 	Limit cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=limit,proto3,customtype=cosmossdk.io/math.Int" json:"limit"`
@@ -261,7 +261,7 @@ func (m *CurrentOutflowLimit) GetToken() string {
 // TokenMinBridgeOutAmount defines the minimum bridge out amount for a specific
 // token.
 type TokenMinBridgeOutAmount struct {
-	// token is the token address as bytes.
+	// token is the token's hex-encoded EVM address.
 	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	// amount is the minimum amount required for bridging out this specific token.
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
