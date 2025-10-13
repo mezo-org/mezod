@@ -56,7 +56,7 @@ type GenesisState struct {
 	// token_min_bridge_out_amounts is the list of minimum bridge out amounts
 	// per token for the Bitcoin chain.
 	TokenMinBridgeOutAmounts []*TokenMinBridgeOutAmount `protobuf:"bytes,9,rep,name=token_min_bridge_out_amounts,json=tokenMinBridgeOutAmounts,proto3" json:"token_min_bridge_out_amounts,omitempty"`
-	// pauser is the address that has the authority to pause bridge operations.
+	// pauser is the hex-encoded EVM address that has the authority to pause bridge operations.
 	Pauser string `protobuf:"bytes,10,opt,name=pauser,proto3" json:"pauser,omitempty"`
 	// last_outflow_reset is the timestamp of the last outflow limit reset.
 	LastOutflowReset uint64 `protobuf:"varint,11,opt,name=last_outflow_reset,json=lastOutflowReset,proto3" json:"last_outflow_reset,omitempty"`

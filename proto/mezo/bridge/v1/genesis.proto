@@ -59,7 +59,7 @@ message GenesisState {
   // per token for the Bitcoin chain.
   repeated TokenMinBridgeOutAmount token_min_bridge_out_amounts = 9;
 
-  // pauser is the address that has the authority to pause bridge operations.
+  // pauser is the hex-encoded EVM address that has the authority to pause bridge operations.
   string pauser = 10;
 
   // last_outflow_reset is the timestamp of the last outflow limit reset.
