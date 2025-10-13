@@ -47,6 +47,23 @@ type GenesisState struct {
 	// AssetsUnlocked events. The tip denotes the sequence number of the last
 	// event processed by the x/bridge module.
 	AssetsUnlockedSequenceTip cosmossdk_io_math.Int `protobuf:"bytes,6,opt,name=assets_unlocked_sequence_tip,json=assetsUnlockedSequenceTip,proto3,customtype=cosmossdk.io/math.Int" json:"assets_unlocked_sequence_tip"`
+	// assets_unlocked_events are all the AssetsUnlockedEvents processed
+	// by the networks' bridge.
+	AssetsUnlockedEvents []*AssetsUnlockedEvent `protobuf:"bytes,7,rep,name=assets_unlocked_events,json=assetsUnlockedEvents,proto3" json:"assets_unlocked_events,omitempty"`
+	// bitcoin_chain_min_bridge_out_amount is the minimum amount required
+	// for bridging out to the Bitcoin chain.
+	BitcoinChainMinBridgeOutAmount cosmossdk_io_math.Int `protobuf:"bytes,8,opt,name=bitcoin_chain_min_bridge_out_amount,json=bitcoinChainMinBridgeOutAmount,proto3,customtype=cosmossdk.io/math.Int" json:"bitcoin_chain_min_bridge_out_amount"`
+	// token_min_bridge_out_amounts is the list of minimum bridge out amounts
+	// per token for the Bitcoin chain.
+	TokenMinBridgeOutAmounts []*TokenMinBridgeOutAmount `protobuf:"bytes,9,rep,name=token_min_bridge_out_amounts,json=tokenMinBridgeOutAmounts,proto3" json:"token_min_bridge_out_amounts,omitempty"`
+	// pauser is the hex-encoded EVM address that has the authority to pause bridge operations.
+	Pauser string `protobuf:"bytes,10,opt,name=pauser,proto3" json:"pauser,omitempty"`
+	// last_outflow_reset is the timestamp of the last outflow limit reset.
+	LastOutflowReset uint64 `protobuf:"varint,11,opt,name=last_outflow_reset,json=lastOutflowReset,proto3" json:"last_outflow_reset,omitempty"`
+	// current_outflow_amounts tracks the current outflow amount for each token.
+	CurrentOutflowAmounts []*CurrentOutflowAmount `protobuf:"bytes,12,rep,name=current_outflow_amounts,json=currentOutflowAmounts,proto3" json:"current_outflow_amounts,omitempty"`
+	// current_outflow_limits tracks the current outflow limit for each token.
+	CurrentOutflowLimits []*CurrentOutflowLimit `protobuf:"bytes,13,rep,name=current_outflow_limits,json=currentOutflowLimits,proto3" json:"current_outflow_limits,omitempty"`
 }
 
 func (m *GenesisState) Reset()         { *m = GenesisState{} }
@@ -103,39 +120,245 @@ func (m *GenesisState) GetErc20TokensMappings() []*ERC20TokenMapping {
 	return nil
 }
 
+func (m *GenesisState) GetAssetsUnlockedEvents() []*AssetsUnlockedEvent {
+	if m != nil {
+		return m.AssetsUnlockedEvents
+	}
+	return nil
+}
+
+func (m *GenesisState) GetTokenMinBridgeOutAmounts() []*TokenMinBridgeOutAmount {
+	if m != nil {
+		return m.TokenMinBridgeOutAmounts
+	}
+	return nil
+}
+
+func (m *GenesisState) GetPauser() string {
+	if m != nil {
+		return m.Pauser
+	}
+	return ""
+}
+
+func (m *GenesisState) GetLastOutflowReset() uint64 {
+	if m != nil {
+		return m.LastOutflowReset
+	}
+	return 0
+}
+
+func (m *GenesisState) GetCurrentOutflowAmounts() []*CurrentOutflowAmount {
+	if m != nil {
+		return m.CurrentOutflowAmounts
+	}
+	return nil
+}
+
+func (m *GenesisState) GetCurrentOutflowLimits() []*CurrentOutflowLimit {
+	if m != nil {
+		return m.CurrentOutflowLimits
+	}
+	return nil
+}
+
+// CurrentOutflowAmount tracks the current outflow amount for a specific token.
+type CurrentOutflowAmount struct {
+	// token is the token's hex-encoded EVM address.
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// amount is the current outflow amount for this token.
+	Amount cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
+}
+
+func (m *CurrentOutflowAmount) Reset()         { *m = CurrentOutflowAmount{} }
+func (m *CurrentOutflowAmount) String() string { return proto.CompactTextString(m) }
+func (*CurrentOutflowAmount) ProtoMessage()    {}
+func (*CurrentOutflowAmount) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c6a9d1c622979efc, []int{1}
+}
+func (m *CurrentOutflowAmount) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CurrentOutflowAmount) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CurrentOutflowAmount.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *CurrentOutflowAmount) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CurrentOutflowAmount.Merge(m, src)
+}
+func (m *CurrentOutflowAmount) XXX_Size() int {
+	return m.Size()
+}
+func (m *CurrentOutflowAmount) XXX_DiscardUnknown() {
+	xxx_messageInfo_CurrentOutflowAmount.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CurrentOutflowAmount proto.InternalMessageInfo
+
+func (m *CurrentOutflowAmount) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
+// CurrentOutflowLimit tracks the current outflow limit for a specific token.
+type CurrentOutflowLimit struct {
+	// token is the token's hex-encoded EVM address.
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// limit is the current outflow limit for this token.
+	Limit cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=limit,proto3,customtype=cosmossdk.io/math.Int" json:"limit"`
+}
+
+func (m *CurrentOutflowLimit) Reset()         { *m = CurrentOutflowLimit{} }
+func (m *CurrentOutflowLimit) String() string { return proto.CompactTextString(m) }
+func (*CurrentOutflowLimit) ProtoMessage()    {}
+func (*CurrentOutflowLimit) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c6a9d1c622979efc, []int{2}
+}
+func (m *CurrentOutflowLimit) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CurrentOutflowLimit) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CurrentOutflowLimit.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *CurrentOutflowLimit) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CurrentOutflowLimit.Merge(m, src)
+}
+func (m *CurrentOutflowLimit) XXX_Size() int {
+	return m.Size()
+}
+func (m *CurrentOutflowLimit) XXX_DiscardUnknown() {
+	xxx_messageInfo_CurrentOutflowLimit.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CurrentOutflowLimit proto.InternalMessageInfo
+
+func (m *CurrentOutflowLimit) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
+// TokenMinBridgeOutAmount defines the minimum bridge out amount for a specific
+// token.
+type TokenMinBridgeOutAmount struct {
+	// token is the token's hex-encoded EVM address.
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// amount is the minimum amount required for bridging out this specific token.
+	Amount cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
+}
+
+func (m *TokenMinBridgeOutAmount) Reset()         { *m = TokenMinBridgeOutAmount{} }
+func (m *TokenMinBridgeOutAmount) String() string { return proto.CompactTextString(m) }
+func (*TokenMinBridgeOutAmount) ProtoMessage()    {}
+func (*TokenMinBridgeOutAmount) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c6a9d1c622979efc, []int{3}
+}
+func (m *TokenMinBridgeOutAmount) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TokenMinBridgeOutAmount) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TokenMinBridgeOutAmount.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *TokenMinBridgeOutAmount) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TokenMinBridgeOutAmount.Merge(m, src)
+}
+func (m *TokenMinBridgeOutAmount) XXX_Size() int {
+	return m.Size()
+}
+func (m *TokenMinBridgeOutAmount) XXX_DiscardUnknown() {
+	xxx_messageInfo_TokenMinBridgeOutAmount.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TokenMinBridgeOutAmount proto.InternalMessageInfo
+
+func (m *TokenMinBridgeOutAmount) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*GenesisState)(nil), "mezo.bridge.v1.GenesisState")
+	proto.RegisterType((*CurrentOutflowAmount)(nil), "mezo.bridge.v1.CurrentOutflowAmount")
+	proto.RegisterType((*CurrentOutflowLimit)(nil), "mezo.bridge.v1.CurrentOutflowLimit")
+	proto.RegisterType((*TokenMinBridgeOutAmount)(nil), "mezo.bridge.v1.TokenMinBridgeOutAmount")
 }
 
 func init() { proto.RegisterFile("mezo/bridge/v1/genesis.proto", fileDescriptor_c6a9d1c622979efc) }
 
 var fileDescriptor_c6a9d1c622979efc = []byte{
-	// 397 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x52, 0xcd, 0xaa, 0xd3, 0x40,
-	0x14, 0x4e, 0xec, 0xb5, 0xe0, 0x5c, 0xb9, 0x5c, 0x46, 0xaf, 0xc6, 0x5a, 0xd3, 0xea, 0x2a, 0x1b,
-	0x27, 0x6d, 0xf4, 0x09, 0x22, 0x22, 0xa2, 0x82, 0xa4, 0xed, 0xa6, 0x0b, 0x43, 0x32, 0x19, 0xd2,
-	0xa1, 0x4d, 0x66, 0xcc, 0x99, 0x14, 0xeb, 0x53, 0xf8, 0x58, 0x5d, 0x49, 0x97, 0xe2, 0xa2, 0x48,
-	0xfb, 0x22, 0x92, 0x99, 0x08, 0x5a, 0x5c, 0x74, 0x77, 0xf8, 0xfe, 0x66, 0xce, 0xc7, 0x41, 0xfd,
-	0x82, 0x7d, 0x15, 0x7e, 0x5a, 0xf1, 0x2c, 0x67, 0xfe, 0x7a, 0xec, 0xe7, 0xac, 0x64, 0xc0, 0x81,
-	0xc8, 0x4a, 0x28, 0x81, 0xaf, 0x1a, 0x96, 0x18, 0x96, 0xac, 0xc7, 0xbd, 0xfb, 0xb9, 0xc8, 0x85,
-	0xa6, 0xfc, 0x66, 0x32, 0xaa, 0xde, 0xe3, 0x93, 0x8c, 0x56, 0xaf, 0xc9, 0x67, 0xdf, 0x3b, 0xe8,
-	0xee, 0x1b, 0x13, 0x3a, 0x51, 0x89, 0x62, 0xf8, 0x25, 0xea, 0xca, 0xa4, 0x4a, 0x0a, 0x70, 0xec,
-	0xa1, 0xed, 0x5d, 0x06, 0x0f, 0xc8, 0xbf, 0x8f, 0x90, 0x8f, 0x9a, 0x0d, 0x2f, 0xb6, 0xfb, 0x81,
-	0x15, 0xb5, 0x5a, 0x3c, 0x47, 0xbd, 0x04, 0x80, 0x29, 0x88, 0x57, 0x82, 0x2e, 0x59, 0x16, 0x03,
-	0xfb, 0x5c, 0xb3, 0x92, 0xb2, 0x58, 0x71, 0xe9, 0xdc, 0x1a, 0xda, 0xde, 0x9d, 0xf0, 0x49, 0xe3,
-	0xf8, 0xb9, 0x1f, 0xdc, 0x50, 0x01, 0x85, 0x00, 0xc8, 0x96, 0x84, 0x0b, 0xbf, 0x48, 0xd4, 0x82,
-	0xbc, 0x2d, 0x55, 0xf4, 0xd0, 0x04, 0xbc, 0xd7, 0xfe, 0x49, 0x6b, 0x9f, 0x72, 0x89, 0x3d, 0x74,
-	0x0d, 0xa2, 0xae, 0x28, 0x8b, 0x53, 0x45, 0x63, 0x25, 0x96, 0xac, 0x74, 0x3a, 0x4d, 0x62, 0x74,
-	0x65, 0xf0, 0x50, 0xd1, 0x69, 0x83, 0xe2, 0x19, 0xba, 0x61, 0x15, 0x0d, 0x46, 0x46, 0x04, 0x71,
-	0x91, 0x48, 0xc9, 0xcb, 0x1c, 0x9c, 0x8b, 0x61, 0xc7, 0xbb, 0x0c, 0x9e, 0x9e, 0xae, 0xf2, 0x3a,
-	0x7a, 0x15, 0x8c, 0xb4, 0xf5, 0x83, 0x51, 0x46, 0xf7, 0xb4, 0x5f, 0x43, 0xd0, 0x62, 0x80, 0xdf,
-	0x21, 0xcc, 0x4b, 0xae, 0x78, 0xb2, 0xd2, 0x3f, 0x80, 0x5a, 0xca, 0xd5, 0xc6, 0xb9, 0x7d, 0xce,
-	0x52, 0xd7, 0xad, 0x31, 0x54, 0x74, 0xa2, 0x6d, 0xf8, 0x13, 0xea, 0xb7, 0x4d, 0xd5, 0xe5, 0xff,
-	0xba, 0xea, 0x9e, 0x13, 0xfb, 0xc8, 0x44, 0xcc, 0xda, 0x84, 0xbf, 0xda, 0x0a, 0xc3, 0xed, 0xc1,
-	0xb5, 0x77, 0x07, 0xd7, 0xfe, 0x75, 0x70, 0xed, 0x6f, 0x47, 0xd7, 0xda, 0x1d, 0x5d, 0xeb, 0xc7,
-	0xd1, 0xb5, 0xe6, 0x5e, 0xce, 0xd5, 0xa2, 0x4e, 0x09, 0x15, 0x85, 0xdf, 0x14, 0xf1, 0x5c, 0x54,
-	0xb9, 0x1e, 0x32, 0xff, 0xcb, 0x9f, 0xf3, 0x50, 0x1b, 0xc9, 0x20, 0xed, 0xea, 0xdb, 0x78, 0xf1,
-	0x3b, 0x00, 0x00, 0xff, 0xff, 0x54, 0x9f, 0xb0, 0x12, 0x7e, 0x02, 0x00, 0x00,
+	// 646 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0xdf, 0x4e, 0xd4, 0x4e,
+	0x14, 0xc7, 0xb7, 0x3f, 0x60, 0xf9, 0x31, 0x20, 0x21, 0xc3, 0x02, 0x15, 0xb1, 0xac, 0x8b, 0x89,
+	0x7b, 0xa1, 0x2d, 0x2c, 0xfa, 0x00, 0x94, 0x10, 0x63, 0x84, 0x60, 0x0a, 0x5c, 0x48, 0x8c, 0xb5,
+	0x3b, 0x3b, 0x94, 0x91, 0xed, 0x4c, 0xed, 0x99, 0xa2, 0xf8, 0x14, 0x3e, 0x16, 0x97, 0x5c, 0x1a,
+	0x2f, 0x88, 0x81, 0xe7, 0x30, 0x31, 0x33, 0x53, 0xa2, 0x74, 0x4b, 0xb2, 0x17, 0xde, 0xb5, 0xe7,
+	0x7c, 0xcf, 0xe7, 0xfc, 0x9b, 0x19, 0xb4, 0x94, 0xd0, 0xaf, 0xc2, 0xeb, 0x66, 0xac, 0x17, 0x53,
+	0xef, 0x74, 0xcd, 0x8b, 0x29, 0xa7, 0xc0, 0xc0, 0x4d, 0x33, 0x21, 0x05, 0x9e, 0x56, 0x5e, 0xd7,
+	0x78, 0xdd, 0xd3, 0xb5, 0xc5, 0x46, 0x2c, 0x62, 0xa1, 0x5d, 0x9e, 0xfa, 0x32, 0xaa, 0xc5, 0x07,
+	0x25, 0x46, 0xa1, 0xd7, 0xce, 0xd6, 0xaf, 0x71, 0x34, 0xf5, 0xd2, 0x40, 0xf7, 0x64, 0x24, 0x29,
+	0x7e, 0x8e, 0xea, 0x69, 0x94, 0x45, 0x09, 0xd8, 0x56, 0xd3, 0x6a, 0x4f, 0x76, 0xe6, 0xdd, 0xdb,
+	0x49, 0xdc, 0x37, 0xda, 0xeb, 0x8f, 0x9e, 0x5f, 0x2e, 0xd7, 0x82, 0x42, 0x8b, 0x0f, 0xd1, 0x62,
+	0x04, 0x40, 0x25, 0x84, 0x7d, 0x41, 0x4e, 0x68, 0x2f, 0x04, 0xfa, 0x29, 0xa7, 0x9c, 0xd0, 0x50,
+	0xb2, 0xd4, 0xfe, 0xaf, 0x69, 0xb5, 0x27, 0xfc, 0x87, 0x2a, 0xe2, 0xc7, 0xe5, 0xf2, 0x1c, 0x11,
+	0x90, 0x08, 0x80, 0xde, 0x89, 0xcb, 0x84, 0x97, 0x44, 0xf2, 0xd8, 0x7d, 0xc5, 0x65, 0xb0, 0x60,
+	0x00, 0xdb, 0x3a, 0x7e, 0xaf, 0x08, 0xdf, 0x67, 0x29, 0x6e, 0xa3, 0x19, 0x10, 0x79, 0x46, 0x68,
+	0xd8, 0x95, 0x24, 0x94, 0xe2, 0x84, 0x72, 0x7b, 0x44, 0x11, 0x83, 0x69, 0x63, 0xf7, 0x25, 0xd9,
+	0x57, 0x56, 0x7c, 0x80, 0xe6, 0x68, 0x46, 0x3a, 0xab, 0x46, 0x04, 0x61, 0x12, 0xa5, 0x29, 0xe3,
+	0x31, 0xd8, 0xa3, 0xcd, 0x91, 0xf6, 0x64, 0xe7, 0x51, 0xb9, 0x95, 0xad, 0x60, 0xb3, 0xb3, 0xaa,
+	0x43, 0x77, 0x8c, 0x32, 0x98, 0xd5, 0xf1, 0xda, 0x04, 0x85, 0x0d, 0xf0, 0x6b, 0x84, 0x19, 0x67,
+	0x92, 0x45, 0x7d, 0x5d, 0x01, 0xe4, 0x69, 0xda, 0x3f, 0xb3, 0xc7, 0x86, 0x69, 0x6a, 0xa6, 0x08,
+	0xf4, 0x25, 0xd9, 0xd3, 0x61, 0xf8, 0x3d, 0x5a, 0x2a, 0x26, 0x95, 0xf3, 0xaa, 0x59, 0xd5, 0x87,
+	0xc1, 0xde, 0x37, 0x88, 0x83, 0x82, 0xf0, 0xf7, 0xb4, 0xde, 0xa2, 0xf9, 0x32, 0x9f, 0x9e, 0x52,
+	0x2e, 0xc1, 0x1e, 0xd7, 0x43, 0x58, 0x29, 0x0f, 0x61, 0xe3, 0x16, 0x6a, 0x4b, 0x69, 0x83, 0x46,
+	0x34, 0x68, 0x04, 0xfc, 0x11, 0xad, 0x74, 0x99, 0x24, 0x82, 0xf1, 0x90, 0x1c, 0x47, 0x8c, 0x87,
+	0x09, 0xe3, 0xa1, 0x01, 0x85, 0x22, 0x97, 0x61, 0x94, 0x88, 0x9c, 0x4b, 0xfb, 0xff, 0x61, 0x3a,
+	0x70, 0x0a, 0xd2, 0xa6, 0x02, 0xed, 0x30, 0xee, 0x6b, 0xcc, 0x6e, 0x2e, 0x37, 0x34, 0x04, 0xc7,
+	0x68, 0x49, 0x2f, 0xb1, 0x3a, 0x07, 0xd8, 0x13, 0xba, 0x99, 0x27, 0xe5, 0x66, 0xcc, 0x32, 0x07,
+	0x70, 0x81, 0x2d, 0xab, 0x1d, 0x80, 0xe7, 0xd5, 0x79, 0xcf, 0x81, 0x66, 0x36, 0xd2, 0x67, 0xaa,
+	0xf8, 0xc3, 0x4f, 0x11, 0xee, 0x47, 0x20, 0x55, 0xd2, 0xa3, 0xbe, 0xf8, 0x1c, 0x66, 0x14, 0xa8,
+	0xb4, 0x27, 0x9b, 0x56, 0x7b, 0x34, 0x98, 0x51, 0x9e, 0x5d, 0xe3, 0x08, 0x94, 0x1d, 0xbf, 0x43,
+	0x0b, 0x24, 0xcf, 0x32, 0xca, 0xff, 0x04, 0xdc, 0x54, 0x3a, 0xa5, 0x2b, 0x7d, 0x5c, 0xae, 0x74,
+	0xd3, 0xc8, 0x0b, 0x4a, 0x51, 0xe6, 0x1c, 0xa9, 0xb0, 0x82, 0xda, 0x69, 0x99, 0xde, 0x67, 0x09,
+	0x93, 0x60, 0xdf, 0xab, 0xde, 0xe9, 0x6d, 0xf8, 0xb6, 0xd2, 0x06, 0x0d, 0x32, 0x68, 0x84, 0x16,
+	0x41, 0x8d, 0xaa, 0x4a, 0x70, 0x03, 0x8d, 0x99, 0x9b, 0x66, 0xe9, 0xa9, 0x98, 0x1f, 0xfc, 0x02,
+	0xd5, 0x8b, 0x25, 0x0f, 0x75, 0xa5, 0x0b, 0x71, 0xeb, 0x03, 0x9a, 0xad, 0xa8, 0xe8, 0x8e, 0x1c,
+	0xeb, 0x68, 0x4c, 0x37, 0x37, 0x5c, 0x0a, 0xa3, 0x6d, 0x1d, 0xa1, 0x85, 0x3b, 0x56, 0xff, 0x4f,
+	0x3b, 0xf1, 0xfd, 0xf3, 0x2b, 0xc7, 0xba, 0xb8, 0x72, 0xac, 0x9f, 0x57, 0x8e, 0xf5, 0xed, 0xda,
+	0xa9, 0x5d, 0x5c, 0x3b, 0xb5, 0xef, 0xd7, 0x4e, 0xed, 0xb0, 0x1d, 0x33, 0x79, 0x9c, 0x77, 0x5d,
+	0x22, 0x12, 0x4f, 0x6d, 0xe3, 0x99, 0xc8, 0x62, 0xfd, 0xd1, 0xf3, 0xbe, 0xdc, 0x3c, 0xbe, 0xf2,
+	0x2c, 0xa5, 0xd0, 0xad, 0xeb, 0x97, 0x77, 0xfd, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf3, 0xf7,
+	0x98, 0x96, 0xdc, 0x05, 0x00, 0x00,
 }
 
 func (m *GenesisState) Marshal() (dAtA []byte, err error) {
@@ -158,6 +381,84 @@ func (m *GenesisState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.CurrentOutflowLimits) > 0 {
+		for iNdEx := len(m.CurrentOutflowLimits) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.CurrentOutflowLimits[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x6a
+		}
+	}
+	if len(m.CurrentOutflowAmounts) > 0 {
+		for iNdEx := len(m.CurrentOutflowAmounts) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.CurrentOutflowAmounts[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x62
+		}
+	}
+	if m.LastOutflowReset != 0 {
+		i = encodeVarintGenesis(dAtA, i, uint64(m.LastOutflowReset))
+		i--
+		dAtA[i] = 0x58
+	}
+	if len(m.Pauser) > 0 {
+		i -= len(m.Pauser)
+		copy(dAtA[i:], m.Pauser)
+		i = encodeVarintGenesis(dAtA, i, uint64(len(m.Pauser)))
+		i--
+		dAtA[i] = 0x52
+	}
+	if len(m.TokenMinBridgeOutAmounts) > 0 {
+		for iNdEx := len(m.TokenMinBridgeOutAmounts) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.TokenMinBridgeOutAmounts[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x4a
+		}
+	}
+	{
+		size := m.BitcoinChainMinBridgeOutAmount.Size()
+		i -= size
+		if _, err := m.BitcoinChainMinBridgeOutAmount.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x42
+	if len(m.AssetsUnlockedEvents) > 0 {
+		for iNdEx := len(m.AssetsUnlockedEvents) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.AssetsUnlockedEvents[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x3a
+		}
+	}
 	{
 		size := m.AssetsUnlockedSequenceTip.Size()
 		i -= size
@@ -222,6 +523,126 @@ func (m *GenesisState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *CurrentOutflowAmount) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CurrentOutflowAmount) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *CurrentOutflowAmount) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size := m.Amount.Size()
+		i -= size
+		if _, err := m.Amount.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	if len(m.Token) > 0 {
+		i -= len(m.Token)
+		copy(dAtA[i:], m.Token)
+		i = encodeVarintGenesis(dAtA, i, uint64(len(m.Token)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *CurrentOutflowLimit) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CurrentOutflowLimit) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *CurrentOutflowLimit) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size := m.Limit.Size()
+		i -= size
+		if _, err := m.Limit.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	if len(m.Token) > 0 {
+		i -= len(m.Token)
+		copy(dAtA[i:], m.Token)
+		i = encodeVarintGenesis(dAtA, i, uint64(len(m.Token)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *TokenMinBridgeOutAmount) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TokenMinBridgeOutAmount) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TokenMinBridgeOutAmount) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size := m.Amount.Size()
+		i -= size
+		if _, err := m.Amount.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	if len(m.Token) > 0 {
+		i -= len(m.Token)
+		copy(dAtA[i:], m.Token)
+		i = encodeVarintGenesis(dAtA, i, uint64(len(m.Token)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintGenesis(dAtA []byte, offset int, v uint64) int {
 	offset -= sovGenesis(v)
 	base := offset
@@ -256,6 +677,84 @@ func (m *GenesisState) Size() (n int) {
 	l = m.InitialBtcSupply.Size()
 	n += 1 + l + sovGenesis(uint64(l))
 	l = m.AssetsUnlockedSequenceTip.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	if len(m.AssetsUnlockedEvents) > 0 {
+		for _, e := range m.AssetsUnlockedEvents {
+			l = e.Size()
+			n += 1 + l + sovGenesis(uint64(l))
+		}
+	}
+	l = m.BitcoinChainMinBridgeOutAmount.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	if len(m.TokenMinBridgeOutAmounts) > 0 {
+		for _, e := range m.TokenMinBridgeOutAmounts {
+			l = e.Size()
+			n += 1 + l + sovGenesis(uint64(l))
+		}
+	}
+	l = len(m.Pauser)
+	if l > 0 {
+		n += 1 + l + sovGenesis(uint64(l))
+	}
+	if m.LastOutflowReset != 0 {
+		n += 1 + sovGenesis(uint64(m.LastOutflowReset))
+	}
+	if len(m.CurrentOutflowAmounts) > 0 {
+		for _, e := range m.CurrentOutflowAmounts {
+			l = e.Size()
+			n += 1 + l + sovGenesis(uint64(l))
+		}
+	}
+	if len(m.CurrentOutflowLimits) > 0 {
+		for _, e := range m.CurrentOutflowLimits {
+			l = e.Size()
+			n += 1 + l + sovGenesis(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *CurrentOutflowAmount) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Token)
+	if l > 0 {
+		n += 1 + l + sovGenesis(uint64(l))
+	}
+	l = m.Amount.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	return n
+}
+
+func (m *CurrentOutflowLimit) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Token)
+	if l > 0 {
+		n += 1 + l + sovGenesis(uint64(l))
+	}
+	l = m.Limit.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	return n
+}
+
+func (m *TokenMinBridgeOutAmount) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Token)
+	if l > 0 {
+		n += 1 + l + sovGenesis(uint64(l))
+	}
+	l = m.Amount.Size()
 	n += 1 + l + sovGenesis(uint64(l))
 	return n
 }
@@ -493,6 +992,575 @@ func (m *GenesisState) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if err := m.AssetsUnlockedSequenceTip.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AssetsUnlockedEvents", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AssetsUnlockedEvents = append(m.AssetsUnlockedEvents, &AssetsUnlockedEvent{})
+			if err := m.AssetsUnlockedEvents[len(m.AssetsUnlockedEvents)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BitcoinChainMinBridgeOutAmount", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.BitcoinChainMinBridgeOutAmount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TokenMinBridgeOutAmounts", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TokenMinBridgeOutAmounts = append(m.TokenMinBridgeOutAmounts, &TokenMinBridgeOutAmount{})
+			if err := m.TokenMinBridgeOutAmounts[len(m.TokenMinBridgeOutAmounts)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Pauser", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Pauser = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastOutflowReset", wireType)
+			}
+			m.LastOutflowReset = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LastOutflowReset |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurrentOutflowAmounts", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CurrentOutflowAmounts = append(m.CurrentOutflowAmounts, &CurrentOutflowAmount{})
+			if err := m.CurrentOutflowAmounts[len(m.CurrentOutflowAmounts)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 13:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurrentOutflowLimits", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CurrentOutflowLimits = append(m.CurrentOutflowLimits, &CurrentOutflowLimit{})
+			if err := m.CurrentOutflowLimits[len(m.CurrentOutflowLimits)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenesis(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CurrentOutflowAmount) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenesis
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CurrentOutflowAmount: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CurrentOutflowAmount: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Token = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenesis(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CurrentOutflowLimit) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenesis
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CurrentOutflowLimit: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CurrentOutflowLimit: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Token = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Limit", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Limit.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenesis(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TokenMinBridgeOutAmount) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenesis
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TokenMinBridgeOutAmount: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TokenMinBridgeOutAmount: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Token", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Token = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

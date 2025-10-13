@@ -43,4 +43,68 @@ message GenesisState {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
+
+  // assets_unlocked_events are all the AssetsUnlockedEvents processed
+  // by the networks' bridge.
+  repeated AssetsUnlockedEvent assets_unlocked_events = 7;
+
+  // bitcoin_chain_min_bridge_out_amount is the minimum amount required
+  // for bridging out to the Bitcoin chain.
+  string bitcoin_chain_min_bridge_out_amount = 8 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // token_min_bridge_out_amounts is the list of minimum bridge out amounts
+  // per token for the Bitcoin chain.
+  repeated TokenMinBridgeOutAmount token_min_bridge_out_amounts = 9;
+
+  // pauser is the hex-encoded EVM address that has the authority to pause bridge operations.
+  string pauser = 10;
+
+  // last_outflow_reset is the timestamp of the last outflow limit reset.
+  uint64 last_outflow_reset = 11;
+
+  // current_outflow_amounts tracks the current outflow amount for each token.
+  repeated CurrentOutflowAmount current_outflow_amounts = 12;
+
+  // current_outflow_limits tracks the current outflow limit for each token.
+  repeated CurrentOutflowLimit current_outflow_limits = 13;
+}
+
+// CurrentOutflowAmount tracks the current outflow amount for a specific token.
+message CurrentOutflowAmount {
+  // token is the token's hex-encoded EVM address.
+  string token = 1;
+
+  // amount is the current outflow amount for this token.
+  string amount = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+// CurrentOutflowLimit tracks the current outflow limit for a specific token.
+message CurrentOutflowLimit {
+  // token is the token's hex-encoded EVM address.
+  string token = 1;
+
+  // limit is the current outflow limit for this token.
+  string limit = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+// TokenMinBridgeOutAmount defines the minimum bridge out amount for a specific
+// token.
+message TokenMinBridgeOutAmount {
+  // token is the token's hex-encoded EVM address.
+  string token = 1;
+
+  // amount is the minimum amount required for bridging out this specific token.
+  string amount = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
 }
