@@ -854,7 +854,7 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 	t.Run("returns empty slice when no min amounts are set", func(t *testing.T) {
 		ctx, k := mockContext()
 
-		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		amounts := k.GetAllMinBridgeOutAmounts(ctx)
 		require.Empty(t, amounts)
 	})
 
@@ -868,7 +868,7 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 		err = k.SetMinBridgeOutAmount(ctx, token1, minAmount1)
 		require.NoError(t, err)
 
-		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		amounts := k.GetAllMinBridgeOutAmounts(ctx)
 		require.Len(t, amounts, 1)
 		require.Equal(t, testMezoERC20Token1, amounts[0].Token)
 		require.Equal(t, minAmount1, amounts[0].Amount)
@@ -895,7 +895,7 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 		err = k.SetMinBridgeOutAmount(ctx, btcToken, minAmountBTC)
 		require.NoError(t, err)
 
-		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		amounts := k.GetAllMinBridgeOutAmounts(ctx)
 		require.Len(t, amounts, 3)
 
 		expectedAmounts := map[string]math.Int{
@@ -922,14 +922,14 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 		err = k.SetMinBridgeOutAmount(ctx, token1, initialAmount)
 		require.NoError(t, err)
 
-		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		amounts := k.GetAllMinBridgeOutAmounts(ctx)
 		require.Len(t, amounts, 1)
 		require.Equal(t, initialAmount, amounts[0].Amount)
 
 		err = k.SetMinBridgeOutAmount(ctx, token1, updatedAmount)
 		require.NoError(t, err)
 
-		amounts = k.GetAllMinBridgeOutAmount(ctx)
+		amounts = k.GetAllMinBridgeOutAmounts(ctx)
 		require.Len(t, amounts, 1)
 		require.Equal(t, testMezoERC20Token1, amounts[0].Token)
 		require.Equal(t, updatedAmount, amounts[0].Amount)
@@ -945,7 +945,7 @@ func TestGetAllMinBridgeOutAmount(t *testing.T) {
 		err = k.SetMinBridgeOutAmount(ctx, token1, zeroAmount)
 		require.NoError(t, err)
 
-		amounts := k.GetAllMinBridgeOutAmount(ctx)
+		amounts := k.GetAllMinBridgeOutAmounts(ctx)
 		require.Len(t, amounts, 1)
 		require.Equal(t, testMezoERC20Token1, amounts[0].Token)
 		require.Equal(t, zeroAmount, amounts[0].Amount)
