@@ -281,6 +281,14 @@ func pollBridgeData(
 		errs = append(errs, err)
 	}
 
+	err = outflowLimitSaturation(
+		mezoChainID,
+		mezo,
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
 	return errors.Join(errs...)
 }
 
@@ -646,4 +654,44 @@ func (ec *ethereumChain) tbtcBankBalanceOf(ctx context.Context, account common.A
 	balance := new(big.Int).SetBytes(result)
 
 	return balance, nil
+}
+
+func outflowLimitSaturation(
+	mezoChainID string,
+	mezo *mezoChain,
+) error {
+	outflowLimitSaturationGauge.Reset()
+
+	mappings, err := mezo.assetsBridge.GetERC20TokensMappings(nil)
+	if err != nil {
+		return fmt.Errorf("failed to get ERC20 tokens mappings from Mezo: [%w]", err)
+	}
+
+	mezoTokens := []common.Address{common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)}
+	for _, mapping := range mappings {
+		mezoTokens = append(mezoTokens, mapping.MezoToken)
+	}
+
+	for _, mezoToken := range mezoTokens {
+		capacityData, err := mezo.assetsBridge.GetOutflowCapacity(nil, mezoToken)
+		if err != nil {
+			return fmt.Errorf("failed to get outflow capacity from for token [%s]: [%w]", mezoToken, err)
+		}
+
+		limit, err := mezo.assetsBridge.GetOutflowLimit(nil, mezoToken)
+		if err != nil {
+			return fmt.Errorf("failed to get outflow limit from for token [%s]: [%w]", mezoToken, err)
+		}
+
+		capacityFloat := new(big.Float).SetInt(capacityData.Capacity)
+		limitFloat := new(big.Float).SetInt(limit)
+		limitUsed := new(big.Float).Sub(limitFloat, capacityFloat)
+
+		saturation := new(big.Float).Quo(new(big.Float).Mul(limitUsed, big.NewFloat(100)), limitFloat)
+		saturationFloat, _ := saturation.Float64()
+
+		outflowLimitSaturationGauge.WithLabelValues(mezoToken.Hex(), mezoChainID).Set(saturationFloat)
+	}
+
+	return nil
 }
