@@ -90,6 +90,14 @@ var (
 		},
 		[]string{"chain_id"},
 	)
+
+	outflowLimitSaturationGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "outflow_limit_saturation",
+			Help: "the saturation of the outflow limit for a token",
+		},
+		[]string{"token", "chain_id"},
+	)
 )
 
 func startPrometheus(port uint) {
