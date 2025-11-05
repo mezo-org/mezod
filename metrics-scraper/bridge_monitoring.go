@@ -680,7 +680,7 @@ func outflowLimitSaturation(
 
 		limit, err := mezo.assetsBridge.GetOutflowLimit(nil, mezoToken)
 		if err != nil {
-			return fmt.Errorf("failed to get outflow limit from for token [%s]: [%w]", mezoToken, err)
+			return fmt.Errorf("failed to get outflow limit for token [%s]: [%w]", mezoToken, err)
 		}
 
 		capacityFloat := new(big.Float).SetInt(capacityData.Capacity)
