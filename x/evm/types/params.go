@@ -45,6 +45,8 @@ var (
 	// on Mezo. It will receive the fees from 'fee_collector' account collected from Mezo
 	// transactions.
 	DefaultChainFeeSplitterAddress = ""
+	// DefaultMezoMinterAddress defines the address of the MEZO minter.
+	DefaultMezoMinterAddress = ""
 )
 
 // AvailableExtraEIPs define the list of all EIPs that can be enabled by the
@@ -80,6 +82,7 @@ func DefaultParams() Params {
 		PrecompilesVersions:             DefaultPrecompilesVersions,
 		MaxPrecompilesCallsPerExecution: uint32(DefaultMaxPrecompilesCallsPerExecution), //nolint:gosec
 		ChainFeeSplitterAddress:         DefaultChainFeeSplitterAddress,
+		MezoMinterAddress:               DefaultMezoMinterAddress,
 	}
 }
 

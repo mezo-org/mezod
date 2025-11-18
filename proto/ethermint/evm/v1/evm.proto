@@ -38,6 +38,9 @@ message Params {
   // chain_fee_splitter_address defines the hex-encoded EVM address of the chain
   // fee splitter contract.
   string chain_fee_splitter_address = 10;
+  // mezo_minter_address defines the hex-encoded EVM address of the mezo
+  // minter.
+  string mezo_minter_address = 11;
 }
 
 // PrecompileVersionInfo defines the version of a custom EVM precompile.
