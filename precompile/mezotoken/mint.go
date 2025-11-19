@@ -241,7 +241,7 @@ func (m *MintMethod) Run(
 	}
 
 	// Validate amount is positive
-	if amount.Sign() <= 0 {
+	if amount == nil || amount.Sign() <= 0 {
 		return nil, fmt.Errorf("amount must be positive")
 	}
 
