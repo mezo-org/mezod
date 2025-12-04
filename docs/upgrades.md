@@ -195,4 +195,4 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v2.0.0` | 706500  | Planned upgrade with chain halt      | [v2.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v2.0.0) |
 | `v3.0.0` | 1735000 | Planned upgrade with chain halt      | [v3.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v3.0.0) |
 | `v4.0.0` | 3194000 | Planned upgrade with chain halt      | [v4.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v4.0.0) |
-| `v5.0.0` | TBD     | Planned upgrade with chain halt      | [v5.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v5.0.0) |
+| `v5.0.0` | 5207000 | Planned upgrade with chain halt      | [v5.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v5.0.0) |
