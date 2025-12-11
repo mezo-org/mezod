@@ -66,6 +66,7 @@ const config: HardhatUserConfig = {
     },
     ethereumSepolia: {
       url: process.env.ETHEREUM_SEPOLIA_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.ETHEREUM_SEPOLIA_PRIVATE_KEY as string),
       chainId: 11155111,
     },
     ethereumMainnet: {
@@ -82,10 +83,7 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: {
-      'testnet': 'empty',
-      'mainnet': 'empty'
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
     customChains: [
       {
         network: "testnet",
