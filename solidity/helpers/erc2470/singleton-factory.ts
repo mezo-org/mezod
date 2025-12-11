@@ -9,7 +9,7 @@ export const singletonFactoryAddress =
   "0xce0042B868300000d44A59004Da54A005ffdcf9f"
 
 /**
- * The address of the SingletonFactory defined in [[EIP-2470]].
+ * The ABI of the SingletonFactory defined in [[EIP-2470]].
  *
  * [[EIP-2470]]: https://eips.ethereum.org/EIPS/eip-2470.
  */
@@ -67,34 +67,7 @@ const singletonFactoryDeploymentTx =
  */
 export const singletonFactory = new ethers.Contract(
   singletonFactoryAddress,
-  [
-    {
-      constant: false,
-      inputs: [
-        {
-          internalType: "bytes",
-          name: "_initCode",
-          type: "bytes",
-        },
-        {
-          internalType: "bytes32",
-          name: "_salt",
-          type: "bytes32",
-        },
-      ],
-      name: "deploy",
-      outputs: [
-        {
-          internalType: "address payable",
-          name: "createdContract",
-          type: "address",
-        },
-      ],
-      payable: false,
-      stateMutability: "nonpayable",
-      type: "function",
-    },
-  ],
+  singletonFactoryABI
 )
 
 /**
