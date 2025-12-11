@@ -76,7 +76,7 @@ export function mERC20DeployFunctionFactory(
   }
 }
 
-async function waitForTransaction(
+export async function waitForTransaction(
   hre: HardhatRuntimeEnvironment,
   txHash: string,
   confirmations: number = 1,
