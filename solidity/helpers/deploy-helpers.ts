@@ -1,4 +1,4 @@
-import type { DeployFunction } from "hardhat-deploy/types"
+import type { DeployFunction, Deployment } from "hardhat-deploy/types"
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 
 export function mERC20DeployFunctionFactory(
@@ -100,4 +100,40 @@ async function waitForTransaction(
     // eslint-disable-next-line no-await-in-loop
     currentConfirmations = await transaction.confirmations()
   }
+}
+
+export async function saveDeploymentArtifact(
+  hre: HardhatRuntimeEnvironment,
+  deploymentName: string,
+  contractAddress: string,
+  transactionHash: string,
+  opts?: {
+    contractName?: string
+    constructorArgs?: unknown[]
+    implementation?: string
+    log?: boolean
+  },
+): Promise<Deployment> {
+  const artifact = await hre.artifacts.readArtifact(
+    opts?.contractName || deploymentName,
+  )
+
+  const deployment: Deployment = {
+    address: contractAddress,
+    abi: artifact.abi,
+    transactionHash,
+    args: opts?.constructorArgs,
+    implementation: opts?.implementation,
+  }
+
+  await hre.deployments.save(deploymentName, deployment)
+
+  if (opts?.log) {
+    hre.deployments.log(
+      `Saved deployment artifact for '${deploymentName}' with address ${contractAddress}` +
+        ` and deployment transaction: ${transactionHash}`,
+    )
+  }
+
+  return deployment
 }
