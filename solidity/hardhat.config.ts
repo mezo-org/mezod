@@ -67,10 +67,13 @@ const config: HardhatUserConfig = {
     ethereumSepolia: {
       url: process.env.ETHEREUM_SEPOLIA_RPC_URL || "",
       accounts: parseCommaDelimitedString(process.env.ETHEREUM_SEPOLIA_PRIVATE_KEY as string),
+      tags: ['verify'],
       chainId: 11155111,
     },
     ethereumMainnet: {
       url: process.env.ETHEREUM_MAINNET_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.ETHEREUM_MAINNET_PRIVATE_KEY as string),
+      tags: ['verify'],
       chainId: 1,
     },
   },
