@@ -45,7 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   )
 
   if (hre.network.tags.verify) {
-    await helpers.etherscan.verify(deployment)
+    await helpers.etherscan.verify(deployment, "contracts/xMEZO.sol:xMEZO")
   }
 }
 
