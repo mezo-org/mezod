@@ -42,8 +42,11 @@ contract xMEZODeployer {
             revert TokenAlreadyDeployed();
         }
 
-        // Deploy the implementation contract and prepare the initialization data.
-        xMEZO impl = new xMEZO();
+        // Deploy the implementation contract using CREATE2 and prepare the initialization data.
+        // Desipite the fact that implementations may change over time, CREATE2 is used here for 
+        // consistency to ensure the same initial implementation address for all chains.
+        // Note that {salt: SALT} is syntactic sugar assembling a CREATE2 call under the hood.
+        xMEZO impl = new xMEZO{salt: SALT}();
         bytes memory initData = abi.encodeWithSelector(
             impl.initialize.selector,
             "MEZO",
@@ -52,8 +55,8 @@ contract xMEZODeployer {
             GOVERNANCE // Set governance as initial minter.
         );
 
-        // Deploy the transparent proxy contract using CREATE2.
-        // Note that {salt: SALT} is syntactic sugar assembling a CREATE2 call under the hood.
+        // Deploy the transparent proxy contract using CREATE2. Using CREATE2 here is crucial
+        // as the proxy address is the primary identifier for the token and won't change over time.
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy{salt: SALT}(
             address(impl),
             GOVERNANCE, // Set governance as ProxyAdmin owner.
