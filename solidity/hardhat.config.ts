@@ -76,6 +76,12 @@ const config: HardhatUserConfig = {
       tags: ['verify'],
       chainId: 1,
     },
+    baseSepolia: {
+      url: process.env.BASE_SEPOLIA_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.BASE_SEPOLIA_PRIVATE_KEY as string),
+      tags: ['verify'],
+      chainId: 84532,
+    },
   },
   external: {
     deployments: {

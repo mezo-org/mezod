@@ -8,9 +8,3 @@ node_modules
 # TypeChain files
 /typechain
 /typechain-types
-
-# Deployments (with exceptions)
-/deployments/*
-!/deployments/testnet/
-!/deployments/mainnet/
-!/deployments/ethereumSepolia/
