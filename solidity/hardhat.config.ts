@@ -66,10 +66,14 @@ const config: HardhatUserConfig = {
     },
     ethereumSepolia: {
       url: process.env.ETHEREUM_SEPOLIA_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.ETHEREUM_SEPOLIA_PRIVATE_KEY as string),
+      tags: ['verify'],
       chainId: 11155111,
     },
     ethereumMainnet: {
       url: process.env.ETHEREUM_MAINNET_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.ETHEREUM_MAINNET_PRIVATE_KEY as string),
+      tags: ['verify'],
       chainId: 1,
     },
   },
@@ -81,11 +85,14 @@ const config: HardhatUserConfig = {
       ethereumMainnet: ["./external/ethereum-mainnet"],
     },
   },
+  // FIXME: Since the introduction of Etherscan v2 API, the hardhat-verify plugin
+  //        requires a single API key for all networks. This is necessary to
+  //        make Etherscan verification working. At the same time, this breaks
+  //        the BlockScout verification for the Mezo networks. We can live
+  //        with this for now but let's revisit and try to fix this next time
+  //        we touch this code.
   etherscan: {
-    apiKey: {
-      'testnet': 'empty',
-      'mainnet': 'empty'
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
     customChains: [
       {
         network: "testnet",
