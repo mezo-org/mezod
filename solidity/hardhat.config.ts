@@ -82,6 +82,12 @@ const config: HardhatUserConfig = {
       tags: ['verify'],
       chainId: 84532,
     },
+    baseMainnet: {
+      url: process.env.BASE_MAINNET_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.BASE_MAINNET_PRIVATE_KEY as string),
+      tags: ['verify'],
+      chainId: 8453,
+    },
     bscTestnet: {
       url: process.env.BSC_TESTNET_RPC_URL || "",
       accounts: parseCommaDelimitedString(process.env.BSC_TESTNET_PRIVATE_KEY as string),
