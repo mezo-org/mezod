@@ -13,3 +13,4 @@ node_modules
 /deployments/*
 !/deployments/testnet/
 !/deployments/mainnet/
+!/deployments/ethereumSepolia/
