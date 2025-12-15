@@ -7,8 +7,8 @@ import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transpa
 import "./xMEZO.sol";
 
 /// @title Cross-chain MEZO Deployer
-/// @notice xMEZODeployer allows to deploy MEZO token to a foreign EVM chain using a stable address.
-///         The xMEZODeployer should be deployed to the chain using the EIP2470 singleton factory.
+/// @notice xMEZODeployer allows deploying the MEZO token on another EVM chain at a deterministic address.
+///         The xMEZODeployer itself should be deployed on the chain via the EIP-2470 singleton factory.
 /// @dev Based on: https://github.com/mezo-org/musd/blob/main/solidity/contracts/token/TokenDeployer.sol
 contract xMEZODeployer {
     bytes32 public constant SALT =
