@@ -4,13 +4,13 @@ pragma solidity 0.8.29;
 
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import "./xMEZO.sol";
+import "./MEZO.sol";
 
 /// @title Cross-chain MEZO Deployer
-/// @notice xMEZODeployer allows deploying the MEZO token on another EVM chain at a deterministic address.
-///         The xMEZODeployer itself should be deployed on the chain via the EIP-2470 singleton factory.
+/// @notice MEZODeployer allows deploying the MEZO token on another EVM chain at a deterministic address.
+///         The MEZODeployer itself should be deployed on the chain via the EIP-2470 singleton factory.
 /// @dev Based on: https://github.com/mezo-org/musd/blob/main/solidity/contracts/token/TokenDeployer.sol
-contract xMEZODeployer {
+contract MEZODeployer {
     bytes32 public constant SALT =
         keccak256("Bank on yourself. Bring everyday finance to your Bitcoin.");
 
@@ -45,7 +45,7 @@ contract xMEZODeployer {
         // Desipite the fact that implementations may change over time, CREATE2 is used here for 
         // consistency to ensure the same initial implementation address for all chains.
         // Note that {salt: SALT} is syntactic sugar assembling a CREATE2 call under the hood.
-        xMEZO impl = new xMEZO{salt: SALT}();
+        MEZO impl = new MEZO{salt: SALT}();
         bytes memory initData = abi.encodeWithSelector(
             impl.initialize.selector,
             "MEZO",
@@ -68,6 +68,6 @@ contract xMEZODeployer {
         emit TokenDeployed(token);
         
         // Initiate the 2-step ownership transfer process to the governance.
-        xMEZO(token).transferOwnership(GOVERNANCE);
+        MEZO(token).transferOwnership(GOVERNANCE);
     }
 }

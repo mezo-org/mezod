@@ -14,9 +14,9 @@ pragma solidity 0.8.29;
 
 import "./mERC20.sol";
 
-// @title xMEZO
+// @title MEZO
 // @notice Cross-chain representation of the MEZO token.
 // @dev MEZO token is a native precompile of the Mezo chain. 
 //      This contract serves as a representation of the MEZO 
 //      token on foreign EVM chains for bridging purposes.
-contract xMEZO is mERC20 {}
+contract MEZO is mERC20 {}

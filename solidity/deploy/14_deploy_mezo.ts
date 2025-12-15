@@ -7,49 +7,49 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { execute, read, log } = deployments
   const { deployer } = await getNamedAccounts()
 
-  const existingDeployment = await deployments.getOrNull("xMEZO")
+  const existingDeployment = await deployments.getOrNull("MEZO")
   const isValidDeployment = existingDeployment &&
     helpers.address.isValid(existingDeployment.address)
 
   if (isValidDeployment) {
-    log(`Using xMEZO at ${existingDeployment.address}`)
+    log(`Using MEZO at ${existingDeployment.address}`)
     return
   }
 
   const deployTx = await execute(
-    "xMEZODeployer",
+    "MEZODeployer",
     { from: deployer, log: true },
     "deployToken",
   )
 
   await waitForTransaction(hre, deployTx.transactionHash, 12)
 
-  const xMEZOProxyAddress = await read("xMEZODeployer", "token")
+  const MEZOProxyAddress = await read("MEZODeployer", "token")
 
-  log(`xMEZO transparent proxy deployed at ${xMEZOProxyAddress}`)
+  log(`MEZO transparent proxy deployed at ${MEZOProxyAddress}`)
 
   // Get the implementation address from the proxy using OpenZeppelin's upgrades plugin
-  const xMEZOImplAddress = await upgrades.erc1967.getImplementationAddress(xMEZOProxyAddress)
+  const MEZOImplAddress = await upgrades.erc1967.getImplementationAddress(MEZOProxyAddress)
 
-  log(`xMEZO implementation at ${xMEZOImplAddress}`)
+  log(`MEZO implementation at ${MEZOImplAddress}`)
 
   const deployment = await saveDeploymentArtifact(
     hre,
-    "xMEZO",
-    xMEZOProxyAddress,
+    "MEZO",
+    MEZOProxyAddress,
     deployTx.transactionHash,
     {
-      implementation: xMEZOImplAddress,
+      implementation: MEZOImplAddress,
       log: true,
     },
   )
 
   if (hre.network.tags.verify) {
-    await helpers.etherscan.verify(deployment, "contracts/xMEZO.sol:xMEZO")
+    await helpers.etherscan.verify(deployment, "contracts/MEZO.sol:MEZO")
   }
 }
 
 export default func
 
-func.tags = ["xMEZO"]
-func.dependencies = ["xMEZODeployer"]
+func.tags = ["MEZO"]
+func.dependencies = ["MEZODeployer"]

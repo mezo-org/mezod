@@ -8,20 +8,20 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { log } = deployments
   const { deployer } = await helpers.signers.getNamedSigners()
 
-  const existingDeployment = await deployments.getOrNull("xMEZODeployer")
+  const existingDeployment = await deployments.getOrNull("MEZODeployer")
   const isValidDeployment = existingDeployment &&
     helpers.address.isValid(existingDeployment.address)
 
   if (isValidDeployment) {
-    log(`Using xMEZODeployer at ${existingDeployment.address}`)
+    log(`Using MEZODeployer at ${existingDeployment.address}`)
   } else {
-    log("Deploying the xMEZODeployer...")
+    log("Deploying the MEZODeployer...")
 
     const deployTx = await deployWithSingletonFactory(
       hre,
-      "xMEZODeployer",
+      "MEZODeployer",
       {
-        contractName: "contracts/xMEZODeployer.sol:xMEZODeployer",
+        contractName: "contracts/MEZODeployer.sol:MEZODeployer",
         from: deployer,
         salt: ethers.keccak256(
           // Note that this is the salt for deploying the MEZODeployer contract.
@@ -44,4 +44,4 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func
 
-func.tags = ["xMEZODeployer"]
+func.tags = ["MEZODeployer"]
