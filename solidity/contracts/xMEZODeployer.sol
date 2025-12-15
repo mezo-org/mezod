@@ -26,7 +26,6 @@ contract xMEZODeployer {
     event TokenDeployed(address token);
 
     error TokenAlreadyDeployed();
-    error Create2Failed();
 
     /// @notice Deploys the MEZO token to the chain via create2, initializes it,
     ///         and initiates the 2-step ownership transfer process to the governance.
@@ -62,11 +61,6 @@ contract xMEZODeployer {
             GOVERNANCE, // Set governance as ProxyAdmin owner.
             initData
         );
-
-        // Check if the proxy contract was deployed successfully.
-        if (address(proxy) == address(0)) {
-            revert Create2Failed();
-        }
 
         // Store the address of the deployed proxy contract.
         token = address(proxy);
