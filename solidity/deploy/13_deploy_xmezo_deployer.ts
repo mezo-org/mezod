@@ -31,7 +31,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         confirmations: 12,
       },
     )
-    await helpers.etherscan.verify(deployTx.deployment)
+
+    if (hre.network.tags.verify) {
+      await helpers.etherscan.verify(deployTx.deployment)
+    }
   }
 }
 
