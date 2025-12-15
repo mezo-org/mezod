@@ -24,6 +24,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         contractName: "contracts/xMEZODeployer.sol:xMEZODeployer",
         from: deployer,
         salt: ethers.keccak256(
+          // Note that this is the salt for deploying the MEZODeployer contract.
+          // The salt for MEZO token contract is defined inside the MEZODeployer
+          // as a SALT constant. Both salts doesn't have to be the same but we keep
+          // them as such for consistency.
           ethers.toUtf8Bytes(
             "Bank on yourself. Bring everyday finance to your Bitcoin.",
           ),
