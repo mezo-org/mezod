@@ -34,11 +34,7 @@ contract MEZO is ERC20Permit, Ownable2Step {
     error NotMinter();
     error NotBurner();
 
-    constructor() {
-        Ownable(_msgSender());
-        ERC20("MEZO", "MEZO");
-        ERC20Permit("MEZO");
-    }
+    constructor() ERC20("MEZO", "MEZO") ERC20Permit("MEZO") Ownable(_msgSender()) {}
 
     /// @notice Mints `amount` tokens to `account`.
     /// @param account The address to mint tokens to.
