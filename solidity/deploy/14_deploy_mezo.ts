@@ -3,7 +3,7 @@ import type { DeployFunction } from "hardhat-deploy/types"
 import { saveDeploymentArtifact, waitForTransaction } from "../helpers/deploy-helpers"
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts, upgrades, helpers } = hre
+  const { deployments, getNamedAccounts, helpers } = hre
   const { execute, read, log } = deployments
   const { deployer } = await getNamedAccounts()
 
