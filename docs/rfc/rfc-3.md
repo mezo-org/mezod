@@ -157,7 +157,7 @@ bridge them to the same EVM address on Mezo as the `depositOwner` stored in
 Portal. This path should be added with an upgrade to the Portal contract
 deployed on Ethereum.
 
-Note that not all tokens locked in the Portal will be bridgable and some of them
+Note that not all tokens locked in the Portal will be bridgeable and some of them
 will have to be transformed to other assets before bridging. This particular
 mechanism may require cooperation with a market maker and is out of the scope of
 this RFC. The ERC20 bridge, as designed in this RFC, should be flexible enough
