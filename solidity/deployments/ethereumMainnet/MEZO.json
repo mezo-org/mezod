@@ -1,6 +1,38 @@
 {
-  "address": "0xa71C921A6dDf68bdD16dFc570Ca0dC8E47542c7C",
+  "address": "0x8e4cbBcc33dB6c0a18561fDE1F6bA35906d4848b",
   "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "ECDSAInvalidSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "length",
+          "type": "uint256"
+        }
+      ],
+      "name": "ECDSAInvalidSignatureLength",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ECDSAInvalidSignatureS",
+      "type": "error"
+    },
     {
       "inputs": [
         {
@@ -88,13 +120,56 @@
       "type": "error"
     },
     {
-      "inputs": [],
-      "name": "InvalidInitialization",
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        }
+      ],
+      "name": "ERC2612ExpiredSignature",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "signer",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "ERC2612InvalidSigner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "currentNonce",
+          "type": "uint256"
+        }
+      ],
+      "name": "InvalidAccountNonce",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "NotInitializing",
+      "name": "InvalidShortString",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotBurner",
       "type": "error"
     },
     {
@@ -125,8 +200,14 @@
       "type": "error"
     },
     {
-      "inputs": [],
-      "name": "ZeroAddressMinter",
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "str",
+          "type": "string"
+        }
+      ],
+      "name": "StringTooLong",
       "type": "error"
     },
     {
@@ -158,13 +239,25 @@
       "anonymous": false,
       "inputs": [
         {
+          "indexed": true,
+          "internalType": "address",
+          "name": "burner",
+          "type": "address"
+        },
+        {
           "indexed": false,
-          "internalType": "uint64",
-          "name": "version",
-          "type": "uint64"
+          "internalType": "bool",
+          "name": "state",
+          "type": "bool"
         }
       ],
-      "name": "Initialized",
+      "name": "BurnerSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "EIP712DomainChanged",
       "type": "event"
     },
     {
@@ -173,17 +266,17 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "oldMinter",
+          "name": "minter",
           "type": "address"
         },
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "newMinter",
-          "type": "address"
+          "indexed": false,
+          "internalType": "bool",
+          "name": "state",
+          "type": "bool"
         }
       ],
-      "name": "MinterChanged",
+      "name": "MinterSet",
       "type": "event"
     },
     {
@@ -248,6 +341,19 @@
       ],
       "name": "Transfer",
       "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "DOMAIN_SEPARATOR",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     },
     {
       "inputs": [],
@@ -327,7 +433,7 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "value",
+          "name": "amount",
           "type": "uint256"
         }
       ],
@@ -340,18 +446,19 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "account",
+          "name": "",
           "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
         }
       ],
-      "name": "burnFrom",
-      "outputs": [],
-      "stateMutability": "nonpayable",
+      "name": "burners",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -368,31 +475,46 @@
       "type": "function"
     },
     {
-      "inputs": [
+      "inputs": [],
+      "name": "eip712Domain",
+      "outputs": [
+        {
+          "internalType": "bytes1",
+          "name": "fields",
+          "type": "bytes1"
+        },
         {
           "internalType": "string",
-          "name": "_name",
+          "name": "name",
           "type": "string"
         },
         {
           "internalType": "string",
-          "name": "_symbol",
+          "name": "version",
           "type": "string"
         },
         {
-          "internalType": "uint8",
-          "name": "_decimalsArg",
-          "type": "uint8"
+          "internalType": "uint256",
+          "name": "chainId",
+          "type": "uint256"
         },
         {
           "internalType": "address",
-          "name": "_minter",
+          "name": "verifyingContract",
           "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "salt",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "extensions",
+          "type": "uint256[]"
         }
       ],
-      "name": "initialize",
-      "outputs": [],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -414,13 +536,19 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "minter",
-      "outputs": [
+      "inputs": [
         {
           "internalType": "address",
           "name": "",
           "type": "address"
+        }
+      ],
+      "name": "minters",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -434,6 +562,25 @@
           "internalType": "string",
           "name": "",
           "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "nonces",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -466,6 +613,49 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "spender",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "name": "permit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "renounceOwnership",
       "outputs": [],
@@ -476,8 +666,31 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "newMinter",
+          "name": "burner",
           "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "state",
+          "type": "bool"
+        }
+      ],
+      "name": "setBurner",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "minter",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "state",
+          "type": "bool"
         }
       ],
       "name": "setMinter",
@@ -578,7 +791,6 @@
       "type": "function"
     }
   ],
-  "transactionHash": "0x1aa534fa32ba3354914d5634237bb5ec238eea79e6fc907f3c111a75881d542e",
-  "numDeployments": 1,
-  "implementation": "0xB25bF3678c99A59c9088B6D62C2A11E18C6B2F18"
+  "transactionHash": "0xc0ae3c50760dbd8c999f0d37e4b7208170699f10a7fa0fc393d83efe8a089dff",
+  "numDeployments": 1
 }
