@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/cosmos/cosmos-sdk/codec"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -79,4 +80,36 @@ func (aue AssetsUnlockedEvents) IsValid() bool {
 	}
 
 	return aue.IsStrictlyIncreasingSequence()
+}
+
+// MustMarshalAssetsUnlockedEvent marshals an AssetsUnlockedEvent to bytes.
+// It panics on error.
+func MustMarshalAssetsUnlockedEvent(
+	cdc codec.BinaryCodec,
+	event AssetsUnlockedEvent,
+) []byte {
+	return cdc.MustMarshal(&event)
+}
+
+// MustUnmarshalAssetsUnlockedEvent unmarshals an AssetsUnlockedEvent from bytes.
+// It panics on error.
+func MustUnmarshalAssetsUnlockedEvent(
+	cdc codec.BinaryCodec,
+	value []byte,
+) AssetsUnlockedEvent {
+	event, err := UnmarshalAssetsUnlockedEvent(cdc, value)
+	if err != nil {
+		panic(err)
+	}
+	return event
+}
+
+// UnmarshalAssetsUnlockedEvent unmarshals an AssetsUnlockedEvent from bytes.
+func UnmarshalAssetsUnlockedEvent(
+	cdc codec.BinaryCodec,
+	value []byte,
+) (AssetsUnlockedEvent, error) {
+	var event AssetsUnlockedEvent
+	err := cdc.Unmarshal(value, &event)
+	return event, err
 }
