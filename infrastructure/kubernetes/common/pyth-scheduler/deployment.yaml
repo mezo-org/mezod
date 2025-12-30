@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyth-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyth-scheduler
+  template:
+    metadata:
+      labels:
+        app: pyth-scheduler
+    spec:
+      containers:
+        - name: pyth-scheduler
+          image: public.ecr.aws/pyth-network/xc-price-pusher:v10.2.0
+          imagePullPolicy: Always
+          command:
+            - "npm"
+            - "run"
+            - "start"
+            - "--"
+            - "evm"
+            - "--endpoint"
+            - "$(MEZO_RPC_ENDPOINT)"
+            - "--mnemonic-file"
+            - "$(MNEMONIC_FILE)"
+            - "--pyth-contract-address"
+            - "$(PYTH_CONTRACT_ADDRESS)"
+            - "--price-service-endpoint"
+            - "$(PRICE_SERVICE_ENDPOINT)"
+            - "--price-config-file"
+            - "/etc/pyth-scheduler/config/price-config.yaml"
+          env:
+            - name: MEZO_RPC_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-scheduler-config
+                  key: endpoint
+            - name: MNEMONIC_FILE
+              value: /etc/pyth-scheduler/secrets/mnemonic
+            - name: PYTH_CONTRACT_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-scheduler-config
+                  key: pyth-contract-address
+            - name: PRICE_SERVICE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-scheduler-config
+                  key: price-service-endpoint
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: pyth-scheduler-config
+              mountPath: /etc/pyth-scheduler/secrets
+            - name: price-config
+              mountPath: /etc/pyth-scheduler/config
+      volumes:
+        - name: pyth-scheduler-config
+          secret:
+            secretName: pyth-scheduler-config
+            items:
+              - key: mnemonic
+                path: mnemonic
+        - name: price-config
+          configMap:
+            name: pyth-scheduler-price-config
+            items:
+              - key: price-config.yaml
+                path: price-config.yaml
