@@ -188,5 +188,34 @@ task('mezoToken:PERMIT_SIGNATURE', 'Returns a signature that can be used with `p
         break
       }
     }
+  })
+
+task('mezoToken:getMinter', 'Returns the current minter address', async (taskArguments, hre) => {
+  const mezotoken = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+  const minter = await mezotoken.getMinter()
+  console.log(minter)
+})
+
+task('mezoToken:setMinter', 'Sets the minter address (only callable by POA owner)')
+  .addParam('signer', 'The signer address (msg.sender, must be POA owner)')
+  .addParam('minter', 'The address of the new minter')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const mezotoken = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await mezotoken.setMinter(taskArguments.minter)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('mezoToken:mint', 'Mints tokens to a recipient (only callable by minter)')
+  .addParam('signer', 'The signer address (msg.sender, must be minter)')
+  .addParam('to', 'The address to mint tokens to')
+  .addParam('amount', 'The amount of tokens to mint (amezo)')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const mezotoken = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await mezotoken.mint(taskArguments.to, taskArguments.amount)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
   }) 
   

@@ -7,7 +7,7 @@ const (
 
 const (
 	MEZOTokenPrecompileAddress       = "0x7b7c000000000000000000000000000000000001"
-	MEZOTokenPrecompileLatestVersion = 1
+	MEZOTokenPrecompileLatestVersion = 2
 )
 
 const (

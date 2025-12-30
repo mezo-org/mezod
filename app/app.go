@@ -915,6 +915,7 @@ func customEvmPrecompiles(
 		bankKeeper,
 		authzKeeper,
 		evmKeeper,
+		poaKeeper,
 		chainID,
 	)
 	if err != nil {
