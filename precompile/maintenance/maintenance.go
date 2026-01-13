@@ -28,10 +28,11 @@ func NewPrecompileVersionMap(
 ) (*precompile.VersionMap, error) {
 	// v1 is just the EVM settings.
 	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
-		EVM:              true,
-		Precompiles:      false,
-		ChainFeeSplitter: false,
-		GasPrice:         false,
+		EVM:                 true,
+		Precompiles:         false,
+		ChainFeeSplitter:    false,
+		GasPrice:            false,
+		MaxPrecompilesCalls: false,
 	})
 	if err != nil {
 		return nil, err
@@ -39,10 +40,11 @@ func NewPrecompileVersionMap(
 
 	// v2 is the EVM settings and the precompiles settings.
 	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
-		EVM:              true,
-		Precompiles:      true,
-		ChainFeeSplitter: false,
-		GasPrice:         false,
+		EVM:                 true,
+		Precompiles:         true,
+		ChainFeeSplitter:    false,
+		GasPrice:            false,
+		MaxPrecompilesCalls: false,
 	})
 	if err != nil {
 		return nil, err
@@ -50,10 +52,11 @@ func NewPrecompileVersionMap(
 
 	// v3 is the EVM settings, the precompiles settings and the chain fee splitter settings.
 	contractV3, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
-		EVM:              true,
-		Precompiles:      true,
-		ChainFeeSplitter: true,
-		GasPrice:         false,
+		EVM:                 true,
+		Precompiles:         true,
+		ChainFeeSplitter:    true,
+		GasPrice:            false,
+		MaxPrecompilesCalls: false,
 	})
 	if err != nil {
 		return nil, err
@@ -62,10 +65,23 @@ func NewPrecompileVersionMap(
 	// v4 is the EVM settings, the precompiles settings, the chain fee splitter settings,
 	// and the gas price settings.
 	contractV4, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
-		EVM:              true,
-		Precompiles:      true,
-		ChainFeeSplitter: true,
-		GasPrice:         true,
+		EVM:                 true,
+		Precompiles:         true,
+		ChainFeeSplitter:    true,
+		GasPrice:            true,
+		MaxPrecompilesCalls: false,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// v5 adds max precompiles calls per execution settings.
+	contractV5, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+		EVM:                 true,
+		Precompiles:         true,
+		ChainFeeSplitter:    true,
+		GasPrice:            true,
+		MaxPrecompilesCalls: true,
 	})
 	if err != nil {
 		return nil, err
@@ -77,16 +93,18 @@ func NewPrecompileVersionMap(
 			1: contractV1,
 			2: contractV2,
 			3: contractV3,
-			evmtypes.MaintenancePrecompileLatestVersion: contractV4,
+			4: contractV4,
+			evmtypes.MaintenancePrecompileLatestVersion: contractV5,
 		},
 	), nil
 }
 
 type Settings struct {
-	EVM              bool // enable methods related to the evm
-	Precompiles      bool // enable methods related to the precompiles
-	ChainFeeSplitter bool // enable methods related to the chain fee splitter
-	GasPrice         bool // enable methods related to the gas price
+	EVM                 bool // enable methods related to the evm
+	Precompiles         bool // enable methods related to the precompiles
+	ChainFeeSplitter    bool // enable methods related to the chain fee splitter
+	GasPrice            bool // enable methods related to the gas price
+	MaxPrecompilesCalls bool // enable methods related to max precompiles calls per execution
 }
 
 // NewPrecompile creates a new maintenance precompile.
@@ -140,6 +158,11 @@ func newPrecompileMethods(
 	if settings.GasPrice {
 		methods = append(methods, newSetMinGasPriceMethod(poaKeeper, feeMarketKeeper))
 		methods = append(methods, newGetMinGasPriceMethod(feeMarketKeeper))
+	}
+
+	if settings.MaxPrecompilesCalls {
+		methods = append(methods, newSetMaxPrecompilesCallsPerExecutionMethod(poaKeeper, evmKeeper))
+		methods = append(methods, newGetMaxPrecompilesCallsPerExecutionMethod(evmKeeper))
 	}
 
 	return methods
