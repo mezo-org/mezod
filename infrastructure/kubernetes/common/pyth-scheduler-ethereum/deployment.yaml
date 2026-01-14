@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyth-scheduler-ethereum
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyth-scheduler-ethereum
+  template:
+    metadata:
+      labels:
+        app: pyth-scheduler-ethereum
+    spec:
+      containers:
+        - name: pyth-scheduler-ethereum
+          image: public.ecr.aws/pyth-network/xc-price-pusher:v10.2.0
+          imagePullPolicy: Always
+          command:
+            - "npm"
+            - "run"
+            - "start"
+            - "--"
+            - "evm"
+            - "--endpoint"
+            - "$(ETHEREUM_RPC_ENDPOINT)"
+            - "--mnemonic-file"
+            - "$(MNEMONIC_FILE)"
+            - "--pyth-contract-address"
+            - "$(PYTH_CONTRACT_ADDRESS)"
+            - "--price-service-endpoint"
+            - "$(PRICE_SERVICE_ENDPOINT)"
+            - "--price-config-file"
+            - "/etc/pyth-scheduler-ethereum/config/price-config.yaml"
+          env:
+            - name: ETHEREUM_RPC_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-scheduler-ethereum-config
+                  key: endpoint
+            - name: MNEMONIC_FILE
+              value: /etc/pyth-scheduler-ethereum/secrets/mnemonic
+            - name: PYTH_CONTRACT_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-scheduler-ethereum-config
+                  key: pyth-contract-address
+            - name: PRICE_SERVICE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-scheduler-ethereum-config
+                  key: price-service-endpoint
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: pyth-scheduler-ethereum-config
+              mountPath: /etc/pyth-scheduler-ethereum/secrets
+            - name: price-config
+              mountPath: /etc/pyth-scheduler-ethereum/config
+      volumes:
+        - name: pyth-scheduler-ethereum-config
+          secret:
+            secretName: pyth-scheduler-ethereum-config
+            items:
+              - key: mnemonic
+                path: mnemonic
+        - name: price-config
+          configMap:
+            name: pyth-scheduler-ethereum-price-config
+            items:
+              - key: price-config.yaml
+                path: price-config.yaml
