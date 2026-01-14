@@ -33,4 +33,12 @@ contract MaintenanceCaller is IMaintenance {
     function getMinGasPrice() external view returns (uint256) {
         return IMaintenance(maintenancePrecompile).getMinGasPrice();
     }
+
+    function setMaxPrecompilesCallsPerExecution(uint32 value) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setMaxPrecompilesCallsPerExecution(value);
+    }
+
+    function getMaxPrecompilesCallsPerExecution() external view returns (uint32) {
+        return IMaintenance(maintenancePrecompile).getMaxPrecompilesCallsPerExecution();
+    }
 }
