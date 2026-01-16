@@ -13,13 +13,13 @@ data:
       confidence_ratio: 75
     - alias: BTC/USD
       id: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43"
-      time_difference: 3600
-      price_deviation: 1
+      time_difference: 600
+      price_deviation: 0.5
       confidence_ratio: 75
     - alias: MUSD/USD
       id: "0x0617a9b725011a126a2b9fd53563f4236501f32cf76d877644b943394606c6de"
-      time_difference: 3600
-      price_deviation: 1
+      time_difference: 600
+      price_deviation: 0.1
       confidence_ratio: 75
     - alias: cbBTC/USD
       id: "0x2817d7bfe5c64b8ea956e9a26f573ef64e72e4d7891f2d6af9bcc93f7aff9a97"
