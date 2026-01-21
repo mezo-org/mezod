@@ -171,21 +171,22 @@ In that case, always assume the latest `-rcN` suffix for the given version.
 
 Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version information.
 
-| Version  | Block   | Type                                 | Details                                                                                                                                                                                 |
-|----------|---------|--------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `v0.1.0` | 1       | N/A                                  | Initial genesis version.                                                                                                                                                                |
-| `v0.2.0` | 496901  | Hard fork upgrade without chain halt | Change gas formula for the `ValidatorPool` precompile. <br/>This change was done before the `Fork` primitive was introduced. <br/>It was executed by introducing versioned precompiles. |
-| `v0.3.0` | 1093500 | Hard fork upgrade with chain halt    | Introduce the Connect price oracle.                                                                                                                                                     |
-| `v0.4.0` | 1745000 | Hard fork upgrade without chain halt | Update EVM storage root strategy (fix for Mezo Passport create2 problem) and introduce EVM observability for the BTC bridge.                                                            |
-| `v0.5.0` | 2213000 | Hard fork upgrade without chain halt | On-chain precompile versioning. New Upgrade and PriceOracle precompiles and upgrade of the existing Maintenance precompile.                                                             |
-| `v0.6.0` | 2563000 | Hard fork upgrade without chain halt | Introduce the ERC20 bridge and the BTC supply assertion.                                                                                                                                |
-| `v0.7.0` | 3078794 | Hard fork upgrade without chain halt | Fix security issues in the EVM state DB. Introduce proper reverts for precompiles. Add chain fee splitter support. Disable Cosmos transactions.                                         |
-| `v1.0.0-rc0` | 3569000 | Planned upgrade with chain halt    | Patch for a DoS vector in the bridge. Fix for the precompile revert mechanism.                                                                                                           |
-| `v1.0.0-rc1` | 3712500 | Planned upgrade with chain halt    | Patch for mixed precompile addresses.                                                                                                           |
-| `v2.0.2` | 5559500 | Planned upgrade with chain halt    | Bring back parity with mainnet.                                                                                                           |
-| `v3.0.0` | 5695000 | Planned upgrade with chain halt    | [v3.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v3.0.0) |
-| `v4.0.0` | 6853500 | Planned upgrade with chain halt    | [v4.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v4.0.0) |
-| `v5.0.0` | 8838000 | Planned upgrade with chain halt    | [v5.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v5.0.0) |
+| Version        | Block     | Type                                 | Details                                                                                                                                                                                 |
+|----------------|-----------|--------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `v0.1.0`       | 1         | N/A                                  | Initial genesis version.                                                                                                                                                                |
+| `v0.2.0`       | 496901    | Hard fork upgrade without chain halt | Change gas formula for the `ValidatorPool` precompile. <br/>This change was done before the `Fork` primitive was introduced. <br/>It was executed by introducing versioned precompiles. |
+| `v0.3.0`       | 1093500   | Hard fork upgrade with chain halt    | Introduce the Connect price oracle.                                                                                                                                                     |
+| `v0.4.0`       | 1745000   | Hard fork upgrade without chain halt | Update EVM storage root strategy (fix for Mezo Passport create2 problem) and introduce EVM observability for the BTC bridge.                                                            |
+| `v0.5.0`       | 2213000   | Hard fork upgrade without chain halt | On-chain precompile versioning. New Upgrade and PriceOracle precompiles and upgrade of the existing Maintenance precompile.                                                             |
+| `v0.6.0`       | 2563000   | Hard fork upgrade without chain halt | Introduce the ERC20 bridge and the BTC supply assertion.                                                                                                                                |
+| `v0.7.0`       | 3078794   | Hard fork upgrade without chain halt | Fix security issues in the EVM state DB. Introduce proper reverts for precompiles. Add chain fee splitter support. Disable Cosmos transactions.                                         |
+| `v1.0.0-rc0`   | 3569000   | Planned upgrade with chain halt      | Patch for a DoS vector in the bridge. Fix for the precompile revert mechanism.                                                                                                          |
+| `v1.0.0-rc1`   | 3712500   | Planned upgrade with chain halt      | Patch for mixed precompile addresses.                                                                                                                                                   |
+| `v2.0.2`       | 5559500   | Planned upgrade with chain halt      | Bring back parity with mainnet.                                                                                                                                                         |
+| `v3.0.0`       | 5695000   | Planned upgrade with chain halt      | [v3.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v3.0.0)                                                                                                           |
+| `v4.0.0`       | 6853500   | Planned upgrade with chain halt      | [v4.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v4.0.0)                                                                                                           |
+| `v5.0.0`       | 8838000   | Planned upgrade with chain halt      | [v5.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v5.0.0)                                                                                                           |
+| `v6.0.0`       | 10325250  | Planned upgrade with chain halt      | [v6.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v6.0.0)                                                                                                           |
 
 ### Mainnet
 
@@ -196,3 +197,4 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v3.0.0` | 1735000 | Planned upgrade with chain halt      | [v3.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v3.0.0) |
 | `v4.0.0` | 3194000 | Planned upgrade with chain halt      | [v4.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v4.0.0) |
 | `v5.0.0` | 5207000 | Planned upgrade with chain halt      | [v5.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v5.0.0) |
+| `v6.0.0` | TBD     | Planned upgrade with chain halt      | [v6.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v6.0.0) |
