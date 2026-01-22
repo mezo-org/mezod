@@ -8,28 +8,28 @@ const styleCSS = `
     font-family: Arial, sans-serif;
     background-color: #f0f0f0;
   }
-  
+
   .container {
       text-align: center;
   }
-  
+
   .logo {
       width: 250px;
       margin-bottom: 50px;
   }
-  
+
   form {
       display: flex;
       flex-direction: column;
       justify-content: center;
       gap: 10px;
   }
-  
+
   input[type="text"] {
       padding: 8px;
       font-size: 16px;
   }
-  
+
   button {
       padding: 8px 16px;
       font-size: 16px;
@@ -38,6 +38,42 @@ const styleCSS = `
       color: white;
       border: none;
       border-radius: 4px;
+  }
+
+  .token-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 10px;
+  }
+
+  .token-toggle input[type="radio"] {
+      display: none;
+  }
+
+  .token-toggle label {
+      padding: 8px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #e0e0e0;
+      color: #333;
+      border: 1px solid #ccc;
+      transition: background-color 0.2s, color 0.2s;
+  }
+
+  .token-toggle label:first-of-type {
+      border-radius: 4px 0 0 4px;
+  }
+
+  .token-toggle label:last-of-type {
+      border-radius: 0 4px 4px 0;
+      border-left: none;
+  }
+
+  .token-toggle input[type="radio"]:checked + label {
+      background-color: #fc004c;
+      color: white;
+      border-color: #fc004c;
   }
 `
 
@@ -58,10 +94,16 @@ export const indexHTML = (turnstileSiteKey: string) => `
   <body>
   <div class="container">
       <img src="data:image/svg+xml;base64,${logoSVGBase64}" alt="Logo" class="logo">
-  
+
       <form action="/" method="POST">
+          <div class="token-toggle">
+              <input type="radio" id="btc" name="token" value="BTC" checked>
+              <label for="btc">BTC</label>
+              <input type="radio" id="mezo" name="token" value="MEZO">
+              <label for="mezo">MEZO</label>
+          </div>
           <input type="text" name="address" placeholder="0x..." required>
-          <button type="submit">Request BTC</button>
+          <button type="submit">Request Tokens</button>
           <div class="cf-turnstile" data-sitekey="${turnstileSiteKey}"></div>
       </form>
   </div>
@@ -91,7 +133,7 @@ export const errorHTML = (error: string) => `
   </html>
 `
 
-export const successHTML = (txHash: string, amountBTC: string) => `
+export const successHTML = (txHash: string, amount: string, token: string) => `
   <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -105,8 +147,8 @@ export const successHTML = (txHash: string, amountBTC: string) => `
   <body>
   <div class="container">
       <img src="data:image/svg+xml;base64,${logoSVGBase64}" alt="Logo" class="logo">
-      
-      <h1 style="color: green">${amountBTC} BTC sent!</h1>  
+
+      <h1 style="color: green">${amount} ${token} sent!</h1>
       <p><b>Transaction: </b><a href="https://explorer.test.mezo.org/tx/${txHash}">${txHash}</a></p>
   </div>
   </body>
