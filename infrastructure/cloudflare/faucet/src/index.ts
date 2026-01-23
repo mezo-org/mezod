@@ -55,7 +55,7 @@ const publicSend = async (request: Request, env: Env) => {
     return html(errorHTML(invalidTargetAddressError))
   }
 
-  const rl = await rateLimit(env, ip)
+  const rl = await rateLimit(env, ip, token)
   if (!rl.success) {
     const leftMinutes = Math.ceil(rl.left! / 60)
     return html(errorHTML(`Rate limit exceeded. Try again after ${leftMinutes} min.`))
@@ -137,12 +137,12 @@ async function internalSendMEZO(
   return transaction.hash
 }
 
-async function rateLimit(env: Env, ip: string): Promise<{
+async function rateLimit(env: Env, ip: string, token: TokenType): Promise<{
   success: boolean
   left?: number
 }> {
   const now = Math.floor(Date.now() / 1000)
-  const key = `rate-limiter:${ip}`
+  const key = `rate-limiter:${ip}:${token}`
 
   // Get the timestamp when the next request is allowed.
   const nextRequestTimestamp: number | undefined = await env.RATE_LIMITER.get(key)
