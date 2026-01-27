@@ -36,3 +36,33 @@ data:
       time_difference: 3600
       price_deviation: 1
       confidence_ratio: 75
+    - alias: NVDA/USD
+      id: "0xb1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
+    - alias: GOOGL/USD
+      id: "0x5a48c03e9b9cb337801073ed9d166817473697efff0d138874e0f6a33d6d5aa6"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
+    - alias: TSLA/USD
+      id: "0x16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
+    - alias: MSTR/USD
+      id: "0xe1e80251e5f5184f2195008382538e847fafc36f751896889dd3d1b1f6111f09"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
+    - alias: COIN/USD
+      id: "0xfee33f2a978bf32dd6b662b65ba8083c6773b494f8401194ec1870c640860245"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
+    - alias: CRCL/USD
+      id: "0x92b8527aabe59ea2b12230f7b532769b133ffb118dfbd48ff676f14b273f1365"
+      time_difference: 3600
+      price_deviation: 1
+      confidence_ratio: 75
