@@ -50,4 +50,17 @@ interface IMaintenance {
      * @return The minimum gas price of 1 gas unit denominated in abtc (1e18 precision).
      */
     function getMinGasPrice() external view returns (uint256);
+
+    /**
+     * @notice Sets the maximum number of precompile calls allowed per transaction execution.
+     * @param value The new maximum precompile calls per execution.
+     * @dev Must be called by contract owner.
+     */
+    function setMaxPrecompilesCallsPerExecution(uint32 value) external returns (bool);
+
+    /**
+     * @notice Gets the maximum number of precompile calls allowed per transaction execution.
+     * @return The current maximum precompile calls per execution.
+     */
+    function getMaxPrecompilesCallsPerExecution() external view returns (uint32);
 }

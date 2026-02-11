@@ -22,7 +22,7 @@ const (
 
 const (
 	MaintenancePrecompileAddress       = "0x7b7c000000000000000000000000000000000013"
-	MaintenancePrecompileLatestVersion = 4
+	MaintenancePrecompileLatestVersion = 5
 )
 
 const (

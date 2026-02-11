@@ -17,10 +17,11 @@ import (
 	"github.com/mezo-org/mezod/app/upgrades/v3_0"
 	"github.com/mezo-org/mezod/app/upgrades/v4_0"
 	"github.com/mezo-org/mezod/app/upgrades/v5_0"
+	"github.com/mezo-org/mezod/app/upgrades/v6_0"
 )
 
 var (
-	Upgrades = []upgrades.Upgrade{v0_3.Upgrade, v1_0.UpgradeRC0, v1_0.UpgradeRC1, v2_0.Upgrade, v3_0.Upgrade, v4_0.Upgrade, v5_0.Upgrade}
+	Upgrades = []upgrades.Upgrade{v0_3.Upgrade, v1_0.UpgradeRC0, v1_0.UpgradeRC1, v2_0.Upgrade, v3_0.Upgrade, v4_0.Upgrade, v5_0.Upgrade, v6_0.Upgrade}
 	Forks    = []upgrades.Fork{v0_3.Fork, v0_4.Fork, v0_5.Fork, v0_6.Fork, v0_7.Fork}
 )
 
