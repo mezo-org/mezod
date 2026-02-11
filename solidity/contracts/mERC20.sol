@@ -55,6 +55,10 @@ abstract contract mERC20 is ERC20Upgradeable, ERC20PermitUpgradeable, ERC20Burna
         emit MinterChanged(address(0), _minter);
     }
 
+    function initializeV2() external reinitializer(2) {
+        __ERC20Permit_init(name());
+    }
+
     /// @dev Throws if called by any account other than the minter.
     modifier onlyMinter() {
         if (minter != _msgSender()) {
