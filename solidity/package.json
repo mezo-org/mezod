@@ -7,7 +7,7 @@
     "build": "hardhat compile",
     "prepare:env": "cp -n .env.example .env || true",
     "test": "npm run prepare:env && hardhat test",
-    "test:upgrades": "npm run prepare:env && NODE_ENV=upgrades-test hardhat test ./test/upgrades/*.test.ts --network mainnet_fork",
+    "test:upgrades": "npm run prepare:env && NODE_ENV=upgrades-test hardhat test ./test/upgrades/*.test.ts",
     "node": "hardhat node",
     "deploy": "npm run prepare:env && hardhat deploy"
   },

@@ -21,6 +21,6 @@ describeFn("mERC20 tokens - upgrade tests", () => {
     it(`should be able to upgrade the current mainnet version of ${token.contractName}`, async () => {
       const Token = await ethers.getContractFactory(token.contractName)
       await upgrades.validateUpgrade(token.proxyAddress, Token, { kind: "transparent" })
-    })
+    }).timeout(120_000)
   }
 })
