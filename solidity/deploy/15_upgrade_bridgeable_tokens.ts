@@ -29,9 +29,21 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       continue
     }
 
+    deployments.log(
+      `Preparing upgrade for ${token} (proxy: ${existingDeployment.address})`,
+    )
+
+    const callData = (
+      await hre.ethers.getContractFactory(
+        `contracts/${token}.sol:${token}`,
+        deployer,
+      )
+    ).interface.encodeFunctionData("initializeV2")
+
     const { newImplementationAddress, preparedTransaction } =
       await helpers.upgrades.prepareProxyUpgrade(token, token, {
         contractName: `contracts/${token}.sol:${token}`,
+        callData,
         factoryOpts: { signer: deployer },
       })
 
