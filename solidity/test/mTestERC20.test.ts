@@ -14,7 +14,7 @@ describe("mTestERC20", function () {
   let user2: any;
 
   async function fixture() {
-    await deployments.fixture();
+    await deployments.fixture(["mTestERC20"]);
     const signers = await ethers.getSigners();
     owner = signers[0];
     governance = signers[1];
