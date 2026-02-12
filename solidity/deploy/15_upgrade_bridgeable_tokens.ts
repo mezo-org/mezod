@@ -29,18 +29,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       continue
     }
 
-    const factory = await hre.ethers.getContractFactory(
-      token,
-      { signer: deployer },
-    )
-
-    const callData = factory.interface.encodeFunctionData("initializeV2", [])
-
     const { newImplementationAddress, preparedTransaction } =
       await helpers.upgrades.prepareProxyUpgrade(token, token, {
         contractName: `contracts/${token}.sol:${token}`,
         factoryOpts: { signer: deployer },
-        callData,
       })
 
     if (hre.network.name !== "mainnet") {
@@ -48,7 +40,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       await deployer.sendTransaction(preparedTransaction)
     }
 
-    if (hre.network.tags.verify) {
+    if (hre.network.name !== "hardhat") {
       // We use `verify` instead of `verify:verify` as the `verify` task is defined
       // in "@openzeppelin/hardhat-upgrades" to verify the proxy’s implementation
       // contract, the proxy itself and any proxy-related contracts, as well as
