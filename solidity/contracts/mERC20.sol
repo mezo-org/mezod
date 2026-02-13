@@ -3,9 +3,10 @@ pragma solidity 0.8.29;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 
-abstract contract mERC20 is ERC20Upgradeable, ERC20BurnableUpgradeable, Ownable2StepUpgradeable {
+abstract contract mERC20 is ERC20Upgradeable, ERC20PermitUpgradeable, ERC20BurnableUpgradeable, Ownable2StepUpgradeable {
     /// @dev The address of the minter.
     address public minter;
     /// @dev The number of decimals of the token.
@@ -41,6 +42,7 @@ abstract contract mERC20 is ERC20Upgradeable, ERC20BurnableUpgradeable, Ownable2
     ) public initializer {
         __ERC20_init(_name, _symbol);
         __ERC20Burnable_init();
+        __ERC20Permit_init(_name);
         __Ownable_init(_msgSender());
 
         _decimals = _decimalsArg;
@@ -51,6 +53,10 @@ abstract contract mERC20 is ERC20Upgradeable, ERC20BurnableUpgradeable, Ownable2
 
         minter = _minter;
         emit MinterChanged(address(0), _minter);
+    }
+
+    function initializeV2() external reinitializer(2) {
+        __ERC20Permit_init(name());
     }
 
     /// @dev Throws if called by any account other than the minter.
