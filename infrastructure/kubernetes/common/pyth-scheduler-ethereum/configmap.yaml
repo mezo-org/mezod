@@ -11,3 +11,8 @@ data:
       time_difference: 14400
       price_deviation: 0.1
       confidence_ratio: 100
+    - alias: USDT/USD
+      id: "0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b"
+      time_difference: 14400
+      price_deviation: 0.1
+      confidence_ratio: 100
