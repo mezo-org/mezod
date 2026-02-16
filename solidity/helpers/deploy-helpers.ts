@@ -26,7 +26,7 @@ export function mERC20DeployFunctionFactory(
     if (isValidDeployment) {
       log(`Using ${tokenContract} at ${existingDeployment.address}`)
     } else {
-      const [_, deployment] = await helpers.upgrades.deployProxy(
+      const [tokenInstance, deployment] = await helpers.upgrades.deployProxy(
         tokenContract,
         {
           contractName: tokenContract,
@@ -46,6 +46,10 @@ export function mERC20DeployFunctionFactory(
           },
         },
       )
+
+      // TODO: This is a one-off reinitializer for the permit migration. If any
+      // new reinitializers are added, make sure to keep the order here in sync.
+      await tokenInstance.initializeV2()
 
       await helpers.ownable.transferOwnership(tokenContract, governance, deployer)
 

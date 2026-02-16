@@ -46,6 +46,20 @@ const config: HardhatUserConfig = {
   },
   defaultNetwork: 'hardhat',
   networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+      tags: ["allowStubs"],
+      accounts: {
+        count: 100,
+      },
+      ...(process.env.NODE_ENV === "upgrades-test"
+        ? {
+            forking: {
+              url: process.env.MAINNET_RPC_URL || "",
+            },
+          }
+        : {}),
+    },
     testnet: {
       chainId: 31611,
       url: process.env.TESTNET_RPC_URL || "",
