@@ -33,7 +33,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       `Preparing upgrade for ${token} (proxy: ${existingDeployment.address})`,
     )
 
-    // NOTE: The `initilizeV2` function should be updated/omitted for future
+    // NOTE: The `initializeV2` function should be updated/omitted for future
     //       upgrades. It is only needed for the upgrade that introduced EIP-712
     //       support to mERC20.
     const callData = (
