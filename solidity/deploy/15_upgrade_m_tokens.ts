@@ -66,7 +66,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func
 
-func.tags = ["UpgradeBridgeableTokensPermit"]
+func.tags = ["UpgradeMTokens"]
 
 // Comment this line when running an upgrade.
 func.skip = async () => true
