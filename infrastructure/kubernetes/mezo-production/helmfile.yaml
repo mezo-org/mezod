@@ -28,6 +28,6 @@ releases:
     installed: true
     namespace: default
     chart: mezo-org/mezod
-    version: 7.0.0
+    version: 7.0.1
     values:
       - ./values/mezo-rpc-node.yaml
