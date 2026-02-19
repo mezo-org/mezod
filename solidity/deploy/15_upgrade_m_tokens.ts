@@ -14,6 +14,13 @@ const tokens = [
   "mswBTC",
 ]
 
+// WARNING: The prepareProxyUpgrade helper from @keep-network/hardhat-helpers
+//          does not pass through the `redeployImplementation` option to
+//          OpenZeppelin's `prepareUpgrade`. To force redeployment of the
+//          implementation contract (even when bytecode hasn't changed),
+//          you need to add `redeployImplementation: "always"` after line 114 in
+//          `solidity/node_modules/@keep-network/hardhat-helpers/dist/upgrades.js`.
+//          Remember to remove the added line after the upgrade.
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { helpers, deployments } = hre
 
@@ -62,6 +69,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       // link the proxy to the implementation contract’s ABI on (Ether)scan.
       await hre.run("verify", {
         address: newImplementationAddress,
+        contract: `contracts/${token}.sol:${token}`,
       })
     }
   }
