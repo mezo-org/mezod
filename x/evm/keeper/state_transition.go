@@ -68,7 +68,8 @@ func (k *Keeper) NewEVM(
 		Time:        uint64(ctx.BlockHeader().Time.Unix()), //nolint:gosec
 		Difficulty:  big.NewInt(0),                         // unused. Only required in PoW context
 		BaseFee:     cfg.BaseFee,
-		Random:      nil, // not supported
+		BlobBaseFee: big.NewInt(1), // EIP-4844: blob txs are rejected; set to 1 to prevent division-by-zero in contracts using BLOBBASEFEE
+		Random:      nil,           // not supported
 	}
 
 	txCtx := core.NewEVMTxContext(&msg)
