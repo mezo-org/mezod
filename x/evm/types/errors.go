@@ -43,6 +43,7 @@ const (
 	codeErrInvalidAccount
 	codeErrInvalidGasLimit
 	codeErrInvalidSigner
+	codeErrTxTypeNotSupported
 )
 
 var ErrPostTxProcessing = errors.New("failed to execute post processing")
@@ -92,7 +93,8 @@ var (
 
 	// ErrInvalidGasLimit returns an error if gas limit value is invalid
 	ErrInvalidGasLimit = errorsmod.Register(ModuleName, codeErrInvalidGasLimit, "invalid gas limit")
-	ErrInvalidSigner   = errorsmod.Register(ModuleName, codeErrInvalidSigner, "invalid signer")
+	ErrInvalidSigner        = errorsmod.Register(ModuleName, codeErrInvalidSigner, "invalid signer")
+	ErrTxTypeNotSupported   = errorsmod.Register(ModuleName, codeErrTxTypeNotSupported, "transaction type not supported")
 )
 
 // NewExecErrorWithReason unpacks the revert return bytes and returns a wrapped error
