@@ -58,17 +58,32 @@ func (k *Keeper) NewEVM(
 	tracer *tracers.Tracer,
 	stateDB vm.StateDB,
 ) *vm.EVM {
+	blockNumber := big.NewInt(ctx.BlockHeight())
+
+	// Enable Merge rules when current block is at/after MergeNetsplitBlock.
+	isMerge := cfg.ChainConfig.MergeNetsplitBlock != nil &&
+		cfg.ChainConfig.MergeNetsplitBlock.Cmp(blockNumber) <= 0
+
+	// Mezo does NOT support PREVRANDAO. However, go-ethereum uses
+	// `BlockContext.Random != nil` as the switch to enable Paris (the Merge)
+	// when selecting fork rules/opcodes (e.g. PUSH0 in Shanghai). Therefore we
+	// set Random to a non-nil zero hash post-merge.
+	var random *common.Hash // nil pre-merge
+	if isMerge {
+		random = new(common.Hash) // non-nil post-merge
+	}
+
 	blockCtx := vm.BlockContext{
 		CanTransfer: core.CanTransfer,
 		Transfer:    core.Transfer,
 		GetHash:     k.GetHashFn(ctx),
 		Coinbase:    cfg.CoinBase,
 		GasLimit:    mezotypes.BlockGasLimit(ctx),
-		BlockNumber: big.NewInt(ctx.BlockHeight()),
+		BlockNumber: blockNumber,
 		Time:        uint64(ctx.BlockHeader().Time.Unix()), //nolint:gosec
 		Difficulty:  big.NewInt(0),                         // unused. Only required in PoW context
 		BaseFee:     cfg.BaseFee,
-		Random:      nil, // not supported
+		Random:      random,
 	}
 
 	txCtx := core.NewEVMTxContext(&msg)
