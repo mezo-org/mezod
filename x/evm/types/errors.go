@@ -92,9 +92,9 @@ var (
 	ErrInvalidAccount = errorsmod.Register(ModuleName, codeErrInvalidAccount, "account type is not a valid ethereum account")
 
 	// ErrInvalidGasLimit returns an error if gas limit value is invalid
-	ErrInvalidGasLimit = errorsmod.Register(ModuleName, codeErrInvalidGasLimit, "invalid gas limit")
-	ErrInvalidSigner        = errorsmod.Register(ModuleName, codeErrInvalidSigner, "invalid signer")
-	ErrTxTypeNotSupported   = errorsmod.Register(ModuleName, codeErrTxTypeNotSupported, "transaction type not supported")
+	ErrInvalidGasLimit    = errorsmod.Register(ModuleName, codeErrInvalidGasLimit, "invalid gas limit")
+	ErrInvalidSigner      = errorsmod.Register(ModuleName, codeErrInvalidSigner, "invalid signer")
+	ErrTxTypeNotSupported = errorsmod.Register(ModuleName, codeErrTxTypeNotSupported, "transaction type not supported")
 )
 
 // NewExecErrorWithReason unpacks the revert return bytes and returns a wrapped error
