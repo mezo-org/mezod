@@ -87,8 +87,10 @@ func EthHeaderFromTendermint(header tmtypes.Header, bloom ethtypes.Bloom, baseFe
 		Time:        time,
 		Extra:       []byte{},
 		MixDigest:   common.Hash{},
-		Nonce:       ethtypes.BlockNonce{},
-		BaseFee:     baseFee,
+		Nonce:        ethtypes.BlockNonce{},
+		BaseFee:      baseFee,
+		BlobGasUsed:  new(uint64),
+		ExcessBlobGas: new(uint64),
 	}
 }
 
@@ -157,6 +159,9 @@ func FormatBlock(
 	if baseFee != nil {
 		result["baseFeePerGas"] = (*hexutil.Big)(baseFee)
 	}
+
+	result["blobGasUsed"] = hexutil.Uint64(0)
+	result["excessBlobGas"] = hexutil.Uint64(0)
 
 	return result
 }
