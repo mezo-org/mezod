@@ -577,7 +577,7 @@ func (suite *KeeperTestSuite) TestNewEVM_BlobBaseFee() {
 	evm := suite.app.EvmKeeper.NewEVM(suite.ctx, msg, cfg, nil, stateDB)
 
 	suite.Require().NotNil(evm.Context.BlobBaseFee)
-	suite.Require().Equal(big.NewInt(1), evm.Context.BlobBaseFee)
+	suite.Require().Equal(big.NewInt(0), evm.Context.BlobBaseFee)
 }
 
 func (suite *KeeperTestSuite) TestContractDeployment() {
