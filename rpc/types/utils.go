@@ -73,24 +73,22 @@ func EthHeaderFromTendermint(header tmtypes.Header, bloom ethtypes.Bloom, baseFe
 
 	time := uint64(header.Time.UTC().Unix()) //nolint:gosec
 	return &ethtypes.Header{
-		ParentHash:    common.BytesToHash(header.LastBlockID.Hash.Bytes()),
-		UncleHash:     ethtypes.EmptyUncleHash,
-		Coinbase:      common.BytesToAddress(header.ProposerAddress),
-		Root:          common.BytesToHash(header.AppHash),
-		TxHash:        txHash,
-		ReceiptHash:   ethtypes.EmptyRootHash,
-		Bloom:         bloom,
-		Difficulty:    big.NewInt(0),
-		Number:        big.NewInt(header.Height),
-		GasLimit:      0,
-		GasUsed:       0,
-		Time:          time,
-		Extra:         []byte{},
-		MixDigest:     common.Hash{},
-		Nonce:         ethtypes.BlockNonce{},
-		BaseFee:       baseFee,
-		BlobGasUsed:   new(uint64),
-		ExcessBlobGas: new(uint64),
+		ParentHash:  common.BytesToHash(header.LastBlockID.Hash.Bytes()),
+		UncleHash:   ethtypes.EmptyUncleHash,
+		Coinbase:    common.BytesToAddress(header.ProposerAddress),
+		Root:        common.BytesToHash(header.AppHash),
+		TxHash:      txHash,
+		ReceiptHash: ethtypes.EmptyRootHash,
+		Bloom:       bloom,
+		Difficulty:  big.NewInt(0),
+		Number:      big.NewInt(header.Height),
+		GasLimit:    0,
+		GasUsed:     0,
+		Time:        time,
+		Extra:       []byte{},
+		MixDigest:   common.Hash{},
+		Nonce:       ethtypes.BlockNonce{},
+		BaseFee:     baseFee,
 	}
 }
 
@@ -159,9 +157,6 @@ func FormatBlock(
 	if baseFee != nil {
 		result["baseFeePerGas"] = (*hexutil.Big)(baseFee)
 	}
-
-	result["blobGasUsed"] = hexutil.Uint64(0)
-	result["excessBlobGas"] = hexutil.Uint64(0)
 
 	return result
 }
