@@ -130,10 +130,11 @@ See EIP-7569 for the full Dencun EIP list.
 - EIP-4844 (Shard blob transactions)
     - Description: adds type-3 "blob" transactions and blob gas accounting.
       It also adds `BLOBHASH` and the KZG point evaluation precompile at `0x0a`.
-    - Mezo implementation: Mezo enables Cancun for opcode compatibility but
+    - Mezo implementation: Mezo shims EIP-4844 opcodes for compatibility but
       does not support blob transactions. Type-3 transactions are rejected.
-      RPC block fields `blobGasUsed` and `excessBlobGas` are always `0`.
+      RPC block fields `blobGasUsed` and `excessBlobGas` are always `nil`.
       `BLOBHASH` returns `0` because blob hashes are never present.
+      `BLOBBASEFEE` returns `0` because the blob gas market does not exist.
     - Ref: https://eips.ethereum.org/EIPS/eip-4844
 
 - EIP-5656 (MCOPY)
@@ -160,8 +161,7 @@ See EIP-7569 for the full Dencun EIP list.
     - Description: adds `BLOBBASEFEE` to read the current blob base fee from
       the block header.
     - Mezo implementation: since Mezo rejects blob transactions, there is no
-      real blob base fee. `BLOBBASEFEE` returns `1` to avoid division-by-zero
-      in contracts that use it.
+      real blob base fee. `BLOBBASEFEE` returns `0`.
     - Ref: https://eips.ethereum.org/EIPS/eip-7516
 
 Reference list: Dencun meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7569
