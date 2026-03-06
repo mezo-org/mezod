@@ -18,6 +18,7 @@ package types
 import (
 	"math/big"
 
+	errorsmod "cosmossdk.io/errors"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -68,12 +69,17 @@ func NewTxDataFromTx(tx *ethtypes.Transaction) (TxData, error) {
 	var txData TxData
 	var err error
 	switch tx.Type() {
-	case ethtypes.DynamicFeeTxType:
-		txData, err = NewDynamicFeeTx(tx)
+	case ethtypes.LegacyTxType:
+		txData, err = NewLegacyTx(tx)
 	case ethtypes.AccessListTxType:
 		txData, err = newAccessListTx(tx)
+	case ethtypes.DynamicFeeTxType:
+		txData, err = NewDynamicFeeTx(tx)
 	default:
-		txData, err = NewLegacyTx(tx)
+		return nil, errorsmod.Wrapf(
+			ErrTxTypeNotSupported,
+			"transaction type %d is not supported", tx.Type(),
+		)
 	}
 	if err != nil {
 		return nil, err
