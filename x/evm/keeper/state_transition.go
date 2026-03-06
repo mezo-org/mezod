@@ -47,9 +47,8 @@ import (
 // coinbase address to make it available for the COINBASE opcode, even though there is no
 // beneficiary of the coinbase transaction (since we're not mining).
 //
-// NOTE: the RANDOM opcode is currently not supported since it requires
-// RANDAO implementation. See https://github.com/mezo/ethermint/pull/1520#pullrequestreview-1200504697
-// for more information.
+// NOTE: Mezo does not support PREVRANDAO randomness semantics. However, a
+// non-nil Random value is needed to activate Merge fork rules/opcodes.
 
 func (k *Keeper) NewEVM(
 	ctx sdk.Context,
@@ -60,9 +59,8 @@ func (k *Keeper) NewEVM(
 ) *vm.EVM {
 	blockNumber := big.NewInt(ctx.BlockHeight())
 
-	// Enable Merge rules when current block is at/after MergeNetsplitBlock.
-	isMerge := cfg.ChainConfig.MergeNetsplitBlock != nil &&
-		cfg.ChainConfig.MergeNetsplitBlock.Cmp(blockNumber) <= 0
+	// Enable Merge rules when MergeNetsplitBlock is configured.
+	isMerge := cfg.ChainConfig.MergeNetsplitBlock != nil
 
 	// Mezo does NOT support PREVRANDAO. However, go-ethereum uses
 	// `BlockContext.Random != nil` as the switch to enable Paris (the Merge)
