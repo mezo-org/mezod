@@ -6,7 +6,9 @@ Mezo achieves EVM compatibility by implementing components that collectively
 support EVM state transitions and maintaining a developer experience similar to
 Ethereum.
 
-## EVM forks pre-London
+## EVM forks support
+
+### EVM forks up to London
 
 Mezo offers EVM compatibility, supporting all Ethereum features
 up to the London fork. For more information about the London fork, please see
