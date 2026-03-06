@@ -81,6 +81,7 @@ func (k *Keeper) NewEVM(
 		Time:        uint64(ctx.BlockHeader().Time.Unix()), //nolint:gosec
 		Difficulty:  big.NewInt(0),                         // unused. Only required in PoW context
 		BaseFee:     cfg.BaseFee,
+		BlobBaseFee: big.NewInt(0), // EIP-4844: blob txs are rejected
 		Random:      random,
 	}
 

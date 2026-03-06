@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
+	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,4 +89,83 @@ func TestTxData_DeriveChainID(t *testing.T) {
 		chainID := DeriveChainID(v)
 		require.Equal(t, tc.expChainID, chainID, tc.msg)
 	}
+}
+
+func TestNewTxDataFromTx_SupportedTypes(t *testing.T) {
+	to := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
+
+	testCases := []struct {
+		name   string
+		txType uint8
+		tx     *ethtypes.Transaction
+	}{
+		{
+			"legacy tx (type 0)",
+			ethtypes.LegacyTxType,
+			ethtypes.NewTx(&ethtypes.LegacyTx{
+				Nonce:    0,
+				GasPrice: big.NewInt(1),
+				Gas:      21000,
+				To:       &to,
+				Value:    big.NewInt(0),
+			}),
+		},
+		{
+			"access list tx (type 1)",
+			ethtypes.AccessListTxType,
+			ethtypes.NewTx(&ethtypes.AccessListTx{
+				ChainID:  big.NewInt(1),
+				Nonce:    0,
+				GasPrice: big.NewInt(1),
+				Gas:      21000,
+				To:       &to,
+				Value:    big.NewInt(0),
+			}),
+		},
+		{
+			"dynamic fee tx (type 2)",
+			ethtypes.DynamicFeeTxType,
+			ethtypes.NewTx(&ethtypes.DynamicFeeTx{
+				ChainID:   big.NewInt(1),
+				Nonce:     0,
+				GasTipCap: big.NewInt(1),
+				GasFeeCap: big.NewInt(1),
+				Gas:       21000,
+				To:        &to,
+				Value:     big.NewInt(0),
+			}),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.txType, tc.tx.Type())
+			txData, err := NewTxDataFromTx(tc.tx)
+			require.NoError(t, err)
+			require.NotNil(t, txData)
+		})
+	}
+}
+
+func TestNewTxDataFromTx_RejectBlobTx(t *testing.T) {
+	to := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
+
+	blobTx := ethtypes.NewTx(&ethtypes.BlobTx{
+		ChainID:    uint256.NewInt(1),
+		Nonce:      0,
+		GasTipCap:  uint256.NewInt(1),
+		GasFeeCap:  uint256.NewInt(1),
+		Gas:        21000,
+		To:         to,
+		Value:      uint256.NewInt(0),
+		BlobFeeCap: uint256.NewInt(1),
+		BlobHashes: []common.Hash{{}},
+	})
+	require.Equal(t, uint8(ethtypes.BlobTxType), blobTx.Type())
+
+	txData, err := NewTxDataFromTx(blobTx)
+	require.Nil(t, txData)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "transaction type not supported")
+	require.ErrorIs(t, err, ErrTxTypeNotSupported)
 }
