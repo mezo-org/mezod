@@ -186,4 +186,4 @@ the necessary information.
 
 ### Linear templates
 
-- [Mezod Release Checklist Template](https://linear.app/thesis-co/team/TET/new?template=02a8c718-b654-406d-bc08-06de1d7524f3)
+- [Mezod Release Checklist Template](https://linear.app/thesis-co/team/MEZO/new?template=3ce0dd7e-6e16-4a35-824b-ee9386637a38)
