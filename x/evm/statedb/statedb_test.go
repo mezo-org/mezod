@@ -13,6 +13,7 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/app"
 	"github.com/mezo-org/mezod/testutil"
@@ -438,6 +439,59 @@ func (suite *StateDBTestSuite) TestAccessList() {
 	for _, tc := range testCases {
 		db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
 		tc.malleate(*db)
+	}
+}
+
+func (suite *StateDBTestSuite) TestPrepareWarmCoinbase() {
+	testCases := []struct {
+		name               string
+		rules              params.Rules
+		coinbaseShouldWarm bool
+	}{
+		{
+			name: "coinbase not warmed before shanghai",
+			rules: params.Rules{
+				IsEIP2929:  true,
+				IsShanghai: false,
+			},
+			coinbaseShouldWarm: false,
+		},
+		{
+			name: "coinbase warmed in shanghai",
+			rules: params.Rules{
+				IsEIP2929:  true,
+				IsShanghai: true,
+			},
+			coinbaseShouldWarm: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+
+			sender := address
+			destination := address2
+			coinbase := address3
+
+			// AddressInAccessList(...) == true means the address is warm.
+			// sender (address), destination (address2), and coinbase (address3)
+			// are passed to Prepare in that order below.
+			db.Prepare(
+				tc.rules,
+				sender,
+				coinbase,
+				&destination,
+				vm.DefaultActivePrecompiles(tc.rules),
+				nil,
+			)
+
+			// sender and destination are always warmed by Prepare (EIP-2929 path).
+			suite.Require().True(db.AddressInAccessList(sender))
+			suite.Require().True(db.AddressInAccessList(destination))
+			// coinbase warming is enabled only when Shanghai rules are active.
+			suite.Require().Equal(tc.coinbaseShouldWarm, db.AddressInAccessList(coinbase))
+		})
 	}
 }
 
