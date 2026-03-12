@@ -1,5 +1,6 @@
 import { expect } from "chai"
 import hre, { ethers } from "hardhat"
+import { getBytes } from "ethers"
 import type { Selfdestruct6780Check } from "../typechain-types"
 import { getDeployedContract } from "./helpers/contract"
 
@@ -22,6 +23,8 @@ describe("Selfdestruct6780Check", function () {
     let codeBefore: string
     let beneficiaryBalanceBefore: bigint
     let beneficiaryBalanceAfter: bigint
+    let destructibleBalanceBefore: bigint
+    let destructibleBalanceAfter: bigint
     const fundingAmount = 1n
 
     before(async function () {
@@ -38,6 +41,7 @@ describe("Selfdestruct6780Check", function () {
       await fundTx.wait()
 
       codeBefore = await ethers.provider.getCode(destructible)
+      destructibleBalanceBefore = await ethers.provider.getBalance(destructible)
 
       beneficiaryBalanceBefore = await ethers.provider.getBalance(
         beneficiary.address,
@@ -50,10 +54,11 @@ describe("Selfdestruct6780Check", function () {
       beneficiaryBalanceAfter = await ethers.provider.getBalance(
         beneficiary.address,
       )
+      destructibleBalanceAfter = await ethers.provider.getBalance(destructible)
     })
 
     it("should have code before destroy", async function () {
-      expect(codeBefore).to.not.equal("0x")
+      expect(getBytes(codeBefore).length).to.be.greaterThan(0)
     })
 
     it("should keep code unchanged after destroy", async function () {
@@ -75,6 +80,10 @@ describe("Selfdestruct6780Check", function () {
       expect(beneficiaryBalanceAfter - beneficiaryBalanceBefore).to.equal(
         fundingAmount,
       )
+      expect(destructibleBalanceBefore - destructibleBalanceAfter).to.equal(
+        fundingAmount,
+      )
+      expect(destructibleBalanceAfter).to.equal(0n)
     })
   })
 
@@ -100,6 +109,7 @@ describe("Selfdestruct6780Check", function () {
     it("should delete code", async function () {
       const codeAfter = await ethers.provider.getCode(destructible)
       expect(codeAfter).to.equal("0x")
+      expect(getBytes(codeAfter).length).to.equal(0)
     })
 
     it("should fail to call ping", async function () {
