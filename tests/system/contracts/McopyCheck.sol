@@ -21,8 +21,7 @@ contract McopyCheck {
     }
 
     /// @notice Copies overlapping memory ranges where destination is after source.
-    /// @dev EIP-5656 requires memmove-like behavior (as if using an intermediate
-    /// buffer), so overlap must not corrupt source bytes.
+    /// @dev EIP-5656 requires memmove-like behavior for overlapping copies.
     function overlapCopyForward() external pure returns (bytes memory out) {
         out = hex"0102030405060708";
         assembly {
@@ -33,6 +32,7 @@ contract McopyCheck {
     }
 
     /// @notice Copies overlapping memory ranges where destination is before source.
+    /// @dev EIP-5656 requires the same memmove-like behavior in this direction too.
     function overlapCopyBackward() external pure returns (bytes memory out) {
         out = hex"0102030405060708";
         assembly {
