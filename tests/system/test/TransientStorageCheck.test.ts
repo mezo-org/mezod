@@ -56,6 +56,26 @@ describe("TransientStorageCheck", function () {
     expect(value).to.equal(0n)
   })
 
+  it("should use caller transient storage across DELEGATECALL", async function () {
+    const tx = await transientStorageCheck
+      .connect(senderSigner)
+      .delegateCallSetAndLoad(await transientStorageReader.getAddress(), 5n, 321n)
+    await tx.wait()
+
+    expect(await transientStorageCheck.lastLoaded()).to.equal(321n)
+    expect(await transientStorageReader.lastLoaded()).to.equal(0n)
+  })
+
+  it("should use caller transient storage across CALLCODE", async function () {
+    const tx = await transientStorageCheck
+      .connect(senderSigner)
+      .callCodeSetAndLoad(await transientStorageReader.getAddress(), 6n, 654n)
+    await tx.wait()
+
+    expect(await transientStorageCheck.lastLoaded()).to.equal(654n)
+    expect(await transientStorageReader.lastLoaded()).to.equal(0n)
+  })
+
   it("should fail TSTORE in STATICCALL context", async function () {
     const lastLoadedBefore = await transientStorageCheck.lastLoaded()
     const [success] = await transientStorageCheck.staticCallSetAndLoad.staticCall(

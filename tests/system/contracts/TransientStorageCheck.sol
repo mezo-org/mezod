@@ -6,6 +6,26 @@ interface ITransientStorageReader {
 }
 
 contract TransientStorageReader {
+    /// @notice Stores the last value this contract observed during a test path.
+    uint256 public lastLoaded;
+
+    function writeAndLoad(uint256 key, uint256 value)
+        external
+        returns (uint256 loaded)
+    {
+        assembly {
+            tstore(key, value)
+            loaded := tload(key)
+        }
+    }
+
+    function storeLoaded(uint256 key) external returns (uint256 loaded) {
+        assembly {
+            loaded := tload(key)
+        }
+        lastLoaded = loaded;
+    }
+
     function load(uint256 key) external view returns (uint256 loaded) {
         assembly {
             loaded := tload(key)
@@ -65,6 +85,58 @@ contract TransientStorageCheck {
         }
         loaded = ITransientStorageReader(other).load(key);
         lastLoaded = loaded;
+    }
+
+    /// @notice Writes via DELEGATECALL, then reads from this contract and other.
+    /// @dev EIP-1153 assigns transient storage to the caller under DELEGATECALL.
+    function delegateCallSetAndLoad(
+        address target,
+        uint256 key,
+        uint256 value
+    ) external returns (uint256 loaded) {
+        (bool success, ) = target.delegatecall(
+            abi.encodeWithSelector(
+                TransientStorageReader.writeAndLoad.selector,
+                key,
+                value
+            )
+        );
+        require(success, "DELEGATECALL failed");
+
+        loaded = this.load(key);
+        lastLoaded = loaded;
+        TransientStorageReader(target).storeLoaded(key);
+    }
+
+    /// @notice Writes via CALLCODE, then reads from this contract and other.
+    /// @dev EIP-1153 assigns transient storage to the caller under CALLCODE too.
+    function callCodeSetAndLoad(
+        address target,
+        uint256 key,
+        uint256 value
+    ) external returns (uint256 loaded) {
+        bytes memory payload = abi.encodeWithSelector(
+            TransientStorageReader.writeAndLoad.selector,
+            key,
+            value
+        );
+        bool success;
+        assembly {
+            success := callcode(
+                gas(),
+                target,
+                0,
+                add(payload, 0x20),
+                mload(payload),
+                0,
+                0
+            )
+        }
+        require(success, "CALLCODE failed");
+
+        loaded = this.load(key);
+        lastLoaded = loaded;
+        TransientStorageReader(target).storeLoaded(key);
     }
 
     /// @notice Performs a STATICCALL to setAndLoad.
