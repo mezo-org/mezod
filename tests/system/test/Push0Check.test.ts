@@ -18,6 +18,11 @@ describe("Push0Check", function () {
     expect(value).to.equal(0n)
   })
 
+  it("should return zero from assembly", async function () {
+    const value = await push0Check.zeroFromAssembly()
+    expect(value).to.equal(0n)
+  })
+
   it("should compile with PUSH0 in opcode listing", async function () {
     const opcodes = await getContractOpcodes("Push0Check")
     expect(opcodes).to.include("PUSH0")
