@@ -20,4 +20,19 @@ contract InitcodeLimitCheck {
         require(deployed != address(0), "CREATE failed");
         lastDeployed = deployed;
     }
+
+    /// @notice Tries to deploy initcode of an exact byte size using CREATE2.
+    /// @dev Reverts when CREATE2 fails (for example, size > 49152 under EIP-3860).
+    function deployWithInitcodeSizeCreate2(uint256 size, bytes32 salt)
+        external
+        returns (address deployed)
+    {
+        bytes memory initcode = new bytes(size);
+        assembly {
+            deployed := create2(0, add(initcode, 0x20), mload(initcode), salt)
+        }
+
+        require(deployed != address(0), "CREATE2 failed");
+        lastDeployed = deployed;
+    }
 }

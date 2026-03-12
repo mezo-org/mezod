@@ -6,7 +6,7 @@ import { getDeployedContract } from "./helpers/contract"
 describe("InitcodeLimitCheck", function () {
   const { deployments } = hre
   const maxInitcodeSize = 49152n
-  const oversizedInitcodeSize = 49153n
+  const oversizedInitcodeSize = maxInitcodeSize + 1n
   let initcodeLimitCheck: InitcodeLimitCheck
   let senderSigner: any
 
@@ -17,7 +17,7 @@ describe("InitcodeLimitCheck", function () {
     senderSigner = signers[1]
   }
 
-  describe("deployWithInitcodeSize", function () {
+  describe("CREATE", function () {
     before(async function () {
       await fixture()
     })
@@ -47,6 +47,56 @@ describe("InitcodeLimitCheck", function () {
         const tx = await initcodeLimitCheck
           .connect(senderSigner)
           .deployWithInitcodeSize(oversizedInitcodeSize, { gasLimit: 10_000_000 })
+        await tx.wait()
+      })()).to.be.rejected
+    })
+  })
+
+  describe("CREATE2", function () {
+    const smallInitcodeSalt =
+      "0x1111111111111111111111111111111111111111111111111111111111111111"
+    const maxInitcodeSalt =
+      "0x2222222222222222222222222222222222222222222222222222222222222222"
+    const oversizedInitcodeSalt =
+      "0x3333333333333333333333333333333333333333333333333333333333333333"
+
+    before(async function () {
+      await fixture()
+    })
+
+    it("should deploy small initcode", async function () {
+        const tx = await initcodeLimitCheck
+          .connect(senderSigner)
+        .deployWithInitcodeSizeCreate2(5n, smallInitcodeSalt, {
+          gasLimit: 1_000_000,
+        })
+      await tx.wait()
+
+      const deployed = await initcodeLimitCheck.lastDeployed()
+      expect(deployed).to.not.equal("0x0000000000000000000000000000000000000000")
+    })
+
+    it("should deploy initcode at 49152 bytes", async function () {
+        const tx = await initcodeLimitCheck
+          .connect(senderSigner)
+        .deployWithInitcodeSizeCreate2(maxInitcodeSize, maxInitcodeSalt, {
+          gasLimit: 10_000_000,
+        })
+      await tx.wait()
+
+      const deployed = await initcodeLimitCheck.lastDeployed()
+      expect(deployed).to.not.equal("0x0000000000000000000000000000000000000000")
+    })
+
+    it("should reject initcode above 49152 bytes", async function () {
+      await expect((async () => {
+        const tx = await initcodeLimitCheck
+          .connect(senderSigner)
+          .deployWithInitcodeSizeCreate2(
+            oversizedInitcodeSize,
+            oversizedInitcodeSalt,
+            { gasLimit: 10_000_000 },
+          )
         await tx.wait()
       })()).to.be.rejected
     })
