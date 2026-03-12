@@ -14,10 +14,12 @@ contract TransientStorageReader {
 }
 
 contract TransientStorageCheck {
+    /// @notice Stores the last value observed during a state-changing test path.
+    /// @dev We use this because transient storage is cleared after each tx.
     uint256 public lastLoaded;
 
     /// @notice Stores a transient value and reads it back in the same call.
-    /// @dev This proves TSTORE + TLOAD work within one transaction.
+    /// @dev lastLoaded captures the result so tests can inspect it later.
     function setAndLoad(uint256 key, uint256 value)
         external
         returns (uint256 loaded)
@@ -39,8 +41,7 @@ contract TransientStorageCheck {
     }
 
     /// @notice Stores transient value, then reads it via an external call.
-    /// @dev This checks that transient storage is shared across call frames of
-    /// the same contract inside one transaction.
+    /// @dev lastLoaded captures the result across same-contract call frames.
     function setAndExternalLoad(uint256 key, uint256 value)
         external
         returns (uint256 loaded)
@@ -53,7 +54,7 @@ contract TransientStorageCheck {
     }
 
     /// @notice Stores transient value, then asks another contract to read it.
-    /// @dev This checks that transient storage is not shared across contracts.
+    /// @dev lastLoaded captures that another contract sees its own storage.
     function setAndOtherContractLoad(
         address other,
         uint256 key,
