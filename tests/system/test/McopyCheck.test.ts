@@ -20,6 +20,11 @@ describe("McopyCheck", function () {
     expect(output).to.equal(input)
   })
 
+  it("should copy empty bytes with MCOPY", async function () {
+    const output = await mcopyCheck.copy.staticCall("0x")
+    expect(output).to.equal("0x")
+  })
+
   it("should handle overlapping copy (destination after source)", async function () {
     const output = await mcopyCheck.overlapCopyForward.staticCall()
     expect(output).to.equal("0x0102010203040506")
@@ -28,6 +33,11 @@ describe("McopyCheck", function () {
   it("should handle overlapping copy (destination before source)", async function () {
     const output = await mcopyCheck.overlapCopyBackward.staticCall()
     expect(output).to.equal("0x0304050607080708")
+  })
+
+  it("should treat zero-length overlapping copy as a no-op", async function () {
+    const output = await mcopyCheck.zeroLengthOverlapCopy.staticCall()
+    expect(output).to.equal("0x0102030405060708")
   })
 
   it("should compile with MCOPY in opcode listing", async function () {

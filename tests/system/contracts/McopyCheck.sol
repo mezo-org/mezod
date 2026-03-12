@@ -41,4 +41,14 @@ contract McopyCheck {
             mcopy(ptr, add(ptr, 2), 6)
         }
     }
+
+    /// @notice Performs a zero-length overlapping copy.
+    /// @dev Zero-length MCOPY should be a no-op even with overlapping ranges.
+    function zeroLengthOverlapCopy() external pure returns (bytes memory out) {
+        out = hex"0102030405060708";
+        assembly {
+            let ptr := add(out, 0x20)
+            mcopy(add(ptr, 2), ptr, 0)
+        }
+    }
 }
