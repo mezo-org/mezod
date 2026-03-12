@@ -61,6 +61,16 @@ describe("Selfdestruct6780Check", function () {
       expect(codeAfter).to.equal(codeBefore)
     })
 
+    it("should still respond to ping after destroy", async function () {
+      const destructibleContract = await ethers.getContractAt(
+        "DestructibleContract6780",
+        destructible,
+      )
+
+      const value = await destructibleContract.ping()
+      expect(value).to.equal(1n)
+    })
+
     it("should transfer balance to beneficiary", async function () {
       expect(beneficiaryBalanceAfter - beneficiaryBalanceBefore).to.equal(
         fundingAmount,
