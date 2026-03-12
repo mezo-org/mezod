@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+interface ITransientStorageReader {
+    function load(uint256 key) external view returns (uint256 loaded);
+}
+
+contract TransientStorageReader {
+    function load(uint256 key) external view returns (uint256 loaded) {
+        assembly {
+            loaded := tload(key)
+        }
+    }
+}
+
 contract TransientStorageCheck {
     uint256 public lastLoaded;
 
@@ -37,6 +49,20 @@ contract TransientStorageCheck {
             tstore(key, value)
         }
         loaded = this.load(key);
+        lastLoaded = loaded;
+    }
+
+    /// @notice Stores transient value, then asks another contract to read it.
+    /// @dev This checks that transient storage is not shared across contracts.
+    function setAndOtherContractLoad(
+        address other,
+        uint256 key,
+        uint256 value
+    ) external returns (uint256 loaded) {
+        assembly {
+            tstore(key, value)
+        }
+        loaded = ITransientStorageReader(other).load(key);
         lastLoaded = loaded;
     }
 

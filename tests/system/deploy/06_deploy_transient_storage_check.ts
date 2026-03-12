@@ -14,6 +14,15 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     log: true,
     waitConfirmations: 1,
   })
+
+  console.log("Deploying TransientStorageReader contract...")
+
+  await deployments.deploy("TransientStorageReader", {
+    from: deployer,
+    args: [],
+    log: true,
+    waitConfirmations: 1,
+  })
 }
 
 export default func

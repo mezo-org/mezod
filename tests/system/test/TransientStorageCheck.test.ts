@@ -1,16 +1,21 @@
 import { expect } from "chai"
 import hre from "hardhat"
-import type { TransientStorageCheck } from "../typechain-types"
+import type {
+  TransientStorageCheck,
+  TransientStorageReader,
+} from "../typechain-types"
 import { getDeployedContract } from "./helpers/contract"
 
 describe("TransientStorageCheck", function () {
   const { deployments } = hre
   let transientStorageCheck: TransientStorageCheck
+  let transientStorageReader: TransientStorageReader
   let senderSigner: any
 
   before(async function () {
     await deployments.fixture(["TransientStorageCheck"])
     transientStorageCheck = await getDeployedContract("TransientStorageCheck")
+    transientStorageReader = await getDeployedContract("TransientStorageReader")
     const signers = await hre.ethers.getSigners()
     senderSigner = signers[1]
   })
@@ -39,6 +44,16 @@ describe("TransientStorageCheck", function () {
 
     const value = await transientStorageCheck.lastLoaded()
     expect(value).to.equal(456n)
+  })
+
+  it("should not share transient value across different contracts", async function () {
+    const tx = await transientStorageCheck
+      .connect(senderSigner)
+      .setAndOtherContractLoad(await transientStorageReader.getAddress(), 4n, 999n)
+    await tx.wait()
+
+    const value = await transientStorageCheck.lastLoaded()
+    expect(value).to.equal(0n)
   })
 
   it("should fail TSTORE in STATICCALL context", async function () {
