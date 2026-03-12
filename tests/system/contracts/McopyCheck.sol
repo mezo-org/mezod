@@ -51,4 +51,16 @@ contract McopyCheck {
             mcopy(add(ptr, 2), ptr, 0)
         }
     }
+
+    /// @notice Copies 8 bytes from a source payload that initializes only 4 bytes.
+    /// @dev The remaining 4 copied bytes come from zero-initialized EVM memory.
+    function copyPastSourceLength() external pure returns (bytes memory out) {
+        bytes memory input = hex"01020304";
+        out = new bytes(8);
+        assembly {
+            let src := add(input, 0x20)
+            let dst := add(out, 0x20)
+            mcopy(dst, src, 8)
+        }
+    }
 }

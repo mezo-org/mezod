@@ -40,6 +40,11 @@ describe("McopyCheck", function () {
     expect(output).to.equal("0x0102030405060708")
   })
 
+  it("should copy zero-initialized bytes past source length", async function () {
+    const output = await mcopyCheck.copyPastSourceLength.staticCall()
+    expect(output).to.equal("0x0102030400000000")
+  })
+
   it("should compile with MCOPY in opcode listing", async function () {
     const opcodes = await getContractOpcodes("McopyCheck")
     expect(opcodes).to.include("MCOPY")
