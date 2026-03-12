@@ -48,7 +48,7 @@ describe("InitcodeLimitCheck", function () {
           .connect(senderSigner)
           .deployWithInitcodeSize(oversizedInitcodeSize, { gasLimit: 10_000_000 })
         await tx.wait()
-      })()).to.be.rejected
+      })()).to.be.rejectedWith("transaction execution reverted")
     })
   })
 
@@ -65,8 +65,8 @@ describe("InitcodeLimitCheck", function () {
     })
 
     it("should deploy small initcode", async function () {
-        const tx = await initcodeLimitCheck
-          .connect(senderSigner)
+      const tx = await initcodeLimitCheck
+        .connect(senderSigner)
         .deployWithInitcodeSizeCreate2(5n, smallInitcodeSalt, {
           gasLimit: 1_000_000,
         })
@@ -77,8 +77,8 @@ describe("InitcodeLimitCheck", function () {
     })
 
     it("should deploy initcode at 49152 bytes", async function () {
-        const tx = await initcodeLimitCheck
-          .connect(senderSigner)
+      const tx = await initcodeLimitCheck
+        .connect(senderSigner)
         .deployWithInitcodeSizeCreate2(maxInitcodeSize, maxInitcodeSalt, {
           gasLimit: 10_000_000,
         })
@@ -98,7 +98,7 @@ describe("InitcodeLimitCheck", function () {
             { gasLimit: 10_000_000 },
           )
         await tx.wait()
-      })()).to.be.rejected
+      })()).to.be.rejectedWith("transaction execution reverted")
     })
   })
 
@@ -126,7 +126,7 @@ describe("InitcodeLimitCheck", function () {
           data: "0x" + "00".repeat(Number(oversizedInitcodeSize)),
           gasLimit: 10_000_000,
         }),
-      ).to.be.rejected
+      ).to.be.rejectedWith("the initcode size of this transaction is too large")
     })
   })
 })
