@@ -26,7 +26,7 @@ describe("TransientStorageCheck", function () {
   it("should clear transient value between transactions", async function () {
     const tx = await transientStorageCheck.connect(senderSigner).setAndLoad(1n, 123n)
     await tx.wait()
-    const nextTxValue = await transientStorageCheck.load.staticCall(1n)
+    const nextTxValue = await transientStorageCheck.load(1n)
 
     expect(nextTxValue).to.equal(0n)
   })
