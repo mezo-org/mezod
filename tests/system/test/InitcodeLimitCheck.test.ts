@@ -102,7 +102,7 @@ describe("InitcodeLimitCheck", function () {
     })
   })
 
-  describe("top-level create transaction", function () {
+  describe("externally submitted contract creation", function () {
     before(async function () {
       await fixture()
     })
