@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 
 /// @notice Minimal factory to test EIP-3860 initcode size limits.
 /// @dev It deploys raw initcode filled with STOP (`0x00`) bytes.
