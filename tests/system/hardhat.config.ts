@@ -27,6 +27,9 @@ function getPrivKeys (): string[] {
 
 const config: HardhatUserConfig = {
   solidity: "0.8.28",
+  mocha: {
+    timeout: 120000,
+  },
 
   namedAccounts: {
     deployer: {

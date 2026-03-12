@@ -6,11 +6,167 @@ Mezo achieves EVM compatibility by implementing components that collectively
 support EVM state transitions and maintaining a developer experience similar to
 Ethereum.
 
-## EVM forks
+## EVM forks support
+
+### EVM forks up to London
 
 Mezo offers EVM compatibility, supporting all Ethereum features
 up to the London fork. For more information about the London fork, please see
 [here](https://ethereum.org/en/history/#london).
+
+### EVM forks post-London
+
+Mezo sets post-London forks in its chain config. In some cases, Mezo's runtime
+behavior can deviate from Ethereum. For example, Mezo does not support
+PREVRANDAO (EIP-4399) and does not support blob transactions (EIP-4844).
+See the fork/EIP notes below for details.
+
+#### Arrow Glacier
+
+Arrow Glacier (EIP-4345) only delayed Ethereum's PoW difficulty bomb and did
+not change EVM execution.
+
+#### Gray Glacier
+
+Gray Glacier (EIP-5133) did the same; Mezo does not use a PoW difficulty bomb, so
+neither Glacier fork affects Mezo's EVM compatibility.
+
+#### Paris (The Merge)
+
+Paris is Ethereum's Merge upgrade. It changed contract-visible EVM behavior
+and also changed Ethereum consensus. Mezo runs on CometBFT, so only the EVM
+execution semantics matter directly.
+
+- EIP-4399 (PREVRANDAO / opcode `0x44`)
+    - Description: changes opcode `0x44` from `DIFFICULTY` (PoW mining
+      difficulty) to `PREVRANDAO` (beacon-chain randomness value).
+    - Mezo implementation: PREVRANDAO is not supported. Mezo does not provide
+      an EVM randomness value, so contracts observe `0` for opcode `0x44`.
+      Contracts must not use `DIFFICULTY`/`PREVRANDAO` as a randomness source
+      on Mezo.
+    - Ref: https://eips.ethereum.org/EIPS/eip-4399
+
+- EIP-3675 (The Merge consensus transition)
+    - Description: transitions Ethereum block production from PoW to PoS.
+    - Mezo implementation: not applicable to Mezo block production (Mezo runs
+      on CometBFT).
+    - Ref: https://eips.ethereum.org/EIPS/eip-3675
+
+#### Shanghai (Shapella - execution part)
+
+Shanghai is an execution-layer upgrade that changed EVM behavior and gas rules.
+
+- EIP-3651 (Warm COINBASE)
+    - Description: treats the block `COINBASE` address as 'warm' at the start
+      of each tx, so the first access costs less gas. This only changes gas
+      usage (except edge cases where a tx runs out of gas).
+    - Mezo implementation: implemented in `StateDB.Prepare` by adding
+      `coinbase` to the access list when Shanghai is active.
+    - Ref: https://eips.ethereum.org/EIPS/eip-3651
+
+- EIP-3855 (PUSH0)
+    - Description: pre-Shanghai, contracts pushed `0` as `PUSH1 0x00`. Shanghai
+      adds `PUSH0` (`0x5f`) to push `0` directly, making bytecode slightly
+      smaller and cheaper without changing contract logic.
+    - Mezo implementation: supported in the underlying VM when Shanghai is
+      active.
+    - Ref: https://eips.ethereum.org/EIPS/eip-3855
+
+- EIP-3860 (Initcode size limit and metering)
+    - Description: pre-Shanghai, there was no explicit initcode size limit.
+      Shanghai caps initcode to 49152 bytes and charges extra gas (2 gas per
+      32-byte word) so very large deployments cost more. If initcode is too
+      large, contract creation fails. This only affects contract creation
+      (deployments and CREATE/CREATE2), not normal execution of already
+      deployed contracts.
+    - Mezo implementation: supported in the underlying VM when Shanghai is
+      active (create-tx size checks and initcode metering).
+    - Ref: https://eips.ethereum.org/EIPS/eip-3860
+
+- EIP-4895 (Beacon chain withdrawals)
+    - Description: adds a system-level list of balance credits ("withdrawals")
+      to blocks, used to pay out validator staking withdrawals into normal
+      accounts. This is block processing, not a user transaction: the client
+      applies these balance credits before transactions run.
+    - Mezo implementation: Mezo does not have Beacon-chain withdrawals, so
+      blocks won't include EIP-4895 withdrawals processing.
+    - Ref: https://eips.ethereum.org/EIPS/eip-4895
+
+- EIP-6049 (SELFDESTRUCT deprecation notice)
+    - Description: adds an official warning that `SELFDESTRUCT` is deprecated
+      and its behavior may change in future forks. EIP-6049 itself does not
+      change EVM execution, so it does not change transaction outcomes.
+    - Mezo implementation: `SELFDESTRUCT` is supported. See EIP-6780 below for
+      the current Cancun fork semantics on Mezo.
+    - Ref: https://eips.ethereum.org/EIPS/eip-6049
+
+#### Cancun (Dencun - execution part)
+
+Cancun is the execution-layer part of Dencun on Ethereum. It adds new opcodes
+and runtime behavior, including transient storage and blob-transaction support.
+
+Note: the full Dencun upgrade also includes consensus-layer EIPs. Mezo runs on
+CometBFT, so only the execution-layer EIPs below apply directly.
+See EIP-7569 for the full Dencun EIP list.
+
+- EIP-1153 (Transient storage opcodes)
+    - Description: adds `TLOAD` (`0x5c`) and `TSTORE` (`0x5d`) for
+      "transaction-scoped" storage: contracts can store a value and read it
+      back later in the same transaction (including across internal calls),
+      but it is always cleared after the transaction finishes. This enables
+      cheap per-tx caches and reentrancy locks without writing permanent storage.
+    - Mezo implementation: supported via `StateDB` transient storage and reset
+      at the start of each transaction.
+    - Ref: https://eips.ethereum.org/EIPS/eip-1153
+
+- EIP-4788 (Beacon block root in the EVM)
+    - Description: makes a piece of Ethereum consensus-layer data available to
+      contracts: the parent beacon block root. The execution client writes it
+      to a fixed "system contract" address during block processing so
+      contracts can query recent roots.
+    - Mezo implementation: Mezo does not run Ethereum consensus, so there is
+      no beacon root source. It is reasonable to treat EIP-4788 as out-of-scope
+      because it depends on consensus-layer data that Mezo does not have.
+    - Ref: https://eips.ethereum.org/EIPS/eip-4788
+
+- EIP-4844 (Shard blob transactions)
+    - Description: adds type-3 "blob" transactions and blob gas accounting.
+      It also adds `BLOBHASH` and the KZG point evaluation precompile at `0x0a`.
+    - Mezo implementation: Mezo shims EIP-4844 opcodes for compatibility but
+      does not support blob transactions. Type-3 transactions are rejected.
+      RPC block fields `blobGasUsed` and `excessBlobGas` are always `nil`.
+      `BLOBHASH` returns `0` because blob hashes are never present.
+      `BLOBBASEFEE` returns `0` because the blob gas market does not exist.
+    - Ref: https://eips.ethereum.org/EIPS/eip-4844
+
+- EIP-5656 (MCOPY)
+    - Description: adds `MCOPY` (`0x5e`) to copy a range of EVM memory bytes
+      in one instruction. It replaces slower patterns like loops over
+      `MLOAD`/`MSTORE` or calling the identity precompile for memory copying.
+      This is mainly a gas/performance change (except edge cases where a tx
+      runs out of gas).
+    - Mezo implementation: supported in the underlying VM when Cancun is
+      active.
+    - Ref: https://eips.ethereum.org/EIPS/eip-5656
+
+- EIP-6780 (SELFDESTRUCT only in same transaction)
+    - Description: `SELFDESTRUCT` transfers a contract's ETH balance to a
+      beneficiary. Before Cancun, it also deleted the contract's code and
+      storage at the end of the transaction. Since Cancun (EIP-6780), deletion
+      only happens if the contract was created in the same transaction;
+      otherwise only the balance is transferred.
+    - Mezo implementation: supported in the underlying VM when Cancun is
+      active.
+    - Ref: https://eips.ethereum.org/EIPS/eip-6780
+
+- EIP-7516 (BLOBBASEFEE opcode)
+    - Description: adds `BLOBBASEFEE` to read the current blob base fee from
+      the block header.
+    - Mezo implementation: since Mezo rejects blob transactions, there is no
+      real blob base fee. `BLOBBASEFEE` returns `0`.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7516
+
+Reference list: Dencun meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7569
 
 ## EVM JSON-RPC API reference
 
@@ -96,7 +252,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}
 
 #### eth_coinbase
 
-- **Description**: Returns the client’s coinbase address (mining beneficiary).
+- **Description**: Returns the client's coinbase address (mining beneficiary).
 This address is where any mining rewards will be sent if the node is mining.
 - **Parameters**: None.
 - **Returns**: `String` - Coinbase address.
@@ -107,7 +263,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1
 
 #### eth_chainId
 
-- **Description**: Returns the client’s chain ID.
+- **Description**: Returns the client's chain ID.
 - **Parameters**: None.
 - **Returns**: `String` - Chain ID.
 
@@ -382,7 +538,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","para
     or "pending", "earliest" for not yet mined transactions.
     - `address`: DATA|Array, 20 Bytes - (optional) Contract address or a list of addresses from which logs should originate.
     - `topics`: Array of DATA, - (optional) Array of 32 Bytes DATA topics. Topics are order-dependent. Each topic can
-    also be an array of DATA with “or” options.
+    also be an array of DATA with "or" options.
     - `blockhash`: (optional, future) With the addition of EIP-234, blockHash will be a new filter option which restricts
     the logs returned to the single block with the 32-byte hash blockHash. Using blockHash is equivalent to fromBlock =
     toBlock = the block number with hash blockHash. If blockHash is present in in the filter criteria, then neither fromBlock
