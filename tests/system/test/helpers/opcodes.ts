@@ -1,11 +1,11 @@
 import hre from "hardhat"
 
 /**
- * Get deployed opcode listing for a compiled contract from Hardhat build info.
+ * Get opcode listing for a compiled contract from Hardhat build info.
  * @param contractName Name of the compiled contract.
- * @returns Deployed opcodes emitted by solc.
+ * @returns Opcodes emitted by solc.
  */
-export async function getDeployedOpcodes(
+export async function getContractOpcodes(
   contractName: string,
 ): Promise<string[]> {
   const artifact = await hre.artifacts.readArtifact(contractName)

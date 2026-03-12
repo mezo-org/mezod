@@ -2,7 +2,7 @@ import { expect } from "chai"
 import hre from "hardhat"
 import type { Push0Check } from "../typechain-types"
 import { getDeployedContract } from "./helpers/contract"
-import { getDeployedOpcodes } from "./helpers/opcodes"
+import { getContractOpcodes } from "./helpers/opcodes"
 
 describe("Push0Check", function () {
   const { deployments } = hre
@@ -19,7 +19,7 @@ describe("Push0Check", function () {
   })
 
   it("should compile with PUSH0 in opcode listing", async function () {
-    const opcodes = await getDeployedOpcodes("Push0Check")
+    const opcodes = await getContractOpcodes("Push0Check")
     expect(opcodes).to.include("PUSH0")
   })
 })

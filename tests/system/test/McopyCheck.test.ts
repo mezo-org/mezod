@@ -2,7 +2,7 @@ import { expect } from "chai"
 import hre from "hardhat"
 import type { McopyCheck } from "../typechain-types"
 import { getDeployedContract } from "./helpers/contract"
-import { getDeployedOpcodes } from "./helpers/opcodes"
+import { getContractOpcodes } from "./helpers/opcodes"
 
 describe("McopyCheck", function () {
   const { deployments } = hre
@@ -31,7 +31,7 @@ describe("McopyCheck", function () {
   })
 
   it("should compile with MCOPY in opcode listing", async function () {
-    const opcodes = await getDeployedOpcodes("McopyCheck")
+    const opcodes = await getContractOpcodes("McopyCheck")
     expect(opcodes).to.include("MCOPY")
   })
 })
