@@ -16,7 +16,6 @@ describe("TransientStorageCheck", function () {
   })
 
   it("should load transient value in the same transaction", async function () {
-    // Use a real tx: TSTORE must fail under static context.
     const tx = await transientStorageCheck.connect(senderSigner).setAndLoad(1n, 123n)
     await tx.wait()
 
@@ -33,7 +32,6 @@ describe("TransientStorageCheck", function () {
   })
 
   it("should keep transient value across same-contract call frames in one transaction", async function () {
-    // Use a real tx: TSTORE must fail under static context.
     const tx = await transientStorageCheck
       .connect(senderSigner)
       .setAndExternalLoad(2n, 456n)
