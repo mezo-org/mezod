@@ -12,8 +12,7 @@ export async function getDeployedContract<T extends BaseContract>(
   deploymentName: string,
 ): Promise<T> {
   const { address, abi } = await deployments.get(deploymentName)
-  // Use default unnamed signer from index 0 to initialize the contract runner.
-  const [defaultSigner] = await ethers.getSigners(); // use index or further logic to select the needed signer
+  const [defaultSigner] = await ethers.getSigners()
 
   return new ethers.BaseContract(address, abi, defaultSigner) as T
 }

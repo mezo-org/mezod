@@ -1,13 +1,14 @@
 import { expect } from "chai"
 import hre from "hardhat"
+import type { RandaoCheck } from "../typechain-types"
 import { getDeployedContract } from "./helpers/contract"
 
 describe("RandaoCheck", function () {
   const { deployments } = hre
-  let randaoCheck: any
+  let randaoCheck: RandaoCheck
 
   before(async function () {
-    await deployments.fixture()
+    await deployments.fixture(["RandaoCheck"])
     randaoCheck = await getDeployedContract("RandaoCheck")
   })
 

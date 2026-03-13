@@ -18,7 +18,7 @@ describe("BTCTransfers", function () {
   let recipientAddress: string;
 
   const fixture = (async function () {
-    await deployments.fixture();
+    await deployments.fixture(["BTCTransfers"]);
     btcErc20Token = new hre.ethers.Contract(precompileAddress, abi, ethers.provider);
     btcTransfers = await getDeployedContract("BTCTransfers");
     otherSpender = await(await getDeployedContract("OtherSpender")).getAddress();

@@ -26,7 +26,12 @@ function getPrivKeys (): string[] {
 }
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.28",
+  solidity: {
+    version: "0.8.28",
+    settings: {
+      evmVersion: "cancun",
+    },
+  },
   mocha: {
     timeout: 120000,
   },
