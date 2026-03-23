@@ -41,6 +41,13 @@ data:
         metrics_path: /metrics
         static_configs:
           - targets: ['balance-exporter:9115', 'balance-exporter:9116']
+      - job_name: 'earn-bot'
+        scheme: https
+        tls_config:
+          insecure_skip_verify: false
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['earn-bot.test.mezo.org']
 
   alert_rules.yml: |
     groups:
