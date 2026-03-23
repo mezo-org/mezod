@@ -47,7 +47,7 @@ data:
           insecure_skip_verify: false
         metrics_path: /metrics
         static_configs:
-          - targets: ['earn-bot.test.mezo.org']
+          - targets: ['earn-bot.testnet.mezo.org']
 
   alert_rules.yml: |
     groups:
