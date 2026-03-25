@@ -602,6 +602,35 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 	suite.Require().Equal(1, len(storage))
 }
 
+func (suite *StateDBTestSuite) TestCommittedStateChanges() {
+	key1 := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	key2 := common.BigToHash(big.NewInt(3))
+	value2 := common.BigToHash(big.NewInt(4))
+
+	keeper := statedb.NewMockKeeper()
+	db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+
+	db.CreateAccount(address)
+	db.SetState(address, key1, value1)
+	db.SetState(address, key2, value2)
+
+	suite.Require().NoError(db.Commit())
+
+	changes := db.CommittedStateChanges()
+	suite.Require().Len(changes, 2)
+
+	changeMap := make(map[common.Hash]statedb.StateChange)
+	for _, c := range changes {
+		changeMap[c.Key] = c
+	}
+
+	suite.Require().Equal(address, changeMap[key1].Address)
+	suite.Require().Equal(value1, changeMap[key1].Value)
+	suite.Require().Equal(address, changeMap[key2].Address)
+	suite.Require().Equal(value2, changeMap[key2].Value)
+}
+
 func CollectContractStorage(db *statedb.StateDB) statedb.Storage {
 	storage := make(statedb.Storage)
 	err := db.ForEachStorage(address, func(k, v common.Hash) bool {

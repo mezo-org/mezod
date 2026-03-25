@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -63,16 +64,14 @@ func (m *BridgeOutMethod) Payable() bool {
 func (m *BridgeOutMethod) Run(
 	context *precompile.RunContext,
 	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
-	// extract inputs
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	inputs, err := m.extractInputs(rawInputs)
 	if err != nil {
-		return precompile.MethodOutputs{false}, err
+		return precompile.MethodOutputs{false}, nil, err
 	}
 
-	// run validation
 	if err := m.validate(context, inputs); err != nil {
-		return precompile.MethodOutputs{false}, err
+		return precompile.MethodOutputs{false}, nil, err
 	}
 
 	return m.execute(context, inputs)
@@ -83,7 +82,7 @@ func (m *BridgeOutMethod) Run(
 func (m *BridgeOutMethod) execute(
 	context *precompile.RunContext,
 	inputs *bridgeOutInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	var (
 		err   error
 		isBTC = bytes.Equal(
@@ -94,7 +93,7 @@ func (m *BridgeOutMethod) execute(
 
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(inputs.Amount)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert amount: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 	assetsUnlocked, err := m.bridgeKeeper.SaveAssetsUnlocked(
 		context.SdkCtx(),
@@ -105,7 +104,7 @@ func (m *BridgeOutMethod) execute(
 		uint8(inputs.Chain),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
+		return nil, nil, fmt.Errorf("failed to send AssetsUnlocked to bridge: %w", err)
 	}
 
 	err = context.EventEmitter().Emit(
@@ -119,15 +118,17 @@ func (m *BridgeOutMethod) execute(
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit AssetsUnlocked event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit AssetsUnlocked event: [%w]", err)
 	}
+
+	var changes []statedb.StateChange
 
 	switch inputs.Chain {
 	case TargetChainEthereum:
 		if isBTC {
 			err = m.burnBitcoin(context, inputs)
 		} else {
-			err = m.burnERC20(context, inputs)
+			changes, err = m.burnERC20(context, inputs)
 		}
 	case TargetChainBitcoin:
 		err = m.burnBitcoin(context, inputs)
@@ -135,13 +136,13 @@ func (m *BridgeOutMethod) execute(
 		panic(fmt.Sprintf("unreachable, unsupported target chain: %v", inputs.Chain))
 	}
 
-	return precompile.MethodOutputs{err == nil}, err
+	return precompile.MethodOutputs{err == nil}, changes, err
 }
 
 func (m *BridgeOutMethod) burnERC20(
 	context *precompile.RunContext,
 	inputs *bridgeOutInputs,
-) error {
+) ([]statedb.StateChange, error) {
 	var (
 		sdkCtx   = context.SdkCtx()
 		fromAddr = context.MsgSender()

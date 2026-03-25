@@ -3,6 +3,7 @@ package assetsbridge
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // GetSourceBTCTokenMethodName is the name of the getSourceBTCToken method.
@@ -42,12 +43,12 @@ func (m *GetSourceBTCTokenMethod) Payable() bool {
 func (m *GetSourceBTCTokenMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sourceBTCToken := m.bridgeKeeper.GetSourceBTCToken(context.SdkCtx())
 
-	return precompile.MethodOutputs{common.BytesToAddress(sourceBTCToken)}, nil
+	return precompile.MethodOutputs{common.BytesToAddress(sourceBTCToken)}, nil, nil
 }

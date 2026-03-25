@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	oracletypes "github.com/skip-mev/connect/v2/x/oracle/types"
 )
 
@@ -42,9 +43,9 @@ func (m *LatestRoundDataMethod) Payable() bool {
 func (m *LatestRoundDataMethod) Run(
 	ctx *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	priceData, err := m.oracleQueryServer.GetPrice(
@@ -54,12 +55,12 @@ func (m *LatestRoundDataMethod) Run(
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get price: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to get price: [%w]", err)
 	}
 
 	// Just in case to avoid unexpected panics.
 	if priceData == nil || priceData.Price == nil {
-		return nil, fmt.Errorf("price data is nil")
+		return nil, nil, fmt.Errorf("price data is nil")
 	}
 
 	priceValue := priceData.Price.Price
@@ -67,7 +68,7 @@ func (m *LatestRoundDataMethod) Run(
 	if priceValue.IsNil() || !priceValue.IsPositive() {
 		// Better to fail fast and revert the upstream transaction than
 		// feed it with zero price.
-		return nil, fmt.Errorf("price value is nil or non-positive")
+		return nil, nil, fmt.Errorf("price value is nil or non-positive")
 	}
 
 	targetDecimals := uint64(Decimals)
@@ -101,5 +102,5 @@ func (m *LatestRoundDataMethod) Run(
 		startedAt,
 		updatedAt,
 		answeredInRound,
-	}, nil
+	}, nil, nil
 }

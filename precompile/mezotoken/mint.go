@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -53,23 +54,23 @@ func (m *SetMinterMethod) Payable() bool {
 func (m *SetMinterMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	// Validate input count
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Extract minter address
 	minter, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("minter argument must be common.Address")
+		return nil, nil, fmt.Errorf("minter argument must be common.Address")
 	}
 
 	// Check if sender is the POA owner
 	sender := precompile.TypesConverter.Address.ToSDK(context.MsgSender())
 	err := m.poaKeeper.CheckOwner(context.SdkCtx(), sender)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Update params with the new minter
@@ -77,7 +78,7 @@ func (m *SetMinterMethod) Run(
 	params.MezoMinterAddress = minter.Hex()
 	err = m.evmKeeper.SetParams(context.SdkCtx(), params)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Emit event
@@ -85,10 +86,10 @@ func (m *SetMinterMethod) Run(
 		NewMinterSetEvent(minter),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit MinterSet event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit MinterSet event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 const MinterSetEventName = "MinterSet"
@@ -158,17 +159,17 @@ func (m *GetMinterMethod) Payable() bool {
 func (m *GetMinterMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	// Validate input count (should be 0 for getMinter)
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Get params and return the minter address
 	params := m.evmKeeper.GetParams(context.SdkCtx())
 	minterAddress := common.HexToAddress(params.MezoMinterAddress)
 
-	return precompile.MethodOutputs{minterAddress}, nil
+	return precompile.MethodOutputs{minterAddress}, nil, nil
 }
 
 const MintMethodName = "mint"
@@ -217,32 +218,32 @@ func (m *MintMethod) Payable() bool {
 func (m *MintMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	// Validate input count
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Extract to address
 	to, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("to argument must be common.Address")
+		return nil, nil, fmt.Errorf("to argument must be common.Address")
 	}
 
 	// Extract amount
 	amount, ok := inputs[1].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("amount argument must be *big.Int")
+		return nil, nil, fmt.Errorf("amount argument must be *big.Int")
 	}
 
 	// Validate to address is not zero
 	if to == (common.Address{}) {
-		return nil, fmt.Errorf("cannot mint to zero address")
+		return nil, nil, fmt.Errorf("cannot mint to zero address")
 	}
 
 	// Validate amount is positive
 	if amount == nil || amount.Sign() <= 0 {
-		return nil, fmt.Errorf("amount must be positive")
+		return nil, nil, fmt.Errorf("amount must be positive")
 	}
 
 	// Check if sender is the minter
@@ -251,25 +252,25 @@ func (m *MintMethod) Run(
 	minterAddress := common.HexToAddress(params.MezoMinterAddress)
 
 	if minterAddress == (common.Address{}) {
-		return nil, fmt.Errorf("minter not set")
+		return nil, nil, fmt.Errorf("minter not set")
 	}
 
 	if sender != minterAddress {
-		return nil, fmt.Errorf("sender is not the minter")
+		return nil, nil, fmt.Errorf("sender is not the minter")
 	}
 
 	// Mint tokens to the module account
 	coins := sdk.NewCoins(sdk.NewCoin(m.denom, sdkmath.NewIntFromBigInt(amount)))
 	err := m.bankKeeper.MintCoins(context.SdkCtx(), evmtypes.ModuleName, coins)
 	if err != nil {
-		return nil, fmt.Errorf("failed to mint coins: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to mint coins: [%w]", err)
 	}
 
 	// Transfer tokens from module account to recipient
 	toSDK := precompile.TypesConverter.Address.ToSDK(to)
 	err = m.bankKeeper.SendCoinsFromModuleToAccount(context.SdkCtx(), evmtypes.ModuleName, toSDK, coins)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send coins: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to send coins: [%w]", err)
 	}
 
 	// Emit event
@@ -277,10 +278,10 @@ func (m *MintMethod) Run(
 		NewMintedEvent(to, amount),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit Minted event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit Minted event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 const MintedEventName = "Minted"

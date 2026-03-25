@@ -2,6 +2,7 @@ package assetsbridge
 
 import (
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // GetCurrentSequenceTipMethodName is the name of the getCurrentSequenceTip method.
@@ -41,14 +42,14 @@ func (m *GetCurrentSequenceTipMethod) Payable() bool {
 func (m *GetCurrentSequenceTipMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(
 			m.bridgeKeeper.GetAssetsLockedSequenceTip(context.SdkCtx()),
 		),
-	}, nil
+	}, nil, nil
 }

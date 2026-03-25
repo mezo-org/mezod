@@ -1,6 +1,9 @@
 package priceoracle
 
-import "github.com/mezo-org/mezod/precompile"
+import (
+	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
+)
 
 // Decimals denotes the decimal places of the precision used to represent the price.
 // E.g. if decimals is 18, the price is represented with the 10^18 precision.
@@ -37,10 +40,10 @@ func (m *DecimalsMethod) Payable() bool {
 func (m *DecimalsMethod) Run(
 	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return precompile.MethodOutputs{Decimals}, nil
+	return precompile.MethodOutputs{Decimals}, nil, nil
 }

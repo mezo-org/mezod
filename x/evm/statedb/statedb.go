@@ -34,6 +34,12 @@ import (
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
+type StateChange struct {
+	Address common.Address
+	Key     common.Hash
+	Value   common.Hash
+}
+
 // revision is the identifier of a version of state.
 // it consists of an auto-increment id and a journal index.
 // it's safer to use than using journal index alone.
@@ -100,6 +106,8 @@ type StateDB struct {
 	ongoingPrecompilesCallsCounter uint
 
 	maxPrecompilesCallsPerExecution uint
+
+	committedStateChanges []StateChange
 }
 
 // New creates a new state from a given trie.
@@ -653,6 +661,7 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 // Commit writes the dirty states to keeper
 // the StateDB object should be discarded after committed.
 func (s *StateDB) commit(ctx sdk.Context) error {
+	s.committedStateChanges = nil
 	for _, addr := range s.journal.sortedDirties() {
 		obj := s.stateObjects[addr]
 		if obj.selfDestructed {
@@ -667,11 +676,21 @@ func (s *StateDB) commit(ctx sdk.Context) error {
 				return errorsmod.Wrap(err, "failed to set account")
 			}
 			for _, key := range obj.dirtyStorage.SortedKeys() {
-				s.keeper.SetState(ctx, obj.Address(), key, obj.dirtyStorage[key].Bytes())
+				value := obj.dirtyStorage[key]
+				s.keeper.SetState(ctx, obj.Address(), key, value.Bytes())
+				s.committedStateChanges = append(s.committedStateChanges, StateChange{
+					Address: obj.Address(),
+					Key:     key,
+					Value:   value,
+				})
 			}
 		}
 	}
 	return nil
+}
+
+func (s *StateDB) CommittedStateChanges() []StateChange {
+	return s.committedStateChanges
 }
 
 func (s *StateDB) Commit() error {

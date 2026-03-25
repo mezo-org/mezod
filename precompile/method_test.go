@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	store "cosmossdk.io/store/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 func TestDefaultRequiredGas(t *testing.T) {
@@ -63,7 +64,7 @@ type mockMethod struct {
 	run func(
 		context *RunContext,
 		inputs MethodInputs,
-	) (MethodOutputs, error)
+	) (MethodOutputs, []statedb.StateChange, error)
 }
 
 func (mm *mockMethod) MethodName() string {
@@ -89,6 +90,6 @@ func (mm *mockMethod) Payable() bool {
 func (mm *mockMethod) Run(
 	context *RunContext,
 	inputs MethodInputs,
-) (MethodOutputs, error) {
+) (MethodOutputs, []statedb.StateChange, error) {
 	return mm.run(context, inputs)
 }

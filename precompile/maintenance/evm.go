@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // SetSupportNonEIP155TxsMethodName is the name of the setSupportNonEIP155Txs method.
@@ -52,14 +53,14 @@ func (m *setSupportNonEIP155TxsMethod) Payable() bool {
 func (m *setSupportNonEIP155TxsMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	value, ok := inputs[0].(bool)
 	if !ok {
-		return nil, fmt.Errorf("value argument must be bool")
+		return nil, nil, fmt.Errorf("value argument must be bool")
 	}
 
 	err := m.poaKeeper.CheckOwner(
@@ -67,17 +68,17 @@ func (m *setSupportNonEIP155TxsMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
 	params.AllowUnprotectedTxs = value
 	err = m.evmKeeper.SetParams(context.SdkCtx(), params)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // GetSupportNonEIP155TxsMethodName is the name of the getSupportNonEIP155Txs method.
@@ -120,12 +121,12 @@ func (m *getSupportNonEIP155TxsMethod) Payable() bool {
 func (m *getSupportNonEIP155TxsMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
 
-	return precompile.MethodOutputs{params.AllowUnprotectedTxs}, nil
+	return precompile.MethodOutputs{params.AllowUnprotectedTxs}, nil, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	poatypes "github.com/mezo-org/mezod/x/poa/types"
 )
 
@@ -69,20 +70,20 @@ func (m *SubmitApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	// check method inputs
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	consPubKeyBytes, ok := inputs[0].([32]byte)
 	if !ok {
-		return nil, fmt.Errorf("consPubKey argument must be type bytes32")
+		return nil, nil, fmt.Errorf("consPubKey argument must be type bytes32")
 	}
 
 	description, ok := inputs[1].(Description)
 	if !ok {
-		return nil, fmt.Errorf("description argument must be type Description")
+		return nil, nil, fmt.Errorf("description argument must be type Description")
 	}
 
 	operator := context.MsgSender()
@@ -92,7 +93,7 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 	tmpk := ed25519.PubKey(consPubKeyBytes[:])
 	consPubKey, err := cryptocdc.FromCmtPubKeyInterface(tmpk)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	validator, err := poatypes.NewValidator(
@@ -101,7 +102,7 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		poatypes.Description(description),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = m.keeper.SubmitApplication(
@@ -110,7 +111,7 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		validator,
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit event
@@ -122,10 +123,10 @@ func (m *SubmitApplicationMethod) Run(context *precompile.RunContext, inputs pre
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit ApplicationSubmitted event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit ApplicationSubmitted event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // ApplicationSubmittedEventName is the name of the ApplicationSubmitted event.
@@ -208,14 +209,14 @@ func (m *ApproveApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *ApproveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ApproveApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	operator, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("operator argument must be of type common.Address")
+		return nil, nil, fmt.Errorf("operator argument must be of type common.Address")
 	}
 
 	err := m.keeper.ApproveApplication(
@@ -224,7 +225,7 @@ func (m *ApproveApplicationMethod) Run(context *precompile.RunContext, inputs pr
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit events
@@ -234,7 +235,7 @@ func (m *ApproveApplicationMethod) Run(context *precompile.RunContext, inputs pr
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit ApplicationApproved event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit ApplicationApproved event: [%w]", err)
 	}
 	err = context.EventEmitter().Emit(
 		NewValidatorJoinedEvent(
@@ -242,10 +243,10 @@ func (m *ApproveApplicationMethod) Run(context *precompile.RunContext, inputs pr
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit ValidatorJoined event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit ValidatorJoined event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // ApplicationApprovedName is the name of the ApplicationApproved event. It matches the name
@@ -341,9 +342,9 @@ func (m *ApplicationsMethod) Payable() bool {
 	return false
 }
 
-func (m *ApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	applications := m.keeper.GetAllApplications(
@@ -358,7 +359,7 @@ func (m *ApplicationsMethod) Run(context *precompile.RunContext, inputs precompi
 		operators[i] = precompile.TypesConverter.Address.FromSDK(types.AccAddress(valAddress))
 	}
 
-	return precompile.MethodOutputs{operators}, nil
+	return precompile.MethodOutputs{operators}, nil, nil
 }
 
 // ApplicationMethodName is the name of the applications method. It matches the name
@@ -394,14 +395,14 @@ func (m *ApplicationMethod) Payable() bool {
 	return false
 }
 
-func (m *ApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ApplicationMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	operator, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("operator argument must be of type common.Address")
+		return nil, nil, fmt.Errorf("operator argument must be of type common.Address")
 	}
 
 	application, found := m.keeper.GetApplication(
@@ -409,14 +410,14 @@ func (m *ApplicationMethod) Run(context *precompile.RunContext, inputs precompil
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 	)
 	if !found {
-		return nil, fmt.Errorf("application does not exist")
+		return nil, nil, fmt.Errorf("application does not exist")
 	}
 
 	val := application.GetValidator()
 	var consPubKey [32]byte
 	copy(consPubKey[:], val.GetConsPubKey().Bytes())
 
-	return precompile.MethodOutputs{consPubKey, val.Description}, nil
+	return precompile.MethodOutputs{consPubKey, val.Description}, nil, nil
 }
 
 // CleanupApplicationsMethodName is the name of the cleanupApplications method. It matches the name
@@ -454,10 +455,10 @@ func (m *CleanupApplicationsMethod) Payable() bool {
 	return false
 }
 
-func (m *CleanupApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *CleanupApplicationsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	// check method inputs
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err := m.keeper.CleanupApplications(
@@ -465,16 +466,16 @@ func (m *CleanupApplicationsMethod) Run(context *precompile.RunContext, inputs p
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit event
 	err = context.EventEmitter().Emit(NewApplicationsCleanedEvent())
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit ApplicationsCleaned event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit ApplicationsCleaned event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // ApplicationsCleanedName is the name of the ApplicationsCleaned event. It matches the name

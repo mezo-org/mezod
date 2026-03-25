@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // SetMaxPrecompilesCallsPerExecutionMethodName is the name
@@ -45,18 +46,18 @@ func (m *setMaxPrecompilesCallsPerExecutionMethod) Payable() bool {
 func (m *setMaxPrecompilesCallsPerExecutionMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	value, ok := inputs[0].(uint32)
 	if !ok {
-		return nil, fmt.Errorf("invalid max precompiles calls per execution type")
+		return nil, nil, fmt.Errorf("invalid max precompiles calls per execution type")
 	}
 
 	if value < 1 {
-		return nil, fmt.Errorf("max precompiles calls per execution must be at least 1")
+		return nil, nil, fmt.Errorf("max precompiles calls per execution must be at least 1")
 	}
 
 	// This method is restricted to the PoA owner
@@ -65,17 +66,17 @@ func (m *setMaxPrecompilesCallsPerExecutionMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
 	params.MaxPrecompilesCallsPerExecution = value
 	err = m.evmKeeper.SetParams(context.SdkCtx(), params)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // GetMaxPrecompilesCallsPerExecutionMethodName is the name
@@ -112,12 +113,12 @@ func (m *getMaxPrecompilesCallsPerExecutionMethod) Payable() bool {
 func (m *getMaxPrecompilesCallsPerExecutionMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
 
-	return precompile.MethodOutputs{params.MaxPrecompilesCallsPerExecution}, nil
+	return precompile.MethodOutputs{params.MaxPrecompilesCallsPerExecution}, nil, nil
 }
