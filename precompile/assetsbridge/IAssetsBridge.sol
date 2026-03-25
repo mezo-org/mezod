@@ -82,6 +82,36 @@ interface IAssetsBridge {
     );
 
     /**
+     * @notice Emitted when a triparty bridge request is made.
+     * @param recipient The address to receive the minted BTC.
+     * @param amount The amount of BTC requested.
+     * @param controller The triparty controller that made the request.
+     */
+    event TripartyBridgeRequested(
+        address indexed recipient,
+        uint256 amount,
+        address controller
+    );
+
+    /**
+     * @notice Emitted when a triparty controller is allowed or disallowed.
+     * @param controller The address of the triparty controller.
+     * @param isAllowed Whether the controller is allowed.
+     */
+    event TripartyControllerAllowed(
+        address indexed controller,
+        bool isAllowed
+    );
+
+    /**
+     * @notice Emitted when triparty bridging is paused or unpaused.
+     * @param isPaused Whether triparty bridging is paused.
+     */
+    event TripartyPaused(
+        bool isPaused
+    );
+
+    /**
      * @notice Helper function used to enable bridged assets observability.
      */
     function bridge(AssetsLocked[] memory events) external returns (bool);
@@ -252,4 +282,41 @@ interface IAssetsBridge {
     *      by getMinBridgeOutAmount for the BTC token.
     */
     function getMinBridgeOutAmountForBitcoinChain() external view returns (uint256);
+
+    /**
+     * @notice Requests a triparty BTC mint through the bridge.
+     * @param recipient The address to receive the minted BTC.
+     * @param amount The amount of BTC to mint.
+     * @dev Requirements:
+     *      - Triparty bridging must not be paused,
+     *      - The caller must be an allowed triparty controller,
+     *      - The recipient address must not be the zero address,
+     *      - The amount must be positive.
+     */
+    function bridgeTriparty(address recipient, uint256 amount) external returns (bool);
+
+    /**
+     * @notice Allows or disallows a triparty controller address.
+     * @param controller The address of the triparty controller.
+     * @param isAllowed Whether the controller should be allowed.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner,
+     *      - The controller address must not be the zero address.
+     */
+    function allowTripartyController(address controller, bool isAllowed) external returns (bool);
+
+    /**
+     * @notice Checks if an address is an allowed triparty controller.
+     * @param controller The address to check.
+     * @return True if the address is an allowed triparty controller.
+     */
+    function isAllowedTripartyController(address controller) external view returns (bool);
+
+    /**
+     * @notice Pauses or unpauses triparty bridging.
+     * @param isPaused Whether to pause triparty bridging.
+     * @dev Requirements:
+     *      - The caller must be the assets bridge pauser.
+     */
+    function pauseTriparty(bool isPaused) external returns (bool);
 }
