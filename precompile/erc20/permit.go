@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/mezo-org/mezod/precompile"
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 const (
@@ -81,57 +82,57 @@ func (am *PermitMethod) Payable() bool {
 func (am *PermitMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	timestamp := context.SdkCtx().BlockTime().Unix() // Unix time in seconds
 
 	if err := precompile.ValidateMethodInputsCount(inputs, 7); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	owner, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid owner address: %v", inputs[0])
+		return nil, nil, fmt.Errorf("invalid owner address: %v", inputs[0])
 	}
 	if isZeroAddress(owner) {
-		return nil, fmt.Errorf("owner address cannot be empty")
+		return nil, nil, fmt.Errorf("owner address cannot be empty")
 	}
 
 	spender, ok := inputs[1].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid spender address: %v", inputs[1])
+		return nil, nil, fmt.Errorf("invalid spender address: %v", inputs[1])
 	}
 	if isZeroAddress(spender) {
-		return nil, fmt.Errorf("spender address cannot be empty")
+		return nil, nil, fmt.Errorf("spender address cannot be empty")
 	}
 
 	amount, ok := inputs[2].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid amount: %v", inputs[2])
+		return nil, nil, fmt.Errorf("invalid amount: %v", inputs[2])
 	}
 
 	if amount == nil {
-		return nil, errors.New("amount is required")
+		return nil, nil, errors.New("amount is required")
 	}
 
 	if amount.Sign() < 0 {
-		return nil, errors.New("amount cannot be negative")
+		return nil, nil, errors.New("amount cannot be negative")
 	}
 
 	deadline, ok := inputs[3].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid deadline: %v", inputs[3])
+		return nil, nil, fmt.Errorf("invalid deadline: %v", inputs[3])
 	}
 	// Check if deadline has passed
 	if deadline.Int64() < timestamp {
-		return nil, fmt.Errorf("permit expired")
+		return nil, nil, fmt.Errorf("permit expired")
 	}
 
 	v, ok := inputs[4].(byte)
 	if !ok {
-		return nil, fmt.Errorf("invalid v value: %v", inputs[4])
+		return nil, nil, fmt.Errorf("invalid v value: %v", inputs[4])
 	}
 	if v != 27 && v != 28 {
-		return nil, fmt.Errorf("invalid v value: %v", v)
+		return nil, nil, fmt.Errorf("invalid v value: %v", v)
 	}
 	// Only signatures `v` value of 27 or 28 are considered valid, however
 	// ValidateSignatureValues assumes that the `v` value is already adjusted and
@@ -140,30 +141,30 @@ func (am *PermitMethod) Run(
 
 	rComponent, ok := inputs[5].([32]byte)
 	if !ok {
-		return nil, fmt.Errorf("invalid r component of the signature: %v", inputs[5])
+		return nil, nil, fmt.Errorf("invalid r component of the signature: %v", inputs[5])
 	}
 	r := new(big.Int).SetBytes(rComponent[:])
 
 	sComponent, ok := inputs[6].([32]byte)
 	if !ok {
-		return nil, fmt.Errorf("invalid s component of the signature: %v", inputs[6])
+		return nil, nil, fmt.Errorf("invalid s component of the signature: %v", inputs[6])
 	}
 	s := new(big.Int).SetBytes(sComponent[:])
 
 	// A boolean set to true checks the signature with `s` value against the lower
 	// half of the secp256k1 curve's order and is considered valid.
 	if !crypto.ValidateSignatureValues(v, r, s, true) {
-		return nil, fmt.Errorf("invalid signature values")
+		return nil, nil, fmt.Errorf("invalid signature values")
 	}
 
 	nonce, _, err := getNonce(am.nonceKey, am.evmkeeper, owner, context.SdkCtx())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	digest, err := buildDigest(owner, spender, amount, new(big.Int).SetBytes(nonce.Bytes()), deadline, am.domainSeparator)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build digest: %v", err)
+		return nil, nil, fmt.Errorf("failed to build digest: %v", err)
 	}
 
 	// Concatenate r, s, and v to form the full signature
@@ -172,26 +173,26 @@ func (am *PermitMethod) Run(
 	// Recover the public key from the signature
 	recoveredPubKey, err := crypto.SigToPub(digest, signature)
 	if err != nil {
-		return nil, fmt.Errorf("failed to recover public key from signature: %v", err)
+		return nil, nil, fmt.Errorf("failed to recover public key from signature: %v", err)
 	}
 
 	// The recovered pub key is verified to ensure that the owner has signed the message.
 	if !bytes.Equal(crypto.PubkeyToAddress(*recoveredPubKey).Bytes(), owner.Bytes()) {
-		return nil, fmt.Errorf("verification failed over the signed message")
+		return nil, nil, fmt.Errorf("verification failed over the signed message")
 	}
 
 	authorization, expiration := am.authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), owner.Bytes(), SendMsgURL)
 
 	err = handleAuthorization(am.denom, authorization, spender, amount, context, owner, expiration, am.authzkeeper)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// After the approval is successful, the nonce should be incremented by 1 so
 	// that the signature can be used only once over the given message.
 	err = am.incrementNonce(owner, context.SdkCtx())
 	if err != nil {
-		return nil, fmt.Errorf("failed to set nonce: %w", err)
+		return nil, nil, fmt.Errorf("failed to set nonce: %w", err)
 	}
 
 	err = context.EventEmitter().Emit(
@@ -202,10 +203,10 @@ func (am *PermitMethod) Run(
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit approval event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit approval event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 func (am *PermitMethod) incrementNonce(address common.Address, ctx sdk.Context) error {
@@ -376,24 +377,24 @@ func (nm *NonceMethod) Payable() bool {
 func (nm *NonceMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	account, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("account argument must be common.Address")
+		return nil, nil, fmt.Errorf("account argument must be common.Address")
 	}
 
 	nonce, _, err := getNonce(nm.nonceKey, nm.evmkeeper, account, context.SdkCtx())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return precompile.MethodOutputs{
 		new(big.Int).SetBytes(nonce.Bytes()),
-	}, nil
+	}, nil, nil
 }
 
 // Returns the nonce of the given account, compatible with EIP-2612.
@@ -433,24 +434,24 @@ func (nm *NoncesMethod) Payable() bool {
 func (nm *NoncesMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	account, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("account argument must be common.Address")
+		return nil, nil, fmt.Errorf("account argument must be common.Address")
 	}
 
 	nonce, _, err := getNonce(nm.nonceKey, nm.evmkeeper, account, context.SdkCtx())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return precompile.MethodOutputs{
 		new(big.Int).SetBytes(nonce.Bytes()),
-	}, nil
+	}, nil, nil
 }
 
 type DomainSeparatorMethod struct {
@@ -486,16 +487,16 @@ func (dsm *DomainSeparatorMethod) Payable() bool {
 func (dsm *DomainSeparatorMethod) Run(
 	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var domainSeparator [32]byte
 	copy(domainSeparator[:], dsm.domainSeparator)
 	return precompile.MethodOutputs{
 		domainSeparator,
-	}, nil
+	}, nil, nil
 }
 
 type PermitTypehashMethod struct{}
@@ -525,14 +526,14 @@ func (ptm *PermitTypehashMethod) Payable() bool {
 func (ptm *PermitTypehashMethod) Run(
 	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var permitTypehash [32]byte
 	copy(permitTypehash[:], crypto.Keccak256([]byte(PermitTypehash))[:32])
 	return precompile.MethodOutputs{
 		permitTypehash,
-	}, nil
+	}, nil, nil
 }

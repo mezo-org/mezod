@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // CreateERC20TokenMappingMethodName is the name of the createERC20TokenMapping method.
@@ -50,19 +51,19 @@ func (m *CreateERC20TokenMappingMethod) Payable() bool {
 func (m *CreateERC20TokenMappingMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sourceToken, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("source token must be common.Address")
+		return nil, nil, fmt.Errorf("source token must be common.Address")
 	}
 
 	mezoToken, ok := inputs[1].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("mezo token must be common.Address")
+		return nil, nil, fmt.Errorf("mezo token must be common.Address")
 	}
 
 	err := m.poaKeeper.CheckOwner(
@@ -70,7 +71,7 @@ func (m *CreateERC20TokenMappingMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = m.bridgeKeeper.CreateERC20TokenMapping(
@@ -79,20 +80,20 @@ func (m *CreateERC20TokenMappingMethod) Run(
 		mezoToken.Bytes(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = context.EventEmitter().Emit(
 		NewERC20TokenMappingCreatedEvent(sourceToken, mezoToken),
 	)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"failed to emit ERC20TokenMappingCreated event: [%w]",
 			err,
 		)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // ERC20TokenMappingCreatedEventName is the name of the ERC20TokenMappingCreated event.
@@ -177,14 +178,14 @@ func (m *DeleteERC20TokenMappingMethod) Payable() bool {
 func (m *DeleteERC20TokenMappingMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sourceToken, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("source token must be common.Address")
+		return nil, nil, fmt.Errorf("source token must be common.Address")
 	}
 
 	err := m.poaKeeper.CheckOwner(
@@ -192,7 +193,7 @@ func (m *DeleteERC20TokenMappingMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Fetch the mapping before deleting to feed the event.
@@ -207,7 +208,7 @@ func (m *DeleteERC20TokenMappingMethod) Run(
 		sourceToken.Bytes(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = context.EventEmitter().Emit(
@@ -217,13 +218,13 @@ func (m *DeleteERC20TokenMappingMethod) Run(
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"failed to emit ERC20TokenMappingDeleted event: [%w]",
 			err,
 		)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // ERC20TokenMappingDeletedEventName is the name of the ERC20TokenMappingDeleted event.
@@ -303,14 +304,14 @@ func (m *GetERC20TokenMappingMethod) Payable() bool {
 func (m *GetERC20TokenMappingMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sourceToken, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("source token must be common.Address")
+		return nil, nil, fmt.Errorf("source token must be common.Address")
 	}
 
 	type mappingDescriptor struct {
@@ -328,7 +329,7 @@ func (m *GetERC20TokenMappingMethod) Run(
 				SourceToken: common.Address{},
 				MezoToken:   common.Address{},
 			},
-		}, nil
+		}, nil, nil
 	}
 
 	return precompile.MethodOutputs{
@@ -336,7 +337,7 @@ func (m *GetERC20TokenMappingMethod) Run(
 			SourceToken: common.BytesToAddress(mapping.SourceTokenBytes()),
 			MezoToken:   common.BytesToAddress(mapping.MezoTokenBytes()),
 		},
-	}, nil
+	}, nil, nil
 }
 
 // GetERC20TokensMappingsMethodName is the name of the getERC20TokensMappings method.
@@ -376,9 +377,9 @@ func (m *GetERC20TokensMappingsMethod) Payable() bool {
 func (m *GetERC20TokensMappingsMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	type mappingDescriptor struct {
@@ -395,7 +396,7 @@ func (m *GetERC20TokensMappingsMethod) Run(
 		})
 	}
 
-	return precompile.MethodOutputs{mappings}, nil
+	return precompile.MethodOutputs{mappings}, nil, nil
 }
 
 // GetMaxERC20TokensMappingsMethodName is the name of the getMaxERC20TokensMappings method.
@@ -435,12 +436,12 @@ func (m *GetMaxERC20TokensMappingsMethod) Payable() bool {
 func (m *GetMaxERC20TokensMappingsMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	params := m.bridgeKeeper.GetParams(context.SdkCtx())
 
-	return precompile.MethodOutputs{big.NewInt(int64(params.MaxErc20TokensMappings))}, nil
+	return precompile.MethodOutputs{big.NewInt(int64(params.MaxErc20TokensMappings))}, nil, nil
 }

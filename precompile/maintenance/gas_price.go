@@ -6,6 +6,7 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // SetMinGasPriceMethodName is the name of the setMinGasPrice method.
@@ -43,14 +44,14 @@ func (m *setMinGasPriceMethod) Payable() bool {
 func (m *setMinGasPriceMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	minGasPrice, ok := inputs[0].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid min gas price type")
+		return nil, nil, fmt.Errorf("invalid min gas price type")
 	}
 
 	// This method is restricted to the validator pool owner
@@ -59,21 +60,21 @@ func (m *setMinGasPriceMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if minGasPrice.Sign() <= 0 {
-		return nil, fmt.Errorf("min gas price must be positive")
+		return nil, nil, fmt.Errorf("min gas price must be positive")
 	}
 
 	params := m.feeMarketKeeper.GetParams(context.SdkCtx())
 	params.MinGasPrice = sdkmath.LegacyNewDecFromBigInt(minGasPrice)
 	err = m.feeMarketKeeper.SetParams(context.SdkCtx(), params)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // GetMinGasPriceMethodName is the name of the getMinGasPrice method.
@@ -109,12 +110,12 @@ func (m *getMinGasPriceMethod) Payable() bool {
 func (m *getMinGasPriceMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	params := m.feeMarketKeeper.GetParams(context.SdkCtx())
 
-	return precompile.MethodOutputs{params.MinGasPrice.TruncateInt().BigInt()}, nil
+	return precompile.MethodOutputs{params.MinGasPrice.TruncateInt().BigInt()}, nil, nil
 }

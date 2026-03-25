@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // OwnerMethodName is the name of the owner method. It matches the name
@@ -40,16 +41,16 @@ func (m *OwnerMethod) Payable() bool {
 	return false
 }
 
-func (m *OwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *OwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	owner := m.keeper.GetOwner(
 		context.SdkCtx(),
 	)
 
-	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(owner)}, nil
+	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(owner)}, nil, nil
 }
 
 // CandidateOwnerMethodName is the name of the candidateOwner method. It matches the name
@@ -85,16 +86,16 @@ func (m *CandidateOwnerMethod) Payable() bool {
 	return false
 }
 
-func (m *CandidateOwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *CandidateOwnerMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	candidateOwner := m.keeper.GetCandidateOwner(
 		context.SdkCtx(),
 	)
 
-	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(candidateOwner)}, nil
+	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(candidateOwner)}, nil, nil
 }
 
 // TransferOwnershipMethodName is the name of the transferOwnership method. It matches the name
@@ -133,14 +134,14 @@ func (m *TransferOwnershipMethod) Payable() bool {
 	return false
 }
 
-func (m *TransferOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *TransferOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	newOwner, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("newOwner argument must be common.Address")
+		return nil, nil, fmt.Errorf("newOwner argument must be common.Address")
 	}
 
 	err := m.keeper.TransferOwnership(
@@ -149,7 +150,7 @@ func (m *TransferOwnershipMethod) Run(context *precompile.RunContext, inputs pre
 		precompile.TypesConverter.Address.ToSDK(newOwner),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit ownershipTransferStarted event
@@ -157,10 +158,10 @@ func (m *TransferOwnershipMethod) Run(context *precompile.RunContext, inputs pre
 		NewOwnershipTransferStartedEvent(context.MsgSender(), newOwner),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit ownershipTransferStarted event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit ownershipTransferStarted event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // OwnershipTransferStartedName is the name of the OwnershipTransferStarted event. It matches the name
@@ -232,9 +233,9 @@ func (m *AcceptOwnershipMethod) Payable() bool {
 	return false
 }
 
-func (m *AcceptOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *AcceptOwnershipMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// get owner before calling AcceptOwnership in the keeper
@@ -245,7 +246,7 @@ func (m *AcceptOwnershipMethod) Run(context *precompile.RunContext, inputs preco
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit ownershipTransferred event
@@ -256,10 +257,10 @@ func (m *AcceptOwnershipMethod) Run(context *precompile.RunContext, inputs preco
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit ownershipTransferred event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit ownershipTransferred event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // OwnershipTransferredName is the name of the OwnershipTransferred event. It matches the name

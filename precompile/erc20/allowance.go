@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // AllowanceMethodName is the name of the Allowance method that should match the
@@ -56,32 +57,32 @@ func (am *AllowanceMethod) Payable() bool {
 func (am *AllowanceMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	owner, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid owner address: %v", inputs[0])
+		return nil, nil, fmt.Errorf("invalid owner address: %v", inputs[0])
 	}
 
 	if isZeroAddress(owner) {
-		return nil, fmt.Errorf("owner address cannot be empty")
+		return nil, nil, fmt.Errorf("owner address cannot be empty")
 	}
 
 	spender, ok := inputs[1].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid spender address: %v", inputs[1])
+		return nil, nil, fmt.Errorf("invalid spender address: %v", inputs[1])
 	}
 
 	if isZeroAddress(spender) {
-		return nil, fmt.Errorf("spender address cannot be empty")
+		return nil, nil, fmt.Errorf("spender address cannot be empty")
 	}
 
 	// Return the max uint256 when the owner and spender are the same.
 	if bytes.Equal(owner.Bytes(), spender.Bytes()) {
-		return precompile.MethodOutputs{abi.MaxUint256}, nil
+		return precompile.MethodOutputs{abi.MaxUint256}, nil, nil
 	}
 
 	var allowance sdkmath.Int
@@ -96,7 +97,7 @@ func (am *AllowanceMethod) Run(
 	} else {
 		sendAuth, ok := authorization.(*banktypes.SendAuthorization)
 		if !ok {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"expected authorization to be a %T", banktypes.SendAuthorization{},
 			)
 		}
@@ -106,5 +107,5 @@ func (am *AllowanceMethod) Run(
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(allowance),
-	}, nil
+	}, nil, nil
 }

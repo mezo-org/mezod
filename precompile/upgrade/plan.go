@@ -6,6 +6,7 @@ import (
 	upgradetypes "cosmossdk.io/x/upgrade/types"
 
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // PlanMethodName is the name of the plan method. It matches the name
@@ -41,17 +42,17 @@ func (m *PlanMethod) Payable() bool {
 	return false
 }
 
-func (m *PlanMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *PlanMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	plan, err := m.upgradeKeeper.GetUpgradePlan(context.SdkCtx())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return precompile.MethodOutputs{plan.Name, plan.Height, plan.Info}, nil
+	return precompile.MethodOutputs{plan.Name, plan.Height, plan.Info}, nil, nil
 }
 
 // SubmitPlanMethodName is the name of the submitPlan method. It matches the name
@@ -87,9 +88,9 @@ func (m *SubmitPlanMethod) Payable() bool {
 	return false
 }
 
-func (m *SubmitPlanMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *SubmitPlanMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 3); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err := m.poaKeeper.CheckOwner(
@@ -97,12 +98,12 @@ func (m *SubmitPlanMethod) Run(context *precompile.RunContext, inputs precompile
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	height, ok := inputs[1].(int64)
 	if !ok {
-		return nil, fmt.Errorf("height argument must be an int64")
+		return nil, nil, fmt.Errorf("height argument must be an int64")
 	}
 
 	plan := upgradetypes.Plan{
@@ -113,7 +114,7 @@ func (m *SubmitPlanMethod) Run(context *precompile.RunContext, inputs precompile
 
 	err = m.upgradeKeeper.ScheduleUpgrade(context.SdkCtx(), plan)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit event
@@ -121,10 +122,10 @@ func (m *SubmitPlanMethod) Run(context *precompile.RunContext, inputs precompile
 		NewPlanSubmittedEvent(plan.Name, plan.Height),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit PlanSubmitted event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit PlanSubmitted event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // PlanSubmittedName is the name of the PlanSubmitted event. It matches the name
@@ -197,26 +198,26 @@ func (m *CancelPlanMethod) Payable() bool {
 	return false
 }
 
-func (m *CancelPlanMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *CancelPlanMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	err := m.poaKeeper.CheckOwner(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	plan, err := m.upgradeKeeper.GetUpgradePlan(context.SdkCtx())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = m.upgradeKeeper.ClearUpgradePlan(context.SdkCtx())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit event
@@ -224,10 +225,10 @@ func (m *CancelPlanMethod) Run(context *precompile.RunContext, inputs precompile
 		NewPlanCanceledEvent(plan.Name, plan.Height),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit PlanCanceled event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit PlanCanceled event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // PlanCanceledName is the name of the PlanCanceled event. It matches the name

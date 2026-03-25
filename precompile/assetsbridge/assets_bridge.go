@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -238,7 +239,7 @@ type BridgeKeeper interface {
 		token []byte,
 		fromAddr []byte,
 		amount *big.Int,
-	) error
+	) ([]statedb.StateChange, error)
 	SetOutflowLimit(ctx sdk.Context, token []byte, limit math.Int)
 	GetOutflowLimit(ctx sdk.Context, token []byte) math.Int
 	GetOutflowCapacity(ctx sdk.Context, token []byte) (capacity math.Int, resetHeight uint64)

@@ -2,6 +2,7 @@ package erc20
 
 import (
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 const (
@@ -47,15 +48,15 @@ func (nm *NameMethod) Payable() bool {
 func (nm *NameMethod) Run(
 	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Return stored name
 	return precompile.MethodOutputs{
 		nm.name,
-	}, nil
+	}, nil, nil
 }
 
 // Symbol method returns the symbol of the token.
@@ -83,15 +84,15 @@ func (sm *SymbolMethod) Payable() bool {
 func (sm *SymbolMethod) Run(
 	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Return stored symbol
 	return precompile.MethodOutputs{
 		sm.symbol,
-	}, nil
+	}, nil, nil
 }
 
 // Decimals method returns the number of decimals used to represent the token.
@@ -119,13 +120,13 @@ func (dm *DecimalsMethod) Payable() bool {
 func (dm *DecimalsMethod) Run(
 	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Return stored decimals
 	return precompile.MethodOutputs{
 		dm.decimals,
-	}, nil
+	}, nil, nil
 }

@@ -57,19 +57,19 @@ func (m *setPrecompileByteCodeMethod) Payable() bool {
 func (m *setPrecompileByteCodeMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	precompileAddress, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("value argument must be a valid address")
+		return nil, nil, fmt.Errorf("value argument must be a valid address")
 	}
 
 	precompileBytecode, ok := inputs[1].([]byte)
 	if !ok {
-		return nil, fmt.Errorf("argument must be a valid byte slice")
+		return nil, nil, fmt.Errorf("argument must be a valid byte slice")
 	}
 
 	// this method is restricted to the validator pool owner
@@ -78,13 +78,13 @@ func (m *setPrecompileByteCodeMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// make sure we are working with a precompile address
 	isCustomPrecompile := m.evmKeeper.IsCustomPrecompile(precompileAddress)
 	if !isCustomPrecompile {
-		return nil, fmt.Errorf("address is not a precompile")
+		return nil, nil, fmt.Errorf("address is not a precompile")
 	}
 
 	nonce := uint64(0)
@@ -107,7 +107,7 @@ func (m *setPrecompileByteCodeMethod) Run(
 		CodeHash: newCodeHash[:],
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// clear old code/codeHash
@@ -115,5 +115,5 @@ func (m *setPrecompileByteCodeMethod) Run(
 		m.evmKeeper.SetCode(context.SdkCtx(), account.CodeHash, []byte{})
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }

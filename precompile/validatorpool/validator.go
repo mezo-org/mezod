@@ -6,6 +6,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // ValidatorsMethodName is the name of the validators method. It matches the name
@@ -41,9 +42,9 @@ func (m *ValidatorsMethod) Payable() bool {
 	return false
 }
 
-func (m *ValidatorsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ValidatorsMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	validators := m.keeper.GetAllValidators(
@@ -57,7 +58,7 @@ func (m *ValidatorsMethod) Run(context *precompile.RunContext, inputs precompile
 		operators[i] = precompile.TypesConverter.Address.FromSDK(types.AccAddress(operator))
 	}
 
-	return precompile.MethodOutputs{operators}, nil
+	return precompile.MethodOutputs{operators}, nil, nil
 }
 
 // ValidatorMethodName is the name of the validators method. It matches the name
@@ -93,14 +94,14 @@ func (m *ValidatorMethod) Payable() bool {
 	return false
 }
 
-func (m *ValidatorMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *ValidatorMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	operator, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("operator argument must be of type common.Address")
+		return nil, nil, fmt.Errorf("operator argument must be of type common.Address")
 	}
 
 	validator, found := m.keeper.GetValidator(
@@ -108,13 +109,13 @@ func (m *ValidatorMethod) Run(context *precompile.RunContext, inputs precompile.
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 	)
 	if !found {
-		return nil, fmt.Errorf("validator does not exist")
+		return nil, nil, fmt.Errorf("validator does not exist")
 	}
 
 	var consPubKey [32]byte
 	copy(consPubKey[:], validator.GetConsPubKey().Bytes())
 
-	return precompile.MethodOutputs{consPubKey, validator.Description}, nil
+	return precompile.MethodOutputs{consPubKey, validator.Description}, nil, nil
 }
 
 // KickMethodName is the name of the kick method. It matches the name
@@ -153,14 +154,14 @@ func (m *KickMethod) Payable() bool {
 	return false
 }
 
-func (m *KickMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *KickMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	operator, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("operator argument must be common.Address")
+		return nil, nil, fmt.Errorf("operator argument must be common.Address")
 	}
 
 	err := m.keeper.Kick(
@@ -169,7 +170,7 @@ func (m *KickMethod) Run(context *precompile.RunContext, inputs precompile.Metho
 		types.ValAddress(precompile.TypesConverter.Address.ToSDK(operator)),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit event
@@ -177,10 +178,10 @@ func (m *KickMethod) Run(context *precompile.RunContext, inputs precompile.Metho
 		NewValidatorKickedEvent(operator),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit ValidatorKicked event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit ValidatorKicked event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // ValidatorKickedName is the name of the ValidatorKicked event. It matches the name
@@ -246,9 +247,9 @@ func (m *LeaveMethod) Payable() bool {
 	return false
 }
 
-func (m *LeaveMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (m *LeaveMethod) Run(context *precompile.RunContext, inputs precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err := m.keeper.Leave(
@@ -256,7 +257,7 @@ func (m *LeaveMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// emit event
@@ -264,10 +265,10 @@ func (m *LeaveMethod) Run(context *precompile.RunContext, inputs precompile.Meth
 		NewValidatorLeftEvent(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit validatorLeft event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit validatorLeft event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // ValidatorLeftName is the name of the ValidatorLeft event. It matches the name

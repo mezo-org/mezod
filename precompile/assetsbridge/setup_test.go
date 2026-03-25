@@ -250,8 +250,8 @@ func (k *FakeBridgeKeeper) BurnBTC(_ sdk.Context, _ []byte, _ math.Int) error {
 	return k.burnErr
 }
 
-func (k *FakeBridgeKeeper) BurnERC20(_ sdk.Context, _, _ []byte, _ *big.Int) error {
-	return k.burnErr
+func (k *FakeBridgeKeeper) BurnERC20(_ sdk.Context, _, _ []byte, _ *big.Int) ([]statedb.StateChange, error) {
+	return nil, k.burnErr
 }
 
 func (k *FakeBridgeKeeper) SetBurnError(err error) {

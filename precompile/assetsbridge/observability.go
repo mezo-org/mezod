@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // BridgeMethodName is the name of the bridge method. It matches the name
@@ -35,10 +36,10 @@ func (bm *BridgeMethod) Payable() bool {
 	return false
 }
 
-func (bm *BridgeMethod) Run(_ *precompile.RunContext, _ precompile.MethodInputs) (precompile.MethodOutputs, error) {
+func (bm *BridgeMethod) Run(_ *precompile.RunContext, _ precompile.MethodInputs) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	// The bridge method is only used to enable bridging assets observability
 	// in tools such as block explorers.
-	return precompile.MethodOutputs{false}, fmt.Errorf(
+	return precompile.MethodOutputs{false}, nil, fmt.Errorf(
 		"bridge action is done by the supermajority of validators and cannot " +
 			"be called directly",
 	)

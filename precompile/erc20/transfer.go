@@ -13,6 +13,7 @@ import (
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile"
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 const (
@@ -63,21 +64,21 @@ func (tm *TransferMethod) Payable() bool {
 func (tm *TransferMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	from := context.MsgSender()
 
 	to, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid to address: %v", inputs[0])
+		return nil, nil, fmt.Errorf("invalid to address: %v", inputs[0])
 	}
 
 	amount, ok := inputs[1].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid amount: %v", inputs[1])
+		return nil, nil, fmt.Errorf("invalid amount: %v", inputs[1])
 	}
 	if amount == nil || amount.Sign() < 0 {
 		amount = big.NewInt(0)
@@ -129,24 +130,24 @@ func (tfm *TransferFromMethod) Payable() bool {
 func (tfm *TransferFromMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 3); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	from, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid from address: %v", inputs[0])
+		return nil, nil, fmt.Errorf("invalid from address: %v", inputs[0])
 	}
 
 	to, ok := inputs[1].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid to address: %v", inputs[1])
+		return nil, nil, fmt.Errorf("invalid to address: %v", inputs[1])
 	}
 
 	amount, ok := inputs[2].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid amount: %v", inputs[2])
+		return nil, nil, fmt.Errorf("invalid amount: %v", inputs[2])
 	}
 	if amount == nil || amount.Sign() < 0 {
 		amount = big.NewInt(0)
@@ -163,11 +164,11 @@ func transfer(
 	denom string,
 	from, to common.Address,
 	amount *big.Int,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if amount.Sign() > 0 {
 		sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert amount: [%w]", err)
+			return nil, nil, fmt.Errorf("failed to convert amount: [%w]", err)
 		}
 		coins := sdk.Coins{{Denom: denom, Amount: sdkAmount}}
 
@@ -183,12 +184,12 @@ func transfer(
 		} else {
 			authorization, _ := authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
 			if authorization == nil {
-				return nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, spender)
+				return nil, nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, spender)
 			}
 
 			_, ok := authorization.(*banktypes.SendAuthorization)
 			if !ok {
-				return nil, fmt.Errorf(
+				return nil, nil, fmt.Errorf(
 					"expected authorization to be a %T", banktypes.SendAuthorization{},
 				)
 			}
@@ -197,7 +198,7 @@ func transfer(
 		}
 
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -206,7 +207,7 @@ func transfer(
 		NewTransferEvent(from, to, amount),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
 	}
 
 	if denom == evmKeeper.GetParams(context.SdkCtx()).EvmDenom {
@@ -220,7 +221,7 @@ func transfer(
 		// balances of the EVM native gas token for the from/to addresses.
 		balanceDelta, overflow := uint256.FromBig(amount)
 		if overflow {
-			return nil, fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", amount)
+			return nil, nil, fmt.Errorf("conversion from big.Int to uint256.Int overflowed: %v", amount)
 		}
 
 		journal := context.Journal()
@@ -228,7 +229,7 @@ func transfer(
 		journal.AddBalance(to, balanceDelta, tracing.BalanceChangeTransfer)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // TransferEventName is the name of the Transfer event. It matches the name

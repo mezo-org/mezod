@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 const (
@@ -47,21 +48,21 @@ func (m *SetPauserMethod) Payable() bool {
 func (m *SetPauserMethod) Run(
 	context *precompile.RunContext,
 	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(rawInputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	pauser, ok := rawInputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid pauser address: %v", rawInputs[0])
+		return nil, nil, fmt.Errorf("invalid pauser address: %v", rawInputs[0])
 	}
 
 	if err := m.poaKeeper.CheckOwner(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	m.bridgeKeeper.SetPauser(
@@ -69,7 +70,7 @@ func (m *SetPauserMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(pauser),
 	)
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 type GetPauserMethod struct {
@@ -101,14 +102,14 @@ func (m *GetPauserMethod) Payable() bool {
 func (m *GetPauserMethod) Run(
 	context *precompile.RunContext,
 	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	pauser := m.bridgeKeeper.GetPauser(context.SdkCtx())
 
-	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(pauser)}, nil
+	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(pauser)}, nil, nil
 }
 
 type PauseBridgeOutMethod struct {
@@ -140,9 +141,9 @@ func (m *PauseBridgeOutMethod) Payable() bool {
 func (m *PauseBridgeOutMethod) Run(
 	context *precompile.RunContext,
 	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err := m.bridgeKeeper.PauseBridgeOut(
@@ -150,8 +151,8 @@ func (m *PauseBridgeOutMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }

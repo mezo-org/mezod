@@ -234,9 +234,20 @@ func (c *Contract) Run(
 		return nil, fmt.Errorf("failed to unpack method input args: [%w]", err)
 	}
 
-	methodOutputs, err := method.Run(runCtx, methodInputs)
+	methodOutputs, stateChanges, err := method.Run(runCtx, methodInputs)
 	if err != nil {
 		return nil, fmt.Errorf("method errored out: [%w]", err)
+	}
+
+	if len(stateChanges) > 0 {
+		sdkCtx.Logger().Debug(
+			"precompile method reported inner state changes",
+			"method", methodABI.Name,
+			"changesCount", len(stateChanges),
+		)
+		for _, sc := range stateChanges {
+			stateDB.SetState(sc.Address, sc.Key, sc.Value)
+		}
 	}
 
 	methodOutputArgs, err = methodABI.Outputs.Pack(methodOutputs...)
