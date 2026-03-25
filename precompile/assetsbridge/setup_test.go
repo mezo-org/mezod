@@ -138,6 +138,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 					ERC20Management: true,
 					SequenceTipView: true,
 					BridgeOut:       true,
+					Triparty:        true,
 				},
 			)
 			s.Require().NoError(err)
@@ -227,6 +228,9 @@ type FakeBridgeKeeper struct {
 
 	pauser sdk.AccAddress
 	paused bool
+
+	tripartyControllers map[string]bool
+	tripartyPaused      bool
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -239,6 +243,8 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		lastResetHeight:          0,
 		minAmountByToken:         make(map[string]math.Int),
 		minAmountForBitcoinChain: math.ZeroInt(),
+		tripartyControllers:      make(map[string]bool),
+		tripartyPaused:           false,
 	}
 }
 
@@ -439,4 +445,25 @@ func (k *FakeBridgeKeeper) PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress
 
 func (k *FakeBridgeKeeper) isPaused() bool {
 	return k.paused
+}
+
+func (k *FakeBridgeKeeper) IsAllowedTripartyController(_ sdk.Context, controller []byte) bool {
+	return k.tripartyControllers[common.BytesToAddress(controller).Hex()]
+}
+
+func (k *FakeBridgeKeeper) AllowTripartyController(_ sdk.Context, controller []byte, isAllowed bool) {
+	key := common.BytesToAddress(controller).Hex()
+	if isAllowed {
+		k.tripartyControllers[key] = true
+	} else {
+		delete(k.tripartyControllers, key)
+	}
+}
+
+func (k *FakeBridgeKeeper) IsTripartyPaused(_ sdk.Context) bool {
+	return k.tripartyPaused
+}
+
+func (k *FakeBridgeKeeper) SetTripartyPaused(_ sdk.Context, isPaused bool) {
+	k.tripartyPaused = isPaused
 }

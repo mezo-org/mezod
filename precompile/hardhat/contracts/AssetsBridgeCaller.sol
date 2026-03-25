@@ -81,5 +81,21 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function getMinBridgeOutAmountForBitcoinChain() external view returns (uint256) {
         return IAssetsBridge(precompile).getMinBridgeOutAmountForBitcoinChain();
     }
+
+    function bridgeTriparty(address recipient, uint256 amount) external returns (bool) {
+        return IAssetsBridge(precompile).bridgeTriparty(recipient, amount);
+    }
+
+    function allowTripartyController(address controller, bool isAllowed) external returns (bool) {
+        return IAssetsBridge(precompile).allowTripartyController(controller, isAllowed);
+    }
+
+    function isAllowedTripartyController(address controller) external view returns (bool) {
+        return IAssetsBridge(precompile).isAllowedTripartyController(controller);
+    }
+
+    function pauseTriparty(bool isPaused) external returns (bool) {
+        return IAssetsBridge(precompile).pauseTriparty(isPaused);
+    }
 }
 
