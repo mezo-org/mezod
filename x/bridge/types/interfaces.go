@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
@@ -64,7 +65,7 @@ type EvmKeeper interface {
 	ExecuteContractCall(
 		ctx sdk.Context,
 		call types.ContractCall,
-	) (*types.MsgEthereumTxResponse, error)
+	) (*types.MsgEthereumTxResponse, []statedb.StateChange, error)
 
 	// IsContract returns if the account contains contract code.
 	IsContract(ctx sdk.Context, address []byte) bool

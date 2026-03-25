@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // SetChainFeeSplitterAddressMethodName is the name of the setChainFeeSplitterAddress method.
@@ -49,16 +50,16 @@ func (m *setChainFeeSplitterAddressMethod) Payable() bool {
 func (m *setChainFeeSplitterAddressMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	// Validate inputs count
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Validate and extract the chain fee splitter address
 	chainFeeSplitterAddress, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("value argument must be a valid address")
+		return nil, nil, fmt.Errorf("value argument must be a valid address")
 	}
 
 	// This method is restricted to the validator pool owner
@@ -67,17 +68,17 @@ func (m *setChainFeeSplitterAddressMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
 	params.ChainFeeSplitterAddress = chainFeeSplitterAddress.Hex()
 	err = m.evmKeeper.SetParams(context.SdkCtx(), params)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // GetChainFeeSplitterAddressMethodName is the name of the getChainFeeSplitterAddress method.
@@ -119,12 +120,12 @@ func (m *getChainFeeSplitterAddressMethod) Payable() bool {
 func (m *getChainFeeSplitterAddressMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	params := m.evmKeeper.GetParams(context.SdkCtx())
 
-	return precompile.MethodOutputs{common.HexToAddress(params.ChainFeeSplitterAddress)}, nil
+	return precompile.MethodOutputs{common.HexToAddress(params.ChainFeeSplitterAddress)}, nil, nil
 }

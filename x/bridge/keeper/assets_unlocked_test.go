@@ -352,7 +352,8 @@ func TestBurnERC20(t *testing.T) {
 				recipient := toBytes(recipient1)
 
 				token, _ := hex.DecodeString(testSourceERC20Token1[2:])
-				return k.BurnERC20(ctx, token, recipient, big.NewInt(1))
+				_, err := k.BurnERC20(ctx, token, recipient, big.NewInt(1))
+				return err
 			},
 		},
 		{
@@ -388,7 +389,8 @@ func TestBurnERC20(t *testing.T) {
 				recipient := toBytes(recipient1)
 
 				token, _ := hex.DecodeString(testSourceERC20Token1[2:])
-				return k.BurnERC20(ctx, token, recipient, big.NewInt(1))
+				_, err := k.BurnERC20(ctx, token, recipient, big.NewInt(1))
+				return err
 			},
 			errContains: "execution reverted",
 		},

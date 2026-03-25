@@ -127,24 +127,24 @@ func TestContract_Run(t *testing.T) {
 				run: func(
 					_ *RunContext,
 					inputs MethodInputs,
-				) (MethodOutputs, error) {
+				) (MethodOutputs, []statedb.StateChange, error) {
 					if len(inputs) != 2 {
-						return nil, fmt.Errorf("unexpected number of inputs")
+						return nil, nil, fmt.Errorf("unexpected number of inputs")
 					}
 
 					inArg1, ok := inputs[0].(*big.Int)
 					if !ok {
-						return nil, fmt.Errorf("unexpected type of input 1")
+						return nil, nil, fmt.Errorf("unexpected type of input 1")
 					}
 
 					inArg2, ok := inputs[1].([]byte)
 					if !ok {
-						return nil, fmt.Errorf("unexpected type of input 2")
+						return nil, nil, fmt.Errorf("unexpected type of input 2")
 					}
 
 					outArg2 := new(big.Int).Add(inArg1, new(big.Int).SetBytes(inArg2))
 
-					return []interface{}{outArg2}, nil
+					return []interface{}{outArg2}, nil, nil
 				},
 			},
 			methodInputs: []interface{}{

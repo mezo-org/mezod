@@ -11,6 +11,7 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	evm "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -99,21 +100,21 @@ func (tm *transferWithRevertMethod) Payable() bool {
 func (tm *transferWithRevertMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	from := context.MsgSender()
 
 	to, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid to address: %v", inputs[0])
+		return nil, nil, fmt.Errorf("invalid to address: %v", inputs[0])
 	}
 
 	amount, ok := inputs[1].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid amount: %v", inputs[1])
+		return nil, nil, fmt.Errorf("invalid amount: %v", inputs[1])
 	}
 	if amount == nil || amount.Sign() < 0 {
 		amount = big.NewInt(0)
@@ -122,11 +123,11 @@ func (tm *transferWithRevertMethod) Run(
 	return transferWithError(context, tm.bankKeeper, tm.authzkeeper, from, to, amount)
 }
 
-func transferWithError(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, from, to common.Address, amount *big.Int) (precompile.MethodOutputs, error) {
+func transferWithError(context *precompile.RunContext, bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper, from, to common.Address, amount *big.Int) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if amount.Sign() > 0 {
 		sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert amount: [%w]", err)
+			return nil, nil, fmt.Errorf("failed to convert amount: [%w]", err)
 		}
 		coins := sdk.Coins{{Denom: evm.DefaultEVMDenom, Amount: sdkAmount}}
 
@@ -142,12 +143,12 @@ func transferWithError(context *precompile.RunContext, bankKeeper bankkeeper.Kee
 		} else {
 			authorization, _ := authzkeeper.GetAuthorization(context.SdkCtx(), spender.Bytes(), from.Bytes(), SendMsgURL)
 			if authorization == nil {
-				return nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, spender)
+				return nil, nil, fmt.Errorf("%s authorization type does not exist or is expired for address %s", SendMsgURL, spender)
 			}
 
 			_, ok := authorization.(*banktypes.SendAuthorization)
 			if !ok {
-				return nil, fmt.Errorf(
+				return nil, nil, fmt.Errorf(
 					"expected authorization to be a %T", banktypes.SendAuthorization{},
 				)
 			}
@@ -156,7 +157,7 @@ func transferWithError(context *precompile.RunContext, bankKeeper bankkeeper.Kee
 		}
 
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -165,8 +166,8 @@ func transferWithError(context *precompile.RunContext, bankKeeper bankkeeper.Kee
 		NewTransferEvent(from, to, amount),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit transfer event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{}, errors.New("unexpected error")
+	return precompile.MethodOutputs{}, nil, errors.New("unexpected error")
 }

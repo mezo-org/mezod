@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // privileges is a map of privilege id to privilege name. Captures all
@@ -59,25 +60,25 @@ func (apm *AddPrivilegeMethod) Payable() bool {
 func (apm *AddPrivilegeMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	operators, ok := inputs[0].([]common.Address)
 	if !ok {
-		return nil, fmt.Errorf("operators argument must be of type []common.Address")
+		return nil, nil, fmt.Errorf("operators argument must be of type []common.Address")
 	}
 
 	//nolint:revive,stylecheck
 	privilegeId, ok := inputs[1].(uint8)
 	if !ok {
-		return nil, fmt.Errorf("privilegeId argument must be of type uint8")
+		return nil, nil, fmt.Errorf("privilegeId argument must be of type uint8")
 	}
 
 	privilege, ok := privileges[privilegeId]
 	if !ok {
-		return nil, fmt.Errorf("unknown privilege id")
+		return nil, nil, fmt.Errorf("unknown privilege id")
 	}
 
 	operatorsSdk := make([]types.ValAddress, len(operators))
@@ -92,7 +93,7 @@ func (apm *AddPrivilegeMethod) Run(
 		privilege,
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, operator := range operators {
@@ -103,11 +104,11 @@ func (apm *AddPrivilegeMethod) Run(
 			),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to emit PrivilegeAdded event: [%w]", err)
+			return nil, nil, fmt.Errorf("failed to emit PrivilegeAdded event: [%w]", err)
 		}
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // RemovePrivilegeMethodName is the name of the removePrivilege method. It
@@ -153,25 +154,25 @@ func (rpm *RemovePrivilegeMethod) Payable() bool {
 func (rpm *RemovePrivilegeMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	operators, ok := inputs[0].([]common.Address)
 	if !ok {
-		return nil, fmt.Errorf("operators argument must be of type []common.Address")
+		return nil, nil, fmt.Errorf("operators argument must be of type []common.Address")
 	}
 
 	//nolint:revive,stylecheck
 	privilegeId, ok := inputs[1].(uint8)
 	if !ok {
-		return nil, fmt.Errorf("privilegeId argument must be of type uint8")
+		return nil, nil, fmt.Errorf("privilegeId argument must be of type uint8")
 	}
 
 	privilege, ok := privileges[privilegeId]
 	if !ok {
-		return nil, fmt.Errorf("unknown privilege id")
+		return nil, nil, fmt.Errorf("unknown privilege id")
 	}
 
 	operatorsSdk := make([]types.ValAddress, len(operators))
@@ -186,7 +187,7 @@ func (rpm *RemovePrivilegeMethod) Run(
 		privilege,
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, operator := range operators {
@@ -197,11 +198,11 @@ func (rpm *RemovePrivilegeMethod) Run(
 			),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to emit PrivilegeRemoved event: [%w]", err)
+			return nil, nil, fmt.Errorf("failed to emit PrivilegeRemoved event: [%w]", err)
 		}
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // ValidatorsByPrivilegeMethodName is the name of the validatorsByPrivilege method.
@@ -246,20 +247,20 @@ func (vbpm *ValidatorsByPrivilegeMethod) Payable() bool {
 func (vbpm *ValidatorsByPrivilegeMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	//nolint:revive,stylecheck
 	privilegeId, ok := inputs[0].(uint8)
 	if !ok {
-		return nil, fmt.Errorf("privilegeId argument must be of type uint8")
+		return nil, nil, fmt.Errorf("privilegeId argument must be of type uint8")
 	}
 
 	privilege, ok := privileges[privilegeId]
 	if !ok {
-		return nil, fmt.Errorf("unknown privilege id")
+		return nil, nil, fmt.Errorf("unknown privilege id")
 	}
 
 	operatorsSdk := vbpm.keeper.GetValidatorsOperatorsByPrivilege(
@@ -273,7 +274,7 @@ func (vbpm *ValidatorsByPrivilegeMethod) Run(
 		operators[i] = precompile.TypesConverter.Address.FromSDK(types.AccAddress(operator))
 	}
 
-	return precompile.MethodOutputs{operators}, nil
+	return precompile.MethodOutputs{operators}, nil, nil
 }
 
 // PrivilegesMethodName is the name of the `privileges` method.
@@ -311,9 +312,9 @@ func (pm *PrivilegesMethod) Payable() bool {
 func (pm *PrivilegesMethod) Run(
 	_ *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	type privilegeDescriptor struct {
@@ -332,7 +333,7 @@ func (pm *PrivilegesMethod) Run(
 		return int(a.Id - b.Id)
 	})
 
-	return precompile.MethodOutputs{privilegesList}, nil
+	return precompile.MethodOutputs{privilegesList}, nil, nil
 }
 
 // PrivilegeAddedEventName is the name of the PrivilegeAdded event.

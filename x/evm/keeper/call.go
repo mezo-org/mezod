@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/tracers"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -19,15 +20,15 @@ import (
 func (k *Keeper) ExecuteContractCall(
 	ctx sdk.Context,
 	call types.ContractCall,
-) (*types.MsgEthereumTxResponse, error) {
+) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	nonce, err := k.accountKeeper.GetSequence(ctx, call.From().Bytes())
 	if err != nil {
-		return nil, errorsmod.Wrap(err, "failed to get account nonce")
+		return nil, nil, errorsmod.Wrap(err, "failed to get account nonce")
 	}
 
 	consensusParamsResponse, err := k.consensusKeeper.Params(ctx, nil)
 	if err != nil {
-		return nil, errorsmod.Wrap(err, "failed to get consensus params")
+		return nil, nil, errorsmod.Wrap(err, "failed to get consensus params")
 	}
 
 	// Set the gas cap to the block's max gas limit.
@@ -49,14 +50,22 @@ func (k *Keeper) ExecuteContractCall(
 		SkipAccountChecks: false,
 	}
 
-	res, err := k.ApplyMessage(ctx, msg, &tracers.Tracer{}, true)
+	res, changes, err := k.ApplyMessage(ctx, msg, &tracers.Tracer{}, true)
 	if err != nil {
-		return nil, errorsmod.Wrap(err, "failed to apply EVM message")
+		return nil, nil, errorsmod.Wrap(err, "failed to apply EVM message")
 	}
 
 	if res.Failed() {
-		return nil, errorsmod.Wrap(types.ErrVMExecution, res.VmError)
+		return nil, nil, errorsmod.Wrap(types.ErrVMExecution, res.VmError)
 	}
 
-	return res, nil
+	if len(changes) > 0 {
+		ctx.Logger().Debug(
+			"inner EVM execution committed state changes",
+			"contract", call.To().Hex(),
+			"changesCount", len(changes),
+		)
+	}
+
+	return res, changes, nil
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // SetMinBridgeOutAmountMethodName is the name of the setMinBridgeOutAmount
@@ -53,27 +54,27 @@ func (m *SetMinBridgeOutAmountMethod) Payable() bool {
 func (m *SetMinBridgeOutAmountMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	mezoToken, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("mezo token must be common.Address")
+		return nil, nil, fmt.Errorf("mezo token must be common.Address")
 	}
 
 	if (mezoToken == common.Address{}) {
-		return nil, fmt.Errorf("mezo token cannot be the zero address")
+		return nil, nil, fmt.Errorf("mezo token cannot be the zero address")
 	}
 
 	minAmount, ok := inputs[1].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid minimum amount: %v", inputs[1])
+		return nil, nil, fmt.Errorf("invalid minimum amount: %v", inputs[1])
 	}
 
 	if minAmount.Sign() <= 0 {
-		return nil, fmt.Errorf("minimum amount must be positive")
+		return nil, nil, fmt.Errorf("minimum amount must be positive")
 	}
 
 	err := m.poaKeeper.CheckOwner(
@@ -81,7 +82,7 @@ func (m *SetMinBridgeOutAmountMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = m.bridgeKeeper.SetMinBridgeOutAmount(
@@ -90,20 +91,20 @@ func (m *SetMinBridgeOutAmountMethod) Run(
 		sdkmath.NewIntFromBigInt(minAmount),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = context.EventEmitter().Emit(
 		NewMinBridgeOutAmountSetEvent(mezoToken, minAmount),
 	)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"failed to emit MinBridgeOutAmountSet event: [%w]",
 			err,
 		)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // MinBridgeOutAmountSetEventName is the name of the MinBridgeOutAmountSet event.
@@ -188,14 +189,14 @@ func (m *GetMinBridgeOutAmountMethod) Payable() bool {
 func (m *GetMinBridgeOutAmountMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	token, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("token must be common.Address")
+		return nil, nil, fmt.Errorf("token must be common.Address")
 	}
 
 	minAmount := m.bridgeKeeper.GetMinBridgeOutAmount(
@@ -205,7 +206,7 @@ func (m *GetMinBridgeOutAmountMethod) Run(
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(minAmount),
-	}, nil
+	}, nil, nil
 }
 
 // SetMinBridgeOutAmountForBitcoinChainMethodName is the name of the setMinBridgeOutAmountForBitcoinChain
@@ -250,18 +251,18 @@ func (m *SetMinBridgeOutAmountForBitcoinChainMethod) Payable() bool {
 func (m *SetMinBridgeOutAmountForBitcoinChainMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	minAmount, ok := inputs[0].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid minimum amount: %v", inputs[0])
+		return nil, nil, fmt.Errorf("invalid minimum amount: %v", inputs[0])
 	}
 
 	if minAmount.Sign() < 0 {
-		return nil, fmt.Errorf("minimum amount must be zero or positive")
+		return nil, nil, fmt.Errorf("minimum amount must be zero or positive")
 	}
 
 	err := m.poaKeeper.CheckOwner(
@@ -269,12 +270,12 @@ func (m *SetMinBridgeOutAmountForBitcoinChainMethod) Run(
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sdkMinAmount, err := precompile.TypesConverter.BigInt.ToSDK(minAmount)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert minimum amount: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to convert minimum amount: [%w]", err)
 	}
 
 	m.bridgeKeeper.SetMinBridgeOutAmountForBitcoinChain(
@@ -286,13 +287,13 @@ func (m *SetMinBridgeOutAmountForBitcoinChainMethod) Run(
 		NewMinBridgeOutAmountForBitcoinChainSetEvent(minAmount),
 	)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"failed to emit MinBridgeOutAmountForBitcoinChainSet event: [%w]",
 			err,
 		)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // GetMinBridgeOutAmountForBitcoinChainMethodName is the name of the getMinBridgeOutAmountForBitcoinChain
@@ -334,16 +335,16 @@ func (m *GetMinBridgeOutAmountForBitcoinChainMethod) Payable() bool {
 func (m *GetMinBridgeOutAmountForBitcoinChainMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	minAmount := m.bridgeKeeper.GetMinBridgeOutAmountForBitcoinChain(context.SdkCtx())
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(minAmount),
-	}, nil
+	}, nil, nil
 }
 
 // MinBridgeOutAmountForBitcoinChainSetEventName is the name of the MinBridgeOutAmountForBitcoinChainSet event.

@@ -6,6 +6,7 @@ import (
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // BalanceOfMethodName is the name of the balanceOf method. It matches the name
@@ -55,14 +56,14 @@ func (bom *BalanceOfMethod) Payable() bool {
 func (bom *BalanceOfMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	account, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("account argument must be common.Address")
+		return nil, nil, fmt.Errorf("account argument must be common.Address")
 	}
 
 	balance := bom.bankKeeper.GetBalance(
@@ -73,5 +74,5 @@ func (bom *BalanceOfMethod) Run(
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(balance.Amount),
-	}, nil
+	}, nil, nil
 }

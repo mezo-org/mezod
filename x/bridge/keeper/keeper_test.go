@@ -13,6 +13,7 @@ import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/mock"
 )
@@ -130,14 +131,14 @@ func newMockEvmKeeper() *mockEvmKeeper {
 func (mek *mockEvmKeeper) ExecuteContractCall(
 	ctx sdk.Context,
 	call evmtypes.ContractCall,
-) (*evmtypes.MsgEthereumTxResponse, error) {
+) (*evmtypes.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	args := mek.Called(ctx, call)
 
 	if res := args.Get(0); res != nil {
-		return res.(*evmtypes.MsgEthereumTxResponse), args.Error(1)
+		return res.(*evmtypes.MsgEthereumTxResponse), nil, args.Error(1)
 	}
 
-	return nil, args.Error(1)
+	return nil, nil, args.Error(1)
 }
 
 func (mek *mockEvmKeeper) IsContract(ctx sdk.Context, address []byte) bool {

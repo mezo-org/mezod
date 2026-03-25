@@ -10,6 +10,7 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -192,7 +193,7 @@ func (k Keeper) BurnERC20(
 	token []byte,
 	fromAddr []byte,
 	amount *big.Int,
-) error {
+) ([]statedb.StateChange, error) {
 	bridgeAddrBytes := evmtypes.HexAddressToBytes(
 		evmtypes.AssetsBridgePrecompileAddress,
 	)
@@ -204,15 +205,15 @@ func (k Keeper) BurnERC20(
 		amount,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create ERC20 burnFrom call: %w", err)
+		return nil, fmt.Errorf("failed to create ERC20 burnFrom call: %w", err)
 	}
 
-	_, err = k.evmKeeper.ExecuteContractCall(ctx, call)
+	_, changes, err := k.evmKeeper.ExecuteContractCall(ctx, call)
 	if err != nil {
-		return fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
+		return nil, fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
 	}
 
-	return nil
+	return changes, nil
 }
 
 func (k Keeper) GetAllMinBridgeOutAmounts(ctx sdk.Context) []*types.TokenMinBridgeOutAmount {
