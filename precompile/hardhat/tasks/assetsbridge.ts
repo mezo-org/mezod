@@ -231,3 +231,57 @@ task(
     console.log(minAmount)
   }
 )
+
+task('assetsBridge:bridgeTriparty', 'Requests a triparty BTC mint through the bridge')
+  .addParam('recipient', 'The address to receive the minted BTC')
+  .addParam('amount', 'The amount of BTC to mint')
+  .addParam('signer', 'The signer address (msg.sender) - must be an allowed triparty controller')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.bridgeTriparty(
+      taskArguments.recipient,
+      taskArguments.amount
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('assetsBridge:allowTripartyController', 'Allows or disallows a triparty controller address')
+  .addParam('controller', 'The address of the triparty controller')
+  .addParam('isAllowed', 'Whether the controller should be allowed (true/false)')
+  .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.allowTripartyController(
+      taskArguments.controller,
+      taskArguments.isAllowed === 'true'
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task(
+  'assetsBridge:isAllowedTripartyController',
+  'Checks if an address is an allowed triparty controller'
+)
+  .addParam('controller', 'The address to check')
+  .setAction(async (taskArguments, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result: boolean = await bridge.isAllowedTripartyController(taskArguments.controller)
+    console.log(result)
+  })
+
+task('assetsBridge:pauseTriparty', 'Pauses or unpauses triparty bridging')
+  .addParam('isPaused', 'Whether to pause triparty bridging (true/false)')
+  .addParam('signer', 'The signer address (msg.sender) - must be the current pauser')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.pauseTriparty(
+      taskArguments.isPaused === 'true'
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })

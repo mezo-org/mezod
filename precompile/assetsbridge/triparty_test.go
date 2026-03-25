@@ -1,0 +1,213 @@
+package assetsbridge_test
+
+import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+)
+
+var (
+	testTripartyController = common.HexToAddress("0x1234567890AbCdEf1234567890AbCdEf12345678")
+)
+
+func (s *PrecompileTestSuite) TestAllowTripartyController() {
+	testcases := []TestCase{
+		{
+			name: "caller is not owner",
+			run: func() []interface{} {
+				return []interface{}{testTripartyController, true}
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "sender is not owner",
+		},
+		{
+			name: "zero address controller",
+			run: func() []interface{} {
+				return []interface{}{common.Address{}, true}
+			},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "controller address must not be the zero address",
+		},
+		{
+			name: "happy path - allow controller",
+			run: func() []interface{} {
+				return []interface{}{testTripartyController, true}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				s.Require().True(
+					s.bridgeKeeper.IsAllowedTripartyController(s.ctx, testTripartyController.Bytes()),
+				)
+			},
+		},
+		{
+			name: "happy path - disallow controller",
+			run: func() []interface{} {
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				return []interface{}{testTripartyController, false}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				s.Require().False(
+					s.bridgeKeeper.IsAllowedTripartyController(s.ctx, testTripartyController.Bytes()),
+				)
+			},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "allowTripartyController")
+}
+
+func (s *PrecompileTestSuite) TestIsAllowedTripartyController() {
+	testcases := []TestCase{
+		{
+			name: "not allowed - returns false",
+			run: func() []interface{} {
+				return []interface{}{testTripartyController}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{false},
+		},
+		{
+			name: "allowed - returns true",
+			run: func() []interface{} {
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				return []interface{}{testTripartyController}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "isAllowedTripartyController")
+}
+
+func (s *PrecompileTestSuite) TestPauseTriparty() {
+	testcases := []TestCase{
+		{
+			name: "no pauser is set",
+			run: func() []interface{} {
+				return []interface{}{true}
+			},
+			as:          testPauserAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "no pauser is set",
+		},
+		{
+			name: "caller is not the pauser",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
+				return []interface{}{true}
+			},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "caller is not the pauser",
+		},
+		{
+			name: "happy path - pause",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
+				return []interface{}{true}
+			},
+			as:        testPauserAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				s.Require().True(s.bridgeKeeper.IsTripartyPaused(s.ctx))
+			},
+		},
+		{
+			name: "happy path - unpause",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
+				return []interface{}{false}
+			},
+			as:        testPauserAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				s.Require().False(s.bridgeKeeper.IsTripartyPaused(s.ctx))
+			},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "pauseTriparty")
+}
+
+func (s *PrecompileTestSuite) TestBridgeTriparty() {
+	testcases := []TestCase{
+		{
+			name: "triparty is paused",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1000)}
+			},
+			as:          testTripartyController,
+			basicPass:   true,
+			revert:      true,
+			errContains: "triparty bridging is paused",
+		},
+		{
+			name: "caller is not a controller",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1000)}
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "caller is not an allowed triparty controller",
+		},
+		{
+			name: "zero recipient",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				return []interface{}{common.Address{}, big.NewInt(1000)}
+			},
+			as:          testTripartyController,
+			basicPass:   true,
+			revert:      true,
+			errContains: "recipient address must not be the zero address",
+		},
+		{
+			name: "zero amount",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				return []interface{}{s.account2.EvmAddr, big.NewInt(0)}
+			},
+			as:          testTripartyController,
+			basicPass:   true,
+			revert:      true,
+			errContains: "amount must be positive",
+		},
+		{
+			name: "happy path",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1000)}
+			},
+			as:        testTripartyController,
+			basicPass: true,
+			output:    []interface{}{true},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "bridgeTriparty")
+}
