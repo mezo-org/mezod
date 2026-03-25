@@ -65,6 +65,15 @@ var (
 	// MinBridgeOutAmountForBitcoinChainKey is a standalone key for the minimum
 	// bridge-out amount that applies specifically to the Bitcoin chain.
 	MinBridgeOutAmountForBitcoinChainKey = []byte{0x95}
+
+	// TripartyControllerKeyPrefix is a prefix used to construct a key to a
+	// triparty controller entry. A key is constructed by taking this prefix
+	// and appending the controller address.
+	TripartyControllerKeyPrefix = []byte{0xA0}
+
+	// TripartyPausedKey is a standalone key for the triparty paused flag.
+	// If the key is present in the store, triparty bridging is paused.
+	TripartyPausedKey = []byte{0xA1}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
@@ -92,4 +101,9 @@ func GetCurrentOutflowKey(token []byte) []byte {
 // given Mezo token address.
 func GetMinBridgeOutAmountKey(mezoToken []byte) []byte {
 	return append(MinBridgeOutAmountKeyPrefix, mezoToken...)
+}
+
+// GetTripartyControllerKey gets the key for a triparty controller by address.
+func GetTripartyControllerKey(controller []byte) []byte {
+	return append(TripartyControllerKeyPrefix, controller...)
 }

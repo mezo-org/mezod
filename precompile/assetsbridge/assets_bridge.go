@@ -103,13 +103,32 @@ func NewPrecompileVersionMap(
 		return nil, err
 	}
 
+	// v5 is all previous settings plus triparty bridging
+	contractV5, err := NewPrecompile(
+		poaKeeper,
+		bridgeKeeper,
+		authzKeeper,
+		&Settings{
+			Observability:   true,
+			BTCManagement:   true,
+			ERC20Management: true,
+			SequenceTipView: true,
+			BridgeOut:       true,
+			Triparty:        true,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
 			1: contractV1,
 			2: contractV2,
 			3: contractV3,
-			evmtypes.AssetsBridgePrecompileLatestVersion: contractV4,
+			4: contractV4,
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV5,
 		},
 	), nil
 }
@@ -120,6 +139,7 @@ type Settings struct {
 	ERC20Management bool // enable methods related to the ERC20 bridging management
 	SequenceTipView bool // enable the method to expose the sequence tip
 	BridgeOut       bool // enable the bridgeOut method
+	Triparty        bool // enable triparty bridging methods
 }
 
 // NewPrecompile creates a new Assets Bridge precompile.
@@ -174,6 +194,13 @@ func NewPrecompile(
 		methods = append(methods, newGetMinBridgeOutAmountMethod(bridgeKeeper))
 		methods = append(methods, newSetMinBridgeOutAmountForBitcoinChainMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetMinBridgeOutAmountForBitcoinChainMethod(bridgeKeeper))
+	}
+
+	if settings.Triparty {
+		methods = append(methods, newBridgeTripartyMethod(bridgeKeeper))
+		methods = append(methods, newAllowTripartyControllerMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newIsAllowedTripartyControllerMethod(bridgeKeeper))
+		methods = append(methods, newPauseTripartyMethod(bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -246,6 +273,10 @@ type BridgeKeeper interface {
 	SetPauser(ctx sdk.Context, pauser sdk.AccAddress)
 	GetPauser(ctx sdk.Context) sdk.AccAddress
 	PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error
+	IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool
+	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
+	IsTripartyPaused(ctx sdk.Context) bool
+	SetTripartyPaused(ctx sdk.Context, isPaused bool)
 }
 
 type AuthzKeeper interface {
