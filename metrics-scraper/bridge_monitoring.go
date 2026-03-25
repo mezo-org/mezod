@@ -685,10 +685,13 @@ func outflowLimitSaturation(
 
 		capacityFloat := new(big.Float).SetInt(capacityData.Capacity)
 		limitFloat := new(big.Float).SetInt(limit)
-		limitUsed := new(big.Float).Sub(limitFloat, capacityFloat)
 
-		saturation := new(big.Float).Quo(new(big.Float).Mul(limitUsed, big.NewFloat(100)), limitFloat)
-		saturationFloat, _ := saturation.Float64()
+		var saturationFloat float64
+		if limit.Sign() > 0 {
+			limitUsed := new(big.Float).Sub(limitFloat, capacityFloat)
+			saturation := new(big.Float).Quo(new(big.Float).Mul(limitUsed, big.NewFloat(100)), limitFloat)
+			saturationFloat, _ = saturation.Float64()
+		}
 
 		outflowLimitSaturationGauge.WithLabelValues(mezoToken.Hex(), mezoChainID).Set(saturationFloat)
 	}
