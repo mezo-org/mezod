@@ -283,9 +283,9 @@ func (m *PauseTripartyMethod) Run(
 // --- Events ---
 
 const (
-	TripartyBridgeRequestedEventName  = "TripartyBridgeRequested"
+	TripartyBridgeRequestedEventName   = "TripartyBridgeRequested"
 	TripartyControllerAllowedEventName = "TripartyControllerAllowed"
-	TripartyPausedEventName           = "TripartyPaused"
+	TripartyPausedEventName            = "TripartyPaused"
 )
 
 // TripartyBridgeRequestedEvent is emitted when a triparty bridge request is made.

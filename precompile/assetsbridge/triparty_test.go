@@ -6,9 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var (
-	testTripartyController = common.HexToAddress("0x1234567890AbCdEf1234567890AbCdEf12345678")
-)
+var testTripartyController = common.HexToAddress("0x1234567890AbCdEf1234567890AbCdEf12345678")
 
 func (s *PrecompileTestSuite) TestAllowTripartyController() {
 	testcases := []TestCase{
