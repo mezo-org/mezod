@@ -5,6 +5,7 @@ import { WorkerEntrypoint } from "cloudflare:workers";
 
 const cfVerifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 const invalidTargetAddressError = "Invalid target address. Try to use a proper 20-byte hexadecimal address prefixed with 0x."
+const mezoTokenAddress = "0x7b7c000000000000000000000000000000000001"
 
 type Env = {
   MEZO_API_URL: string
@@ -12,6 +13,7 @@ type Env = {
   TURNSTILE_SITE_KEY: string
   TURNSTILE_SECRET_KEY: string
   AMOUNT_BTC: string
+  AMOUNT_MEZO: string
   RATE_LIMITER: any
   REQUEST_DELAY_SECONDS: number
   PUBLIC_ACCESS: string
@@ -19,9 +21,16 @@ type Env = {
   API_KEY: string
 }
 
+type TokenType = "BTC" | "MEZO"
+
+const ERC20_TRANSFER_ABI = [
+  "function transfer(address to, uint256 amount) returns (bool)"
+]
+
 const publicSend = async (request: Request, env: Env) => {
   const requestForm = await request.formData()
   const targetAddress = requestForm.get("address") as string
+  const token = (requestForm.get("token") as TokenType) || "BTC"
   const ip = request.headers.get('cf-connecting-ip') as string
 
   let cfVerifyForm = new FormData()
@@ -39,29 +48,35 @@ const publicSend = async (request: Request, env: Env) => {
     return html(errorHTML("Captcha verification failed"))
   }
 
-  // Early check the target address validity. Despite internalSendBTC checks it
+  // Early check the target address validity. Despite internalSend checks it
   // again, we don't want to waste rate limit on invalid addresses that may be
   // wrong by mistake.
   if (!ethers.isAddress(targetAddress)) {
     return html(errorHTML(invalidTargetAddressError))
   }
 
-  const rl = await rateLimit(env, ip)
+  const rl = await rateLimit(env, ip, token)
   if (!rl.success) {
     const leftMinutes = Math.ceil(rl.left! / 60)
     return html(errorHTML(`Rate limit exceeded. Try again after ${leftMinutes} min.`))
   }
 
   try {
-    const amountBTC = env.AMOUNT_BTC
-    const transactionHash = await internalSend(env, targetAddress, amountBTC)
-    return html(successHTML(transactionHash, amountBTC))
+    if (token === "MEZO") {
+      const amountMEZO = env.AMOUNT_MEZO
+      const transactionHash = await internalSendMEZO(env, targetAddress, amountMEZO)
+      return html(successHTML(transactionHash, amountMEZO, "MEZO"))
+    } else {
+      const amountBTC = env.AMOUNT_BTC
+      const transactionHash = await internalSendBTC(env, targetAddress, amountBTC)
+      return html(successHTML(transactionHash, amountBTC, "BTC"))
+    }
   } catch (error) {
     return html(errorHTML(`Unexpected error: ${error}`))
   }
 }
 
-async function internalSend(
+async function internalSendBTC(
   env: Env,
   targetAddress: string,
   amountBTC: string
@@ -90,12 +105,44 @@ async function internalSend(
   return transaction.hash
 }
 
-async function rateLimit(env: Env, ip: string): Promise<{
+async function internalSendMEZO(
+  env: Env,
+  targetAddress: string,
+  amountMEZO: string
+): Promise<string> {
+  if (!ethers.isAddress(targetAddress)) {
+    throw Error(invalidTargetAddressError)
+  }
+
+  let parsedAmountMEZO: bigint
+  try {
+    parsedAmountMEZO = ethers.parseEther(amountMEZO)
+  } catch (error) {
+    throw Error(`Invalid MEZO amount: ${error}`)
+  }
+
+  const wallet = new ethers.Wallet(
+    env.MEZO_FAUCET_PRIVATE_KEY,
+    ethers.getDefaultProvider(env.MEZO_API_URL)
+  )
+
+  const mezoToken = new ethers.Contract(
+    mezoTokenAddress,
+    ERC20_TRANSFER_ABI,
+    wallet
+  )
+
+  const transaction = await mezoToken.transfer(targetAddress, parsedAmountMEZO)
+
+  return transaction.hash
+}
+
+async function rateLimit(env: Env, ip: string, token: TokenType): Promise<{
   success: boolean
   left?: number
 }> {
   const now = Math.floor(Date.now() / 1000)
-  const key = `rate-limiter:${ip}`
+  const key = `rate-limiter:${ip}:${token}`
 
   // Get the timestamp when the next request is allowed.
   const nextRequestTimestamp: number | undefined = await env.RATE_LIMITER.get(key)
@@ -138,11 +185,16 @@ router
       return error(403, "Forbidden")
     }
 
-    const requestBody: { targetAddress: string; amountBTC: string } = await request.json()
-    const { targetAddress, amountBTC } = requestBody
+    const requestBody: { targetAddress: string; amount: string; token?: TokenType } = await request.json()
+    const { targetAddress, amount, token = "BTC" } = requestBody
 
     try {
-      const transactionHash = await internalSend(env, targetAddress, amountBTC)
+      let transactionHash: string
+      if (token === "MEZO") {
+        transactionHash = await internalSendMEZO(env, targetAddress, amount)
+      } else {
+        transactionHash = await internalSendBTC(env, targetAddress, amount)
+      }
       return json({ success: true, transactionHash })
     } catch (error) {
       return json({ success: false, errorMsg: `${error}` })
@@ -161,9 +213,14 @@ export default {
 }
 
 export class InternalEntrypoint extends WorkerEntrypoint {
-  async send(targetAddress: string, amountBTC: string): Promise<InternalSendResponse> {
+  async send(targetAddress: string, amount: string, token: TokenType = "BTC"): Promise<InternalSendResponse> {
     try {
-      const transactionHash = await internalSend(this.env as Env, targetAddress, amountBTC)
+      let transactionHash: string
+      if (token === "MEZO") {
+        transactionHash = await internalSendMEZO(this.env as Env, targetAddress, amount)
+      } else {
+        transactionHash = await internalSendBTC(this.env as Env, targetAddress, amount)
+      }
       return { success: true, transactionHash }
     } catch (error) {
       return { success: false, errorMsg: `${error}` }

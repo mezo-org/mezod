@@ -74,4 +74,22 @@ task('maintenance:getMinGasPrice', 'Gets the minimum gas price')
     const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
     const price = await maintenance.getMinGasPrice()
     console.log(price)
-  })  
+  })
+
+task('maintenance:setMaxPrecompilesCallsPerExecution', 'Sets the maximum number of precompile calls allowed per transaction execution')
+  .addParam('signer', 'The owner address (msg.sender)')
+  .addParam('value', 'The maximum precompile calls per execution')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setMaxPrecompilesCallsPerExecution(taskArguments.value)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('maintenance:getMaxPrecompilesCallsPerExecution', 'Gets the maximum number of precompile calls allowed per transaction execution')
+  .setAction(async (taskArguments, hre) => {
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const value = await maintenance.getMaxPrecompilesCallsPerExecution()
+    console.log(value)
+  })

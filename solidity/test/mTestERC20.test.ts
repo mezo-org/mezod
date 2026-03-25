@@ -14,7 +14,7 @@ describe("mTestERC20", function () {
   let user2: any;
 
   async function fixture() {
-    await deployments.fixture();
+    await deployments.fixture(["mTestERC20"]);
     const signers = await ethers.getSigners();
     owner = signers[0];
     governance = signers[1];
@@ -119,6 +119,50 @@ describe("mTestERC20", function () {
       await expect(
         mTestERC20.connect(user1).transfer(user2.address, amount + 1n)
       ).to.be.reverted
+    })
+  })
+
+  describe("Permit", function () {
+    it("should allow setting allowance via permit", async function () {
+      const { mTestERC20, owner, user2 } = await loadFixture(fixture)
+      const amount = ethers.parseEther("100")
+      const deadline = ethers.MaxUint256
+
+      const nonce = await mTestERC20.nonces(owner.address)
+      const { chainId } = await ethers.provider.getNetwork()
+
+      const domain = {
+        name: await mTestERC20.name(),
+        version: "1",
+        chainId: Number(chainId),
+        verifyingContract: await mTestERC20.getAddress(),
+      }
+
+      const types = {
+        Permit: [
+          { name: "owner", type: "address" },
+          { name: "spender", type: "address" },
+          { name: "value", type: "uint256" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+        ],
+      }
+
+      const values = {
+        owner: owner.address,
+        spender: user2.address,
+        value: amount,
+        nonce,
+        deadline,
+      }
+
+      const signature = await owner.signTypedData(domain, types, values)
+      const { v, r, s } = ethers.Signature.from(signature)
+
+      await mTestERC20.connect(user2).permit(owner.address, user2.address, amount, deadline, v, r, s)
+
+      expect(await mTestERC20.allowance(owner.address, user2.address)).to.equal(amount)
+      expect(await mTestERC20.nonces(owner.address)).to.equal(nonce + 1n)
     })
   })
 

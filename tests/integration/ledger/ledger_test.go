@@ -213,7 +213,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 						flags.SignModeLegacyAminoJSON,
 					})
 					out := bytes.NewBufferString("")
-					cmd.SetOutput(out)
+					cmd.SetOut(out)
 
 					err := cmd.Execute()
 
@@ -233,7 +233,7 @@ var _ = Describe("Ledger CLI and keyring functionality: ", func() {
 						flags.SignModeLegacyAminoJSON,
 					})
 					out := bytes.NewBufferString("")
-					cmd.SetOutput(out)
+					cmd.SetOut(out)
 
 					err := cmd.Execute()
 

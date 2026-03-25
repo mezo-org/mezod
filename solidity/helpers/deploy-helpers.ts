@@ -1,4 +1,4 @@
-import type { DeployFunction } from "hardhat-deploy/types"
+import type { DeployFunction, Deployment } from "hardhat-deploy/types"
 import { HardhatRuntimeEnvironment } from "hardhat/types"
 
 export function mERC20DeployFunctionFactory(
@@ -26,7 +26,7 @@ export function mERC20DeployFunctionFactory(
     if (isValidDeployment) {
       log(`Using ${tokenContract} at ${existingDeployment.address}`)
     } else {
-      const [_, deployment] = await helpers.upgrades.deployProxy(
+      const [tokenInstance, deployment] = await helpers.upgrades.deployProxy(
         tokenContract,
         {
           contractName: tokenContract,
@@ -46,6 +46,10 @@ export function mERC20DeployFunctionFactory(
           },
         },
       )
+
+      // TODO: This is a one-off reinitializer for the permit migration. If any
+      // new reinitializers are added, make sure to keep the order here in sync.
+      await tokenInstance.initializeV2()
 
       await helpers.ownable.transferOwnership(tokenContract, governance, deployer)
 
@@ -76,7 +80,7 @@ export function mERC20DeployFunctionFactory(
   }
 }
 
-async function waitForTransaction(
+export async function waitForTransaction(
   hre: HardhatRuntimeEnvironment,
   txHash: string,
   confirmations: number = 1,
@@ -100,4 +104,40 @@ async function waitForTransaction(
     // eslint-disable-next-line no-await-in-loop
     currentConfirmations = await transaction.confirmations()
   }
+}
+
+export async function saveDeploymentArtifact(
+  hre: HardhatRuntimeEnvironment,
+  deploymentName: string,
+  contractAddress: string,
+  transactionHash: string,
+  opts?: {
+    contractName?: string
+    constructorArgs?: unknown[]
+    implementation?: string
+    log?: boolean
+  },
+): Promise<Deployment> {
+  const artifact = await hre.artifacts.readArtifact(
+    opts?.contractName || deploymentName,
+  )
+
+  const deployment: Deployment = {
+    address: contractAddress,
+    abi: artifact.abi,
+    transactionHash,
+    args: opts?.constructorArgs,
+    implementation: opts?.implementation,
+  }
+
+  await hre.deployments.save(deploymentName, deployment)
+
+  if (opts?.log) {
+    hre.deployments.log(
+      `Saved deployment artifact for '${deploymentName}' with address ${contractAddress}` +
+        ` and deployment transaction: ${transactionHash}`,
+    )
+  }
+
+  return deployment
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	store "cosmossdk.io/store/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // methodIDByteLength is the length of the method ID in bytes.
@@ -46,7 +47,7 @@ type Method interface {
 	Run(
 		context *RunContext,
 		inputs MethodInputs,
-	) (MethodOutputs, error)
+	) (MethodOutputs, []statedb.StateChange, error)
 }
 
 // DefaultRequiredGas calculates the default amount of gas required to execute

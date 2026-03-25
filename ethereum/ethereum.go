@@ -214,6 +214,10 @@ func (bc *BaseChain) FinalizedBlock(ctx context.Context) (*big.Int, error) {
 	return bc.finalizedBlockFn(ctx)
 }
 
+func (bc *BaseChain) CurrentBlock() (uint64, error) {
+	return bc.blockCounter.CurrentBlock()
+}
+
 func (bc *BaseChain) LatestBlock(ctx context.Context) (*big.Int, error) {
 	r, err := bc.Client().HeaderByNumber(ctx, nil)
 	if err != nil {

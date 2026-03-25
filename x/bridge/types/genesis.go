@@ -15,12 +15,19 @@ import (
 // later stages, before running the network.
 func DefaultGenesis() *GenesisState {
 	return &GenesisState{
-		Params:                    DefaultParams(),
-		AssetsLockedSequenceTip:   sdkmath.NewInt(0),
-		AssetsUnlockedSequenceTip: sdkmath.NewInt(0),
-		SourceBtcToken:            "",
-		Erc20TokensMappings:       nil,
-		InitialBtcSupply:          sdkmath.NewInt(0),
+		Params:                         DefaultParams(),
+		AssetsLockedSequenceTip:        sdkmath.NewInt(0),
+		AssetsUnlockedSequenceTip:      sdkmath.NewInt(0),
+		SourceBtcToken:                 "",
+		Erc20TokensMappings:            nil,
+		InitialBtcSupply:               sdkmath.NewInt(0),
+		AssetsUnlockedEvents:           nil,
+		BitcoinChainMinBridgeOutAmount: sdkmath.NewInt(0),
+		TokenMinBridgeOutAmounts:       nil,
+		Pauser:                         evmtypes.ZeroHexAddress(),
+		LastOutflowReset:               0,
+		CurrentOutflowLimits:           nil,
+		CurrentOutflowAmounts:          nil,
 	}
 }
 

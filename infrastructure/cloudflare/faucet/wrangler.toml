@@ -15,6 +15,7 @@ kv_namespaces = [
 [vars]
 MEZO_API_URL = "http://localhost:8545"
 AMOUNT_BTC = "0.001"
+AMOUNT_MEZO = "100"
 REQUEST_DELAY_SECONDS = "120"
 PUBLIC_ACCESS = "false"
 PUBLIC_ACCESS_REDIRECT = "https://mezo.org"
@@ -29,6 +30,7 @@ kv_namespaces = [
 [env.staging.vars]
 MEZO_API_URL = "https://rpc.test.mezo.org"
 AMOUNT_BTC = "0.001"
+AMOUNT_MEZO = "100"
 REQUEST_DELAY_SECONDS = "86400" # 24 hours
 PUBLIC_ACCESS = "true"
 PUBLIC_ACCESS_REDIRECT = "https://mezo.org"

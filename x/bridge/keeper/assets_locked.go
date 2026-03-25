@@ -215,7 +215,7 @@ func (k Keeper) mintERC20(
 		return fmt.Errorf("failed to create ERC20 mint call: %w", err)
 	}
 
-	_, err = k.evmKeeper.ExecuteContractCall(ctx, call)
+	_, _, err = k.evmKeeper.ExecuteContractCall(ctx, call)
 	if err != nil {
 		return fmt.Errorf("failed to execute ERC20 mint call: %w", err)
 	}

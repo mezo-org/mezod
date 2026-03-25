@@ -7,11 +7,31 @@ import (
 	"math/big"
 
 	"cosmossdk.io/math"
-
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
+
+// GetAllAssetsUnlockedEvents returns all assets unlocked events processed by the bridge.
+func (k Keeper) GetAllAssetsUnlockedEvents(ctx sdk.Context) []*types.AssetsUnlockedEvent {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(store, types.AssetsUnlockedKeyPrefix)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var events []*types.AssetsUnlockedEvent
+
+	for ; iterator.Valid(); iterator.Next() {
+		event := types.MustUnmarshalAssetsUnlockedEvent(k.cdc, iterator.Value())
+		events = append(events, &event)
+	}
+
+	return events
+}
 
 // GetAssetsUnlockedSequenceTip returns the current sequence tip for the
 // AssetsUnlocked events. The tip denotes the sequence number of the last event
@@ -173,7 +193,7 @@ func (k Keeper) BurnERC20(
 	token []byte,
 	fromAddr []byte,
 	amount *big.Int,
-) error {
+) ([]statedb.StateChange, error) {
 	bridgeAddrBytes := evmtypes.HexAddressToBytes(
 		evmtypes.AssetsBridgePrecompileAddress,
 	)
@@ -185,15 +205,46 @@ func (k Keeper) BurnERC20(
 		amount,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create ERC20 burnFrom call: %w", err)
+		return nil, fmt.Errorf("failed to create ERC20 burnFrom call: %w", err)
 	}
 
-	_, err = k.evmKeeper.ExecuteContractCall(ctx, call)
+	_, changes, err := k.evmKeeper.ExecuteContractCall(ctx, call)
 	if err != nil {
-		return fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
+		return nil, fmt.Errorf("failed to execute ERC20 burnFrom call: %w", err)
 	}
 
-	return nil
+	return changes, nil
+}
+
+func (k Keeper) GetAllMinBridgeOutAmounts(ctx sdk.Context) []*types.TokenMinBridgeOutAmount {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(store, types.MinBridgeOutAmountKeyPrefix)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var tokenMinBridgeOutAmount []*types.TokenMinBridgeOutAmount
+
+	for ; iterator.Valid(); iterator.Next() {
+		token := iterator.Key()[len(types.MinBridgeOutAmountKeyPrefix):]
+
+		var minAmount math.Int
+		err := minAmount.Unmarshal(iterator.Value())
+		if err != nil {
+			panic(err)
+		}
+
+		tokenMinBridgeOutAmount = append(
+			tokenMinBridgeOutAmount,
+			&types.TokenMinBridgeOutAmount{
+				Token:  evmtypes.BytesToHexAddress(token),
+				Amount: minAmount,
+			},
+		)
+	}
+
+	return tokenMinBridgeOutAmount
 }
 
 func (k Keeper) GetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte) math.Int {

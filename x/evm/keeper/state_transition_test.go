@@ -547,6 +547,105 @@ func (suite *KeeperTestSuite) TestEVMConfig() {
 	suite.Require().Equal(types.DefaultParams().ChainConfig.EthereumConfig(big.NewInt(31611)), cfg.ChainConfig)
 }
 
+func (suite *KeeperTestSuite) TestNewEVM_BlobBaseFee() {
+	suite.SetupTest()
+
+	proposerAddress := suite.ctx.BlockHeader().ProposerAddress
+	cfg, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposerAddress, big.NewInt(31611))
+	suite.Require().NoError(err)
+
+	keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+	chainCfg := keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID())
+	signer := ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
+	vmdb := suite.StateDB()
+
+	msg, err := newNativeMessage(
+		vmdb.GetNonce(suite.address),
+		suite.ctx.BlockHeight(),
+		suite.address,
+		chainCfg,
+		suite.signer,
+		signer,
+		ethtypes.AccessListTxType,
+		nil,
+		nil,
+		big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
+	)
+	suite.Require().NoError(err)
+
+	stateDB := statedb.New(suite.ctx, suite.app.EvmKeeper, suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{}))
+	evm := suite.app.EvmKeeper.NewEVM(suite.ctx, msg, cfg, nil, stateDB)
+
+	suite.Require().NotNil(evm.Context.BlobBaseFee)
+	suite.Require().Equal(big.NewInt(0), evm.Context.BlobBaseFee)
+}
+
+func (suite *KeeperTestSuite) TestNewEVM_PREVRANDAO() {
+	zeroHash := new(common.Hash)
+
+	testCases := []struct {
+		name               string
+		configure          func(cfg *statedb.EVMConfig)
+		expectedRandom     *common.Hash
+		expectedDifficulty *big.Int
+	}{
+		{
+			name: "merge enabled",
+			configure: func(_ *statedb.EVMConfig) {
+				// Keep MergeNetsplitBlock configured: Random should be non-nil.
+			},
+			expectedRandom:     zeroHash,
+			expectedDifficulty: big.NewInt(0),
+		},
+		{
+			name: "merge disabled",
+			configure: func(cfg *statedb.EVMConfig) {
+				// Set MergeNetsplitBlock to nil: Random should remain nil.
+				cfg.ChainConfig.MergeNetsplitBlock = nil
+			},
+			expectedRandom:     nil,
+			expectedDifficulty: big.NewInt(0),
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+
+			proposerAddress := suite.ctx.BlockHeader().ProposerAddress
+			cfg, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposerAddress, big.NewInt(31611))
+			suite.Require().NoError(err)
+
+			tc.configure(cfg)
+
+			keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+			chainCfg := keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID())
+			signer := ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
+			vmdb := suite.StateDB()
+
+			msg, err := newNativeMessage(
+				vmdb.GetNonce(suite.address),
+				suite.ctx.BlockHeight(),
+				suite.address,
+				chainCfg,
+				suite.signer,
+				signer,
+				ethtypes.AccessListTxType,
+				nil,
+				nil,
+				big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
+			)
+			suite.Require().NoError(err)
+
+			stateDB := statedb.New(suite.ctx, suite.app.EvmKeeper, suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{}))
+			evm := suite.app.EvmKeeper.NewEVM(suite.ctx, msg, cfg, nil, stateDB)
+
+			suite.Require().Equal(tc.expectedRandom, evm.Context.Random)
+			suite.Require().Equal(tc.expectedDifficulty, evm.Context.Difficulty)
+		})
+	}
+}
+
 func (suite *KeeperTestSuite) TestContractDeployment() {
 	contractAddress := suite.DeployTestContract(suite.T(), suite.address, big.NewInt(10000000000000))
 	db := suite.StateDB()
@@ -581,7 +680,7 @@ func (suite *KeeperTestSuite) TestApplyMessage() {
 	)
 	suite.Require().NoError(err)
 
-	res, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, msg, tracer, true)
+	res, _, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, msg, tracer, true)
 
 	suite.Require().NoError(err)
 	suite.Require().Equal(expectedGasUsed, res.GasUsed)
@@ -673,7 +772,7 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 			txConfig = suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{})
 
 			tc.malleate()
-			res, err := suite.app.EvmKeeper.ApplyMessageWithConfig(suite.ctx, keeper.WrapMessage(msg), nil, true, config, txConfig)
+			res, _, err := suite.app.EvmKeeper.ApplyMessageWithConfig(suite.ctx, keeper.WrapMessage(msg), nil, true, config, txConfig)
 
 			if tc.expErr {
 				suite.Require().Error(err)

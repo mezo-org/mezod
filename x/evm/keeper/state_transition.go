@@ -47,9 +47,8 @@ import (
 // coinbase address to make it available for the COINBASE opcode, even though there is no
 // beneficiary of the coinbase transaction (since we're not mining).
 //
-// NOTE: the RANDOM opcode is currently not supported since it requires
-// RANDAO implementation. See https://github.com/mezo/ethermint/pull/1520#pullrequestreview-1200504697
-// for more information.
+// NOTE: Mezo does not support PREVRANDAO randomness semantics. However, a
+// non-nil Random value is needed to activate Merge fork rules/opcodes.
 
 func (k *Keeper) NewEVM(
 	ctx sdk.Context,
@@ -58,17 +57,32 @@ func (k *Keeper) NewEVM(
 	tracer *tracers.Tracer,
 	stateDB vm.StateDB,
 ) *vm.EVM {
+	blockNumber := big.NewInt(ctx.BlockHeight())
+
+	// Enable Merge rules when MergeNetsplitBlock is configured.
+	isMerge := cfg.ChainConfig.MergeNetsplitBlock != nil
+
+	// Mezo does NOT support PREVRANDAO. However, go-ethereum uses
+	// `BlockContext.Random != nil` as the switch to enable Paris (the Merge)
+	// when selecting fork rules/opcodes (e.g. PUSH0 in Shanghai). Therefore we
+	// set Random to a non-nil zero hash post-merge.
+	var random *common.Hash // nil pre-merge
+	if isMerge {
+		random = new(common.Hash) // non-nil post-merge
+	}
+
 	blockCtx := vm.BlockContext{
 		CanTransfer: core.CanTransfer,
 		Transfer:    core.Transfer,
 		GetHash:     k.GetHashFn(ctx),
 		Coinbase:    cfg.CoinBase,
 		GasLimit:    mezotypes.BlockGasLimit(ctx),
-		BlockNumber: big.NewInt(ctx.BlockHeight()),
+		BlockNumber: blockNumber,
 		Time:        uint64(ctx.BlockHeader().Time.Unix()), //nolint:gosec
 		Difficulty:  big.NewInt(0),                         // unused. Only required in PoW context
 		BaseFee:     cfg.BaseFee,
-		Random:      nil, // not supported
+		BlobBaseFee: big.NewInt(0), // EIP-4844: blob txs are rejected
+		Random:      random,
 	}
 
 	txCtx := core.NewEVMTxContext(&msg)
@@ -217,7 +231,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	}
 
 	// pass true to commit the StateDB
-	res, err := k.ApplyMessageWithConfig(tmpCtx, WrapMessageWithSource(*msg, tx), nil, true, cfg, txConfig)
+	res, _, err := k.ApplyMessageWithConfig(tmpCtx, WrapMessageWithSource(*msg, tx), nil, true, cfg, txConfig)
 	if err != nil {
 		return nil, errorsmod.Wrap(err, "failed to apply ethereum core message")
 	}
@@ -302,10 +316,10 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 }
 
 // ApplyMessage calls ApplyMessageWithConfig with an empty TxConfig.
-func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer *tracers.Tracer, commit bool) (*types.MsgEthereumTxResponse, error) {
+func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer *tracers.Tracer, commit bool) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	cfg, err := k.EVMConfig(ctx, sdk.ConsAddress(ctx.BlockHeader().ProposerAddress), k.eip155ChainID)
 	if err != nil {
-		return nil, errorsmod.Wrap(err, "failed to load evm config")
+		return nil, nil, errorsmod.Wrap(err, "failed to load evm config")
 	}
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
@@ -357,7 +371,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	commit bool,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
-) (*types.MsgEthereumTxResponse, error) {
+) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	msg := wrapper.Unwrap()
 
 	var (
@@ -368,9 +382,9 @@ func (k *Keeper) ApplyMessageWithConfig(
 
 	// return error if contract creation or call are disabled through governance
 	if !cfg.Params.EnableCreate && msg.To == nil {
-		return nil, errorsmod.Wrap(types.ErrCreateDisabled, "failed to create new contract")
+		return nil, nil, errorsmod.Wrap(types.ErrCreateDisabled, "failed to create new contract")
 	} else if !cfg.Params.EnableCall && msg.To != nil {
-		return nil, errorsmod.Wrap(types.ErrCallDisabled, "failed to call contract")
+		return nil, nil, errorsmod.Wrap(types.ErrCallDisabled, "failed to call contract")
 	}
 
 	stateDB := statedb.New(ctx, k, txConfig)
@@ -398,13 +412,13 @@ func (k *Keeper) ApplyMessageWithConfig(
 	intrinsicGas, err := k.GetEthIntrinsicGas(ctx, msg, cfg.ChainConfig, contractCreation)
 	if err != nil {
 		// should have already been checked on Ante Handler
-		return nil, errorsmod.Wrap(err, "intrinsic gas failed")
+		return nil, nil, errorsmod.Wrap(err, "intrinsic gas failed")
 	}
 
 	// Should check again even if it is checked on Ante Handler, because eth_call don't go through Ante Handler.
 	if leftoverGas < intrinsicGas {
 		// eth_estimateGas will check for this exact error
-		return nil, errorsmod.Wrap(core.ErrIntrinsicGas, "apply message")
+		return nil, nil, errorsmod.Wrap(core.ErrIntrinsicGas, "apply message")
 	}
 	leftoverGas -= intrinsicGas
 
@@ -456,7 +470,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 
 	// calculate gas refund
 	if msg.GasLimit < leftoverGas {
-		return nil, errorsmod.Wrap(types.ErrGasOverflow, "apply message")
+		return nil, nil, errorsmod.Wrap(types.ErrGasOverflow, "apply message")
 	}
 	// refund gas
 	temporaryGasUsed := msg.GasLimit - leftoverGas
@@ -473,9 +487,18 @@ func (k *Keeper) ApplyMessageWithConfig(
 	}
 
 	// The dirty states in `StateDB` is either committed or discarded after return
+	var committedChanges []statedb.StateChange
 	if commit {
 		if err := stateDB.Commit(); err != nil {
-			return nil, errorsmod.Wrap(err, "failed to commit stateDB")
+			return nil, nil, errorsmod.Wrap(err, "failed to commit stateDB")
+		}
+		committedChanges = stateDB.CommittedStateChanges()
+		if len(committedChanges) > 0 {
+			ctx.Logger().Debug(
+				"EVM state committed",
+				"changesCount", len(committedChanges),
+				"txHash", txConfig.TxHash.Hex(),
+			)
 		}
 	}
 
@@ -487,7 +510,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	minimumGasUsed := gasLimit.Mul(minGasMultiplier)
 
 	if msg.GasLimit < leftoverGas {
-		return nil, errorsmod.Wrapf(types.ErrGasOverflow, "message gas limit < leftover gas (%d < %d)", msg.GasLimit, leftoverGas)
+		return nil, nil, errorsmod.Wrapf(types.ErrGasOverflow, "message gas limit < leftover gas (%d < %d)", msg.GasLimit, leftoverGas)
 	}
 
 	gasUsed = sdkmath.LegacyMaxDec(minimumGasUsed, sdkmath.LegacyNewDec(int64(temporaryGasUsed))).TruncateInt().Uint64() //nolint:gosec
@@ -501,7 +524,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 		Ret:     ret,
 		Logs:    types.NewLogsFromEth(stateDB.Logs()),
 		Hash:    txConfig.TxHash.Hex(),
-	}, nil
+	}, committedChanges, nil
 }
 
 // MessageWrapper is an auxiliary structure holding the msg with its

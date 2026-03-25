@@ -34,7 +34,7 @@ describe("AssetsBridge", function() {
   let contractAddress: string;
 
   const fixture = async function() {
-    await deployments.fixture();
+    await deployments.fixture(["BridgeOutDelegate"]);
     validatorPool = new hre.ethers.Contract(validatorPoolPrecompileAddress, validatorpoolabi, ethers.provider);
     assetsBridge = new hre.ethers.Contract(assetsBridgePrecompileAddress, assetsbridgeabi, ethers.provider);
     btcToken = new hre.ethers.Contract(btcTokenPrecompileAddress, btcabi, ethers.provider);

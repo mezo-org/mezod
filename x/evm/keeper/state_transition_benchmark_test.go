@@ -270,7 +270,7 @@ func BenchmarkApplyMessage(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
+		resp, _, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -307,7 +307,7 @@ func BenchmarkApplyMessageWithLegacyTx(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
+		resp, _, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -343,7 +343,7 @@ func BenchmarkApplyMessageWithDynamicFeeTx(b *testing.B) {
 		require.NoError(b, err)
 
 		b.StartTimer()
-		resp, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
+		resp, _, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, m, nil, true)
 		b.StopTimer()
 
 		require.NoError(b, err)

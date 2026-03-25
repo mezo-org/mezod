@@ -28,6 +28,33 @@ func (k Keeper) InitGenesis(
 	k.SetSourceBTCToken(ctx, evmtypes.HexAddressToBytes(genState.SourceBtcToken))
 	k.setERC20TokensMappings(ctx, genState.Erc20TokensMappings)
 
+	// Initialize assets unlocked events
+	for _, event := range genState.AssetsUnlockedEvents {
+		k.saveAssetsUnlocked(ctx, event)
+	}
+
+	// Initialize minimum bridge out amount for Bitcoin chain
+	k.SetMinBridgeOutAmountForBitcoinChain(ctx, genState.BitcoinChainMinBridgeOutAmount)
+
+	// Initialize token minimum bridge out amounts
+	for _, tokenAmount := range genState.TokenMinBridgeOutAmounts {
+		err := k.SetMinBridgeOutAmount(ctx, evmtypes.HexAddressToBytes(tokenAmount.Token), tokenAmount.Amount)
+		if err != nil {
+			panic(errorsmod.Wrapf(err, "error setting min bridge out amount"))
+		}
+	}
+
+	k.SetPauser(ctx, evmtypes.HexAddressToBytes(genState.Pauser))
+	k.setLastOutflowReset(ctx, genState.LastOutflowReset)
+
+	for _, outflowLimit := range genState.CurrentOutflowLimits {
+		k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(outflowLimit.Token), outflowLimit.Limit)
+	}
+
+	for _, outflowAmount := range genState.CurrentOutflowAmounts {
+		k.increaseCurrentOutflow(ctx, evmtypes.HexAddressToBytes(outflowAmount.Token), outflowAmount.Amount)
+	}
+
 	err = k.IncreaseBTCMinted(ctx, genState.InitialBtcSupply)
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting params"))
@@ -37,11 +64,18 @@ func (k Keeper) InitGenesis(
 // ExportGenesis returns the module's exported genesis
 func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 	return &types.GenesisState{
-		Params:                    k.GetParams(ctx),
-		AssetsLockedSequenceTip:   k.GetAssetsLockedSequenceTip(ctx),
-		AssetsUnlockedSequenceTip: k.GetAssetsUnlockedSequenceTip(ctx),
-		SourceBtcToken:            evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx)),
-		Erc20TokensMappings:       k.GetERC20TokensMappings(ctx),
-		InitialBtcSupply:          k.GetBTCMinted(ctx).Sub(k.GetBTCBurnt(ctx)),
+		Params:                         k.GetParams(ctx),
+		AssetsLockedSequenceTip:        k.GetAssetsLockedSequenceTip(ctx),
+		AssetsUnlockedSequenceTip:      k.GetAssetsUnlockedSequenceTip(ctx),
+		SourceBtcToken:                 evmtypes.BytesToHexAddress(k.GetSourceBTCToken(ctx)),
+		Erc20TokensMappings:            k.GetERC20TokensMappings(ctx),
+		InitialBtcSupply:               k.GetBTCMinted(ctx).Sub(k.GetBTCBurnt(ctx)),
+		AssetsUnlockedEvents:           k.GetAllAssetsUnlockedEvents(ctx),
+		BitcoinChainMinBridgeOutAmount: k.GetMinBridgeOutAmountForBitcoinChain(ctx),
+		TokenMinBridgeOutAmounts:       k.GetAllMinBridgeOutAmounts(ctx),
+		Pauser:                         evmtypes.BytesToHexAddress(k.GetPauser(ctx)),
+		LastOutflowReset:               k.getLastOutflowReset(ctx),
+		CurrentOutflowLimits:           k.GetAllCurrentOutflowLimits(ctx),
+		CurrentOutflowAmounts:          k.GetAllCurrentOutflowAmounts(ctx),
 	}
 }

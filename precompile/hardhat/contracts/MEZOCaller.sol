@@ -71,4 +71,16 @@ contract MEZOCaller is IMEZO {
     function PERMIT_TYPEHASH() external pure returns (bytes32) {
         return IMEZO(precompile).PERMIT_TYPEHASH();
     }
+
+    function setMinter(address minter) external returns (bool) {
+        return IMEZO(precompile).setMinter(minter);
+    }
+
+    function getMinter() external view returns (address) {
+        return IMEZO(precompile).getMinter();
+    }
+
+    function mint(address to, uint256 amount) external returns (bool) {
+        return IMEZO(precompile).mint(to, amount);
+    }
 }

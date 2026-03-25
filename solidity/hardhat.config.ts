@@ -46,6 +46,20 @@ const config: HardhatUserConfig = {
   },
   defaultNetwork: 'hardhat',
   networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+      tags: ["allowStubs"],
+      accounts: {
+        count: 100,
+      },
+      ...(process.env.NODE_ENV === "upgrades-test"
+        ? {
+            forking: {
+              url: process.env.MAINNET_RPC_URL || "",
+            },
+          }
+        : {}),
+    },
     testnet: {
       chainId: 31611,
       url: process.env.TESTNET_RPC_URL || "",
@@ -66,11 +80,33 @@ const config: HardhatUserConfig = {
     },
     ethereumSepolia: {
       url: process.env.ETHEREUM_SEPOLIA_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.ETHEREUM_SEPOLIA_PRIVATE_KEY as string),
+      tags: ['verify'],
       chainId: 11155111,
     },
     ethereumMainnet: {
       url: process.env.ETHEREUM_MAINNET_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.ETHEREUM_MAINNET_PRIVATE_KEY as string),
+      tags: ['verify'],
       chainId: 1,
+    },
+    baseSepolia: {
+      url: process.env.BASE_SEPOLIA_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.BASE_SEPOLIA_PRIVATE_KEY as string),
+      tags: ['verify'],
+      chainId: 84532,
+    },
+    baseMainnet: {
+      url: process.env.BASE_MAINNET_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.BASE_MAINNET_PRIVATE_KEY as string),
+      tags: ['verify'],
+      chainId: 8453,
+    },
+    bscMainnet: {
+      url: process.env.BSC_MAINNET_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.BSC_MAINNET_PRIVATE_KEY as string),
+      tags: ['verify'],
+      chainId: 56,
     },
   },
   external: {
@@ -82,7 +118,7 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: {
+    apiKey: process.env.ETHERSCAN_API_KEY || {
       'testnet': 'empty',
       'mainnet': 'empty'
     },

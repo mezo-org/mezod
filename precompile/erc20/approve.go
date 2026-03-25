@@ -13,6 +13,7 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 // ApproveMethodName is the name of the approve method that should match the name
@@ -73,31 +74,31 @@ func (am *ApproveMethod) Payable() bool {
 func (am *ApproveMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(inputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	spender, ok := inputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid spender address: %v", inputs[0])
+		return nil, nil, fmt.Errorf("invalid spender address: %v", inputs[0])
 	}
 
 	if isZeroAddress(spender) {
-		return nil, fmt.Errorf("spender address cannot be empty")
+		return nil, nil, fmt.Errorf("spender address cannot be empty")
 	}
 
 	amount, ok := inputs[1].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid amount: %v", inputs[1])
+		return nil, nil, fmt.Errorf("invalid amount: %v", inputs[1])
 	}
 
 	if amount == nil {
-		return nil, errors.New("amount is required")
+		return nil, nil, errors.New("amount is required")
 	}
 
 	if amount.Sign() < 0 {
-		return nil, errors.New("amount cannot be negative")
+		return nil, nil, errors.New("amount cannot be negative")
 	}
 
 	granter := context.MsgSender()
@@ -106,7 +107,7 @@ func (am *ApproveMethod) Run(
 
 	err := handleAuthorization(am.denom, authorization, spender, amount, context, granter, expiration, am.authzkeeper)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = context.EventEmitter().Emit(
@@ -117,10 +118,10 @@ func (am *ApproveMethod) Run(
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to emit approval event: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to emit approval event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 // no authorization, amount 0 -> noop

@@ -7,6 +7,7 @@ import (
 	"github.com/mezo-org/mezod/utils"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,21 +31,43 @@ const (
 	Name     = "MEZO"
 )
 
+// PoaKeeper defines the expected interface for the POA keeper.
+type PoaKeeper interface {
+	CheckOwner(ctx sdk.Context, sender sdk.AccAddress) error
+}
+
+type Settings struct {
+	Minting bool // enable methods related to minting (setMinter, getMinter, mint)
+}
+
 // NewPrecompileVersionMap creates a new version map for the MEZO token precompile.
 func NewPrecompileVersionMap(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
 	evmkeeper evmkeeper.Keeper,
+	poaKeeper PoaKeeper,
 	id string,
 ) (*precompile.VersionMap, error) {
-	contractV1, err := NewPrecompile(bankKeeper, authzkeeper, evmkeeper, id)
+	// v1 is the base ERC20 functionality without minting
+	contractV1, err := NewPrecompile(bankKeeper, authzkeeper, evmkeeper, poaKeeper, id, &Settings{
+		Minting: false,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// v2 adds minting functionality (setMinter, getMinter, mint)
+	contractV2, err := NewPrecompile(bankKeeper, authzkeeper, evmkeeper, poaKeeper, id, &Settings{
+		Minting: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
-			evmtypes.MEZOTokenPrecompileLatestVersion: contractV1,
+			1: contractV1,
+			evmtypes.MEZOTokenPrecompileLatestVersion: contractV2,
 		},
 	), nil
 }
@@ -54,7 +77,9 @@ func NewPrecompile(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
 	evmkeeper evmkeeper.Keeper,
+	poaKeeper PoaKeeper,
 	id string,
+	settings *Settings,
 ) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
 	if err != nil {
@@ -82,7 +107,16 @@ func NewPrecompile(
 		EvmByteCode,
 	)
 
-	methods := newPrecompileMethods(bankKeeper, authzkeeper, evmkeeper, denom, domainSeparator, nonceKey)
+	methods := newPrecompileMethods(
+		bankKeeper,
+		authzkeeper,
+		evmkeeper,
+		poaKeeper,
+		denom,
+		domainSeparator,
+		nonceKey,
+		settings,
+	)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -94,11 +128,13 @@ func newPrecompileMethods(
 	bankKeeper bankkeeper.Keeper,
 	authzkeeper authzkeeper.Keeper,
 	evmkeeper evmkeeper.Keeper,
+	poaKeeper PoaKeeper,
 	denom string,
 	domainSeparator []byte,
 	nonceKey []byte,
+	settings *Settings,
 ) []precompile.Method {
-	return []precompile.Method{
+	methods := []precompile.Method{
 		erc20.NewBalanceOfMethod(bankKeeper, denom),
 		erc20.NewTotalSupplyMethod(bankKeeper, denom),
 		erc20.NewNameMethod(Name),
@@ -114,4 +150,12 @@ func newPrecompileMethods(
 		erc20.NewDomainSeparatorMethod(domainSeparator),
 		erc20.NewPermitTypehashMethod(),
 	}
+
+	if settings.Minting {
+		methods = append(methods, NewSetMinterMethod(evmkeeper, poaKeeper))
+		methods = append(methods, NewGetMinterMethod(evmkeeper))
+		methods = append(methods, NewMintMethod(bankKeeper, evmkeeper, denom))
+	}
+
+	return methods
 }

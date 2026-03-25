@@ -104,13 +104,13 @@ func newBTCWithdrawalJob(
 		}
 	}()
 
-	redemptionParameters, err := env.tbtcBridgeContract.RedemptionParameters()
+	redemptionDustThreshold, err := env.tbtcBridgeContract.RedemptionDustThreshold()
 	if err != nil {
-		panic(fmt.Sprintf("failed to get tBTC bridge redemption parameters: %v", err))
+		panic(fmt.Sprintf("failed to get redemption dust threshold: %v", err))
 	}
 
 	redemptionDustThresholdErc20Precision := btcToErc20Amount(
-		new(big.Int).SetUint64(redemptionParameters.RedemptionDustThreshold),
+		new(big.Int).SetUint64(redemptionDustThreshold),
 	)
 
 	tbtcToken, err := env.mezoBridgeContract.TbtcToken()
@@ -388,7 +388,7 @@ func (bwj *btcWithdrawalJob) observeBTCWithdrawals(ctx context.Context) error {
 	// reorg (e.g. an event being duplicated in a queue), although there is a
 	// small risk of skipping an event. In that case it would require a manual
 	// execution of `withdrawBTC`.
-	currentBlock, err := bwj.env.chain.BlockCounter().CurrentBlock()
+	currentBlock, err := bwj.env.chain.CurrentBlock()
 	if err != nil {
 		return fmt.Errorf("failed to get current block: [%w]", err)
 	}
@@ -588,7 +588,7 @@ func (bwj *btcWithdrawalJob) processNewAssetsUnlockConfirmedEvents(ctx context.C
 	// reorg (e.g. an event being duplicated in a queue), although there is a
 	// small risk of skipping an event. In that case it would require a manual
 	// execution of `withdrawBTC`.
-	currentBlock, err := bwj.env.chain.BlockCounter().CurrentBlock()
+	currentBlock, err := bwj.env.chain.CurrentBlock()
 	if err != nil {
 		return fmt.Errorf("cannot get current block: [%w]", err)
 	}

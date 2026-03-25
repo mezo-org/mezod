@@ -121,10 +121,11 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 				s.evmKeeper,
 				s.feeMarketKeeper,
 				&maintenance.Settings{
-					EVM:              true,
-					Precompiles:      true,
-					ChainFeeSplitter: true,
-					GasPrice:         true,
+					EVM:                 true,
+					Precompiles:         true,
+					ChainFeeSplitter:    true,
+					GasPrice:            true,
+					MaxPrecompilesCalls: true,
 				},
 			)
 			s.Require().NoError(err)

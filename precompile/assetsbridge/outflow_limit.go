@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
+	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
 const (
@@ -49,35 +50,35 @@ func (m *SetOutflowLimitMethod) Payable() bool {
 func (m *SetOutflowLimitMethod) Run(
 	context *precompile.RunContext,
 	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(rawInputs, 2); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	token, ok := rawInputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid token address: %v", rawInputs[0])
+		return nil, nil, fmt.Errorf("invalid token address: %v", rawInputs[0])
 	}
 
 	limit, ok := rawInputs[1].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid limit: %v", rawInputs[1])
+		return nil, nil, fmt.Errorf("invalid limit: %v", rawInputs[1])
 	}
 
 	if err := m.poaKeeper.CheckOwner(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if limit.Sign() < 0 {
-		return nil, errors.New("limit must be non-negative")
+		return nil, nil, errors.New("limit must be non-negative")
 	}
 
 	sdkLimit, err := precompile.TypesConverter.BigInt.ToSDK(limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert limit: [%w]", err)
+		return nil, nil, fmt.Errorf("failed to convert limit: [%w]", err)
 	}
 
 	m.bridgeKeeper.SetOutflowLimit(
@@ -86,7 +87,7 @@ func (m *SetOutflowLimitMethod) Run(
 		sdkLimit,
 	)
 
-	return precompile.MethodOutputs{true}, nil
+	return precompile.MethodOutputs{true}, nil, nil
 }
 
 type GetOutflowLimitMethod struct {
@@ -120,14 +121,14 @@ func (m *GetOutflowLimitMethod) Payable() bool {
 func (m *GetOutflowLimitMethod) Run(
 	context *precompile.RunContext,
 	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(rawInputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	token, ok := rawInputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid token address: %v", rawInputs[0])
+		return nil, nil, fmt.Errorf("invalid token address: %v", rawInputs[0])
 	}
 
 	limit := m.bridgeKeeper.GetOutflowLimit(
@@ -137,7 +138,7 @@ func (m *GetOutflowLimitMethod) Run(
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(limit),
-	}, nil
+	}, nil, nil
 }
 
 type GetOutflowCapacityMethod struct {
@@ -171,14 +172,14 @@ func (m *GetOutflowCapacityMethod) Payable() bool {
 func (m *GetOutflowCapacityMethod) Run(
 	context *precompile.RunContext,
 	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, error) {
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
 	if err := precompile.ValidateMethodInputsCount(rawInputs, 1); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	token, ok := rawInputs[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid token address: %v", rawInputs[0])
+		return nil, nil, fmt.Errorf("invalid token address: %v", rawInputs[0])
 	}
 
 	capacity, resetHeight := m.bridgeKeeper.GetOutflowCapacity(
@@ -189,5 +190,5 @@ func (m *GetOutflowCapacityMethod) Run(
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(capacity),
 		new(big.Int).SetUint64(resetHeight),
-	}, nil
+	}, nil, nil
 }

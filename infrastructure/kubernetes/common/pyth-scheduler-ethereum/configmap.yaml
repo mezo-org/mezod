@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pyth-scheduler-ethereum-price-config
+  labels:
+    app: pyth-scheduler-ethereum
+data:
+  price-config.yaml: |
+    - alias: MUSD/USD
+      id: "0x0617a9b725011a126a2b9fd53563f4236501f32cf76d877644b943394606c6de"
+      time_difference: 14400
+      price_deviation: 0.1
+      confidence_ratio: 100
+    - alias: USDT/USD
+      id: "0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b"
+      time_difference: 14400
+      price_deviation: 0.1
+      confidence_ratio: 100

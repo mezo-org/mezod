@@ -18,7 +18,7 @@ describe("MEZOTransfers", function () {
   let recipientAddress: string;
 
   const fixture = (async function () {
-    await deployments.fixture();
+    await deployments.fixture(["MEZOTransfers"]);
     btcErc20Token = new hre.ethers.Contract(btcPrecompileAddress, btcabi, ethers.provider);
     mezoErc20Token = new hre.ethers.Contract(mezoPrecompileAddress, mezoabi, ethers.provider);
     mezoTransfers = await getDeployedContract("MEZOTransfers");

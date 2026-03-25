@@ -62,8 +62,18 @@ func (b *Backend) TraceTransaction(hash common.Hash, config *evmtypes.TraceConfi
 		return nil, fmt.Errorf("transaction not included in block %v", blk.Block.Height)
 	}
 
+	blockRes, err := b.TendermintBlockResultByNumber(&blk.Block.Height)
+	if err != nil {
+		return nil, err
+	}
+
 	var predecessors []*evmtypes.MsgEthereumTx
-	for _, txBz := range blk.Block.Txs[:transaction.TxIndex] {
+	for i, txBz := range blk.Block.Txs[:transaction.TxIndex] {
+		// Skip transactions that failed at the Cosmos SDK level.
+		if !rpctypes.TxSuccessOrExceedsBlockGasLimit(blockRes.TxsResults[i]) {
+			continue
+		}
+
 		tx, err := b.clientCtx.TxConfig.TxDecoder()(txBz)
 		if err != nil {
 			b.logger.Debug("failed to decode transaction in block", "height", blk.Block.Height, "error", err.Error())
@@ -174,6 +184,11 @@ func (b *Backend) TraceBlock(height rpctypes.BlockNumber,
 		return []*evmtypes.TxTraceResult{}, nil
 	}
 
+	blockRes, err := b.TendermintBlockResultByNumber(&block.Block.Height)
+	if err != nil {
+		return nil, err
+	}
+
 	// Check if the block contains a pseudo-transaction.
 	pseudoTxResult := b.GetPseudoTransactionResult(block)
 
@@ -185,6 +200,11 @@ func (b *Backend) TraceBlock(height rpctypes.BlockNumber,
 			// Handle a situation when the transaction at index `0` is a
 			// pseudo-transaction. Do not try to decode the pseudo-transaction,
 			// but add the trace for it at the end of the command execution.
+			continue
+		}
+
+		// Skip transactions that failed at the Cosmos SDK level.
+		if !rpctypes.TxSuccessOrExceedsBlockGasLimit(blockRes.TxsResults[i]) {
 			continue
 		}
 

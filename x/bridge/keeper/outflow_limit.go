@@ -5,10 +5,75 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // OutflowResetBlocks is the number of blocks after which the outflow limit is reset.
 const OutflowResetBlocks = 25000
+
+// GetAllCurrentOutflowLimits returns all the current outflow limits.
+func (k Keeper) GetAllCurrentOutflowLimits(ctx sdk.Context) []*types.CurrentOutflowLimit {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(store, types.OutflowLimitKeyPrefix)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var out []*types.CurrentOutflowLimit
+
+	for ; iterator.Valid(); iterator.Next() {
+		token := iterator.Key()[len(types.OutflowLimitKeyPrefix):]
+
+		var limit math.Int
+		err := limit.Unmarshal(iterator.Value())
+		if err != nil {
+			panic(err)
+		}
+
+		out = append(
+			out,
+			&types.CurrentOutflowLimit{
+				Token: evmtypes.BytesToHexAddress(token),
+				Limit: limit,
+			},
+		)
+	}
+
+	return out
+}
+
+// GetAllCurrentOutflowAmounts returns all the current outflow amounts.
+func (k Keeper) GetAllCurrentOutflowAmounts(ctx sdk.Context) []*types.CurrentOutflowAmount {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(store, types.CurrentOutflowKeyPrefix)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var out []*types.CurrentOutflowAmount
+
+	for ; iterator.Valid(); iterator.Next() {
+		token := iterator.Key()[len(types.CurrentOutflowKeyPrefix):]
+
+		var amount math.Int
+		err := amount.Unmarshal(iterator.Value())
+		if err != nil {
+			panic(err)
+		}
+
+		out = append(
+			out,
+			&types.CurrentOutflowAmount{
+				Token:  evmtypes.BytesToHexAddress(token),
+				Amount: amount,
+			},
+		)
+	}
+
+	return out
+}
 
 // SetOutflowLimit sets the maximum outflow limit for a specific token.
 func (k Keeper) SetOutflowLimit(

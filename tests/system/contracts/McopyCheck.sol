@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+contract McopyCheck {
+    /// @notice Copies arbitrary bytes using the Cancun `MCOPY` opcode.
+    /// @dev If `MCOPY` is unsupported or behaves incorrectly, output will not
+    ///      match input.
+    function copy(bytes memory input) external pure returns (bytes memory out) {
+        // Allocate a new result buffer with the same length as the input.
+        out = new bytes(input.length);
+        assembly {
+            // Read input length.
+            let len := mload(input)
+            // Point to input bytes payload (skip the length word).
+            let src := add(input, 0x20)
+            // Point to output bytes payload (skip the length word).
+            let dst := add(out, 0x20)
+            // EIP-5656: copy `len` bytes from source data to destination data.
+            mcopy(dst, src, len)
+        }
+    }
+
+    /// @notice Copies overlapping memory ranges where destination is after source.
+    /// @dev EIP-5656 requires memmove-like behavior for overlapping copies.
+    function overlapCopyForward() external pure returns (bytes memory out) {
+        out = hex"0102030405060708";
+        assembly {
+            let ptr := add(out, 0x20)
+            // Copy 6 bytes from [0..5] to [2..7].
+            mcopy(add(ptr, 2), ptr, 6)
+        }
+    }
+
+    /// @notice Copies overlapping memory ranges where destination is before source.
+    /// @dev EIP-5656 requires the same memmove-like behavior in this direction too.
+    function overlapCopyBackward() external pure returns (bytes memory out) {
+        out = hex"0102030405060708";
+        assembly {
+            let ptr := add(out, 0x20)
+            // Copy 6 bytes from [2..7] to [0..5].
+            mcopy(ptr, add(ptr, 2), 6)
+        }
+    }
+
+    /// @notice Performs a zero-length overlapping copy.
+    /// @dev Zero-length MCOPY should be a no-op even with overlapping ranges.
+    function zeroLengthOverlapCopy() external pure returns (bytes memory out) {
+        out = hex"0102030405060708";
+        assembly {
+            let ptr := add(out, 0x20)
+            mcopy(add(ptr, 2), ptr, 0)
+        }
+    }
+
+    /// @notice Copies 8 bytes from a source payload that initializes only 4 bytes.
+    /// @dev The remaining 4 copied bytes come from zero-initialized EVM memory.
+    function copyPastSourceLength() external pure returns (bytes memory out) {
+        bytes memory input = hex"01020304";
+        out = new bytes(8);
+        assembly {
+            let src := add(input, 0x20)
+            let dst := add(out, 0x20)
+            mcopy(dst, src, 8)
+        }
+    }
+}

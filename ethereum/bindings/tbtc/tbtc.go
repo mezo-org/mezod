@@ -62,6 +62,8 @@ func BridgeAddress(network ethconfig.Network) string {
 type (
 	Bridge                    = mainnetcontract.Bridge
 	BridgeNewWalletRegistered = mainnetabi.BridgeNewWalletRegistered
+	Wallet                    = mainnetabi.WalletsWallet
+	RedemptionRequest         = mainnetabi.RedemptionRedemptionRequest
 )
 
 var NewTbtcBridge = mainnetcontract.NewBridge

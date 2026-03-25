@@ -17,7 +17,7 @@ func (suite *KeeperTestSuite) TestExecuteContractCall() {
 	suite.Require().NoError(err)
 
 	// Execute the transfer call.
-	_, err = suite.app.EvmKeeper.ExecuteContractCall(suite.ctx, &testCall{
+	_, _, err = suite.app.EvmKeeper.ExecuteContractCall(suite.ctx, &testCall{
 		from: suite.address,
 		to:   &contract,
 		data: transferData,
@@ -36,14 +36,39 @@ func (suite *KeeperTestSuite) TestExecuteContractCall() {
 	}
 
 	// Check the balance of the sender.
-	response, err := suite.app.EvmKeeper.ExecuteContractCall(suite.ctx, balanceOfCallFn(suite.address))
+	response, _, err := suite.app.EvmKeeper.ExecuteContractCall(suite.ctx, balanceOfCallFn(suite.address))
 	suite.Require().NoError(err)
 	suite.Require().Equal(common.LeftPadBytes(big.NewInt(200).Bytes(), 32), response.Ret)
 
 	// Check the balance of the recipient.
-	response, err = suite.app.EvmKeeper.ExecuteContractCall(suite.ctx, balanceOfCallFn(transferRecipient))
+	response, _, err = suite.app.EvmKeeper.ExecuteContractCall(suite.ctx, balanceOfCallFn(transferRecipient))
 	suite.Require().NoError(err)
 	suite.Require().Equal(common.LeftPadBytes(big.NewInt(800).Bytes(), 32), response.Ret)
+}
+
+func (suite *KeeperTestSuite) TestExecuteContractCallReturnsStateChanges() {
+	contract := suite.DeployTestContract(suite.T(), suite.address, big.NewInt(1000))
+
+	transferRecipient := common.HexToAddress("0x2B66aeB8C31619FE9d06A64772Df147878F69054")
+	transferData, err := evmtypes.ERC20Contract.ABI.Pack("transfer", transferRecipient, big.NewInt(500))
+	suite.Require().NoError(err)
+
+	_, changes, err := suite.app.EvmKeeper.ExecuteContractCall(suite.ctx, &testCall{
+		from: suite.address,
+		to:   &contract,
+		data: transferData,
+	})
+	suite.Require().NoError(err)
+	suite.Require().NotEmpty(changes)
+
+	foundContractChange := false
+	for _, c := range changes {
+		if c.Address == contract {
+			foundContractChange = true
+			break
+		}
+	}
+	suite.Require().True(foundContractChange)
 }
 
 type testCall struct {
