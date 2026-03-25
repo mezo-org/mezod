@@ -177,7 +177,7 @@ redemption in the tBTC bridge so the `recipient` obtains real BTC on the Bitcoin
 complicated as the tBTC bridge requires two additional pieces of data to request a redemption (comparing to what is
 available in a single `AssetsUnlocked` entry):
 
-* The 20-byte public hey hash of the wallet supposed to handle the redemption
+* The 20-byte public key hash of the wallet supposed to handle the redemption
 * The current main UTXO of the target wallet
 
 To handle this complexity, this proposal assumes that `MezoBridge` exposes an additional method allowing to deliver
