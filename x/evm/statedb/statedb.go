@@ -567,6 +567,7 @@ func (s *StateDB) SetBalance(addr common.Address, amount *uint256.Int, _ tracing
 func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
 	obj := s.getStateObject(addr)
 	newObj, _ := s.createObject(addr)
+	newObj.storageWiped = true
 	for k, v := range storage {
 		newObj.SetState(k, v)
 	}
