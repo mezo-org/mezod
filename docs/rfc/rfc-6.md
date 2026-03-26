@@ -35,14 +35,18 @@ a natural window between a mint request and its execution.
 The mechanism works in two phases with a configurable block delay between them:
 
 ```
-Block N:           Authorized party calls AssetsBridge.bridgeTriparty(recipient, amount)
+Block N:           Authorized party calls
+                   AssetsBridge.bridgeTriparty(recipient, amount, callbackContract)
                    and a TripartyBridgeRequest is written to x/bridge module state
                    with the current block height recorded as the request height.
+                   The returned requestId identifies the request.
 
 Block N+D (D>=1):  PreBlocker reads pending TripartyBridgeRequests whose request
                    height is at least D blocks in the past and mints BTC for each
-                   mature request using mintBTC(). Requests that have not yet
-                   reached the required delay are left in state for future blocks.
+                   mature request using mintBTC(). After a successful mint, the
+                   PreBlocker issues a callback to the contract specified in the
+                   request. Requests that have not yet reached the required delay
+                   are left in state for future blocks.
 ```
 
 The delay `D` is configurable via `AssetsBridge.setTripartyBlockDelay` and
@@ -60,7 +64,7 @@ The existing `AssetsBridge` precompile is the entry point for bridge operations
 and should expose the following functions:
 
 ```solidity
-function bridgeTriparty(address recipient, uint256 amount) external returns (bool);
+function bridgeTriparty(address recipient, uint256 amount, address callbackContract) external returns (uint256 requestId);
 
 function allowTripartyController(address controller, bool isAllowed) external returns (bool);
 
@@ -68,6 +72,13 @@ function pauseTriparty(bool isPaused) external returns (bool);
 
 function setTripartyBlockDelay(uint256 delay) external returns (bool);
 ```
+
+`bridgeTriparty` accepts the `recipient`, `amount`, and `callbackContract`
+address. The `callbackContract` is the address of the contract that will receive
+the `onTripartyBridgeCompleted` callback once the BTC is minted. Passing the
+zero address disables the callback. The function returns the `requestId`
+(the sequence number assigned to the request) which can be used to correlate the
+callback with the original request.
 
 Only an allowed triparty controller should be able to call the `bridgeTriparty`
 function. The `allowTripartyController` and `setTripartyBlockDelay` functions
@@ -96,10 +107,12 @@ The `x/bridge` module should store the following new state:
   request, analogous to the `AssetsLockedSequenceTip`
 * Pending triparty mint requests: a list of `TripartyBridgeRequest` entries
   awaiting processing by the `PreBlocker`. Each entry is assigned a
-  monotonically increasing sequence number at creation time and records the
-  block height at which it was created so the `PreBlocker` can determine
-  maturity. The sequence number ensures deterministic processing order across
-  all validators, following the same pattern used for `AssetsLocked` events.
+  monotonically increasing sequence number (used as the `requestId`) at creation
+  time and records the block height at which it was created so the `PreBlocker`
+  can determine maturity. Additionally, each entry stores the `recipient`,
+  `amount`, and `callbackContract` address provided by the caller. The sequence
+  number ensures deterministic processing order across all validators, following
+  the same pattern used for `AssetsLocked` events.
 
 #### `PreBlocker` extension
 
@@ -120,7 +133,15 @@ should additionally:
    which mints coins through the `x/bank` module and updates the `BTCMinted`
    counter. Stop at the first immature request to preserve sequential processing.
    No request can be processed ahead of an earlier one that is not yet mature.
-4. Update the triparty sequence tip to the sequence number of the last processed
+4. After a successful mint, if the request specifies a non-zero
+   `callbackContract`, issue an EVM call to
+   `onTripartyBridgeCompleted(uint256 requestId, address recipient, uint256 amount)`
+   on the callback contract. The call is executed via `ExecuteContractCall` with
+   the bridge module address as the sender, following the same pattern used by
+   `mintERC20`. A callback failure should be logged but must not prevent the
+   mint from completing or block subsequent requests. The BTC has already been
+   minted and cannot be rolled back without risking a supply invariant violation.
+5. Update the triparty sequence tip to the sequence number of the last processed
    request and clear all processed requests from state.
 
 This extension is deliberately minimal. The `mintBTC()` function is reused
