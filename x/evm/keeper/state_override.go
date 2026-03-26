@@ -17,11 +17,11 @@ type stateOverride map[common.Address]overrideAccount
 // overrideAccount indicates the overriding fields of account during the
 // execution of a message call.
 type overrideAccount struct {
-	Nonce     *hexutil.Uint64              `json:"nonce"`
-	Code      *hexutil.Bytes               `json:"code"`
-	Balance   **hexutil.Big                `json:"balance"`
-	State     *map[common.Hash]common.Hash `json:"state"`
-	StateDiff *map[common.Hash]common.Hash `json:"stateDiff"`
+	Nonce     *hexutil.Uint64             `json:"nonce"`
+	Code      *hexutil.Bytes              `json:"code"`
+	Balance   *hexutil.Big                `json:"balance"`
+	State     map[common.Hash]common.Hash `json:"state"`
+	StateDiff map[common.Hash]common.Hash `json:"stateDiff"`
 }
 
 // applyStateOverrides modifies the given StateDB according to the provided
@@ -38,7 +38,7 @@ func applyStateOverrides(db *statedb.StateDB, overrides stateOverride) error {
 		}
 
 		if override.Balance != nil {
-			balance, _ := uint256.FromBig((*big.Int)(*override.Balance))
+			balance, _ := uint256.FromBig((*big.Int)(override.Balance))
 			db.SetBalance(addr, balance, tracing.BalanceChangeUnspecified)
 		}
 
@@ -49,11 +49,11 @@ func applyStateOverrides(db *statedb.StateDB, overrides stateOverride) error {
 		}
 
 		if override.State != nil {
-			db.SetStorage(addr, *override.State)
+			db.SetStorage(addr, override.State)
 		}
 
 		if override.StateDiff != nil {
-			for key, val := range *override.StateDiff {
+			for key, val := range override.StateDiff {
 				db.SetState(addr, key, val)
 			}
 		}
