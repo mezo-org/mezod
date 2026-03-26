@@ -62,11 +62,11 @@ and should expose the following functions:
 ```solidity
 function bridgeTriparty(address recipient, uint256 amount) external returns (bool);
 
-function allowTripartyController(address controller, bool isAllowed) external;
+function allowTripartyController(address controller, bool isAllowed) external returns (bool);
 
-function pauseTriparty(bool isPaused) external;
+function pauseTriparty(bool isPaused) external returns (bool);
 
-function setTripartyBlockDelay(uint256 delay) external;
+function setTripartyBlockDelay(uint256 delay) external returns (bool);
 ```
 
 Only an allowed triparty controller should be able to call the `bridgeTriparty`
