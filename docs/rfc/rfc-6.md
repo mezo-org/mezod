@@ -103,11 +103,15 @@ the injected pseudo-transaction. After processing bridge events, the `PreBlocker
 should additionally:
 
 1. Read the configured triparty block delay `D` from state
-2. Read all pending `TripartyBridgeRequest` entries from the module state
+2. Read up to `TripartyBatch` pending `TripartyBridgeRequest` entries from the
+   module state, in FIFO order. `TripartyBatch` is a compile-time constant set
+   to 5. While triparty mints are expected to be rare, capping the batch size
+   provides defense in depth to ensure stable block times.
 3. For each request whose recorded block height satisfies
    `currentHeight - requestHeight >= D`, call the existing `mintBTC()` function
    which mints coins through the `x/bank` module and updates the `BTCMinted`
-   counter
+   counter. Requests within the batch that are not yet mature are skipped but
+   remain in state.
 4. Clear all processed (mature) requests from state; leave immature requests
    for future blocks
 
