@@ -32,15 +32,21 @@ a natural window between a mint request and its execution.
 
 ### Overview
 
-The mechanism works in two phases spanning two blocks, similarly to bridge outs:
+The mechanism works in two phases with a configurable block delay between them:
 
 ```
-Block N:   Authorized party calls AssetsBridge.bridgeTriparty(recipient, amount)
-           and a TripartyBridgeRequest is written to x/bridge module state
+Block N:           Authorized party calls AssetsBridge.bridgeTriparty(recipient, amount)
+                   and a TripartyBridgeRequest is written to x/bridge module state
+                   with the current block height recorded as the request height.
 
-Block N+1: PreBlocker reads pending TripartyBridgeRequests from state and mints
-           BTC for each request using mintBTC()
+Block N+D (D>=1):  PreBlocker reads pending TripartyBridgeRequests whose request
+                   height is at least D blocks in the past and mints BTC for each
+                   mature request using mintBTC(). Requests that have not yet
+                   reached the required delay are left in state for future blocks.
 ```
+
+The delay `D` is configurable via `AssetsBridge.setTripartyBlockDelay` and
+defaults to 1.
 
 The advantage of this approach is a single minting point - all BTC minting happens
 in the `PreBlocker` through the same `mintBTC()` function, regardless of the
@@ -58,14 +64,20 @@ function bridgeTriparty(address recipient, uint256 amount) external returns (boo
 
 function allowTripartyController(address controller, bool isAllowed) external;
 
-function pauseTriparty(bool isPaused);
+function pauseTriparty(bool isPaused) external;
+
+function setTripartyBlockDelay(uint256 delay) external;
 ```
 
 Only an allowed triparty controller should be able to call the `bridgeTriparty`
-function. The `allowTripartyController` function should only be callable by the
-the same address that can set the pauser or outflow limits, which is
-`poaKeeper.CheckOwner()`). The `pauseTriparty` should only be callable by the
-`AssetsBridge` pauser.
+function. The `allowTripartyController` and `setTripartyBlockDelay` functions
+should only be callable by the same address that can set the pauser or outflow
+limits, which is `poaKeeper.CheckOwner()`). The `pauseTriparty` should only be
+callable by the `AssetsBridge` pauser.
+
+`setTripartyBlockDelay` sets the number of blocks that must pass between a
+triparty mint request and its execution by the `PreBlocker`. The delay must be
+at least 1 (the request and execution always happen in different blocks).
 
 Additionally, `bridgeTriparty` should respect the paused state and revert if
 triparty bridging is paused.
@@ -78,8 +90,11 @@ The `x/bridge` module should store the following new state:
 
 * Triparty controller addresses: the addresses authorized to submit triparty
   mint requests
+* Triparty block delay: the number of blocks that must elapse between a request
+  and its execution.
 * Pending triparty mint requests: a list of `TripartyBridgeRequest` entries
-  awaiting processing by the `PreBlocker`
+  awaiting processing by the `PreBlocker`. Each entry records the block height
+  at which it was created so the `PreBlocker` can determine maturity.
 
 #### `PreBlocker` extension
 
@@ -87,10 +102,14 @@ The bridge `PreBlocker` currently processes `AssetsLockedEvents` extracted from
 the injected pseudo-transaction. After processing bridge events, the `PreBlocker`
 should additionally:
 
-1. Read all pending `TripartyBridgeRequest` entries from the module state
-2. For each valid request, call the existing `mintBTC()` function which mints coins
-   through the `x/bank` module and updates the `BTCMinted` counter
-3. Clear all processed requests from state
+1. Read the configured triparty block delay `D` from state
+2. Read all pending `TripartyBridgeRequest` entries from the module state
+3. For each request whose recorded block height satisfies
+   `currentHeight - requestHeight >= D`, call the existing `mintBTC()` function
+   which mints coins through the `x/bank` module and updates the `BTCMinted`
+   counter
+4. Clear all processed (mature) requests from state; leave immature requests
+   for future blocks
 
 This extension is deliberately minimal. The `mintBTC()` function is reused
 without modification, ensuring the same minting logic and supply tracking apply
