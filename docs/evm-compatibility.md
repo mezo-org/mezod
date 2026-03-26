@@ -437,6 +437,17 @@ functions.
           For details see Ethereum Contract ABI in the Solidity documentation(opens in
           a new tab).
     - `String` (optional) - Block number.
+    - `Object` (optional) - State override set. A mapping of addresses to
+      override objects. Each override object may contain:
+        - balance: QUANTITY - (optional) Balance to set for the account before
+          executing the call.
+        - nonce: QUANTITY - (optional) Nonce to set for the account.
+        - code: DATA - (optional) EVM bytecode to inject at the account address.
+        - state: Object - (optional) Key-value mapping of storage slots to
+          override. Replaces the entire storage of the account.
+        - stateDiff: Object - (optional) Key-value mapping of individual storage
+          slots to override. Merges with existing storage. Cannot be combined
+          with `state`.
 - **Returns**: `String` - The return value of the executed contract.
 
 ```bash
@@ -447,10 +458,27 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}]
 
 - **Description**: Estimates the gas necessary to execute a transaction.
 - **Parameters**:
-    Object:
-    - `from`: DATA, 20 Bytes - The address the transaction is send from.
-    - `to`: DATA, 20 Bytes - (optional when creating new contract) The address the transaction is directed to.
-    - `value`: QUANTITY - value sent with this transaction
+    - `Object` - The transaction call object
+        - from: DATA, 20 Bytes - The address the transaction is sent from.
+        - to: DATA, 20 Bytes - (optional when creating new contract) The address the
+          transaction is directed to.
+        - gas: QUANTITY - (optional) Integer of the gas provided for the transaction
+          execution.
+        - gasPrice: QUANTITY - (optional) Integer of the gasPrice used for each paid gas
+        - value: QUANTITY - (optional) Integer of the value sent with this transaction
+        - input: DATA - (optional) Hash of the method signature and encoded parameters.
+    - `String` (optional) - Block number.
+    - `Object` (optional) - State override set. A mapping of addresses to
+      override objects. Each override object may contain:
+        - balance: QUANTITY - (optional) Balance to set for the account before
+          executing the call.
+        - nonce: QUANTITY - (optional) Nonce to set for the account.
+        - code: DATA - (optional) EVM bytecode to inject at the account address.
+        - state: Object - (optional) Key-value mapping of storage slots to
+          override. Replaces the entire storage of the account.
+        - stateDiff: Object - (optional) Key-value mapping of individual storage
+          slots to override. Merges with existing storage. Cannot be combined
+          with `state`.
 - **Returns**: `String` - The estimated gas amount.
 
 ```bash
