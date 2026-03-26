@@ -197,6 +197,17 @@ func (suite *StateDBTestSuite) TestBalance() {
 		{"sub zero balance", func(db *statedb.StateDB) {
 			db.SubBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(0)},
+		{"set balance on new account", func(db *statedb.StateDB) {
+			db.SetBalance(address, uint256.NewInt(50), tracing.BalanceChangeUnspecified)
+		}, big.NewInt(50)},
+		{"set balance overwrite existing", func(db *statedb.StateDB) {
+			db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+			db.SetBalance(address, uint256.NewInt(30), tracing.BalanceChangeUnspecified)
+		}, big.NewInt(30)},
+		{"set balance to zero", func(db *statedb.StateDB) {
+			db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+			db.SetBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
+		}, big.NewInt(0)},
 	}
 
 	for _, tc := range testCases {
@@ -334,6 +345,46 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			suite.Require().Equal(originalKeeper, keeper)
 		})
 	}
+
+	// Test SetBalance and SetStorage reverts separately since they are not
+	// part of the vm.StateDB interface used by the table-driven cases above.
+	suite.Run("set balance", func() {
+		ctx := sdk.Context{}
+		keeper := statedb.NewMockKeeper()
+
+		db := statedb.New(ctx, keeper, emptyTxConfig)
+		db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+		suite.Require().NoError(db.Commit())
+
+		originalKeeper := keeper.Clone()
+
+		db2 := statedb.New(ctx, keeper, emptyTxConfig)
+		rev := db2.Snapshot()
+		db2.SetBalance(address, uint256.NewInt(999), tracing.BalanceChangeUnspecified)
+		db2.RevertToSnapshot(rev)
+
+		suite.Require().NoError(db2.Commit())
+		suite.Require().Equal(originalKeeper, keeper)
+	})
+
+	suite.Run("set storage", func() {
+		ctx := sdk.Context{}
+		keeper := statedb.NewMockKeeper()
+
+		db := statedb.New(ctx, keeper, emptyTxConfig)
+		db.SetState(address, v1, v2)
+		suite.Require().NoError(db.Commit())
+
+		originalKeeper := keeper.Clone()
+
+		db2 := statedb.New(ctx, keeper, emptyTxConfig)
+		rev := db2.Snapshot()
+		db2.SetStorage(address, map[common.Hash]common.Hash{v1: v3})
+		db2.RevertToSnapshot(rev)
+
+		suite.Require().NoError(db2.Commit())
+		suite.Require().Equal(originalKeeper, keeper)
+	})
 }
 
 func (suite *StateDBTestSuite) TestNestedSnapshot() {
@@ -600,6 +651,85 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 	})
 	suite.Require().NoError(err)
 	suite.Require().Equal(1, len(storage))
+}
+
+func (suite *StateDBTestSuite) TestSetStorage() {
+	key1 := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	key2 := common.BigToHash(big.NewInt(3))
+	value2 := common.BigToHash(big.NewInt(4))
+	key3 := common.BigToHash(big.NewInt(5))
+	value3 := common.BigToHash(big.NewInt(6))
+
+	code := []byte("hello world")
+
+	suite.Run("replace storage and wipe old keys", func() {
+		keeper := statedb.NewMockKeeper()
+		db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+
+		// Pre-populate storage
+		db.SetState(address, key1, value1)
+		db.SetState(address, key2, value2)
+		suite.Require().NoError(db.Commit())
+
+		// Replace storage with new key-value pair
+		db2 := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+		db2.SetStorage(address, map[common.Hash]common.Hash{
+			key3: value3,
+		})
+
+		// New key should return the new value
+		suite.Require().Equal(value3, db2.GetState(address, key3))
+		// Old keys should return empty (storageWiped)
+		suite.Require().Equal(common.Hash{}, db2.GetState(address, key1))
+		suite.Require().Equal(common.Hash{}, db2.GetState(address, key2))
+	})
+
+	suite.Run("preserve code nonce and balance", func() {
+		keeper := statedb.NewMockKeeper()
+		db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+
+		db.SetNonce(address, 5)
+		db.AddBalance(address, uint256.NewInt(200), tracing.BalanceChangeUnspecified)
+		db.SetCode(address, code)
+		db.SetState(address, key1, value1)
+		suite.Require().NoError(db.Commit())
+
+		db2 := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+		db2.SetStorage(address, map[common.Hash]common.Hash{
+			key3: value3,
+		})
+
+		suite.Require().Equal(uint64(5), db2.GetNonce(address))
+		suite.Require().Equal(uint256.NewInt(200), db2.GetBalance(address))
+		suite.Require().Equal(code, db2.GetCode(address))
+	})
+
+	suite.Run("empty storage map wipes all keys", func() {
+		keeper := statedb.NewMockKeeper()
+		db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+
+		db.SetState(address, key1, value1)
+		db.SetState(address, key2, value2)
+		suite.Require().NoError(db.Commit())
+
+		db2 := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+		db2.SetStorage(address, map[common.Hash]common.Hash{})
+
+		suite.Require().Equal(common.Hash{}, db2.GetState(address, key1))
+		suite.Require().Equal(common.Hash{}, db2.GetState(address, key2))
+	})
+
+	suite.Run("non-existent account", func() {
+		keeper := statedb.NewMockKeeper()
+		db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+
+		db.SetStorage(address, map[common.Hash]common.Hash{
+			key1: value1,
+		})
+
+		suite.Require().Equal(value1, db.GetState(address, key1))
+	})
 }
 
 func (suite *StateDBTestSuite) TestCommittedStateChanges() {
