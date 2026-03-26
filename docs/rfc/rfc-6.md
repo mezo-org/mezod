@@ -90,8 +90,9 @@ callable by the `AssetsBridge` pauser.
 triparty mint request and its execution by the `PreBlocker`. The delay must be
 at least 1 (the request and execution always happen in different blocks).
 
-Additionally, `bridgeTriparty` should respect the paused state and revert if
-triparty bridging is paused.
+Additionally, `bridgeTriparty` should:
+* Revert if triparty bridging is paused.
+* Revert if the `recipient` is a blocked address (e.g. a module account).
 
 ### `x/bridge` module
 
@@ -148,9 +149,11 @@ This extension is deliberately minimal. The `mintBTC()` function is reused
 without modification, ensuring the same minting logic and supply tracking apply
 to both paths.
 
-The code processing minting requests should skip requests minting to blocked
-addresses like module addresses. This follows the same logic used for processing
-`AssetsLocked` events.
+Blocked-address validation is enforced at the precompile level — `bridgeTriparty`
+reverts if the recipient is a blocked address. The `PreBlocker` may repeat this
+check to stay consistent with the existing `AssetsLocked` processing code, but
+this RFC does not require it since the validation already happened at submission
+time.
 
 ### Provenance tracking and bridging out
 
