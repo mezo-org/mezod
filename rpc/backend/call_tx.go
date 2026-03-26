@@ -290,7 +290,7 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 		}
 
 		blockNr := rpctypes.NewBlockNumber(big.NewInt(0))
-		estimated, err := b.EstimateGas(callArgs, &blockNr)
+		estimated, err := b.EstimateGas(callArgs, &blockNr, nil)
 		if err != nil {
 			return args, err
 		}
@@ -306,7 +306,7 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 }
 
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
-func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber) (hexutil.Uint64, error) {
+func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber, overrides *rpctypes.StateOverride) (hexutil.Uint64, error) {
 	blockNr := rpctypes.EthPendingBlockNumber
 	if blockNrOptional != nil {
 		blockNr = *blockNrOptional
@@ -330,6 +330,14 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 		ChainId:         b.chainID.Int64(),
 	}
 
+	if overrides != nil {
+		overridesSerialized, err := json.Marshal(overrides)
+		if err != nil {
+			return 0, err
+		}
+		req.StateOverride = overridesSerialized
+	}
+
 	// From ContextWithHeight: if the provided height is 0,
 	// it will return an empty context and the gRPC query will use
 	// the latest block height for querying.
@@ -342,7 +350,7 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 
 // EstimateCost returns an estimate of cost for the given smart contract call.
 func (b *Backend) EstimateCost(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber) (*rpctypes.EstimateCostResult, error) {
-	gas, err := b.EstimateGas(args, blockNrOptional)
+	gas, err := b.EstimateGas(args, blockNrOptional, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to estimate gas: %w", err)
 	}

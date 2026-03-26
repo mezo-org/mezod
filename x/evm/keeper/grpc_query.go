@@ -396,7 +396,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		}
 
 		// pass false to not commit StateDB
-		rsp, _, err = k.ApplyMessageWithConfig(tmpCtx, WrapMessage(msg), nil, false, cfg, txConfig)
+		rsp, _, err = k.ApplyMessageWithConfig(tmpCtx, WrapMessage(msg), nil, false, cfg, txConfig, req.StateOverride)
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
