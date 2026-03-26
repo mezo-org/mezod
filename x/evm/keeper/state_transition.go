@@ -16,6 +16,7 @@
 package keeper
 
 import (
+	"encoding/json"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
@@ -27,6 +28,7 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -371,6 +373,7 @@ func (k *Keeper) ApplyMessageWithConfig(
 	commit bool,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
+	stateOverrideBytes ...[]byte,
 ) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	msg := wrapper.Unwrap()
 
@@ -388,6 +391,22 @@ func (k *Keeper) ApplyMessageWithConfig(
 	}
 
 	stateDB := statedb.New(ctx, k, txConfig)
+
+	// Apply state overrides if provided. It is only possible for calls not
+	// committing state changes.
+	if len(stateOverrideBytes) > 0 && len(stateOverrideBytes[0]) > 0 {
+		if commit {
+			return nil, nil, errorsmod.Wrap(errortypes.ErrInvalidRequest, "state overrides are only supported for read-only calls")
+		}
+		var overrides stateOverride
+		if err := json.Unmarshal(stateOverrideBytes[0], &overrides); err != nil {
+			return nil, nil, errorsmod.Wrap(err, "invalid state override")
+		}
+		if err := applyStateOverrides(stateDB, overrides); err != nil {
+			return nil, nil, errorsmod.Wrap(err, "failed to apply state overrides")
+		}
+	}
+
 	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
 
 	leftoverGas := msg.GasLimit

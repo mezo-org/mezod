@@ -418,7 +418,9 @@ func rescalePrecision(inputValue *big.Int, actualDecimals, targetDecimals uint64
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
 func (b *Backend) DoCall(
-	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber,
+	args evmtypes.TransactionArgs,
+	blockNr rpctypes.BlockNumber,
+	overrides *rpctypes.StateOverride,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
 	bz, err := json.Marshal(&args)
 	if err != nil {
@@ -435,6 +437,14 @@ func (b *Backend) DoCall(
 		GasCap:          b.RPCGasCap(),
 		ProposerAddress: sdk.ConsAddress(header.Block.ProposerAddress),
 		ChainId:         b.chainID.Int64(),
+	}
+
+	if overrides != nil {
+		overridesSerialized, err := json.Marshal(overrides)
+		if err != nil {
+			return nil, err
+		}
+		req.StateOverride = overridesSerialized
 	}
 
 	// From ContextWithHeight: if the provided height is 0,

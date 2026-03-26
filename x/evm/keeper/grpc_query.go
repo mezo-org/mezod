@@ -263,7 +263,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
 	// pass false to not commit StateDB
-	res, _, err := k.ApplyMessageWithConfig(ctx, WrapMessage(msg), nil, false, cfg, txConfig)
+	res, _, err := k.ApplyMessageWithConfig(ctx, WrapMessage(msg), nil, false, cfg, txConfig, req.StateOverride)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
