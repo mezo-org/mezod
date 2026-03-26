@@ -71,6 +71,12 @@ function allowTripartyController(address controller, bool isAllowed) external re
 function pauseTriparty(bool isPaused) external returns (bool);
 
 function setTripartyBlockDelay(uint256 delay) external returns (bool);
+
+function setTripartyLimits(uint256 perRequestLimit, uint256 periodLimit) external returns (bool);
+
+function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 periodLimit);
+
+function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);
 ```
 
 `bridgeTriparty` accepts the `recipient`, `amount`, and `callbackContract`
@@ -90,9 +96,26 @@ callable by the `AssetsBridge` pauser.
 triparty mint request and its execution by the `PreBlocker`. The delay must be
 at least 1 (the request and execution always happen in different blocks).
 
+`setTripartyLimits` configures the global minting limits shared by all triparty
+controllers. The parameters are:
+* `perRequestLimit`: the maximum BTC amount for a single `bridgeTriparty` call
+* `periodLimit`: the maximum aggregate BTC amount that can be minted via
+  triparty within a rolling block window (using the same reset mechanism as
+  outflow limits)
+
+Setting both limits to 0 effectively disables all triparty minting without
+revoking controller status. `setTripartyLimits` should only be callable by
+`poaKeeper.CheckOwner()`.
+
+`getTripartyLimits` returns the configured per-request and period limits.
+`getTripartyCapacity` returns the remaining period capacity and the block height
+at which it resets, mirroring `getOutflowCapacity`.
+
 Additionally, `bridgeTriparty` should:
 * Revert if triparty bridging is paused.
 * Revert if the `recipient` is a blocked address (e.g. a module account).
+* Revert if `amount` exceeds the global per-request limit.
+* Revert if `amount` would exceed the remaining global period capacity.
 
 ### `x/bridge` module
 
@@ -149,7 +172,7 @@ This extension is deliberately minimal. The `mintBTC()` function is reused
 without modification, ensuring the same minting logic and supply tracking apply
 to both paths.
 
-Blocked-address validation is enforced at the precompile level — `bridgeTriparty`
+Blocked-address validation is enforced at the precompile level - `bridgeTriparty`
 reverts if the recipient is a blocked address. The `PreBlocker` may repeat this
 check to stay consistent with the existing `AssetsLocked` processing code, but
 this RFC does not require it since the validation already happened at submission
@@ -176,8 +199,12 @@ way, like locking it into veBTC.
 The regular bridge path requires 2/3+ validator consensus to mint BTC. The
 triparty path requires a call from a specific address. This is a fundamentally
 different security model, and even though the triparty controller address is
-considered trusted, we should implement per-request and per-24h limits for
+considered trusted, we should implement per-request and per-period limits for
 BTC minting via triparty.
+
+Limits are global — shared across all triparty controllers — and configured via
+`setTripartyLimits`. The period reset follows the same block-window mechanism
+used by outflow limits (`OutflowResetBlocks`).
 
 ### Safety mechanisms
 
@@ -191,6 +218,7 @@ bridge module:
 * Pause mechanism: when triparty minting is paused, the `PreBlocker` should
   skip processing existing triparty requests and new requests should be rejected.
 * Access control: only configured triparty controller addresses can submit requests.
-* Per-request limits: a maximum amount per individual triparty mint request.
-* Per-24h limits: an aggregate cap on triparty minting within a 24h reset period,
-  following the existing outflow limit pattern.
+* Per-request limit: a global maximum amount per individual triparty mint
+  request, shared across all controllers.
+* Period limit: a global aggregate cap on triparty minting within a rolling
+  block window, following the existing outflow limit reset pattern.
