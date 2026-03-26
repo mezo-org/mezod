@@ -92,9 +92,14 @@ The `x/bridge` module should store the following new state:
   mint requests
 * Triparty block delay: the number of blocks that must elapse between a request
   and its execution.
+* Triparty sequence tip: the sequence number of the last processed triparty
+  request, analogous to the `AssetsLockedSequenceTip`
 * Pending triparty mint requests: a list of `TripartyBridgeRequest` entries
-  awaiting processing by the `PreBlocker`. Each entry records the block height
-  at which it was created so the `PreBlocker` can determine maturity.
+  awaiting processing by the `PreBlocker`. Each entry is assigned a
+  monotonically increasing sequence number at creation time and records the
+  block height at which it was created so the `PreBlocker` can determine
+  maturity. The sequence number ensures deterministic processing order across
+  all validators, following the same pattern used for `AssetsLocked` events.
 
 #### `PreBlocker` extension
 
@@ -102,18 +107,21 @@ The bridge `PreBlocker` currently processes `AssetsLockedEvents` extracted from
 the injected pseudo-transaction. After processing bridge events, the `PreBlocker`
 should additionally:
 
-1. Read the configured triparty block delay `D` from state
+1. Read the configured triparty block delay `D` and the current triparty
+   sequence tip from state
 2. Read up to `TripartyBatch` pending `TripartyBridgeRequest` entries from the
-   module state, in FIFO order. `TripartyBatch` is a compile-time constant set
-   to 5. While triparty mints are expected to be rare, capping the batch size
-   provides defense in depth to ensure stable block times.
-3. For each request whose recorded block height satisfies
+   module state, starting from the request whose sequence number is one greater
+   than the current tip and proceeding in strictly increasing sequence order.
+   `TripartyBatch` is a compile-time constant set to 5. While triparty mints
+   are expected to be rare, capping the batch size provides defense in depth to
+   ensure stable block times.
+3. For each request in the batch whose recorded block height satisfies
    `currentHeight - requestHeight >= D`, call the existing `mintBTC()` function
    which mints coins through the `x/bank` module and updates the `BTCMinted`
-   counter. Requests within the batch that are not yet mature are skipped but
-   remain in state.
-4. Clear all processed (mature) requests from state; leave immature requests
-   for future blocks
+   counter. Stop at the first immature request to preserve sequential processing.
+   No request can be processed ahead of an earlier one that is not yet mature.
+4. Update the triparty sequence tip to the sequence number of the last processed
+   request and clear all processed requests from state.
 
 This extension is deliberately minimal. The `mintBTC()` function is reused
 without modification, ensuring the same minting logic and supply tracking apply
