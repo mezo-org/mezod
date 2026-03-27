@@ -335,4 +335,31 @@ interface IAssetsBridge {
      *      - The delay must be at least 1.
      */
     function setTripartyBlockDelay(uint256 delay) external returns (bool);
+
+    /**
+     * @notice Emitted when the triparty limits are updated.
+     * @param perRequestLimit The new per-request limit.
+     * @param windowLimit The new window limit.
+     */
+    event TripartyLimitsSet(uint256 perRequestLimit, uint256 windowLimit);
+
+    /**
+     * @notice Sets the global triparty minting limits shared by all controllers.
+     * @param perRequestLimit The maximum amount that can be minted in a single request.
+     * @param windowLimit The maximum amount that can be minted in a single window.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner,
+     *      - Both limits must be non-negative.
+     */
+    function setTripartyLimits(
+        uint256 perRequestLimit,
+        uint256 windowLimit
+    ) external returns (bool);
+
+    /**
+     * @notice Returns the configured triparty minting limits.
+     * @return perRequestLimit The maximum amount that can be minted in a single request.
+     * @return windowLimit The maximum amount that can be minted in a single window.
+     */
+    function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
 }

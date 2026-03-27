@@ -3,6 +3,7 @@ package assetsbridge_test
 import (
 	"math/big"
 
+	"cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -250,4 +251,90 @@ func (s *PrecompileTestSuite) TestSetTripartyBlockDelay() {
 	}
 
 	s.RunMethodTestCases(testcases, "setTripartyBlockDelay")
+}
+
+func (s *PrecompileTestSuite) TestSetTripartyLimits() {
+	testcases := []TestCase{
+		{
+			name: "caller is not owner",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(100), big.NewInt(1000)}
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "sender is not owner",
+		},
+		{
+			name: "happy path - set limits",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(100), big.NewInt(1000)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				s.Require().True(
+					s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx).
+						Equal(
+							s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx),
+						),
+				)
+				s.Require().Equal(
+					int64(100),
+					s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx).Int64(),
+				)
+				s.Require().Equal(
+					int64(1000),
+					s.bridgeKeeper.GetTripartyWindowLimit(s.ctx).Int64(),
+				)
+			},
+		},
+		{
+			name: "happy path - set zero limits",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(0), big.NewInt(0)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				s.Require().True(
+					s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx).IsZero(),
+				)
+				s.Require().True(
+					s.bridgeKeeper.GetTripartyWindowLimit(s.ctx).IsZero(),
+				)
+			},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "setTripartyLimits")
+}
+
+func (s *PrecompileTestSuite) TestGetTripartyLimits() {
+	testcases := []TestCase{
+		{
+			name: "default values - both zero",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(0), big.NewInt(0)},
+		},
+		{
+			name: "returns set values",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.NewInt(500))
+				s.bridgeKeeper.SetTripartyWindowLimit(s.ctx, math.NewInt(5000))
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(500), big.NewInt(5000)},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "getTripartyLimits")
 }

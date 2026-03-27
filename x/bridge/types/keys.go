@@ -77,6 +77,14 @@ var (
 
 	// TripartyBlockDelayKey is a standalone key for the triparty block delay.
 	TripartyBlockDelayKey = []byte{0xA2}
+
+	// TripartyPerRequestLimitKey is a standalone key for the triparty
+	// per-request limit.
+	TripartyPerRequestLimitKey = []byte{0xA3}
+
+	// TripartyWindowLimitKey is a standalone key for the triparty window
+	// limit.
+	TripartyWindowLimitKey = []byte{0xA4}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
