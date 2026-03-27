@@ -72,9 +72,9 @@ function pauseTriparty(bool isPaused) external returns (bool);
 
 function setTripartyBlockDelay(uint256 delay) external returns (bool);
 
-function setTripartyLimits(uint256 perRequestLimit, uint256 periodLimit) external returns (bool);
+function setTripartyLimits(uint256 perRequestLimit, uint256 windowLimit) external returns (bool);
 
-function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 periodLimit);
+function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
 
 function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);
 ```
@@ -104,7 +104,7 @@ at least 1 (the request and execution always happen in different blocks).
 controllers. The parameters are:
 
 * `perRequestLimit`: the maximum BTC amount for a single `bridgeTriparty` call
-* `periodLimit`: the maximum aggregate BTC amount that can be minted via
+* `windowLimit`: the maximum aggregate BTC amount that can be minted via
   triparty within a rolling block window (using the same reset mechanism as
   outflow limits)
 

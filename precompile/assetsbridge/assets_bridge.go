@@ -121,6 +121,25 @@ func NewPrecompileVersionMap(
 		return nil, err
 	}
 
+	// v6 is all previous settings plus triparty v2 methods
+	contractV6, err := NewPrecompile(
+		poaKeeper,
+		bridgeKeeper,
+		authzKeeper,
+		&Settings{
+			Observability:   true,
+			BTCManagement:   true,
+			ERC20Management: true,
+			SequenceTipView: true,
+			BridgeOut:       true,
+			Triparty:        true,
+			TripartyV2:      true,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
@@ -128,7 +147,8 @@ func NewPrecompileVersionMap(
 			2: contractV2,
 			3: contractV3,
 			4: contractV4,
-			evmtypes.AssetsBridgePrecompileLatestVersion: contractV5,
+			5: contractV5,
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV6,
 		},
 	), nil
 }
@@ -140,6 +160,7 @@ type Settings struct {
 	SequenceTipView bool // enable the method to expose the sequence tip
 	BridgeOut       bool // enable the bridgeOut method
 	Triparty        bool // enable triparty bridging methods
+	TripartyV2      bool // enable triparty v2 bridging methods
 }
 
 // NewPrecompile creates a new Assets Bridge precompile.
@@ -201,6 +222,13 @@ func NewPrecompile(
 		methods = append(methods, newAllowTripartyControllerMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newIsAllowedTripartyControllerMethod(bridgeKeeper))
 		methods = append(methods, newPauseTripartyMethod(bridgeKeeper))
+	}
+
+	if settings.TripartyV2 {
+		methods = append(methods, newSetTripartyBlockDelayMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetTripartyBlockDelayMethod(bridgeKeeper))
+		methods = append(methods, newSetTripartyLimitsMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetTripartyLimitsMethod(bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -277,6 +305,12 @@ type BridgeKeeper interface {
 	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
 	IsTripartyPaused(ctx sdk.Context) bool
 	SetTripartyPaused(ctx sdk.Context, isPaused bool)
+	GetTripartyBlockDelay(ctx sdk.Context) uint64
+	SetTripartyBlockDelay(ctx sdk.Context, delay uint64)
+	SetTripartyPerRequestLimit(ctx sdk.Context, limit math.Int)
+	GetTripartyPerRequestLimit(ctx sdk.Context) math.Int
+	SetTripartyWindowLimit(ctx sdk.Context, limit math.Int)
+	GetTripartyWindowLimit(ctx sdk.Context) math.Int
 }
 
 type AuthzKeeper interface {

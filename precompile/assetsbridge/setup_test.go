@@ -139,6 +139,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 					SequenceTipView: true,
 					BridgeOut:       true,
 					Triparty:        true,
+					TripartyV2:      true,
 				},
 			)
 			s.Require().NoError(err)
@@ -229,8 +230,11 @@ type FakeBridgeKeeper struct {
 	pauser sdk.AccAddress
 	paused bool
 
-	tripartyControllers map[string]bool
-	tripartyPaused      bool
+	tripartyControllers      map[string]bool
+	tripartyPaused           bool
+	tripartyBlockDelay       uint64
+	tripartyPerRequestLimit  math.Int
+	tripartyWindowLimit      math.Int
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -245,6 +249,9 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		minAmountForBitcoinChain: math.ZeroInt(),
 		tripartyControllers:      make(map[string]bool),
 		tripartyPaused:           false,
+		tripartyBlockDelay:       1,
+		tripartyPerRequestLimit:  math.ZeroInt(),
+		tripartyWindowLimit:      math.ZeroInt(),
 	}
 }
 
@@ -466,4 +473,28 @@ func (k *FakeBridgeKeeper) IsTripartyPaused(_ sdk.Context) bool {
 
 func (k *FakeBridgeKeeper) SetTripartyPaused(_ sdk.Context, isPaused bool) {
 	k.tripartyPaused = isPaused
+}
+
+func (k *FakeBridgeKeeper) GetTripartyBlockDelay(_ sdk.Context) uint64 {
+	return k.tripartyBlockDelay
+}
+
+func (k *FakeBridgeKeeper) SetTripartyBlockDelay(_ sdk.Context, delay uint64) {
+	k.tripartyBlockDelay = delay
+}
+
+func (k *FakeBridgeKeeper) GetTripartyPerRequestLimit(_ sdk.Context) math.Int {
+	return k.tripartyPerRequestLimit
+}
+
+func (k *FakeBridgeKeeper) SetTripartyPerRequestLimit(_ sdk.Context, limit math.Int) {
+	k.tripartyPerRequestLimit = limit
+}
+
+func (k *FakeBridgeKeeper) GetTripartyWindowLimit(_ sdk.Context) math.Int {
+	return k.tripartyWindowLimit
+}
+
+func (k *FakeBridgeKeeper) SetTripartyWindowLimit(_ sdk.Context, limit math.Int) {
+	k.tripartyWindowLimit = limit
 }
