@@ -92,6 +92,10 @@ type stateObject struct {
 	// object was previously existent and is being deployed as a contract within
 	// the current transaction.
 	newContract bool
+	// storageOverridden indicates that the account's storage has been fully replaced
+	// via OverrideStorage. When true, GetCommittedState returns empty values
+	// instead of reading from the keeper, ensuring old storage is not visible.
+	storageOverridden bool
 }
 
 // newObject creates a state object.
@@ -236,6 +240,12 @@ func (s *stateObject) Nonce() uint64 {
 func (s *stateObject) GetCommittedState(key common.Hash) common.Hash {
 	if value, cached := s.originStorage[key]; cached {
 		return value
+	}
+	// If the storage was overridden via OverrideStorage, old values should no
+	// longer exist.
+	if s.storageOverridden {
+		s.originStorage[key] = common.Hash{}
+		return common.Hash{}
 	}
 	// If no live objects are available, load it from keeper
 	value := s.db.keeper.GetState(s.db.ctx, s.Address(), key)
