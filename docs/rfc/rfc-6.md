@@ -36,7 +36,7 @@ The mechanism works in two phases with a configurable block delay between them:
 
 ```
 Block N:           Authorized party calls
-                   AssetsBridge.bridgeTriparty(recipient, amount, callback)
+                   AssetsBridge.bridgeTriparty(recipient, amount, callbackData)
                    and a TripartyBridgeRequest is written to x/bridge module state
                    with the current block height recorded as the request height.
                    The returned requestId identifies the request.
@@ -44,9 +44,9 @@ Block N:           Authorized party calls
 Block N+D (D>=1):  PreBlocker reads pending TripartyBridgeRequests whose request
                    height is at least D blocks in the past and mints BTC for each
                    mature request using mintBTC(). After a successful mint, the
-                   PreBlocker issues a callback to the contract specified in the
-                   request. Requests that have not yet reached the required delay
-                   are left in state for future blocks.
+                   PreBlocker issues a callback to the controller that submitted
+                   the request. Requests that have not yet reached the required
+                   delay are left in state for future blocks.
 ```
 
 The delay `D` is configurable via `AssetsBridge.setTripartyBlockDelay` and
@@ -64,12 +64,7 @@ The existing `AssetsBridge` precompile is the entry point for bridge operations
 and should expose the following functions:
 
 ```solidity
-struct Callback {
-    address callbackContract;
-    bytes callbackData;
-}
-
-function bridgeTriparty(address recipient, uint256 amount, Callback calldata callback) external returns (uint256 requestId);
+function bridgeTriparty(address recipient, uint256 amount, bytes calldata callbackData) external returns (uint256 requestId);
 
 function allowTripartyController(address controller, bool isAllowed) external returns (bool);
 
@@ -84,15 +79,16 @@ function getTripartyLimits() external view returns (uint256 perRequestLimit, uin
 function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);
 ```
 
-`bridgeTriparty` accepts the `recipient`, `amount`, and a `Callback` struct.
-The `Callback` struct contains `callbackContract` - the address of the contract
-that will receive the `onTripartyBridgeCompleted` callback once the BTC is
-minted - and `callbackData` - arbitrary bytes forwarded to the callback,
-allowing the caller to pass context such as a lock duration or vault parameters.
-Passing the zero address as `callbackContract` disables the callback (and
-`callbackData` is ignored). The function returns the `requestId` (the sequence
-number assigned to the request) which can be used to correlate the callback with
-the original request.
+`bridgeTriparty` accepts the `recipient`, `amount`, and `callbackData`.
+The `callbackData` is arbitrary bytes forwarded to the callback, allowing the
+caller to pass context such as a lock duration or vault parameters. After BTC
+is minted, the `PreBlocker` issues a callback to the controller that submitted
+the request — the controller address is already trusted since only allowed
+triparty controllers can call `bridgeTriparty`, so there is no need for a
+separate callback address. If the callback fails, the mint still completes.
+Passing empty `callbackData` disables the callback. The function returns the
+`requestId` (the sequence number assigned to the request) which can be used to
+correlate the callback with the original request.
 
 Only an allowed triparty controller should be able to call the `bridgeTriparty`
 function. The `allowTripartyController` and `setTripartyBlockDelay` functions
@@ -145,10 +141,9 @@ The `x/bridge` module should store the following new state:
   monotonically increasing sequence number (used as the `requestId`) at creation
   time and records the block height at which it was created so the `PreBlocker`
   can determine maturity. Additionally, each entry stores the `recipient`,
-  `amount`, and the `Callback` struct (containing `callbackContract` and
-  `callbackData`) provided by the caller. The sequence
-  number ensures deterministic processing order across all validators, following
-  the same pattern used for `AssetsLocked` events.
+  `amount`, `callbackData`, and the `controller` address that submitted the
+  request. The sequence number ensures deterministic processing order across all
+  validators, following the same pattern used for `AssetsLocked` events.
 
 #### `PreBlocker` extension
 
@@ -169,15 +164,16 @@ should additionally:
    which mints coins through the `x/bank` module and updates the `BTCMinted`
    counter. Stop at the first immature request to preserve sequential processing.
    No request can be processed ahead of an earlier one that is not yet mature.
-4. After a successful mint, if the request specifies a non-zero
-   `callbackContract`, issue an EVM call to
+4. After a successful mint, if the request includes non-empty `callbackData`,
+   issue an EVM call to
    `onTripartyBridgeCompleted(uint256 requestId, address recipient, uint256 amount, bytes callbackData)`
-   on the callback contract, forwarding the `callbackData` stored in the request.
-   The call is executed via `ExecuteContractCall` with
+   on the controller that submitted the request, forwarding the stored
+   `callbackData`. The call is executed via `ExecuteContractCall` with
    the bridge module address as the sender, following the same pattern used by
-   `mintERC20`. A callback failure should be logged but must not prevent the
-   mint from completing or block subsequent requests. The BTC has already been
-   minted and cannot be rolled back without risking a supply invariant violation.
+   `mintERC20`, but with a gas cap of 1,000,000. A callback failure should be
+   logged but must not prevent the mint from completing or block subsequent
+   requests. The BTC has already been minted and cannot be rolled back without
+   risking a supply invariant violation.
 5. Update the triparty sequence tip to the sequence number of the last processed
    request and clear all processed requests from state.
 
