@@ -16,7 +16,6 @@
 package keeper
 
 import (
-	"encoding/json"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
@@ -28,7 +27,6 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -340,8 +338,11 @@ func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer *tracers
 //
 // It's called in three scenarios:
 // 1. `ApplyTransaction`, in the transaction processing flow.
-// 2. `EthCall/EthEstimateGas` grpc query handler.
+// 2. `TraceTx/TraceBlock` grpc query handler.
 // 3. Called by other native modules directly.
+//
+// For read-only simulation with optional state overrides (eth_call, eth_estimateGas),
+// use [SimulateMessage] instead.
 //
 // # Prechecks and Preprocessing
 //
@@ -373,7 +374,43 @@ func (k *Keeper) ApplyMessageWithConfig(
 	commit bool,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
-	stateOverrideBytes ...[]byte,
+) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
+	stateDB := statedb.New(ctx, k, txConfig)
+	return k.applyMessageWithConfig(ctx, wrapper, tracer, commit, cfg, txConfig, stateDB)
+}
+
+// SimulateMessage applies the given message against the existing state without
+// committing changes. It optionally applies pre-parsed state overrides to the
+// StateDB before execution. This method is intended for read-only simulation
+// (eth_call, eth_estimateGas).
+func (k *Keeper) SimulateMessage(
+	ctx sdk.Context,
+	wrapper MessageWrapper,
+	tracer *tracers.Tracer,
+	cfg *statedb.EVMConfig,
+	txConfig statedb.TxConfig,
+	overrides stateOverride,
+) (*types.MsgEthereumTxResponse, error) {
+	stateDB := statedb.New(ctx, k, txConfig)
+	if overrides != nil {
+		if err := applyStateOverrides(stateDB, overrides); err != nil {
+			return nil, errorsmod.Wrap(err, "failed to apply state overrides")
+		}
+	}
+	res, _, err := k.applyMessageWithConfig(ctx, wrapper, tracer, false, cfg, txConfig, stateDB)
+	return res, err
+}
+
+// applyMessageWithConfig is the private core that executes an EVM message
+// against the provided StateDB.
+func (k *Keeper) applyMessageWithConfig(
+	ctx sdk.Context,
+	wrapper MessageWrapper,
+	tracer *tracers.Tracer,
+	commit bool,
+	cfg *statedb.EVMConfig,
+	txConfig statedb.TxConfig,
+	stateDB *statedb.StateDB,
 ) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	msg := wrapper.Unwrap()
 
@@ -388,23 +425,6 @@ func (k *Keeper) ApplyMessageWithConfig(
 		return nil, nil, errorsmod.Wrap(types.ErrCreateDisabled, "failed to create new contract")
 	} else if !cfg.Params.EnableCall && msg.To != nil {
 		return nil, nil, errorsmod.Wrap(types.ErrCallDisabled, "failed to call contract")
-	}
-
-	stateDB := statedb.New(ctx, k, txConfig)
-
-	// Apply state overrides if provided. It is only possible for calls not
-	// committing state changes.
-	if len(stateOverrideBytes) > 0 && len(stateOverrideBytes[0]) > 0 {
-		if commit {
-			return nil, nil, errorsmod.Wrap(errortypes.ErrInvalidRequest, "state overrides are only supported for read-only calls")
-		}
-		var overrides stateOverride
-		if err := json.Unmarshal(stateOverrideBytes[0], &overrides); err != nil {
-			return nil, nil, errorsmod.Wrap(err, "invalid state override")
-		}
-		if err := applyStateOverrides(stateDB, overrides); err != nil {
-			return nil, nil, errorsmod.Wrap(err, "failed to apply state overrides")
-		}
 	}
 
 	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)

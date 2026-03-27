@@ -262,8 +262,14 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
-	// pass false to not commit StateDB
-	res, _, err := k.ApplyMessageWithConfig(ctx, WrapMessage(msg), nil, false, cfg, txConfig, req.StateOverride)
+	var overrides stateOverride
+	if len(req.StateOverride) > 0 {
+		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
+		}
+	}
+
+	res, err := k.SimulateMessage(ctx, WrapMessage(msg), nil, cfg, txConfig, overrides)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -351,6 +357,14 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// Deserialize state overrides once, before the binary search loop.
+	var overrides stateOverride
+	if len(req.StateOverride) > 0 {
+		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
+			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
+		}
+	}
+
 	// NOTE: the errors from the executable below should be consistent with go-ethereum,
 	// so we don't wrap them with the gRPC status code
 
@@ -395,8 +409,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 				WithTransientKVGasConfig(storetypes.GasConfig{})
 		}
 
-		// pass false to not commit StateDB
-		rsp, _, err = k.ApplyMessageWithConfig(tmpCtx, WrapMessage(msg), nil, false, cfg, txConfig, req.StateOverride)
+		rsp, err = k.SimulateMessage(tmpCtx, WrapMessage(msg), nil, cfg, txConfig, overrides)
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
