@@ -36,7 +36,7 @@ The mechanism works in two phases with a configurable block delay between them:
 
 ```
 Block N:           Authorized party calls
-                   AssetsBridge.bridgeTriparty(recipient, amount, callbackContract)
+                   AssetsBridge.bridgeTriparty(recipient, amount, callback)
                    and a TripartyBridgeRequest is written to x/bridge module state
                    with the current block height recorded as the request height.
                    The returned requestId identifies the request.
@@ -64,7 +64,12 @@ The existing `AssetsBridge` precompile is the entry point for bridge operations
 and should expose the following functions:
 
 ```solidity
-function bridgeTriparty(address recipient, uint256 amount, address callbackContract) external returns (uint256 requestId);
+struct Callback {
+    address callbackContract;
+    bytes callbackData;
+}
+
+function bridgeTriparty(address recipient, uint256 amount, Callback calldata callback) external returns (uint256 requestId);
 
 function allowTripartyController(address controller, bool isAllowed) external returns (bool);
 
@@ -79,12 +84,15 @@ function getTripartyLimits() external view returns (uint256 perRequestLimit, uin
 function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);
 ```
 
-`bridgeTriparty` accepts the `recipient`, `amount`, and `callbackContract`
-address. The `callbackContract` is the address of the contract that will receive
-the `onTripartyBridgeCompleted` callback once the BTC is minted. Passing the
-zero address disables the callback. The function returns the `requestId`
-(the sequence number assigned to the request) which can be used to correlate the
-callback with the original request.
+`bridgeTriparty` accepts the `recipient`, `amount`, and a `Callback` struct.
+The `Callback` struct contains `callbackContract` - the address of the contract
+that will receive the `onTripartyBridgeCompleted` callback once the BTC is
+minted - and `callbackData` - arbitrary bytes forwarded to the callback,
+allowing the caller to pass context such as a lock duration or vault parameters.
+Passing the zero address as `callbackContract` disables the callback (and
+`callbackData` is ignored). The function returns the `requestId` (the sequence
+number assigned to the request) which can be used to correlate the callback with
+the original request.
 
 Only an allowed triparty controller should be able to call the `bridgeTriparty`
 function. The `allowTripartyController` and `setTripartyBlockDelay` functions
@@ -137,7 +145,8 @@ The `x/bridge` module should store the following new state:
   monotonically increasing sequence number (used as the `requestId`) at creation
   time and records the block height at which it was created so the `PreBlocker`
   can determine maturity. Additionally, each entry stores the `recipient`,
-  `amount`, and `callbackContract` address provided by the caller. The sequence
+  `amount`, and the `Callback` struct (containing `callbackContract` and
+  `callbackData`) provided by the caller. The sequence
   number ensures deterministic processing order across all validators, following
   the same pattern used for `AssetsLocked` events.
 
@@ -162,8 +171,9 @@ should additionally:
    No request can be processed ahead of an earlier one that is not yet mature.
 4. After a successful mint, if the request specifies a non-zero
    `callbackContract`, issue an EVM call to
-   `onTripartyBridgeCompleted(uint256 requestId, address recipient, uint256 amount)`
-   on the callback contract. The call is executed via `ExecuteContractCall` with
+   `onTripartyBridgeCompleted(uint256 requestId, address recipient, uint256 amount, bytes callbackData)`
+   on the callback contract, forwarding the `callbackData` stored in the request.
+   The call is executed via `ExecuteContractCall` with
    the bridge module address as the sender, following the same pattern used by
    `mintERC20`. A callback failure should be logged but must not prevent the
    mint from completing or block subsequent requests. The BTC has already been
