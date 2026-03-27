@@ -27,8 +27,8 @@ The proposal reuses the existing bridge infrastructure, making triparty minting
 an extension to the bridge rather than a parallel system. In this model, all BTC
 minted on the chain goes through the same flow, and the existing total supply
 checks in the `EndBlock` are preserved. Additionally, this approach enables
-implementing a veto mechanism at the consensus level in the future, as there is
-a natural window between a mint request and its execution.
+implementing additional safety mechanisms at the consensus level in the future,
+as there is a natural window between a mint request and its execution.
 
 ### Overview
 
@@ -56,7 +56,7 @@ The advantage of this approach is a single minting point - all BTC minting happe
 in the `PreBlocker` through the same `mintBTC()` function, regardless of the
 originating signal. This allows maintaining the existing `verifyBTCSupply`
 invariant and provides extensibility like tracking supplies separately or adding
-a consensus-level veto mechanism.
+additional safety mechanisms in the future (see [Future Work](#future-work)).
 
 ### `AssetsBridge` precompile
 
@@ -103,16 +103,17 @@ controllers. The parameters are:
   triparty within a rolling block window (using the same reset mechanism as
   outflow limits)
 
-Setting both limits to 0 effectively disables all triparty minting without
-revoking controller status. `setTripartyLimits` should only be callable by
-`poaKeeper.CheckOwner()`.
+`pauseTriparty` sets both limits to 0 effectively pausing all mints - new requests
+will be rejected but pending requests remain in state and will be processed once
+limits are restored to non-zero values. This follows the same pattern used by
+`setOutflowLimit` for pausing ERC20 bridging. `setTripartyLimits` should only
+be callable by `poaKeeper.CheckOwner()`.
 
 `getTripartyLimits` returns the configured per-request and period limits.
 `getTripartyCapacity` returns the remaining period capacity and the block height
 at which it resets, mirroring `getOutflowCapacity`.
 
 Additionally, `bridgeTriparty` should:
-* Revert if triparty bridging is paused.
 * Revert if the `recipient` is a blocked address (e.g. a module account).
 * Revert if `amount` exceeds the global per-request limit.
 * Revert if `amount` would exceed the remaining global period capacity.
@@ -215,10 +216,31 @@ bridge module:
   `btc_supply = total_btc_minted - total_btc_burnt` and panics if violated.
   Since `mintBTC()` is reused, this invariant covers both paths without
   modification.
-* Pause mechanism: when triparty minting is paused, the `PreBlocker` should
-  skip processing existing triparty requests and new requests should be rejected.
+* Pause mechanism: when triparty minting is paused, the `PreBlocker` delays
+  processing existing triparty requests until triparty bridge limits are lifted.
+  All new requests are rejected.
 * Access control: only configured triparty controller addresses can submit requests.
 * Per-request limit: a global maximum amount per individual triparty mint
   request, shared across all controllers.
 * Period limit: a global aggregate cap on triparty minting within a rolling
-  block window, following the existing outflow limit reset pattern.
+  block window, following the existing outflow limit reset pattern. Setting
+  limits to 0 pauses new requests while preserving pending ones for later
+  processing.
+
+## Future Work
+
+### Veto mechanism
+
+The configurable block delay between a triparty mint request and its execution
+creates a natural window for introducing a veto mechanism. A veto would allow
+authorized parties to reject specific pending requests before they are processed
+by the `PreBlocker`, permanently canceling the mint.
+
+Unlike pausing (which is achieved by setting limits to 0 and affects all
+requests), a veto would target individual requests by their `requestId`. A
+vetoed request would be removed from state and never processed, and the BTC would
+not be minted.
+
+The veto mechanism is intentionally deferred to a future iteration. In the
+current design, a triparty bridge request that is not vetoed has a guarantee of
+being eventually processed once its block delay has elapsed and limits allow it.
