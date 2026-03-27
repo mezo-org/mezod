@@ -39,7 +39,7 @@ func applyStateOverrides(db *statedb.StateDB, overrides stateOverride) error {
 
 		if override.Balance != nil {
 			balance, _ := uint256.FromBig((*big.Int)(override.Balance))
-			db.SetBalance(addr, balance, tracing.BalanceChangeUnspecified)
+			db.OverrideBalance(addr, balance, tracing.BalanceChangeUnspecified)
 		}
 
 		if override.State != nil && override.StateDiff != nil {
@@ -49,7 +49,7 @@ func applyStateOverrides(db *statedb.StateDB, overrides stateOverride) error {
 		}
 
 		if override.State != nil {
-			db.SetStorage(addr, override.State)
+			db.OverrideStorage(addr, override.State)
 		}
 
 		if override.StateDiff != nil {

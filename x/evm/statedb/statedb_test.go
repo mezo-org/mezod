@@ -197,16 +197,16 @@ func (suite *StateDBTestSuite) TestBalance() {
 		{"sub zero balance", func(db *statedb.StateDB) {
 			db.SubBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(0)},
-		{"set balance on new account", func(db *statedb.StateDB) {
-			db.SetBalance(address, uint256.NewInt(50), tracing.BalanceChangeUnspecified)
+		{"override balance on new account", func(db *statedb.StateDB) {
+			db.OverrideBalance(address, uint256.NewInt(50), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(50)},
-		{"set balance overwrite existing", func(db *statedb.StateDB) {
+		{"override balance overwrite existing", func(db *statedb.StateDB) {
 			db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
-			db.SetBalance(address, uint256.NewInt(30), tracing.BalanceChangeUnspecified)
+			db.OverrideBalance(address, uint256.NewInt(30), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(30)},
-		{"set balance to zero", func(db *statedb.StateDB) {
+		{"override balance to zero", func(db *statedb.StateDB) {
 			db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
-			db.SetBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
+			db.OverrideBalance(address, uint256.NewInt(0), tracing.BalanceChangeUnspecified)
 		}, big.NewInt(0)},
 	}
 
@@ -346,9 +346,9 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 		})
 	}
 
-	// Test SetBalance and SetStorage reverts separately since they are not
-	// part of the vm.StateDB interface used by the table-driven cases above.
-	suite.Run("set balance", func() {
+	// Test OverrideBalance and OverrideStorage reverts separately since they
+	// are not part of the vm.StateDB interface used by the table-driven cases above.
+	suite.Run("override balance", func() {
 		ctx := sdk.Context{}
 		keeper := statedb.NewMockKeeper()
 
@@ -360,14 +360,14 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 
 		db2 := statedb.New(ctx, keeper, emptyTxConfig)
 		rev := db2.Snapshot()
-		db2.SetBalance(address, uint256.NewInt(999), tracing.BalanceChangeUnspecified)
+		db2.OverrideBalance(address, uint256.NewInt(999), tracing.BalanceChangeUnspecified)
 		db2.RevertToSnapshot(rev)
 
 		suite.Require().NoError(db2.Commit())
 		suite.Require().Equal(originalKeeper, keeper)
 	})
 
-	suite.Run("set storage", func() {
+	suite.Run("override storage", func() {
 		ctx := sdk.Context{}
 		keeper := statedb.NewMockKeeper()
 
@@ -379,7 +379,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 
 		db2 := statedb.New(ctx, keeper, emptyTxConfig)
 		rev := db2.Snapshot()
-		db2.SetStorage(address, map[common.Hash]common.Hash{v1: v3})
+		db2.OverrideStorage(address, map[common.Hash]common.Hash{v1: v3})
 		db2.RevertToSnapshot(rev)
 
 		suite.Require().NoError(db2.Commit())
@@ -653,7 +653,7 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 	suite.Require().Equal(1, len(storage))
 }
 
-func (suite *StateDBTestSuite) TestSetStorage() {
+func (suite *StateDBTestSuite) TestOverrideStorage() {
 	key1 := common.BigToHash(big.NewInt(1))
 	value1 := common.BigToHash(big.NewInt(2))
 	key2 := common.BigToHash(big.NewInt(3))
@@ -674,13 +674,13 @@ func (suite *StateDBTestSuite) TestSetStorage() {
 
 		// Replace storage with new key-value pair
 		db2 := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
-		db2.SetStorage(address, map[common.Hash]common.Hash{
+		db2.OverrideStorage(address, map[common.Hash]common.Hash{
 			key3: value3,
 		})
 
 		// New key should return the new value
 		suite.Require().Equal(value3, db2.GetState(address, key3))
-		// Old keys should return empty (storageWiped)
+		// Old keys should return empty (storageOverridden)
 		suite.Require().Equal(common.Hash{}, db2.GetState(address, key1))
 		suite.Require().Equal(common.Hash{}, db2.GetState(address, key2))
 	})
@@ -696,7 +696,7 @@ func (suite *StateDBTestSuite) TestSetStorage() {
 		suite.Require().NoError(db.Commit())
 
 		db2 := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
-		db2.SetStorage(address, map[common.Hash]common.Hash{
+		db2.OverrideStorage(address, map[common.Hash]common.Hash{
 			key3: value3,
 		})
 
@@ -714,7 +714,7 @@ func (suite *StateDBTestSuite) TestSetStorage() {
 		suite.Require().NoError(db.Commit())
 
 		db2 := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
-		db2.SetStorage(address, map[common.Hash]common.Hash{})
+		db2.OverrideStorage(address, map[common.Hash]common.Hash{})
 
 		suite.Require().Equal(common.Hash{}, db2.GetState(address, key1))
 		suite.Require().Equal(common.Hash{}, db2.GetState(address, key2))
@@ -724,7 +724,7 @@ func (suite *StateDBTestSuite) TestSetStorage() {
 		keeper := statedb.NewMockKeeper()
 		db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 
-		db.SetStorage(address, map[common.Hash]common.Hash{
+		db.OverrideStorage(address, map[common.Hash]common.Hash{
 			key1: value1,
 		})
 

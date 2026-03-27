@@ -554,20 +554,20 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 	}
 }
 
-// SetBalance sets the balance of the account associated with addr.
-func (s *StateDB) SetBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) {
+// OverrideBalance overrides the balance of the account associated with addr.
+func (s *StateDB) OverrideBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetBalance(amount)
 	}
 }
 
-// SetStorage replaces the entire storage of an account with the given values,
+// OverrideStorage replaces the entire storage of an account with the given values,
 // preserving the account's code, nonce, and balance.
-func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
+func (s *StateDB) OverrideStorage(addr common.Address, storage map[common.Hash]common.Hash) {
 	obj := s.getStateObject(addr)
 	newObj, _ := s.createObject(addr)
-	newObj.storageWiped = true
+	newObj.storageOverridden = true
 	for k, v := range storage {
 		newObj.SetState(k, v)
 	}

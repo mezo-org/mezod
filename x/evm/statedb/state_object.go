@@ -92,10 +92,10 @@ type stateObject struct {
 	// object was previously existent and is being deployed as a contract within
 	// the current transaction.
 	newContract bool
-	// storageWiped indicates that the account's storage has been fully replaced
-	// via SetStorage. When true, GetCommittedState returns empty values instead
-	// of reading from the keeper, ensuring old storage is not visible.
-	storageWiped bool
+	// storageOverridden indicates that the account's storage has been fully replaced
+	// via OverrideStorage. When true, GetCommittedState returns empty values
+	// instead of reading from the keeper, ensuring old storage is not visible.
+	storageOverridden bool
 }
 
 // newObject creates a state object.
@@ -241,8 +241,8 @@ func (s *stateObject) GetCommittedState(key common.Hash) common.Hash {
 	if value, cached := s.originStorage[key]; cached {
 		return value
 	}
-	// If storage was wiped (e.g. via SetStorage), old values no longer exist.
-	if s.storageWiped {
+	// If storage was wiped (e.g. via OverrideStorage), old values no longer exist.
+	if s.storageOverridden {
 		return common.Hash{}
 	}
 	// If no live objects are available, load it from keeper
