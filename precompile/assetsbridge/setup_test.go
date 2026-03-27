@@ -230,11 +230,11 @@ type FakeBridgeKeeper struct {
 	pauser sdk.AccAddress
 	paused bool
 
-	tripartyControllers      map[string]bool
-	tripartyPaused           bool
-	tripartyBlockDelay       uint64
-	tripartyPerRequestLimit  math.Int
-	tripartyWindowLimit      math.Int
+	tripartyControllers     map[string]bool
+	tripartyPaused          bool
+	tripartyBlockDelay      uint64
+	tripartyPerRequestLimit math.Int
+	tripartyWindowLimit     math.Int
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {

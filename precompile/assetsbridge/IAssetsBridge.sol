@@ -337,6 +337,13 @@ interface IAssetsBridge {
     function setTripartyBlockDelay(uint256 delay) external returns (bool);
 
     /**
+     * @notice Returns the number of blocks that must pass between a triparty
+     *         mint request and its execution by the PreBlocker.
+     * @return delay The current block delay value.
+     */
+    function getTripartyBlockDelay() external view returns (uint256 delay);
+
+    /**
      * @notice Emitted when the triparty limits are updated.
      * @param perRequestLimit The new per-request limit.
      * @param windowLimit The new window limit.
