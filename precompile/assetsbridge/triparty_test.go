@@ -253,6 +253,32 @@ func (s *PrecompileTestSuite) TestSetTripartyBlockDelay() {
 	s.RunMethodTestCases(testcases, "setTripartyBlockDelay")
 }
 
+func (s *PrecompileTestSuite) TestGetTripartyBlockDelay() {
+	testcases := []TestCase{
+		{
+			name: "default value - returns 1",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(1)},
+		},
+		{
+			name: "returns set value",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyBlockDelay(s.ctx, 5)
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(5)},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "getTripartyBlockDelay")
+}
+
 func (s *PrecompileTestSuite) TestSetTripartyLimits() {
 	testcases := []TestCase{
 		{

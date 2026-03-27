@@ -725,6 +725,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getTripartyBlockDelay",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "delay",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",

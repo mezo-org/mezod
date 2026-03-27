@@ -16,6 +16,7 @@ const (
 	IsAllowedTripartyControllerMethodName = "isAllowedTripartyController"
 	PauseTripartyMethodName               = "pauseTriparty"
 	SetTripartyBlockDelayMethodName       = "setTripartyBlockDelay"
+	GetTripartyBlockDelayMethodName       = "getTripartyBlockDelay"
 	SetTripartyLimitsMethodName           = "setTripartyLimits"
 	GetTripartyLimitsMethodName           = "getTripartyLimits"
 )
@@ -357,6 +358,47 @@ func (m *SetTripartyBlockDelayMethod) Run(
 	}
 
 	return precompile.MethodOutputs{true}, nil, nil
+}
+
+// --- getTripartyBlockDelay ---
+
+type GetTripartyBlockDelayMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetTripartyBlockDelayMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetTripartyBlockDelayMethod {
+	return &GetTripartyBlockDelayMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *GetTripartyBlockDelayMethod) MethodName() string {
+	return GetTripartyBlockDelayMethodName
+}
+
+func (m *GetTripartyBlockDelayMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetTripartyBlockDelayMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetTripartyBlockDelayMethod) Payable() bool {
+	return false
+}
+
+func (m *GetTripartyBlockDelayMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
+		return nil, nil, err
+	}
+
+	delay := m.bridgeKeeper.GetTripartyBlockDelay(context.SdkCtx())
+
+	return precompile.MethodOutputs{new(big.Int).SetUint64(delay)}, nil, nil
 }
 
 // --- Events ---

@@ -226,6 +226,7 @@ func NewPrecompile(
 
 	if settings.TripartyV2 {
 		methods = append(methods, newSetTripartyBlockDelayMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetTripartyBlockDelayMethod(bridgeKeeper))
 		methods = append(methods, newSetTripartyLimitsMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetTripartyLimitsMethod(bridgeKeeper))
 	}
