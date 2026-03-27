@@ -41,3 +41,20 @@ func (k Keeper) SetTripartyPaused(ctx sdk.Context, isPaused bool) {
 		store.Delete(types.TripartyPausedKey)
 	}
 }
+
+// GetTripartyBlockDelay returns the configured triparty block delay.
+// If not set, it returns the default value of 1.
+func (k Keeper) GetTripartyBlockDelay(ctx sdk.Context) uint64 {
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(types.TripartyBlockDelayKey)
+	if bz == nil {
+		return 1
+	}
+	return sdk.BigEndianToUint64(bz)
+}
+
+// SetTripartyBlockDelay sets the triparty block delay.
+func (k Keeper) SetTripartyBlockDelay(ctx sdk.Context, delay uint64) {
+	store := ctx.KVStore(k.storeKey)
+	store.Set(types.TripartyBlockDelayKey, sdk.Uint64ToBigEndian(delay))
+}

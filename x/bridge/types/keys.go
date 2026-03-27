@@ -74,6 +74,9 @@ var (
 	// TripartyPausedKey is a standalone key for the triparty paused flag.
 	// If the key is present in the store, triparty bridging is paused.
 	TripartyPausedKey = []byte{0xA1}
+
+	// TripartyBlockDelayKey is a standalone key for the triparty block delay.
+	TripartyBlockDelayKey = []byte{0xA2}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the

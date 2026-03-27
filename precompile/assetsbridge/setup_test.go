@@ -139,6 +139,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 					SequenceTipView: true,
 					BridgeOut:       true,
 					Triparty:        true,
+					TripartyV2:      true,
 				},
 			)
 			s.Require().NoError(err)
@@ -231,6 +232,7 @@ type FakeBridgeKeeper struct {
 
 	tripartyControllers map[string]bool
 	tripartyPaused      bool
+	tripartyBlockDelay  uint64
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -245,6 +247,7 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		minAmountForBitcoinChain: math.ZeroInt(),
 		tripartyControllers:      make(map[string]bool),
 		tripartyPaused:           false,
+		tripartyBlockDelay:       1,
 	}
 }
 
@@ -466,4 +469,12 @@ func (k *FakeBridgeKeeper) IsTripartyPaused(_ sdk.Context) bool {
 
 func (k *FakeBridgeKeeper) SetTripartyPaused(_ sdk.Context, isPaused bool) {
 	k.tripartyPaused = isPaused
+}
+
+func (k *FakeBridgeKeeper) GetTripartyBlockDelay(_ sdk.Context) uint64 {
+	return k.tripartyBlockDelay
+}
+
+func (k *FakeBridgeKeeper) SetTripartyBlockDelay(_ sdk.Context, delay uint64) {
+	k.tripartyBlockDelay = delay
 }

@@ -209,3 +209,45 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 
 	s.RunMethodTestCases(testcases, "bridgeTriparty")
 }
+
+func (s *PrecompileTestSuite) TestSetTripartyBlockDelay() {
+	testcases := []TestCase{
+		{
+			name: "caller is not owner",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(5)}
+			},
+			as:          s.account2.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "sender is not owner",
+		},
+		{
+			name: "delay is zero",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(0)}
+			},
+			as:          s.account1.EvmAddr,
+			basicPass:   true,
+			revert:      true,
+			errContains: "delay must be at least 1",
+		},
+		{
+			name: "happy path - set delay to 5",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(5)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+			postCheck: func() {
+				s.Require().Equal(
+					uint64(5),
+					s.bridgeKeeper.GetTripartyBlockDelay(s.ctx),
+				)
+			},
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "setTripartyBlockDelay")
+}

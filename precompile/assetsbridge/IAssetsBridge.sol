@@ -319,4 +319,20 @@ interface IAssetsBridge {
      *      - The caller must be the assets bridge pauser.
      */
     function pauseTriparty(bool isPaused) external returns (bool);
+
+    /**
+     * @notice Emitted when the triparty block delay is updated.
+     * @param delay The new block delay value.
+     */
+    event TripartyBlockDelaySet(uint256 delay);
+
+    /**
+     * @notice Sets the number of blocks that must pass between a triparty
+     *         mint request and its execution by the PreBlocker.
+     * @param delay The block delay. Must be at least 1.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner,
+     *      - The delay must be at least 1.
+     */
+    function setTripartyBlockDelay(uint256 delay) external returns (bool);
 }
