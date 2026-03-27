@@ -555,6 +555,8 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing
 }
 
 // OverrideBalance overrides the balance of the account associated with addr.
+// This function should only be used for simulation and the mutations must be
+// discarded afterwards.
 func (s *StateDB) OverrideBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
@@ -562,8 +564,10 @@ func (s *StateDB) OverrideBalance(addr common.Address, amount *uint256.Int, _ tr
 	}
 }
 
-// OverrideStorage replaces the entire storage of an account with the given values,
-// preserving the account's code, nonce, and balance.
+// OverrideStorage wipes out the entire ORIGIN (committed) and DIRTY (uncommitted)
+// storage for the specified account and sets the storage given as argument as
+// the new DIRTY storage of the account. This function should only be used for
+// simulation and the mutations must be discarded afterwards.
 func (s *StateDB) OverrideStorage(addr common.Address, storage map[common.Hash]common.Hash) {
 	obj := s.getStateObject(addr)
 	newObj, _ := s.createObject(addr)
