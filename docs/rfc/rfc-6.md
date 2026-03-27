@@ -98,6 +98,7 @@ at least 1 (the request and execution always happen in different blocks).
 
 `setTripartyLimits` configures the global minting limits shared by all triparty
 controllers. The parameters are:
+
 * `perRequestLimit`: the maximum BTC amount for a single `bridgeTriparty` call
 * `periodLimit`: the maximum aggregate BTC amount that can be minted via
   triparty within a rolling block window (using the same reset mechanism as
@@ -114,6 +115,7 @@ be callable by `poaKeeper.CheckOwner()`.
 at which it resets, mirroring `getOutflowCapacity`.
 
 Additionally, `bridgeTriparty` should:
+
 * Revert if the `recipient` is a blocked address (e.g. a module account).
 * Revert if `amount` exceeds the global per-request limit.
 * Revert if `amount` would exceed the remaining global period capacity.
