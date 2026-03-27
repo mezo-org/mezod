@@ -241,8 +241,10 @@ func (s *stateObject) GetCommittedState(key common.Hash) common.Hash {
 	if value, cached := s.originStorage[key]; cached {
 		return value
 	}
-	// If storage was wiped (e.g. via OverrideStorage), old values no longer exist.
+	// If the storage was overridden via OverrideStorage, old values should no
+	// longer exist.
 	if s.storageOverridden {
+		s.originStorage[key] = common.Hash{}
 		return common.Hash{}
 	}
 	// If no live objects are available, load it from keeper
