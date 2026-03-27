@@ -176,10 +176,12 @@ without modification, ensuring the same minting logic and supply tracking apply
 to both paths.
 
 Blocked-address validation is enforced at the precompile level - `bridgeTriparty`
-reverts if the recipient is a blocked address. The `PreBlocker` may repeat this
-check to stay consistent with the existing `AssetsLocked` processing code, but
-this RFC does not require it since the validation already happened at submission
-time.
+reverts if the recipient is a blocked address. The `PreBlocker` MUST repeat this
+check before minting. Relying solely on upstream validation is dangerous -
+if the precompile check is ever bypassed or a blocked address is added between
+submission and processing, the `PreBlocker` would mint to a blocked address
+and risk a consensus failure. Defense in depth requires the `PreBlocker` to
+independently verify the recipient is not blocked.
 
 ### Provenance tracking and bridging out
 
