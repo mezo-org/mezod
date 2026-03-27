@@ -238,9 +238,23 @@ by the `PreBlocker`, permanently canceling the mint.
 
 Unlike pausing (which is achieved by setting limits to 0 and affects all
 requests), a veto would target individual requests by their `requestId`. A
-vetoed request would be removed from state and never processed, and the BTC would
-not be minted.
+vetoed request would be removed from state and never processed, and the BTC
+would not be minted.
 
 The veto mechanism is intentionally deferred to a future iteration. In the
 current design, a triparty bridge request that is not vetoed has a guarantee of
 being eventually processed once its block delay has elapsed and limits allow it.
+
+### Bridge out limits
+
+We do not consider BTC provenance during bridge outs since all BTC on the chain
+is fungible. Instead, we assume triparty BTC is locked immediately in smart
+contracts as, for example, collateral, and is not mixed on the chain with
+BTC bridged through the locking mechanism.
+
+In future iterations, we will revisit strengthening the validation of bridge-out
+operations to check the state of reserves before processing bridge-out requests
+and delay processing if there is not enough BTC locked in the bridge contract to
+cover them. This mechanism will have to be aligned with other research projects,
+like layered lending minting tokens through standard ERC20 operations on the
+Mezo chain.
