@@ -97,5 +97,21 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function pauseTriparty(bool isPaused) external returns (bool) {
         return IAssetsBridge(precompile).pauseTriparty(isPaused);
     }
+
+    function setTripartyBlockDelay(uint256 delay) external returns (bool) {
+        return IAssetsBridge(precompile).setTripartyBlockDelay(delay);
+    }
+
+    function getTripartyBlockDelay() external view returns (uint256 delay) {
+        return IAssetsBridge(precompile).getTripartyBlockDelay();
+    }
+
+    function setTripartyLimits(uint256 perRequestLimit, uint256 windowLimit) external returns (bool) {
+        return IAssetsBridge(precompile).setTripartyLimits(perRequestLimit, windowLimit);
+    }
+
+    function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit) {
+        return IAssetsBridge(precompile).getTripartyLimits();
+    }
 }
 
