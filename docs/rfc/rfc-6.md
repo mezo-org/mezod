@@ -108,11 +108,11 @@ controllers. The parameters are:
   triparty within a rolling block window (using the same reset mechanism as
   outflow limits)
 
-`pauseTriparty` sets both limits to 0 effectively pausing all mints - new requests
-will be rejected but pending requests remain in state and will be processed once
-limits are restored to non-zero values. This follows the same pattern used by
-`setOutflowLimit` for pausing ERC20 bridging. `setTripartyLimits` should only
-be callable by `poaKeeper.CheckOwner()`.
+`pauseTriparty` sets a pause flag that prevents new triparty mint requests from
+being accepted and stops the `PreBlocker` from processing pending requests.
+Pending requests remain in state and will be processed once triparty is unpaused
+and limits allow it. `setTripartyLimits` should only be callable by
+`poaKeeper.CheckOwner()`.
 
 `getTripartyLimits` returns the configured per-request and window limits.
 `getTripartyCapacity` returns the remaining window capacity and the block height
@@ -226,15 +226,13 @@ bridge module:
   Since `mintBTC()` is reused, this invariant covers both paths without
   modification.
 * Pause mechanism: when triparty minting is paused, the `PreBlocker` delays
-  processing existing triparty requests until triparty bridge limits are lifted.
+  processing existing triparty requests until triparty is unpaused.
   All new requests are rejected.
 * Access control: only configured triparty controller addresses can submit requests.
 * Per-request limit: a global maximum amount per individual triparty mint
   request, shared across all controllers.
 * Window limit: a global aggregate cap on triparty minting within a rolling
-  block window, following the existing outflow limit reset pattern. Setting
-  limits to 0 pauses new requests while preserving pending ones for later
-  processing.
+  block window, following the existing outflow limit reset pattern.
 
 ## Future Work
 
@@ -245,8 +243,8 @@ creates a natural window for introducing a veto mechanism. A veto would allow
 authorized parties to reject specific pending requests before they are processed
 by the `PreBlocker`, permanently canceling the mint.
 
-Unlike pausing (which is achieved by setting limits to 0 and affects all
-requests), a veto would target individual requests by their `requestId`. A
+Unlike pausing (which uses a dedicated pause flag and affects all requests),
+a veto would target individual requests by their `requestId`. A
 vetoed request would be removed from state and never processed, and the BTC
 would not be minted.
 
