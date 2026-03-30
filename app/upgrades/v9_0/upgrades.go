@@ -59,11 +59,11 @@ func updateAssetsBridgePrecompileVersion(ctx sdk.Context, evmKeeper *evmkeeper.K
 		},
 	)
 
-	// 6 is the value of evmtypes.AssetsBridgePrecompileLatestVersion at
+	// 5 is the value of evmtypes.AssetsBridgePrecompileLatestVersion at
 	// the time of this upgrade. We avoid using the constant directly
 	// as it will change in the future so the actual value of the version
 	// used during this upgrade would perish over time.
-	params.PrecompilesVersions[assetsBridgeVersionInfoIndex].Version = 6
+	params.PrecompilesVersions[assetsBridgeVersionInfoIndex].Version = 5
 
 	err := evmKeeper.SetParams(ctx, params)
 	if err != nil {

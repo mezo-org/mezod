@@ -103,7 +103,7 @@ func NewPrecompileVersionMap(
 		return nil, err
 	}
 
-	// v5 is all previous settings plus triparty bridging
+	// v5 is all previous settings plus triparty bridging methods
 	contractV5, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
@@ -121,25 +121,6 @@ func NewPrecompileVersionMap(
 		return nil, err
 	}
 
-	// v6 is all previous settings plus triparty v2 methods
-	contractV6, err := NewPrecompile(
-		poaKeeper,
-		bridgeKeeper,
-		authzKeeper,
-		&Settings{
-			Observability:   true,
-			BTCManagement:   true,
-			ERC20Management: true,
-			SequenceTipView: true,
-			BridgeOut:       true,
-			Triparty:        true,
-			TripartyV2:      true,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
@@ -147,8 +128,7 @@ func NewPrecompileVersionMap(
 			2: contractV2,
 			3: contractV3,
 			4: contractV4,
-			5: contractV5,
-			evmtypes.AssetsBridgePrecompileLatestVersion: contractV6,
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV5,
 		},
 	), nil
 }
@@ -160,7 +140,6 @@ type Settings struct {
 	SequenceTipView bool // enable the method to expose the sequence tip
 	BridgeOut       bool // enable the bridgeOut method
 	Triparty        bool // enable triparty bridging methods
-	TripartyV2      bool // enable triparty v2 bridging methods
 }
 
 // NewPrecompile creates a new Assets Bridge precompile.
@@ -222,9 +201,6 @@ func NewPrecompile(
 		methods = append(methods, newAllowTripartyControllerMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newIsAllowedTripartyControllerMethod(bridgeKeeper))
 		methods = append(methods, newPauseTripartyMethod(bridgeKeeper))
-	}
-
-	if settings.TripartyV2 {
 		methods = append(methods, newSetTripartyBlockDelayMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetTripartyBlockDelayMethod(bridgeKeeper))
 		methods = append(methods, newSetTripartyLimitsMethod(poaKeeper, bridgeKeeper))

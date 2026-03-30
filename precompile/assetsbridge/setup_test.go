@@ -139,7 +139,6 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 					SequenceTipView: true,
 					BridgeOut:       true,
 					Triparty:        true,
-					TripartyV2:      true,
 				},
 			)
 			s.Require().NoError(err)
