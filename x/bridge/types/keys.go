@@ -93,6 +93,14 @@ var (
 	// TripartySequenceTipKey is a standalone key for the last assigned
 	// triparty request sequence number.
 	TripartySequenceTipKey = []byte{0xA6}
+
+	// TripartyWindowMintedKey is a standalone key for the current window
+	// minted aggregate amount.
+	TripartyWindowMintedKey = []byte{0xA7}
+
+	// TripartyWindowLastResetKey is a standalone key for the block height
+	// at which the triparty minting window was last reset.
+	TripartyWindowLastResetKey = []byte{0xA8}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the

@@ -299,3 +299,68 @@ func TestTripartyBridgeRequestMarshalEmptyCallbackData(t *testing.T) {
 	require.True(t, req.Sequence.Equal(decoded.Sequence))
 	require.Empty(t, decoded.CallbackData)
 }
+
+func TestTripartyWindowMinted(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// Initially zero.
+	require.True(t, keeper.GetTripartyWindowMinted(ctx).IsZero())
+
+	// Increase accumulates.
+	keeper.IncreaseTripartyWindowMinted(ctx, math.NewInt(100))
+	require.Equal(t, math.NewInt(100), keeper.GetTripartyWindowMinted(ctx))
+
+	keeper.IncreaseTripartyWindowMinted(ctx, math.NewInt(250))
+	require.Equal(t, math.NewInt(350), keeper.GetTripartyWindowMinted(ctx))
+
+	// Reset clears to zero and records block height.
+	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 500})
+	keeper.ResetTripartyWindowMinted(ctx)
+	require.True(t, keeper.GetTripartyWindowMinted(ctx).IsZero())
+	require.Equal(t, uint64(500), keeper.GetTripartyWindowLastReset(ctx))
+}
+
+func TestTripartyCapacity(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// No limit set, capacity is zero.
+	capacity, resetHeight := keeper.GetTripartyCapacity(ctx)
+	require.True(t, capacity.IsZero())
+	require.Equal(t, uint64(25000), resetHeight) // 0 + TripartyWindowResetBlocks
+
+	// Set window limit.
+	keeper.SetTripartyWindowLimit(ctx, math.NewInt(1000))
+
+	// Full capacity when nothing minted.
+	capacity, _ = keeper.GetTripartyCapacity(ctx)
+	require.Equal(t, math.NewInt(1000), capacity)
+
+	// Partial mint reduces capacity.
+	keeper.IncreaseTripartyWindowMinted(ctx, math.NewInt(300))
+	capacity, _ = keeper.GetTripartyCapacity(ctx)
+	require.Equal(t, math.NewInt(700), capacity)
+
+	// Reset at block 50000 updates the reset height.
+	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 50000})
+	keeper.ResetTripartyWindowMinted(ctx)
+	_, resetHeight = keeper.GetTripartyCapacity(ctx)
+	require.Equal(t, uint64(75000), resetHeight) // 50000 + 25000
+}
+
+func TestCheckTripartyCapacity(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	keeper.SetTripartyWindowLimit(ctx, math.NewInt(500))
+
+	// Within capacity - no error.
+	require.NoError(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(500)))
+	require.NoError(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(1)))
+
+	// Exceeds capacity - error.
+	require.Error(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(501)))
+
+	// After partial mint, remaining capacity shrinks.
+	keeper.IncreaseTripartyWindowMinted(ctx, math.NewInt(400))
+	require.NoError(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(100)))
+	require.Error(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(101)))
+}

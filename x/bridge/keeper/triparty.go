@@ -8,6 +8,10 @@ import (
 	"github.com/mezo-org/mezod/x/bridge/types"
 )
 
+// TripartyWindowResetBlocks is the number of blocks after which the
+// triparty minting window is reset.
+const TripartyWindowResetBlocks = 25000
+
 // IsAllowedTripartyController checks if the given address is an allowed
 // triparty controller.
 func (k Keeper) IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool {
@@ -253,5 +257,87 @@ func (k Keeper) GetPendingTripartyBridgeRequests(
 	}
 
 	return requests
+}
+
+// GetTripartyWindowMinted returns the current triparty window minted
+// aggregate. Returns zero if not set.
+func (k Keeper) GetTripartyWindowMinted(ctx sdk.Context) math.Int {
+	store := ctx.KVStore(k.storeKey)
+
+	bz := store.Get(types.TripartyWindowMintedKey)
+	if len(bz) == 0 {
+		return math.ZeroInt()
+	}
+
+	minted := math.ZeroInt()
+	if err := minted.Unmarshal(bz); err != nil {
+		panic(err)
+	}
+
+	return minted
+}
+
+// IncreaseTripartyWindowMinted adds the given amount to the current
+// triparty window minted aggregate.
+func (k Keeper) IncreaseTripartyWindowMinted(ctx sdk.Context, amount math.Int) {
+	minted := k.GetTripartyWindowMinted(ctx).Add(amount)
+
+	store := ctx.KVStore(k.storeKey)
+
+	bz, err := minted.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	store.Set(types.TripartyWindowMintedKey, bz)
+}
+
+// ResetTripartyWindowMinted clears the current triparty window minted
+// aggregate to zero and records the current block height as the last
+// reset point.
+func (k Keeper) ResetTripartyWindowMinted(ctx sdk.Context) {
+	store := ctx.KVStore(k.storeKey)
+	store.Delete(types.TripartyWindowMintedKey)
+	store.Set(
+		types.TripartyWindowLastResetKey,
+		sdk.Uint64ToBigEndian(uint64(ctx.BlockHeight())),
+	)
+}
+
+// GetTripartyWindowLastReset returns the block height at which the
+// triparty minting window was last reset. Returns 0 if not set.
+func (k Keeper) GetTripartyWindowLastReset(ctx sdk.Context) uint64 {
+	store := ctx.KVStore(k.storeKey)
+	return sdk.BigEndianToUint64(store.Get(types.TripartyWindowLastResetKey))
+}
+
+// GetTripartyCapacity returns the remaining triparty minting capacity
+// within the current window and the block height at which the window
+// resets.
+func (k Keeper) GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64) {
+	limit := k.GetTripartyWindowLimit(ctx)
+	minted := k.GetTripartyWindowMinted(ctx)
+	lastReset := k.GetTripartyWindowLastReset(ctx)
+
+	capacity = limit.Sub(minted)
+	if capacity.IsNegative() {
+		capacity = math.ZeroInt()
+	}
+
+	resetHeight = lastReset + TripartyWindowResetBlocks
+
+	return capacity, resetHeight
+}
+
+// CheckTripartyCapacity returns an error if the given amount exceeds the
+// remaining triparty minting capacity within the current window.
+func (k Keeper) CheckTripartyCapacity(ctx sdk.Context, amount math.Int) error {
+	capacity, _ := k.GetTripartyCapacity(ctx)
+
+	if amount.GT(capacity) {
+		return types.ErrTripartyWindowLimitExceeded
+	}
+
+	return nil
 }
 
