@@ -51,7 +51,7 @@ type Params struct {
 	// chain_fee_splitter_address defines the hex-encoded EVM address of the chain
 	// fee splitter contract.
 	ChainFeeSplitterAddress string `protobuf:"bytes,10,opt,name=chain_fee_splitter_address,json=chainFeeSplitterAddress,proto3" json:"chain_fee_splitter_address,omitempty"`
-	// mezo_minter_address defines the hex-encoded EVM address of the mezo
+	// mezo_minter_address defines the hex-encoded EVM address of the MEZO
 	// minter.
 	MezoMinterAddress string `protobuf:"bytes,11,opt,name=mezo_minter_address,json=mezoMinterAddress,proto3" json:"mezo_minter_address,omitempty"`
 }
