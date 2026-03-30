@@ -364,3 +364,17 @@ func TestCheckTripartyCapacity(t *testing.T) {
 	require.NoError(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(100)))
 	require.Error(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(101)))
 }
+
+func TestTripartyTotalBTCMinted(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// Initially zero.
+	require.True(t, keeper.GetTripartyTotalBTCMinted(ctx).IsZero())
+
+	// Increase accumulates.
+	keeper.IncreaseTripartyTotalBTCMinted(ctx, math.NewInt(1000))
+	require.Equal(t, math.NewInt(1000), keeper.GetTripartyTotalBTCMinted(ctx))
+
+	keeper.IncreaseTripartyTotalBTCMinted(ctx, math.NewInt(2500))
+	require.Equal(t, math.NewInt(3500), keeper.GetTripartyTotalBTCMinted(ctx))
+}

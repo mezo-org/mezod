@@ -341,3 +341,37 @@ func (k Keeper) CheckTripartyCapacity(ctx sdk.Context, amount math.Int) error {
 	return nil
 }
 
+// GetTripartyTotalBTCMinted returns the total BTC minted via triparty
+// bridging. This is an informational provenance counter. Returns zero
+// if not set.
+func (k Keeper) GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
+	store := ctx.KVStore(k.storeKey)
+
+	bz := store.Get(types.TripartyTotalBTCMintedKey)
+	if len(bz) == 0 {
+		return math.ZeroInt()
+	}
+
+	total := math.ZeroInt()
+	if err := total.Unmarshal(bz); err != nil {
+		panic(err)
+	}
+
+	return total
+}
+
+// IncreaseTripartyTotalBTCMinted adds the given amount to the total BTC
+// minted via triparty bridging provenance counter.
+func (k Keeper) IncreaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int) {
+	total := k.GetTripartyTotalBTCMinted(ctx).Add(amount)
+
+	store := ctx.KVStore(k.storeKey)
+
+	bz, err := total.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	store.Set(types.TripartyTotalBTCMintedKey, bz)
+}
+

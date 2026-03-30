@@ -101,6 +101,10 @@ var (
 	// TripartyWindowLastResetKey is a standalone key for the block height
 	// at which the triparty minting window was last reset.
 	TripartyWindowLastResetKey = []byte{0xA8}
+
+	// TripartyTotalBTCMintedKey is a standalone key for the total BTC
+	// minted via triparty bridging (provenance counter).
+	TripartyTotalBTCMintedKey = []byte{0xA9}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
