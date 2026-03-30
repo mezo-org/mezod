@@ -134,7 +134,7 @@ The `x/bridge` module should store the following new state:
   mint requests
 * Triparty block delay: the number of blocks that must elapse between a request
   and its execution.
-* Triparty sequence tip: the sequence number of the last processed triparty
+* Triparty sequence tip: the sequence number of the last assigned triparty
   request, analogous to the `AssetsLockedSequenceTip`
 * Pending triparty mint requests: a list of `TripartyBridgeRequest` entries
   awaiting processing by the `PreBlocker`. Each entry is assigned a
@@ -151,14 +151,12 @@ The bridge `PreBlocker` currently processes `AssetsLockedEvents` extracted from
 the injected pseudo-transaction. After processing bridge events, the `PreBlocker`
 should additionally:
 
-1. Read the configured triparty block delay `D` and the current triparty
-   sequence tip from state
+1. Read the configured triparty block delay `D` from state.
 2. Read up to `TripartyBatch` pending `TripartyBridgeRequest` entries from the
-   module state, starting from the request whose sequence number is one greater
-   than the current tip and proceeding in strictly increasing sequence order.
-   `TripartyBatch` is a compile-time constant set to 5. While triparty mints
-   are expected to be rare, capping the batch size provides defense in depth to
-   ensure stable block times.
+   module state, starting from the lowest pending sequence number and proceeding
+   in strictly increasing sequence order. `TripartyBatch` is a compile-time
+   constant set to 5. While triparty mints are expected to be rare, capping the
+   batch size provides defense in depth to ensure stable block times.
 3. For each request in the batch whose recorded block height satisfies
    `currentHeight - requestHeight >= D`, call the existing `mintBTC()` function
    which mints coins through the `x/bank` module and updates the `BTCMinted`
@@ -173,8 +171,7 @@ should additionally:
    logged but must not prevent the mint from completing or block subsequent
    requests. The BTC has already been minted and cannot be rolled back without
    risking a supply invariant violation.
-5. Update the triparty sequence tip to the sequence number of the last processed
-   request and clear all processed requests from state.
+5. Clear all processed requests from state.
 
 This extension is deliberately minimal. The `mintBTC()` function is reused
 without modification, ensuring the same minting logic and supply tracking apply
