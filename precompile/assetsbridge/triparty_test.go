@@ -234,6 +234,22 @@ func (s *PrecompileTestSuite) TestSetTripartyBlockDelay() {
 			errContains: "delay must be at least 1",
 		},
 		{
+			name: "invalid delay type",
+			run: func() []interface{} {
+				return []interface{}{"invalid delay"}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+		{
 			name: "happy path - set delay to 5",
 			run: func() []interface{} {
 				return []interface{}{big.NewInt(5)}
@@ -274,6 +290,14 @@ func (s *PrecompileTestSuite) TestGetTripartyBlockDelay() {
 			basicPass: true,
 			output:    []interface{}{big.NewInt(5)},
 		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(1)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
 	}
 
 	s.RunMethodTestCases(testcases, "getTripartyBlockDelay")
@@ -290,6 +314,30 @@ func (s *PrecompileTestSuite) TestSetTripartyLimits() {
 			basicPass:   true,
 			revert:      true,
 			errContains: "sender is not owner",
+		},
+		{
+			name: "invalid per-request limit type",
+			run: func() []interface{} {
+				return []interface{}{"invalid limit", big.NewInt(1000)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+		{
+			name: "invalid window limit type",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(100), "invalid limit"}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(100)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
 		},
 		{
 			name: "happy path - set limits",
@@ -359,6 +407,14 @@ func (s *PrecompileTestSuite) TestGetTripartyLimits() {
 			as:        s.account1.EvmAddr,
 			basicPass: true,
 			output:    []interface{}{big.NewInt(500), big.NewInt(5000)},
+		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(1)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
 		},
 	}
 
