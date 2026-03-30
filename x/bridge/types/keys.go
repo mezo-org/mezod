@@ -85,6 +85,14 @@ var (
 	// TripartyWindowLimitKey is a standalone key for the triparty window
 	// limit.
 	TripartyWindowLimitKey = []byte{0xA4}
+
+	// TripartyRequestKeyPrefix is a prefix used to construct a key to a
+	// pending triparty bridge request.
+	TripartyRequestKeyPrefix = []byte{0xA5}
+
+	// TripartySequenceTipKey is a standalone key for the last assigned
+	// triparty request sequence number.
+	TripartySequenceTipKey = []byte{0xA6}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
@@ -117,4 +125,10 @@ func GetMinBridgeOutAmountKey(mezoToken []byte) []byte {
 // GetTripartyControllerKey gets the key for a triparty controller by address.
 func GetTripartyControllerKey(controller []byte) []byte {
 	return append(TripartyControllerKeyPrefix, controller...)
+}
+
+// GetTripartyBridgeRequestKey gets the key for a pending triparty bridge
+// request by its sequence number.
+func GetTripartyBridgeRequestKey(sequence math.Int) []byte {
+	return append(TripartyRequestKeyPrefix, sequence.BigInt().Bytes()...)
 }

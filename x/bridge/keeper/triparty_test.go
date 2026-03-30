@@ -1,9 +1,12 @@
 package keeper
 
 import (
+	"bytes"
 	"testing"
 
 	"cosmossdk.io/math"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	"github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,4 +83,219 @@ func TestTripartyWindowLimitManagement(t *testing.T) {
 	keeper.SetTripartyWindowLimit(ctx, math.ZeroInt())
 	limit = keeper.GetTripartyWindowLimit(ctx)
 	require.True(t, limit.IsZero(), "limit should be zero")
+}
+
+func TestCreateTripartyBridgeRequest(t *testing.T) {
+	ctx, keeper := mockContext()
+	// Set a specific block height for testing.
+	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 100})
+
+	recipient := bytes.Repeat([]byte{0x01}, 20)
+	controller := bytes.Repeat([]byte{0x02}, 20)
+	amount := math.NewInt(1000)
+	callbackData := []byte("test-callback")
+
+	// First request should get sequence 1.
+	reqId1 := keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, amount, callbackData, controller,
+	)
+	require.Equal(t, math.NewInt(1), reqId1)
+
+	// Second request should get sequence 2.
+	reqId2 := keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, amount, nil, controller,
+	)
+	require.Equal(t, math.NewInt(2), reqId2)
+
+	// Sequence tip should now be 2 (last assigned).
+	require.Equal(t, math.NewInt(2), keeper.GetTripartySequenceTip(ctx))
+
+	// Verify the first stored request.
+	req1, found := keeper.GetTripartyBridgeRequest(ctx, reqId1)
+	require.True(t, found)
+	require.Equal(t, int64(100), req1.BlockHeight)
+	require.Equal(t, amount, req1.Amount)
+	require.Equal(t, callbackData, req1.CallbackData)
+	require.Equal(t, recipient, req1.Recipient)
+	require.Equal(t, controller, req1.Controller)
+
+	// Verify the second stored request (nil callback data).
+	req2, found := keeper.GetTripartyBridgeRequest(ctx, reqId2)
+	require.True(t, found)
+	require.Equal(t, int64(100), req2.BlockHeight)
+	require.Equal(t, amount, req2.Amount)
+	require.Empty(t, req2.CallbackData)
+	require.Equal(t, recipient, req2.Recipient)
+	require.Equal(t, controller, req2.Controller)
+}
+
+func TestGetTripartyBridgeRequest(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	recipient := bytes.Repeat([]byte{0x01}, 20)
+	controller := bytes.Repeat([]byte{0x02}, 20)
+	amount := math.NewInt(500)
+
+	// Non-existent request returns false.
+	_, found := keeper.GetTripartyBridgeRequest(ctx, math.NewInt(1))
+	require.False(t, found)
+
+	// Create a request and retrieve it.
+	reqId := keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, amount, nil, controller,
+	)
+
+	req, found := keeper.GetTripartyBridgeRequest(ctx, reqId)
+	require.True(t, found)
+	require.True(t, reqId.Equal(req.Sequence))
+	require.Equal(t, recipient, req.Recipient)
+	require.Equal(t, amount, req.Amount)
+	require.Empty(t, req.CallbackData)
+	require.Equal(t, controller, req.Controller)
+}
+
+func TestDeleteTripartyBridgeRequest(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	recipient := bytes.Repeat([]byte{0x01}, 20)
+	controller := bytes.Repeat([]byte{0x02}, 20)
+
+	reqId1 := keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, math.NewInt(100), nil, controller,
+	)
+	reqId2 := keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, math.NewInt(200), nil, controller,
+	)
+
+	// Both requests exist.
+	_, found := keeper.GetTripartyBridgeRequest(ctx, reqId1)
+	require.True(t, found)
+	_, found = keeper.GetTripartyBridgeRequest(ctx, reqId2)
+	require.True(t, found)
+
+	// Deleting the second request while the first exists should fail.
+	err := keeper.DeleteTripartyBridgeRequest(ctx, reqId2)
+	require.Error(t, err)
+
+	// Deleting the first (oldest) request should succeed.
+	err = keeper.DeleteTripartyBridgeRequest(ctx, reqId1)
+	require.NoError(t, err)
+	_, found = keeper.GetTripartyBridgeRequest(ctx, reqId1)
+	require.False(t, found)
+
+	// Now the second request is the oldest; deleting it should succeed.
+	err = keeper.DeleteTripartyBridgeRequest(ctx, reqId2)
+	require.NoError(t, err)
+	_, found = keeper.GetTripartyBridgeRequest(ctx, reqId2)
+	require.False(t, found)
+}
+
+func TestGetPendingTripartyBridgeRequests(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	recipient := bytes.Repeat([]byte{0x01}, 20)
+	controller := bytes.Repeat([]byte{0x02}, 20)
+
+	// Create 5 requests.
+	for i := 0; i < 5; i++ {
+		keeper.CreateTripartyBridgeRequest(
+			ctx,
+			recipient,
+			math.NewInt(int64(100*(i+1))),
+			nil,
+			controller,
+		)
+	}
+
+	// Read all 5 with limit 10.
+	requests := keeper.GetPendingTripartyBridgeRequests(ctx, math.NewInt(1), 10)
+	require.Len(t, requests, 5)
+	for i, req := range requests {
+		require.True(t, math.NewInt(int64(i+1)).Equal(req.Sequence))
+		require.Equal(t, math.NewInt(int64(100*(i+1))), req.Amount)
+	}
+
+	// Read with limit 3.
+	requests = keeper.GetPendingTripartyBridgeRequests(ctx, math.NewInt(1), 3)
+	require.Len(t, requests, 3)
+	require.True(t, math.NewInt(1).Equal(requests[0].Sequence))
+	require.True(t, math.NewInt(3).Equal(requests[2].Sequence))
+
+	// Read starting from sequence 3.
+	requests = keeper.GetPendingTripartyBridgeRequests(ctx, math.NewInt(3), 10)
+	require.Len(t, requests, 3)
+	require.True(t, math.NewInt(3).Equal(requests[0].Sequence))
+	require.True(t, math.NewInt(5).Equal(requests[2].Sequence))
+
+	// Read from non-existent sequence.
+	requests = keeper.GetPendingTripartyBridgeRequests(ctx, math.NewInt(10), 5)
+	require.Empty(t, requests)
+}
+
+func TestTripartySequenceTipIncrement(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// Default tip is 0.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+
+	// First increment returns 1.
+	require.Equal(t, math.NewInt(1), keeper.incrementTripartySequenceTip(ctx))
+	require.Equal(t, math.NewInt(1), keeper.GetTripartySequenceTip(ctx))
+
+	// Second increment returns 2.
+	require.Equal(t, math.NewInt(2), keeper.incrementTripartySequenceTip(ctx))
+	require.Equal(t, math.NewInt(2), keeper.GetTripartySequenceTip(ctx))
+}
+
+func TestTripartySequenceTipDefault(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// Default sequence tip is 0 (no requests assigned yet).
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+}
+
+func TestTripartyBridgeRequestMarshalRoundtrip(t *testing.T) {
+	req := &types.TripartyBridgeRequest{
+		Sequence:     math.NewInt(42),
+		BlockHeight:  12345,
+		Recipient:    bytes.Repeat([]byte{0xAA}, 20),
+		Amount:       math.NewInt(999999999),
+		CallbackData: []byte("some-callback-data"),
+		Controller:   bytes.Repeat([]byte{0xBB}, 20),
+	}
+
+	bz, err := req.Marshal()
+	require.NoError(t, err)
+
+	decoded := &types.TripartyBridgeRequest{}
+	err = decoded.Unmarshal(bz)
+	require.NoError(t, err)
+
+	require.True(t, req.Sequence.Equal(decoded.Sequence))
+	require.Equal(t, req.BlockHeight, decoded.BlockHeight)
+	require.Equal(t, req.Recipient, decoded.Recipient)
+	require.Equal(t, req.Amount, decoded.Amount)
+	require.Equal(t, req.CallbackData, decoded.CallbackData)
+	require.Equal(t, req.Controller, decoded.Controller)
+}
+
+func TestTripartyBridgeRequestMarshalEmptyCallbackData(t *testing.T) {
+	req := &types.TripartyBridgeRequest{
+		Sequence:     math.NewInt(1),
+		BlockHeight:  100,
+		Recipient:    bytes.Repeat([]byte{0x01}, 20),
+		Amount:       math.NewInt(500),
+		CallbackData: nil,
+		Controller:   bytes.Repeat([]byte{0x02}, 20),
+	}
+
+	bz, err := req.Marshal()
+	require.NoError(t, err)
+
+	decoded := &types.TripartyBridgeRequest{}
+	err = decoded.Unmarshal(bz)
+	require.NoError(t, err)
+
+	require.True(t, req.Sequence.Equal(decoded.Sequence))
+	require.Empty(t, decoded.CallbackData)
 }
