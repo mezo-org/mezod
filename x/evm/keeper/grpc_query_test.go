@@ -1331,6 +1331,47 @@ func (suite *KeeperTestSuite) TestEthCall() {
 			},
 			false,
 		},
+		{
+			"invalid state override",
+			func() {
+				args, err := json.Marshal(&types.TransactionArgs{
+					From: &address,
+					Data: (*hexutil.Bytes)(&data),
+				})
+				suite.Require().NoError(err)
+				req = &types.EthCallRequest{
+					Args:          args,
+					GasCap:        config.DefaultGasCap,
+					StateOverride: []byte("not valid json"),
+				}
+			},
+			false,
+		},
+		{
+			"valid state override",
+			func() {
+				args, err := json.Marshal(&types.TransactionArgs{
+					From: &address,
+					Data: (*hexutil.Bytes)(&data),
+				})
+				suite.Require().NoError(err)
+
+				balanceOverride := map[common.Address]map[string]interface{}{
+					address: {
+						"balance": "0x64",
+					},
+				}
+				overrideBytes, err := json.Marshal(balanceOverride)
+				suite.Require().NoError(err)
+
+				req = &types.EthCallRequest{
+					Args:          args,
+					GasCap:        config.DefaultGasCap,
+					StateOverride: overrideBytes,
+				}
+			},
+			true,
+		},
 	}
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {

@@ -83,10 +83,10 @@ function getTripartyCapacity() external view returns (uint256 capacity, uint256 
 The `callbackData` is arbitrary bytes forwarded to the callback, allowing the
 caller to pass context such as a lock duration or vault parameters. After BTC
 is minted, the `PreBlocker` issues a callback to the controller that submitted
-the request — the controller address is already trusted since only allowed
+the request. The controller address is already trusted since only allowed
 triparty controllers can call `bridgeTriparty`, so there is no need for a
 separate callback address. If the callback fails, the mint still completes.
-Passing empty `callbackData` disables the callback. The function returns the
+Passing empty `callbackData` does not disable the callback. The function returns the
 `requestId` (the sequence number assigned to the request) which can be used to
 correlate the callback with the original request.
 
@@ -164,8 +164,7 @@ should additionally:
    which mints coins through the `x/bank` module and updates the `BTCMinted`
    counter. Stop at the first immature request to preserve sequential processing.
    No request can be processed ahead of an earlier one that is not yet mature.
-4. After a successful mint, if the request includes non-empty `callbackData`,
-   issue an EVM call to
+4. After a successful mint, issue an EVM call to
    `onTripartyBridgeCompleted(uint256 requestId, address recipient, uint256 amount, bytes callbackData)`
    on the controller that submitted the request, forwarding the stored
    `callbackData`. The call is executed via `ExecuteContractCall` with
