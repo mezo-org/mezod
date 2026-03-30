@@ -300,7 +300,8 @@ func (k Keeper) ResetTripartyWindowMinted(ctx sdk.Context) {
 	store.Delete(types.TripartyWindowMintedKey)
 	store.Set(
 		types.TripartyWindowLastResetKey,
-		sdk.Uint64ToBigEndian(uint64(ctx.BlockHeight())),
+		// block height can't be negative so int64->uint64 conversion is safe
+		sdk.Uint64ToBigEndian(uint64(ctx.BlockHeight())), //nolint:gosec
 	)
 }
 
@@ -374,4 +375,3 @@ func (k Keeper) IncreaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int)
 
 	store.Set(types.TripartyTotalBTCMintedKey, bz)
 }
-

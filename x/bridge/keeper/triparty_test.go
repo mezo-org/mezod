@@ -96,22 +96,22 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	callbackData := []byte("test-callback")
 
 	// First request should get sequence 1.
-	reqId1 := keeper.CreateTripartyBridgeRequest(
+	reqID1 := keeper.CreateTripartyBridgeRequest(
 		ctx, recipient, amount, callbackData, controller,
 	)
-	require.Equal(t, math.NewInt(1), reqId1)
+	require.Equal(t, math.NewInt(1), reqID1)
 
 	// Second request should get sequence 2.
-	reqId2 := keeper.CreateTripartyBridgeRequest(
+	reqID2 := keeper.CreateTripartyBridgeRequest(
 		ctx, recipient, amount, nil, controller,
 	)
-	require.Equal(t, math.NewInt(2), reqId2)
+	require.Equal(t, math.NewInt(2), reqID2)
 
 	// Sequence tip should now be 2 (last assigned).
 	require.Equal(t, math.NewInt(2), keeper.GetTripartySequenceTip(ctx))
 
 	// Verify the first stored request.
-	req1, found := keeper.GetTripartyBridgeRequest(ctx, reqId1)
+	req1, found := keeper.GetTripartyBridgeRequest(ctx, reqID1)
 	require.True(t, found)
 	require.Equal(t, int64(100), req1.BlockHeight)
 	require.Equal(t, amount, req1.Amount)
@@ -120,7 +120,7 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	require.Equal(t, controller, req1.Controller)
 
 	// Verify the second stored request (nil callback data).
-	req2, found := keeper.GetTripartyBridgeRequest(ctx, reqId2)
+	req2, found := keeper.GetTripartyBridgeRequest(ctx, reqID2)
 	require.True(t, found)
 	require.Equal(t, int64(100), req2.BlockHeight)
 	require.Equal(t, amount, req2.Amount)
@@ -141,13 +141,13 @@ func TestGetTripartyBridgeRequest(t *testing.T) {
 	require.False(t, found)
 
 	// Create a request and retrieve it.
-	reqId := keeper.CreateTripartyBridgeRequest(
+	reqID := keeper.CreateTripartyBridgeRequest(
 		ctx, recipient, amount, nil, controller,
 	)
 
-	req, found := keeper.GetTripartyBridgeRequest(ctx, reqId)
+	req, found := keeper.GetTripartyBridgeRequest(ctx, reqID)
 	require.True(t, found)
-	require.True(t, reqId.Equal(req.Sequence))
+	require.True(t, reqID.Equal(req.Sequence))
 	require.Equal(t, recipient, req.Recipient)
 	require.Equal(t, amount, req.Amount)
 	require.Empty(t, req.CallbackData)
@@ -160,33 +160,33 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	recipient := bytes.Repeat([]byte{0x01}, 20)
 	controller := bytes.Repeat([]byte{0x02}, 20)
 
-	reqId1 := keeper.CreateTripartyBridgeRequest(
+	reqID1 := keeper.CreateTripartyBridgeRequest(
 		ctx, recipient, math.NewInt(100), nil, controller,
 	)
-	reqId2 := keeper.CreateTripartyBridgeRequest(
+	reqID2 := keeper.CreateTripartyBridgeRequest(
 		ctx, recipient, math.NewInt(200), nil, controller,
 	)
 
 	// Both requests exist.
-	_, found := keeper.GetTripartyBridgeRequest(ctx, reqId1)
+	_, found := keeper.GetTripartyBridgeRequest(ctx, reqID1)
 	require.True(t, found)
-	_, found = keeper.GetTripartyBridgeRequest(ctx, reqId2)
+	_, found = keeper.GetTripartyBridgeRequest(ctx, reqID2)
 	require.True(t, found)
 
 	// Deleting the second request while the first exists should fail.
-	err := keeper.DeleteTripartyBridgeRequest(ctx, reqId2)
+	err := keeper.DeleteTripartyBridgeRequest(ctx, reqID2)
 	require.Error(t, err)
 
 	// Deleting the first (oldest) request should succeed.
-	err = keeper.DeleteTripartyBridgeRequest(ctx, reqId1)
+	err = keeper.DeleteTripartyBridgeRequest(ctx, reqID1)
 	require.NoError(t, err)
-	_, found = keeper.GetTripartyBridgeRequest(ctx, reqId1)
+	_, found = keeper.GetTripartyBridgeRequest(ctx, reqID1)
 	require.False(t, found)
 
 	// Now the second request is the oldest; deleting it should succeed.
-	err = keeper.DeleteTripartyBridgeRequest(ctx, reqId2)
+	err = keeper.DeleteTripartyBridgeRequest(ctx, reqID2)
 	require.NoError(t, err)
-	_, found = keeper.GetTripartyBridgeRequest(ctx, reqId2)
+	_, found = keeper.GetTripartyBridgeRequest(ctx, reqID2)
 	require.False(t, found)
 }
 
