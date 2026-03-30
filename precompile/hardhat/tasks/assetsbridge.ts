@@ -285,3 +285,50 @@ task('assetsBridge:pauseTriparty', 'Pauses or unpauses triparty bridging')
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })
+
+task('assetsBridge:setTripartyBlockDelay', 'Sets the block delay for triparty mint execution')
+  .addParam('delay', 'The number of blocks that must pass between mint request and execution')
+  .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.setTripartyBlockDelay(taskArguments.delay)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task(
+  'assetsBridge:getTripartyBlockDelay',
+  'Gets the current block delay for triparty mint execution',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getTripartyBlockDelay()
+    console.log(result)
+  }
+)
+
+task('assetsBridge:setTripartyLimits', 'Sets the triparty per-request and rolling window limits')
+  .addParam('perRequestLimit', 'The maximum amount per triparty mint request')
+  .addParam('windowLimit', 'The maximum amount in a rolling window')
+  .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.setTripartyLimits(
+      taskArguments.perRequestLimit,
+      taskArguments.windowLimit
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task(
+  'assetsBridge:getTripartyLimits',
+  'Gets the current triparty per-request and rolling window limits',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getTripartyLimits()
+    console.log('perRequestLimit:', result[0].toString())
+    console.log('windowLimit:', result[1].toString())
+  }
+)
