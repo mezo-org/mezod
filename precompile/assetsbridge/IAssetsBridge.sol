@@ -319,4 +319,54 @@ interface IAssetsBridge {
      *      - The caller must be the assets bridge pauser.
      */
     function pauseTriparty(bool isPaused) external returns (bool);
+
+    /**
+     * @notice Emitted when the triparty block delay is updated.
+     * @param delay The new block delay value.
+     */
+    event TripartyBlockDelaySet(uint256 delay);
+
+    /**
+     * @notice Sets the number of blocks that must pass between a triparty
+     *         mint request and its execution by the PreBlocker.
+     * @param delay The block delay. Must be at least 1.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner,
+     *      - The delay must be at least 1.
+     */
+    function setTripartyBlockDelay(uint256 delay) external returns (bool);
+
+    /**
+     * @notice Returns the number of blocks that must pass between a triparty
+     *         mint request and its execution by the PreBlocker.
+     * @return delay The current block delay value.
+     */
+    function getTripartyBlockDelay() external view returns (uint256 delay);
+
+    /**
+     * @notice Emitted when the triparty limits are updated.
+     * @param perRequestLimit The new per-request limit.
+     * @param windowLimit The new window limit.
+     */
+    event TripartyLimitsSet(uint256 perRequestLimit, uint256 windowLimit);
+
+    /**
+     * @notice Sets the global triparty minting limits shared by all controllers.
+     * @param perRequestLimit The maximum amount that can be minted in a single request.
+     * @param windowLimit The maximum amount that can be minted in a single window.
+     * @dev Requirements:
+     *      - The caller must be the PoA owner,
+     *      - Both limits must be non-negative.
+     */
+    function setTripartyLimits(
+        uint256 perRequestLimit,
+        uint256 windowLimit
+    ) external returns (bool);
+
+    /**
+     * @notice Returns the configured triparty minting limits.
+     * @return perRequestLimit The maximum amount that can be minted in a single request.
+     * @return windowLimit The maximum amount that can be minted in a single window.
+     */
+    function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
 }

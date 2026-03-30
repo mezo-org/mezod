@@ -15,6 +15,10 @@ const (
 	AllowTripartyControllerMethodName     = "allowTripartyController"
 	IsAllowedTripartyControllerMethodName = "isAllowedTripartyController"
 	PauseTripartyMethodName               = "pauseTriparty"
+	SetTripartyBlockDelayMethodName       = "setTripartyBlockDelay"
+	GetTripartyBlockDelayMethodName       = "getTripartyBlockDelay"
+	SetTripartyLimitsMethodName           = "setTripartyLimits"
+	GetTripartyLimitsMethodName           = "getTripartyLimits"
 )
 
 // --- bridgeTriparty ---
@@ -280,12 +284,131 @@ func (m *PauseTripartyMethod) Run(
 	return precompile.MethodOutputs{true}, nil, nil
 }
 
+// --- setTripartyBlockDelay ---
+
+type SetTripartyBlockDelayMethod struct {
+	poaKeeper    PoaKeeper
+	bridgeKeeper BridgeKeeper
+}
+
+func newSetTripartyBlockDelayMethod(
+	poaKeeper PoaKeeper,
+	bridgeKeeper BridgeKeeper,
+) *SetTripartyBlockDelayMethod {
+	return &SetTripartyBlockDelayMethod{
+		poaKeeper:    poaKeeper,
+		bridgeKeeper: bridgeKeeper,
+	}
+}
+
+func (m *SetTripartyBlockDelayMethod) MethodName() string {
+	return SetTripartyBlockDelayMethodName
+}
+
+func (m *SetTripartyBlockDelayMethod) MethodType() precompile.MethodType {
+	return precompile.Write
+}
+
+func (m *SetTripartyBlockDelayMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *SetTripartyBlockDelayMethod) Payable() bool {
+	return false
+}
+
+func (m *SetTripartyBlockDelayMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 1); err != nil {
+		return nil, nil, err
+	}
+
+	delay, ok := rawInputs[0].(*big.Int)
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid delay value: %v", rawInputs[0])
+	}
+
+	if delay == nil || delay.Sign() <= 0 {
+		return nil, nil, fmt.Errorf("delay must be at least 1")
+	}
+
+	if !delay.IsUint64() {
+		return nil, nil, fmt.Errorf("delay exceeds maximum uint64 value")
+	}
+
+	if err := m.poaKeeper.CheckOwner(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+	); err != nil {
+		return nil, nil, err
+	}
+
+	m.bridgeKeeper.SetTripartyBlockDelay(
+		context.SdkCtx(),
+		delay.Uint64(),
+	)
+
+	err := context.EventEmitter().Emit(
+		NewTripartyBlockDelaySetEvent(delay),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to emit TripartyBlockDelaySet event: [%w]", err)
+	}
+
+	return precompile.MethodOutputs{true}, nil, nil
+}
+
+// --- getTripartyBlockDelay ---
+
+type GetTripartyBlockDelayMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetTripartyBlockDelayMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetTripartyBlockDelayMethod {
+	return &GetTripartyBlockDelayMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *GetTripartyBlockDelayMethod) MethodName() string {
+	return GetTripartyBlockDelayMethodName
+}
+
+func (m *GetTripartyBlockDelayMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetTripartyBlockDelayMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetTripartyBlockDelayMethod) Payable() bool {
+	return false
+}
+
+func (m *GetTripartyBlockDelayMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
+		return nil, nil, err
+	}
+
+	delay := m.bridgeKeeper.GetTripartyBlockDelay(context.SdkCtx())
+
+	return precompile.MethodOutputs{new(big.Int).SetUint64(delay)}, nil, nil
+}
+
 // --- Events ---
 
 const (
 	TripartyBridgeRequestedEventName   = "TripartyBridgeRequested"
 	TripartyControllerAllowedEventName = "TripartyControllerAllowed"
 	TripartyPausedEventName            = "TripartyPaused"
+	TripartyBlockDelaySetEventName     = "TripartyBlockDelaySet"
+	TripartyLimitsSetEventName         = "TripartyLimitsSet"
 )
 
 // TripartyBridgeRequestedEvent is emitted when a triparty bridge request is made.
@@ -362,5 +485,187 @@ func (e *TripartyPausedEvent) EventName() string {
 func (e *TripartyPausedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
 		{Indexed: false, Value: e.isPaused},
+	}
+}
+
+// TripartyBlockDelaySetEvent is emitted when the triparty block delay is updated.
+type TripartyBlockDelaySetEvent struct {
+	delay *big.Int
+}
+
+func NewTripartyBlockDelaySetEvent(delay *big.Int) *TripartyBlockDelaySetEvent {
+	return &TripartyBlockDelaySetEvent{delay: delay}
+}
+
+func (e *TripartyBlockDelaySetEvent) EventName() string {
+	return TripartyBlockDelaySetEventName
+}
+
+func (e *TripartyBlockDelaySetEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{Indexed: false, Value: e.delay},
+	}
+}
+
+// --- setTripartyLimits ---
+
+type SetTripartyLimitsMethod struct {
+	poaKeeper    PoaKeeper
+	bridgeKeeper BridgeKeeper
+}
+
+func newSetTripartyLimitsMethod(
+	poaKeeper PoaKeeper,
+	bridgeKeeper BridgeKeeper,
+) *SetTripartyLimitsMethod {
+	return &SetTripartyLimitsMethod{
+		poaKeeper:    poaKeeper,
+		bridgeKeeper: bridgeKeeper,
+	}
+}
+
+func (m *SetTripartyLimitsMethod) MethodName() string {
+	return SetTripartyLimitsMethodName
+}
+
+func (m *SetTripartyLimitsMethod) MethodType() precompile.MethodType {
+	return precompile.Write
+}
+
+func (m *SetTripartyLimitsMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *SetTripartyLimitsMethod) Payable() bool {
+	return false
+}
+
+func (m *SetTripartyLimitsMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 2); err != nil {
+		return nil, nil, err
+	}
+
+	perRequestLimit, ok := rawInputs[0].(*big.Int)
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid perRequestLimit value: %v", rawInputs[0])
+	}
+
+	if perRequestLimit == nil || perRequestLimit.Sign() < 0 {
+		return nil, nil, fmt.Errorf("perRequestLimit must be non-negative")
+	}
+
+	windowLimit, ok := rawInputs[1].(*big.Int)
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid windowLimit value: %v", rawInputs[1])
+	}
+
+	if windowLimit == nil || windowLimit.Sign() < 0 {
+		return nil, nil, fmt.Errorf("windowLimit must be non-negative")
+	}
+
+	if err := m.poaKeeper.CheckOwner(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
+	); err != nil {
+		return nil, nil, err
+	}
+
+	sdkPerRequestLimit, err := precompile.TypesConverter.BigInt.ToSDK(perRequestLimit)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to convert perRequestLimit: [%w]", err)
+	}
+
+	sdkWindowLimit, err := precompile.TypesConverter.BigInt.ToSDK(windowLimit)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to convert windowLimit: [%w]", err)
+	}
+
+	m.bridgeKeeper.SetTripartyPerRequestLimit(context.SdkCtx(), sdkPerRequestLimit)
+	m.bridgeKeeper.SetTripartyWindowLimit(context.SdkCtx(), sdkWindowLimit)
+
+	err = context.EventEmitter().Emit(
+		NewTripartyLimitsSetEvent(perRequestLimit, windowLimit),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to emit TripartyLimitsSet event: [%w]", err)
+	}
+
+	return precompile.MethodOutputs{true}, nil, nil
+}
+
+// --- getTripartyLimits ---
+
+type GetTripartyLimitsMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetTripartyLimitsMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetTripartyLimitsMethod {
+	return &GetTripartyLimitsMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *GetTripartyLimitsMethod) MethodName() string {
+	return GetTripartyLimitsMethodName
+}
+
+func (m *GetTripartyLimitsMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetTripartyLimitsMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetTripartyLimitsMethod) Payable() bool {
+	return false
+}
+
+func (m *GetTripartyLimitsMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
+		return nil, nil, err
+	}
+
+	sdkCtx := context.SdkCtx()
+
+	perRequestLimit := m.bridgeKeeper.GetTripartyPerRequestLimit(sdkCtx)
+	windowLimit := m.bridgeKeeper.GetTripartyWindowLimit(sdkCtx)
+
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(perRequestLimit),
+		precompile.TypesConverter.BigInt.FromSDK(windowLimit),
+	}, nil, nil
+}
+
+// TripartyLimitsSetEvent is emitted when the triparty limits are updated.
+type TripartyLimitsSetEvent struct {
+	perRequestLimit *big.Int
+	windowLimit     *big.Int
+}
+
+func NewTripartyLimitsSetEvent(
+	perRequestLimit *big.Int,
+	windowLimit *big.Int,
+) *TripartyLimitsSetEvent {
+	return &TripartyLimitsSetEvent{
+		perRequestLimit: perRequestLimit,
+		windowLimit:     windowLimit,
+	}
+}
+
+func (e *TripartyLimitsSetEvent) EventName() string {
+	return TripartyLimitsSetEventName
+}
+
+func (e *TripartyLimitsSetEvent) Arguments() []*precompile.EventArgument {
+	return []*precompile.EventArgument{
+		{Indexed: false, Value: e.perRequestLimit},
+		{Indexed: false, Value: e.windowLimit},
 	}
 }

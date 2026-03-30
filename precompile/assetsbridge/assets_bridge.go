@@ -103,7 +103,7 @@ func NewPrecompileVersionMap(
 		return nil, err
 	}
 
-	// v5 is all previous settings plus triparty bridging
+	// v5 is all previous settings plus triparty bridging methods
 	contractV5, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
@@ -201,6 +201,10 @@ func NewPrecompile(
 		methods = append(methods, newAllowTripartyControllerMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newIsAllowedTripartyControllerMethod(bridgeKeeper))
 		methods = append(methods, newPauseTripartyMethod(bridgeKeeper))
+		methods = append(methods, newSetTripartyBlockDelayMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetTripartyBlockDelayMethod(bridgeKeeper))
+		methods = append(methods, newSetTripartyLimitsMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetTripartyLimitsMethod(bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -277,6 +281,12 @@ type BridgeKeeper interface {
 	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
 	IsTripartyPaused(ctx sdk.Context) bool
 	SetTripartyPaused(ctx sdk.Context, isPaused bool)
+	GetTripartyBlockDelay(ctx sdk.Context) uint64
+	SetTripartyBlockDelay(ctx sdk.Context, delay uint64)
+	SetTripartyPerRequestLimit(ctx sdk.Context, limit math.Int)
+	GetTripartyPerRequestLimit(ctx sdk.Context) math.Int
+	SetTripartyWindowLimit(ctx sdk.Context, limit math.Int)
+	GetTripartyWindowLimit(ctx sdk.Context) math.Int
 }
 
 type AuthzKeeper interface {

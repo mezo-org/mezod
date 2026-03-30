@@ -72,9 +72,9 @@ function pauseTriparty(bool isPaused) external returns (bool);
 
 function setTripartyBlockDelay(uint256 delay) external returns (bool);
 
-function setTripartyLimits(uint256 perRequestLimit, uint256 periodLimit) external returns (bool);
+function setTripartyLimits(uint256 perRequestLimit, uint256 windowLimit) external returns (bool);
 
-function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 periodLimit);
+function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
 
 function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);
 ```
@@ -104,25 +104,25 @@ at least 1 (the request and execution always happen in different blocks).
 controllers. The parameters are:
 
 * `perRequestLimit`: the maximum BTC amount for a single `bridgeTriparty` call
-* `periodLimit`: the maximum aggregate BTC amount that can be minted via
+* `windowLimit`: the maximum aggregate BTC amount that can be minted via
   triparty within a rolling block window (using the same reset mechanism as
   outflow limits)
 
-`pauseTriparty` sets both limits to 0 effectively pausing all mints - new requests
-will be rejected but pending requests remain in state and will be processed once
-limits are restored to non-zero values. This follows the same pattern used by
-`setOutflowLimit` for pausing ERC20 bridging. `setTripartyLimits` should only
-be callable by `poaKeeper.CheckOwner()`.
+`pauseTriparty` sets a pause flag that prevents new triparty mint requests from
+being accepted and stops the `PreBlocker` from processing pending requests.
+Pending requests remain in state and will be processed once triparty is unpaused
+and limits allow it. `setTripartyLimits` should only be callable by
+`poaKeeper.CheckOwner()`.
 
-`getTripartyLimits` returns the configured per-request and period limits.
-`getTripartyCapacity` returns the remaining period capacity and the block height
+`getTripartyLimits` returns the configured per-request and window limits.
+`getTripartyCapacity` returns the remaining window capacity and the block height
 at which it resets, mirroring `getOutflowCapacity`.
 
 Additionally, `bridgeTriparty` should:
 
 * Revert if the `recipient` is a blocked address (e.g. a module account).
 * Revert if `amount` exceeds the global per-request limit.
-* Revert if `amount` would exceed the remaining global period capacity.
+* Revert if `amount` would exceed the remaining global window capacity.
 
 ### `x/bridge` module
 
@@ -209,11 +209,11 @@ way, like locking it into veBTC.
 The regular bridge path requires 2/3+ validator consensus to mint BTC. The
 triparty path requires a call from a specific address. This is a fundamentally
 different security model, and even though the triparty controller address is
-considered trusted, we should implement per-request and per-period limits for
+considered trusted, we should implement per-request and per-window limits for
 BTC minting via triparty.
 
 Limits are global — shared across all triparty controllers — and configured via
-`setTripartyLimits`. The period reset follows the same block-window mechanism
+`setTripartyLimits`. The window reset follows the same block-window mechanism
 used by outflow limits (`OutflowResetBlocks`).
 
 ### Safety mechanisms
@@ -226,15 +226,13 @@ bridge module:
   Since `mintBTC()` is reused, this invariant covers both paths without
   modification.
 * Pause mechanism: when triparty minting is paused, the `PreBlocker` delays
-  processing existing triparty requests until triparty bridge limits are lifted.
+  processing existing triparty requests until triparty is unpaused.
   All new requests are rejected.
 * Access control: only configured triparty controller addresses can submit requests.
 * Per-request limit: a global maximum amount per individual triparty mint
   request, shared across all controllers.
-* Period limit: a global aggregate cap on triparty minting within a rolling
-  block window, following the existing outflow limit reset pattern. Setting
-  limits to 0 pauses new requests while preserving pending ones for later
-  processing.
+* Window limit: a global aggregate cap on triparty minting within a rolling
+  block window, following the existing outflow limit reset pattern.
 
 ## Future Work
 
@@ -245,8 +243,8 @@ creates a natural window for introducing a veto mechanism. A veto would allow
 authorized parties to reject specific pending requests before they are processed
 by the `PreBlocker`, permanently canceling the mint.
 
-Unlike pausing (which is achieved by setting limits to 0 and affects all
-requests), a veto would target individual requests by their `requestId`. A
+Unlike pausing (which uses a dedicated pause flag and affects all requests),
+a veto would target individual requests by their `requestId`. A
 vetoed request would be removed from state and never processed, and the BTC
 would not be minted.
 
