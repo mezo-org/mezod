@@ -83,7 +83,8 @@ message TripartyBridgeRequest {
   int64 block_height = 2;
   // recipient is the 20-byte EVM address that will receive the minted BTC.
   bytes recipient = 3;
-  // amount is the BTC amount to mint.
+  // amount is the BTC amount to mint. Amount is in the BTC token precision on
+  // the Mezo chain, so 18 decimals.
   string amount = 4 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false

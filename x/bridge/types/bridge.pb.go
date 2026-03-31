@@ -245,7 +245,8 @@ type TripartyBridgeRequest struct {
 	BlockHeight int64 `protobuf:"varint,2,opt,name=block_height,json=blockHeight,proto3" json:"block_height,omitempty"`
 	// recipient is the 20-byte EVM address that will receive the minted BTC.
 	Recipient []byte `protobuf:"bytes,3,opt,name=recipient,proto3" json:"recipient,omitempty"`
-	// amount is the BTC amount to mint.
+	// amount is the BTC amount to mint. Amount is in the BTC token precision on
+	// the Mezo chain, so 18 decimals.
 	Amount cosmossdk_io_math.Int `protobuf:"bytes,4,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
 	// callback_data is arbitrary bytes forwarded to the controller callback
 	// after minting.
