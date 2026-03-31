@@ -105,6 +105,11 @@ var (
 	// TripartyTotalBTCMintedKey is a standalone key for the total BTC
 	// minted via triparty bridging (provenance counter).
 	TripartyTotalBTCMintedKey = []byte{0xA9}
+
+	// TripartyProcessedSequenceTipKey is a standalone key for the last
+	// processed triparty request sequence number. This tracks processing
+	// progress separately from the assignment tip (TripartySequenceTipKey).
+	TripartyProcessedSequenceTipKey = []byte{0xAA}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the

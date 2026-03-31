@@ -69,6 +69,10 @@ type EvmKeeper interface {
 
 	// IsContract returns if the account contains contract code.
 	IsContract(ctx sdk.Context, address []byte) bool
+
+	// IsCustomPrecompileAddress returns if the hex-encoded address is a
+	// registered custom precompile.
+	IsCustomPrecompileAddress(address string) bool
 }
 
 // AccountKeeper is an interface to the x/auth module keeper.

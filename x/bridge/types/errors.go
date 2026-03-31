@@ -18,4 +18,6 @@ var (
 	ErrTripartyPaused                  = sdkerrors.Register(ModuleName, 11, "triparty bridging is paused")
 	ErrTripartyCallbackDataTooLarge    = sdkerrors.Register(ModuleName, 12, "triparty callback data exceeds maximum length")
 	ErrTripartyAmountNotPositive       = sdkerrors.Register(ModuleName, 13, "triparty amount must be positive")
+	ErrTripartyRecipientBlocked        = sdkerrors.Register(ModuleName, 14, "triparty recipient is a blocked address")
+	ErrTripartyRecipientIsPrecompile   = sdkerrors.Register(ModuleName, 15, "triparty recipient is a custom precompile")
 )
