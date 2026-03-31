@@ -188,43 +188,46 @@ func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
 // recipient may become blocked or a controller may be deauthorized).
 func (k Keeper) validateTripartyBridgeRequest(
 	ctx sdk.Context,
-	req *types.TripartyBridgeRequest,
+	recipient string,
+	amount math.Int,
+	callbackData []byte,
+	controller string,
 ) error {
-	if !evmtypes.IsHexAddress(req.Recipient) {
+	if !evmtypes.IsHexAddress(recipient) {
 		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid recipient")
 	}
-	if evmtypes.IsZeroHexAddress(req.Recipient) {
+	if evmtypes.IsZeroHexAddress(recipient) {
 		return sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero recipient")
 	}
 
-	recipientBytes := evmtypes.HexAddressToBytes(req.Recipient)
+	recipientBytes := evmtypes.HexAddressToBytes(recipient)
 	recipientAddr := sdk.AccAddress(recipientBytes)
 	if _, blocked := k.blockedAddrs[recipientAddr.String()]; blocked {
 		return types.ErrTripartyRecipientBlocked
 	}
 
-	if k.evmKeeper.IsCustomPrecompileAddress(req.Recipient) {
+	if k.evmKeeper.IsCustomPrecompileAddress(recipient) {
 		return types.ErrTripartyRecipientIsPrecompile
 	}
 
-	if !evmtypes.IsHexAddress(req.Controller) {
+	if !evmtypes.IsHexAddress(controller) {
 		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid controller")
 	}
 
-	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(req.Controller)) {
+	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(controller)) {
 		return types.ErrTripartyControllerNotAllowed
 	}
 
-	if len(req.CallbackData) > MaxTripartyCallbackDataLength {
+	if len(callbackData) > MaxTripartyCallbackDataLength {
 		return types.ErrTripartyCallbackDataTooLarge
 	}
 
-	if !req.Amount.IsPositive() {
+	if !amount.IsPositive() {
 		return types.ErrTripartyAmountNotPositive
 	}
 
 	perRequestLimit := k.GetTripartyPerRequestLimit(ctx)
-	if perRequestLimit.IsPositive() && req.Amount.GT(perRequestLimit) {
+	if perRequestLimit.IsPositive() && amount.GT(perRequestLimit) {
 		return types.ErrTripartyPerRequestLimitExceeded
 	}
 
@@ -248,28 +251,27 @@ func (k Keeper) CreateTripartyBridgeRequest(
 		return math.Int{}, types.ErrTripartyPaused
 	}
 
+	if err := k.validateTripartyBridgeRequest(ctx, recipient, amount, callbackData, controller); err != nil {
+		return math.Int{}, err
+	}
+
+	seq := k.incrementTripartySequenceTip(ctx)
+
 	req := &types.TripartyBridgeRequest{
+		Sequence:     seq,
+		BlockHeight:  ctx.BlockHeight(),
 		Recipient:    recipient,
 		Amount:       amount,
 		CallbackData: callbackData,
 		Controller:   controller,
 	}
 
-	if err := k.validateTripartyBridgeRequest(ctx, req); err != nil {
-		return math.Int{}, err
-	}
-
-	seq := k.incrementTripartySequenceTip(ctx)
-	req.Sequence = seq
-	req.BlockHeight = ctx.BlockHeight()
-
 	bz, err := req.Marshal()
 	if err != nil {
 		panic(err)
 	}
 
-	store := ctx.KVStore(k.storeKey)
-	store.Set(types.GetTripartyBridgeRequestKey(seq), bz)
+	ctx.KVStore(k.storeKey).Set(types.GetTripartyBridgeRequestKey(seq), bz)
 
 	return seq, nil
 }
@@ -534,7 +536,7 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 		// changed between request creation and processing (e.g. a
 		// recipient may have become blocked, a controller deauthorized,
 		// or the per-request limit lowered).
-		if err := k.validateTripartyBridgeRequest(ctx, req); err != nil {
+		if err := k.validateTripartyBridgeRequest(ctx, req.Recipient, req.Amount, req.CallbackData, req.Controller); err != nil {
 			k.Logger(ctx).Warn(
 				"triparty request failed validation; "+
 					"request skipped",
