@@ -54,7 +54,7 @@ func (k Keeper) SetTripartyPaused(ctx sdk.Context, isPaused bool) {
 func (k Keeper) GetTripartyBlockDelay(ctx sdk.Context) uint64 {
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get(types.TripartyBlockDelayKey)
-	if bz == nil {
+	if len(bz) == 0 {
 		return 1
 	}
 	return sdk.BigEndianToUint64(bz)
@@ -198,7 +198,7 @@ func (k Keeper) GetTripartyBridgeRequest(
 ) (*types.TripartyBridgeRequest, bool) {
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get(types.GetTripartyBridgeRequestKey(sequence))
-	if bz == nil {
+	if len(bz) == 0 {
 		return nil, false
 	}
 
@@ -243,7 +243,7 @@ func (k Keeper) GetPendingTripartyBridgeRequests(
 	seq := startSequence
 	for i := 0; i < limit; i++ {
 		bz := store.Get(types.GetTripartyBridgeRequestKey(seq))
-		if bz == nil {
+		if len(bz) == 0 {
 			break
 		}
 
