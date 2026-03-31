@@ -78,20 +78,15 @@ func (m *BridgeTripartyMethod) Run(
 		return nil, nil, fmt.Errorf("invalid callbackData: %v", rawInputs[2])
 	}
 
-	sdkCtx := context.SdkCtx()
-
-	sender := precompile.TypesConverter.Address.ToSDK(context.MsgSender())
-	if !m.bridgeKeeper.IsAllowedTripartyController(sdkCtx, sender) {
-		return nil, nil, fmt.Errorf("caller is not an allowed triparty controller")
-	}
-
 	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 
+	sender := precompile.TypesConverter.Address.ToSDK(context.MsgSender())
+
 	requestID, err := m.bridgeKeeper.CreateTripartyBridgeRequest(
-		sdkCtx,
+		context.SdkCtx(),
 		recipient.Hex(),
 		sdkAmount,
 		callbackData,

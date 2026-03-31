@@ -169,7 +169,7 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 			as:          s.account2.EvmAddr,
 			basicPass:   true,
 			revert:      true,
-			errContains: "caller is not an allowed triparty controller",
+			errContains: "controller is not an allowed triparty controller",
 		},
 		{
 			name: "zero recipient",

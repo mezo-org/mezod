@@ -501,10 +501,13 @@ func (k *FakeBridgeKeeper) CreateTripartyBridgeRequest(
 	_ string,
 	amount math.Int,
 	_ []byte,
-	_ string,
+	controller string,
 ) (math.Int, error) {
 	if k.tripartyPaused {
 		return math.Int{}, bridgetypes.ErrTripartyPaused
+	}
+	if !k.tripartyControllers[common.HexToAddress(controller).Hex()] {
+		return math.Int{}, bridgetypes.ErrTripartyControllerNotAllowed
 	}
 	if k.tripartyPerRequestLimit.IsPositive() && amount.GT(k.tripartyPerRequestLimit) {
 		return math.Int{}, bridgetypes.ErrTripartyPerRequestLimitExceeded
