@@ -162,6 +162,92 @@ func TestCreateTripartyBridgeRequestPaused(t *testing.T) {
 	require.Equal(t, math.NewInt(1), reqID)
 }
 
+func TestCreateTripartyBridgeRequestInvalidRecipient(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+
+	// Invalid hex string should be rejected.
+	_, err := keeper.CreateTripartyBridgeRequest(
+		ctx, "not-a-hex-address", math.NewInt(1000), nil, testTripartyController,
+	)
+	require.ErrorIs(t, err, types.ErrInvalidEVMAddress)
+
+	// Sequence tip should not have advanced.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+}
+
+func TestCreateTripartyBridgeRequestZeroRecipient(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+
+	// Zero address should be rejected.
+	_, err := keeper.CreateTripartyBridgeRequest(
+		ctx, "0x0000000000000000000000000000000000000000", math.NewInt(1000), nil, testTripartyController,
+	)
+	require.ErrorIs(t, err, types.ErrZeroEVMAddress)
+
+	// Sequence tip should not have advanced.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+}
+
+func TestCreateTripartyBridgeRequestInvalidController(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// Invalid hex string should be rejected.
+	_, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, math.NewInt(1000), nil, "bad-controller",
+	)
+	require.ErrorIs(t, err, types.ErrInvalidEVMAddress)
+
+	// Sequence tip should not have advanced.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+}
+
+func TestCreateTripartyBridgeRequestCallbackDataTooLarge(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+
+	// 321 bytes exceeds the 320-byte limit.
+	_, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, math.NewInt(1000), make([]byte, 321), testTripartyController,
+	)
+	require.ErrorIs(t, err, types.ErrTripartyCallbackDataTooLarge)
+
+	// Sequence tip should not have advanced.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+
+	// Exactly 320 bytes should succeed.
+	reqID, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, math.NewInt(1000), make([]byte, 320), testTripartyController,
+	)
+	require.NoError(t, err)
+	require.Equal(t, math.NewInt(1), reqID)
+}
+
+func TestCreateTripartyBridgeRequestAmountNotPositive(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+
+	// Zero amount should be rejected.
+	_, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, math.ZeroInt(), nil, testTripartyController,
+	)
+	require.ErrorIs(t, err, types.ErrTripartyAmountNotPositive)
+
+	// Negative amount should be rejected.
+	_, err = keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, math.NewInt(-1), nil, testTripartyController,
+	)
+	require.ErrorIs(t, err, types.ErrTripartyAmountNotPositive)
+
+	// Sequence tip should not have advanced.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+}
+
 func TestCreateTripartyBridgeRequestUnauthorizedController(t *testing.T) {
 	ctx, keeper := mockContext()
 

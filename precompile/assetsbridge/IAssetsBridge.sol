@@ -296,7 +296,8 @@ interface IAssetsBridge {
      *      - The caller must be an allowed triparty controller,
      *      - The recipient address must not be the zero address,
      *      - The amount must be positive,
-     *      - The amount must not exceed the per-request limit.
+     *      - The amount must not exceed the per-request limit,
+     *      - The callbackData must not exceed 320 bytes.
      */
     function bridgeTriparty(address recipient, uint256 amount, bytes calldata callbackData) external returns (uint256 requestId);
 

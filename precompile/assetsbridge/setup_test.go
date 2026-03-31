@@ -498,13 +498,28 @@ func (k *FakeBridgeKeeper) SetTripartyWindowLimit(_ sdk.Context, limit math.Int)
 
 func (k *FakeBridgeKeeper) CreateTripartyBridgeRequest(
 	_ sdk.Context,
-	_ string,
+	recipient string,
 	amount math.Int,
-	_ []byte,
+	callbackData []byte,
 	controller string,
 ) (math.Int, error) {
 	if k.tripartyPaused {
 		return math.Int{}, bridgetypes.ErrTripartyPaused
+	}
+	if !evmtypes.IsHexAddress(recipient) {
+		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrInvalidEVMAddress, "invalid recipient")
+	}
+	if evmtypes.IsZeroHexAddress(recipient) {
+		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrZeroEVMAddress, "zero recipient")
+	}
+	if !evmtypes.IsHexAddress(controller) {
+		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrInvalidEVMAddress, "invalid controller")
+	}
+	if len(callbackData) > 320 {
+		return math.Int{}, bridgetypes.ErrTripartyCallbackDataTooLarge
+	}
+	if !amount.IsPositive() {
+		return math.Int{}, bridgetypes.ErrTripartyAmountNotPositive
 	}
 	if !k.tripartyControllers[common.HexToAddress(controller).Hex()] {
 		return math.Int{}, bridgetypes.ErrTripartyControllerNotAllowed

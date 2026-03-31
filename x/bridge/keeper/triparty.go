@@ -3,6 +3,7 @@ package keeper
 import (
 	"fmt"
 
+	sdkerrors "cosmossdk.io/errors"
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
@@ -12,6 +13,10 @@ import (
 // TripartyWindowResetBlocks is the number of blocks after which the
 // triparty minting window is reset.
 const TripartyWindowResetBlocks = 25000
+
+// MaxTripartyCallbackDataLength is the maximum allowed length of
+// callbackData in a triparty bridge request (10 × 32-byte ABI words).
+const MaxTripartyCallbackDataLength = 320
 
 // IsAllowedTripartyController checks if the given address is an allowed
 // triparty controller.
@@ -171,13 +176,29 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	controller string,
 ) (math.Int, error) {
 	// TODO: Validate if recipient is not blocked
-	// TODO: Validate the length of callbackData
-	// TODO: Consider validating recipient and controller are valid addresses
-
 	// TODO: Validate window limits
 
 	if k.IsTripartyPaused(ctx) {
 		return math.Int{}, types.ErrTripartyPaused
+	}
+
+	if !evmtypes.IsHexAddress(recipient) {
+		return math.Int{}, sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid recipient")
+	}
+	if evmtypes.IsZeroHexAddress(recipient) {
+		return math.Int{}, sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero recipient")
+	}
+
+	if !evmtypes.IsHexAddress(controller) {
+		return math.Int{}, sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid controller")
+	}
+
+	if len(callbackData) > MaxTripartyCallbackDataLength {
+		return math.Int{}, types.ErrTripartyCallbackDataTooLarge
+	}
+
+	if !amount.IsPositive() {
+		return math.Int{}, types.ErrTripartyAmountNotPositive
 	}
 
 	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(controller)) {

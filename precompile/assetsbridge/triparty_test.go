@@ -181,7 +181,7 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 			as:          testTripartyController,
 			basicPass:   true,
 			revert:      true,
-			errContains: "recipient address must not be the zero address",
+			errContains: "zero EVM address",
 		},
 		{
 			name: "zero amount",
@@ -193,7 +193,7 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 			as:          testTripartyController,
 			basicPass:   true,
 			revert:      true,
-			errContains: "amount must be positive",
+			errContains: "triparty amount must be positive",
 		},
 		{
 			name: "per-request limit exceeded",

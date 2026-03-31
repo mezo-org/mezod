@@ -60,17 +60,13 @@ func (m *BridgeTripartyMethod) Run(
 		return nil, nil, fmt.Errorf("invalid recipient address: %v", rawInputs[0])
 	}
 
-	if recipient == (common.Address{}) {
-		return nil, nil, fmt.Errorf("recipient address must not be the zero address")
-	}
-
 	amount, ok := rawInputs[1].(*big.Int)
 	if !ok {
 		return nil, nil, fmt.Errorf("invalid amount: %v", rawInputs[1])
 	}
 
-	if amount == nil || amount.Sign() <= 0 {
-		return nil, nil, fmt.Errorf("amount must be positive")
+	if amount == nil {
+		return nil, nil, fmt.Errorf("invalid amount: nil")
 	}
 
 	callbackData, ok := rawInputs[2].([]byte)
@@ -83,14 +79,12 @@ func (m *BridgeTripartyMethod) Run(
 		return nil, nil, fmt.Errorf("failed to convert amount: [%w]", err)
 	}
 
-	sender := precompile.TypesConverter.Address.ToSDK(context.MsgSender())
-
 	requestID, err := m.bridgeKeeper.CreateTripartyBridgeRequest(
 		context.SdkCtx(),
 		recipient.Hex(),
 		sdkAmount,
 		callbackData,
-		evmtypes.BytesToHexAddress(sender),
+		context.MsgSender().Hex(),
 	)
 	if err != nil {
 		return nil, nil, err
