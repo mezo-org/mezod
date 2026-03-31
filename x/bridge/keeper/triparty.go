@@ -520,7 +520,7 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 
 		// Stop at the first immature request. No request can be processed
 		// ahead of an earlier one that is not yet mature.
-		if ctx.BlockHeight()-req.BlockHeight < int64(blockDelay) { //nolint:gosec
+		if ctx.BlockHeight() < req.BlockHeight+int64(blockDelay) { //nolint:gosec
 			k.Logger(ctx).Info(
 				"triparty request not yet mature; stopping batch",
 				"sequence", req.Sequence,
