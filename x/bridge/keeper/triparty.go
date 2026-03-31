@@ -160,14 +160,15 @@ func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
 
 // CreateTripartyBridgeRequest creates a new pending triparty bridge request,
 // assigns it the next sequence number, records the current block height,
-// stores it in state, and returns the assigned requestId.
+// stores it in state, and returns the assigned requestId. It returns an
+// error if the amount exceeds the per-request limit.
 func (k Keeper) CreateTripartyBridgeRequest(
 	ctx sdk.Context,
 	recipient string,
 	amount math.Int,
 	callbackData []byte,
 	controller string,
-) math.Int {
+) (math.Int, error) {
 	// TODO: Validate if recipient is not blocked
 	// TODO: Validate if controller is allowed
 	// TODO: Validate the length of callbackData
@@ -175,6 +176,12 @@ func (k Keeper) CreateTripartyBridgeRequest(
 
 	// TODO: Validate per-request bridge limit
 	// TODO: Validate window limits
+
+	perRequestLimit := k.GetTripartyPerRequestLimit(ctx)
+	if perRequestLimit.IsPositive() && amount.GT(perRequestLimit) {
+		return math.Int{}, types.ErrTripartyPerRequestLimitExceeded
+	}
+
 	seq := k.incrementTripartySequenceTip(ctx)
 
 	req := &types.TripartyBridgeRequest{
@@ -194,7 +201,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	store := ctx.KVStore(k.storeKey)
 	store.Set(types.GetTripartyBridgeRequestKey(seq), bz)
 
-	return seq
+	return seq, nil
 }
 
 // GetTripartyBridgeRequest returns a pending triparty bridge request by its

@@ -234,6 +234,7 @@ type FakeBridgeKeeper struct {
 	tripartyBlockDelay      uint64
 	tripartyPerRequestLimit math.Int
 	tripartyWindowLimit     math.Int
+	tripartySequenceTip     math.Int
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -251,6 +252,7 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		tripartyBlockDelay:       1,
 		tripartyPerRequestLimit:  math.ZeroInt(),
 		tripartyWindowLimit:      math.ZeroInt(),
+		tripartySequenceTip:      math.ZeroInt(),
 	}
 }
 
@@ -496,4 +498,18 @@ func (k *FakeBridgeKeeper) GetTripartyWindowLimit(_ sdk.Context) math.Int {
 
 func (k *FakeBridgeKeeper) SetTripartyWindowLimit(_ sdk.Context, limit math.Int) {
 	k.tripartyWindowLimit = limit
+}
+
+func (k *FakeBridgeKeeper) CreateTripartyBridgeRequest(
+	_ sdk.Context,
+	_ []byte,
+	amount math.Int,
+	_ []byte,
+	_ []byte,
+) (math.Int, error) {
+	if k.tripartyPerRequestLimit.IsPositive() && amount.GT(k.tripartyPerRequestLimit) {
+		return math.Int{}, bridgetypes.ErrTripartyPerRequestLimitExceeded
+	}
+	k.tripartySequenceTip = k.tripartySequenceTip.Add(math.OneInt())
+	return k.tripartySequenceTip, nil
 }

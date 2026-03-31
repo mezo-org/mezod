@@ -12,5 +12,6 @@ var (
 	ErrMaxMappingsReached          = sdkerrors.Register(ModuleName, 5, "the maximum number of ERC20 mappings has been reached")
 	ErrTokenNotContract            = sdkerrors.Register(ModuleName, 6, "token address is not a contract")
 	ErrOutflowLimitExceeded        = sdkerrors.Register(ModuleName, 7, "outflow limit exceeded")
-	ErrTripartyWindowLimitExceeded = sdkerrors.Register(ModuleName, 8, "triparty window limit exceeded")
+	ErrTripartyWindowLimitExceeded     = sdkerrors.Register(ModuleName, 8, "triparty window limit exceeded")
+	ErrTripartyPerRequestLimitExceeded = sdkerrors.Register(ModuleName, 9, "triparty per-request limit exceeded")
 )

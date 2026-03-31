@@ -153,7 +153,7 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 			run: func() []interface{} {
 				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
 				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000)}
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
 			},
 			as:          testTripartyController,
 			basicPass:   true,
@@ -164,7 +164,7 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 			name: "caller is not a controller",
 			run: func() []interface{} {
 				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000)}
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
 			},
 			as:          s.account2.EvmAddr,
 			basicPass:   true,
@@ -176,7 +176,7 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 			run: func() []interface{} {
 				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
 				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{common.Address{}, big.NewInt(1000)}
+				return []interface{}{common.Address{}, big.NewInt(1000), []byte{}}
 			},
 			as:          testTripartyController,
 			basicPass:   true,
@@ -188,7 +188,7 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 			run: func() []interface{} {
 				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
 				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(0)}
+				return []interface{}{s.account2.EvmAddr, big.NewInt(0), []byte{}}
 			},
 			as:          testTripartyController,
 			basicPass:   true,
@@ -196,15 +196,53 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 			errContains: "amount must be positive",
 		},
 		{
-			name: "happy path",
+			name: "per-request limit exceeded",
 			run: func() []interface{} {
 				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
 				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000)}
+				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.NewInt(500))
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
+			},
+			as:          testTripartyController,
+			basicPass:   true,
+			revert:      true,
+			errContains: "triparty per-request limit exceeded",
+		},
+		{
+			name: "happy path - returns requestId 1",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.ZeroInt())
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte("callback")}
 			},
 			as:        testTripartyController,
 			basicPass: true,
-			output:    []interface{}{true},
+			output:    []interface{}{big.NewInt(1)},
+		},
+		{
+			name: "happy path - sequential requestIds",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.ZeroInt())
+				return []interface{}{s.account2.EvmAddr, big.NewInt(2000), []byte{}}
+			},
+			as:        testTripartyController,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(2)},
+		},
+		{
+			name: "happy path - amount equals per-request limit",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
+				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.NewInt(1000))
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
+			},
+			as:        testTripartyController,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(3)},
 		},
 	}
 

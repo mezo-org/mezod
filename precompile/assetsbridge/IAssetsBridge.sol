@@ -83,11 +83,13 @@ interface IAssetsBridge {
 
     /**
      * @notice Emitted when a triparty bridge request is made.
+     * @param requestId The unique identifier of the bridge request.
      * @param recipient The address to receive the minted BTC.
      * @param amount The amount of BTC requested.
      * @param controller The triparty controller that made the request.
      */
     event TripartyBridgeRequested(
+        uint256 indexed requestId,
         address indexed recipient,
         uint256 amount,
         address controller
@@ -287,13 +289,16 @@ interface IAssetsBridge {
      * @notice Requests a triparty BTC mint through the bridge.
      * @param recipient The address to receive the minted BTC.
      * @param amount The amount of BTC to mint.
+     * @param callbackData Arbitrary data passed to the callback on completion.
+     * @return requestId The unique identifier of the bridge request.
      * @dev Requirements:
      *      - Triparty bridging must not be paused,
      *      - The caller must be an allowed triparty controller,
      *      - The recipient address must not be the zero address,
-     *      - The amount must be positive.
+     *      - The amount must be positive,
+     *      - The amount must not exceed the per-request limit.
      */
-    function bridgeTriparty(address recipient, uint256 amount) external returns (bool);
+    function bridgeTriparty(address recipient, uint256 amount, bytes calldata callbackData) external returns (uint256 requestId);
 
     /**
      * @notice Allows or disallows a triparty controller address.

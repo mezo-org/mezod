@@ -98,15 +98,18 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	callbackData := []byte("test-callback")
 
 	// First request should get sequence 1.
-	reqID1 := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, amount, callbackData, testTripartyController,
+	reqID1, err := keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, amount, callbackData, testTripartyController,
 	)
+	require.NoError(t, err)
 	require.Equal(t, math.NewInt(1), reqID1)
 
 	// Second request should get sequence 2.
-	reqID2 := keeper.CreateTripartyBridgeRequest(
+	reqID2, err := keeper.CreateTripartyBridgeRequest(
 		ctx, testTripartyRecipient, amount, nil, testTripartyController,
+
 	)
+	require.NoError(t, err)
 	require.Equal(t, math.NewInt(2), reqID2)
 
 	// Sequence tip should now be 2 (last assigned).
@@ -131,6 +134,39 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	require.Equal(t, testTripartyController, req2.Controller)
 }
 
+func TestCreateTripartyBridgeRequestPerRequestLimit(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	recipient := bytes.Repeat([]byte{0x01}, 20)
+	controller := bytes.Repeat([]byte{0x02}, 20)
+
+	keeper.SetTripartyPerRequestLimit(ctx, math.NewInt(500))
+
+	// Amount exceeding the limit should be rejected.
+	_, err := keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, math.NewInt(1000), nil, controller,
+	)
+	require.ErrorIs(t, err, types.ErrTripartyPerRequestLimitExceeded)
+
+	// Sequence tip should not have advanced.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+
+	// Amount equal to the limit should succeed.
+	reqID, err := keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, math.NewInt(500), nil, controller,
+	)
+	require.NoError(t, err)
+	require.Equal(t, math.NewInt(1), reqID)
+
+	// Zero limit disables the check.
+	keeper.SetTripartyPerRequestLimit(ctx, math.ZeroInt())
+
+	_, err = keeper.CreateTripartyBridgeRequest(
+		ctx, recipient, math.NewInt(999999), nil, controller,
+	)
+	require.NoError(t, err)
+}
+
 func TestGetTripartyBridgeRequest(t *testing.T) {
 	ctx, keeper := mockContext()
 
@@ -141,9 +177,10 @@ func TestGetTripartyBridgeRequest(t *testing.T) {
 	require.False(t, found)
 
 	// Create a request and retrieve it.
-	reqID := keeper.CreateTripartyBridgeRequest(
+    reqID, err := keeper.CreateTripartyBridgeRequest(
 		ctx, testTripartyRecipient, amount, nil, testTripartyController,
-	)
+
+	require.NoError(t, err)
 
 	req, found := keeper.GetTripartyBridgeRequest(ctx, reqID)
 	require.True(t, found)
@@ -157,12 +194,13 @@ func TestGetTripartyBridgeRequest(t *testing.T) {
 func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	reqID1 := keeper.CreateTripartyBridgeRequest(
+	reqID1, err := keeper.CreateTripartyBridgeRequest(
 		ctx, testTripartyRecipient, math.NewInt(100), nil, testTripartyController,
 	)
+	require.NoError(t, err)
 	reqID2 := keeper.CreateTripartyBridgeRequest(
 		ctx, testTripartyRecipient, math.NewInt(200), nil, testTripartyController,
-	)
+	require.NoError(t, err)
 
 	// Both requests exist.
 	_, found := keeper.GetTripartyBridgeRequest(ctx, reqID1)
@@ -171,7 +209,7 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	require.True(t, found)
 
 	// Deleting the second request while the first exists should fail.
-	err := keeper.DeleteTripartyBridgeRequest(ctx, reqID2)
+	err = keeper.DeleteTripartyBridgeRequest(ctx, reqID2)
 	require.Error(t, err)
 
 	// Deleting the first (oldest) request should succeed.
@@ -192,13 +230,14 @@ func TestGetPendingTripartyBridgeRequests(t *testing.T) {
 
 	// Create 5 requests.
 	for i := 0; i < 5; i++ {
-		keeper.CreateTripartyBridgeRequest(
+		_, err := keeper.CreateTripartyBridgeRequest(
 			ctx,
 			testTripartyRecipient,
 			math.NewInt(int64(100*(i+1))),
 			nil,
 			testTripartyController,
 		)
+		require.NoError(t, err)
 	}
 
 	// Read all 5 with limit 10.

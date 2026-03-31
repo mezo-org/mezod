@@ -51,7 +51,7 @@ func (m *BridgeTripartyMethod) Run(
 	context *precompile.RunContext,
 	rawInputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, []statedb.StateChange, error) {
-	if err := precompile.ValidateMethodInputsCount(rawInputs, 2); err != nil {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 3); err != nil {
 		return nil, nil, err
 	}
 
@@ -73,6 +73,11 @@ func (m *BridgeTripartyMethod) Run(
 		return nil, nil, fmt.Errorf("amount must be positive")
 	}
 
+	callbackData, ok := rawInputs[2].([]byte)
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid callbackData: %v", rawInputs[2])
+	}
+
 	sdkCtx := context.SdkCtx()
 
 	if m.bridgeKeeper.IsTripartyPaused(sdkCtx) {
@@ -84,14 +89,32 @@ func (m *BridgeTripartyMethod) Run(
 		return nil, nil, fmt.Errorf("caller is not an allowed triparty controller")
 	}
 
-	err := context.EventEmitter().Emit(
-		NewTripartyBridgeRequestedEvent(recipient, amount, context.MsgSender()),
+	sdkAmount, err := precompile.TypesConverter.BigInt.ToSDK(amount)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to convert amount: [%w]", err)
+	}
+
+	requestID, err := m.bridgeKeeper.CreateTripartyBridgeRequest(
+		sdkCtx,
+		recipient.Bytes(),
+		sdkAmount,
+		callbackData,
+		sender,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	requestIDBigInt := precompile.TypesConverter.BigInt.FromSDK(requestID)
+
+	err = context.EventEmitter().Emit(
+		NewTripartyBridgeRequestedEvent(requestIDBigInt, recipient, amount, context.MsgSender()),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to emit TripartyBridgeRequested event: [%w]", err)
 	}
 
-	return precompile.MethodOutputs{true}, nil, nil
+	return precompile.MethodOutputs{requestIDBigInt}, nil, nil
 }
 
 // --- allowTripartyController ---
@@ -413,17 +436,20 @@ const (
 
 // TripartyBridgeRequestedEvent is emitted when a triparty bridge request is made.
 type TripartyBridgeRequestedEvent struct {
+	requestID  *big.Int
 	recipient  common.Address
 	amount     *big.Int
 	controller common.Address
 }
 
 func NewTripartyBridgeRequestedEvent(
+	requestID *big.Int,
 	recipient common.Address,
 	amount *big.Int,
 	controller common.Address,
 ) *TripartyBridgeRequestedEvent {
 	return &TripartyBridgeRequestedEvent{
+		requestID:  requestID,
 		recipient:  recipient,
 		amount:     amount,
 		controller: controller,
@@ -436,6 +462,7 @@ func (e *TripartyBridgeRequestedEvent) EventName() string {
 
 func (e *TripartyBridgeRequestedEvent) Arguments() []*precompile.EventArgument {
 	return []*precompile.EventArgument{
+		{Indexed: true, Value: e.requestID},
 		{Indexed: true, Value: e.recipient},
 		{Indexed: false, Value: e.amount},
 		{Indexed: false, Value: e.controller},

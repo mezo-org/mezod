@@ -287,6 +287,7 @@ type BridgeKeeper interface {
 	GetTripartyPerRequestLimit(ctx sdk.Context) math.Int
 	SetTripartyWindowLimit(ctx sdk.Context, limit math.Int)
 	GetTripartyWindowLimit(ctx sdk.Context) math.Int
+	CreateTripartyBridgeRequest(ctx sdk.Context, recipient []byte, amount math.Int, callbackData []byte, controller []byte) (math.Int, error)
 }
 
 type AuthzKeeper interface {
