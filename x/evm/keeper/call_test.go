@@ -88,3 +88,7 @@ func (tc *testCall) To() *common.Address {
 func (tc *testCall) Data() []byte {
 	return tc.data
 }
+
+func (tc *testCall) GasLimit() uint64 {
+	return 0
+}
