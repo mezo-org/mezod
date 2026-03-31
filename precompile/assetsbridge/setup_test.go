@@ -468,10 +468,6 @@ func (k *FakeBridgeKeeper) AllowTripartyController(_ sdk.Context, controller []b
 	}
 }
 
-func (k *FakeBridgeKeeper) IsTripartyPaused(_ sdk.Context) bool {
-	return k.tripartyPaused
-}
-
 func (k *FakeBridgeKeeper) SetTripartyPaused(_ sdk.Context, isPaused bool) {
 	k.tripartyPaused = isPaused
 }
@@ -507,6 +503,9 @@ func (k *FakeBridgeKeeper) CreateTripartyBridgeRequest(
 	_ []byte,
 	_ string,
 ) (math.Int, error) {
+	if k.tripartyPaused {
+		return math.Int{}, bridgetypes.ErrTripartyPaused
+	}
 	if k.tripartyPerRequestLimit.IsPositive() && amount.GT(k.tripartyPerRequestLimit) {
 		return math.Int{}, bridgetypes.ErrTripartyPerRequestLimitExceeded
 	}

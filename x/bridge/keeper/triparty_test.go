@@ -5,9 +5,10 @@ import (
 
 	"cosmossdk.io/math"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
-	evmtypes "github.com/mezo-org/mezod/x/evm/types"
-	"github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 const (
@@ -110,7 +111,6 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	// Second request should get sequence 2.
 	reqID2, err := keeper.CreateTripartyBridgeRequest(
 		ctx, testTripartyRecipient, amount, nil, testTripartyController,
-
 	)
 	require.NoError(t, err)
 	require.Equal(t, math.NewInt(2), reqID2)
@@ -135,6 +135,31 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	require.Empty(t, req2.CallbackData)
 	require.Equal(t, testTripartyRecipient, req2.Recipient)
 	require.Equal(t, testTripartyController, req2.Controller)
+}
+
+func TestCreateTripartyBridgeRequestPaused(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	keeper.SetTripartyPaused(ctx, true)
+
+	// Should be rejected when paused.
+	_, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, math.NewInt(1000), nil, testTripartyController,
+	)
+	require.ErrorIs(t, err, types.ErrTripartyPaused)
+
+	// Sequence tip should not have advanced.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+
+	// Unpause and verify create succeeds.
+	keeper.SetTripartyPaused(ctx, false)
+
+	reqID, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, math.NewInt(1000), nil, testTripartyController,
+	)
+	require.NoError(t, err)
+	require.Equal(t, math.NewInt(1), reqID)
 }
 
 func TestCreateTripartyBridgeRequestUnauthorizedController(t *testing.T) {

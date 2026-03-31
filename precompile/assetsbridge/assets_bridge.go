@@ -279,7 +279,6 @@ type BridgeKeeper interface {
 	PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error
 	IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool
 	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
-	IsTripartyPaused(ctx sdk.Context) bool
 	SetTripartyPaused(ctx sdk.Context, isPaused bool)
 	GetTripartyBlockDelay(ctx sdk.Context) uint64
 	SetTripartyBlockDelay(ctx sdk.Context, delay uint64)

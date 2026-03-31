@@ -80,10 +80,6 @@ func (m *BridgeTripartyMethod) Run(
 
 	sdkCtx := context.SdkCtx()
 
-	if m.bridgeKeeper.IsTripartyPaused(sdkCtx) {
-		return nil, nil, fmt.Errorf("triparty bridging is paused")
-	}
-
 	sender := precompile.TypesConverter.Address.ToSDK(context.MsgSender())
 	if !m.bridgeKeeper.IsAllowedTripartyController(sdkCtx, sender) {
 		return nil, nil, fmt.Errorf("caller is not an allowed triparty controller")

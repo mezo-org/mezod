@@ -124,7 +124,7 @@ func (s *PrecompileTestSuite) TestPauseTriparty() {
 			basicPass: true,
 			output:    []interface{}{true},
 			postCheck: func() {
-				s.Require().True(s.bridgeKeeper.IsTripartyPaused(s.ctx))
+				s.Require().True(s.bridgeKeeper.tripartyPaused)
 			},
 		},
 		{
@@ -138,7 +138,7 @@ func (s *PrecompileTestSuite) TestPauseTriparty() {
 			basicPass: true,
 			output:    []interface{}{true},
 			postCheck: func() {
-				s.Require().False(s.bridgeKeeper.IsTripartyPaused(s.ctx))
+				s.Require().False(s.bridgeKeeper.tripartyPaused)
 			},
 		},
 	}

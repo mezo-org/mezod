@@ -15,4 +15,5 @@ var (
 	ErrTripartyWindowLimitExceeded     = sdkerrors.Register(ModuleName, 8, "triparty window limit exceeded")
 	ErrTripartyPerRequestLimitExceeded = sdkerrors.Register(ModuleName, 9, "triparty per-request limit exceeded")
 	ErrTripartyControllerNotAllowed    = sdkerrors.Register(ModuleName, 10, "controller is not an allowed triparty controller")
+	ErrTripartyPaused                  = sdkerrors.Register(ModuleName, 11, "triparty bridging is paused")
 )

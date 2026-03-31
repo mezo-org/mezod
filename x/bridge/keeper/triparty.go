@@ -171,12 +171,14 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	controller string,
 ) (math.Int, error) {
 	// TODO: Validate if recipient is not blocked
-	// TODO: Validate if controller is allowed
 	// TODO: Validate the length of callbackData
 	// TODO: Consider validating recipient and controller are valid addresses
 
-	// TODO: Validate per-request bridge limit
 	// TODO: Validate window limits
+
+	if k.IsTripartyPaused(ctx) {
+		return math.Int{}, types.ErrTripartyPaused
+	}
 
 	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(controller)) {
 		return math.Int{}, types.ErrTripartyControllerNotAllowed
