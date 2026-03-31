@@ -502,10 +502,10 @@ func (k *FakeBridgeKeeper) SetTripartyWindowLimit(_ sdk.Context, limit math.Int)
 
 func (k *FakeBridgeKeeper) CreateTripartyBridgeRequest(
 	_ sdk.Context,
-	_ []byte,
+	_ string,
 	amount math.Int,
 	_ []byte,
-	_ []byte,
+	_ string,
 ) (math.Int, error) {
 	if k.tripartyPerRequestLimit.IsPositive() && amount.GT(k.tripartyPerRequestLimit) {
 		return math.Int{}, bridgetypes.ErrTripartyPerRequestLimitExceeded

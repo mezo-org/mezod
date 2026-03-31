@@ -96,10 +96,10 @@ func (m *BridgeTripartyMethod) Run(
 
 	requestID, err := m.bridgeKeeper.CreateTripartyBridgeRequest(
 		sdkCtx,
-		recipient.Bytes(),
+		recipient.Hex(),
 		sdkAmount,
 		callbackData,
-		sender,
+		evmtypes.BytesToHexAddress(sender),
 	)
 	if err != nil {
 		return nil, nil, err
