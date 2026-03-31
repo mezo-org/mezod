@@ -67,6 +67,36 @@ message AssetsUnlockedEvent {
   uint32 block_time = 7;
 }
 
+// TripartyBridgeRequest represents a pending triparty bridge request stored
+// in the x/bridge module state. Each request is created when an authorized
+// controller calls bridgeTriparty and is processed by the PreBlocker after
+// the configured block delay has elapsed.
+message TripartyBridgeRequest {
+  // sequence is the monotonically increasing request ID assigned at
+  // creation time.
+  string sequence = 1 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  // block_height is the block height at which the request was submitted
+  // via bridgeTriparty.
+  int64 block_height = 2;
+  // recipient is the hex-encoded EVM address that will receive the minted BTC.
+  string recipient = 3;
+  // amount is the BTC amount to mint. Amount is in the BTC token precision on
+  // the Mezo chain, so 18 decimals.
+  string amount = 4 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+  // callback_data is arbitrary bytes forwarded to the controller callback
+  // after minting.
+  bytes callback_data = 5;
+  // controller is the hex-encoded EVM address of the triparty controller that
+  // submitted the request.
+  string controller = 6;
+}
+
 // ERC20TokenMapping defines a mapping between an ERC20 token on the source
 // chain and on the Mezo chain.
 message ERC20TokenMapping {
