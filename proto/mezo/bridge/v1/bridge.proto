@@ -81,8 +81,8 @@ message TripartyBridgeRequest {
   // block_height is the block height at which the request was submitted
   // via bridgeTriparty.
   int64 block_height = 2;
-  // recipient is the 20-byte EVM address that will receive the minted BTC.
-  bytes recipient = 3;
+  // recipient is the hex-encoded EVM address that will receive the minted BTC.
+  string recipient = 3;
   // amount is the BTC amount to mint. Amount is in the BTC token precision on
   // the Mezo chain, so 18 decimals.
   string amount = 4 [
@@ -92,9 +92,9 @@ message TripartyBridgeRequest {
   // callback_data is arbitrary bytes forwarded to the controller callback
   // after minting.
   bytes callback_data = 5;
-  // controller is the 20-byte EVM address of the triparty controller that
+  // controller is the hex-encoded EVM address of the triparty controller that
   // submitted the request.
-  bytes controller = 6;
+  string controller = 6;
 }
 
 // ERC20TokenMapping defines a mapping between an ERC20 token on the source

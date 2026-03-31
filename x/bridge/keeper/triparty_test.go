@@ -1,7 +1,6 @@
 package keeper
 
 import (
-	"bytes"
 	"testing"
 
 	"cosmossdk.io/math"
@@ -90,8 +89,8 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	// Set a specific block height for testing.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 100})
 
-	recipient := bytes.Repeat([]byte{0x01}, 20)
-	controller := bytes.Repeat([]byte{0x02}, 20)
+	recipient := "0x0101010101010101010101010101010101010101"
+	controller := "0x0202020202020202020202020202020202020202"
 	amount := math.NewInt(1000)
 	callbackData := []byte("test-callback")
 
@@ -132,8 +131,8 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 func TestGetTripartyBridgeRequest(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	recipient := bytes.Repeat([]byte{0x01}, 20)
-	controller := bytes.Repeat([]byte{0x02}, 20)
+	recipient := "0x0101010101010101010101010101010101010101"
+	controller := "0x0202020202020202020202020202020202020202"
 	amount := math.NewInt(500)
 
 	// Non-existent request returns false.
@@ -157,8 +156,8 @@ func TestGetTripartyBridgeRequest(t *testing.T) {
 func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	recipient := bytes.Repeat([]byte{0x01}, 20)
-	controller := bytes.Repeat([]byte{0x02}, 20)
+	recipient := "0x0101010101010101010101010101010101010101"
+	controller := "0x0202020202020202020202020202020202020202"
 
 	reqID1 := keeper.CreateTripartyBridgeRequest(
 		ctx, recipient, math.NewInt(100), nil, controller,
@@ -193,8 +192,8 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 func TestGetPendingTripartyBridgeRequests(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	recipient := bytes.Repeat([]byte{0x01}, 20)
-	controller := bytes.Repeat([]byte{0x02}, 20)
+	recipient := "0x0101010101010101010101010101010101010101"
+	controller := "0x0202020202020202020202020202020202020202"
 
 	// Create 5 requests.
 	for i := 0; i < 5; i++ {
@@ -258,10 +257,10 @@ func TestTripartyBridgeRequestMarshalRoundtrip(t *testing.T) {
 	req := &types.TripartyBridgeRequest{
 		Sequence:     math.NewInt(42),
 		BlockHeight:  12345,
-		Recipient:    bytes.Repeat([]byte{0xAA}, 20),
+		Recipient:    "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 		Amount:       math.NewInt(999999999),
 		CallbackData: []byte("some-callback-data"),
-		Controller:   bytes.Repeat([]byte{0xBB}, 20),
+		Controller:   "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
 	}
 
 	bz, err := req.Marshal()
@@ -283,10 +282,10 @@ func TestTripartyBridgeRequestMarshalEmptyCallbackData(t *testing.T) {
 	req := &types.TripartyBridgeRequest{
 		Sequence:     math.NewInt(1),
 		BlockHeight:  100,
-		Recipient:    bytes.Repeat([]byte{0x01}, 20),
+		Recipient:    "0x0101010101010101010101010101010101010101",
 		Amount:       math.NewInt(500),
 		CallbackData: nil,
-		Controller:   bytes.Repeat([]byte{0x02}, 20),
+		Controller:   "0x0202020202020202020202020202020202020202",
 	}
 
 	bz, err := req.Marshal()

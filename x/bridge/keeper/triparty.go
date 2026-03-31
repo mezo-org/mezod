@@ -163,10 +163,10 @@ func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
 // stores it in state, and returns the assigned requestId.
 func (k Keeper) CreateTripartyBridgeRequest(
 	ctx sdk.Context,
-	recipient []byte,
+	recipient string,
 	amount math.Int,
 	callbackData []byte,
-	controller []byte,
+	controller string,
 ) math.Int {
 	seq := k.incrementTripartySequenceTip(ctx)
 
