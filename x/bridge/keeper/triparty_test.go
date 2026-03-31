@@ -9,6 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testTripartyRecipient  = "0x0101010101010101010101010101010101010101"
+	testTripartyController = "0x0202020202020202020202020202020202020202"
+)
+
 func TestTripartyBlockDelayManagement(t *testing.T) {
 	ctx, keeper := mockContext()
 
@@ -89,20 +94,18 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	// Set a specific block height for testing.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 100})
 
-	recipient := "0x0101010101010101010101010101010101010101"
-	controller := "0x0202020202020202020202020202020202020202"
 	amount := math.NewInt(1000)
 	callbackData := []byte("test-callback")
 
 	// First request should get sequence 1.
 	reqID1 := keeper.CreateTripartyBridgeRequest(
-		ctx, recipient, amount, callbackData, controller,
+		ctx, testTripartyRecipient, amount, callbackData, testTripartyController,
 	)
 	require.Equal(t, math.NewInt(1), reqID1)
 
 	// Second request should get sequence 2.
 	reqID2 := keeper.CreateTripartyBridgeRequest(
-		ctx, recipient, amount, nil, controller,
+		ctx, testTripartyRecipient, amount, nil, testTripartyController,
 	)
 	require.Equal(t, math.NewInt(2), reqID2)
 
@@ -115,8 +118,8 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	require.Equal(t, int64(100), req1.BlockHeight)
 	require.Equal(t, amount, req1.Amount)
 	require.Equal(t, callbackData, req1.CallbackData)
-	require.Equal(t, recipient, req1.Recipient)
-	require.Equal(t, controller, req1.Controller)
+	require.Equal(t, testTripartyRecipient, req1.Recipient)
+	require.Equal(t, testTripartyController, req1.Controller)
 
 	// Verify the second stored request (nil callback data).
 	req2, found := keeper.GetTripartyBridgeRequest(ctx, reqID2)
@@ -124,15 +127,13 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	require.Equal(t, int64(100), req2.BlockHeight)
 	require.Equal(t, amount, req2.Amount)
 	require.Empty(t, req2.CallbackData)
-	require.Equal(t, recipient, req2.Recipient)
-	require.Equal(t, controller, req2.Controller)
+	require.Equal(t, testTripartyRecipient, req2.Recipient)
+	require.Equal(t, testTripartyController, req2.Controller)
 }
 
 func TestGetTripartyBridgeRequest(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	recipient := "0x0101010101010101010101010101010101010101"
-	controller := "0x0202020202020202020202020202020202020202"
 	amount := math.NewInt(500)
 
 	// Non-existent request returns false.
@@ -141,29 +142,26 @@ func TestGetTripartyBridgeRequest(t *testing.T) {
 
 	// Create a request and retrieve it.
 	reqID := keeper.CreateTripartyBridgeRequest(
-		ctx, recipient, amount, nil, controller,
+		ctx, testTripartyRecipient, amount, nil, testTripartyController,
 	)
 
 	req, found := keeper.GetTripartyBridgeRequest(ctx, reqID)
 	require.True(t, found)
 	require.True(t, reqID.Equal(req.Sequence))
-	require.Equal(t, recipient, req.Recipient)
+	require.Equal(t, testTripartyRecipient, req.Recipient)
 	require.Equal(t, amount, req.Amount)
 	require.Empty(t, req.CallbackData)
-	require.Equal(t, controller, req.Controller)
+	require.Equal(t, testTripartyController, req.Controller)
 }
 
 func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	recipient := "0x0101010101010101010101010101010101010101"
-	controller := "0x0202020202020202020202020202020202020202"
-
 	reqID1 := keeper.CreateTripartyBridgeRequest(
-		ctx, recipient, math.NewInt(100), nil, controller,
+		ctx, testTripartyRecipient, math.NewInt(100), nil, testTripartyController,
 	)
 	reqID2 := keeper.CreateTripartyBridgeRequest(
-		ctx, recipient, math.NewInt(200), nil, controller,
+		ctx, testTripartyRecipient, math.NewInt(200), nil, testTripartyController,
 	)
 
 	// Both requests exist.
@@ -192,17 +190,14 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 func TestGetPendingTripartyBridgeRequests(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	recipient := "0x0101010101010101010101010101010101010101"
-	controller := "0x0202020202020202020202020202020202020202"
-
 	// Create 5 requests.
 	for i := 0; i < 5; i++ {
 		keeper.CreateTripartyBridgeRequest(
 			ctx,
-			recipient,
+			testTripartyRecipient,
 			math.NewInt(int64(100*(i+1))),
 			nil,
-			controller,
+			testTripartyController,
 		)
 	}
 
@@ -282,10 +277,10 @@ func TestTripartyBridgeRequestMarshalEmptyCallbackData(t *testing.T) {
 	req := &types.TripartyBridgeRequest{
 		Sequence:     math.NewInt(1),
 		BlockHeight:  100,
-		Recipient:    "0x0101010101010101010101010101010101010101",
+		Recipient:    testTripartyRecipient,
 		Amount:       math.NewInt(500),
 		CallbackData: nil,
-		Controller:   "0x0202020202020202020202020202020202020202",
+		Controller:   testTripartyController,
 	}
 
 	bz, err := req.Marshal()
