@@ -789,3 +789,10 @@ func (mbk *mockBridgeKeeper) AcceptAssetsLocked(
 	args := mbk.Called(ctx, events)
 	return args.Error(0)
 }
+
+func (mbk *mockBridgeKeeper) ProcessTripartyBridgeRequests(
+	ctx sdk.Context,
+) error {
+	args := mbk.Called(ctx)
+	return args.Error(0)
+}
