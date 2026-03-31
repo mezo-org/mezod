@@ -168,6 +168,13 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	callbackData []byte,
 	controller string,
 ) math.Int {
+	// TODO: Validate if recipient is not blocked
+	// TODO: Validate if controller is allowed
+	// TODO: Validate the length of callbackData
+	// TODO: Consider validating recipient and controller are valid addresses
+
+	// TODO: Validate per-request bridge limit
+	// TODO: Validate window limits
 	seq := k.incrementTripartySequenceTip(ctx)
 
 	req := &types.TripartyBridgeRequest{
