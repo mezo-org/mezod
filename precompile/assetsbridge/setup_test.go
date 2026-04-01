@@ -234,6 +234,7 @@ type FakeBridgeKeeper struct {
 	tripartyBlockDelay      uint64
 	tripartyPerRequestLimit math.Int
 	tripartyWindowLimit     math.Int
+	tripartySequenceTip     math.Int
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -251,6 +252,7 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		tripartyBlockDelay:       1,
 		tripartyPerRequestLimit:  math.ZeroInt(),
 		tripartyWindowLimit:      math.ZeroInt(),
+		tripartySequenceTip:      math.ZeroInt(),
 	}
 }
 
@@ -466,10 +468,6 @@ func (k *FakeBridgeKeeper) AllowTripartyController(_ sdk.Context, controller []b
 	}
 }
 
-func (k *FakeBridgeKeeper) IsTripartyPaused(_ sdk.Context) bool {
-	return k.tripartyPaused
-}
-
 func (k *FakeBridgeKeeper) SetTripartyPaused(_ sdk.Context, isPaused bool) {
 	k.tripartyPaused = isPaused
 }
@@ -496,4 +494,39 @@ func (k *FakeBridgeKeeper) GetTripartyWindowLimit(_ sdk.Context) math.Int {
 
 func (k *FakeBridgeKeeper) SetTripartyWindowLimit(_ sdk.Context, limit math.Int) {
 	k.tripartyWindowLimit = limit
+}
+
+func (k *FakeBridgeKeeper) CreateTripartyBridgeRequest(
+	_ sdk.Context,
+	recipient string,
+	amount math.Int,
+	callbackData []byte,
+	controller string,
+) (math.Int, error) {
+	if k.tripartyPaused {
+		return math.Int{}, bridgetypes.ErrTripartyPaused
+	}
+	if !evmtypes.IsHexAddress(recipient) {
+		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrInvalidEVMAddress, "invalid recipient")
+	}
+	if evmtypes.IsZeroHexAddress(recipient) {
+		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrZeroEVMAddress, "zero recipient")
+	}
+	if !evmtypes.IsHexAddress(controller) {
+		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrInvalidEVMAddress, "invalid controller")
+	}
+	if len(callbackData) > 320 {
+		return math.Int{}, bridgetypes.ErrTripartyCallbackDataTooLarge
+	}
+	if !amount.IsPositive() {
+		return math.Int{}, bridgetypes.ErrTripartyAmountNotPositive
+	}
+	if !k.tripartyControllers[common.HexToAddress(controller).Hex()] {
+		return math.Int{}, bridgetypes.ErrTripartyControllerNotAllowed
+	}
+	if k.tripartyPerRequestLimit.IsPositive() && amount.GT(k.tripartyPerRequestLimit) {
+		return math.Int{}, bridgetypes.ErrTripartyPerRequestLimitExceeded
+	}
+	k.tripartySequenceTip = k.tripartySequenceTip.Add(math.OneInt())
+	return k.tripartySequenceTip, nil
 }

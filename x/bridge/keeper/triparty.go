@@ -3,14 +3,20 @@ package keeper
 import (
 	"fmt"
 
+	sdkerrors "cosmossdk.io/errors"
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 // TripartyWindowResetBlocks is the number of blocks after which the
 // triparty minting window is reset.
 const TripartyWindowResetBlocks = 25000
+
+// MaxTripartyCallbackDataLength is the maximum allowed length of
+// callbackData in a triparty bridge request (10 × 32-byte ABI words).
+const MaxTripartyCallbackDataLength = 320
 
 // IsAllowedTripartyController checks if the given address is an allowed
 // triparty controller.
@@ -160,21 +166,50 @@ func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
 
 // CreateTripartyBridgeRequest creates a new pending triparty bridge request,
 // assigns it the next sequence number, records the current block height,
-// stores it in state, and returns the assigned requestId.
+// stores it in state, and returns the assigned requestId. It returns an
+// error if the amount exceeds the per-request limit.
 func (k Keeper) CreateTripartyBridgeRequest(
 	ctx sdk.Context,
 	recipient string,
 	amount math.Int,
 	callbackData []byte,
 	controller string,
-) math.Int {
+) (math.Int, error) {
 	// TODO: Validate if recipient is not blocked
-	// TODO: Validate if controller is allowed
-	// TODO: Validate the length of callbackData
-	// TODO: Consider validating recipient and controller are valid addresses
-
-	// TODO: Validate per-request bridge limit
 	// TODO: Validate window limits
+
+	if k.IsTripartyPaused(ctx) {
+		return math.Int{}, types.ErrTripartyPaused
+	}
+
+	if !evmtypes.IsHexAddress(recipient) {
+		return math.Int{}, sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid recipient")
+	}
+	if evmtypes.IsZeroHexAddress(recipient) {
+		return math.Int{}, sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero recipient")
+	}
+
+	if !evmtypes.IsHexAddress(controller) {
+		return math.Int{}, sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid controller")
+	}
+
+	if len(callbackData) > MaxTripartyCallbackDataLength {
+		return math.Int{}, types.ErrTripartyCallbackDataTooLarge
+	}
+
+	if !amount.IsPositive() {
+		return math.Int{}, types.ErrTripartyAmountNotPositive
+	}
+
+	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(controller)) {
+		return math.Int{}, types.ErrTripartyControllerNotAllowed
+	}
+
+	perRequestLimit := k.GetTripartyPerRequestLimit(ctx)
+	if perRequestLimit.IsPositive() && amount.GT(perRequestLimit) {
+		return math.Int{}, types.ErrTripartyPerRequestLimitExceeded
+	}
+
 	seq := k.incrementTripartySequenceTip(ctx)
 
 	req := &types.TripartyBridgeRequest{
@@ -194,7 +229,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	store := ctx.KVStore(k.storeKey)
 	store.Set(types.GetTripartyBridgeRequestKey(seq), bz)
 
-	return seq
+	return seq, nil
 }
 
 // GetTripartyBridgeRequest returns a pending triparty bridge request by its

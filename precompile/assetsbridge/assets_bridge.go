@@ -279,7 +279,6 @@ type BridgeKeeper interface {
 	PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error
 	IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool
 	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
-	IsTripartyPaused(ctx sdk.Context) bool
 	SetTripartyPaused(ctx sdk.Context, isPaused bool)
 	GetTripartyBlockDelay(ctx sdk.Context) uint64
 	SetTripartyBlockDelay(ctx sdk.Context, delay uint64)
@@ -287,6 +286,7 @@ type BridgeKeeper interface {
 	GetTripartyPerRequestLimit(ctx sdk.Context) math.Int
 	SetTripartyWindowLimit(ctx sdk.Context, limit math.Int)
 	GetTripartyWindowLimit(ctx sdk.Context) math.Int
+	CreateTripartyBridgeRequest(ctx sdk.Context, recipient string, amount math.Int, callbackData []byte, controller string) (math.Int, error)
 }
 
 type AuthzKeeper interface {
