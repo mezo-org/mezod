@@ -5,6 +5,7 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
+	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 )
 
 var testTripartyController = common.HexToAddress("0x1234567890AbCdEf1234567890AbCdEf12345678")
@@ -149,100 +150,88 @@ func (s *PrecompileTestSuite) TestPauseTriparty() {
 func (s *PrecompileTestSuite) TestBridgeTriparty() {
 	testcases := []TestCase{
 		{
-			name: "triparty is paused",
+			name: "happy path - with callbackData",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
 				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
-			},
-			as:          testTripartyController,
-			basicPass:   true,
-			revert:      true,
-			errContains: "triparty bridging is paused",
-		},
-		{
-			name: "caller is not a controller",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
-			},
-			as:          s.account2.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "controller is not an allowed triparty controller",
-		},
-		{
-			name: "zero recipient",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{common.Address{}, big.NewInt(1000), []byte{}}
-			},
-			as:          testTripartyController,
-			basicPass:   true,
-			revert:      true,
-			errContains: "zero EVM address",
-		},
-		{
-			name: "zero amount",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(0), []byte{}}
-			},
-			as:          testTripartyController,
-			basicPass:   true,
-			revert:      true,
-			errContains: "triparty amount must be positive",
-		},
-		{
-			name: "per-request limit exceeded",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.NewInt(500))
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
-			},
-			as:          testTripartyController,
-			basicPass:   true,
-			revert:      true,
-			errContains: "triparty per-request limit exceeded",
-		},
-		{
-			name: "happy path - returns requestId 1",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.ZeroInt())
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte("callback")}
+				return []interface{}{s.account2.EvmAddr, bridgekeeper.MinTripartyAmount.BigInt(), []byte("callback")}
 			},
 			as:        testTripartyController,
 			basicPass: true,
 			output:    []interface{}{big.NewInt(1)},
+			postCheck: func() {
+				params := s.bridgeKeeper.lastTripartyBridgeRequestParams
+				s.Require().NotNil(params)
+				s.Require().Equal(s.account2.EvmAddr.Hex(), params.recipient)
+				s.Require().True(bridgekeeper.MinTripartyAmount.Equal(params.amount))
+				s.Require().Equal([]byte("callback"), params.callbackData)
+				s.Require().Equal(testTripartyController.Hex(), params.controller)
+			},
 		},
 		{
-			name: "happy path - sequential requestIds",
+			name: "happy path - with empty callbackData",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
 				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.ZeroInt())
-				return []interface{}{s.account2.EvmAddr, big.NewInt(2000), []byte{}}
+				doubleMin := new(big.Int).Mul(bridgekeeper.MinTripartyAmount.BigInt(), big.NewInt(2))
+				return []interface{}{s.account2.EvmAddr, doubleMin, []byte{}}
 			},
 			as:        testTripartyController,
 			basicPass: true,
 			output:    []interface{}{big.NewInt(2)},
+			postCheck: func() {
+				params := s.bridgeKeeper.lastTripartyBridgeRequestParams
+				s.Require().NotNil(params)
+				s.Require().Equal(s.account2.EvmAddr.Hex(), params.recipient)
+				s.Require().True(bridgekeeper.MinTripartyAmount.MulRaw(2).Equal(params.amount))
+				s.Require().Empty(params.callbackData)
+				s.Require().Equal(testTripartyController.Hex(), params.controller)
+			},
 		},
+	}
+
+	s.RunMethodTestCases(testcases, "bridgeTriparty")
+}
+
+func (s *PrecompileTestSuite) TestBridgeTripartyInvalidInputs() {
+	testcases := []TestCase{
 		{
-			name: "happy path - amount equals per-request limit",
+			name: "invalid recipient type",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.NewInt(1000))
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
+				return []interface{}{"not-an-address", big.NewInt(1), []byte{}}
 			},
 			as:        testTripartyController,
-			basicPass: true,
-			output:    []interface{}{big.NewInt(3)},
+			basicPass: false,
+		},
+		{
+			name: "invalid amount type",
+			run: func() []interface{} {
+				return []interface{}{s.account2.EvmAddr, "not-a-number", []byte{}}
+			},
+			as:        testTripartyController,
+			basicPass: false,
+		},
+		{
+			name: "invalid callbackData type",
+			run: func() []interface{} {
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1), 123}
+			},
+			as:        testTripartyController,
+			basicPass: false,
+		},
+		{
+			name: "wrong number of inputs - too few",
+			run: func() []interface{} {
+				return []interface{}{s.account2.EvmAddr}
+			},
+			as:        testTripartyController,
+			basicPass: false,
+		},
+		{
+			name: "wrong number of inputs - too many",
+			run: func() []interface{} {
+				return []interface{}{s.account2.EvmAddr, big.NewInt(1), []byte{}, "extra"}
+			},
+			as:        testTripartyController,
+			basicPass: false,
 		},
 	}
 

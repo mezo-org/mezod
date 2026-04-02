@@ -235,16 +235,19 @@ task(
 task('assetsBridge:bridgeTriparty', 'Requests a triparty BTC mint through the bridge')
   .addParam('recipient', 'The address to receive the minted BTC')
   .addParam('amount', 'The amount of BTC to mint')
+  .addOptionalParam('callbackData', 'Hex-encoded callback data (default: empty)', '0x')
   .addParam('signer', 'The signer address (msg.sender) - must be an allowed triparty controller')
   .setAction(async (taskArguments, hre) => {
     const signer = await hre.ethers.getSigner(taskArguments.signer)
     const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
     const pending = await bridge.bridgeTriparty(
       taskArguments.recipient,
-      taskArguments.amount
+      taskArguments.amount,
+      taskArguments.callbackData
     )
     const confirmed = await pending.wait()
-    console.log(confirmed.hash)
+    console.log('tx:', confirmed.hash)
+    console.log('requestId:', confirmed.logs?.[0]?.args?.[0]?.toString())
   })
 
 task('assetsBridge:allowTripartyController', 'Allows or disallows a triparty controller address')

@@ -213,6 +213,13 @@ func (k *FakePoaKeeper) CheckOwner(_ sdk.Context, sender sdk.AccAddress) error {
 	return nil
 }
 
+type tripartyBridgeRequestParams struct {
+	recipient    string
+	amount       math.Int
+	callbackData []byte
+	controller   string
+}
+
 type FakeBridgeKeeper struct {
 	sourceBTCToken           []byte
 	erc20TokensMappings      []*bridgetypes.ERC20TokenMapping
@@ -229,12 +236,13 @@ type FakeBridgeKeeper struct {
 	pauser sdk.AccAddress
 	paused bool
 
-	tripartyControllers     map[string]bool
-	tripartyPaused          bool
-	tripartyBlockDelay      uint64
-	tripartyPerRequestLimit math.Int
-	tripartyWindowLimit     math.Int
-	tripartySequenceTip     math.Int
+	tripartyControllers             map[string]bool
+	tripartyPaused                  bool
+	tripartyBlockDelay              uint64
+	tripartyPerRequestLimit         math.Int
+	tripartyWindowLimit             math.Int
+	tripartySequenceTip             math.Int
+	lastTripartyBridgeRequestParams *tripartyBridgeRequestParams
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -503,30 +511,13 @@ func (k *FakeBridgeKeeper) CreateTripartyBridgeRequest(
 	callbackData []byte,
 	controller string,
 ) (math.Int, error) {
-	if k.tripartyPaused {
-		return math.Int{}, bridgetypes.ErrTripartyPaused
+	k.lastTripartyBridgeRequestParams = &tripartyBridgeRequestParams{
+		recipient:    recipient,
+		amount:       amount,
+		callbackData: callbackData,
+		controller:   controller,
 	}
-	if !evmtypes.IsHexAddress(recipient) {
-		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrInvalidEVMAddress, "invalid recipient")
-	}
-	if evmtypes.IsZeroHexAddress(recipient) {
-		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrZeroEVMAddress, "zero recipient")
-	}
-	if !evmtypes.IsHexAddress(controller) {
-		return math.Int{}, errorsmod.Wrap(bridgetypes.ErrInvalidEVMAddress, "invalid controller")
-	}
-	if len(callbackData) > 320 {
-		return math.Int{}, bridgetypes.ErrTripartyCallbackDataTooLarge
-	}
-	if !amount.IsPositive() {
-		return math.Int{}, bridgetypes.ErrTripartyAmountNotPositive
-	}
-	if !k.tripartyControllers[common.HexToAddress(controller).Hex()] {
-		return math.Int{}, bridgetypes.ErrTripartyControllerNotAllowed
-	}
-	if k.tripartyPerRequestLimit.IsPositive() && amount.GT(k.tripartyPerRequestLimit) {
-		return math.Int{}, bridgetypes.ErrTripartyPerRequestLimitExceeded
-	}
+
 	k.tripartySequenceTip = k.tripartySequenceTip.Add(math.OneInt())
 	return k.tripartySequenceTip, nil
 }

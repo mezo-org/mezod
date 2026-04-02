@@ -288,7 +288,7 @@ interface IAssetsBridge {
     /**
      * @notice Requests a triparty BTC mint through the bridge.
      * @param recipient The address to receive the minted BTC.
-     * @param amount The amount of BTC to mint.
+     * @param amount The amount of BTC to mint in 1e18 precision.
      * @param callbackData Arbitrary data passed to the callback on completion.
      * @return requestId The unique identifier of the bridge request.
      * @dev Requirements:
@@ -296,6 +296,7 @@ interface IAssetsBridge {
      *      - The caller must be an allowed triparty controller,
      *      - The recipient address must not be the zero address,
      *      - The amount must be positive,
+     *      - The amount must be at least 0.01 BTC,
      *      - The amount must not exceed the per-request limit,
      *      - The callbackData must not exceed 320 bytes.
      */

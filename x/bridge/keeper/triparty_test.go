@@ -99,7 +99,7 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	// Set a specific block height for testing.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 100})
 
-	amount := math.NewInt(1000)
+	amount := MinTripartyAmount
 	callbackData := []byte("test-callback")
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
@@ -159,7 +159,7 @@ func TestCreateTripartyBridgeRequestPaused(t *testing.T) {
 	keeper.SetTripartyPaused(ctx, false)
 
 	reqID, err := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(1000), nil, testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
 	)
 	require.NoError(t, err)
 	require.Equal(t, math.NewInt(1), reqID)
@@ -224,7 +224,7 @@ func TestCreateTripartyBridgeRequestCallbackDataTooLarge(t *testing.T) {
 
 	// Exactly 320 bytes should succeed.
 	reqID, err := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(1000), make([]byte, 320), testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount, make([]byte, 320), testTripartyController,
 	)
 	require.NoError(t, err)
 	require.Equal(t, math.NewInt(1), reqID)
@@ -251,12 +251,34 @@ func TestCreateTripartyBridgeRequestAmountNotPositive(t *testing.T) {
 	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
 }
 
+func TestCreateTripartyBridgeRequestAmountBelowMinimum(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+
+	// Amount just below the minimum should be rejected.
+	_, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, MinTripartyAmount.SubRaw(1), nil, testTripartyController,
+	)
+	require.ErrorIs(t, err, types.ErrTripartyAmountBelowMinimum)
+
+	// Sequence tip should not have advanced.
+	require.True(t, keeper.GetTripartySequenceTip(ctx).IsZero())
+
+	// Amount exactly at the minimum should succeed.
+	reqID, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
+	)
+	require.NoError(t, err)
+	require.Equal(t, math.NewInt(1), reqID)
+}
+
 func TestCreateTripartyBridgeRequestUnauthorizedController(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	// Controller is not authorized — should be rejected.
 	_, err := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(1000), nil, testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
 	)
 	require.ErrorIs(t, err, types.ErrTripartyControllerNotAllowed)
 
@@ -268,11 +290,11 @@ func TestCreateTripartyBridgeRequestPerRequestLimit(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
-	keeper.SetTripartyPerRequestLimit(ctx, math.NewInt(500))
+	keeper.SetTripartyPerRequestLimit(ctx, MinTripartyAmount)
 
 	// Amount exceeding the limit should be rejected.
 	_, err := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(1000), nil, testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount.AddRaw(1), nil, testTripartyController,
 	)
 	require.ErrorIs(t, err, types.ErrTripartyPerRequestLimitExceeded)
 
@@ -281,7 +303,7 @@ func TestCreateTripartyBridgeRequestPerRequestLimit(t *testing.T) {
 
 	// Amount equal to the limit should succeed.
 	reqID, err := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(500), nil, testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
 	)
 	require.NoError(t, err)
 	require.Equal(t, math.NewInt(1), reqID)
@@ -290,7 +312,7 @@ func TestCreateTripartyBridgeRequestPerRequestLimit(t *testing.T) {
 	keeper.SetTripartyPerRequestLimit(ctx, math.ZeroInt())
 
 	_, err = keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(999999), nil, testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount.MulRaw(10), nil, testTripartyController,
 	)
 	require.NoError(t, err)
 }
@@ -298,7 +320,7 @@ func TestCreateTripartyBridgeRequestPerRequestLimit(t *testing.T) {
 func TestGetTripartyBridgeRequest(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	amount := math.NewInt(500)
+	amount := MinTripartyAmount
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
 
@@ -327,11 +349,11 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
 
 	reqID1, err := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(100), nil, testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
 	)
 	require.NoError(t, err)
 	reqID2, err := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(200), nil, testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount.MulRaw(2), nil, testTripartyController,
 	)
 	require.NoError(t, err)
 
@@ -368,7 +390,7 @@ func TestGetPendingTripartyBridgeRequests(t *testing.T) {
 		_, err := keeper.CreateTripartyBridgeRequest(
 			ctx,
 			testTripartyRecipient,
-			math.NewInt(int64(100*(i+1))),
+			MinTripartyAmount.MulRaw(int64(i+1)),
 			nil,
 			testTripartyController,
 		)
@@ -380,7 +402,7 @@ func TestGetPendingTripartyBridgeRequests(t *testing.T) {
 	require.Len(t, requests, 5)
 	for i, req := range requests {
 		require.True(t, math.NewInt(int64(i+1)).Equal(req.Sequence))
-		require.Equal(t, math.NewInt(int64(100*(i+1))), req.Amount)
+		require.Equal(t, MinTripartyAmount.MulRaw(int64(i+1)), req.Amount)
 	}
 
 	// Read with limit 3.
