@@ -121,6 +121,10 @@ at which it resets, mirroring `getOutflowCapacity`.
 Additionally, `bridgeTriparty` should:
 
 * Revert if the `recipient` is a blocked address (e.g. a module account).
+* Revert if `amount` is below the minimum of 0.01 BTC. This hard-coded floor
+  prevents a compromised controller from spamming the chain with many small
+  requests and ensures each request carries enough weight for the future vote
+  mechanism to be practical.
 * Revert if `amount` exceeds the global per-request limit.
 * Revert if `amount` would exceed the remaining global window capacity.
 
