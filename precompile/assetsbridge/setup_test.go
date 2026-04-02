@@ -213,6 +213,13 @@ func (k *FakePoaKeeper) CheckOwner(_ sdk.Context, sender sdk.AccAddress) error {
 	return nil
 }
 
+type tripartyBridgeRequestParams struct {
+	recipient    string
+	amount       math.Int
+	callbackData []byte
+	controller   string
+}
+
 type FakeBridgeKeeper struct {
 	sourceBTCToken           []byte
 	erc20TokensMappings      []*bridgetypes.ERC20TokenMapping
@@ -229,12 +236,13 @@ type FakeBridgeKeeper struct {
 	pauser sdk.AccAddress
 	paused bool
 
-	tripartyControllers     map[string]bool
-	tripartyPaused          bool
-	tripartyBlockDelay      uint64
-	tripartyPerRequestLimit math.Int
-	tripartyWindowLimit     math.Int
-	tripartySequenceTip     math.Int
+	tripartyControllers             map[string]bool
+	tripartyPaused                  bool
+	tripartyBlockDelay              uint64
+	tripartyPerRequestLimit         math.Int
+	tripartyWindowLimit             math.Int
+	tripartySequenceTip             math.Int
+	lastTripartyBridgeRequestParams *tripartyBridgeRequestParams
 }
 
 func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
@@ -498,11 +506,18 @@ func (k *FakeBridgeKeeper) SetTripartyWindowLimit(_ sdk.Context, limit math.Int)
 
 func (k *FakeBridgeKeeper) CreateTripartyBridgeRequest(
 	_ sdk.Context,
-	_ string,
-	_ math.Int,
-	_ []byte,
-	_ string,
+	recipient string,
+	amount math.Int,
+	callbackData []byte,
+	controller string,
 ) (math.Int, error) {
+	k.lastTripartyBridgeRequestParams = &tripartyBridgeRequestParams{
+		recipient:    recipient,
+		amount:       amount,
+		callbackData: callbackData,
+		controller:   controller,
+	}
+
 	k.tripartySequenceTip = k.tripartySequenceTip.Add(math.OneInt())
 	return k.tripartySequenceTip, nil
 }
