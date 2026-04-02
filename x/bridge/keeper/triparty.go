@@ -185,6 +185,7 @@ func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
 //   - the controller is an allowed triparty controller,
 //   - the callback data does not exceed the maximum length,
 //   - the amount is positive,
+//   - the amount is at least the minimum triparty amount,
 //   - the amount does not exceed the per-request limit.
 //
 // This function is called both at request creation time and at processing
