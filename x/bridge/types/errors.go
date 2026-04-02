@@ -18,4 +18,5 @@ var (
 	ErrTripartyPaused                  = sdkerrors.Register(ModuleName, 11, "triparty bridging is paused")
 	ErrTripartyCallbackDataTooLarge    = sdkerrors.Register(ModuleName, 12, "triparty callback data exceeds maximum length")
 	ErrTripartyAmountNotPositive       = sdkerrors.Register(ModuleName, 13, "triparty amount must be positive")
+	ErrTripartyAmountBelowMinimum      = sdkerrors.Register(ModuleName, 14, "triparty amount below minimum")
 )
