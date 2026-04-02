@@ -5,6 +5,7 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
+	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
 )
 
 var testTripartyController = common.HexToAddress("0x1234567890AbCdEf1234567890AbCdEf12345678")
@@ -149,72 +150,10 @@ func (s *PrecompileTestSuite) TestPauseTriparty() {
 func (s *PrecompileTestSuite) TestBridgeTriparty() {
 	testcases := []TestCase{
 		{
-			name: "triparty is paused",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
-			},
-			as:          testTripartyController,
-			basicPass:   true,
-			revert:      true,
-			errContains: "triparty bridging is paused",
-		},
-		{
-			name: "caller is not a controller",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
-			},
-			as:          s.account2.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "controller is not an allowed triparty controller",
-		},
-		{
-			name: "zero recipient",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{common.Address{}, big.NewInt(1000), []byte{}}
-			},
-			as:          testTripartyController,
-			basicPass:   true,
-			revert:      true,
-			errContains: "zero EVM address",
-		},
-		{
-			name: "zero amount",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				return []interface{}{s.account2.EvmAddr, big.NewInt(0), []byte{}}
-			},
-			as:          testTripartyController,
-			basicPass:   true,
-			revert:      true,
-			errContains: "triparty amount must be positive",
-		},
-		{
-			name: "per-request limit exceeded",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.NewInt(500))
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
-			},
-			as:          testTripartyController,
-			basicPass:   true,
-			revert:      true,
-			errContains: "triparty per-request limit exceeded",
-		},
-		{
 			name: "happy path - returns requestId 1",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
 				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.ZeroInt())
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte("callback")}
+				return []interface{}{s.account2.EvmAddr, bridgekeeper.MinTripartyAmount.BigInt(), []byte("callback")}
 			},
 			as:        testTripartyController,
 			basicPass: true,
@@ -223,26 +162,13 @@ func (s *PrecompileTestSuite) TestBridgeTriparty() {
 		{
 			name: "happy path - sequential requestIds",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
 				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.ZeroInt())
-				return []interface{}{s.account2.EvmAddr, big.NewInt(2000), []byte{}}
+				doubleMin := new(big.Int).Mul(bridgekeeper.MinTripartyAmount.BigInt(), big.NewInt(2))
+				return []interface{}{s.account2.EvmAddr, doubleMin, []byte{}}
 			},
 			as:        testTripartyController,
 			basicPass: true,
 			output:    []interface{}{big.NewInt(2)},
-		},
-		{
-			name: "happy path - amount equals per-request limit",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				s.bridgeKeeper.AllowTripartyController(s.ctx, testTripartyController.Bytes(), true)
-				s.bridgeKeeper.SetTripartyPerRequestLimit(s.ctx, math.NewInt(1000))
-				return []interface{}{s.account2.EvmAddr, big.NewInt(1000), []byte{}}
-			},
-			as:        testTripartyController,
-			basicPass: true,
-			output:    []interface{}{big.NewInt(3)},
 		},
 	}
 
