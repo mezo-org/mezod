@@ -324,36 +324,6 @@ func (k Keeper) DeleteTripartyBridgeRequest(ctx sdk.Context, sequence math.Int) 
 	return nil
 }
 
-// GetPendingTripartyBridgeRequests returns up to `limit` pending triparty
-// bridge requests starting from the given sequence number, in strictly
-// increasing sequence order.
-func (k Keeper) GetPendingTripartyBridgeRequests(
-	ctx sdk.Context,
-	startSequence math.Int,
-	limit int,
-) []*types.TripartyBridgeRequest {
-	store := ctx.KVStore(k.storeKey)
-	var requests []*types.TripartyBridgeRequest
-
-	seq := startSequence
-	for i := 0; i < limit; i++ {
-		bz := store.Get(types.GetTripartyBridgeRequestKey(seq))
-		if len(bz) == 0 {
-			break
-		}
-
-		req := &types.TripartyBridgeRequest{}
-		if err := req.Unmarshal(bz); err != nil {
-			panic(err)
-		}
-
-		requests = append(requests, req)
-		seq = seq.AddRaw(1)
-	}
-
-	return requests
-}
-
 // GetTripartyWindowMinted returns the current triparty window minted
 // aggregate. Returns zero if not set.
 func (k Keeper) GetTripartyWindowMinted(ctx sdk.Context) math.Int {

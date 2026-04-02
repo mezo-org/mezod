@@ -380,48 +380,6 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	require.False(t, found)
 }
 
-func TestGetPendingTripartyBridgeRequests(t *testing.T) {
-	ctx, keeper := mockContext()
-
-	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
-
-	// Create 5 requests.
-	for i := 0; i < 5; i++ {
-		_, err := keeper.CreateTripartyBridgeRequest(
-			ctx,
-			testTripartyRecipient,
-			MinTripartyAmount.MulRaw(int64(i+1)),
-			nil,
-			testTripartyController,
-		)
-		require.NoError(t, err)
-	}
-
-	// Read all 5 with limit 10.
-	requests := keeper.GetPendingTripartyBridgeRequests(ctx, math.NewInt(1), 10)
-	require.Len(t, requests, 5)
-	for i, req := range requests {
-		require.True(t, math.NewInt(int64(i+1)).Equal(req.Sequence))
-		require.Equal(t, MinTripartyAmount.MulRaw(int64(i+1)), req.Amount)
-	}
-
-	// Read with limit 3.
-	requests = keeper.GetPendingTripartyBridgeRequests(ctx, math.NewInt(1), 3)
-	require.Len(t, requests, 3)
-	require.True(t, math.NewInt(1).Equal(requests[0].Sequence))
-	require.True(t, math.NewInt(3).Equal(requests[2].Sequence))
-
-	// Read starting from sequence 3.
-	requests = keeper.GetPendingTripartyBridgeRequests(ctx, math.NewInt(3), 10)
-	require.Len(t, requests, 3)
-	require.True(t, math.NewInt(3).Equal(requests[0].Sequence))
-	require.True(t, math.NewInt(5).Equal(requests[2].Sequence))
-
-	// Read from non-existent sequence.
-	requests = keeper.GetPendingTripartyBridgeRequests(ctx, math.NewInt(10), 5)
-	require.Empty(t, requests)
-}
-
 func TestTripartySequenceTipIncrement(t *testing.T) {
 	ctx, keeper := mockContext()
 
