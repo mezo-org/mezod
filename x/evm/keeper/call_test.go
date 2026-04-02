@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -71,10 +72,28 @@ func (suite *KeeperTestSuite) TestExecuteContractCallReturnsStateChanges() {
 	suite.Require().True(foundContractChange)
 }
 
+func (suite *KeeperTestSuite) TestExecuteContractCallFailsWithVeryLowGasLimit() {
+	contract := suite.DeployTestContract(suite.T(), suite.address, big.NewInt(1000))
+
+	transferRecipient := common.HexToAddress("0x2B66aeB8C31619FE9d06A64772Df147878F69054")
+	transferData, err := evmtypes.ERC20Contract.ABI.Pack("transfer", transferRecipient, big.NewInt(1))
+	suite.Require().NoError(err)
+
+	// Provide a very low value for the gas limit.
+	_, _, err = suite.app.EvmKeeper.ExecuteContractCall(suite.ctx, &testCall{
+		from:     suite.address,
+		to:       &contract,
+		data:     transferData,
+		gasLimit: 21_000,
+	})
+	suite.Require().ErrorIs(err, core.ErrIntrinsicGas)
+}
+
 type testCall struct {
-	from common.Address
-	to   *common.Address
-	data []byte
+	from     common.Address
+	to       *common.Address
+	data     []byte
+	gasLimit uint64
 }
 
 func (tc *testCall) From() common.Address {
@@ -90,5 +109,5 @@ func (tc *testCall) Data() []byte {
 }
 
 func (tc *testCall) GasLimit() uint64 {
-	return 0
+	return tc.gasLimit
 }
