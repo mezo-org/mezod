@@ -219,10 +219,6 @@ func (k Keeper) validateTripartyBridgeRequest(
 		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid controller")
 	}
 
-	if amount.LT(MinTripartyAmount) {
-		return types.ErrTripartyAmountBelowMinimum
-	}
-
 	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(controller)) {
 		return types.ErrTripartyControllerNotAllowed
 	}
@@ -233,6 +229,10 @@ func (k Keeper) validateTripartyBridgeRequest(
 
 	if !amount.IsPositive() {
 		return types.ErrTripartyAmountNotPositive
+	}
+
+	if amount.LT(MinTripartyAmount) {
+		return types.ErrTripartyAmountBelowMinimum
 	}
 
 	perRequestLimit := k.GetTripartyPerRequestLimit(ctx)

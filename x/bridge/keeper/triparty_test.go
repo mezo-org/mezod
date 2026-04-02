@@ -215,7 +215,7 @@ func TestCreateTripartyBridgeRequestCallbackDataTooLarge(t *testing.T) {
 
 	// 321 bytes exceeds the 320-byte limit.
 	_, err := keeper.CreateTripartyBridgeRequest(
-		ctx, testTripartyRecipient, math.NewInt(1000), make([]byte, 321), testTripartyController,
+		ctx, testTripartyRecipient, MinTripartyAmount, make([]byte, 321), testTripartyController,
 	)
 	require.ErrorIs(t, err, types.ErrTripartyCallbackDataTooLarge)
 
@@ -614,6 +614,11 @@ func setupTripartyProcessing(t *testing.T) (
 	return ctx, k, bankKeeper, evmKeeper
 }
 
+// to18Dec converts a whole-BTC amount into 18-decimal units.
+func to18Dec(amount int64) math.Int {
+	return math.NewInt(amount).MulRaw(1_000_000_000_000_000_000)
+}
+
 // createTripartyRequest is a helper to create a request at a given block
 // height.
 func createTripartyRequest(
@@ -621,7 +626,7 @@ func createTripartyRequest(
 	ctx sdk.Context,
 	k Keeper,
 	height int64,
-	amount int64,
+	amount math.Int,
 	callbackData []byte,
 ) math.Int {
 	t.Helper()
@@ -631,7 +636,7 @@ func createTripartyRequest(
 	reqID, err := k.CreateTripartyBridgeRequest(
 		reqCtx,
 		testTripartyRecipient,
-		math.NewInt(amount),
+		amount,
 		callbackData,
 		testTripartyController,
 	)
@@ -676,7 +681,7 @@ func TestProcessTripartyBridgeRequests_Paused(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	// Create a mature request.
-	createTripartyRequest(t, ctx, k, 1, 1000, nil)
+	createTripartyRequest(t, ctx, k, 1, to18Dec(1), nil)
 
 	// Pause triparty.
 	k.SetTripartyPaused(ctx, true)
@@ -702,8 +707,8 @@ func TestProcessTripartyBridgeRequests_AllImmature(t *testing.T) {
 	k.SetTripartyBlockDelay(ctx, 10)
 
 	// Create requests at height 90.
-	createTripartyRequest(t, ctx, k, 90, 1000, nil)
-	createTripartyRequest(t, ctx, k, 90, 2000, nil)
+	createTripartyRequest(t, ctx, k, 90, to18Dec(1), nil)
+	createTripartyRequest(t, ctx, k, 90, to18Dec(2), nil)
 
 	// Current height 95 — only 5 blocks have passed, need 10.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 95})
@@ -729,16 +734,16 @@ func TestProcessTripartyBridgeRequests_MixedMaturity(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	// Default delay is 1. Create 3 requests at different heights.
-	createTripartyRequest(t, ctx, k, 10, 100, nil) // mature at 11+
-	createTripartyRequest(t, ctx, k, 10, 200, nil) // mature at 11+
-	createTripartyRequest(t, ctx, k, 20, 300, nil) // mature at 21+
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil) // mature at 11+
+	createTripartyRequest(t, ctx, k, 10, to18Dec(2), nil) // mature at 11+
+	createTripartyRequest(t, ctx, k, 20, to18Dec(3), nil) // mature at 21+
 
 	// Process at height 20 — first two are mature, third is not (20-20=0 < 1).
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
 	// Expect mints for requests 1 and 2.
-	expectMintBTC(bk, ctx, math.NewInt(100))
-	expectMintBTC(bk, ctx, math.NewInt(200))
+	expectMintBTC(bk, ctx, to18Dec(1))
+	expectMintBTC(bk, ctx, to18Dec(2))
 
 	// Expect callbacks (use mock.Anything for the call).
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
@@ -760,7 +765,7 @@ func TestProcessTripartyBridgeRequests_MixedMaturity(t *testing.T) {
 	require.Equal(t, math.NewInt(2), k.GetTripartyProcessedSequenceTip(ctx))
 
 	// Provenance counter updated for both.
-	require.Equal(t, math.NewInt(300), k.GetTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(3), k.GetTripartyTotalBTCMinted(ctx))
 }
 
 func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
@@ -783,7 +788,7 @@ func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
 		Sequence:    k.incrementTripartySequenceTip(ctx),
 		BlockHeight: 10,
 		Recipient:   blockedHexAddr,
-		Amount:      math.NewInt(1000),
+		Amount:      to18Dec(1),
 		Controller:  testTripartyController,
 	}
 	bz, err := blockedReq.Marshal()
@@ -793,13 +798,13 @@ func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
 	)
 
 	// Create a second valid request.
-	createTripartyRequest(t, ctx, k, 10, 2000, nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(2), nil)
 
 	// Process at height 20.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
 	// Only the second request should be minted.
-	expectMintBTC(bankKeeper, ctx, math.NewInt(2000))
+	expectMintBTC(bankKeeper, ctx, to18Dec(2))
 	evmKeeper.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
 	)
@@ -814,7 +819,7 @@ func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
 	require.False(t, found)
 
 	// Only the valid request contributed to provenance.
-	require.Equal(t, math.NewInt(2000), k.GetTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(2), k.GetTripartyTotalBTCMinted(ctx))
 
 	// Processed tip advanced to 2.
 	require.Equal(t, math.NewInt(2), k.GetTripartyProcessedSequenceTip(ctx))
@@ -824,7 +829,7 @@ func TestProcessTripartyBridgeRequests_PrecompileRecipient(t *testing.T) {
 	ctx, k, bankKeeper, evmKeeper := setupTripartyProcessing(t)
 
 	// Create a request first (before the recipient becomes a precompile).
-	createTripartyRequest(t, ctx, k, 10, 1000, nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil)
 
 	// Now override the mock so the recipient is considered a precompile
 	// at processing time (simulating a precompile registered after request
@@ -857,7 +862,7 @@ func TestProcessTripartyBridgeRequests_DeauthorizedController(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	// Create a request, then deauthorize the controller.
-	createTripartyRequest(t, ctx, k, 10, 1000, nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil)
 
 	k.AllowTripartyController(
 		ctx,
@@ -886,8 +891,8 @@ func TestProcessTripartyBridgeRequests_PerRequestLimitExceeded(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	// Create request, then lower the limit below its amount.
-	createTripartyRequest(t, ctx, k, 10, 1000, nil)
-	k.SetTripartyPerRequestLimit(ctx, math.NewInt(500))
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil)
+	k.SetTripartyPerRequestLimit(ctx, to18Dec(1).SubRaw(1))
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
@@ -907,11 +912,11 @@ func TestProcessTripartyBridgeRequests_SuccessfulMintAndCallback(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	callbackData := []byte("test-callback-data")
-	createTripartyRequest(t, ctx, k, 10, 5000, callbackData)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(5), callbackData)
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
-	expectMintBTC(bk, ctx, math.NewInt(5000))
+	expectMintBTC(bk, ctx, to18Dec(5))
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
 	)
@@ -924,10 +929,10 @@ func TestProcessTripartyBridgeRequests_SuccessfulMintAndCallback(t *testing.T) {
 	require.False(t, found)
 
 	// Provenance counter updated.
-	require.Equal(t, math.NewInt(5000), k.GetTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(5), k.GetTripartyTotalBTCMinted(ctx))
 
 	// BTCMinted counter updated (via mintBTC).
-	require.Equal(t, math.NewInt(5000), k.GetBTCMinted(ctx))
+	require.Equal(t, to18Dec(5), k.GetBTCMinted(ctx))
 
 	// Processed tip advanced.
 	require.Equal(t, math.NewInt(1), k.GetTripartyProcessedSequenceTip(ctx))
@@ -939,11 +944,11 @@ func TestProcessTripartyBridgeRequests_SuccessfulMintAndCallback(t *testing.T) {
 func TestProcessTripartyBridgeRequests_CallbackFailure(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
-	createTripartyRequest(t, ctx, k, 10, 1000, nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil)
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
-	expectMintBTC(bk, ctx, math.NewInt(1000))
+	expectMintBTC(bk, ctx, to18Dec(1))
 
 	// Callback fails.
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
@@ -954,8 +959,8 @@ func TestProcessTripartyBridgeRequests_CallbackFailure(t *testing.T) {
 	require.NoError(t, err) // Callback failure is non-fatal.
 
 	// Mint still completed.
-	require.Equal(t, math.NewInt(1000), k.GetBTCMinted(ctx))
-	require.Equal(t, math.NewInt(1000), k.GetTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(1), k.GetBTCMinted(ctx))
+	require.Equal(t, to18Dec(1), k.GetTripartyTotalBTCMinted(ctx))
 
 	// Request deleted despite callback failure.
 	_, found := k.GetTripartyBridgeRequest(ctx, math.NewInt(1))
@@ -965,12 +970,12 @@ func TestProcessTripartyBridgeRequests_CallbackFailure(t *testing.T) {
 func TestProcessTripartyBridgeRequests_MintBTCFailure(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
-	createTripartyRequest(t, ctx, k, 10, 1000, nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil)
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
 	// Bank keeper fails to mint.
-	coins := sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(1000)))
+	coins := sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, to18Dec(1)))
 	bk.On("MintCoins", ctx, types.ModuleName, coins).Return(
 		fmt.Errorf("bank error"),
 	)
@@ -987,11 +992,11 @@ func TestProcessTripartyBridgeRequests_EmptyCallbackData(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	// Create request with nil callback data.
-	createTripartyRequest(t, ctx, k, 10, 1000, nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil)
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
-	expectMintBTC(bk, ctx, math.NewInt(1000))
+	expectMintBTC(bk, ctx, to18Dec(1))
 
 	// Callback should still be issued with empty bytes.
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
@@ -1010,14 +1015,14 @@ func TestProcessTripartyBridgeRequests_BatchCap(t *testing.T) {
 
 	// Create 6 mature requests — only 5 should be processed (TripartyBatch).
 	for i := 0; i < 6; i++ {
-		createTripartyRequest(t, ctx, k, 10, int64(100*(i+1)), nil)
+		createTripartyRequest(t, ctx, k, 10, to18Dec(int64(i+1)), nil)
 	}
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
 	// Expect mints for requests 1-5.
 	for i := 0; i < 5; i++ {
-		expectMintBTC(bk, ctx, math.NewInt(int64(100*(i+1))))
+		expectMintBTC(bk, ctx, to18Dec(int64(i+1)))
 	}
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
@@ -1040,23 +1045,23 @@ func TestProcessTripartyBridgeRequests_BatchCap(t *testing.T) {
 	require.Equal(t, math.NewInt(5), k.GetTripartyProcessedSequenceTip(ctx))
 
 	// Provenance counter: 100+200+300+400+500 = 1500.
-	require.Equal(t, math.NewInt(1500), k.GetTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(15), k.GetTripartyTotalBTCMinted(ctx))
 }
 
 func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	// Create 3 requests.
-	createTripartyRequest(t, ctx, k, 10, 100, nil)
-	createTripartyRequest(t, ctx, k, 10, 200, nil)
-	createTripartyRequest(t, ctx, k, 10, 300, nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(2), nil)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(3), nil)
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
 	// Process first batch — all 3.
-	expectMintBTC(bk, ctx, math.NewInt(100))
-	expectMintBTC(bk, ctx, math.NewInt(200))
-	expectMintBTC(bk, ctx, math.NewInt(300))
+	expectMintBTC(bk, ctx, to18Dec(1))
+	expectMintBTC(bk, ctx, to18Dec(2))
+	expectMintBTC(bk, ctx, to18Dec(3))
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
 	)
@@ -1066,8 +1071,8 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 	require.Equal(t, math.NewInt(3), k.GetTripartyProcessedSequenceTip(ctx))
 
 	// Create more requests.
-	createTripartyRequest(t, ctx, k, 15, 400, nil) // seq 4
-	createTripartyRequest(t, ctx, k, 15, 500, nil) // seq 5
+	createTripartyRequest(t, ctx, k, 15, to18Dec(4), nil) // seq 4
+	createTripartyRequest(t, ctx, k, 15, to18Dec(5), nil) // seq 5
 
 	// Second processing run with fresh mocks.
 	bankKeeper2 := newMockBankKeeper()
@@ -1076,8 +1081,8 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 	k.bankKeeper = bankKeeper2
 	k.evmKeeper = evmKeeper2
 
-	expectMintBTC(bankKeeper2, ctx, math.NewInt(400))
-	expectMintBTC(bankKeeper2, ctx, math.NewInt(500))
+	expectMintBTC(bankKeeper2, ctx, to18Dec(4))
+	expectMintBTC(bankKeeper2, ctx, to18Dec(5))
 	evmKeeper2.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
 	)
@@ -1088,6 +1093,6 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 	// Processed tip advanced to 5.
 	require.Equal(t, math.NewInt(5), k.GetTripartyProcessedSequenceTip(ctx))
 
-	// Total provenance: 100+200+300+400+500.
-	require.Equal(t, math.NewInt(1500), k.GetTripartyTotalBTCMinted(ctx))
+	// Total provenance: 1+2+3+4+5 BTC.
+	require.Equal(t, to18Dec(15), k.GetTripartyTotalBTCMinted(ctx))
 }
