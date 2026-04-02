@@ -18,6 +18,11 @@ const TripartyWindowResetBlocks = 25000
 // callbackData in a triparty bridge request (10 × 32-byte ABI words).
 const MaxTripartyCallbackDataLength = 320
 
+// MinTripartyAmount is the minimum amount for a triparty bridge request
+// (0.01 BTC in 18-decimal precision). This hard-coded floor prevents
+// a compromised controller from spamming the chain with many small requests.
+var MinTripartyAmount = math.NewInt(10_000_000_000_000_000)
+
 // IsAllowedTripartyController checks if the given address is an allowed
 // triparty controller.
 func (k Keeper) IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool {
@@ -199,6 +204,10 @@ func (k Keeper) CreateTripartyBridgeRequest(
 
 	if !amount.IsPositive() {
 		return math.Int{}, types.ErrTripartyAmountNotPositive
+	}
+
+	if amount.LT(MinTripartyAmount) {
+		return math.Int{}, types.ErrTripartyAmountBelowMinimum
 	}
 
 	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(controller)) {
