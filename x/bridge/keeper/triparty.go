@@ -471,9 +471,9 @@ func (k Keeper) IncreaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int)
 	store.Set(types.TripartyTotalBTCMintedKey, bz)
 }
 
-// GetTripartyProcessedSequenceTip returns the last processed triparty
+// getTripartyProcessedSequenceTip returns the last processed triparty
 // request sequence number. Returns 0 if not set.
-func (k Keeper) GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
+func (k Keeper) getTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
 	bz := ctx.KVStore(k.storeKey).Get(types.TripartyProcessedSequenceTipKey)
 
 	var tip math.Int
@@ -519,7 +519,7 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 
 	blockDelay := k.GetTripartyBlockDelay(ctx)
 
-	seq := k.GetTripartyProcessedSequenceTip(ctx).AddRaw(1)
+	seq := k.getTripartyProcessedSequenceTip(ctx).AddRaw(1)
 
 	for range TripartyBatch {
 		req, found := k.GetTripartyBridgeRequest(ctx, seq)

@@ -573,15 +573,15 @@ func TestTripartyProcessedSequenceTip(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	// Default is zero.
-	require.True(t, keeper.GetTripartyProcessedSequenceTip(ctx).IsZero())
+	require.True(t, keeper.getTripartyProcessedSequenceTip(ctx).IsZero())
 
 	// Set and get.
 	keeper.setTripartyProcessedSequenceTip(ctx, math.NewInt(5))
-	require.Equal(t, math.NewInt(5), keeper.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(5), keeper.getTripartyProcessedSequenceTip(ctx))
 
 	// Update.
 	keeper.setTripartyProcessedSequenceTip(ctx, math.NewInt(42))
-	require.Equal(t, math.NewInt(42), keeper.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(42), keeper.getTripartyProcessedSequenceTip(ctx))
 }
 
 // setupTripartyProcessing is a helper that creates context, keeper, and
@@ -674,7 +674,7 @@ func TestProcessTripartyBridgeRequests_NoPendingRequests(t *testing.T) {
 	ek.AssertNotCalled(t, "ExecuteContractCall")
 
 	// Processed tip should not have advanced.
-	require.True(t, k.GetTripartyProcessedSequenceTip(ctx).IsZero())
+	require.True(t, k.getTripartyProcessedSequenceTip(ctx).IsZero())
 }
 
 func TestProcessTripartyBridgeRequests_Paused(t *testing.T) {
@@ -727,7 +727,7 @@ func TestProcessTripartyBridgeRequests_AllImmature(t *testing.T) {
 	require.True(t, found)
 
 	// Processed tip should not have advanced.
-	require.True(t, k.GetTripartyProcessedSequenceTip(ctx).IsZero())
+	require.True(t, k.getTripartyProcessedSequenceTip(ctx).IsZero())
 }
 
 func TestProcessTripartyBridgeRequests_MixedMaturity(t *testing.T) {
@@ -762,7 +762,7 @@ func TestProcessTripartyBridgeRequests_MixedMaturity(t *testing.T) {
 	require.True(t, found)
 
 	// Processed tip advanced to 2 (not 3 because we stopped there).
-	require.Equal(t, math.NewInt(2), k.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(2), k.getTripartyProcessedSequenceTip(ctx))
 
 	// Provenance counter updated for both.
 	require.Equal(t, to18Dec(3), k.GetTripartyTotalBTCMinted(ctx))
@@ -822,7 +822,7 @@ func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
 	require.Equal(t, to18Dec(2), k.GetTripartyTotalBTCMinted(ctx))
 
 	// Processed tip advanced to 2.
-	require.Equal(t, math.NewInt(2), k.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(2), k.getTripartyProcessedSequenceTip(ctx))
 }
 
 func TestProcessTripartyBridgeRequests_PrecompileRecipient(t *testing.T) {
@@ -855,7 +855,7 @@ func TestProcessTripartyBridgeRequests_PrecompileRecipient(t *testing.T) {
 	require.False(t, found)
 
 	// Processed tip advanced.
-	require.Equal(t, math.NewInt(1), k.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(1), k.getTripartyProcessedSequenceTip(ctx))
 }
 
 func TestProcessTripartyBridgeRequests_DeauthorizedController(t *testing.T) {
@@ -884,7 +884,7 @@ func TestProcessTripartyBridgeRequests_DeauthorizedController(t *testing.T) {
 	require.False(t, found)
 
 	// Processed tip advanced.
-	require.Equal(t, math.NewInt(1), k.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(1), k.getTripartyProcessedSequenceTip(ctx))
 }
 
 func TestProcessTripartyBridgeRequests_PerRequestLimitExceeded(t *testing.T) {
@@ -935,7 +935,7 @@ func TestProcessTripartyBridgeRequests_SuccessfulMintAndCallback(t *testing.T) {
 	require.Equal(t, to18Dec(5), k.GetBTCMinted(ctx))
 
 	// Processed tip advanced.
-	require.Equal(t, math.NewInt(1), k.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(1), k.getTripartyProcessedSequenceTip(ctx))
 
 	// Callback was issued.
 	ek.AssertCalled(t, "ExecuteContractCall", ctx, mock.Anything)
@@ -1042,7 +1042,7 @@ func TestProcessTripartyBridgeRequests_BatchCap(t *testing.T) {
 	require.True(t, found, "request 6 should still exist")
 
 	// Processed tip advanced to 5.
-	require.Equal(t, math.NewInt(5), k.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(5), k.getTripartyProcessedSequenceTip(ctx))
 
 	// Provenance counter: 100+200+300+400+500 = 1500.
 	require.Equal(t, to18Dec(15), k.GetTripartyTotalBTCMinted(ctx))
@@ -1068,7 +1068,7 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 
 	err := k.ProcessTripartyBridgeRequests(ctx)
 	require.NoError(t, err)
-	require.Equal(t, math.NewInt(3), k.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(3), k.getTripartyProcessedSequenceTip(ctx))
 
 	// Create more requests.
 	createTripartyRequest(t, ctx, k, 15, to18Dec(4), nil) // seq 4
@@ -1091,7 +1091,7 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 	require.NoError(t, err)
 
 	// Processed tip advanced to 5.
-	require.Equal(t, math.NewInt(5), k.GetTripartyProcessedSequenceTip(ctx))
+	require.Equal(t, math.NewInt(5), k.getTripartyProcessedSequenceTip(ctx))
 
 	// Total provenance: 1+2+3+4+5 BTC.
 	require.Equal(t, to18Dec(15), k.GetTripartyTotalBTCMinted(ctx))
