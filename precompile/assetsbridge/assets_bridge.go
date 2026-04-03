@@ -205,6 +205,8 @@ func NewPrecompile(
 		methods = append(methods, newGetTripartyBlockDelayMethod(bridgeKeeper))
 		methods = append(methods, newSetTripartyLimitsMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetTripartyLimitsMethod(bridgeKeeper))
+		methods = append(methods, newGetTripartyCapacityMethod(bridgeKeeper))
+		methods = append(methods, newGetTripartyTotalBTCMintedMethod(bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -287,6 +289,8 @@ type BridgeKeeper interface {
 	SetTripartyWindowLimit(ctx sdk.Context, limit math.Int)
 	GetTripartyWindowLimit(ctx sdk.Context) math.Int
 	CreateTripartyBridgeRequest(ctx sdk.Context, recipient string, amount math.Int, callbackData []byte, controller string) (math.Int, error)
+	GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64)
+	GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int
 }
 
 type AuthzKeeper interface {

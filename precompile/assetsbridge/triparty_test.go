@@ -442,3 +442,82 @@ func (s *PrecompileTestSuite) TestGetTripartyLimits() {
 
 	s.RunMethodTestCases(testcases, "getTripartyLimits")
 }
+
+func (s *PrecompileTestSuite) TestGetTripartyCapacity() {
+	testcases := []TestCase{
+		{
+			name: "default - zero limit means zero capacity",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(0), big.NewInt(25000)},
+		},
+		{
+			name: "full capacity when nothing minted",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyWindowLimit(s.ctx, math.NewInt(1000))
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(1000), big.NewInt(25000)},
+		},
+		{
+			name: "capacity reduced by minted amount",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyWindowLimit(s.ctx, math.NewInt(1000))
+				s.bridgeKeeper.tripartyWindowMinted = math.NewInt(300)
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(700), big.NewInt(25000)},
+		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(1)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "getTripartyCapacity")
+}
+
+func (s *PrecompileTestSuite) TestGetTripartyTotalBTCMinted() {
+	testcases := []TestCase{
+		{
+			name: "default - zero",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(0)},
+		},
+		{
+			name: "returns set value",
+			run: func() []interface{} {
+				s.bridgeKeeper.tripartyTotalBTCMinted = math.NewInt(42000)
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(42000)},
+		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(1)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "getTripartyTotalBTCMinted")
+}

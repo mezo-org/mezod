@@ -392,10 +392,10 @@ func (k Keeper) getTripartyWindowLastReset(ctx sdk.Context) uint64 {
 	return sdk.BigEndianToUint64(store.Get(types.TripartyWindowLastResetKey))
 }
 
-// getTripartyCapacity returns the remaining triparty minting capacity
+// GetTripartyCapacity returns the remaining triparty minting capacity
 // within the current window and the block height at which the window
 // resets.
-func (k Keeper) getTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64) {
+func (k Keeper) GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64) {
 	limit := k.GetTripartyWindowLimit(ctx)
 	minted := k.getTripartyWindowMinted(ctx)
 	lastReset := k.getTripartyWindowLastReset(ctx)
@@ -413,7 +413,7 @@ func (k Keeper) getTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHe
 // checkTripartyCapacity returns an error if the given amount exceeds the
 // remaining triparty minting capacity within the current window.
 func (k Keeper) checkTripartyCapacity(ctx sdk.Context, amount math.Int) error {
-	capacity, _ := k.getTripartyCapacity(ctx)
+	capacity, _ := k.GetTripartyCapacity(ctx)
 
 	if amount.GT(capacity) {
 		return types.ErrTripartyWindowLimitExceeded
@@ -422,10 +422,10 @@ func (k Keeper) checkTripartyCapacity(ctx sdk.Context, amount math.Int) error {
 	return nil
 }
 
-// getTripartyTotalBTCMinted returns the total BTC minted via triparty
+// GetTripartyTotalBTCMinted returns the total BTC minted via triparty
 // bridging. This is an informational provenance counter. Returns zero
 // if not set.
-func (k Keeper) getTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
+func (k Keeper) GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
 	store := ctx.KVStore(k.storeKey)
 
 	bz := store.Get(types.TripartyTotalBTCMintedKey)
@@ -444,7 +444,7 @@ func (k Keeper) getTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
 // increaseTripartyTotalBTCMinted adds the given amount to the total BTC
 // minted via triparty bridging provenance counter.
 func (k Keeper) increaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int) {
-	total := k.getTripartyTotalBTCMinted(ctx).Add(amount)
+	total := k.GetTripartyTotalBTCMinted(ctx).Add(amount)
 
 	store := ctx.KVStore(k.storeKey)
 
