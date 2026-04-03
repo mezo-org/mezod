@@ -29,6 +29,7 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 	}
 
 	k.handleOutflowReset(sdkCtx)
+	k.handleTripartyWindowReset(sdkCtx)
 
 	return nil
 }
@@ -74,6 +75,23 @@ func (k *Keeper) handleOutflowReset(ctx sdk.Context) {
 		k.setLastOutflowReset(ctx, currentHeight)
 		k.Logger(ctx).Info(
 			"bridge outflow limits reset",
+			"height", currentHeight,
+			"lastResetHeight", lastResetHeight,
+		)
+	}
+}
+
+// handleTripartyWindowReset checks if it's time to reset triparty window
+// counters and does so if needed.
+func (k *Keeper) handleTripartyWindowReset(ctx sdk.Context) {
+	//nolint:gosec
+	currentHeight := uint64(ctx.BlockHeight())
+	lastResetHeight := k.GetTripartyWindowLastReset(ctx)
+
+	if currentHeight-lastResetHeight >= TripartyWindowResetBlocks {
+		k.ResetTripartyWindowMinted(ctx)
+		k.Logger(ctx).Info(
+			"triparty window reset",
 			"height", currentHeight,
 			"lastResetHeight", lastResetHeight,
 		)
