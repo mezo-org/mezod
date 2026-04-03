@@ -19,6 +19,8 @@ const (
 	testTripartyController = "0x0202020202020202020202020202020202020202"
 )
 
+var testTripartyRecipientAddr = sdk.AccAddress(evmtypes.HexAddressToBytes(testTripartyRecipient))
+
 func TestTripartyBlockDelayManagement(t *testing.T) {
 	ctx, keeper := mockContext()
 
@@ -607,6 +609,7 @@ func createTripartyRequest(
 func expectMintBTC(
 	bk *mockBankKeeper,
 	ctx sdk.Context,
+	recipient sdk.AccAddress,
 	amount math.Int,
 ) {
 	coins := sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, amount))
@@ -614,7 +617,7 @@ func expectMintBTC(
 	bk.On("MintCoins", ctx, types.ModuleName, coins).Return(nil)
 	bk.On(
 		"SendCoinsFromModuleToAccount",
-		ctx, types.ModuleName, mock.Anything, coins,
+		ctx, types.ModuleName, recipient, coins,
 	).Return(nil)
 }
 
@@ -700,8 +703,8 @@ func TestProcessTripartyBridgeRequests_MixedMaturity(t *testing.T) {
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
 	// Expect mints for requests 1 and 2.
-	expectMintBTC(bk, ctx, to18Dec(1))
-	expectMintBTC(bk, ctx, to18Dec(2))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(1))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(2))
 
 	// Expect callbacks (use mock.Anything for the call).
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
@@ -762,7 +765,7 @@ func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
 	// Only the second request should be minted.
-	expectMintBTC(bankKeeper, ctx, to18Dec(2))
+	expectMintBTC(bankKeeper, ctx, testTripartyRecipientAddr, to18Dec(2))
 	evmKeeper.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
 	)
@@ -874,7 +877,7 @@ func TestProcessTripartyBridgeRequests_SuccessfulMintAndCallback(t *testing.T) {
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
-	expectMintBTC(bk, ctx, to18Dec(5))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(5))
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
 	)
@@ -906,7 +909,7 @@ func TestProcessTripartyBridgeRequests_CallbackFailure(t *testing.T) {
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
-	expectMintBTC(bk, ctx, to18Dec(1))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(1))
 
 	// Callback fails.
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
@@ -954,7 +957,7 @@ func TestProcessTripartyBridgeRequests_EmptyCallbackData(t *testing.T) {
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
-	expectMintBTC(bk, ctx, to18Dec(1))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(1))
 
 	// Callback should still be issued with empty bytes.
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
@@ -980,7 +983,7 @@ func TestProcessTripartyBridgeRequests_BatchCap(t *testing.T) {
 
 	// Expect mints for requests 1-5.
 	for i := 0; i < 5; i++ {
-		expectMintBTC(bk, ctx, to18Dec(int64(i+1)))
+		expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(int64(i+1)))
 	}
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
@@ -1017,9 +1020,9 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
 
 	// Process first batch — all 3.
-	expectMintBTC(bk, ctx, to18Dec(1))
-	expectMintBTC(bk, ctx, to18Dec(2))
-	expectMintBTC(bk, ctx, to18Dec(3))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(1))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(2))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(3))
 	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
 	)
@@ -1039,8 +1042,8 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 	k.bankKeeper = bankKeeper2
 	k.evmKeeper = evmKeeper2
 
-	expectMintBTC(bankKeeper2, ctx, to18Dec(4))
-	expectMintBTC(bankKeeper2, ctx, to18Dec(5))
+	expectMintBTC(bankKeeper2, ctx, testTripartyRecipientAddr, to18Dec(4))
+	expectMintBTC(bankKeeper2, ctx, testTripartyRecipientAddr, to18Dec(5))
 	evmKeeper2.On("ExecuteContractCall", ctx, mock.Anything).Return(
 		&evmtypes.MsgEthereumTxResponse{}, nil,
 	)
