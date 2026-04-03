@@ -386,18 +386,18 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	require.False(t, found)
 }
 
-func TestTripartySequenceTipIncrement(t *testing.T) {
+func TestTripartyRequestSequenceTipIncrement(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	// Default tip is 0.
 	require.True(t, keeper.getTripartySequenceTip(ctx).IsZero())
 
 	// First increment returns 1.
-	require.Equal(t, math.NewInt(1), keeper.incrementTripartySequenceTip(ctx))
+	require.Equal(t, math.NewInt(1), keeper.incrementTripartyRequestSequenceTip(ctx))
 	require.Equal(t, math.NewInt(1), keeper.getTripartySequenceTip(ctx))
 
 	// Second increment returns 2.
-	require.Equal(t, math.NewInt(2), keeper.incrementTripartySequenceTip(ctx))
+	require.Equal(t, math.NewInt(2), keeper.incrementTripartyRequestSequenceTip(ctx))
 	require.Equal(t, math.NewInt(2), keeper.getTripartySequenceTip(ctx))
 }
 
@@ -750,7 +750,7 @@ func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
 	// at creation time). This simulates a request created before the
 	// address was blocked.
 	blockedReq := &types.TripartyBridgeRequest{
-		Sequence:    k.incrementTripartySequenceTip(ctx),
+		Sequence:    k.incrementTripartyRequestSequenceTip(ctx),
 		BlockHeight: 10,
 		Recipient:   blockedHexAddr,
 		Amount:      to18Dec(1),
