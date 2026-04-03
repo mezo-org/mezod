@@ -338,7 +338,7 @@ task(
 
 task(
   'assetsBridge:getTripartyCapacity',
-  'Gets the remaining triparty minting capacity and window reset height',
+  'Gets the remaining triparty request window capacity and window reset height',
   async (_, hre) => {
     const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
     const result = await bridge.getTripartyCapacity()
