@@ -255,14 +255,16 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	callbackData []byte,
 	controller string,
 ) (math.Int, error) {
-	// TODO: Validate window limits
-
 	if k.IsTripartyPaused(ctx) {
 		return math.Int{}, types.ErrTripartyPaused
 	}
 
 	if err := k.validateTripartyBridgeRequest(ctx, recipient, amount, callbackData, controller); err != nil {
 		return math.Int{}, err
+	}
+
+	if err := k.CheckTripartyCapacity(ctx, amount); err != nil {
+		return math.Int{}, fmt.Errorf("triparty capacity check error: [%w]", err)
 	}
 
 	seq := k.incrementTripartySequenceTip(ctx)
@@ -282,6 +284,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	}
 
 	ctx.KVStore(k.storeKey).Set(types.GetTripartyBridgeRequestKey(seq), bz)
+	k.IncreaseTripartyWindowMinted(ctx, amount)
 
 	return seq, nil
 }
