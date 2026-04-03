@@ -33,4 +33,5 @@ type EthereumSidecarClient interface {
 type BridgeKeeper interface {
 	GetAssetsLockedSequenceTip(ctx sdk.Context) math.Int
 	AcceptAssetsLocked(ctx sdk.Context, events types.AssetsLockedEvents) error
+	ProcessTripartyBridgeRequests(ctx sdk.Context) error
 }

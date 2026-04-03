@@ -58,30 +58,64 @@ func (s *PreBlockHandlerTestSuite) TestPreBlocker() {
 		errContains    string
 	}{
 		{
-			name:           "no txs in the request",
-			bridgeKeeperFn: newMockBridgeKeeper,
-			reqTxs:         txsVector(),
-			expectedRes:    nil,
-			errContains:    "empty transaction vector in the block",
+			name: "triparty processing error",
+			bridgeKeeperFn: func() *mockBridgeKeeper {
+				bridgeKeeper := newMockBridgeKeeper()
+				bridgeKeeper.On(
+					"ProcessTripartyBridgeRequests", s.ctx,
+				).Return(fmt.Errorf("triparty error"))
+				return bridgeKeeper
+			},
+			reqTxs:      txsVector(""),
+			expectedRes: nil,
+			errContains: "cannot process triparty bridge requests",
 		},
 		{
-			name:           "empty injected tx",
-			bridgeKeeperFn: newMockBridgeKeeper,
-			reqTxs:         txsVector(""),
-			expectedRes:    &sdk.ResponsePreBlock{},
-			errContains:    "",
+			name: "no txs in the request",
+			bridgeKeeperFn: func() *mockBridgeKeeper {
+				bridgeKeeper := newMockBridgeKeeper()
+				bridgeKeeper.On(
+					"ProcessTripartyBridgeRequests", s.ctx,
+				).Return(nil)
+				return bridgeKeeper
+			},
+			reqTxs:      txsVector(),
+			expectedRes: nil,
+			errContains: "empty transaction vector in the block",
 		},
 		{
-			name:           "non-unmarshalable injected tx",
-			bridgeKeeperFn: newMockBridgeKeeper,
-			reqTxs:         txsVector("corrupted"),
-			expectedRes:    nil,
-			errContains:    "failed to unmarshal injected tx",
+			name: "empty injected tx",
+			bridgeKeeperFn: func() *mockBridgeKeeper {
+				bridgeKeeper := newMockBridgeKeeper()
+				bridgeKeeper.On(
+					"ProcessTripartyBridgeRequests", s.ctx,
+				).Return(nil)
+				return bridgeKeeper
+			},
+			reqTxs:      txsVector(""),
+			expectedRes: &sdk.ResponsePreBlock{},
+			errContains: "",
+		},
+		{
+			name: "non-unmarshalable injected tx",
+			bridgeKeeperFn: func() *mockBridgeKeeper {
+				bridgeKeeper := newMockBridgeKeeper()
+				bridgeKeeper.On(
+					"ProcessTripartyBridgeRequests", s.ctx,
+				).Return(nil)
+				return bridgeKeeper
+			},
+			reqTxs:      txsVector("corrupted"),
+			expectedRes: nil,
+			errContains: "failed to unmarshal injected tx",
 		},
 		{
 			name: "keeper not accepting events",
 			bridgeKeeperFn: func() *mockBridgeKeeper {
 				bridgeKeeper := newMockBridgeKeeper()
+				bridgeKeeper.On(
+					"ProcessTripartyBridgeRequests", s.ctx,
+				).Return(nil)
 
 				bridgeKeeper.On(
 					"AcceptAssetsLocked",
@@ -112,6 +146,9 @@ func (s *PreBlockHandlerTestSuite) TestPreBlocker() {
 			name: "keeper accepting events",
 			bridgeKeeperFn: func() *mockBridgeKeeper {
 				bridgeKeeper := newMockBridgeKeeper()
+				bridgeKeeper.On(
+					"ProcessTripartyBridgeRequests", s.ctx,
+				).Return(nil)
 
 				bridgeKeeper.On(
 					"AcceptAssetsLocked",

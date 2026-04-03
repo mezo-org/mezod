@@ -19,4 +19,6 @@ var (
 	ErrTripartyCallbackDataTooLarge    = sdkerrors.Register(ModuleName, 12, "triparty callback data exceeds maximum length")
 	ErrTripartyAmountNotPositive       = sdkerrors.Register(ModuleName, 13, "triparty amount must be positive")
 	ErrTripartyAmountBelowMinimum      = sdkerrors.Register(ModuleName, 14, "triparty amount below minimum")
+	ErrTripartyRecipientBlocked        = sdkerrors.Register(ModuleName, 15, "triparty recipient is a blocked address")
+	ErrTripartyRecipientIsPrecompile   = sdkerrors.Register(ModuleName, 16, "triparty recipient is a custom precompile")
 )

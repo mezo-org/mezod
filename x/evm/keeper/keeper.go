@@ -426,6 +426,12 @@ func (k Keeper) IsCustomPrecompile(address common.Address) bool {
 	return found
 }
 
+// IsCustomPrecompileAddress checks if the given hex-encoded address is a
+// registered custom precompile.
+func (k Keeper) IsCustomPrecompileAddress(address string) bool {
+	return k.IsCustomPrecompile(common.HexToAddress(address))
+}
+
 // CustomPrecompileGenesisAccounts returns the genesis accounts for the custom precompiles.
 func (k Keeper) CustomPrecompileGenesisAccounts() []types.GenesisAccount {
 	accounts := []types.GenesisAccount{}

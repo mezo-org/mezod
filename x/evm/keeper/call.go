@@ -31,15 +31,19 @@ func (k *Keeper) ExecuteContractCall(
 		return nil, nil, errorsmod.Wrap(err, "failed to get consensus params")
 	}
 
-	// Set the gas cap to the block's max gas limit.
-	gasCap := uint64(consensusParamsResponse.GetParams().GetBlock().MaxGas) //nolint:gosec
+	// Use the call's gas limit if set, otherwise fall back to the
+	// block's max gas limit.
+	gasLimit := call.GasLimit()
+	if gasLimit == 0 {
+		gasLimit = uint64(consensusParamsResponse.GetParams().GetBlock().MaxGas) //nolint:gosec
+	}
 
 	msg := core.Message{
 		To:                call.To(),
 		From:              call.From(),
 		Nonce:             nonce,
 		Value:             big.NewInt(0),
-		GasLimit:          gasCap,
+		GasLimit:          gasLimit,
 		GasPrice:          big.NewInt(0),
 		GasFeeCap:         big.NewInt(0),
 		GasTipCap:         big.NewInt(0),

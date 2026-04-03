@@ -25,6 +25,9 @@ type ContractCall interface {
 	To() *common.Address
 	// Data returns the data of the call.
 	Data() []byte
+	// GasLimit returns the gas limit for the call. If 0, the caller
+	// should use the block's max gas limit as the default.
+	GasLimit() uint64
 }
 
 // ERC20MintCall represents a mint(address,uint256) call for an ERC20 contract.
@@ -85,6 +88,10 @@ func (c *ERC20MintCall) Data() []byte {
 	return c.data
 }
 
+func (c *ERC20MintCall) GasLimit() uint64 {
+	return 0
+}
+
 // ERC20BurnFromCall represents a burnFrom(address,uin256) call for an ERC20 contract.
 type ERC20BurnFromCall struct {
 	from, to common.Address
@@ -141,4 +148,99 @@ func (c *ERC20BurnFromCall) To() *common.Address {
 
 func (c *ERC20BurnFromCall) Data() []byte {
 	return c.data
+}
+
+func (c *ERC20BurnFromCall) GasLimit() uint64 {
+	return 0
+}
+
+// TripartyCallbackGasLimit is the gas limit for the triparty callback call.
+const TripartyCallbackGasLimit = uint64(1_000_000)
+
+// TripartyCallbackCall represents an onTripartyBridgeCompleted(uint256,address,uint256,bytes)
+// call issued by the PreBlocker to the controller after a triparty mint.
+type TripartyCallbackCall struct {
+	from, to common.Address
+	data     []byte
+}
+
+// NewTripartyCallbackCall creates a new TripartyCallbackCall.
+func NewTripartyCallbackCall(
+	from, to []byte,
+	requestID *big.Int,
+	recipient []byte,
+	amount *big.Int,
+	callbackData []byte,
+) (*TripartyCallbackCall, error) {
+	addressType, err := abi.NewType("address", "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create address type: %w", err)
+	}
+
+	uint256Type, err := abi.NewType("uint256", "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create uint256 type: %w", err)
+	}
+
+	bytesType, err := abi.NewType("bytes", "", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create bytes type: %w", err)
+	}
+
+	// 0x2c144c16 is the function selector for
+	// onTripartyBridgeCompleted(uint256,address,uint256,bytes)
+	methodAbi := abi.Method{
+		Name: "onTripartyBridgeCompleted",
+		ID:   []byte{0x2c, 0x14, 0x4c, 0x16},
+		Type: abi.Function,
+		Inputs: []abi.Argument{
+			{Name: "requestId", Type: uint256Type},
+			{Name: "recipient", Type: addressType},
+			{Name: "amount", Type: uint256Type},
+			{Name: "callbackData", Type: bytesType},
+		},
+		Outputs: []abi.Argument{},
+	}
+	contractAbi := abi.ABI{
+		Methods: map[string]abi.Method{
+			"onTripartyBridgeCompleted": methodAbi,
+		},
+	}
+
+	if callbackData == nil {
+		callbackData = []byte{}
+	}
+
+	data, err := contractAbi.Pack(
+		"onTripartyBridgeCompleted",
+		requestID,
+		common.BytesToAddress(recipient),
+		amount,
+		callbackData,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to pack triparty callback data: %w", err)
+	}
+
+	return &TripartyCallbackCall{
+		from: common.BytesToAddress(from),
+		to:   common.BytesToAddress(to),
+		data: data,
+	}, nil
+}
+
+func (c *TripartyCallbackCall) From() common.Address {
+	return c.from
+}
+
+func (c *TripartyCallbackCall) To() *common.Address {
+	return &c.to
+}
+
+func (c *TripartyCallbackCall) Data() []byte {
+	return c.data
+}
+
+func (c *TripartyCallbackCall) GasLimit() uint64 {
+	return TripartyCallbackGasLimit
 }

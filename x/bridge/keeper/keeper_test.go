@@ -31,8 +31,12 @@ func mockContext() (sdk.Context, Keeper) {
 	registry := codectypes.NewInterfaceRegistry()
 	cdc := codec.NewProtoCodec(registry)
 
+	evmKeeper := newMockEvmKeeper()
+	// By default, all addresses are not custom precompiles.
+	evmKeeper.On("IsCustomPrecompileAddress", mock.Anything).Return(false)
+
 	// Create the keeper
-	keeper := NewKeeper(cdc, keys[types.StoreKey], newMockBankKeeper(), newMockEvmKeeper(), map[string]bool{testBlockedAddress: true})
+	keeper := NewKeeper(cdc, keys[types.StoreKey], newMockBankKeeper(), evmKeeper, map[string]bool{testBlockedAddress: true})
 
 	// Create multiStore in memory
 	db := dbm.NewMemDB()
@@ -143,5 +147,10 @@ func (mek *mockEvmKeeper) ExecuteContractCall(
 
 func (mek *mockEvmKeeper) IsContract(ctx sdk.Context, address []byte) bool {
 	args := mek.Called(ctx, address)
+	return args.Bool(0)
+}
+
+func (mek *mockEvmKeeper) IsCustomPrecompileAddress(address string) bool {
+	args := mek.Called(address)
 	return args.Bool(0)
 }

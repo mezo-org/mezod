@@ -6,6 +6,7 @@ import (
 	sdkerrors "cosmossdk.io/errors"
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -17,6 +18,12 @@ const TripartyWindowResetBlocks = 25000
 // MaxTripartyCallbackDataLength is the maximum allowed length of
 // callbackData in a triparty bridge request (10 × 32-byte ABI words).
 const MaxTripartyCallbackDataLength = 320
+
+// TripartyBatch is the maximum number of triparty bridge requests
+// processed per block. While triparty mints are expected to be rare,
+// capping the batch size provides defense in depth to ensure stable
+// block times.
+const TripartyBatch = 5
 
 // MinTripartyAmount is the minimum amount for a triparty bridge request
 // (0.01 BTC in 18-decimal precision). This hard-coded floor prevents
@@ -169,10 +176,78 @@ func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
 	return tip
 }
 
+// validateTripartyBridgeRequest validates a triparty bridge request. It
+// checks all inputs and state-dependent conditions:
+//   - the recipient is a valid, non-zero hex address,
+//   - the recipient is not a blocked address (e.g. module account),
+//   - the recipient is not a custom precompile address,
+//   - the controller is a valid hex address,
+//   - the controller is an allowed triparty controller,
+//   - the callback data does not exceed the maximum length,
+//   - the amount is positive,
+//   - the amount is at least the minimum triparty amount,
+//   - the amount does not exceed the per-request limit.
+//
+// This function is called both at request creation time and at processing
+// time in the PreBlocker. The PreBlocker repeats these checks because
+// conditions may change between request creation and processing (e.g. a
+// recipient may become blocked or a controller may be deauthorized).
+func (k Keeper) validateTripartyBridgeRequest(
+	ctx sdk.Context,
+	recipient string,
+	amount math.Int,
+	callbackData []byte,
+	controller string,
+) error {
+	if !evmtypes.IsHexAddress(recipient) {
+		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid recipient")
+	}
+	if evmtypes.IsZeroHexAddress(recipient) {
+		return sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero recipient")
+	}
+
+	recipientBytes := evmtypes.HexAddressToBytes(recipient)
+	recipientAddr := sdk.AccAddress(recipientBytes)
+	if _, blocked := k.blockedAddrs[recipientAddr.String()]; blocked {
+		return types.ErrTripartyRecipientBlocked
+	}
+
+	if k.evmKeeper.IsCustomPrecompileAddress(recipient) {
+		return types.ErrTripartyRecipientIsPrecompile
+	}
+
+	if !evmtypes.IsHexAddress(controller) {
+		return sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid controller")
+	}
+
+	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(controller)) {
+		return types.ErrTripartyControllerNotAllowed
+	}
+
+	if len(callbackData) > MaxTripartyCallbackDataLength {
+		return types.ErrTripartyCallbackDataTooLarge
+	}
+
+	if !amount.IsPositive() {
+		return types.ErrTripartyAmountNotPositive
+	}
+
+	if amount.LT(MinTripartyAmount) {
+		return types.ErrTripartyAmountBelowMinimum
+	}
+
+	perRequestLimit := k.GetTripartyPerRequestLimit(ctx)
+	if perRequestLimit.IsPositive() && amount.GT(perRequestLimit) {
+		return types.ErrTripartyPerRequestLimitExceeded
+	}
+
+	return nil
+}
+
 // CreateTripartyBridgeRequest creates a new pending triparty bridge request,
 // assigns it the next sequence number, records the current block height,
 // stores it in state, and returns the assigned requestId. It returns an
-// error if the amount exceeds the per-request limit.
+// error if validation fails.
 func (k Keeper) CreateTripartyBridgeRequest(
 	ctx sdk.Context,
 	recipient string,
@@ -180,43 +255,14 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	callbackData []byte,
 	controller string,
 ) (math.Int, error) {
-	// TODO: Validate if recipient is not blocked
 	// TODO: Validate window limits
 
 	if k.IsTripartyPaused(ctx) {
 		return math.Int{}, types.ErrTripartyPaused
 	}
 
-	if !evmtypes.IsHexAddress(recipient) {
-		return math.Int{}, sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid recipient")
-	}
-	if evmtypes.IsZeroHexAddress(recipient) {
-		return math.Int{}, sdkerrors.Wrap(types.ErrZeroEVMAddress, "zero recipient")
-	}
-
-	if !evmtypes.IsHexAddress(controller) {
-		return math.Int{}, sdkerrors.Wrap(types.ErrInvalidEVMAddress, "invalid controller")
-	}
-
-	if len(callbackData) > MaxTripartyCallbackDataLength {
-		return math.Int{}, types.ErrTripartyCallbackDataTooLarge
-	}
-
-	if !amount.IsPositive() {
-		return math.Int{}, types.ErrTripartyAmountNotPositive
-	}
-
-	if amount.LT(MinTripartyAmount) {
-		return math.Int{}, types.ErrTripartyAmountBelowMinimum
-	}
-
-	if !k.IsAllowedTripartyController(ctx, evmtypes.HexAddressToBytes(controller)) {
-		return math.Int{}, types.ErrTripartyControllerNotAllowed
-	}
-
-	perRequestLimit := k.GetTripartyPerRequestLimit(ctx)
-	if perRequestLimit.IsPositive() && amount.GT(perRequestLimit) {
-		return math.Int{}, types.ErrTripartyPerRequestLimitExceeded
+	if err := k.validateTripartyBridgeRequest(ctx, recipient, amount, callbackData, controller); err != nil {
+		return math.Int{}, err
 	}
 
 	seq := k.incrementTripartySequenceTip(ctx)
@@ -235,8 +281,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 		panic(err)
 	}
 
-	store := ctx.KVStore(k.storeKey)
-	store.Set(types.GetTripartyBridgeRequestKey(seq), bz)
+	ctx.KVStore(k.storeKey).Set(types.GetTripartyBridgeRequestKey(seq), bz)
 
 	return seq, nil
 }
@@ -278,36 +323,6 @@ func (k Keeper) DeleteTripartyBridgeRequest(ctx sdk.Context, sequence math.Int) 
 	store.Delete(types.GetTripartyBridgeRequestKey(sequence))
 
 	return nil
-}
-
-// GetPendingTripartyBridgeRequests returns up to `limit` pending triparty
-// bridge requests starting from the given sequence number, in strictly
-// increasing sequence order.
-func (k Keeper) GetPendingTripartyBridgeRequests(
-	ctx sdk.Context,
-	startSequence math.Int,
-	limit int,
-) []*types.TripartyBridgeRequest {
-	store := ctx.KVStore(k.storeKey)
-	var requests []*types.TripartyBridgeRequest
-
-	seq := startSequence
-	for i := 0; i < limit; i++ {
-		bz := store.Get(types.GetTripartyBridgeRequestKey(seq))
-		if len(bz) == 0 {
-			break
-		}
-
-		req := &types.TripartyBridgeRequest{}
-		if err := req.Unmarshal(bz); err != nil {
-			panic(err)
-		}
-
-		requests = append(requests, req)
-		seq = seq.AddRaw(1)
-	}
-
-	return requests
 }
 
 // GetTripartyWindowMinted returns the current triparty window minted
@@ -425,4 +440,179 @@ func (k Keeper) IncreaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int)
 	}
 
 	store.Set(types.TripartyTotalBTCMintedKey, bz)
+}
+
+// getTripartyProcessedSequenceTip returns the last processed triparty
+// request sequence number. Returns 0 if not set.
+func (k Keeper) getTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
+	bz := ctx.KVStore(k.storeKey).Get(types.TripartyProcessedSequenceTipKey)
+
+	var tip math.Int
+	if err := tip.Unmarshal(bz); err != nil {
+		panic(err)
+	}
+
+	if tip.IsNil() {
+		tip = math.ZeroInt()
+	}
+
+	return tip
+}
+
+// setTripartyProcessedSequenceTip sets the last processed triparty
+// request sequence number.
+func (k Keeper) setTripartyProcessedSequenceTip(ctx sdk.Context, tip math.Int) {
+	bz, err := tip.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	ctx.KVStore(k.storeKey).Set(types.TripartyProcessedSequenceTipKey, bz)
+}
+
+// ProcessTripartyBridgeRequests reads pending triparty bridge requests
+// from state and processes up to TripartyBatch mature requests by
+// minting BTC and issuing callbacks to controllers.
+//
+// Requests are processed in strictly increasing sequence order. Processing
+// stops at the first immature request to preserve ordering guarantees.
+// Invalid requests (blocked recipient, deauthorized controller, limit
+// exceeded) are skipped and deleted.
+//
+// A callback failure is logged but does not prevent the mint from
+// completing or block subsequent requests. A mintBTC failure is fatal
+// and returns an error that will cause a consensus failure.
+func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
+	if k.IsTripartyPaused(ctx) {
+		k.Logger(ctx).Info("triparty bridging is paused; skipping processing")
+		return nil
+	}
+
+	blockDelay := k.GetTripartyBlockDelay(ctx)
+
+	seq := k.getTripartyProcessedSequenceTip(ctx).AddRaw(1)
+
+	for range TripartyBatch {
+		req, found := k.GetTripartyBridgeRequest(ctx, seq)
+		if !found {
+			break
+		}
+
+		// Stop at the first immature request. No request can be processed
+		// ahead of an earlier one that is not yet mature.
+		if ctx.BlockHeight() < req.BlockHeight+int64(blockDelay) { //nolint:gosec
+			k.Logger(ctx).Info(
+				"triparty request not yet mature; stopping batch",
+				"sequence", req.Sequence,
+				"requestHeight", req.BlockHeight,
+				"currentHeight", ctx.BlockHeight(),
+				"blockDelay", blockDelay,
+			)
+
+			break
+		}
+
+		// Defense in depth: re-validate the request. Conditions may have
+		// changed between request creation and processing (e.g. a
+		// recipient may have become blocked, a controller deauthorized,
+		// or the per-request limit lowered).
+		if err := k.validateTripartyBridgeRequest(ctx, req.Recipient, req.Amount, req.CallbackData, req.Controller); err != nil {
+			k.Logger(ctx).Warn(
+				"triparty request failed validation; "+
+					"request skipped",
+				"sequence", req.Sequence,
+				"error", err,
+			)
+		} else {
+			// Mint BTC. A failure here is a system error (x/bank failure)
+			// and causes a consensus failure, same as the AssetsLocked
+			// path.
+			recipientBytes := evmtypes.HexAddressToBytes(req.Recipient)
+			recipientAddr := sdk.AccAddress(recipientBytes)
+			if err := k.mintBTC(ctx, recipientAddr, req.Amount); err != nil {
+				return fmt.Errorf(
+					"failed to mint BTC for triparty request %s: %w",
+					req.Sequence, err,
+				)
+			}
+
+			// Update the provenance counter.
+			k.IncreaseTripartyTotalBTCMinted(ctx, req.Amount)
+
+			// Issue the EVM callback to the controller. A callback
+			// failure is logged but must not prevent the mint from
+			// completing or block subsequent requests.
+			controllerBytes := evmtypes.HexAddressToBytes(req.Controller)
+			k.issueTripartyCallback(ctx, req, controllerBytes)
+
+			k.Logger(ctx).Info(
+				"triparty bridge request processed",
+				"sequence", req.Sequence,
+				"recipient", req.Recipient,
+				"amount", req.Amount,
+				"controller", req.Controller,
+			)
+		}
+
+		// Delete the request from state regardless of whether it was
+		// processed or skipped. A failure here is fatal because leaving
+		// a processed request would cause double-minting on the next
+		// block.
+		if err := k.DeleteTripartyBridgeRequest(ctx, req.Sequence); err != nil {
+			return fmt.Errorf(
+				"failed to delete triparty request %s: %w",
+				req.Sequence, err,
+			)
+		}
+
+		k.setTripartyProcessedSequenceTip(ctx, seq)
+		seq = seq.AddRaw(1)
+	}
+
+	return nil
+}
+
+// issueTripartyCallback issues an EVM callback to the controller that
+// submitted a triparty bridge request. Failures are logged but do not
+// cause errors — the BTC has already been minted and cannot be rolled
+// back without risking a supply invariant violation.
+func (k Keeper) issueTripartyCallback(
+	ctx sdk.Context,
+	req *types.TripartyBridgeRequest,
+	controllerBytes []byte,
+) {
+	callbackData := req.CallbackData
+	if callbackData == nil {
+		callbackData = []byte{}
+	}
+
+	recipientBytes := evmtypes.HexAddressToBytes(req.Recipient)
+
+	call, err := evmtypes.NewTripartyCallbackCall(
+		authtypes.NewModuleAddress(types.ModuleName).Bytes(),
+		controllerBytes,
+		req.Sequence.BigInt(),
+		recipientBytes,
+		req.Amount.BigInt(),
+		callbackData,
+	)
+	if err != nil {
+		k.Logger(ctx).Warn(
+			"failed to create triparty callback call; callback skipped",
+			"sequence", req.Sequence,
+			"error", err,
+		)
+
+		return
+	}
+
+	_, _, err = k.evmKeeper.ExecuteContractCall(ctx, call)
+	if err != nil {
+		k.Logger(ctx).Warn(
+			"triparty callback failed; mint completed but callback skipped",
+			"sequence", req.Sequence,
+			"controller", req.Controller,
+			"error", err,
+		)
+	}
 }

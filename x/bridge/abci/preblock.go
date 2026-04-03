@@ -30,6 +30,7 @@ func NewPreBlockHandler(
 
 // PreBlocker returns the pre-block handler (part of the FinalizeBlock ABCI request).
 // This function:
+//   - Processes pending triparty bridge requests that have matured.
 //   - Extracts the sequence of canonical AssetsLocked events from the injected
 //     pseudo-transaction. Minimum validation is performed to avoid unexpected
 //     panics but no error is expected here as this handler is invoked after
@@ -59,6 +60,15 @@ func (pbh *PreBlockHandler) PreBlocker() sdk.PreBlocker {
 			"bridge is executing pre-block",
 			"height", req.Height,
 		)
+
+		// Process triparty bridge requests. Triparty requests live in
+		// module state and are processed regardless of the injected
+		// pseudo-transaction content.
+		if err := pbh.bridgeKeeper.ProcessTripartyBridgeRequests(ctx); err != nil {
+			return nil, fmt.Errorf(
+				"cannot process triparty bridge requests: %w", err,
+			)
+		}
 
 		if len(req.Txs) == 0 {
 			// The app-level handler always passes a transaction vector
