@@ -123,7 +123,7 @@ func (k Keeper) SetTripartyPerRequestLimit(ctx sdk.Context, limit math.Int) {
 	store.Set(types.TripartyPerRequestLimitKey, bz)
 }
 
-// GetTripartyWindowLimit returns the triparty window limit.
+// GetTripartyWindowLimit returns the triparty request window limit.
 // Returns zero if not set.
 func (k Keeper) GetTripartyWindowLimit(ctx sdk.Context) math.Int {
 	store := ctx.KVStore(k.storeKey)
@@ -141,7 +141,7 @@ func (k Keeper) GetTripartyWindowLimit(ctx sdk.Context) math.Int {
 	return limit
 }
 
-// SetTripartyWindowLimit sets the triparty window limit.
+// SetTripartyWindowLimit sets the triparty request window limit.
 func (k Keeper) SetTripartyWindowLimit(ctx sdk.Context, limit math.Int) {
 	store := ctx.KVStore(k.storeKey)
 
