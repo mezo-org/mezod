@@ -280,7 +280,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	}
 
 	if err := k.checkTripartyCapacity(ctx, amount); err != nil {
-		return math.Int{}, fmt.Errorf("triparty capacity check error: [%w]", err)
+		return math.Int{}, err
 	}
 
 	seq := k.incrementTripartyRequestSequenceTip(ctx)
