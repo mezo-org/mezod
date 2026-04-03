@@ -342,8 +342,8 @@ func (m *SetTripartyBlockDelayMethod) Run(
 		return nil, nil, fmt.Errorf("delay must be at least 1")
 	}
 
-	if !delay.IsUint64() {
-		return nil, nil, fmt.Errorf("delay exceeds maximum uint64 value")
+	if !delay.IsInt64() {
+		return nil, nil, fmt.Errorf("delay exceeds maximum value")
 	}
 
 	if err := m.poaKeeper.CheckOwner(
@@ -353,10 +353,12 @@ func (m *SetTripartyBlockDelayMethod) Run(
 		return nil, nil, err
 	}
 
-	m.bridgeKeeper.SetTripartyBlockDelay(
+	if err := m.bridgeKeeper.SetTripartyBlockDelay(
 		context.SdkCtx(),
-		delay.Uint64(),
-	)
+		delay.Int64(),
+	); err != nil {
+		return nil, nil, err
+	}
 
 	err := context.EventEmitter().Emit(
 		NewTripartyBlockDelaySetEvent(delay),
@@ -406,7 +408,7 @@ func (m *GetTripartyBlockDelayMethod) Run(
 
 	delay := m.bridgeKeeper.GetTripartyBlockDelay(context.SdkCtx())
 
-	return precompile.MethodOutputs{new(big.Int).SetUint64(delay)}, nil, nil
+	return precompile.MethodOutputs{new(big.Int).SetInt64(delay)}, nil, nil
 }
 
 // --- Events ---

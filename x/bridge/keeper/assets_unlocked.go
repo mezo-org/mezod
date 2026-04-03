@@ -38,15 +38,13 @@ func (k Keeper) GetAllAssetsUnlockedEvents(ctx sdk.Context) []*types.AssetsUnloc
 // processed by the x/bridge module.
 func (k Keeper) GetAssetsUnlockedSequenceTip(ctx sdk.Context) math.Int {
 	bz := ctx.KVStore(k.storeKey).Get(types.AssetsUnlockedSequenceTipKey)
-
-	var sequenceTip math.Int
-	err := sequenceTip.Unmarshal(bz)
-	if err != nil {
-		panic(err)
+	if len(bz) == 0 {
+		return math.ZeroInt()
 	}
 
-	if sequenceTip.IsNil() {
-		sequenceTip = math.ZeroInt()
+	sequenceTip := math.ZeroInt()
+	if err := sequenceTip.Unmarshal(bz); err != nil {
+		panic(err)
 	}
 
 	return sequenceTip

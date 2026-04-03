@@ -286,7 +286,7 @@ func (s *PrecompileTestSuite) TestSetTripartyBlockDelay() {
 			output:    []interface{}{true},
 			postCheck: func() {
 				s.Require().Equal(
-					uint64(5),
+					int64(5),
 					s.bridgeKeeper.GetTripartyBlockDelay(s.ctx),
 				)
 			},
@@ -310,6 +310,7 @@ func (s *PrecompileTestSuite) TestGetTripartyBlockDelay() {
 		{
 			name: "returns set value",
 			run: func() []interface{} {
+				//nolint:errcheck
 				s.bridgeKeeper.SetTripartyBlockDelay(s.ctx, 5)
 				return []interface{}{}
 			},
@@ -375,12 +376,6 @@ func (s *PrecompileTestSuite) TestSetTripartyLimits() {
 			basicPass: true,
 			output:    []interface{}{true},
 			postCheck: func() {
-				s.Require().True(
-					s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx).
-						Equal(
-							s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx),
-						),
-				)
 				s.Require().Equal(
 					int64(100),
 					s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx).Int64(),
