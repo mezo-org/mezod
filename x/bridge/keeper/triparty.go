@@ -156,7 +156,7 @@ func (k Keeper) SetTripartyWindowLimit(ctx sdk.Context, limit math.Int) {
 // getTripartySequenceTip returns the last assigned triparty request
 // sequence number. Returns 0 if not set.
 func (k Keeper) getTripartySequenceTip(ctx sdk.Context) math.Int {
-	bz := ctx.KVStore(k.storeKey).Get(types.TripartySequenceTipKey)
+	bz := ctx.KVStore(k.storeKey).Get(types.TripartyRequestSequenceTipKey)
 	if len(bz) == 0 {
 		return math.ZeroInt()
 	}
@@ -169,9 +169,11 @@ func (k Keeper) getTripartySequenceTip(ctx sdk.Context) math.Int {
 	return tip
 }
 
-// incrementTripartySequenceTip advances the triparty sequence tip by one
-// and returns the new value.
-func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
+// incrementTripartyRequestSequenceTip advances the triparty request
+// sequence tip by one and returns the new value. The returned value is
+// used as the unique identifier (sequence number) for a new incoming
+// triparty bridge request.
+func (k Keeper) incrementTripartyRequestSequenceTip(ctx sdk.Context) math.Int {
 	tip := k.getTripartySequenceTip(ctx).AddRaw(1)
 
 	bz, err := tip.Marshal()
@@ -179,7 +181,7 @@ func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
 		panic(err)
 	}
 
-	ctx.KVStore(k.storeKey).Set(types.TripartySequenceTipKey, bz)
+	ctx.KVStore(k.storeKey).Set(types.TripartyRequestSequenceTipKey, bz)
 
 	return tip
 }
@@ -281,7 +283,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 		return math.Int{}, fmt.Errorf("triparty capacity check error: [%w]", err)
 	}
 
-	seq := k.incrementTripartySequenceTip(ctx)
+	seq := k.incrementTripartyRequestSequenceTip(ctx)
 
 	req := &types.TripartyBridgeRequest{
 		Sequence:     seq,
@@ -395,10 +397,10 @@ func (k Keeper) getTripartyWindowLastReset(ctx sdk.Context) uint64 {
 	return sdk.BigEndianToUint64(store.Get(types.TripartyWindowLastResetKey))
 }
 
-// getTripartyCapacity returns the remaining triparty request window capacity
+// GetTripartyCapacity returns the remaining triparty request window capacity
 // within the current window and the block height at which the window
 // resets.
-func (k Keeper) getTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64) {
+func (k Keeper) GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64) {
 	limit := k.GetTripartyWindowLimit(ctx)
 	lastReset := k.getTripartyWindowLastReset(ctx)
 	consumed := k.getTripartyWindowConsumed(ctx)
@@ -416,7 +418,7 @@ func (k Keeper) getTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHe
 // checkTripartyCapacity returns an error if the given amount exceeds the
 // remaining triparty request window capacity within the current window.
 func (k Keeper) checkTripartyCapacity(ctx sdk.Context, amount math.Int) error {
-	capacity, _ := k.getTripartyCapacity(ctx)
+	capacity, _ := k.GetTripartyCapacity(ctx)
 
 	if amount.GT(capacity) {
 		return types.ErrTripartyWindowLimitExceeded
@@ -425,10 +427,10 @@ func (k Keeper) checkTripartyCapacity(ctx sdk.Context, amount math.Int) error {
 	return nil
 }
 
-// getTripartyTotalBTCMinted returns the total BTC minted via triparty
+// GetTripartyTotalBTCMinted returns the total BTC minted via triparty
 // bridging. This is an informational provenance counter. Returns zero
 // if not set.
-func (k Keeper) getTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
+func (k Keeper) GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
 	store := ctx.KVStore(k.storeKey)
 
 	bz := store.Get(types.TripartyTotalBTCMintedKey)
@@ -447,7 +449,7 @@ func (k Keeper) getTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
 // increaseTripartyTotalBTCMinted adds the given amount to the total BTC
 // minted via triparty bridging provenance counter.
 func (k Keeper) increaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int) {
-	total := k.getTripartyTotalBTCMinted(ctx).Add(amount)
+	total := k.GetTripartyTotalBTCMinted(ctx).Add(amount)
 
 	store := ctx.KVStore(k.storeKey)
 

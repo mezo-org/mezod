@@ -377,4 +377,19 @@ interface IAssetsBridge {
      * @return windowLimit The maximum amount that can be minted in a single window.
      */
     function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
+
+    /**
+     * @notice Returns the remaining triparty minting capacity within the
+     *         current window and the block height at which it resets.
+     * @return capacity The remaining minting capacity in the current window.
+     * @return resetHeight The block height when the window resets.
+     */
+    function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);
+
+    /**
+     * @notice Returns the total BTC minted via the triparty bridge path.
+     *         This is an informational provenance counter.
+     * @return totalMinted The cumulative amount of BTC minted through triparty.
+     */
+    function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted);
 }

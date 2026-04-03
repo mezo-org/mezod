@@ -393,18 +393,18 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	require.False(t, found)
 }
 
-func TestTripartySequenceTipIncrement(t *testing.T) {
+func TestTripartyRequestSequenceTipIncrement(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	// Default tip is 0.
 	require.True(t, keeper.getTripartySequenceTip(ctx).IsZero())
 
 	// First increment returns 1.
-	require.Equal(t, math.NewInt(1), keeper.incrementTripartySequenceTip(ctx))
+	require.Equal(t, math.NewInt(1), keeper.incrementTripartyRequestSequenceTip(ctx))
 	require.Equal(t, math.NewInt(1), keeper.getTripartySequenceTip(ctx))
 
 	// Second increment returns 2.
-	require.Equal(t, math.NewInt(2), keeper.incrementTripartySequenceTip(ctx))
+	require.Equal(t, math.NewInt(2), keeper.incrementTripartyRequestSequenceTip(ctx))
 	require.Equal(t, math.NewInt(2), keeper.getTripartySequenceTip(ctx))
 }
 
@@ -485,7 +485,7 @@ func TestTripartyCapacity(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	// No limit set, capacity is zero.
-	capacity, resetHeight := keeper.getTripartyCapacity(ctx)
+	capacity, resetHeight := keeper.GetTripartyCapacity(ctx)
 	require.True(t, capacity.IsZero())
 	require.Equal(t, uint64(25000), resetHeight) // 0 + TripartyWindowResetBlocks
 
@@ -493,18 +493,18 @@ func TestTripartyCapacity(t *testing.T) {
 	keeper.SetTripartyWindowLimit(ctx, math.NewInt(1000))
 
 	// Full capacity when nothing minted.
-	capacity, _ = keeper.getTripartyCapacity(ctx)
+	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, math.NewInt(1000), capacity)
 
-	// Partial mint reduces capacity.
+	// Partial consumption reduces capacity.
 	keeper.increaseTripartyWindowConsumed(ctx, math.NewInt(300))
-	capacity, _ = keeper.getTripartyCapacity(ctx)
+	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, math.NewInt(700), capacity)
 
 	// Reset at block 50000 updates the reset height.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 50000})
 	keeper.resetTripartyWindowConsumed(ctx)
-	_, resetHeight = keeper.getTripartyCapacity(ctx)
+	_, resetHeight = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, uint64(75000), resetHeight) // 50000 + 25000
 }
 
@@ -530,14 +530,14 @@ func TestTripartyTotalBTCMinted(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	// Initially zero.
-	require.True(t, keeper.getTripartyTotalBTCMinted(ctx).IsZero())
+	require.True(t, keeper.GetTripartyTotalBTCMinted(ctx).IsZero())
 
 	// Increase accumulates.
 	keeper.increaseTripartyTotalBTCMinted(ctx, math.NewInt(1000))
-	require.Equal(t, math.NewInt(1000), keeper.getTripartyTotalBTCMinted(ctx))
+	require.Equal(t, math.NewInt(1000), keeper.GetTripartyTotalBTCMinted(ctx))
 
 	keeper.increaseTripartyTotalBTCMinted(ctx, math.NewInt(2500))
-	require.Equal(t, math.NewInt(3500), keeper.getTripartyTotalBTCMinted(ctx))
+	require.Equal(t, math.NewInt(3500), keeper.GetTripartyTotalBTCMinted(ctx))
 }
 
 func TestTripartyProcessedSequenceTip(t *testing.T) {
@@ -569,7 +569,7 @@ func TestCreateTripartyBridgeRequestWindowLimit(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, math.NewInt(1), reqID)
 	require.Equal(t, MinTripartyAmount, keeper.getTripartyWindowConsumed(ctx))
-	capacity, _ := keeper.getTripartyCapacity(ctx)
+	capacity, _ := keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, MinTripartyAmount, capacity)
 
 	// Unsuccessful request using remaining capacity plus one.
@@ -579,7 +579,7 @@ func TestCreateTripartyBridgeRequestWindowLimit(t *testing.T) {
 	require.ErrorIs(t, err, types.ErrTripartyWindowLimitExceeded)
 	require.Equal(t, math.NewInt(1), keeper.getTripartySequenceTip(ctx))
 	require.Equal(t, MinTripartyAmount, keeper.getTripartyWindowConsumed(ctx))
-	capacity, _ = keeper.getTripartyCapacity(ctx)
+	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, MinTripartyAmount, capacity)
 
 	// Second successful request.
@@ -589,7 +589,7 @@ func TestCreateTripartyBridgeRequestWindowLimit(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, math.NewInt(2), reqID)
 	require.Equal(t, MinTripartyAmount.MulRaw(2), keeper.getTripartyWindowConsumed(ctx))
-	capacity, _ = keeper.getTripartyCapacity(ctx)
+	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.True(t, capacity.IsZero())
 }
 
@@ -776,7 +776,7 @@ func TestProcessTripartyBridgeRequests_MixedMaturity(t *testing.T) {
 	require.Equal(t, math.NewInt(2), k.getTripartyProcessedSequenceTip(ctx))
 
 	// Provenance counter updated for both.
-	require.Equal(t, to18Dec(3), k.getTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(3), k.GetTripartyTotalBTCMinted(ctx))
 }
 
 func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
@@ -796,7 +796,7 @@ func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
 	// at creation time). This simulates a request created before the
 	// address was blocked.
 	blockedReq := &types.TripartyBridgeRequest{
-		Sequence:    k.incrementTripartySequenceTip(ctx),
+		Sequence:    k.incrementTripartyRequestSequenceTip(ctx),
 		BlockHeight: 10,
 		Recipient:   blockedHexAddr,
 		Amount:      to18Dec(1),
@@ -830,7 +830,7 @@ func TestProcessTripartyBridgeRequests_BlockedRecipient(t *testing.T) {
 	require.False(t, found)
 
 	// Only the valid request contributed to provenance.
-	require.Equal(t, to18Dec(2), k.getTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(2), k.GetTripartyTotalBTCMinted(ctx))
 
 	// Processed tip advanced to 2.
 	require.Equal(t, math.NewInt(2), k.getTripartyProcessedSequenceTip(ctx))
@@ -940,7 +940,7 @@ func TestProcessTripartyBridgeRequests_SuccessfulMintAndCallback(t *testing.T) {
 	require.False(t, found)
 
 	// Provenance counter updated.
-	require.Equal(t, to18Dec(5), k.getTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(5), k.GetTripartyTotalBTCMinted(ctx))
 
 	// BTCMinted counter updated (via mintBTC).
 	require.Equal(t, to18Dec(5), k.GetBTCMinted(ctx))
@@ -971,7 +971,7 @@ func TestProcessTripartyBridgeRequests_CallbackFailure(t *testing.T) {
 
 	// Mint still completed.
 	require.Equal(t, to18Dec(1), k.GetBTCMinted(ctx))
-	require.Equal(t, to18Dec(1), k.getTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(1), k.GetTripartyTotalBTCMinted(ctx))
 
 	// Request deleted despite callback failure.
 	_, found := k.getTripartyBridgeRequest(ctx, math.NewInt(1))
@@ -1056,7 +1056,7 @@ func TestProcessTripartyBridgeRequests_BatchCap(t *testing.T) {
 	require.Equal(t, math.NewInt(5), k.getTripartyProcessedSequenceTip(ctx))
 
 	// Provenance counter: 100+200+300+400+500 = 1500.
-	require.Equal(t, to18Dec(15), k.getTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(15), k.GetTripartyTotalBTCMinted(ctx))
 }
 
 func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
@@ -1105,5 +1105,5 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 	require.Equal(t, math.NewInt(5), k.getTripartyProcessedSequenceTip(ctx))
 
 	// Total provenance: 1+2+3+4+5 BTC.
-	require.Equal(t, to18Dec(15), k.getTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(15), k.GetTripartyTotalBTCMinted(ctx))
 }

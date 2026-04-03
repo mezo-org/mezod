@@ -90,13 +90,13 @@ var (
 	// pending triparty bridge request.
 	TripartyRequestKeyPrefix = []byte{0xA5}
 
-	// TripartySequenceTipKey is a standalone key for the last assigned
+	// TripartyRequestSequenceTipKey is a standalone key for the last assigned
 	// triparty request sequence number.
-	TripartySequenceTipKey = []byte{0xA6}
+	TripartyRequestSequenceTipKey = []byte{0xA6}
 
 	// TripartyProcessedSequenceTipKey is a standalone key for the last
 	// processed triparty request sequence number. This tracks processing
-	// progress separately from the assignment tip (TripartySequenceTipKey).
+	// progress separately from the assignment tip (TripartyRequestSequenceTipKey).
 	TripartyProcessedSequenceTipKey = []byte{0xA7}
 
 	// TripartyWindowConsumedKey is a standalone key for the current
