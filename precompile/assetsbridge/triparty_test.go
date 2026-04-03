@@ -375,12 +375,6 @@ func (s *PrecompileTestSuite) TestSetTripartyLimits() {
 			basicPass: true,
 			output:    []interface{}{true},
 			postCheck: func() {
-				s.Require().True(
-					s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx).
-						Equal(
-							s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx),
-						),
-				)
 				s.Require().Equal(
 					int64(100),
 					s.bridgeKeeper.GetTripartyPerRequestLimit(s.ctx).Int64(),
