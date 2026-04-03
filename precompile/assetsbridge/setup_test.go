@@ -484,8 +484,9 @@ func (k *FakeBridgeKeeper) GetTripartyBlockDelay(_ sdk.Context) int64 {
 	return k.tripartyBlockDelay
 }
 
-func (k *FakeBridgeKeeper) SetTripartyBlockDelay(_ sdk.Context, delay int64) {
+func (k *FakeBridgeKeeper) SetTripartyBlockDelay(_ sdk.Context, delay int64) error {
 	k.tripartyBlockDelay = delay
+	return nil
 }
 
 func (k *FakeBridgeKeeper) GetTripartyPerRequestLimit(_ sdk.Context) math.Int {

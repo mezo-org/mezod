@@ -29,21 +29,25 @@ func TestTripartyBlockDelayManagement(t *testing.T) {
 	require.Equal(t, int64(1), delay, "initial delay should be 1")
 
 	// Set a delay
-	keeper.SetTripartyBlockDelay(ctx, 100)
+	require.NoError(t, keeper.SetTripartyBlockDelay(ctx, 100))
 
 	// Get the delay
 	delay = keeper.GetTripartyBlockDelay(ctx)
 	require.Equal(t, int64(100), delay, "delay should match what was set")
 
 	// Update the delay
-	keeper.SetTripartyBlockDelay(ctx, 200)
+	require.NoError(t, keeper.SetTripartyBlockDelay(ctx, 200))
 	delay = keeper.GetTripartyBlockDelay(ctx)
 	require.Equal(t, int64(200), delay, "delay should be updated")
 
 	// Set back to minimum
-	keeper.SetTripartyBlockDelay(ctx, 1)
+	require.NoError(t, keeper.SetTripartyBlockDelay(ctx, 1))
 	delay = keeper.GetTripartyBlockDelay(ctx)
 	require.Equal(t, int64(1), delay, "delay should be 1")
+
+	// Delay < 1 should return an error
+	require.Error(t, keeper.SetTripartyBlockDelay(ctx, 0))
+	require.Error(t, keeper.SetTripartyBlockDelay(ctx, -1))
 }
 
 func TestTripartyPerRequestLimitManagement(t *testing.T) {
@@ -665,7 +669,7 @@ func TestProcessTripartyBridgeRequests_AllImmature(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	// Set block delay to 10.
-	k.SetTripartyBlockDelay(ctx, 10)
+	require.NoError(t, k.SetTripartyBlockDelay(ctx, 10))
 
 	// Create requests at height 90.
 	createTripartyRequest(t, ctx, k, 90, to18Dec(1), nil)

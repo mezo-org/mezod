@@ -353,10 +353,12 @@ func (m *SetTripartyBlockDelayMethod) Run(
 		return nil, nil, err
 	}
 
-	m.bridgeKeeper.SetTripartyBlockDelay(
+	if err := m.bridgeKeeper.SetTripartyBlockDelay(
 		context.SdkCtx(),
 		delay.Int64(),
-	)
+	); err != nil {
+		return nil, nil, err
+	}
 
 	err := context.EventEmitter().Emit(
 		NewTripartyBlockDelaySetEvent(delay),

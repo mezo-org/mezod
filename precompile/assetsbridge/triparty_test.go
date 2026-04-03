@@ -310,6 +310,7 @@ func (s *PrecompileTestSuite) TestGetTripartyBlockDelay() {
 		{
 			name: "returns set value",
 			run: func() []interface{} {
+				//nolint:errcheck
 				s.bridgeKeeper.SetTripartyBlockDelay(s.ctx, 5)
 				return []interface{}{}
 			},

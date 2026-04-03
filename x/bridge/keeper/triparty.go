@@ -77,16 +77,20 @@ func (k Keeper) GetTripartyBlockDelay(ctx sdk.Context) int64 {
 	if len(bz) == 0 {
 		return 1
 	}
-	return int64(sdk.BigEndianToUint64(bz))
+	// The stored value is int64, as accepted by SetTripartyBlockDelay.
+	return int64(sdk.BigEndianToUint64(bz)) //nolint:gosec
 }
 
 // SetTripartyBlockDelay sets the triparty block delay. The delay is
-// int64 to match block heights in the Cosmos SDK. Callers at the
-// system boundary (e.g. the precompile) are responsible for validating
-// that the input fits in int64 before calling this function.
-func (k Keeper) SetTripartyBlockDelay(ctx sdk.Context, delay int64) {
+// int64 to match block heights in the Cosmos SDK. The delay must be
+// at least 1; otherwise an error is returned.
+func (k Keeper) SetTripartyBlockDelay(ctx sdk.Context, delay int64) error {
+	if delay < 1 {
+		return fmt.Errorf("delay must not be less than 1")
+	}
 	store := ctx.KVStore(k.storeKey)
-	store.Set(types.TripartyBlockDelayKey, sdk.Uint64ToBigEndian(uint64(delay)))
+	store.Set(types.TripartyBlockDelayKey, sdk.Uint64ToBigEndian(uint64(delay))) //nolint:gosec
+	return nil
 }
 
 // GetTripartyPerRequestLimit returns the triparty per-request limit.
