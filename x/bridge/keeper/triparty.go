@@ -265,7 +265,13 @@ func (k Keeper) CreateTripartyBridgeRequest(
 		return math.Int{}, types.ErrTripartyPaused
 	}
 
-	if err := k.validateTripartyBridgeRequest(ctx, recipient, amount, callbackData, controller); err != nil {
+	if err := k.validateTripartyBridgeRequest(
+		ctx,
+		recipient,
+		amount,
+		callbackData,
+		controller,
+	); err != nil {
 		return math.Int{}, err
 	}
 
@@ -545,8 +551,7 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 			// Issue the EVM callback to the controller. A callback
 			// failure is logged but must not prevent the mint from
 			// completing or block subsequent requests.
-			controllerBytes := evmtypes.HexAddressToBytes(req.Controller)
-			k.issueTripartyCallback(ctx, req, controllerBytes)
+			k.issueTripartyCallback(ctx, req)
 
 			k.Logger(ctx).Info(
 				"triparty bridge request processed",
@@ -582,8 +587,9 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 func (k Keeper) issueTripartyCallback(
 	ctx sdk.Context,
 	req *types.TripartyBridgeRequest,
-	controllerBytes []byte,
 ) {
+	controllerBytes := evmtypes.HexAddressToBytes(req.Controller)
+
 	callbackData := req.CallbackData
 	if callbackData == nil {
 		callbackData = []byte{}
