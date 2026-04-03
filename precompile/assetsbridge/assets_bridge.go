@@ -280,8 +280,8 @@ type BridgeKeeper interface {
 	IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool
 	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
 	SetTripartyPaused(ctx sdk.Context, isPaused bool)
-	GetTripartyBlockDelay(ctx sdk.Context) uint64
-	SetTripartyBlockDelay(ctx sdk.Context, delay uint64)
+	GetTripartyBlockDelay(ctx sdk.Context) int64
+	SetTripartyBlockDelay(ctx sdk.Context, delay int64)
 	SetTripartyPerRequestLimit(ctx sdk.Context, limit math.Int)
 	GetTripartyPerRequestLimit(ctx sdk.Context) math.Int
 	SetTripartyWindowLimit(ctx sdk.Context, limit math.Int)

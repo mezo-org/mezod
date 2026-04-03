@@ -24,24 +24,24 @@ func TestTripartyBlockDelayManagement(t *testing.T) {
 
 	// Initially should return default value of 1
 	delay := keeper.GetTripartyBlockDelay(ctx)
-	require.Equal(t, uint64(1), delay, "initial delay should be 1")
+	require.Equal(t, int64(1), delay, "initial delay should be 1")
 
 	// Set a delay
 	keeper.SetTripartyBlockDelay(ctx, 100)
 
 	// Get the delay
 	delay = keeper.GetTripartyBlockDelay(ctx)
-	require.Equal(t, uint64(100), delay, "delay should match what was set")
+	require.Equal(t, int64(100), delay, "delay should match what was set")
 
 	// Update the delay
 	keeper.SetTripartyBlockDelay(ctx, 200)
 	delay = keeper.GetTripartyBlockDelay(ctx)
-	require.Equal(t, uint64(200), delay, "delay should be updated")
+	require.Equal(t, int64(200), delay, "delay should be updated")
 
 	// Set back to minimum
 	keeper.SetTripartyBlockDelay(ctx, 1)
 	delay = keeper.GetTripartyBlockDelay(ctx)
-	require.Equal(t, uint64(1), delay, "delay should be 1")
+	require.Equal(t, int64(1), delay, "delay should be 1")
 }
 
 func TestTripartyPerRequestLimitManagement(t *testing.T) {

@@ -68,20 +68,25 @@ func (k Keeper) SetTripartyPaused(ctx sdk.Context, isPaused bool) {
 }
 
 // GetTripartyBlockDelay returns the configured triparty block delay.
-// If not set, it returns the default value of 1.
-func (k Keeper) GetTripartyBlockDelay(ctx sdk.Context) uint64 {
+// If not set, it returns the default value of 1. The return type is
+// int64 to match block heights (int64 in Cosmos SDK), so the delay
+// can be used directly in block height arithmetic without casting.
+func (k Keeper) GetTripartyBlockDelay(ctx sdk.Context) int64 {
 	store := ctx.KVStore(k.storeKey)
 	bz := store.Get(types.TripartyBlockDelayKey)
 	if len(bz) == 0 {
 		return 1
 	}
-	return sdk.BigEndianToUint64(bz)
+	return int64(sdk.BigEndianToUint64(bz))
 }
 
-// SetTripartyBlockDelay sets the triparty block delay.
-func (k Keeper) SetTripartyBlockDelay(ctx sdk.Context, delay uint64) {
+// SetTripartyBlockDelay sets the triparty block delay. The delay is
+// int64 to match block heights in the Cosmos SDK. Callers at the
+// system boundary (e.g. the precompile) are responsible for validating
+// that the input fits in int64 before calling this function.
+func (k Keeper) SetTripartyBlockDelay(ctx sdk.Context, delay int64) {
 	store := ctx.KVStore(k.storeKey)
-	store.Set(types.TripartyBlockDelayKey, sdk.Uint64ToBigEndian(delay))
+	store.Set(types.TripartyBlockDelayKey, sdk.Uint64ToBigEndian(uint64(delay)))
 }
 
 // GetTripartyPerRequestLimit returns the triparty per-request limit.
@@ -498,7 +503,7 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 
 		// Stop at the first immature request. No request can be processed
 		// ahead of an earlier one that is not yet mature.
-		if ctx.BlockHeight() < req.BlockHeight+int64(blockDelay) { //nolint:gosec
+		if ctx.BlockHeight() < req.BlockHeight+blockDelay {
 			k.Logger(ctx).Info(
 				"triparty request not yet mature; stopping processing",
 				"sequence", req.Sequence,

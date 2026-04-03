@@ -286,7 +286,7 @@ func (s *PrecompileTestSuite) TestSetTripartyBlockDelay() {
 			output:    []interface{}{true},
 			postCheck: func() {
 				s.Require().Equal(
-					uint64(5),
+					int64(5),
 					s.bridgeKeeper.GetTripartyBlockDelay(s.ctx),
 				)
 			},
