@@ -395,7 +395,7 @@ func (k Keeper) getTripartyWindowLastReset(ctx sdk.Context) uint64 {
 	return sdk.BigEndianToUint64(store.Get(types.TripartyWindowLastResetKey))
 }
 
-// getTripartyCapacity returns the remaining triparty minting capacity
+// getTripartyCapacity returns the remaining triparty request window capacity
 // within the current window and the block height at which the window
 // resets.
 func (k Keeper) getTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64) {
@@ -414,7 +414,7 @@ func (k Keeper) getTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHe
 }
 
 // checkTripartyCapacity returns an error if the given amount exceeds the
-// remaining triparty minting capacity within the current window.
+// remaining triparty request window capacity within the current window.
 func (k Keeper) checkTripartyCapacity(ctx sdk.Context, amount math.Int) error {
 	capacity, _ := k.getTripartyCapacity(ctx)
 

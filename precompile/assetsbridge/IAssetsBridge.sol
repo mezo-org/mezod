@@ -298,6 +298,7 @@ interface IAssetsBridge {
      *      - The amount must be positive,
      *      - The amount must be at least 0.01 BTC,
      *      - The amount must not exceed the per-request limit,
+     *      - The amount must not exceed the remaining triparty request window capacity,
      *      - The callbackData must not exceed 320 bytes.
      */
     function bridgeTriparty(address recipient, uint256 amount, bytes calldata callbackData) external returns (uint256 requestId);
