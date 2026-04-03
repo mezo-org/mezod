@@ -359,9 +359,9 @@ interface IAssetsBridge {
     event TripartyLimitsSet(uint256 perRequestLimit, uint256 windowLimit);
 
     /**
-     * @notice Sets the global triparty minting limits shared by all controllers.
-     * @param perRequestLimit The maximum amount that can be minted in a single request.
-     * @param windowLimit The maximum amount that can be minted in a single window.
+     * @notice Sets the global triparty request limits shared by all controllers.
+     * @param perRequestLimit The maximum amount that can be requested in a single request.
+     * @param windowLimit The maximum amount that can be requested in a single window.
      * @dev Requirements:
      *      - The caller must be the PoA owner,
      *      - Both limits must be non-negative.
@@ -372,9 +372,9 @@ interface IAssetsBridge {
     ) external returns (bool);
 
     /**
-     * @notice Returns the configured triparty minting limits.
-     * @return perRequestLimit The maximum amount that can be minted in a single request.
-     * @return windowLimit The maximum amount that can be minted in a single window.
+     * @notice Returns the configured triparty request limits.
+     * @return perRequestLimit The maximum amount that can be requested in a single request.
+     * @return windowLimit The maximum amount that can be requested in a single window.
      */
     function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
 

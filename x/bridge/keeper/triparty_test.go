@@ -520,7 +520,7 @@ func TestCheckTripartyCapacity(t *testing.T) {
 	// Exceeds capacity - error.
 	require.Error(t, keeper.checkTripartyCapacity(ctx, math.NewInt(501)))
 
-	// After partial mint, remaining capacity shrinks.
+	// After partial consumption, remaining capacity shrinks.
 	keeper.increaseTripartyWindowConsumed(ctx, math.NewInt(400))
 	require.NoError(t, keeper.checkTripartyCapacity(ctx, math.NewInt(100)))
 	require.Error(t, keeper.checkTripartyCapacity(ctx, math.NewInt(101)))

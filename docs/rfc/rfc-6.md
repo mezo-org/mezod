@@ -100,7 +100,7 @@ callable by the `AssetsBridge` pauser.
 triparty mint request and its execution by the `PreBlocker`. The delay must be
 at least 1 (the request and execution always happen in different blocks).
 
-`setTripartyLimits` configures the global minting limits shared by all triparty
+`setTripartyLimits` configures the global request limits shared by all triparty
 controllers. The parameters are:
 
 * `perRequestLimit`: the maximum BTC amount for a single `bridgeTriparty` call
@@ -126,7 +126,7 @@ Additionally, `bridgeTriparty` should:
   requests and ensures each request carries enough weight for the future vote
   mechanism to be practical.
 * Revert if `amount` exceeds the global per-request limit.
-* Revert if `amount` would exceed the remaining global window capacity.
+* Revert if `amount` would exceed the remaining request window capacity.
 
 ### `x/bridge` module
 
