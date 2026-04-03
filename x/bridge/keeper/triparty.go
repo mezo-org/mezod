@@ -607,7 +607,7 @@ func (k Keeper) issueTripartyCallback(
 	)
 	if err != nil {
 		k.Logger(ctx).Warn(
-			"failed to create triparty callback call; callback skipped",
+			"failed to create triparty callback call; mint completed but callback skipped",
 			"sequence", req.Sequence,
 			"error", err,
 		)
