@@ -284,7 +284,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	}
 
 	ctx.KVStore(k.storeKey).Set(types.GetTripartyBridgeRequestKey(seq), bz)
-	k.IncreaseTripartyWindowMinted(ctx, amount)
+	k.IncreaseTripartyWindowConsumed(ctx, amount)
 
 	return seq, nil
 }
@@ -328,45 +328,45 @@ func (k Keeper) DeleteTripartyBridgeRequest(ctx sdk.Context, sequence math.Int) 
 	return nil
 }
 
-// GetTripartyWindowMinted returns the current triparty window minted
+// GetTripartyWindowConsumed returns the current triparty window consumed
 // aggregate. Returns zero if not set.
-func (k Keeper) GetTripartyWindowMinted(ctx sdk.Context) math.Int {
+func (k Keeper) GetTripartyWindowConsumed(ctx sdk.Context) math.Int {
 	store := ctx.KVStore(k.storeKey)
 
-	bz := store.Get(types.TripartyWindowMintedKey)
+	bz := store.Get(types.TripartyWindowConsumedKey)
 	if len(bz) == 0 {
 		return math.ZeroInt()
 	}
 
-	minted := math.ZeroInt()
-	if err := minted.Unmarshal(bz); err != nil {
+	consumed := math.ZeroInt()
+	if err := consumed.Unmarshal(bz); err != nil {
 		panic(err)
 	}
 
-	return minted
+	return consumed
 }
 
-// IncreaseTripartyWindowMinted adds the given amount to the current
-// triparty window minted aggregate.
-func (k Keeper) IncreaseTripartyWindowMinted(ctx sdk.Context, amount math.Int) {
-	minted := k.GetTripartyWindowMinted(ctx).Add(amount)
+// IncreaseTripartyWindowConsumed adds the given amount to the current triparty
+// window consumed aggregate.
+func (k Keeper) IncreaseTripartyWindowConsumed(ctx sdk.Context, amount math.Int) {
+	consumed := k.GetTripartyWindowConsumed(ctx).Add(amount)
 
 	store := ctx.KVStore(k.storeKey)
 
-	bz, err := minted.Marshal()
+	bz, err := consumed.Marshal()
 	if err != nil {
 		panic(err)
 	}
 
-	store.Set(types.TripartyWindowMintedKey, bz)
+	store.Set(types.TripartyWindowConsumedKey, bz)
 }
 
-// ResetTripartyWindowMinted clears the current triparty window minted
+// ResetTripartyWindowConsumed clears the current triparty window consumed
 // aggregate to zero and records the current block height as the last
 // reset point.
-func (k Keeper) ResetTripartyWindowMinted(ctx sdk.Context) {
+func (k Keeper) ResetTripartyWindowConsumed(ctx sdk.Context) {
 	store := ctx.KVStore(k.storeKey)
-	store.Delete(types.TripartyWindowMintedKey)
+	store.Delete(types.TripartyWindowConsumedKey)
 	store.Set(
 		types.TripartyWindowLastResetKey,
 		// block height can't be negative so int64->uint64 conversion is safe
@@ -386,10 +386,10 @@ func (k Keeper) GetTripartyWindowLastReset(ctx sdk.Context) uint64 {
 // resets.
 func (k Keeper) GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64) {
 	limit := k.GetTripartyWindowLimit(ctx)
-	minted := k.GetTripartyWindowMinted(ctx)
+	consumed := k.GetTripartyWindowConsumed(ctx)
 	lastReset := k.GetTripartyWindowLastReset(ctx)
 
-	capacity = limit.Sub(minted)
+	capacity = limit.Sub(consumed)
 	if capacity.IsNegative() {
 		capacity = math.ZeroInt()
 	}

@@ -89,7 +89,7 @@ func (k *Keeper) handleTripartyWindowReset(ctx sdk.Context) {
 	lastResetHeight := k.GetTripartyWindowLastReset(ctx)
 
 	if currentHeight-lastResetHeight >= TripartyWindowResetBlocks {
-		k.ResetTripartyWindowMinted(ctx)
+		k.ResetTripartyWindowConsumed(ctx)
 		k.Logger(ctx).Info(
 			"triparty window reset",
 			"height", currentHeight,

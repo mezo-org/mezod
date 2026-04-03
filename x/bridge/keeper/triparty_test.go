@@ -455,23 +455,23 @@ func TestTripartyBridgeRequestMarshalEmptyCallbackData(t *testing.T) {
 	require.Empty(t, decoded.CallbackData)
 }
 
-func TestTripartyWindowMinted(t *testing.T) {
+func TestTripartyWindowConsumed(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	// Initially zero.
-	require.True(t, keeper.GetTripartyWindowMinted(ctx).IsZero())
+	require.True(t, keeper.GetTripartyWindowConsumed(ctx).IsZero())
 
 	// Increase accumulates.
-	keeper.IncreaseTripartyWindowMinted(ctx, math.NewInt(100))
-	require.Equal(t, math.NewInt(100), keeper.GetTripartyWindowMinted(ctx))
+	keeper.IncreaseTripartyWindowConsumed(ctx, math.NewInt(100))
+	require.Equal(t, math.NewInt(100), keeper.GetTripartyWindowConsumed(ctx))
 
-	keeper.IncreaseTripartyWindowMinted(ctx, math.NewInt(250))
-	require.Equal(t, math.NewInt(350), keeper.GetTripartyWindowMinted(ctx))
+	keeper.IncreaseTripartyWindowConsumed(ctx, math.NewInt(250))
+	require.Equal(t, math.NewInt(350), keeper.GetTripartyWindowConsumed(ctx))
 
 	// Reset clears to zero and records block height.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 500})
-	keeper.ResetTripartyWindowMinted(ctx)
-	require.True(t, keeper.GetTripartyWindowMinted(ctx).IsZero())
+	keeper.ResetTripartyWindowConsumed(ctx)
+	require.True(t, keeper.GetTripartyWindowConsumed(ctx).IsZero())
 	require.Equal(t, uint64(500), keeper.GetTripartyWindowLastReset(ctx))
 }
 
@@ -491,13 +491,13 @@ func TestTripartyCapacity(t *testing.T) {
 	require.Equal(t, math.NewInt(1000), capacity)
 
 	// Partial mint reduces capacity.
-	keeper.IncreaseTripartyWindowMinted(ctx, math.NewInt(300))
+	keeper.IncreaseTripartyWindowConsumed(ctx, math.NewInt(300))
 	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, math.NewInt(700), capacity)
 
 	// Reset at block 50000 updates the reset height.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 50000})
-	keeper.ResetTripartyWindowMinted(ctx)
+	keeper.ResetTripartyWindowConsumed(ctx)
 	_, resetHeight = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, uint64(75000), resetHeight) // 50000 + 25000
 }
@@ -515,7 +515,7 @@ func TestCheckTripartyCapacity(t *testing.T) {
 	require.Error(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(501)))
 
 	// After partial mint, remaining capacity shrinks.
-	keeper.IncreaseTripartyWindowMinted(ctx, math.NewInt(400))
+	keeper.IncreaseTripartyWindowConsumed(ctx, math.NewInt(400))
 	require.NoError(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(100)))
 	require.Error(t, keeper.CheckTripartyCapacity(ctx, math.NewInt(101)))
 }
@@ -562,7 +562,7 @@ func TestCreateTripartyBridgeRequestWindowLimit(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, math.NewInt(1), reqID)
-	require.Equal(t, MinTripartyAmount, keeper.GetTripartyWindowMinted(ctx))
+	require.Equal(t, MinTripartyAmount, keeper.GetTripartyWindowConsumed(ctx))
 	capacity, _ := keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, MinTripartyAmount, capacity)
 
@@ -572,7 +572,7 @@ func TestCreateTripartyBridgeRequestWindowLimit(t *testing.T) {
 	)
 	require.ErrorIs(t, err, types.ErrTripartyWindowLimitExceeded)
 	require.Equal(t, math.NewInt(1), keeper.GetTripartySequenceTip(ctx))
-	require.Equal(t, MinTripartyAmount, keeper.GetTripartyWindowMinted(ctx))
+	require.Equal(t, MinTripartyAmount, keeper.GetTripartyWindowConsumed(ctx))
 	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, MinTripartyAmount, capacity)
 
@@ -582,7 +582,7 @@ func TestCreateTripartyBridgeRequestWindowLimit(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, math.NewInt(2), reqID)
-	require.Equal(t, MinTripartyAmount.MulRaw(2), keeper.GetTripartyWindowMinted(ctx))
+	require.Equal(t, MinTripartyAmount.MulRaw(2), keeper.GetTripartyWindowConsumed(ctx))
 	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.True(t, capacity.IsZero())
 }

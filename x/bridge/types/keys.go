@@ -94,9 +94,9 @@ var (
 	// triparty request sequence number.
 	TripartySequenceTipKey = []byte{0xA6}
 
-	// TripartyWindowMintedKey is a standalone key for the current window
-	// minted aggregate amount.
-	TripartyWindowMintedKey = []byte{0xA7}
+	// TripartyWindowConsumedKey is a standalone key for the current
+	// window consumed aggregate amount.
+	TripartyWindowConsumedKey = []byte{0xA7}
 
 	// TripartyWindowLastResetKey is a standalone key for the block height
 	// at which the triparty minting window was last reset.
