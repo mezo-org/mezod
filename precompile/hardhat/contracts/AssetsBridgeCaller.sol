@@ -113,5 +113,13 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit) {
         return IAssetsBridge(precompile).getTripartyLimits();
     }
+
+    function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight) {
+        return IAssetsBridge(precompile).getTripartyCapacity();
+    }
+
+    function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted) {
+        return IAssetsBridge(precompile).getTripartyTotalBTCMinted();
+    }
 }
 
