@@ -19,6 +19,8 @@ const (
 	GetTripartyBlockDelayMethodName       = "getTripartyBlockDelay"
 	SetTripartyLimitsMethodName           = "setTripartyLimits"
 	GetTripartyLimitsMethodName           = "getTripartyLimits"
+	GetTripartyCapacityMethodName         = "getTripartyCapacity"
+	GetTripartyTotalBTCMintedMethodName   = "getTripartyTotalBTCMinted"
 )
 
 // --- bridgeTriparty ---
@@ -682,4 +684,93 @@ func (e *TripartyLimitsSetEvent) Arguments() []*precompile.EventArgument {
 		{Indexed: false, Value: e.perRequestLimit},
 		{Indexed: false, Value: e.windowLimit},
 	}
+}
+
+// --- getTripartyCapacity ---
+
+type GetTripartyCapacityMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetTripartyCapacityMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetTripartyCapacityMethod {
+	return &GetTripartyCapacityMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *GetTripartyCapacityMethod) MethodName() string {
+	return GetTripartyCapacityMethodName
+}
+
+func (m *GetTripartyCapacityMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetTripartyCapacityMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetTripartyCapacityMethod) Payable() bool {
+	return false
+}
+
+func (m *GetTripartyCapacityMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
+		return nil, nil, err
+	}
+
+	capacity, resetHeight := m.bridgeKeeper.GetTripartyCapacity(
+		context.SdkCtx(),
+	)
+
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(capacity),
+		new(big.Int).SetUint64(resetHeight),
+	}, nil, nil
+}
+
+// --- getTripartyTotalBTCMinted ---
+
+type GetTripartyTotalBTCMintedMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetTripartyTotalBTCMintedMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetTripartyTotalBTCMintedMethod {
+	return &GetTripartyTotalBTCMintedMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *GetTripartyTotalBTCMintedMethod) MethodName() string {
+	return GetTripartyTotalBTCMintedMethodName
+}
+
+func (m *GetTripartyTotalBTCMintedMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetTripartyTotalBTCMintedMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetTripartyTotalBTCMintedMethod) Payable() bool {
+	return false
+}
+
+func (m *GetTripartyTotalBTCMintedMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
+		return nil, nil, err
+	}
+
+	total := m.bridgeKeeper.GetTripartyTotalBTCMinted(context.SdkCtx())
+
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(total),
+	}, nil, nil
 }

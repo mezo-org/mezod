@@ -335,3 +335,24 @@ task(
     console.log('windowLimit:', result[1].toString())
   }
 )
+
+task(
+  'assetsBridge:getTripartyCapacity',
+  'Gets the remaining triparty minting capacity and window reset height',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getTripartyCapacity()
+    console.log('capacity:', result[0].toString())
+    console.log('reset height:', result[1].toString())
+  }
+)
+
+task(
+  'assetsBridge:getTripartyTotalBTCMinted',
+  'Gets the total BTC minted through the triparty bridge path',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getTripartyTotalBTCMinted()
+    console.log(result.toString())
+  }
+)
