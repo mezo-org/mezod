@@ -100,11 +100,11 @@ callable by the `AssetsBridge` pauser.
 triparty mint request and its execution by the `PreBlocker`. The delay must be
 at least 1 (the request and execution always happen in different blocks).
 
-`setTripartyLimits` configures the global minting limits shared by all triparty
+`setTripartyLimits` configures the global request limits shared by all triparty
 controllers. The parameters are:
 
 * `perRequestLimit`: the maximum BTC amount for a single `bridgeTriparty` call
-* `windowLimit`: the maximum aggregate BTC amount that can be minted via
+* `windowLimit`: the maximum aggregate BTC amount that can be requested via
   triparty within a rolling block window (using the same reset mechanism as
   outflow limits)
 
@@ -126,7 +126,7 @@ Additionally, `bridgeTriparty` should:
   requests and ensures each request carries enough weight for the future vote
   mechanism to be practical.
 * Revert if `amount` exceeds the global per-request limit.
-* Revert if `amount` would exceed the remaining global window capacity.
+* Revert if `amount` would exceed the remaining request window capacity.
 
 ### `x/bridge` module
 
@@ -232,8 +232,9 @@ bridge module:
 * Access control: only configured triparty controller addresses can submit requests.
 * Per-request limit: a global maximum amount per individual triparty mint
   request, shared across all controllers.
-* Window limit: a global aggregate cap on triparty minting within a rolling
-  block window, following the existing outflow limit reset pattern.
+* Window limit: a global aggregate cap on accepted triparty request volume
+  within a rolling block window, following the existing outflow limit reset
+  pattern.
 
 ## Future Work
 
