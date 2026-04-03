@@ -590,11 +590,6 @@ func (k Keeper) issueTripartyCallback(
 ) {
 	controllerBytes := evmtypes.HexAddressToBytes(req.Controller)
 
-	callbackData := req.CallbackData
-	if callbackData == nil {
-		callbackData = []byte{}
-	}
-
 	recipientBytes := evmtypes.HexAddressToBytes(req.Recipient)
 
 	call, err := evmtypes.NewTripartyCallbackCall(
@@ -603,7 +598,7 @@ func (k Keeper) issueTripartyCallback(
 		req.Sequence.BigInt(),
 		recipientBytes,
 		req.Amount.BigInt(),
-		callbackData,
+		req.CallbackData,
 	)
 	if err != nil {
 		k.Logger(ctx).Warn(
