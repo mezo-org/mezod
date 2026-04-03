@@ -94,22 +94,22 @@ var (
 	// triparty request sequence number.
 	TripartySequenceTipKey = []byte{0xA6}
 
-	// TripartyWindowConsumedKey is a standalone key for the current
-	// window consumed aggregate amount.
-	TripartyWindowConsumedKey = []byte{0xA7}
-
-	// TripartyWindowLastResetKey is a standalone key for the block height
-	// at which the triparty minting window was last reset.
-	TripartyWindowLastResetKey = []byte{0xA8}
-
-	// TripartyTotalBTCMintedKey is a standalone key for the total BTC
-	// minted via triparty bridging (provenance counter).
-	TripartyTotalBTCMintedKey = []byte{0xA9}
-
 	// TripartyProcessedSequenceTipKey is a standalone key for the last
 	// processed triparty request sequence number. This tracks processing
 	// progress separately from the assignment tip (TripartySequenceTipKey).
-	TripartyProcessedSequenceTipKey = []byte{0xAA}
+	TripartyProcessedSequenceTipKey = []byte{0xA7}
+
+	// TripartyWindowConsumedKey is a standalone key for the current
+	// window consumed aggregate amount.
+	TripartyWindowConsumedKey = []byte{0xA8}
+
+	// TripartyWindowLastResetKey is a standalone key for the block height
+	// at which the triparty minting window was last reset.
+	TripartyWindowLastResetKey = []byte{0xA9}
+
+	// TripartyTotalBTCMintedKey is a standalone key for the total BTC
+	// minted via triparty bridging (provenance counter).
+	TripartyTotalBTCMintedKey = []byte{0xAA}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the

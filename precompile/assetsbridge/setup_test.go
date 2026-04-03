@@ -238,7 +238,7 @@ type FakeBridgeKeeper struct {
 
 	tripartyControllers             map[string]bool
 	tripartyPaused                  bool
-	tripartyBlockDelay              uint64
+	tripartyBlockDelay              int64
 	tripartyPerRequestLimit         math.Int
 	tripartyWindowLimit             math.Int
 	tripartySequenceTip             math.Int
@@ -480,12 +480,13 @@ func (k *FakeBridgeKeeper) SetTripartyPaused(_ sdk.Context, isPaused bool) {
 	k.tripartyPaused = isPaused
 }
 
-func (k *FakeBridgeKeeper) GetTripartyBlockDelay(_ sdk.Context) uint64 {
+func (k *FakeBridgeKeeper) GetTripartyBlockDelay(_ sdk.Context) int64 {
 	return k.tripartyBlockDelay
 }
 
-func (k *FakeBridgeKeeper) SetTripartyBlockDelay(_ sdk.Context, delay uint64) {
+func (k *FakeBridgeKeeper) SetTripartyBlockDelay(_ sdk.Context, delay int64) error {
 	k.tripartyBlockDelay = delay
+	return nil
 }
 
 func (k *FakeBridgeKeeper) GetTripartyPerRequestLimit(_ sdk.Context) math.Int {

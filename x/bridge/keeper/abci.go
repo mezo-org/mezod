@@ -86,10 +86,10 @@ func (k *Keeper) handleOutflowReset(ctx sdk.Context) {
 func (k *Keeper) handleTripartyWindowReset(ctx sdk.Context) {
 	//nolint:gosec
 	currentHeight := uint64(ctx.BlockHeight())
-	lastResetHeight := k.GetTripartyWindowLastReset(ctx)
+	lastResetHeight := k.getTripartyWindowLastReset(ctx)
 
 	if currentHeight-lastResetHeight >= TripartyWindowResetBlocks {
-		k.ResetTripartyWindowConsumed(ctx)
+		k.resetTripartyWindowConsumed(ctx)
 		k.Logger(ctx).Info(
 			"triparty window reset",
 			"height", currentHeight,

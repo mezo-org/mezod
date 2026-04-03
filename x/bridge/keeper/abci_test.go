@@ -154,18 +154,18 @@ func TestHandleTripartyWindowReset(t *testing.T) {
 		ctx, keeper := mockContext()
 
 		// Set last reset to current block (0)
-		keeper.ResetTripartyWindowConsumed(ctx)
-		require.Equal(t, uint64(0), keeper.GetTripartyWindowLastReset(ctx))
+		keeper.resetTripartyWindowConsumed(ctx)
+		require.Equal(t, uint64(0), keeper.getTripartyWindowLastReset(ctx))
 
 		// Set some triparty window usage
-		keeper.IncreaseTripartyWindowConsumed(ctx, math.NewInt(300))
+		keeper.increaseTripartyWindowConsumed(ctx, math.NewInt(300))
 
 		// Call handleTripartyWindowReset - should not reset since threshold not reached
 		keeper.handleTripartyWindowReset(ctx)
 
 		// Verify triparty window usage is still present
-		require.Equal(t, math.NewInt(300), keeper.GetTripartyWindowConsumed(ctx))
-		require.Equal(t, uint64(0), keeper.GetTripartyWindowLastReset(ctx))
+		require.Equal(t, math.NewInt(300), keeper.getTripartyWindowConsumed(ctx))
+		require.Equal(t, uint64(0), keeper.getTripartyWindowLastReset(ctx))
 	})
 
 	t.Run("reset when blocks threshold reached", func(t *testing.T) {
@@ -175,15 +175,15 @@ func TestHandleTripartyWindowReset(t *testing.T) {
 		ctxAtResetBlock := ctx.WithBlockHeight(int64(TripartyWindowResetBlocks))
 
 		// Set some triparty window usage
-		keeper.IncreaseTripartyWindowConsumed(ctxAtResetBlock, math.NewInt(500))
+		keeper.increaseTripartyWindowConsumed(ctxAtResetBlock, math.NewInt(500))
 
 		// Call handleTripartyWindowReset - should reset since threshold reached
 		keeper.handleTripartyWindowReset(ctxAtResetBlock)
 
 		// Verify triparty window usage is reset to zero
-		require.True(t, keeper.GetTripartyWindowConsumed(ctxAtResetBlock).IsZero())
+		require.True(t, keeper.getTripartyWindowConsumed(ctxAtResetBlock).IsZero())
 		// Verify last reset height was updated
-		require.Equal(t, uint64(TripartyWindowResetBlocks), keeper.GetTripartyWindowLastReset(ctxAtResetBlock))
+		require.Equal(t, uint64(TripartyWindowResetBlocks), keeper.getTripartyWindowLastReset(ctxAtResetBlock))
 	})
 
 	t.Run("reset when blocks threshold exceeded", func(t *testing.T) {
@@ -193,15 +193,15 @@ func TestHandleTripartyWindowReset(t *testing.T) {
 		ctxBeyondReset := ctx.WithBlockHeight(int64(TripartyWindowResetBlocks + 1000))
 
 		// Set some triparty window usage
-		keeper.IncreaseTripartyWindowConsumed(ctxBeyondReset, math.NewInt(1000))
+		keeper.increaseTripartyWindowConsumed(ctxBeyondReset, math.NewInt(1000))
 
 		// Call handleTripartyWindowReset - should reset since threshold exceeded
 		keeper.handleTripartyWindowReset(ctxBeyondReset)
 
 		// Verify triparty window usage is reset
-		require.True(t, keeper.GetTripartyWindowConsumed(ctxBeyondReset).IsZero())
+		require.True(t, keeper.getTripartyWindowConsumed(ctxBeyondReset).IsZero())
 		// Verify last reset height was updated
-		require.Equal(t, uint64(TripartyWindowResetBlocks+1000), keeper.GetTripartyWindowLastReset(ctxBeyondReset))
+		require.Equal(t, uint64(TripartyWindowResetBlocks+1000), keeper.getTripartyWindowLastReset(ctxBeyondReset))
 	})
 
 	t.Run("reset with no existing triparty usage", func(t *testing.T) {
@@ -214,7 +214,7 @@ func TestHandleTripartyWindowReset(t *testing.T) {
 		keeper.handleTripartyWindowReset(ctxForReset)
 
 		// Verify last reset height was updated
-		require.Equal(t, uint64(TripartyWindowResetBlocks), keeper.GetTripartyWindowLastReset(ctxForReset))
+		require.Equal(t, uint64(TripartyWindowResetBlocks), keeper.getTripartyWindowLastReset(ctxForReset))
 	})
 
 	t.Run("multiple consecutive resets", func(t *testing.T) {
@@ -222,20 +222,20 @@ func TestHandleTripartyWindowReset(t *testing.T) {
 
 		// First reset at block TripartyWindowResetBlocks
 		ctxFirstReset := ctx.WithBlockHeight(int64(TripartyWindowResetBlocks))
-		keeper.IncreaseTripartyWindowConsumed(ctxFirstReset, math.NewInt(100))
+		keeper.increaseTripartyWindowConsumed(ctxFirstReset, math.NewInt(100))
 
 		keeper.handleTripartyWindowReset(ctxFirstReset)
-		require.True(t, keeper.GetTripartyWindowConsumed(ctxFirstReset).IsZero())
+		require.True(t, keeper.getTripartyWindowConsumed(ctxFirstReset).IsZero())
 
 		// Add new triparty window usage after first reset
-		keeper.IncreaseTripartyWindowConsumed(ctxFirstReset, math.NewInt(200))
+		keeper.increaseTripartyWindowConsumed(ctxFirstReset, math.NewInt(200))
 
 		// Second reset at block 2 * TripartyWindowResetBlocks
 		ctxSecondReset := ctx.WithBlockHeight(int64(2 * TripartyWindowResetBlocks))
 		keeper.handleTripartyWindowReset(ctxSecondReset)
 
 		// Verify second reset
-		require.True(t, keeper.GetTripartyWindowConsumed(ctxSecondReset).IsZero())
-		require.Equal(t, uint64(2*TripartyWindowResetBlocks), keeper.GetTripartyWindowLastReset(ctxSecondReset))
+		require.True(t, keeper.getTripartyWindowConsumed(ctxSecondReset).IsZero())
+		require.Equal(t, uint64(2*TripartyWindowResetBlocks), keeper.getTripartyWindowLastReset(ctxSecondReset))
 	})
 }
