@@ -148,14 +148,13 @@ func (k Keeper) SetTripartyWindowLimit(ctx sdk.Context, limit math.Int) {
 // sequence number. Returns 0 if not set.
 func (k Keeper) GetTripartySequenceTip(ctx sdk.Context) math.Int {
 	bz := ctx.KVStore(k.storeKey).Get(types.TripartySequenceTipKey)
-
-	var tip math.Int
-	if err := tip.Unmarshal(bz); err != nil {
-		panic(err)
+	if len(bz) == 0 {
+		return math.ZeroInt()
 	}
 
-	if tip.IsNil() {
-		tip = math.ZeroInt()
+	tip := math.ZeroInt()
+	if err := tip.Unmarshal(bz); err != nil {
+		panic(err)
 	}
 
 	return tip
@@ -446,14 +445,13 @@ func (k Keeper) IncreaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int)
 // request sequence number. Returns 0 if not set.
 func (k Keeper) getTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
 	bz := ctx.KVStore(k.storeKey).Get(types.TripartyProcessedSequenceTipKey)
-
-	var tip math.Int
-	if err := tip.Unmarshal(bz); err != nil {
-		panic(err)
+	if len(bz) == 0 {
+		return math.ZeroInt()
 	}
 
-	if tip.IsNil() {
-		tip = math.ZeroInt()
+	tip := math.ZeroInt()
+	if err := tip.Unmarshal(bz); err != nil {
+		panic(err)
 	}
 
 	return tip
