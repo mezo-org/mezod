@@ -156,7 +156,7 @@ func (k Keeper) SetTripartyWindowLimit(ctx sdk.Context, limit math.Int) {
 // getTripartySequenceTip returns the last assigned triparty request
 // sequence number. Returns 0 if not set.
 func (k Keeper) getTripartySequenceTip(ctx sdk.Context) math.Int {
-	bz := ctx.KVStore(k.storeKey).Get(types.TripartySequenceTipKey)
+	bz := ctx.KVStore(k.storeKey).Get(types.TripartyRequestSequenceTipKey)
 	if len(bz) == 0 {
 		return math.ZeroInt()
 	}
@@ -169,9 +169,11 @@ func (k Keeper) getTripartySequenceTip(ctx sdk.Context) math.Int {
 	return tip
 }
 
-// incrementTripartySequenceTip advances the triparty sequence tip by one
-// and returns the new value.
-func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
+// incrementTripartyRequestSequenceTip advances the triparty request
+// sequence tip by one and returns the new value. The returned value is
+// used as the unique identifier (sequence number) for a new incoming
+// triparty bridge request.
+func (k Keeper) incrementTripartyRequestSequenceTip(ctx sdk.Context) math.Int {
 	tip := k.getTripartySequenceTip(ctx).AddRaw(1)
 
 	bz, err := tip.Marshal()
@@ -179,7 +181,7 @@ func (k Keeper) incrementTripartySequenceTip(ctx sdk.Context) math.Int {
 		panic(err)
 	}
 
-	ctx.KVStore(k.storeKey).Set(types.TripartySequenceTipKey, bz)
+	ctx.KVStore(k.storeKey).Set(types.TripartyRequestSequenceTipKey, bz)
 
 	return tip
 }
@@ -279,7 +281,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 		return math.Int{}, err
 	}
 
-	seq := k.incrementTripartySequenceTip(ctx)
+	seq := k.incrementTripartyRequestSequenceTip(ctx)
 
 	req := &types.TripartyBridgeRequest{
 		Sequence:     seq,
