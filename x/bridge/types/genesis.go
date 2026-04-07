@@ -224,6 +224,13 @@ func (gs GenesisState) Validate() error {
 			)
 		}
 
+		if evmtypes.IsZeroHexAddress(req.Controller) {
+			return fmt.Errorf(
+				"pending triparty request %d controller cannot be the zero EVM address",
+				i,
+			)
+		}
+
 		if req.Amount.IsNegative() || req.Amount.IsZero() {
 			return fmt.Errorf(
 				"pending triparty request %d amount must be positive: %s",

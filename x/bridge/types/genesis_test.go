@@ -5,6 +5,7 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -243,6 +244,26 @@ func TestGenesisState_Validate(t *testing.T) {
 			},
 			valid:       false,
 			errContains: "pending triparty request 0 controller cannot be empty",
+		},
+		{
+			desc: "pending triparty request with zero controller",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(10),
+						Controller:  evmtypes.ZeroHexAddress(),
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 controller cannot be the zero EVM address",
 		},
 		{
 			desc: "pending triparty request with callback data too large",
