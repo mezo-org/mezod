@@ -5,6 +5,7 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	"cosmossdk.io/math"
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
@@ -48,6 +49,27 @@ func (k Keeper) AllowTripartyController(ctx sdk.Context, controller []byte, isAl
 	} else {
 		store.Delete(key)
 	}
+}
+
+// getAllAllowedTripartyControllers returns all allowed triparty controllers.
+func (k Keeper) getAllAllowedTripartyControllers(ctx sdk.Context) []string {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(
+		store, types.TripartyControllerKeyPrefix,
+	)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var out []string
+
+	for ; iterator.Valid(); iterator.Next() {
+		controller := iterator.Key()[len(types.TripartyControllerKeyPrefix):]
+		out = append(out, evmtypes.BytesToHexAddress(controller))
+	}
+
+	return out
 }
 
 // isTripartyPaused checks if triparty bridging is paused.
@@ -184,6 +206,17 @@ func (k Keeper) incrementTripartyRequestSequenceTip(ctx sdk.Context) math.Int {
 	ctx.KVStore(k.storeKey).Set(types.TripartyRequestSequenceTipKey, bz)
 
 	return tip
+}
+
+// setTripartyRequestSequenceTip sets the last assigned triparty request
+// sequence number.
+func (k Keeper) setTripartyRequestSequenceTip(ctx sdk.Context, tip math.Int) {
+	bz, err := tip.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	ctx.KVStore(k.storeKey).Set(types.TripartyRequestSequenceTipKey, bz)
 }
 
 // validateTripartyBridgeRequest validates a triparty bridge request. It
@@ -325,6 +358,33 @@ func (k Keeper) getTripartyBridgeRequest(
 	return req, true
 }
 
+// getAllPendingTripartyBridgeRequests returns all pending triparty requests.
+func (k Keeper) getAllPendingTripartyBridgeRequests(
+	ctx sdk.Context,
+) []*types.TripartyBridgeRequest {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(
+		store, types.TripartyRequestKeyPrefix,
+	)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var out []*types.TripartyBridgeRequest
+
+	for ; iterator.Valid(); iterator.Next() {
+		req := &types.TripartyBridgeRequest{}
+		if err := req.Unmarshal(iterator.Value()); err != nil {
+			panic(err)
+		}
+
+		out = append(out, req)
+	}
+
+	return out
+}
+
 // deleteTripartyBridgeRequest removes a pending triparty bridge request
 // from state. It enforces sequential deletion: if a request with a lower
 // sequence number exists, the deletion is rejected to prevent gaps.
@@ -388,6 +448,13 @@ func (k Keeper) resetTripartyWindowConsumed(ctx sdk.Context) {
 		// block height can't be negative so int64->uint64 conversion is safe
 		sdk.Uint64ToBigEndian(uint64(ctx.BlockHeight())), //nolint:gosec
 	)
+}
+
+// setTripartyWindowLastReset sets the block height of the last triparty
+// window reset.
+func (k Keeper) setTripartyWindowLastReset(ctx sdk.Context, height uint64) {
+	store := ctx.KVStore(k.storeKey)
+	store.Set(types.TripartyWindowLastResetKey, sdk.Uint64ToBigEndian(height))
 }
 
 // getTripartyWindowLastReset returns the block height at which the

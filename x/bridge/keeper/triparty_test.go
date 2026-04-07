@@ -408,6 +408,21 @@ func TestTripartyRequestSequenceTipIncrement(t *testing.T) {
 	require.Equal(t, math.NewInt(2), keeper.getTripartySequenceTip(ctx))
 }
 
+func TestTripartyRequestSequenceTipManagement(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// Initially should be zero.
+	require.True(t, keeper.getTripartySequenceTip(ctx).IsZero())
+
+	// Set sequence tip.
+	keeper.setTripartyRequestSequenceTip(ctx, math.NewInt(5))
+	require.Equal(t, math.NewInt(5), keeper.getTripartySequenceTip(ctx))
+
+	// Update sequence tip.
+	keeper.setTripartyRequestSequenceTip(ctx, math.NewInt(42))
+	require.Equal(t, math.NewInt(42), keeper.getTripartySequenceTip(ctx))
+}
+
 func TestTripartySequenceTipDefault(t *testing.T) {
 	ctx, keeper := mockContext()
 
@@ -479,6 +494,17 @@ func TestTripartyWindowConsumed(t *testing.T) {
 	keeper.resetTripartyWindowConsumed(ctx)
 	require.True(t, keeper.getTripartyWindowConsumed(ctx).IsZero())
 	require.Equal(t, uint64(500), keeper.getTripartyWindowLastReset(ctx))
+}
+
+func TestTripartyWindowLastResetManagement(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// Initially should be zero.
+	require.Equal(t, uint64(0), keeper.getTripartyWindowLastReset(ctx))
+
+	// Set reset height.
+	keeper.setTripartyWindowLastReset(ctx, 12345)
+	require.Equal(t, uint64(12345), keeper.getTripartyWindowLastReset(ctx))
 }
 
 func TestTripartyCapacity(t *testing.T) {
@@ -553,6 +579,71 @@ func TestTripartyProcessedSequenceTip(t *testing.T) {
 	// Update.
 	keeper.setTripartyProcessedSequenceTip(ctx, math.NewInt(42))
 	require.Equal(t, math.NewInt(42), keeper.getTripartyProcessedSequenceTip(ctx))
+}
+
+func TestGetAllAllowedTripartyControllers(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	t.Run("returns empty slice when no controllers exist", func(t *testing.T) {
+		controllers := keeper.getAllAllowedTripartyControllers(ctx)
+		require.Empty(t, controllers)
+	})
+
+	t.Run("returns all allowed controllers", func(t *testing.T) {
+		controller1 := "0x1111111111111111111111111111111111111111"
+		controller2 := "0x2222222222222222222222222222222222222222"
+		controller3 := "0x3333333333333333333333333333333333333333"
+
+		keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(controller1), true)
+		keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(controller2), true)
+		keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(controller3), true)
+
+		controllers := keeper.getAllAllowedTripartyControllers(ctx)
+		require.Len(t, controllers, 3)
+		require.ElementsMatch(t, []string{controller1, controller2, controller3}, controllers)
+	})
+}
+
+func TestGetAllPendingTripartyBridgeRequests(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	t.Run("returns empty slice when no requests exist", func(t *testing.T) {
+		requests := keeper.getAllPendingTripartyBridgeRequests(ctx)
+		require.Empty(t, requests)
+	})
+
+	t.Run("returns all pending requests", func(t *testing.T) {
+		keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+		keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
+
+		reqID1, err := keeper.CreateTripartyBridgeRequest(
+			ctx, testTripartyRecipient, MinTripartyAmount, []byte("callback-1"), testTripartyController,
+		)
+		require.NoError(t, err)
+
+		reqID2, err := keeper.CreateTripartyBridgeRequest(
+			ctx, testTripartyRecipient, MinTripartyAmount.MulRaw(2), []byte("callback-2"), testTripartyController,
+		)
+		require.NoError(t, err)
+
+		requests := keeper.getAllPendingTripartyBridgeRequests(ctx)
+		require.Len(t, requests, 2)
+
+		requestsBySequence := make(map[string]*types.TripartyBridgeRequest)
+		for _, req := range requests {
+			requestsBySequence[req.Sequence.String()] = req
+		}
+
+		require.Equal(t, testTripartyRecipient, requestsBySequence[reqID1.String()].Recipient)
+		require.Equal(t, MinTripartyAmount, requestsBySequence[reqID1.String()].Amount)
+		require.Equal(t, []byte("callback-1"), requestsBySequence[reqID1.String()].CallbackData)
+		require.Equal(t, testTripartyController, requestsBySequence[reqID1.String()].Controller)
+
+		require.Equal(t, testTripartyRecipient, requestsBySequence[reqID2.String()].Recipient)
+		require.Equal(t, MinTripartyAmount.MulRaw(2), requestsBySequence[reqID2.String()].Amount)
+		require.Equal(t, []byte("callback-2"), requestsBySequence[reqID2.String()].CallbackData)
+		require.Equal(t, testTripartyController, requestsBySequence[reqID2.String()].Controller)
+	})
 }
 
 func TestCreateTripartyBridgeRequestWindowLimit(t *testing.T) {
