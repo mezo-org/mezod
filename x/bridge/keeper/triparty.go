@@ -477,9 +477,9 @@ func (k Keeper) GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
 	return tip
 }
 
-// SetTripartyProcessedSequenceTip sets the last processed triparty
+// setTripartyProcessedSequenceTip sets the last processed triparty
 // request sequence number.
-func (k Keeper) SetTripartyProcessedSequenceTip(ctx sdk.Context, tip math.Int) {
+func (k Keeper) setTripartyProcessedSequenceTip(ctx sdk.Context, tip math.Int) {
 	bz, err := tip.Marshal()
 	if err != nil {
 		panic(err)
@@ -582,7 +582,7 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 			)
 		}
 
-		k.SetTripartyProcessedSequenceTip(ctx, seq)
+		k.setTripartyProcessedSequenceTip(ctx, seq)
 		seq = seq.AddRaw(1)
 	}
 

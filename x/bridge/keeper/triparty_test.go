@@ -547,11 +547,11 @@ func TestTripartyProcessedSequenceTip(t *testing.T) {
 	require.True(t, keeper.GetTripartyProcessedSequenceTip(ctx).IsZero())
 
 	// Set and get.
-	keeper.SetTripartyProcessedSequenceTip(ctx, math.NewInt(5))
+	keeper.setTripartyProcessedSequenceTip(ctx, math.NewInt(5))
 	require.Equal(t, math.NewInt(5), keeper.GetTripartyProcessedSequenceTip(ctx))
 
 	// Update.
-	keeper.SetTripartyProcessedSequenceTip(ctx, math.NewInt(42))
+	keeper.setTripartyProcessedSequenceTip(ctx, math.NewInt(42))
 	require.Equal(t, math.NewInt(42), keeper.GetTripartyProcessedSequenceTip(ctx))
 }
 
