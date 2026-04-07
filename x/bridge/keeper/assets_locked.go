@@ -107,6 +107,17 @@ func (k Keeper) AcceptAssetsLocked(
 			continue
 		}
 
+		// Intentionally not performing precompile address validation as we do
+		// for the triparty bridging requests. We could add a check here, but this
+		// check alone, without an accompanying mechanism in the `MezoBridge`
+		// smart contract, would result in funds being locked in the bridge without
+		// mint on the chain. This is expected behavior for blocked addresses, but
+		// for all other addresses, we should either disallow locking funds or
+		// allow locking and then minting. At the same time, we do not maintain
+		// a list of blocked or precompile addresses in the `MezoBridge` smart
+		// contract, as that would be a synchronization issue between chains,
+		// and we only rely on information for blocked addresses as stored on Mezo.
+
 		if bytes.Equal(event.TokenBytes(), sourceBTCToken) {
 			err = k.mintBTC(ctx, recipient, event.Amount)
 			if err != nil {
