@@ -183,6 +183,80 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "pending triparty request 0 recipient must be a valid hex-encoded EVM address",
 		},
 		{
+			desc: "triparty request sequence tip less than processed sequence tip",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(2)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty request sequence tip cannot be less than processed sequence tip",
+		},
+		{
+			desc: "pending triparty request sequence not above processed sequence tip",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(2)
+				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(50),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 sequence must be greater than processed sequence tip",
+		},
+		{
+			desc: "pending triparty request sequence above request sequence tip",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(2),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(50),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 sequence cannot be greater than request sequence tip",
+		},
+		{
+			desc: "pending triparty requests with sequence gap",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(3)
+				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(3),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(50),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty requests must form a gapless range between processed and request sequence tips",
+		},
+		{
 			desc: "proper genesis with triparty state",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
@@ -198,7 +272,7 @@ func TestGenesisState_Validate(t *testing.T) {
 				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(1)
 				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
 					{
-						Sequence:    sdkmath.NewInt(1),
+						Sequence:    sdkmath.NewInt(2),
 						BlockHeight: 100,
 						Recipient:   "0x2222222222222222222222222222222222222222",
 						Amount:      sdkmath.NewInt(50),

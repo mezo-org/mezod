@@ -48,11 +48,11 @@ func TestGenesisTripartyState(t *testing.T) {
 	genesisState.TripartyBlockDelay = 10
 	genesisState.TripartyPerRequestLimit = sdkmath.NewInt(123)
 	genesisState.TripartyWindowLimit = sdkmath.NewInt(456)
-	genesisState.TripartyRequestSequenceTip = sdkmath.NewInt(2)
+	genesisState.TripartyRequestSequenceTip = sdkmath.NewInt(3)
 	genesisState.TripartyProcessedSequenceTip = sdkmath.NewInt(1)
 	genesisState.TripartyPendingRequests = []*types.TripartyBridgeRequest{
 		{
-			Sequence:     sdkmath.NewInt(1),
+			Sequence:     sdkmath.NewInt(2),
 			BlockHeight:  100,
 			Recipient:    "0x3333333333333333333333333333333333333333",
 			Amount:       sdkmath.NewInt(50),
@@ -60,7 +60,7 @@ func TestGenesisTripartyState(t *testing.T) {
 			Controller:   "0x1111111111111111111111111111111111111111",
 		},
 		{
-			Sequence:     sdkmath.NewInt(2),
+			Sequence:     sdkmath.NewInt(3),
 			BlockHeight:  101,
 			Recipient:    "0x4444444444444444444444444444444444444444",
 			Amount:       sdkmath.NewInt(75),

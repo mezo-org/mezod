@@ -136,6 +136,14 @@ func (gs GenesisState) Validate() error {
 		)
 	}
 
+	if gs.TripartyRequestSequenceTip.LT(gs.TripartyProcessedSequenceTip) {
+		return fmt.Errorf(
+			"genesis triparty request sequence tip cannot be less than processed sequence tip: %s < %s",
+			gs.TripartyRequestSequenceTip,
+			gs.TripartyProcessedSequenceTip,
+		)
+	}
+
 	if gs.TripartyWindowConsumed.IsNegative() {
 		return fmt.Errorf(
 			"genesis triparty window consumed cannot be negative: %s",
@@ -221,6 +229,47 @@ func (gs GenesisState) Validate() error {
 				"pending triparty request %d amount must be positive: %s",
 				i,
 				req.Amount,
+			)
+		}
+	}
+
+	for i, req := range gs.TripartyPendingRequests {
+		if !req.Sequence.GT(gs.TripartyProcessedSequenceTip) {
+			return fmt.Errorf(
+				"pending triparty request %d sequence must be greater than processed sequence tip: %s <= %s",
+				i,
+				req.Sequence,
+				gs.TripartyProcessedSequenceTip,
+			)
+		}
+
+		if req.Sequence.GT(gs.TripartyRequestSequenceTip) {
+			return fmt.Errorf(
+				"pending triparty request %d sequence cannot be greater than request sequence tip: %s > %s",
+				i,
+				req.Sequence,
+				gs.TripartyRequestSequenceTip,
+			)
+		}
+	}
+
+	expectedPendingRequests := gs.TripartyRequestSequenceTip.Sub(gs.TripartyProcessedSequenceTip)
+	actualPendingRequests := sdkmath.NewInt(int64(len(gs.TripartyPendingRequests)))
+	if !expectedPendingRequests.Equal(actualPendingRequests) {
+		return fmt.Errorf(
+			"pending triparty requests must form a gapless range between processed and request sequence tips",
+		)
+	}
+
+	pendingSequences := make(map[string]struct{}, len(gs.TripartyPendingRequests))
+	for _, req := range gs.TripartyPendingRequests {
+		pendingSequences[req.Sequence.String()] = struct{}{}
+	}
+
+	for seq := gs.TripartyProcessedSequenceTip.AddRaw(1); !seq.GT(gs.TripartyRequestSequenceTip); seq = seq.AddRaw(1) {
+		if _, ok := pendingSequences[seq.String()]; !ok {
+			return fmt.Errorf(
+				"pending triparty requests must form a gapless range between processed and request sequence tips",
 			)
 		}
 	}
