@@ -12,12 +12,14 @@ cp ../../precompile/erc20/IERC20WithPermit.sol ./contracts/interfaces/solidity/
 # Copy BTC Token interfaces
 cp ../../precompile/btctoken/IBTC.sol ./contracts/interfaces
 # Adjust imports in IBTC.sol
-sed -i '' 's|../erc20/|./solidity/|g' ./contracts/interfaces/IBTC.sol
+sed -i.bak 's|../erc20/|./solidity/|g' ./contracts/interfaces/IBTC.sol
+rm -f ./contracts/interfaces/IBTC.sol.bak
 
 # Copy MEZO Token interface
 cp ../../precompile/mezotoken/IMEZO.sol ./contracts/interfaces
 # Adjust imports in IMEZO.sol
-sed -i '' 's|../erc20/|./solidity/|g' ./contracts/interfaces/IMEZO.sol
+sed -i.bak 's|../erc20/|./solidity/|g' ./contracts/interfaces/IMEZO.sol
+rm -f ./contracts/interfaces/IMEZO.sol.bak
 
 # Copy Validator Pool interface
 cp ../../precompile/validatorpool/IValidatorPool.sol ./contracts/interfaces

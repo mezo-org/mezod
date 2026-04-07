@@ -25,6 +25,16 @@ function getPrivKeys (): string[] {
   return keys
 }
 
+const rpcUrl = process.env.RPC_URL || 'http://127.0.0.1:8545'
+const chainId = parseInt(process.env.CHAIN_ID || '31611')
+
+function getAccounts(): string[] {
+  if (process.env.PRIVATE_KEYS) {
+    return process.env.PRIVATE_KEYS.split(',')
+  }
+  return getPrivKeys()
+}
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.28",
@@ -44,9 +54,9 @@ const config: HardhatUserConfig = {
 
   networks: {
     localhost: {
-      url: 'http://127.0.0.1:8545', // localnode listens on this specific interface
-      chainId: 31611,
-      accounts: getPrivKeys(),
+      url: rpcUrl,
+      chainId: chainId,
+      accounts: getAccounts(),
       gas: 'auto'
     },
   }
