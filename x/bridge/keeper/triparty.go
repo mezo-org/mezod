@@ -5,6 +5,7 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	"cosmossdk.io/math"
+	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
@@ -14,10 +15,6 @@ import (
 // TripartyWindowResetBlocks is the number of blocks after which the
 // triparty minting window is reset.
 const TripartyWindowResetBlocks = 25000
-
-// MaxTripartyCallbackDataLength is the maximum allowed length of
-// callbackData in a triparty bridge request (10 × 32-byte ABI words).
-const MaxTripartyCallbackDataLength = 320
 
 // TripartyBatch is the maximum number of triparty bridge requests
 // processed per block. While triparty mints are expected to be rare,
@@ -48,6 +45,27 @@ func (k Keeper) AllowTripartyController(ctx sdk.Context, controller []byte, isAl
 	} else {
 		store.Delete(key)
 	}
+}
+
+// getAllAllowedTripartyControllers returns all allowed triparty controllers.
+func (k Keeper) getAllAllowedTripartyControllers(ctx sdk.Context) []string {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(
+		store, types.TripartyControllerKeyPrefix,
+	)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var out []string
+
+	for ; iterator.Valid(); iterator.Next() {
+		controller := iterator.Key()[len(types.TripartyControllerKeyPrefix):]
+		out = append(out, evmtypes.BytesToHexAddress(controller))
+	}
+
+	return out
 }
 
 // IsTripartyPaused checks if triparty bridging is paused.
@@ -186,6 +204,44 @@ func (k Keeper) incrementTripartyRequestSequenceTip(ctx sdk.Context) math.Int {
 	return tip
 }
 
+// setTripartyRequestSequenceTip sets the last assigned triparty request
+// sequence number.
+func (k Keeper) setTripartyRequestSequenceTip(ctx sdk.Context, tip math.Int) {
+	bz, err := tip.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	ctx.KVStore(k.storeKey).Set(types.TripartyRequestSequenceTipKey, bz)
+}
+
+// GetTripartyProcessedSequenceTip returns the last processed triparty
+// request sequence number. Returns 0 if not set.
+func (k Keeper) GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
+	bz := ctx.KVStore(k.storeKey).Get(types.TripartyProcessedSequenceTipKey)
+	if len(bz) == 0 {
+		return math.ZeroInt()
+	}
+
+	tip := math.ZeroInt()
+	if err := tip.Unmarshal(bz); err != nil {
+		panic(err)
+	}
+
+	return tip
+}
+
+// setTripartyProcessedSequenceTip sets the last processed triparty
+// request sequence number.
+func (k Keeper) setTripartyProcessedSequenceTip(ctx sdk.Context, tip math.Int) {
+	bz, err := tip.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	ctx.KVStore(k.storeKey).Set(types.TripartyProcessedSequenceTipKey, bz)
+}
+
 // validateTripartyBridgeRequest validates a triparty bridge request. It
 // checks all inputs and state-dependent conditions:
 //   - the recipient is a valid, non-zero hex address,
@@ -234,7 +290,7 @@ func (k Keeper) validateTripartyBridgeRequest(
 		return types.ErrTripartyControllerNotAllowed
 	}
 
-	if len(callbackData) > MaxTripartyCallbackDataLength {
+	if len(callbackData) > types.MaxTripartyCallbackDataLength {
 		return types.ErrTripartyCallbackDataTooLarge
 	}
 
@@ -294,15 +350,25 @@ func (k Keeper) CreateTripartyBridgeRequest(
 		Controller:   controller,
 	}
 
+	k.saveTripartyBridgeRequest(ctx, req)
+	k.increaseTripartyWindowConsumed(ctx, amount)
+
+	return seq, nil
+}
+
+func (k Keeper) saveTripartyBridgeRequest(
+	ctx sdk.Context,
+	req *types.TripartyBridgeRequest,
+) {
 	bz, err := req.Marshal()
 	if err != nil {
 		panic(err)
 	}
 
-	ctx.KVStore(k.storeKey).Set(types.GetTripartyBridgeRequestKey(seq), bz)
-	k.increaseTripartyWindowConsumed(ctx, amount)
-
-	return seq, nil
+	ctx.KVStore(k.storeKey).Set(
+		types.GetTripartyBridgeRequestKey(req.Sequence),
+		bz,
+	)
 }
 
 // getTripartyBridgeRequest returns a pending triparty bridge request by its
@@ -323,6 +389,33 @@ func (k Keeper) getTripartyBridgeRequest(
 	}
 
 	return req, true
+}
+
+// getAllPendingTripartyBridgeRequests returns all pending triparty requests.
+func (k Keeper) getAllPendingTripartyBridgeRequests(
+	ctx sdk.Context,
+) []*types.TripartyBridgeRequest {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(
+		store, types.TripartyRequestKeyPrefix,
+	)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var out []*types.TripartyBridgeRequest
+
+	for ; iterator.Valid(); iterator.Next() {
+		req := &types.TripartyBridgeRequest{}
+		if err := req.Unmarshal(iterator.Value()); err != nil {
+			panic(err)
+		}
+
+		out = append(out, req)
+	}
+
+	return out
 }
 
 // deleteTripartyBridgeRequest removes a pending triparty bridge request
@@ -388,6 +481,13 @@ func (k Keeper) resetTripartyWindowConsumed(ctx sdk.Context) {
 		// block height can't be negative so int64->uint64 conversion is safe
 		sdk.Uint64ToBigEndian(uint64(ctx.BlockHeight())), //nolint:gosec
 	)
+}
+
+// setTripartyWindowLastReset sets the block height of the last triparty
+// window reset.
+func (k Keeper) setTripartyWindowLastReset(ctx sdk.Context, height uint64) {
+	store := ctx.KVStore(k.storeKey)
+	store.Set(types.TripartyWindowLastResetKey, sdk.Uint64ToBigEndian(height))
 }
 
 // getTripartyWindowLastReset returns the block height at which the
@@ -459,33 +559,6 @@ func (k Keeper) increaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int)
 	}
 
 	store.Set(types.TripartyTotalBTCMintedKey, bz)
-}
-
-// GetTripartyProcessedSequenceTip returns the last processed triparty
-// request sequence number. Returns 0 if not set.
-func (k Keeper) GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
-	bz := ctx.KVStore(k.storeKey).Get(types.TripartyProcessedSequenceTipKey)
-	if len(bz) == 0 {
-		return math.ZeroInt()
-	}
-
-	tip := math.ZeroInt()
-	if err := tip.Unmarshal(bz); err != nil {
-		panic(err)
-	}
-
-	return tip
-}
-
-// setTripartyProcessedSequenceTip sets the last processed triparty
-// request sequence number.
-func (k Keeper) setTripartyProcessedSequenceTip(ctx sdk.Context, tip math.Int) {
-	bz, err := tip.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	ctx.KVStore(k.storeKey).Set(types.TripartyProcessedSequenceTipKey, bz)
 }
 
 // ProcessTripartyBridgeRequests reads pending triparty bridge requests
