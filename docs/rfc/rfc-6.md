@@ -77,6 +77,18 @@ function setTripartyLimits(uint256 perRequestLimit, uint256 windowLimit) externa
 function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
 
 function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);
+
+function isTripartyPaused() external view returns (bool isPaused);
+
+function isAllowedTripartyController(address controller) external view returns (bool);
+
+function getTripartyBlockDelay() external view returns (uint256 delay);
+
+function getTripartyRequestSequenceTip() external view returns (uint256 sequenceTip);
+
+function getTripartyProcessedSequenceTip() external view returns (uint256 sequenceTip);
+
+function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted);
 ```
 
 `bridgeTriparty` accepts the `recipient`, `amount`, and `callbackData`.
@@ -117,6 +129,20 @@ and limits allow it. `setTripartyLimits` should only be callable by
 `getTripartyLimits` returns the configured per-request and window limits.
 `getTripartyCapacity` returns the remaining window capacity and the block height
 at which it resets, mirroring `getOutflowCapacity`.
+
+`isTripartyPaused` returns whether triparty bridging is currently paused.
+`isAllowedTripartyController` returns whether the given address is an allowed
+triparty controller. `getTripartyBlockDelay` returns the configured block delay.
+
+`getTripartyRequestSequenceTip` returns the last assigned request sequence
+number (the total number of triparty bridge requests submitted), mirroring
+`getCurrentSequenceTip` for the regular bridge path.
+`getTripartyProcessedSequenceTip` returns the last processed request sequence
+number. Together, callers can derive the number of pending requests
+(`requestTip - processedTip`).
+
+`getTripartyTotalBTCMinted` returns the cumulative BTC minted through the
+triparty path (see [Provenance tracking](#provenance-tracking-and-bridging-out)).
 
 Additionally, `bridgeTriparty` should:
 
