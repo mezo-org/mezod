@@ -130,6 +130,88 @@ func TestGenesisState_Validate(t *testing.T) {
 			},
 			valid: true,
 		},
+		{
+			desc: "triparty block delay less than one",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyBlockDelay = 0
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty block delay cannot be less than 1",
+		},
+		{
+			desc: "negative triparty request sequence tip",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(-1)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty request sequence tip cannot be negative",
+		},
+		{
+			desc: "invalid allowed triparty controller",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.AllowedTripartyControllers = []string{"bad-controller"}
+				return genState
+			},
+			valid:       false,
+			errContains: "allowed triparty controller 0 must be a valid hex-encoded EVM address",
+		},
+		{
+			desc: "pending triparty request with invalid recipient",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:   sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:  "bad-recipient",
+						Amount:     sdkmath.NewInt(10),
+						Controller: "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 recipient must be a valid hex-encoded EVM address",
+		},
+		{
+			desc: "proper genesis with triparty state",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.AllowedTripartyControllers = []string{
+					"0x1111111111111111111111111111111111111111",
+				}
+				genState.TripartyPaused = true
+				genState.TripartyBlockDelay = 10
+				genState.TripartyPerRequestLimit = sdkmath.NewInt(123)
+				genState.TripartyWindowLimit = sdkmath.NewInt(456)
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(2)
+				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(50),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				genState.TripartyWindowConsumed = sdkmath.NewInt(50)
+				genState.TripartyWindowLastReset = 500
+				genState.TripartyTotalBtcMinted = sdkmath.NewInt(200)
+				return genState
+			},
+			valid: true,
+		},
 	} {
 		t.Run(
 			tc.desc, func(t *testing.T) {
