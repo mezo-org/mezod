@@ -521,3 +521,106 @@ func (s *PrecompileTestSuite) TestGetTripartyTotalBTCMinted() {
 
 	s.RunMethodTestCases(testcases, "getTripartyTotalBTCMinted")
 }
+
+func (s *PrecompileTestSuite) TestIsTripartyPaused() {
+	testcases := []TestCase{
+		{
+			name: "default - not paused",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{false},
+		},
+		{
+			name: "returns true when paused",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{true},
+		},
+		{
+			name: "returns false after unpausing",
+			run: func() []interface{} {
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
+				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{false},
+		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{true}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "isTripartyPaused")
+}
+
+func (s *PrecompileTestSuite) TestGetTripartyRequestSequenceTip() {
+	testcases := []TestCase{
+		{
+			name: "default - zero",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(0)},
+		},
+		{
+			name: "returns tip after requests",
+			run: func() []interface{} {
+				s.bridgeKeeper.tripartySequenceTip = math.NewInt(3)
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(3)},
+		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(1)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "getTripartyRequestSequenceTip")
+}
+
+func (s *PrecompileTestSuite) TestGetTripartyProcessedSequenceTip() {
+	testcases := []TestCase{
+		{
+			name: "default - zero",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(0)},
+		},
+		{
+			name: "wrong number of inputs",
+			run: func() []interface{} {
+				return []interface{}{big.NewInt(1)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "getTripartyProcessedSequenceTip")
+}

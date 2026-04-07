@@ -121,5 +121,17 @@ contract AssetsBridgeCaller is IAssetsBridge {
     function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted) {
         return IAssetsBridge(precompile).getTripartyTotalBTCMinted();
     }
+
+    function isTripartyPaused() external view returns (bool isPaused) {
+        return IAssetsBridge(precompile).isTripartyPaused();
+    }
+
+    function getTripartyRequestSequenceTip() external view returns (uint256 sequenceTip) {
+        return IAssetsBridge(precompile).getTripartyRequestSequenceTip();
+    }
+
+    function getTripartyProcessedSequenceTip() external view returns (uint256 sequenceTip) {
+        return IAssetsBridge(precompile).getTripartyProcessedSequenceTip();
+    }
 }
 
