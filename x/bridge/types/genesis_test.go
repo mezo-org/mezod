@@ -142,6 +142,28 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "genesis triparty block delay cannot be less than 1",
 		},
 		{
+			desc: "negative triparty per-request limit",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyPerRequestLimit = sdkmath.NewInt(-1)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty per-request limit cannot be negative",
+		},
+		{
+			desc: "negative triparty window limit",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyWindowLimit = sdkmath.NewInt(-1)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty window limit cannot be negative",
+		},
+		{
 			desc: "negative triparty request sequence tip",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
@@ -181,6 +203,46 @@ func TestGenesisState_Validate(t *testing.T) {
 			},
 			valid:       false,
 			errContains: "pending triparty request 0 recipient must be a valid hex-encoded EVM address",
+		},
+		{
+			desc: "pending triparty request with empty recipient",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   "",
+						Amount:      sdkmath.NewInt(10),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 recipient cannot be empty",
+		},
+		{
+			desc: "pending triparty request with empty controller",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(10),
+						Controller:  "",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 controller cannot be empty",
 		},
 		{
 			desc: "pending triparty request with callback data too large",
