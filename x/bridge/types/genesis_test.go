@@ -170,11 +170,11 @@ func TestGenesisState_Validate(t *testing.T) {
 				genState.SourceBtcToken = token
 				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
 					{
-						Sequence:   sdkmath.NewInt(1),
+						Sequence:    sdkmath.NewInt(1),
 						BlockHeight: 100,
-						Recipient:  "bad-recipient",
-						Amount:     sdkmath.NewInt(10),
-						Controller: "0x1111111111111111111111111111111111111111",
+						Recipient:   "bad-recipient",
+						Amount:      sdkmath.NewInt(10),
+						Controller:  "0x1111111111111111111111111111111111111111",
 					},
 				}
 				return genState
