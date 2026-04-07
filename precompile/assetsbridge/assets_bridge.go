@@ -207,6 +207,9 @@ func NewPrecompile(
 		methods = append(methods, newGetTripartyLimitsMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyCapacityMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyTotalBTCMintedMethod(bridgeKeeper))
+		methods = append(methods, newIsTripartyPausedMethod(bridgeKeeper))
+		methods = append(methods, newGetTripartyRequestSequenceTipMethod(bridgeKeeper))
+		methods = append(methods, newGetTripartyProcessedSequenceTipMethod(bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -281,6 +284,7 @@ type BridgeKeeper interface {
 	PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error
 	IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool
 	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
+	IsTripartyPaused(ctx sdk.Context) bool
 	SetTripartyPaused(ctx sdk.Context, isPaused bool)
 	GetTripartyBlockDelay(ctx sdk.Context) int64
 	SetTripartyBlockDelay(ctx sdk.Context, delay int64) error
@@ -291,6 +295,8 @@ type BridgeKeeper interface {
 	CreateTripartyBridgeRequest(ctx sdk.Context, recipient string, amount math.Int, callbackData []byte, controller string) (math.Int, error)
 	GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64)
 	GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int
+	GetTripartyRequestSequenceTip(ctx sdk.Context) math.Int
+	GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int
 }
 
 type AuthzKeeper interface {

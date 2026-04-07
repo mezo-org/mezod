@@ -539,3 +539,15 @@ func (k *FakeBridgeKeeper) GetTripartyCapacity(_ sdk.Context) (capacity math.Int
 func (k *FakeBridgeKeeper) GetTripartyTotalBTCMinted(_ sdk.Context) math.Int {
 	return k.tripartyTotalBTCMinted
 }
+
+func (k *FakeBridgeKeeper) IsTripartyPaused(_ sdk.Context) bool {
+	return k.tripartyPaused
+}
+
+func (k *FakeBridgeKeeper) GetTripartyRequestSequenceTip(_ sdk.Context) math.Int {
+	return k.tripartySequenceTip
+}
+
+func (k *FakeBridgeKeeper) GetTripartyProcessedSequenceTip(_ sdk.Context) math.Int {
+	return math.ZeroInt()
+}

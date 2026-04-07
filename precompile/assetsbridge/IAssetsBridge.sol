@@ -392,4 +392,25 @@ interface IAssetsBridge {
      * @return totalMinted The cumulative amount of BTC minted through triparty.
      */
     function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted);
+
+    /**
+     * @notice Checks if triparty bridging is currently paused.
+     * @return isPaused True if triparty bridging is paused.
+     */
+    function isTripartyPaused() external view returns (bool isPaused);
+
+    /**
+     * @notice Returns the last assigned triparty request sequence number.
+     *         This is the total number of triparty bridge requests submitted.
+     * @return sequenceTip The last assigned request sequence number.
+     */
+    function getTripartyRequestSequenceTip() external view returns (uint256 sequenceTip);
+
+    /**
+     * @notice Returns the last processed triparty request sequence number.
+     *         Together with getTripartyRequestSequenceTip, callers can derive
+     *         the number of pending requests (requestTip - processedTip).
+     * @return sequenceTip The last processed request sequence number.
+     */
+    function getTripartyProcessedSequenceTip() external view returns (uint256 sequenceTip);
 }

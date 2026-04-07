@@ -356,3 +356,33 @@ task(
     console.log(result.toString())
   }
 )
+
+task(
+  'assetsBridge:isTripartyPaused',
+  'Checks if triparty bridging is currently paused',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result: boolean = await bridge.isTripartyPaused()
+    console.log(result)
+  }
+)
+
+task(
+  'assetsBridge:getTripartyRequestSequenceTip',
+  'Gets the last assigned triparty request sequence number',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getTripartyRequestSequenceTip()
+    console.log(result.toString())
+  }
+)
+
+task(
+  'assetsBridge:getTripartyProcessedSequenceTip',
+  'Gets the last processed triparty request sequence number',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getTripartyProcessedSequenceTip()
+    console.log(result.toString())
+  }
+)
