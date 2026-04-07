@@ -11,16 +11,19 @@ import (
 )
 
 const (
-	BridgeTripartyMethodName              = "bridgeTriparty"
-	AllowTripartyControllerMethodName     = "allowTripartyController"
-	IsAllowedTripartyControllerMethodName = "isAllowedTripartyController"
-	PauseTripartyMethodName               = "pauseTriparty"
-	SetTripartyBlockDelayMethodName       = "setTripartyBlockDelay"
-	GetTripartyBlockDelayMethodName       = "getTripartyBlockDelay"
-	SetTripartyLimitsMethodName           = "setTripartyLimits"
-	GetTripartyLimitsMethodName           = "getTripartyLimits"
-	GetTripartyCapacityMethodName         = "getTripartyCapacity"
-	GetTripartyTotalBTCMintedMethodName   = "getTripartyTotalBTCMinted"
+	BridgeTripartyMethodName                  = "bridgeTriparty"
+	AllowTripartyControllerMethodName         = "allowTripartyController"
+	IsAllowedTripartyControllerMethodName     = "isAllowedTripartyController"
+	IsTripartyPausedMethodName                = "isTripartyPaused"
+	PauseTripartyMethodName                   = "pauseTriparty"
+	SetTripartyBlockDelayMethodName           = "setTripartyBlockDelay"
+	GetTripartyBlockDelayMethodName           = "getTripartyBlockDelay"
+	SetTripartyLimitsMethodName               = "setTripartyLimits"
+	GetTripartyLimitsMethodName               = "getTripartyLimits"
+	GetTripartyCapacityMethodName             = "getTripartyCapacity"
+	GetTripartyTotalBTCMintedMethodName       = "getTripartyTotalBTCMinted"
+	GetTripartyRequestSequenceTipMethodName   = "getTripartyRequestSequenceTip"
+	GetTripartyProcessedSequenceTipMethodName = "getTripartyProcessedSequenceTip"
 )
 
 // --- bridgeTriparty ---
@@ -772,5 +775,132 @@ func (m *GetTripartyTotalBTCMintedMethod) Run(
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(total),
+	}, nil, nil
+}
+
+// --- isTripartyPaused ---
+
+type IsTripartyPausedMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newIsTripartyPausedMethod(
+	bridgeKeeper BridgeKeeper,
+) *IsTripartyPausedMethod {
+	return &IsTripartyPausedMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *IsTripartyPausedMethod) MethodName() string {
+	return IsTripartyPausedMethodName
+}
+
+func (m *IsTripartyPausedMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *IsTripartyPausedMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *IsTripartyPausedMethod) Payable() bool {
+	return false
+}
+
+func (m *IsTripartyPausedMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
+		return nil, nil, err
+	}
+
+	isPaused := m.bridgeKeeper.IsTripartyPaused(context.SdkCtx())
+
+	return precompile.MethodOutputs{isPaused}, nil, nil
+}
+
+// --- getTripartyRequestSequenceTip ---
+
+type GetTripartyRequestSequenceTipMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetTripartyRequestSequenceTipMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetTripartyRequestSequenceTipMethod {
+	return &GetTripartyRequestSequenceTipMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *GetTripartyRequestSequenceTipMethod) MethodName() string {
+	return GetTripartyRequestSequenceTipMethodName
+}
+
+func (m *GetTripartyRequestSequenceTipMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetTripartyRequestSequenceTipMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetTripartyRequestSequenceTipMethod) Payable() bool {
+	return false
+}
+
+func (m *GetTripartyRequestSequenceTipMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
+		return nil, nil, err
+	}
+
+	tip := m.bridgeKeeper.GetTripartyRequestSequenceTip(context.SdkCtx())
+
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(tip),
+	}, nil, nil
+}
+
+// --- getTripartyProcessedSequenceTip ---
+
+type GetTripartyProcessedSequenceTipMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetTripartyProcessedSequenceTipMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetTripartyProcessedSequenceTipMethod {
+	return &GetTripartyProcessedSequenceTipMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *GetTripartyProcessedSequenceTipMethod) MethodName() string {
+	return GetTripartyProcessedSequenceTipMethodName
+}
+
+func (m *GetTripartyProcessedSequenceTipMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetTripartyProcessedSequenceTipMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetTripartyProcessedSequenceTipMethod) Payable() bool {
+	return false
+}
+
+func (m *GetTripartyProcessedSequenceTipMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
+		return nil, nil, err
+	}
+
+	tip := m.bridgeKeeper.GetTripartyProcessedSequenceTip(context.SdkCtx())
+
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(tip),
 	}, nil, nil
 }

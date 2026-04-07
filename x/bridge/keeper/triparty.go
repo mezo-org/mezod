@@ -50,8 +50,8 @@ func (k Keeper) AllowTripartyController(ctx sdk.Context, controller []byte, isAl
 	}
 }
 
-// isTripartyPaused checks if triparty bridging is paused.
-func (k Keeper) isTripartyPaused(ctx sdk.Context) bool {
+// IsTripartyPaused checks if triparty bridging is paused.
+func (k Keeper) IsTripartyPaused(ctx sdk.Context) bool {
 	store := ctx.KVStore(k.storeKey)
 	return store.Has(types.TripartyPausedKey)
 }
@@ -153,9 +153,9 @@ func (k Keeper) SetTripartyWindowLimit(ctx sdk.Context, limit math.Int) {
 	store.Set(types.TripartyWindowLimitKey, bz)
 }
 
-// getTripartySequenceTip returns the last assigned triparty request
+// GetTripartyRequestSequenceTip returns the last assigned triparty request
 // sequence number. Returns 0 if not set.
-func (k Keeper) getTripartySequenceTip(ctx sdk.Context) math.Int {
+func (k Keeper) GetTripartyRequestSequenceTip(ctx sdk.Context) math.Int {
 	bz := ctx.KVStore(k.storeKey).Get(types.TripartyRequestSequenceTipKey)
 	if len(bz) == 0 {
 		return math.ZeroInt()
@@ -174,7 +174,7 @@ func (k Keeper) getTripartySequenceTip(ctx sdk.Context) math.Int {
 // used as the unique identifier (sequence number) for a new incoming
 // triparty bridge request.
 func (k Keeper) incrementTripartyRequestSequenceTip(ctx sdk.Context) math.Int {
-	tip := k.getTripartySequenceTip(ctx).AddRaw(1)
+	tip := k.GetTripartyRequestSequenceTip(ctx).AddRaw(1)
 
 	bz, err := tip.Marshal()
 	if err != nil {
@@ -265,7 +265,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	callbackData []byte,
 	controller string,
 ) (math.Int, error) {
-	if k.isTripartyPaused(ctx) {
+	if k.IsTripartyPaused(ctx) {
 		return math.Int{}, types.ErrTripartyPaused
 	}
 
@@ -461,9 +461,9 @@ func (k Keeper) increaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int)
 	store.Set(types.TripartyTotalBTCMintedKey, bz)
 }
 
-// getTripartyProcessedSequenceTip returns the last processed triparty
+// GetTripartyProcessedSequenceTip returns the last processed triparty
 // request sequence number. Returns 0 if not set.
-func (k Keeper) getTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
+func (k Keeper) GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
 	bz := ctx.KVStore(k.storeKey).Get(types.TripartyProcessedSequenceTipKey)
 	if len(bz) == 0 {
 		return math.ZeroInt()
@@ -501,14 +501,14 @@ func (k Keeper) setTripartyProcessedSequenceTip(ctx sdk.Context, tip math.Int) {
 // completing or block subsequent requests. A mintBTC failure is fatal
 // and returns an error that will cause a consensus failure.
 func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
-	if k.isTripartyPaused(ctx) {
+	if k.IsTripartyPaused(ctx) {
 		k.Logger(ctx).Info("triparty bridging is paused; skipping processing")
 		return nil
 	}
 
 	blockDelay := k.GetTripartyBlockDelay(ctx)
 
-	seq := k.getTripartyProcessedSequenceTip(ctx).AddRaw(1)
+	seq := k.GetTripartyProcessedSequenceTip(ctx).AddRaw(1)
 
 	for range TripartyBatch {
 		req, found := k.getTripartyBridgeRequest(ctx, seq)

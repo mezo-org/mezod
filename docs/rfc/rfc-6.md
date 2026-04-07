@@ -64,59 +64,74 @@ The existing `AssetsBridge` precompile is the entry point for bridge operations
 and should expose the following functions:
 
 ```solidity
+// Minting
 function bridgeTriparty(address recipient, uint256 amount, bytes calldata callbackData) external returns (uint256 requestId);
+function getTripartyRequestSequenceTip() external view returns (uint256 sequenceTip);
+function getTripartyProcessedSequenceTip() external view returns (uint256 sequenceTip);
 
+// Access control
 function allowTripartyController(address controller, bool isAllowed) external returns (bool);
+function isAllowedTripartyController(address controller) external view returns (bool);
 
+// Pause
 function pauseTriparty(bool isPaused) external returns (bool);
+function isTripartyPaused() external view returns (bool isPaused);
 
+// Block delay
 function setTripartyBlockDelay(uint256 delay) external returns (bool);
+function getTripartyBlockDelay() external view returns (uint256 delay);
 
+// Limits
 function setTripartyLimits(uint256 perRequestLimit, uint256 windowLimit) external returns (bool);
-
 function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
-
 function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);
+
+// Provenance
+function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted);
 ```
 
-`bridgeTriparty` accepts the `recipient`, `amount`, and `callbackData`.
-The `callbackData` is arbitrary bytes forwarded to the callback, allowing the
-caller to pass context such as a lock duration or vault parameters. After BTC
-is minted, the `PreBlocker` issues a callback to the controller that submitted
-the request. The controller address is already trusted since only allowed
-triparty controllers can call `bridgeTriparty`, so there is no need for a
-separate callback address. If the callback fails, the mint still completes.
-Passing empty `callbackData` does not disable the callback. The function returns the
-`requestId` (the sequence number assigned to the request) which can be used to
-correlate the callback with the original request.
-
-Only an allowed triparty controller should be able to call the `bridgeTriparty`
-function. The `allowTripartyController` and `setTripartyBlockDelay` functions
-should only be callable by the same address that can set the pauser or outflow
-limits, which is `poaKeeper.CheckOwner()`). The `pauseTriparty` should only be
-callable by the `AssetsBridge` pauser.
-
-`setTripartyBlockDelay` sets the number of blocks that must pass between a
-triparty mint request and its execution by the `PreBlocker`. The delay must be
-at least 1 (the request and execution always happen in different blocks).
-
-`setTripartyLimits` configures the global request limits shared by all triparty
-controllers. The parameters are:
-
-* `perRequestLimit`: the maximum BTC amount for a single `bridgeTriparty` call
-* `windowLimit`: the maximum aggregate BTC amount that can be requested via
-  triparty within a rolling block window (using the same reset mechanism as
-  outflow limits)
-
-`pauseTriparty` sets a pause flag that prevents new triparty mint requests from
-being accepted and stops the `PreBlocker` from processing pending requests.
-Pending requests remain in state and will be processed once triparty is unpaused
-and limits allow it. `setTripartyLimits` should only be callable by
-`poaKeeper.CheckOwner()`.
-
-`getTripartyLimits` returns the configured per-request and window limits.
-`getTripartyCapacity` returns the remaining window capacity and the block height
-at which it resets, mirroring `getOutflowCapacity`.
+* `bridgeTriparty` accepts the `recipient`, `amount`, and `callbackData`.
+  The `callbackData` is arbitrary bytes forwarded to the callback, allowing the
+  caller to pass context such as a lock duration or vault parameters. After BTC
+  is minted, the `PreBlocker` issues a callback to the controller that submitted
+  the request. The controller address is already trusted since only allowed
+  triparty controllers can call `bridgeTriparty`, so there is no need for a
+  separate callback address. If the callback fails, the mint still completes.
+  Passing empty `callbackData` does not disable the callback. The function
+  returns the `requestId` (the sequence number assigned to the request) which
+  can be used to correlate the callback with the original request. Only an
+  allowed triparty controller should be able to call this function.
+* `getTripartyRequestSequenceTip` returns the last assigned request sequence
+  number (the total number of triparty bridge requests submitted), mirroring
+  `getCurrentSequenceTip` for the regular bridge path.
+* `getTripartyProcessedSequenceTip` returns the last processed request sequence
+  number. Together with `getTripartyRequestSequenceTip`, callers can derive the
+  number of pending requests (`requestTip - processedTip`).
+* `allowTripartyController` allows or disallows a triparty controller address.
+  Only callable by `poaKeeper.CheckOwner()`.
+* `isAllowedTripartyController` returns whether the given address is an allowed
+  triparty controller.
+* `pauseTriparty` sets a pause flag that prevents new triparty mint requests
+  from being accepted and stops the `PreBlocker` from processing pending
+  requests. Pending requests remain in state and will be processed once triparty
+  is unpaused and limits allow it. Only callable by the `AssetsBridge` pauser.
+* `isTripartyPaused` returns whether triparty bridging is currently paused.
+* `setTripartyBlockDelay` sets the number of blocks that must pass between a
+  triparty mint request and its execution by the `PreBlocker`. The delay must be
+  at least 1 (the request and execution always happen in different blocks).
+  Only callable by `poaKeeper.CheckOwner()`.
+* `getTripartyBlockDelay` returns the configured block delay.
+* `setTripartyLimits` configures the global request limits shared by all
+  triparty controllers: `perRequestLimit` (the maximum BTC amount for a single
+  `bridgeTriparty` call) and `windowLimit` (the maximum aggregate BTC amount
+  that can be requested within a rolling block window, using the same reset
+  mechanism as outflow limits). Only callable by `poaKeeper.CheckOwner()`.
+* `getTripartyLimits` returns the configured per-request and window limits.
+* `getTripartyCapacity` returns the remaining window capacity and the block
+  height at which it resets, mirroring `getOutflowCapacity`.
+* `getTripartyTotalBTCMinted` returns the cumulative BTC minted through the
+  triparty path (see
+  [Provenance tracking](#provenance-tracking-and-bridging-out)).
 
 Additionally, `bridgeTriparty` should:
 
