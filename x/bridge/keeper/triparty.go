@@ -123,7 +123,7 @@ func (k Keeper) SetTripartyPerRequestLimit(ctx sdk.Context, limit math.Int) {
 	store.Set(types.TripartyPerRequestLimitKey, bz)
 }
 
-// GetTripartyWindowLimit returns the triparty window limit.
+// GetTripartyWindowLimit returns the triparty request window limit.
 // Returns zero if not set.
 func (k Keeper) GetTripartyWindowLimit(ctx sdk.Context) math.Int {
 	store := ctx.KVStore(k.storeKey)
@@ -141,7 +141,7 @@ func (k Keeper) GetTripartyWindowLimit(ctx sdk.Context) math.Int {
 	return limit
 }
 
-// SetTripartyWindowLimit sets the triparty window limit.
+// SetTripartyWindowLimit sets the triparty request window limit.
 func (k Keeper) SetTripartyWindowLimit(ctx sdk.Context, limit math.Int) {
 	store := ctx.KVStore(k.storeKey)
 
@@ -265,8 +265,6 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	callbackData []byte,
 	controller string,
 ) (math.Int, error) {
-	// TODO: Validate window limits
-
 	if k.isTripartyPaused(ctx) {
 		return math.Int{}, types.ErrTripartyPaused
 	}
@@ -278,6 +276,10 @@ func (k Keeper) CreateTripartyBridgeRequest(
 		callbackData,
 		controller,
 	); err != nil {
+		return math.Int{}, err
+	}
+
+	if err := k.checkTripartyCapacity(ctx, amount); err != nil {
 		return math.Int{}, err
 	}
 
@@ -298,6 +300,7 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	}
 
 	ctx.KVStore(k.storeKey).Set(types.GetTripartyBridgeRequestKey(seq), bz)
+	k.increaseTripartyWindowConsumed(ctx, amount)
 
 	return seq, nil
 }
@@ -341,45 +344,45 @@ func (k Keeper) deleteTripartyBridgeRequest(ctx sdk.Context, sequence math.Int) 
 	return nil
 }
 
-// getTripartyWindowMinted returns the current triparty window minted
+// getTripartyWindowConsumed returns the current triparty window consumed
 // aggregate. Returns zero if not set.
-func (k Keeper) getTripartyWindowMinted(ctx sdk.Context) math.Int {
+func (k Keeper) getTripartyWindowConsumed(ctx sdk.Context) math.Int {
 	store := ctx.KVStore(k.storeKey)
 
-	bz := store.Get(types.TripartyWindowMintedKey)
+	bz := store.Get(types.TripartyWindowConsumedKey)
 	if len(bz) == 0 {
 		return math.ZeroInt()
 	}
 
-	minted := math.ZeroInt()
-	if err := minted.Unmarshal(bz); err != nil {
+	consumed := math.ZeroInt()
+	if err := consumed.Unmarshal(bz); err != nil {
 		panic(err)
 	}
 
-	return minted
+	return consumed
 }
 
-// increaseTripartyWindowMinted adds the given amount to the current
-// triparty window minted aggregate.
-func (k Keeper) increaseTripartyWindowMinted(ctx sdk.Context, amount math.Int) {
-	minted := k.getTripartyWindowMinted(ctx).Add(amount)
+// increaseTripartyWindowConsumed adds the given amount to the current
+// triparty window consumed aggregate.
+func (k Keeper) increaseTripartyWindowConsumed(ctx sdk.Context, amount math.Int) {
+	consumed := k.getTripartyWindowConsumed(ctx).Add(amount)
 
 	store := ctx.KVStore(k.storeKey)
 
-	bz, err := minted.Marshal()
+	bz, err := consumed.Marshal()
 	if err != nil {
 		panic(err)
 	}
 
-	store.Set(types.TripartyWindowMintedKey, bz)
+	store.Set(types.TripartyWindowConsumedKey, bz)
 }
 
-// resetTripartyWindowMinted clears the current triparty window minted
+// resetTripartyWindowConsumed clears the current triparty window consumed
 // aggregate to zero and records the current block height as the last
 // reset point.
-func (k Keeper) resetTripartyWindowMinted(ctx sdk.Context) {
+func (k Keeper) resetTripartyWindowConsumed(ctx sdk.Context) {
 	store := ctx.KVStore(k.storeKey)
-	store.Delete(types.TripartyWindowMintedKey)
+	store.Delete(types.TripartyWindowConsumedKey)
 	store.Set(
 		types.TripartyWindowLastResetKey,
 		// block height can't be negative so int64->uint64 conversion is safe
@@ -394,15 +397,15 @@ func (k Keeper) getTripartyWindowLastReset(ctx sdk.Context) uint64 {
 	return sdk.BigEndianToUint64(store.Get(types.TripartyWindowLastResetKey))
 }
 
-// GetTripartyCapacity returns the remaining triparty minting capacity
+// GetTripartyCapacity returns the remaining triparty request window capacity
 // within the current window and the block height at which the window
 // resets.
 func (k Keeper) GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64) {
 	limit := k.GetTripartyWindowLimit(ctx)
-	minted := k.getTripartyWindowMinted(ctx)
 	lastReset := k.getTripartyWindowLastReset(ctx)
+	consumed := k.getTripartyWindowConsumed(ctx)
 
-	capacity = limit.Sub(minted)
+	capacity = limit.Sub(consumed)
 	if capacity.IsNegative() {
 		capacity = math.ZeroInt()
 	}
@@ -413,7 +416,7 @@ func (k Keeper) GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHe
 }
 
 // checkTripartyCapacity returns an error if the given amount exceeds the
-// remaining triparty minting capacity within the current window.
+// remaining triparty request window capacity within the current window.
 func (k Keeper) checkTripartyCapacity(ctx sdk.Context, amount math.Int) error {
 	capacity, _ := k.GetTripartyCapacity(ctx)
 

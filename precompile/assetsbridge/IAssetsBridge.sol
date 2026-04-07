@@ -255,7 +255,7 @@ interface IAssetsBridge {
     * @return The current minimum amount for the token (0 if unset).
     * @dev For bridge outs to the Bitcoin chain, the system will always check
     *      the Bitcoin-specific minimum returned by getMinBridgeOutAmountForBitcoinChain
-    *      first, and fallback to the value returned by this function if the 
+    *      first, and fallback to the value returned by this function if the
     *      Bitcoin-specific value is zero.
     */
     function getMinBridgeOutAmount(address mezoToken) external view returns (uint256);
@@ -271,7 +271,7 @@ interface IAssetsBridge {
      *      amount, we need to distinguish between the minimum BTC bridge-out targeting the
      *      Ethereum chain (not depending on the tBTC bridge) and the minimum BTC bridge-out
      *      targeting the Bitcoin chain (depending on the tBTC bridge). In practice, this
-     *      value should be always equal (or greater than) the redemptionDustThreshold 
+     *      value should be always equal (or greater than) the redemptionDustThreshold
      *      parameter returned by the redemptionParameters function of the tBTC Bridge contract.
      */
     function setMinBridgeOutAmountForBitcoinChain(uint256 minAmount) external returns (bool);
@@ -298,6 +298,7 @@ interface IAssetsBridge {
      *      - The amount must be positive,
      *      - The amount must be at least 0.01 BTC,
      *      - The amount must not exceed the per-request limit,
+     *      - The amount must not exceed the remaining triparty request window capacity,
      *      - The callbackData must not exceed 320 bytes.
      */
     function bridgeTriparty(address recipient, uint256 amount, bytes calldata callbackData) external returns (uint256 requestId);
@@ -358,9 +359,9 @@ interface IAssetsBridge {
     event TripartyLimitsSet(uint256 perRequestLimit, uint256 windowLimit);
 
     /**
-     * @notice Sets the global triparty minting limits shared by all controllers.
-     * @param perRequestLimit The maximum amount that can be minted in a single request.
-     * @param windowLimit The maximum amount that can be minted in a single window.
+     * @notice Sets the global triparty request limits shared by all controllers.
+     * @param perRequestLimit The maximum amount that can be requested in a single request.
+     * @param windowLimit The maximum amount that can be requested in a single window.
      * @dev Requirements:
      *      - The caller must be the PoA owner,
      *      - Both limits must be non-negative.
@@ -371,16 +372,16 @@ interface IAssetsBridge {
     ) external returns (bool);
 
     /**
-     * @notice Returns the configured triparty minting limits.
-     * @return perRequestLimit The maximum amount that can be minted in a single request.
-     * @return windowLimit The maximum amount that can be minted in a single window.
+     * @notice Returns the configured triparty request limits.
+     * @return perRequestLimit The maximum amount that can be requested in a single request.
+     * @return windowLimit The maximum amount that can be requested in a single window.
      */
     function getTripartyLimits() external view returns (uint256 perRequestLimit, uint256 windowLimit);
 
     /**
-     * @notice Returns the remaining triparty minting capacity within the
+     * @notice Returns the remaining triparty request window capacity within the
      *         current window and the block height at which it resets.
-     * @return capacity The remaining minting capacity in the current window.
+     * @return capacity The remaining triparty request window capacity in the current window.
      * @return resetHeight The block height when the window resets.
      */
     function getTripartyCapacity() external view returns (uint256 capacity, uint256 resetHeight);

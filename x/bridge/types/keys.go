@@ -99,9 +99,9 @@ var (
 	// progress separately from the assignment tip (TripartyRequestSequenceTipKey).
 	TripartyProcessedSequenceTipKey = []byte{0xA7}
 
-	// TripartyWindowMintedKey is a standalone key for the current window
-	// minted aggregate amount.
-	TripartyWindowMintedKey = []byte{0xA8}
+	// TripartyWindowConsumedKey is a standalone key for the current
+	// window consumed aggregate amount.
+	TripartyWindowConsumedKey = []byte{0xA8}
 
 	// TripartyWindowLastResetKey is a standalone key for the block height
 	// at which the triparty minting window was last reset.

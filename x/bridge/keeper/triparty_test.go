@@ -109,6 +109,7 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	callbackData := []byte("test-callback")
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
 
 	// First request should get sequence 1.
 	reqID1, err := keeper.CreateTripartyBridgeRequest(
@@ -150,6 +151,7 @@ func TestCreateTripartyBridgeRequestPaused(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
 	keeper.SetTripartyPaused(ctx, true)
 
 	// Should be rejected when paused.
@@ -218,6 +220,7 @@ func TestCreateTripartyBridgeRequestCallbackDataTooLarge(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
 
 	// 321 bytes exceeds the 320-byte limit.
 	_, err := keeper.CreateTripartyBridgeRequest(
@@ -261,6 +264,7 @@ func TestCreateTripartyBridgeRequestAmountBelowMinimum(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
 
 	// Amount just below the minimum should be rejected.
 	_, err := keeper.CreateTripartyBridgeRequest(
@@ -296,6 +300,7 @@ func TestCreateTripartyBridgeRequestPerRequestLimit(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
 	keeper.SetTripartyPerRequestLimit(ctx, MinTripartyAmount)
 
 	// Amount exceeding the limit should be rejected.
@@ -329,6 +334,7 @@ func TestGetTripartyBridgeRequest(t *testing.T) {
 	amount := MinTripartyAmount
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
 
 	// Non-existent request returns false.
 	_, found := keeper.getTripartyBridgeRequest(ctx, math.NewInt(1))
@@ -353,6 +359,7 @@ func TestDeleteTripartyBridgeRequest(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
 
 	reqID1, err := keeper.CreateTripartyBridgeRequest(
 		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
@@ -454,23 +461,23 @@ func TestTripartyBridgeRequestMarshalEmptyCallbackData(t *testing.T) {
 	require.Empty(t, decoded.CallbackData)
 }
 
-func TestTripartyWindowMinted(t *testing.T) {
+func TestTripartyWindowConsumed(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	// Initially zero.
-	require.True(t, keeper.getTripartyWindowMinted(ctx).IsZero())
+	require.True(t, keeper.getTripartyWindowConsumed(ctx).IsZero())
 
 	// Increase accumulates.
-	keeper.increaseTripartyWindowMinted(ctx, math.NewInt(100))
-	require.Equal(t, math.NewInt(100), keeper.getTripartyWindowMinted(ctx))
+	keeper.increaseTripartyWindowConsumed(ctx, math.NewInt(100))
+	require.Equal(t, math.NewInt(100), keeper.getTripartyWindowConsumed(ctx))
 
-	keeper.increaseTripartyWindowMinted(ctx, math.NewInt(250))
-	require.Equal(t, math.NewInt(350), keeper.getTripartyWindowMinted(ctx))
+	keeper.increaseTripartyWindowConsumed(ctx, math.NewInt(250))
+	require.Equal(t, math.NewInt(350), keeper.getTripartyWindowConsumed(ctx))
 
 	// Reset clears to zero and records block height.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 500})
-	keeper.resetTripartyWindowMinted(ctx)
-	require.True(t, keeper.getTripartyWindowMinted(ctx).IsZero())
+	keeper.resetTripartyWindowConsumed(ctx)
+	require.True(t, keeper.getTripartyWindowConsumed(ctx).IsZero())
 	require.Equal(t, uint64(500), keeper.getTripartyWindowLastReset(ctx))
 }
 
@@ -489,14 +496,14 @@ func TestTripartyCapacity(t *testing.T) {
 	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, math.NewInt(1000), capacity)
 
-	// Partial mint reduces capacity.
-	keeper.increaseTripartyWindowMinted(ctx, math.NewInt(300))
+	// Partial consumption reduces capacity.
+	keeper.increaseTripartyWindowConsumed(ctx, math.NewInt(300))
 	capacity, _ = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, math.NewInt(700), capacity)
 
 	// Reset at block 50000 updates the reset height.
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 50000})
-	keeper.resetTripartyWindowMinted(ctx)
+	keeper.resetTripartyWindowConsumed(ctx)
 	_, resetHeight = keeper.GetTripartyCapacity(ctx)
 	require.Equal(t, uint64(75000), resetHeight) // 50000 + 25000
 }
@@ -513,8 +520,8 @@ func TestCheckTripartyCapacity(t *testing.T) {
 	// Exceeds capacity - error.
 	require.Error(t, keeper.checkTripartyCapacity(ctx, math.NewInt(501)))
 
-	// After partial mint, remaining capacity shrinks.
-	keeper.increaseTripartyWindowMinted(ctx, math.NewInt(400))
+	// After partial consumption, remaining capacity shrinks.
+	keeper.increaseTripartyWindowConsumed(ctx, math.NewInt(400))
 	require.NoError(t, keeper.checkTripartyCapacity(ctx, math.NewInt(100)))
 	require.Error(t, keeper.checkTripartyCapacity(ctx, math.NewInt(101)))
 }
@@ -548,6 +555,44 @@ func TestTripartyProcessedSequenceTip(t *testing.T) {
 	require.Equal(t, math.NewInt(42), keeper.getTripartyProcessedSequenceTip(ctx))
 }
 
+func TestCreateTripartyBridgeRequestWindowLimit(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
+	// Set triparty window limit to twice minimum amount.
+	keeper.SetTripartyWindowLimit(ctx, MinTripartyAmount.MulRaw(2))
+
+	// First successful request.
+	reqID, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
+	)
+	require.NoError(t, err)
+	require.Equal(t, math.NewInt(1), reqID)
+	require.Equal(t, MinTripartyAmount, keeper.getTripartyWindowConsumed(ctx))
+	capacity, _ := keeper.GetTripartyCapacity(ctx)
+	require.Equal(t, MinTripartyAmount, capacity)
+
+	// Unsuccessful request using remaining capacity plus one.
+	_, err = keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, MinTripartyAmount.AddRaw(1), nil, testTripartyController,
+	)
+	require.ErrorIs(t, err, types.ErrTripartyWindowLimitExceeded)
+	require.Equal(t, math.NewInt(1), keeper.getTripartySequenceTip(ctx))
+	require.Equal(t, MinTripartyAmount, keeper.getTripartyWindowConsumed(ctx))
+	capacity, _ = keeper.GetTripartyCapacity(ctx)
+	require.Equal(t, MinTripartyAmount, capacity)
+
+	// Second successful request.
+	reqID, err = keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
+	)
+	require.NoError(t, err)
+	require.Equal(t, math.NewInt(2), reqID)
+	require.Equal(t, MinTripartyAmount.MulRaw(2), keeper.getTripartyWindowConsumed(ctx))
+	capacity, _ = keeper.GetTripartyCapacity(ctx)
+	require.True(t, capacity.IsZero())
+}
+
 // setupTripartyProcessing is a helper that creates context, keeper, and
 // configured mocks for ProcessTripartyBridgeRequests tests. The bank
 // and evm keeper mocks are returned so the caller can set expectations.
@@ -574,6 +619,7 @@ func setupTripartyProcessing(t *testing.T) (
 		evmtypes.HexAddressToBytes(testTripartyController),
 		true,
 	)
+	k.SetTripartyWindowLimit(ctx, to18Dec(100))
 
 	return ctx, k, bankKeeper, evmKeeper
 }
