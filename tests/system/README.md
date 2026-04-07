@@ -44,8 +44,8 @@ RPC_URL=http://192.168.1.10:8545 ./system-tests.sh
 ### Testnet
 
 Use the `testnet` network. `PRIVATE_KEYS` is mandatory (there are no seed
-files to fall back on). The accounts must hold BTC for gas, and `signers[0]`
-must be (or have access to) the PoA owner for admin operations.
+files to fall back on). See [Account requirements](#account-requirements)
+for the number of keys needed per suite.
 
 ```bash
 NETWORK=testnet PRIVATE_KEYS=0xabc...,0xdef... ./system-tests.sh
@@ -56,6 +56,38 @@ A custom RPC endpoint overrides the default (`https://rpc.test.mezo.org`):
 ```bash
 NETWORK=testnet RPC_URL=https://custom-rpc.example.com PRIVATE_KEYS=0xabc... ./system-tests.sh
 ```
+
+## Account requirements
+
+Tests use accounts from `ethers.getSigners()`, which are derived from the
+private keys supplied via seed files and/or the `PRIVATE_KEYS` env var (in
+that order).
+
+| Signer index | Role | Used by |
+|--------------|------|---------|
+| `signers[0]` | **Deployer** + funding account | All suites (deploys contracts). Also the funding signer in AssetsBridge and the transaction sender in BTCTransfers / MEZOTransfers |
+| `signers[1]` | **Triparty controller** / generic tx sender | TripartyBridge (EOA controller), TransientStorageCheck, InitcodeLimitCheck, Selfdestruct6780Check |
+| `signers[2]` | **Pauser** / beneficiary | TripartyBridge (bridge pauser), Selfdestruct6780Check (selfdestruct beneficiary) |
+
+In addition, AssetsBridge and TripartyBridge derive a **pool owner** signer
+at runtime via `ethers.getSigner(await validatorPool.owner())`. This looks
+up the PoA validator-pool owner address on-chain and expects to find a
+matching private key among the configured accounts. On the localnode the
+`dev0` seed key is the pool owner.
+
+**Minimum keys per suite:**
+
+| Keys needed | Suites |
+|-------------|--------|
+| 0 (deploy only) | Push0Check, RandaoCheck, McopyCheck |
+| 1 | BTCTransfers, MEZOTransfers |
+| 2 | TransientStorageCheck, InitcodeLimitCheck |
+| 3 | AssetsBridge, TripartyBridge, Selfdestruct6780Check |
+
+Running the full suite requires **at least 3 private keys**. On the
+localnode this is satisfied by the three seed files. On the testnet all
+three keys must be supplied via `PRIVATE_KEYS`, the first key must
+correspond to the PoA owner, and every account must hold BTC for gas.
 
 ## Available test suites
 
