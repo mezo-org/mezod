@@ -183,6 +183,27 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "pending triparty request 0 recipient must be a valid hex-encoded EVM address",
 		},
 		{
+			desc: "pending triparty request with callback data too large",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:     sdkmath.NewInt(1),
+						BlockHeight:  100,
+						Recipient:    "0x2222222222222222222222222222222222222222",
+						Amount:       sdkmath.NewInt(10),
+						CallbackData: make([]byte, MaxTripartyCallbackDataLength+1),
+						Controller:   "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 callback data exceeds maximum length",
+		},
+		{
 			desc: "triparty request sequence tip less than processed sequence tip",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()

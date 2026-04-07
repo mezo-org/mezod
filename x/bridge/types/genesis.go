@@ -231,6 +231,13 @@ func (gs GenesisState) Validate() error {
 				req.Amount,
 			)
 		}
+
+		if len(req.CallbackData) > MaxTripartyCallbackDataLength {
+			return fmt.Errorf(
+				"pending triparty request %d callback data exceeds maximum length",
+				i,
+			)
+		}
 	}
 
 	for i, req := range gs.TripartyPendingRequests {

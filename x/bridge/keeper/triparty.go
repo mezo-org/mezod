@@ -16,10 +16,6 @@ import (
 // triparty minting window is reset.
 const TripartyWindowResetBlocks = 25000
 
-// MaxTripartyCallbackDataLength is the maximum allowed length of
-// callbackData in a triparty bridge request (10 × 32-byte ABI words).
-const MaxTripartyCallbackDataLength = 320
-
 // TripartyBatch is the maximum number of triparty bridge requests
 // processed per block. While triparty mints are expected to be rare,
 // capping the batch size provides defense in depth to ensure stable
@@ -294,7 +290,7 @@ func (k Keeper) validateTripartyBridgeRequest(
 		return types.ErrTripartyControllerNotAllowed
 	}
 
-	if len(callbackData) > MaxTripartyCallbackDataLength {
+	if len(callbackData) > types.MaxTripartyCallbackDataLength {
 		return types.ErrTripartyCallbackDataTooLarge
 	}
 
