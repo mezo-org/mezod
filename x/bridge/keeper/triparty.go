@@ -354,15 +354,25 @@ func (k Keeper) CreateTripartyBridgeRequest(
 		Controller:   controller,
 	}
 
+	k.saveTripartyBridgeRequest(ctx, req)
+	k.increaseTripartyWindowConsumed(ctx, amount)
+
+	return seq, nil
+}
+
+func (k Keeper) saveTripartyBridgeRequest(
+	ctx sdk.Context,
+	req *types.TripartyBridgeRequest,
+) {
 	bz, err := req.Marshal()
 	if err != nil {
 		panic(err)
 	}
 
-	ctx.KVStore(k.storeKey).Set(types.GetTripartyBridgeRequestKey(seq), bz)
-	k.increaseTripartyWindowConsumed(ctx, amount)
-
-	return seq, nil
+	ctx.KVStore(k.storeKey).Set(
+		types.GetTripartyBridgeRequestKey(req.Sequence),
+		bz,
+	)
 }
 
 // getTripartyBridgeRequest returns a pending triparty bridge request by its
