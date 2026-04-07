@@ -219,6 +219,33 @@ func (k Keeper) setTripartyRequestSequenceTip(ctx sdk.Context, tip math.Int) {
 	ctx.KVStore(k.storeKey).Set(types.TripartyRequestSequenceTipKey, bz)
 }
 
+// GetTripartyProcessedSequenceTip returns the last processed triparty
+// request sequence number. Returns 0 if not set.
+func (k Keeper) GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
+	bz := ctx.KVStore(k.storeKey).Get(types.TripartyProcessedSequenceTipKey)
+	if len(bz) == 0 {
+		return math.ZeroInt()
+	}
+
+	tip := math.ZeroInt()
+	if err := tip.Unmarshal(bz); err != nil {
+		panic(err)
+	}
+
+	return tip
+}
+
+// setTripartyProcessedSequenceTip sets the last processed triparty
+// request sequence number.
+func (k Keeper) setTripartyProcessedSequenceTip(ctx sdk.Context, tip math.Int) {
+	bz, err := tip.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	ctx.KVStore(k.storeKey).Set(types.TripartyProcessedSequenceTipKey, bz)
+}
+
 // validateTripartyBridgeRequest validates a triparty bridge request. It
 // checks all inputs and state-dependent conditions:
 //   - the recipient is a valid, non-zero hex address,
@@ -526,33 +553,6 @@ func (k Keeper) increaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int)
 	}
 
 	store.Set(types.TripartyTotalBTCMintedKey, bz)
-}
-
-// GetTripartyProcessedSequenceTip returns the last processed triparty
-// request sequence number. Returns 0 if not set.
-func (k Keeper) GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int {
-	bz := ctx.KVStore(k.storeKey).Get(types.TripartyProcessedSequenceTipKey)
-	if len(bz) == 0 {
-		return math.ZeroInt()
-	}
-
-	tip := math.ZeroInt()
-	if err := tip.Unmarshal(bz); err != nil {
-		panic(err)
-	}
-
-	return tip
-}
-
-// setTripartyProcessedSequenceTip sets the last processed triparty
-// request sequence number.
-func (k Keeper) setTripartyProcessedSequenceTip(ctx sdk.Context, tip math.Int) {
-	bz, err := tip.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	ctx.KVStore(k.storeKey).Set(types.TripartyProcessedSequenceTipKey, bz)
 }
 
 // ProcessTripartyBridgeRequests reads pending triparty bridge requests
