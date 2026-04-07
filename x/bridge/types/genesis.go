@@ -234,7 +234,7 @@ func (gs GenesisState) Validate() error {
 	}
 
 	for i, req := range gs.TripartyPendingRequests {
-		if !req.Sequence.GT(gs.TripartyProcessedSequenceTip) {
+		if req.Sequence.LTE(gs.TripartyProcessedSequenceTip) {
 			return fmt.Errorf(
 				"pending triparty request %d sequence must be greater than processed sequence tip: %s <= %s",
 				i,
