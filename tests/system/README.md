@@ -61,33 +61,18 @@ NETWORK=testnet RPC_URL=https://custom-rpc.example.com PRIVATE_KEYS=0xabc... ./s
 
 Tests use accounts from `ethers.getSigners()`, which are derived from the
 private keys supplied via seed files and/or the `PRIVATE_KEYS` env var (in
-that order).
+that order). Running the full suite requires **at least 3 private keys**.
+On the localnode this is satisfied by the three seed files.
 
-| Signer index | Role | Used by |
-|--------------|------|---------|
-| `signers[0]` | **Deployer** + funding account | All suites (deploys contracts). Also the funding signer in AssetsBridge and the transaction sender in BTCTransfers / MEZOTransfers |
-| `signers[1]` | **Triparty controller** / generic tx sender | TripartyBridge (EOA controller), TransientStorageCheck, InitcodeLimitCheck, Selfdestruct6780Check |
-| `signers[2]` | **Pauser** / beneficiary | TripartyBridge (bridge pauser), Selfdestruct6780Check (selfdestruct beneficiary) |
+Some suites derive a **pool owner** signer at runtime via
+`ethers.getSigner(await validatorPool.owner())`. This looks up the PoA
+validator-pool owner address on-chain and expects to find a matching
+private key among the configured accounts. On the localnode the `dev0`
+seed key is the pool owner.
 
-In addition, AssetsBridge and TripartyBridge derive a **pool owner** signer
-at runtime via `ethers.getSigner(await validatorPool.owner())`. This looks
-up the PoA validator-pool owner address on-chain and expects to find a
-matching private key among the configured accounts. On the localnode the
-`dev0` seed key is the pool owner.
-
-**Minimum keys per suite:**
-
-| Keys needed | Suites |
-|-------------|--------|
-| 0 (deploy only) | Push0Check, RandaoCheck, McopyCheck |
-| 1 | BTCTransfers, MEZOTransfers |
-| 2 | TransientStorageCheck, InitcodeLimitCheck |
-| 3 | AssetsBridge, TripartyBridge, Selfdestruct6780Check |
-
-Running the full suite requires **at least 3 private keys**. On the
-localnode this is satisfied by the three seed files. On the testnet all
-three keys must be supplied via `PRIVATE_KEYS`, the first key must
-correspond to the PoA owner, and every account must hold BTC for gas.
+On the testnet all three keys must be supplied via `PRIVATE_KEYS`, the
+first key must correspond to the PoA owner, and every account must hold
+BTC for gas.
 
 ## Available test suites
 
