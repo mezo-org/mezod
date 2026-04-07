@@ -802,5 +802,44 @@
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isTripartyPaused",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "isPaused",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTripartyRequestSequenceTip",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "sequenceTip",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTripartyProcessedSequenceTip",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "sequenceTip",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   }
 ]
