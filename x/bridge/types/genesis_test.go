@@ -117,7 +117,7 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "mezo token of ERC20 mapping 0 must be a valid hex-encoded EVM address",
 		},
 		{
-			desc: "proper genesis",
+			desc: "proper genesis without triparty",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
 				genState.SourceBtcToken = token
@@ -176,6 +176,62 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "genesis triparty request sequence tip cannot be negative",
 		},
 		{
+			desc: "negative triparty processed sequence tip",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(-1)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty processed sequence tip cannot be negative",
+		},
+		{
+			desc: "triparty request sequence tip less than processed sequence tip",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(2)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty request sequence tip cannot be less than processed sequence tip",
+		},
+		{
+			desc: "negative triparty window consumed",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyWindowConsumed = sdkmath.NewInt(-1)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty window consumed cannot be negative",
+		},
+		{
+			desc: "negative triparty total BTC minted",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyTotalBtcMinted = sdkmath.NewInt(-1)
+				return genState
+			},
+			valid:       false,
+			errContains: "genesis triparty total BTC minted cannot be negative",
+		},
+		{
+			desc: "empty allowed triparty controller",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.AllowedTripartyControllers = []string{""}
+				return genState
+			},
+			valid:       false,
+			errContains: "allowed triparty controller 0 cannot be empty",
+		},
+		{
 			desc: "invalid allowed triparty controller",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
@@ -187,15 +243,27 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "allowed triparty controller 0 must be a valid hex-encoded EVM address",
 		},
 		{
-			desc: "pending triparty request with invalid recipient",
+			desc: "zero-address allowed triparty controller",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
 				genState.SourceBtcToken = token
+				genState.AllowedTripartyControllers = []string{evmtypes.ZeroHexAddress()}
+				return genState
+			},
+			valid:       false,
+			errContains: "allowed triparty controller 0 cannot be the zero EVM address",
+		},
+		{
+			desc: "pending triparty request with non-positive sequence",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
 				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
 					{
-						Sequence:    sdkmath.NewInt(1),
+						Sequence:    sdkmath.NewInt(0),
 						BlockHeight: 100,
-						Recipient:   "bad-recipient",
+						Recipient:   "0x2222222222222222222222222222222222222222",
 						Amount:      sdkmath.NewInt(10),
 						Controller:  "0x1111111111111111111111111111111111111111",
 					},
@@ -203,7 +271,27 @@ func TestGenesisState_Validate(t *testing.T) {
 				return genState
 			},
 			valid:       false,
-			errContains: "pending triparty request 0 recipient must be a valid hex-encoded EVM address",
+			errContains: "pending triparty request 0 sequence must be positive",
+		},
+		{
+			desc: "pending triparty request with negative block height",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: -1,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(10),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 block height cannot be negative",
 		},
 		{
 			desc: "pending triparty request with empty recipient",
@@ -226,6 +314,45 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "pending triparty request 0 recipient cannot be empty",
 		},
 		{
+			desc: "pending triparty request with invalid recipient",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   "bad-recipient",
+						Amount:      sdkmath.NewInt(10),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 recipient must be a valid hex-encoded EVM address",
+		},
+		{
+			desc: "pending triparty request with zero-address recipient",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   evmtypes.ZeroHexAddress(),
+						Amount:      sdkmath.NewInt(10),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 recipient cannot be the zero EVM address",
+		},
+		{
 			desc: "pending triparty request with empty controller",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
@@ -244,6 +371,26 @@ func TestGenesisState_Validate(t *testing.T) {
 			},
 			valid:       false,
 			errContains: "pending triparty request 0 controller cannot be empty",
+		},
+		{
+			desc: "pending triparty request with invalid controller",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(10),
+						Controller:  "corrupted",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 controller must be a valid hex-encoded EVM address",
 		},
 		{
 			desc: "pending triparty request with zero controller",
@@ -266,6 +413,26 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "pending triparty request 0 controller cannot be the zero EVM address",
 		},
 		{
+			desc: "pending triparty request with non-positive amount",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(1),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222222",
+						Amount:      sdkmath.NewInt(0),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty request 0 amount must be positive",
+		},
+		{
 			desc: "pending triparty request with callback data too large",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
@@ -285,18 +452,6 @@ func TestGenesisState_Validate(t *testing.T) {
 			},
 			valid:       false,
 			errContains: "pending triparty request 0 callback data exceeds maximum length",
-		},
-		{
-			desc: "triparty request sequence tip less than processed sequence tip",
-			genState: func() *GenesisState {
-				genState := DefaultGenesis()
-				genState.SourceBtcToken = token
-				genState.TripartyRequestSequenceTip = sdkmath.NewInt(1)
-				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(2)
-				return genState
-			},
-			valid:       false,
-			errContains: "genesis triparty request sequence tip cannot be less than processed sequence tip",
 		},
 		{
 			desc: "pending triparty request sequence not above processed sequence tip",
@@ -353,6 +508,34 @@ func TestGenesisState_Validate(t *testing.T) {
 						Recipient:   "0x2222222222222222222222222222222222222222",
 						Amount:      sdkmath.NewInt(50),
 						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "pending triparty requests must form a gapless range between processed and request sequence tips",
+		},
+		{
+			desc: "pending triparty requests with duplicate sequences",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyRequestSequenceTip = sdkmath.NewInt(3)
+				genState.TripartyProcessedSequenceTip = sdkmath.NewInt(1)
+				genState.TripartyPendingRequests = []*TripartyBridgeRequest{
+					{
+						Sequence:    sdkmath.NewInt(2),
+						BlockHeight: 100,
+						Recipient:   "0x2222222222222222222222222222222222222223",
+						Amount:      sdkmath.NewInt(50),
+						Controller:  "0x1111111111111111111111111111111111111111",
+					},
+					{
+						Sequence:    sdkmath.NewInt(2),
+						BlockHeight: 101,
+						Recipient:   "0x2222222222222222222222222222222222222224",
+						Amount:      sdkmath.NewInt(51),
+						Controller:  "0x1111111111111111111111111111111111111112",
 					},
 				}
 				return genState
