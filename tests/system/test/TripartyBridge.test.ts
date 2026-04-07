@@ -98,7 +98,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .allowTripartyController(signers[2].address, true)
+          .allowTripartyController.staticCall(signers[2].address, true)
       } catch (error: any) {
         nonOwnerError = error.message
       }
@@ -109,7 +109,7 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert when non-owner tries to allow", async function () {
-      expect(nonOwnerError).to.not.be.undefined
+      expect(nonOwnerError).to.include("not the owner")
     })
   })
 
@@ -146,7 +146,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(signers[0].address, BTC(1), "0x")
+          .bridgeTriparty.staticCall(signers[0].address, BTC(1), "0x")
       } catch (error: any) {
         bridgeError = error.message
       }
@@ -157,7 +157,7 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert bridgeTriparty from disallowed controller", async function () {
-      expect(bridgeError).to.not.be.undefined
+      expect(bridgeError).to.include("not an allowed triparty controller")
     })
   })
 
@@ -179,13 +179,17 @@ describe("TripartyBridge", function () {
       updatedDelay = await assetsBridge.getTripartyBlockDelay()
 
       try {
-        await assetsBridge.connect(poolOwner).setTripartyBlockDelay(0)
+        await assetsBridge
+          .connect(poolOwner)
+          .setTripartyBlockDelay.staticCall(0)
       } catch (error: any) {
         zeroDelayError = error.message
       }
 
       try {
-        await assetsBridge.connect(signers[1]).setTripartyBlockDelay(2)
+        await assetsBridge
+          .connect(signers[1])
+          .setTripartyBlockDelay.staticCall(2)
       } catch (error: any) {
         nonOwnerError = error.message
       }
@@ -205,11 +209,11 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert when setting delay to 0", async function () {
-      expect(zeroDelayError).to.not.be.undefined
+      expect(zeroDelayError).to.include("delay must be at least 1")
     })
 
     it("should revert when non-owner sets delay", async function () {
-      expect(nonOwnerError).to.not.be.undefined
+      expect(nonOwnerError).to.include("not the owner")
     })
   })
 
@@ -233,7 +237,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .setTripartyLimits(BTC(1), BTC(10))
+          .setTripartyLimits.staticCall(BTC(1), BTC(10))
       } catch (error: any) {
         nonOwnerError = error.message
       }
@@ -251,7 +255,7 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert when non-owner sets limits", async function () {
-      expect(nonOwnerError).to.not.be.undefined
+      expect(nonOwnerError).to.include("not the owner")
     })
   })
 
@@ -301,6 +305,7 @@ describe("TripartyBridge", function () {
     let processedTipAfter: bigint
     let erc20BalanceAfter: bigint
     let blockNumberAfterWait: number
+    let blockBeforeChainCheck: number
     let recipient: string
 
     before(async function () {
@@ -345,8 +350,8 @@ describe("TripartyBridge", function () {
       processedTipAfter = await assetsBridge.getTripartyProcessedSequenceTip()
 
       // Verify chain keeps producing blocks
-      const blockBefore = await ethers.provider.getBlockNumber()
-      await waitForBlock(blockBefore + 10)
+      blockBeforeChainCheck = await ethers.provider.getBlockNumber()
+      await waitForBlock(blockBeforeChainCheck + 10)
       blockNumberAfterWait = await ethers.provider.getBlockNumber()
     })
 
@@ -371,9 +376,7 @@ describe("TripartyBridge", function () {
     })
 
     it("should continue producing blocks", async function () {
-      expect(blockNumberAfterWait).to.be.gte(
-        (await ethers.provider.getBlockNumber()) - 1,
-      )
+      expect(blockNumberAfterWait).to.be.gte(blockBeforeChainCheck + 10)
     })
   })
 
@@ -671,14 +674,16 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(recipient, BTC(1), "0x")
+          .bridgeTriparty.staticCall(recipient, BTC(1), "0x")
       } catch (error: any) {
         unauthorizedError = error.message
       }
     })
 
     it("should revert for unauthorized caller", async function () {
-      expect(unauthorizedError).to.not.be.undefined
+      expect(unauthorizedError).to.include(
+        "not an allowed triparty controller",
+      )
     })
   })
 
@@ -706,7 +711,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(recipient, BTC("0.001"), "0x")
+          .bridgeTriparty.staticCall(recipient, BTC("0.001"), "0x")
       } catch (error: any) {
         belowMinError = error.message
       }
@@ -719,7 +724,7 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert for 0.001 BTC", async function () {
-      expect(belowMinError).to.not.be.undefined
+      expect(belowMinError).to.include("triparty amount below minimum")
     })
 
     it("should succeed for 0.01 BTC", async function () {
@@ -750,7 +755,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(recipient, BTC(3), "0x")
+          .bridgeTriparty.staticCall(recipient, BTC(3), "0x")
       } catch (error: any) {
         exceedsError = error.message
       }
@@ -762,7 +767,7 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert for 3 BTC (over 2 BTC limit)", async function () {
-      expect(exceedsError).to.not.be.undefined
+      expect(exceedsError).to.include("triparty per-request limit exceeded")
     })
 
     it("should succeed for 2 BTC (at limit)", async function () {
@@ -818,7 +823,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(recipient, BTC(3), "0x")
+          .bridgeTriparty.staticCall(recipient, BTC(3), "0x")
       } catch (error: any) {
         exceedsWindowError = error.message
       }
@@ -833,7 +838,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(recipient, BTC("0.01"), "0x")
+          .bridgeTriparty.staticCall(recipient, BTC("0.01"), "0x")
       } catch (error: any) {
         exhaustedError = error.message
       }
@@ -844,7 +849,7 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert for 3 BTC when only 2 remaining", async function () {
-      expect(exceedsWindowError).to.not.be.undefined
+      expect(exceedsWindowError).to.include("triparty window limit exceeded")
     })
 
     it("should succeed for 2 BTC (remaining capacity)", async function () {
@@ -852,7 +857,87 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert when window exhausted", async function () {
-      expect(exhaustedError).to.not.be.undefined
+      expect(exhaustedError).to.include("triparty window limit exceeded")
+    })
+  })
+
+  describe("Window limits shared across controllers", function () {
+    let firstReceipt: any
+    let exceedsError: string
+    let secondReceipt: any
+
+    before(async function () {
+      await fixture()
+
+      const controllerAddress = await tripartyController.getAddress()
+
+      // Allow both an EOA and the contract as controllers
+      await (
+        await assetsBridge
+          .connect(poolOwner)
+          .allowTripartyController(signers[1].address, true)
+      ).wait()
+      await (
+        await assetsBridge
+          .connect(poolOwner)
+          .allowTripartyController(controllerAddress, true)
+      ).wait()
+
+      // Measure current window usage, then set windowLimit so that
+      // exactly 2 BTC of capacity remains (same technique as C4).
+      await (
+        await assetsBridge
+          .connect(poolOwner)
+          .setTripartyLimits(BTC(2), BTC(1000))
+      ).wait()
+      const { capacity: currentCapacity } =
+        await assetsBridge.getTripartyCapacity()
+      const currentUsage = BTC(1000) - currentCapacity
+      const windowLimit = currentUsage + BTC(2)
+      await (
+        await assetsBridge
+          .connect(poolOwner)
+          .setTripartyLimits(BTC(2), windowLimit)
+      ).wait()
+
+      const recipient = ethers.Wallet.createRandom().address
+
+      // Contract controller requests 1.5 BTC — succeeds
+      const tx1 = await tripartyController.requestMint(
+        recipient,
+        BTC("1.5"),
+        "0x",
+      )
+      firstReceipt = await tx1.wait()
+
+      // EOA controller requests 1 BTC — should fail (only 0.5 remaining).
+      // Using the EOA's direct staticCall to get the precise revert reason
+      // (calls through a contract wrapper lose the inner revert string).
+      try {
+        await assetsBridge
+          .connect(signers[1])
+          .bridgeTriparty.staticCall(recipient, BTC(1), "0x")
+      } catch (error: any) {
+        exceedsError = error.message
+      }
+
+      // EOA controller requests 0.5 BTC — succeeds
+      const tx2 = await assetsBridge
+        .connect(signers[1])
+        .bridgeTriparty(recipient, BTC("0.5"), "0x")
+      secondReceipt = await tx2.wait()
+    })
+
+    it("should allow first controller to use capacity", async function () {
+      expect(firstReceipt.status).to.equal(1)
+    })
+
+    it("should reject second controller exceeding shared capacity", async function () {
+      expect(exceedsError).to.include("triparty window limit exceeded")
+    })
+
+    it("should allow second controller to use remaining capacity", async function () {
+      expect(secondReceipt.status).to.equal(1)
     })
   })
 
@@ -878,7 +963,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(btcTokenPrecompileAddress, BTC(1), "0x")
+          .bridgeTriparty.staticCall(btcTokenPrecompileAddress, BTC(1), "0x")
       } catch (error: any) {
         btcPrecompileError = error.message
       }
@@ -887,18 +972,18 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(ethers.ZeroAddress, BTC(1), "0x")
+          .bridgeTriparty.staticCall(ethers.ZeroAddress, BTC(1), "0x")
       } catch (error: any) {
         zeroAddressError = error.message
       }
     })
 
     it("should revert for BTC precompile address", async function () {
-      expect(btcPrecompileError).to.not.be.undefined
+      expect(btcPrecompileError).to.include("triparty recipient")
     })
 
     it("should revert for zero address", async function () {
-      expect(zeroAddressError).to.not.be.undefined
+      expect(zeroAddressError).to.include("zero")
     })
   })
 
@@ -935,13 +1020,15 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(signers[1])
-          .bridgeTriparty(recipient, BTC(1), "0x")
+          .bridgeTriparty.staticCall(recipient, BTC(1), "0x")
       } catch (error: any) {
         bridgeError = error.message
       }
 
       try {
-        await assetsBridge.connect(signers[1]).pauseTriparty(true)
+        await assetsBridge
+          .connect(signers[1])
+          .pauseTriparty.staticCall(true)
       } catch (error: any) {
         nonPauserError = error.message
       }
@@ -952,11 +1039,11 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert bridgeTriparty when paused", async function () {
-      expect(bridgeError).to.not.be.undefined
+      expect(bridgeError).to.include("triparty bridging is paused")
     })
 
     it("should revert pause from non-pauser", async function () {
-      expect(nonPauserError).to.not.be.undefined
+      expect(nonPauserError).to.include("caller is not the pauser")
     })
   })
 
@@ -1166,19 +1253,29 @@ describe("TripartyBridge", function () {
 
       // delay=1: all 7 mature at submitBlock+1.
       // PreBlocker at submitBlock+1 processes the first 5 (batch cap).
+      // Use blockTag to read state at the exact target block, avoiding a
+      // race where the chain advances before the query lands.
       await waitForBlock(submitBlock + 1)
 
       ;[processedAfterFirst, ...balancesAfterFirst] = await Promise.all([
-        assetsBridge.getTripartyProcessedSequenceTip(),
-        ...recipients.map((r: string) => ethers.provider.getBalance(r)),
+        assetsBridge.getTripartyProcessedSequenceTip({
+          blockTag: submitBlock + 1,
+        }),
+        ...recipients.map((r: string) =>
+          ethers.provider.getBalance(r, submitBlock + 1),
+        ),
       ])
 
       // PreBlocker at submitBlock+2 processes the remaining 2.
       await waitForBlock(submitBlock + 2)
 
       ;[processedAfterSecond, ...balancesAfterSecond] = await Promise.all([
-        assetsBridge.getTripartyProcessedSequenceTip(),
-        ...recipients.map((r: string) => ethers.provider.getBalance(r)),
+        assetsBridge.getTripartyProcessedSequenceTip({
+          blockTag: submitBlock + 2,
+        }),
+        ...recipients.map((r: string) =>
+          ethers.provider.getBalance(r, submitBlock + 2),
+        ),
       ])
     })
 
