@@ -17,7 +17,9 @@ contract TripartyController {
     }
 
     CallbackRecord[] public callbacks;
+    uint256[] public gasSink;
     bool public revertOnCallback;
+    bool public wasteGasOnCallback;
 
     function requestMint(
         address recipient,
@@ -41,6 +43,15 @@ contract TripartyController {
         if (revertOnCallback) {
             revert("callback reverted");
         }
+        if (wasteGasOnCallback) {
+            // Each push costs ~22k gas for the new storage slot.
+            // 100 pushes ≈ 2.2M gas, exceeding the 1M callback gas cap
+            // (TripartyCallbackGasLimit in x/evm/types/call.go).
+            for (uint256 i = 0; i < 100; i++) {
+                gasSink.push(i);
+            }
+            return;
+        }
         callbacks.push(
             CallbackRecord({
                 requestId: requestId,
@@ -53,6 +64,14 @@ contract TripartyController {
 
     function setRevertOnCallback(bool _revert) external {
         revertOnCallback = _revert;
+    }
+
+    function setWasteGasOnCallback(bool _waste) external {
+        wasteGasOnCallback = _waste;
+    }
+
+    function getGasSinkLength() external view returns (uint256) {
+        return gasSink.length;
     }
 
     function getCallbackCount() external view returns (uint256) {

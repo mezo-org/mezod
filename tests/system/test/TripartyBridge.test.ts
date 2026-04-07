@@ -654,6 +654,60 @@ describe("TripartyBridge", function () {
     })
   })
 
+  describe("Callback gas cap", function () {
+    let recipient: string
+    let recipientBalanceBefore: bigint
+    let recipientBalanceAfter: bigint
+    let gasSinkLength: bigint
+
+    before(async function () {
+      await fixture()
+
+      const controllerAddress = await tripartyController.getAddress()
+
+      await (
+        await assetsBridge
+          .connect(poolOwner)
+          .allowTripartyController(controllerAddress, true)
+      ).wait()
+      await (
+        await assetsBridge
+          .connect(poolOwner)
+          .setTripartyLimits(BTC(10), BTC(100))
+      ).wait()
+
+      // Enable gas-wasting mode: the callback writes 100 storage slots
+      // (~2.2M gas), exceeding the 1M callback gas cap
+      // (TripartyCallbackGasLimit in x/evm/types/call.go).
+      await (await tripartyController.setWasteGasOnCallback(true)).wait()
+
+      const recipientWallet = ethers.Wallet.createRandom()
+      recipient = recipientWallet.address
+
+      recipientBalanceBefore = await ethers.provider.getBalance(recipient)
+
+      await (
+        await tripartyController.requestMint(recipient, BTC("0.1"), "0x")
+      ).wait()
+
+      const currentBlock = await ethers.provider.getBlockNumber()
+      await waitForBlock(currentBlock + 3)
+
+      recipientBalanceAfter = await ethers.provider.getBalance(recipient)
+      gasSinkLength = await tripartyController.getGasSinkLength()
+    })
+
+    it("should mint BTC despite callback exceeding gas cap", async function () {
+      expect(recipientBalanceAfter).to.equal(
+        recipientBalanceBefore + BTC("0.1"),
+      )
+    })
+
+    it("should not persist callback state changes", async function () {
+      expect(gasSinkLength).to.equal(0n)
+    })
+  })
+
   // ─── Validation & Rejection ────────────────────────────────────────
 
   describe("Unauthorized caller", function () {
