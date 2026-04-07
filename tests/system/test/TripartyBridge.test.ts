@@ -594,6 +594,63 @@ describe("TripartyBridge", function () {
     })
   })
 
+  describe("Callback to EOA controller does not block mint", function () {
+    let recipient: string
+    let recipientBalanceBefore: bigint
+    let recipientBalanceAfter: bigint
+    let totalSupplyBefore: bigint
+    let totalSupplyAfter: bigint
+
+    before(async function () {
+      await fixture()
+
+      const recipientWallet = ethers.Wallet.createRandom()
+      recipient = recipientWallet.address
+
+      // Allow an EOA as controller — it has no code so the callback
+      // call targeting onTripartyBridgeCompleted cannot succeed.
+      await (
+        await assetsBridge
+          .connect(poolOwner)
+          .allowTripartyController(signers[1].address, true)
+      ).wait()
+      await (
+        await assetsBridge
+          .connect(poolOwner)
+          .setTripartyLimits(BTC(10), BTC(100))
+      ).wait()
+
+      recipientBalanceBefore = await ethers.provider.getBalance(recipient)
+      totalSupplyBefore = await btcToken.totalSupply()
+
+      await (
+        await assetsBridge
+          .connect(signers[1])
+          .bridgeTriparty(
+            recipient,
+            BTC("0.1"),
+            ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [99]),
+          )
+      ).wait()
+
+      const currentBlock = await ethers.provider.getBlockNumber()
+      await waitForBlock(currentBlock + 3)
+
+      recipientBalanceAfter = await ethers.provider.getBalance(recipient)
+      totalSupplyAfter = await btcToken.totalSupply()
+    })
+
+    it("should mint despite callback to EOA", async function () {
+      expect(recipientBalanceAfter).to.equal(
+        recipientBalanceBefore + BTC("0.1"),
+      )
+    })
+
+    it("should increase total supply", async function () {
+      expect(totalSupplyAfter).to.equal(totalSupplyBefore + BTC("0.1"))
+    })
+  })
+
   // ─── Validation & Rejection ────────────────────────────────────────
 
   describe("Unauthorized caller", function () {
