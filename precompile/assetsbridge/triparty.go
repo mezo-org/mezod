@@ -11,19 +11,19 @@ import (
 )
 
 const (
-	BridgeTripartyMethodName                    = "bridgeTriparty"
-	AllowTripartyControllerMethodName           = "allowTripartyController"
-	IsAllowedTripartyControllerMethodName       = "isAllowedTripartyController"
-	IsTripartyPausedMethodName                  = "isTripartyPaused"
-	PauseTripartyMethodName                     = "pauseTriparty"
-	SetTripartyBlockDelayMethodName             = "setTripartyBlockDelay"
-	GetTripartyBlockDelayMethodName             = "getTripartyBlockDelay"
-	SetTripartyLimitsMethodName                 = "setTripartyLimits"
-	GetTripartyLimitsMethodName                 = "getTripartyLimits"
-	GetTripartyCapacityMethodName               = "getTripartyCapacity"
-	GetTripartyTotalBTCMintedMethodName         = "getTripartyTotalBTCMinted"
-	GetTripartyRequestSequenceTipMethodName     = "getTripartyRequestSequenceTip"
-	GetTripartyProcessedSequenceTipMethodName   = "getTripartyProcessedSequenceTip"
+	BridgeTripartyMethodName                  = "bridgeTriparty"
+	AllowTripartyControllerMethodName         = "allowTripartyController"
+	IsAllowedTripartyControllerMethodName     = "isAllowedTripartyController"
+	IsTripartyPausedMethodName                = "isTripartyPaused"
+	PauseTripartyMethodName                   = "pauseTriparty"
+	SetTripartyBlockDelayMethodName           = "setTripartyBlockDelay"
+	GetTripartyBlockDelayMethodName           = "getTripartyBlockDelay"
+	SetTripartyLimitsMethodName               = "setTripartyLimits"
+	GetTripartyLimitsMethodName               = "getTripartyLimits"
+	GetTripartyCapacityMethodName             = "getTripartyCapacity"
+	GetTripartyTotalBTCMintedMethodName       = "getTripartyTotalBTCMinted"
+	GetTripartyRequestSequenceTipMethodName   = "getTripartyRequestSequenceTip"
+	GetTripartyProcessedSequenceTipMethodName = "getTripartyProcessedSequenceTip"
 )
 
 // --- bridgeTriparty ---
