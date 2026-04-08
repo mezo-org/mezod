@@ -22,6 +22,7 @@ const (
 	GetTripartyLimitsMethodName               = "getTripartyLimits"
 	GetTripartyCapacityMethodName             = "getTripartyCapacity"
 	GetTripartyTotalBTCMintedMethodName       = "getTripartyTotalBTCMinted"
+	GetTripartyControllerBTCMintedMethodName  = "getTripartyControllerBTCMinted"
 	GetTripartyRequestSequenceTipMethodName   = "getTripartyRequestSequenceTip"
 	GetTripartyProcessedSequenceTipMethodName = "getTripartyProcessedSequenceTip"
 )
@@ -775,6 +776,57 @@ func (m *GetTripartyTotalBTCMintedMethod) Run(
 
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(total),
+	}, nil, nil
+}
+
+// --- getTripartyControllerBTCMinted ---
+
+type GetTripartyControllerBTCMintedMethod struct {
+	bridgeKeeper BridgeKeeper
+}
+
+func newGetTripartyControllerBTCMintedMethod(
+	bridgeKeeper BridgeKeeper,
+) *GetTripartyControllerBTCMintedMethod {
+	return &GetTripartyControllerBTCMintedMethod{bridgeKeeper: bridgeKeeper}
+}
+
+func (m *GetTripartyControllerBTCMintedMethod) MethodName() string {
+	return GetTripartyControllerBTCMintedMethodName
+}
+
+func (m *GetTripartyControllerBTCMintedMethod) MethodType() precompile.MethodType {
+	return precompile.Read
+}
+
+func (m *GetTripartyControllerBTCMintedMethod) RequiredGas(_ []byte) (uint64, bool) {
+	return 0, false
+}
+
+func (m *GetTripartyControllerBTCMintedMethod) Payable() bool {
+	return false
+}
+
+func (m *GetTripartyControllerBTCMintedMethod) Run(
+	context *precompile.RunContext,
+	rawInputs precompile.MethodInputs,
+) (precompile.MethodOutputs, []statedb.StateChange, error) {
+	if err := precompile.ValidateMethodInputsCount(rawInputs, 1); err != nil {
+		return nil, nil, err
+	}
+
+	controller, ok := rawInputs[0].(common.Address)
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid controller address: %v", rawInputs[0])
+	}
+
+	minted := m.bridgeKeeper.GetTripartyControllerBTCMinted(
+		context.SdkCtx(),
+		precompile.TypesConverter.Address.ToSDK(controller),
+	)
+
+	return precompile.MethodOutputs{
+		precompile.TypesConverter.BigInt.FromSDK(minted),
 	}, nil, nil
 }
 
