@@ -394,6 +394,15 @@ interface IAssetsBridge {
     function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted);
 
     /**
+     * @notice Returns the BTC minted via the triparty bridge path by a
+     *         specific controller. This is an informational provenance counter.
+     * @param controller The address of the triparty controller.
+     * @return minted The cumulative amount of BTC minted by this controller
+     *         through triparty.
+     */
+    function getTripartyControllerBTCMinted(address controller) external view returns (uint256 minted);
+
+    /**
      * @notice Checks if triparty bridging is currently paused.
      * @return isPaused True if triparty bridging is paused.
      */

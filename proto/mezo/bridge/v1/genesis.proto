@@ -70,6 +70,64 @@ message GenesisState {
 
   // current_outflow_limits tracks the current outflow limit for each token.
   repeated CurrentOutflowLimit current_outflow_limits = 13;
+
+  // allowed_triparty_controllers is the list of allowed triparty controller
+  // addresses, as hex-encoded EVM addresses.
+  repeated string allowed_triparty_controllers = 14;
+
+  // triparty_paused indicates whether triparty bridging is paused.
+  bool triparty_paused = 15;
+
+  // triparty_block_delay is the number of blocks that must pass between
+  // request creation and processing.
+  int64 triparty_block_delay = 16;
+
+  // triparty_per_request_limit is the per-request triparty limit.
+  string triparty_per_request_limit = 17 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // triparty_window_limit is the rolling triparty request window limit.
+  string triparty_window_limit = 18 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // triparty_request_sequence_tip is the last assigned triparty request
+  // sequence number.
+  string triparty_request_sequence_tip = 19 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // triparty_processed_sequence_tip is the last processed triparty request
+  // sequence number.
+  string triparty_processed_sequence_tip = 20 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // triparty_pending_requests are the pending triparty requests still stored
+  // in module state.
+  repeated TripartyBridgeRequest triparty_pending_requests = 21;
+
+  // triparty_window_consumed is the amount already consumed in the current
+  // triparty request window.
+  string triparty_window_consumed = 22 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+
+  // triparty_window_last_reset is the block height of the last triparty
+  // window reset.
+  uint64 triparty_window_last_reset = 23;
+
+  reserved 24;
+
+  // triparty_controller_btc_minted tracks the BTC minted through the triparty
+  // bridge path per controller.
+  repeated TripartyControllerBTCMinted triparty_controller_btc_minted = 25;
 }
 
 // CurrentOutflowAmount tracks the current outflow amount for a specific token.
@@ -103,6 +161,19 @@ message TokenMinBridgeOutAmount {
   string token = 1;
 
   // amount is the minimum amount required for bridging out this specific token.
+  string amount = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+// TripartyControllerBTCMinted tracks the BTC minted through the triparty
+// bridge path by a specific controller.
+message TripartyControllerBTCMinted {
+  // controller is the controller's hex-encoded EVM address.
+  string controller = 1;
+
+  // amount is the cumulative BTC minted by this controller through triparty.
   string amount = 2 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false

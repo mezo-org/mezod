@@ -59,6 +59,49 @@ func (k Keeper) InitGenesis(
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting params"))
 	}
+
+	for _, controller := range genState.AllowedTripartyControllers {
+		k.AllowTripartyController(
+			ctx,
+			evmtypes.HexAddressToBytes(controller),
+			true,
+		)
+	}
+
+	k.SetTripartyPaused(ctx, genState.TripartyPaused)
+	err = k.SetTripartyBlockDelay(ctx, genState.TripartyBlockDelay)
+	if err != nil {
+		panic(errorsmod.Wrapf(err, "error setting triparty block delay"))
+	}
+	k.SetTripartyPerRequestLimit(ctx, genState.TripartyPerRequestLimit)
+	k.SetTripartyWindowLimit(ctx, genState.TripartyWindowLimit)
+	k.setTripartyRequestSequenceTip(ctx, genState.TripartyRequestSequenceTip)
+	k.setTripartyProcessedSequenceTip(ctx, genState.TripartyProcessedSequenceTip)
+
+	for _, req := range genState.TripartyPendingRequests {
+		bz, err := req.Marshal()
+		if err != nil {
+			panic(errorsmod.Wrapf(err, "error marshaling triparty pending request"))
+		}
+
+		ctx.KVStore(k.storeKey).Set(
+			types.GetTripartyBridgeRequestKey(req.Sequence),
+			bz,
+		)
+	}
+
+	if genState.TripartyWindowConsumed.IsPositive() {
+		k.increaseTripartyWindowConsumed(ctx, genState.TripartyWindowConsumed)
+	}
+	k.setTripartyWindowLastReset(ctx, genState.TripartyWindowLastReset)
+
+	for _, entry := range genState.TripartyControllerBtcMinted {
+		k.increaseTripartyControllerBTCMinted(
+			ctx,
+			entry.Controller,
+			entry.Amount,
+		)
+	}
 }
 
 // ExportGenesis returns the module's exported genesis
@@ -77,5 +120,16 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		LastOutflowReset:               k.getLastOutflowReset(ctx),
 		CurrentOutflowLimits:           k.GetAllCurrentOutflowLimits(ctx),
 		CurrentOutflowAmounts:          k.GetAllCurrentOutflowAmounts(ctx),
+		AllowedTripartyControllers:     k.getAllAllowedTripartyControllers(ctx),
+		TripartyPaused:                 k.IsTripartyPaused(ctx),
+		TripartyBlockDelay:             k.GetTripartyBlockDelay(ctx),
+		TripartyPerRequestLimit:        k.GetTripartyPerRequestLimit(ctx),
+		TripartyWindowLimit:            k.GetTripartyWindowLimit(ctx),
+		TripartyRequestSequenceTip:     k.GetTripartyRequestSequenceTip(ctx),
+		TripartyProcessedSequenceTip:   k.GetTripartyProcessedSequenceTip(ctx),
+		TripartyPendingRequests:        k.getAllPendingTripartyBridgeRequests(ctx),
+		TripartyWindowConsumed:         k.getTripartyWindowConsumed(ctx),
+		TripartyWindowLastReset:        k.getTripartyWindowLastReset(ctx),
+		TripartyControllerBtcMinted:    k.getAllTripartyControllerBTCMinted(ctx),
 	}
 }

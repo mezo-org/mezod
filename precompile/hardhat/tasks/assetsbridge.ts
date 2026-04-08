@@ -358,6 +358,17 @@ task(
 )
 
 task(
+  'assetsBridge:getTripartyControllerBTCMinted',
+  'Gets the BTC minted through the triparty bridge path by a specific controller'
+)
+  .addParam('controller', 'The address of the triparty controller')
+  .setAction(async (taskArguments, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getTripartyControllerBTCMinted(taskArguments.controller)
+    console.log(result.toString())
+  })
+
+task(
   'assetsBridge:isTripartyPaused',
   'Checks if triparty bridging is currently paused',
   async (_, hre) => {

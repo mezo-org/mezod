@@ -64,6 +64,36 @@ type GenesisState struct {
 	CurrentOutflowAmounts []*CurrentOutflowAmount `protobuf:"bytes,12,rep,name=current_outflow_amounts,json=currentOutflowAmounts,proto3" json:"current_outflow_amounts,omitempty"`
 	// current_outflow_limits tracks the current outflow limit for each token.
 	CurrentOutflowLimits []*CurrentOutflowLimit `protobuf:"bytes,13,rep,name=current_outflow_limits,json=currentOutflowLimits,proto3" json:"current_outflow_limits,omitempty"`
+	// allowed_triparty_controllers is the list of allowed triparty controller
+	// addresses, as hex-encoded EVM addresses.
+	AllowedTripartyControllers []string `protobuf:"bytes,14,rep,name=allowed_triparty_controllers,json=allowedTripartyControllers,proto3" json:"allowed_triparty_controllers,omitempty"`
+	// triparty_paused indicates whether triparty bridging is paused.
+	TripartyPaused bool `protobuf:"varint,15,opt,name=triparty_paused,json=tripartyPaused,proto3" json:"triparty_paused,omitempty"`
+	// triparty_block_delay is the number of blocks that must pass between
+	// request creation and processing.
+	TripartyBlockDelay int64 `protobuf:"varint,16,opt,name=triparty_block_delay,json=tripartyBlockDelay,proto3" json:"triparty_block_delay,omitempty"`
+	// triparty_per_request_limit is the per-request triparty limit.
+	TripartyPerRequestLimit cosmossdk_io_math.Int `protobuf:"bytes,17,opt,name=triparty_per_request_limit,json=tripartyPerRequestLimit,proto3,customtype=cosmossdk.io/math.Int" json:"triparty_per_request_limit"`
+	// triparty_window_limit is the rolling triparty request window limit.
+	TripartyWindowLimit cosmossdk_io_math.Int `protobuf:"bytes,18,opt,name=triparty_window_limit,json=tripartyWindowLimit,proto3,customtype=cosmossdk.io/math.Int" json:"triparty_window_limit"`
+	// triparty_request_sequence_tip is the last assigned triparty request
+	// sequence number.
+	TripartyRequestSequenceTip cosmossdk_io_math.Int `protobuf:"bytes,19,opt,name=triparty_request_sequence_tip,json=tripartyRequestSequenceTip,proto3,customtype=cosmossdk.io/math.Int" json:"triparty_request_sequence_tip"`
+	// triparty_processed_sequence_tip is the last processed triparty request
+	// sequence number.
+	TripartyProcessedSequenceTip cosmossdk_io_math.Int `protobuf:"bytes,20,opt,name=triparty_processed_sequence_tip,json=tripartyProcessedSequenceTip,proto3,customtype=cosmossdk.io/math.Int" json:"triparty_processed_sequence_tip"`
+	// triparty_pending_requests are the pending triparty requests still stored
+	// in module state.
+	TripartyPendingRequests []*TripartyBridgeRequest `protobuf:"bytes,21,rep,name=triparty_pending_requests,json=tripartyPendingRequests,proto3" json:"triparty_pending_requests,omitempty"`
+	// triparty_window_consumed is the amount already consumed in the current
+	// triparty request window.
+	TripartyWindowConsumed cosmossdk_io_math.Int `protobuf:"bytes,22,opt,name=triparty_window_consumed,json=tripartyWindowConsumed,proto3,customtype=cosmossdk.io/math.Int" json:"triparty_window_consumed"`
+	// triparty_window_last_reset is the block height of the last triparty
+	// window reset.
+	TripartyWindowLastReset uint64 `protobuf:"varint,23,opt,name=triparty_window_last_reset,json=tripartyWindowLastReset,proto3" json:"triparty_window_last_reset,omitempty"`
+	// triparty_controller_btc_minted tracks the BTC minted through the triparty
+	// bridge path per controller.
+	TripartyControllerBtcMinted []*TripartyControllerBTCMinted `protobuf:"bytes,25,rep,name=triparty_controller_btc_minted,json=tripartyControllerBtcMinted,proto3" json:"triparty_controller_btc_minted,omitempty"`
 }
 
 func (m *GenesisState) Reset()         { *m = GenesisState{} }
@@ -158,6 +188,48 @@ func (m *GenesisState) GetCurrentOutflowAmounts() []*CurrentOutflowAmount {
 func (m *GenesisState) GetCurrentOutflowLimits() []*CurrentOutflowLimit {
 	if m != nil {
 		return m.CurrentOutflowLimits
+	}
+	return nil
+}
+
+func (m *GenesisState) GetAllowedTripartyControllers() []string {
+	if m != nil {
+		return m.AllowedTripartyControllers
+	}
+	return nil
+}
+
+func (m *GenesisState) GetTripartyPaused() bool {
+	if m != nil {
+		return m.TripartyPaused
+	}
+	return false
+}
+
+func (m *GenesisState) GetTripartyBlockDelay() int64 {
+	if m != nil {
+		return m.TripartyBlockDelay
+	}
+	return 0
+}
+
+func (m *GenesisState) GetTripartyPendingRequests() []*TripartyBridgeRequest {
+	if m != nil {
+		return m.TripartyPendingRequests
+	}
+	return nil
+}
+
+func (m *GenesisState) GetTripartyWindowLastReset() uint64 {
+	if m != nil {
+		return m.TripartyWindowLastReset
+	}
+	return 0
+}
+
+func (m *GenesisState) GetTripartyControllerBtcMinted() []*TripartyControllerBTCMinted {
+	if m != nil {
+		return m.TripartyControllerBtcMinted
 	}
 	return nil
 }
@@ -307,58 +379,127 @@ func (m *TokenMinBridgeOutAmount) GetToken() string {
 	return ""
 }
 
+// TripartyControllerBTCMinted tracks the BTC minted through the triparty
+// bridge path by a specific controller.
+type TripartyControllerBTCMinted struct {
+	// controller is the controller's hex-encoded EVM address.
+	Controller string `protobuf:"bytes,1,opt,name=controller,proto3" json:"controller,omitempty"`
+	// amount is the cumulative BTC minted by this controller through triparty.
+	Amount cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
+}
+
+func (m *TripartyControllerBTCMinted) Reset()         { *m = TripartyControllerBTCMinted{} }
+func (m *TripartyControllerBTCMinted) String() string { return proto.CompactTextString(m) }
+func (*TripartyControllerBTCMinted) ProtoMessage()    {}
+func (*TripartyControllerBTCMinted) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c6a9d1c622979efc, []int{4}
+}
+func (m *TripartyControllerBTCMinted) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TripartyControllerBTCMinted) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TripartyControllerBTCMinted.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *TripartyControllerBTCMinted) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TripartyControllerBTCMinted.Merge(m, src)
+}
+func (m *TripartyControllerBTCMinted) XXX_Size() int {
+	return m.Size()
+}
+func (m *TripartyControllerBTCMinted) XXX_DiscardUnknown() {
+	xxx_messageInfo_TripartyControllerBTCMinted.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TripartyControllerBTCMinted proto.InternalMessageInfo
+
+func (m *TripartyControllerBTCMinted) GetController() string {
+	if m != nil {
+		return m.Controller
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*GenesisState)(nil), "mezo.bridge.v1.GenesisState")
 	proto.RegisterType((*CurrentOutflowAmount)(nil), "mezo.bridge.v1.CurrentOutflowAmount")
 	proto.RegisterType((*CurrentOutflowLimit)(nil), "mezo.bridge.v1.CurrentOutflowLimit")
 	proto.RegisterType((*TokenMinBridgeOutAmount)(nil), "mezo.bridge.v1.TokenMinBridgeOutAmount")
+	proto.RegisterType((*TripartyControllerBTCMinted)(nil), "mezo.bridge.v1.TripartyControllerBTCMinted")
 }
 
 func init() { proto.RegisterFile("mezo/bridge/v1/genesis.proto", fileDescriptor_c6a9d1c622979efc) }
 
 var fileDescriptor_c6a9d1c622979efc = []byte{
-	// 646 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0xdf, 0x4e, 0xd4, 0x4e,
-	0x14, 0xc7, 0xb7, 0x3f, 0x60, 0xf9, 0x31, 0x20, 0x21, 0xc3, 0x02, 0x15, 0xb1, 0xac, 0x8b, 0x89,
-	0x7b, 0xa1, 0x2d, 0x2c, 0xfa, 0x00, 0x94, 0x10, 0x63, 0x84, 0x60, 0x0a, 0x5c, 0x48, 0x8c, 0xb5,
-	0x3b, 0x3b, 0x94, 0x91, 0xed, 0x4c, 0xed, 0x99, 0xa2, 0xf8, 0x14, 0x3e, 0x16, 0x97, 0x5c, 0x1a,
-	0x2f, 0x88, 0x81, 0xe7, 0x30, 0x31, 0x33, 0x53, 0xa2, 0x74, 0x4b, 0xb2, 0x17, 0xde, 0xb5, 0xe7,
-	0x7c, 0xcf, 0xe7, 0xfc, 0x9b, 0x19, 0xb4, 0x94, 0xd0, 0xaf, 0xc2, 0xeb, 0x66, 0xac, 0x17, 0x53,
-	0xef, 0x74, 0xcd, 0x8b, 0x29, 0xa7, 0xc0, 0xc0, 0x4d, 0x33, 0x21, 0x05, 0x9e, 0x56, 0x5e, 0xd7,
-	0x78, 0xdd, 0xd3, 0xb5, 0xc5, 0x46, 0x2c, 0x62, 0xa1, 0x5d, 0x9e, 0xfa, 0x32, 0xaa, 0xc5, 0x07,
-	0x25, 0x46, 0xa1, 0xd7, 0xce, 0xd6, 0xaf, 0x71, 0x34, 0xf5, 0xd2, 0x40, 0xf7, 0x64, 0x24, 0x29,
-	0x7e, 0x8e, 0xea, 0x69, 0x94, 0x45, 0x09, 0xd8, 0x56, 0xd3, 0x6a, 0x4f, 0x76, 0xe6, 0xdd, 0xdb,
-	0x49, 0xdc, 0x37, 0xda, 0xeb, 0x8f, 0x9e, 0x5f, 0x2e, 0xd7, 0x82, 0x42, 0x8b, 0x0f, 0xd1, 0x62,
-	0x04, 0x40, 0x25, 0x84, 0x7d, 0x41, 0x4e, 0x68, 0x2f, 0x04, 0xfa, 0x29, 0xa7, 0x9c, 0xd0, 0x50,
-	0xb2, 0xd4, 0xfe, 0xaf, 0x69, 0xb5, 0x27, 0xfc, 0x87, 0x2a, 0xe2, 0xc7, 0xe5, 0xf2, 0x1c, 0x11,
-	0x90, 0x08, 0x80, 0xde, 0x89, 0xcb, 0x84, 0x97, 0x44, 0xf2, 0xd8, 0x7d, 0xc5, 0x65, 0xb0, 0x60,
-	0x00, 0xdb, 0x3a, 0x7e, 0xaf, 0x08, 0xdf, 0x67, 0x29, 0x6e, 0xa3, 0x19, 0x10, 0x79, 0x46, 0x68,
-	0xd8, 0x95, 0x24, 0x94, 0xe2, 0x84, 0x72, 0x7b, 0x44, 0x11, 0x83, 0x69, 0x63, 0xf7, 0x25, 0xd9,
-	0x57, 0x56, 0x7c, 0x80, 0xe6, 0x68, 0x46, 0x3a, 0xab, 0x46, 0x04, 0x61, 0x12, 0xa5, 0x29, 0xe3,
-	0x31, 0xd8, 0xa3, 0xcd, 0x91, 0xf6, 0x64, 0xe7, 0x51, 0xb9, 0x95, 0xad, 0x60, 0xb3, 0xb3, 0xaa,
-	0x43, 0x77, 0x8c, 0x32, 0x98, 0xd5, 0xf1, 0xda, 0x04, 0x85, 0x0d, 0xf0, 0x6b, 0x84, 0x19, 0x67,
-	0x92, 0x45, 0x7d, 0x5d, 0x01, 0xe4, 0x69, 0xda, 0x3f, 0xb3, 0xc7, 0x86, 0x69, 0x6a, 0xa6, 0x08,
-	0xf4, 0x25, 0xd9, 0xd3, 0x61, 0xf8, 0x3d, 0x5a, 0x2a, 0x26, 0x95, 0xf3, 0xaa, 0x59, 0xd5, 0x87,
-	0xc1, 0xde, 0x37, 0x88, 0x83, 0x82, 0xf0, 0xf7, 0xb4, 0xde, 0xa2, 0xf9, 0x32, 0x9f, 0x9e, 0x52,
-	0x2e, 0xc1, 0x1e, 0xd7, 0x43, 0x58, 0x29, 0x0f, 0x61, 0xe3, 0x16, 0x6a, 0x4b, 0x69, 0x83, 0x46,
-	0x34, 0x68, 0x04, 0xfc, 0x11, 0xad, 0x74, 0x99, 0x24, 0x82, 0xf1, 0x90, 0x1c, 0x47, 0x8c, 0x87,
-	0x09, 0xe3, 0xa1, 0x01, 0x85, 0x22, 0x97, 0x61, 0x94, 0x88, 0x9c, 0x4b, 0xfb, 0xff, 0x61, 0x3a,
-	0x70, 0x0a, 0xd2, 0xa6, 0x02, 0xed, 0x30, 0xee, 0x6b, 0xcc, 0x6e, 0x2e, 0x37, 0x34, 0x04, 0xc7,
-	0x68, 0x49, 0x2f, 0xb1, 0x3a, 0x07, 0xd8, 0x13, 0xba, 0x99, 0x27, 0xe5, 0x66, 0xcc, 0x32, 0x07,
-	0x70, 0x81, 0x2d, 0xab, 0x1d, 0x80, 0xe7, 0xd5, 0x79, 0xcf, 0x81, 0x66, 0x36, 0xd2, 0x67, 0xaa,
-	0xf8, 0xc3, 0x4f, 0x11, 0xee, 0x47, 0x20, 0x55, 0xd2, 0xa3, 0xbe, 0xf8, 0x1c, 0x66, 0x14, 0xa8,
-	0xb4, 0x27, 0x9b, 0x56, 0x7b, 0x34, 0x98, 0x51, 0x9e, 0x5d, 0xe3, 0x08, 0x94, 0x1d, 0xbf, 0x43,
-	0x0b, 0x24, 0xcf, 0x32, 0xca, 0xff, 0x04, 0xdc, 0x54, 0x3a, 0xa5, 0x2b, 0x7d, 0x5c, 0xae, 0x74,
-	0xd3, 0xc8, 0x0b, 0x4a, 0x51, 0xe6, 0x1c, 0xa9, 0xb0, 0x82, 0xda, 0x69, 0x99, 0xde, 0x67, 0x09,
-	0x93, 0x60, 0xdf, 0xab, 0xde, 0xe9, 0x6d, 0xf8, 0xb6, 0xd2, 0x06, 0x0d, 0x32, 0x68, 0x84, 0x16,
-	0x41, 0x8d, 0xaa, 0x4a, 0x70, 0x03, 0x8d, 0x99, 0x9b, 0x66, 0xe9, 0xa9, 0x98, 0x1f, 0xfc, 0x02,
-	0xd5, 0x8b, 0x25, 0x0f, 0x75, 0xa5, 0x0b, 0x71, 0xeb, 0x03, 0x9a, 0xad, 0xa8, 0xe8, 0x8e, 0x1c,
-	0xeb, 0x68, 0x4c, 0x37, 0x37, 0x5c, 0x0a, 0xa3, 0x6d, 0x1d, 0xa1, 0x85, 0x3b, 0x56, 0xff, 0x4f,
-	0x3b, 0xf1, 0xfd, 0xf3, 0x2b, 0xc7, 0xba, 0xb8, 0x72, 0xac, 0x9f, 0x57, 0x8e, 0xf5, 0xed, 0xda,
-	0xa9, 0x5d, 0x5c, 0x3b, 0xb5, 0xef, 0xd7, 0x4e, 0xed, 0xb0, 0x1d, 0x33, 0x79, 0x9c, 0x77, 0x5d,
-	0x22, 0x12, 0x4f, 0x6d, 0xe3, 0x99, 0xc8, 0x62, 0xfd, 0xd1, 0xf3, 0xbe, 0xdc, 0x3c, 0xbe, 0xf2,
-	0x2c, 0xa5, 0xd0, 0xad, 0xeb, 0x97, 0x77, 0xfd, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf3, 0xf7,
-	0x98, 0x96, 0xdc, 0x05, 0x00, 0x00,
+	// 955 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0x5b, 0x6f, 0xdc, 0x44,
+	0x14, 0x8e, 0xc9, 0x85, 0x64, 0x52, 0x92, 0x65, 0xb2, 0x97, 0x49, 0xb2, 0xdd, 0x2c, 0x29, 0xa8,
+	0x2b, 0x01, 0xbb, 0x69, 0x0a, 0x4f, 0xbc, 0xd0, 0x5d, 0x2a, 0x04, 0x34, 0x6a, 0x71, 0x52, 0x55,
+	0x54, 0x08, 0xd7, 0x3b, 0x9e, 0x3a, 0x43, 0xec, 0x19, 0xe3, 0x19, 0x27, 0x84, 0x47, 0x7e, 0x01,
+	0x3f, 0xab, 0x8f, 0x7d, 0x44, 0x3c, 0x44, 0x28, 0xf9, 0x23, 0x68, 0x2e, 0xde, 0x8b, 0x77, 0x83,
+	0x2c, 0xc4, 0x9b, 0x7d, 0xce, 0xf9, 0xbe, 0x73, 0x3f, 0x36, 0x68, 0xc6, 0xe4, 0x37, 0xde, 0x1b,
+	0xa6, 0x34, 0x08, 0x49, 0xef, 0xfc, 0x41, 0x2f, 0x24, 0x8c, 0x08, 0x2a, 0xba, 0x49, 0xca, 0x25,
+	0x87, 0x1b, 0x4a, 0xdb, 0x35, 0xda, 0xee, 0xf9, 0x83, 0x9d, 0x6a, 0xc8, 0x43, 0xae, 0x55, 0x3d,
+	0xf5, 0x64, 0xac, 0x76, 0x76, 0x0b, 0x1c, 0xd6, 0x5e, 0x2b, 0xf7, 0x7f, 0xdf, 0x04, 0x77, 0xbe,
+	0x36, 0xa4, 0xc7, 0xd2, 0x97, 0x04, 0x7e, 0x06, 0x56, 0x12, 0x3f, 0xf5, 0x63, 0x81, 0x9c, 0xb6,
+	0xd3, 0x59, 0x3f, 0xac, 0x77, 0xa7, 0x9d, 0x74, 0x9f, 0x69, 0x6d, 0x7f, 0xe9, 0xcd, 0xd5, 0xde,
+	0x82, 0x6b, 0x6d, 0xe1, 0x4b, 0xb0, 0xe3, 0x0b, 0x41, 0xa4, 0xf0, 0x22, 0x8e, 0xcf, 0x48, 0xe0,
+	0x09, 0xf2, 0x4b, 0x46, 0x18, 0x26, 0x9e, 0xa4, 0x09, 0x7a, 0xa7, 0xed, 0x74, 0xd6, 0xfa, 0x77,
+	0x15, 0xe2, 0xaf, 0xab, 0xbd, 0x1a, 0xe6, 0x22, 0xe6, 0x42, 0x04, 0x67, 0x5d, 0xca, 0x7b, 0xb1,
+	0x2f, 0x4f, 0xbb, 0xdf, 0x30, 0xe9, 0x36, 0x0c, 0xc1, 0x13, 0x8d, 0x3f, 0xb6, 0xf0, 0x13, 0x9a,
+	0xc0, 0x0e, 0xa8, 0x08, 0x9e, 0xa5, 0x98, 0x78, 0x43, 0x89, 0x3d, 0xc9, 0xcf, 0x08, 0x43, 0x8b,
+	0x8a, 0xd1, 0xdd, 0x30, 0xf2, 0xbe, 0xc4, 0x27, 0x4a, 0x0a, 0x9f, 0x83, 0x1a, 0x49, 0xf1, 0xe1,
+	0x81, 0x31, 0x12, 0x5e, 0xec, 0x27, 0x09, 0x65, 0xa1, 0x40, 0x4b, 0xed, 0xc5, 0xce, 0xfa, 0xe1,
+	0x07, 0xc5, 0x54, 0x1e, 0xbb, 0x83, 0xc3, 0x03, 0x0d, 0x3d, 0x32, 0x96, 0xee, 0x96, 0xc6, 0x6b,
+	0x91, 0xb0, 0x32, 0x01, 0xbf, 0x03, 0x90, 0x32, 0x2a, 0xa9, 0x1f, 0xe9, 0x08, 0x44, 0x96, 0x24,
+	0xd1, 0x25, 0x5a, 0x2e, 0x93, 0x54, 0xc5, 0x02, 0xfb, 0x12, 0x1f, 0x6b, 0x18, 0xfc, 0x09, 0x34,
+	0x6d, 0xa5, 0x32, 0x36, 0xaf, 0x56, 0x2b, 0x65, 0x68, 0xb7, 0x0d, 0xc5, 0x73, 0xcb, 0x30, 0x59,
+	0xad, 0x1f, 0x40, 0xbd, 0xc8, 0x4f, 0xce, 0x09, 0x93, 0x02, 0xbd, 0xab, 0x8b, 0x70, 0xaf, 0x58,
+	0x84, 0x47, 0x53, 0x54, 0x8f, 0x95, 0xad, 0x5b, 0xf5, 0x67, 0x85, 0x02, 0xfe, 0x0c, 0xee, 0x0d,
+	0xa9, 0xc4, 0x9c, 0x32, 0x0f, 0x9f, 0xfa, 0x94, 0x79, 0x31, 0x65, 0x9e, 0x21, 0xf2, 0x78, 0x26,
+	0x3d, 0x3f, 0xe6, 0x19, 0x93, 0x68, 0xb5, 0x4c, 0x06, 0x2d, 0xcb, 0x34, 0x50, 0x44, 0x47, 0x94,
+	0xf5, 0x35, 0xcd, 0xd3, 0x4c, 0x3e, 0xd2, 0x24, 0x30, 0x04, 0x4d, 0xdd, 0xc4, 0xf9, 0x3e, 0x04,
+	0x5a, 0xd3, 0xc9, 0xdc, 0x2f, 0x26, 0x63, 0x9a, 0x39, 0x43, 0xe7, 0x22, 0x39, 0x5f, 0x21, 0x60,
+	0x5d, 0xcd, 0x7b, 0x26, 0x48, 0x8a, 0x80, 0x9e, 0x29, 0xfb, 0x06, 0x3f, 0x01, 0x30, 0xf2, 0x85,
+	0x54, 0x4e, 0x5f, 0x47, 0xfc, 0xc2, 0x4b, 0x89, 0x20, 0x12, 0xad, 0xb7, 0x9d, 0xce, 0x92, 0x5b,
+	0x51, 0x9a, 0xa7, 0x46, 0xe1, 0x2a, 0x39, 0xfc, 0x11, 0x34, 0x70, 0x96, 0xa6, 0x84, 0x8d, 0x01,
+	0x79, 0xa4, 0x77, 0x74, 0xa4, 0x1f, 0x16, 0x23, 0x1d, 0x18, 0x73, 0xcb, 0x62, 0xc3, 0xac, 0xe1,
+	0x39, 0x52, 0xa1, 0x7a, 0x5a, 0x64, 0x8f, 0x68, 0x4c, 0xa5, 0x40, 0xef, 0xcd, 0xef, 0xe9, 0x34,
+	0xf9, 0x13, 0x65, 0xeb, 0x56, 0xf1, 0xac, 0x50, 0xc0, 0x2f, 0x41, 0xd3, 0x8f, 0x22, 0x7e, 0x41,
+	0x02, 0x4f, 0xa6, 0x34, 0xf1, 0x53, 0x79, 0xe9, 0x61, 0xce, 0x64, 0xca, 0xa3, 0x88, 0xa4, 0x02,
+	0x6d, 0xb4, 0x17, 0x3b, 0x6b, 0xee, 0x8e, 0xb5, 0x39, 0xb1, 0x26, 0x83, 0xb1, 0x05, 0xbc, 0x0f,
+	0x36, 0x47, 0x48, 0x5d, 0xbb, 0x00, 0x6d, 0xb6, 0x9d, 0xce, 0xaa, 0xbb, 0x91, 0x8b, 0x9f, 0x69,
+	0x29, 0x3c, 0x00, 0xd5, 0x91, 0xe1, 0x50, 0x0d, 0x96, 0x17, 0x90, 0xc8, 0xbf, 0x44, 0x95, 0xb6,
+	0xd3, 0x59, 0x74, 0x61, 0xae, 0xeb, 0x2b, 0xd5, 0x57, 0x4a, 0xa3, 0xae, 0xca, 0x98, 0x9a, 0xa4,
+	0x5e, 0xaa, 0xe6, 0x5c, 0x48, 0x93, 0x3c, 0x7a, 0xbf, 0xd4, 0x55, 0x19, 0x05, 0x41, 0x52, 0xd7,
+	0xc0, 0x75, 0xe6, 0xf0, 0x7b, 0x50, 0x1b, 0x71, 0x5f, 0x50, 0x16, 0xe4, 0x35, 0x45, 0xb0, 0x0c,
+	0xed, 0x56, 0x8e, 0x7d, 0xa1, 0xa1, 0x86, 0xf2, 0x15, 0xb8, 0x3b, 0xa2, 0xcc, 0x43, 0x9d, 0xda,
+	0xed, 0xad, 0x32, 0xd4, 0xa3, 0x94, 0x6d, 0xb8, 0x93, 0xcb, 0x1d, 0x80, 0xbd, 0x71, 0x41, 0x52,
+	0x8e, 0x89, 0x10, 0xc5, 0xfb, 0x51, 0x2d, 0xe3, 0xa3, 0x39, 0xaa, 0x4a, 0x4e, 0x32, 0xe9, 0xc5,
+	0x07, 0xdb, 0x13, 0x65, 0x67, 0x01, 0x65, 0x61, 0x9e, 0x8f, 0x40, 0x35, 0x3d, 0x71, 0x1f, 0xcd,
+	0x2c, 0x5e, 0xde, 0x3d, 0x2d, 0xb1, 0xa1, 0x4f, 0x56, 0x5f, 0xd3, 0x58, 0xb9, 0x80, 0x2f, 0x00,
+	0x2a, 0x56, 0x1f, 0x73, 0x26, 0xb2, 0x98, 0x04, 0xa8, 0x5e, 0x26, 0x83, 0xfa, 0x74, 0x03, 0x06,
+	0x16, 0x0c, 0xbf, 0x98, 0x18, 0x99, 0xbc, 0xad, 0x6a, 0x8d, 0xcd, 0xfa, 0x36, 0xf4, 0xfa, 0x36,
+	0x0a, 0xcd, 0xf3, 0x85, 0x34, 0x5b, 0x9c, 0x80, 0xd6, 0x9c, 0x25, 0xd0, 0x47, 0x3f, 0xa6, 0x4c,
+	0x92, 0x00, 0x6d, 0xeb, 0xec, 0x3f, 0xbe, 0x2d, 0xfb, 0xf1, 0x5e, 0xf4, 0x4f, 0x06, 0x47, 0x1a,
+	0xe2, 0xee, 0xca, 0x59, 0xa5, 0xc4, 0x46, 0xf9, 0xed, 0xd2, 0x2a, 0xaa, 0x6c, 0xef, 0x63, 0x50,
+	0x9d, 0x77, 0x0e, 0x60, 0x15, 0x2c, 0x9b, 0xcf, 0x9d, 0xa3, 0x4f, 0x93, 0x79, 0x81, 0x9f, 0x83,
+	0x15, 0x7b, 0x69, 0x4b, 0x7d, 0x57, 0xad, 0xf1, 0xfe, 0x2b, 0xb0, 0x35, 0xe7, 0x2c, 0xdc, 0xe2,
+	0xe3, 0x21, 0x58, 0x36, 0xdb, 0x50, 0xca, 0x85, 0xb1, 0xdd, 0x7f, 0x0d, 0x1a, 0xb7, 0xdc, 0xdf,
+	0xff, 0x37, 0x13, 0x09, 0x76, 0xff, 0xa5, 0xe0, 0xb0, 0x05, 0xc0, 0xb8, 0x79, 0xd6, 0xe1, 0x84,
+	0xe4, 0x3f, 0x7a, 0xed, 0xf7, 0xdf, 0x5c, 0xb7, 0x9c, 0xb7, 0xd7, 0x2d, 0xe7, 0xef, 0xeb, 0x96,
+	0xf3, 0xc7, 0x4d, 0x6b, 0xe1, 0xed, 0x4d, 0x6b, 0xe1, 0xcf, 0x9b, 0xd6, 0xc2, 0xcb, 0x4e, 0x48,
+	0xe5, 0x69, 0x36, 0xec, 0x62, 0x1e, 0xf7, 0xd4, 0x60, 0x7c, 0xca, 0xd3, 0x50, 0x3f, 0x04, 0xbd,
+	0x5f, 0xf3, 0xff, 0x2e, 0x79, 0x99, 0x10, 0x31, 0x5c, 0xd1, 0x3f, 0x5d, 0x0f, 0xff, 0x09, 0x00,
+	0x00, 0xff, 0xff, 0x8d, 0x73, 0x1b, 0x96, 0xd7, 0x09, 0x00, 0x00,
 }
 
 func (m *GenesisState) Marshal() (dAtA []byte, err error) {
@@ -381,6 +522,131 @@ func (m *GenesisState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.TripartyControllerBtcMinted) > 0 {
+		for iNdEx := len(m.TripartyControllerBtcMinted) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.TripartyControllerBtcMinted[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0xca
+		}
+	}
+	if m.TripartyWindowLastReset != 0 {
+		i = encodeVarintGenesis(dAtA, i, uint64(m.TripartyWindowLastReset))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xb8
+	}
+	{
+		size := m.TripartyWindowConsumed.Size()
+		i -= size
+		if _, err := m.TripartyWindowConsumed.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1
+	i--
+	dAtA[i] = 0xb2
+	if len(m.TripartyPendingRequests) > 0 {
+		for iNdEx := len(m.TripartyPendingRequests) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.TripartyPendingRequests[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0xaa
+		}
+	}
+	{
+		size := m.TripartyProcessedSequenceTip.Size()
+		i -= size
+		if _, err := m.TripartyProcessedSequenceTip.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1
+	i--
+	dAtA[i] = 0xa2
+	{
+		size := m.TripartyRequestSequenceTip.Size()
+		i -= size
+		if _, err := m.TripartyRequestSequenceTip.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1
+	i--
+	dAtA[i] = 0x9a
+	{
+		size := m.TripartyWindowLimit.Size()
+		i -= size
+		if _, err := m.TripartyWindowLimit.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1
+	i--
+	dAtA[i] = 0x92
+	{
+		size := m.TripartyPerRequestLimit.Size()
+		i -= size
+		if _, err := m.TripartyPerRequestLimit.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1
+	i--
+	dAtA[i] = 0x8a
+	if m.TripartyBlockDelay != 0 {
+		i = encodeVarintGenesis(dAtA, i, uint64(m.TripartyBlockDelay))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x80
+	}
+	if m.TripartyPaused {
+		i--
+		if m.TripartyPaused {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x78
+	}
+	if len(m.AllowedTripartyControllers) > 0 {
+		for iNdEx := len(m.AllowedTripartyControllers) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.AllowedTripartyControllers[iNdEx])
+			copy(dAtA[i:], m.AllowedTripartyControllers[iNdEx])
+			i = encodeVarintGenesis(dAtA, i, uint64(len(m.AllowedTripartyControllers[iNdEx])))
+			i--
+			dAtA[i] = 0x72
+		}
+	}
 	if len(m.CurrentOutflowLimits) > 0 {
 		for iNdEx := len(m.CurrentOutflowLimits) - 1; iNdEx >= 0; iNdEx-- {
 			{
@@ -643,6 +909,46 @@ func (m *TokenMinBridgeOutAmount) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
+func (m *TripartyControllerBTCMinted) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TripartyControllerBTCMinted) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TripartyControllerBTCMinted) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size := m.Amount.Size()
+		i -= size
+		if _, err := m.Amount.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	if len(m.Controller) > 0 {
+		i -= len(m.Controller)
+		copy(dAtA[i:], m.Controller)
+		i = encodeVarintGenesis(dAtA, i, uint64(len(m.Controller)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintGenesis(dAtA []byte, offset int, v uint64) int {
 	offset -= sovGenesis(v)
 	base := offset
@@ -711,6 +1017,43 @@ func (m *GenesisState) Size() (n int) {
 			n += 1 + l + sovGenesis(uint64(l))
 		}
 	}
+	if len(m.AllowedTripartyControllers) > 0 {
+		for _, s := range m.AllowedTripartyControllers {
+			l = len(s)
+			n += 1 + l + sovGenesis(uint64(l))
+		}
+	}
+	if m.TripartyPaused {
+		n += 2
+	}
+	if m.TripartyBlockDelay != 0 {
+		n += 2 + sovGenesis(uint64(m.TripartyBlockDelay))
+	}
+	l = m.TripartyPerRequestLimit.Size()
+	n += 2 + l + sovGenesis(uint64(l))
+	l = m.TripartyWindowLimit.Size()
+	n += 2 + l + sovGenesis(uint64(l))
+	l = m.TripartyRequestSequenceTip.Size()
+	n += 2 + l + sovGenesis(uint64(l))
+	l = m.TripartyProcessedSequenceTip.Size()
+	n += 2 + l + sovGenesis(uint64(l))
+	if len(m.TripartyPendingRequests) > 0 {
+		for _, e := range m.TripartyPendingRequests {
+			l = e.Size()
+			n += 2 + l + sovGenesis(uint64(l))
+		}
+	}
+	l = m.TripartyWindowConsumed.Size()
+	n += 2 + l + sovGenesis(uint64(l))
+	if m.TripartyWindowLastReset != 0 {
+		n += 2 + sovGenesis(uint64(m.TripartyWindowLastReset))
+	}
+	if len(m.TripartyControllerBtcMinted) > 0 {
+		for _, e := range m.TripartyControllerBtcMinted {
+			l = e.Size()
+			n += 2 + l + sovGenesis(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -751,6 +1094,21 @@ func (m *TokenMinBridgeOutAmount) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Token)
+	if l > 0 {
+		n += 1 + l + sovGenesis(uint64(l))
+	}
+	l = m.Amount.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	return n
+}
+
+func (m *TripartyControllerBTCMinted) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Controller)
 	if l > 0 {
 		n += 1 + l + sovGenesis(uint64(l))
 	}
@@ -1216,6 +1574,334 @@ func (m *GenesisState) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AllowedTripartyControllers", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AllowedTripartyControllers = append(m.AllowedTripartyControllers, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 15:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyPaused", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.TripartyPaused = bool(v != 0)
+		case 16:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyBlockDelay", wireType)
+			}
+			m.TripartyBlockDelay = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TripartyBlockDelay |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 17:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyPerRequestLimit", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.TripartyPerRequestLimit.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 18:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyWindowLimit", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.TripartyWindowLimit.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 19:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyRequestSequenceTip", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.TripartyRequestSequenceTip.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 20:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyProcessedSequenceTip", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.TripartyProcessedSequenceTip.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 21:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyPendingRequests", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TripartyPendingRequests = append(m.TripartyPendingRequests, &TripartyBridgeRequest{})
+			if err := m.TripartyPendingRequests[len(m.TripartyPendingRequests)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 22:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyWindowConsumed", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.TripartyWindowConsumed.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 23:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyWindowLastReset", wireType)
+			}
+			m.TripartyWindowLastReset = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TripartyWindowLastReset |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 25:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyControllerBtcMinted", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TripartyControllerBtcMinted = append(m.TripartyControllerBtcMinted, &TripartyControllerBTCMinted{})
+			if err := m.TripartyControllerBtcMinted[len(m.TripartyControllerBtcMinted)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGenesis(dAtA[iNdEx:])
@@ -1529,6 +2215,122 @@ func (m *TokenMinBridgeOutAmount) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Token = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenesis(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TripartyControllerBTCMinted) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenesis
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TripartyControllerBTCMinted: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TripartyControllerBTCMinted: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Controller", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Controller = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {

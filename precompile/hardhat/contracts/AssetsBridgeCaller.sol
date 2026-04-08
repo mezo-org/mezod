@@ -122,6 +122,10 @@ contract AssetsBridgeCaller is IAssetsBridge {
         return IAssetsBridge(precompile).getTripartyTotalBTCMinted();
     }
 
+    function getTripartyControllerBTCMinted(address controller) external view returns (uint256 minted) {
+        return IAssetsBridge(precompile).getTripartyControllerBTCMinted(controller);
+    }
+
     function isTripartyPaused() external view returns (bool isPaused) {
         return IAssetsBridge(precompile).isTripartyPaused();
     }

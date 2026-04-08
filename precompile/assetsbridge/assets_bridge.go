@@ -207,6 +207,7 @@ func NewPrecompile(
 		methods = append(methods, newGetTripartyLimitsMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyCapacityMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyTotalBTCMintedMethod(bridgeKeeper))
+		methods = append(methods, newGetTripartyControllerBTCMintedMethod(bridgeKeeper))
 		methods = append(methods, newIsTripartyPausedMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyRequestSequenceTipMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyProcessedSequenceTipMethod(bridgeKeeper))
@@ -295,6 +296,7 @@ type BridgeKeeper interface {
 	CreateTripartyBridgeRequest(ctx sdk.Context, recipient string, amount math.Int, callbackData []byte, controller string) (math.Int, error)
 	GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64)
 	GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int
+	GetTripartyControllerBTCMinted(ctx sdk.Context, controller string) math.Int
 	GetTripartyRequestSequenceTip(ctx sdk.Context) math.Int
 	GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int
 }
