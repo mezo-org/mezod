@@ -103,7 +103,7 @@ func (k Keeper) InitGenesis(
 		if entry.Amount.IsPositive() {
 			k.increaseTripartyControllerBTCMinted(
 				ctx,
-				evmtypes.HexAddressToBytes(entry.Controller),
+				entry.Controller,
 				entry.Amount,
 			)
 		}
