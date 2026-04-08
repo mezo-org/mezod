@@ -179,14 +179,15 @@ func (gs GenesisState) Validate() error {
 			)
 		}
 
-		if _, ok := seenControllerMinted[entry.Controller]; ok {
+		normalizedController := evmtypes.BytesToHexAddress(evmtypes.HexAddressToBytes(entry.Controller))
+		if _, ok := seenControllerMinted[normalizedController]; ok {
 			return fmt.Errorf(
 				"triparty controller BTC minted entry %d has duplicate controller: %s",
 				i,
 				entry.Controller,
 			)
 		}
-		seenControllerMinted[entry.Controller] = struct{}{}
+		seenControllerMinted[normalizedController] = struct{}{}
 	}
 
 	for i, controller := range gs.AllowedTripartyControllers {

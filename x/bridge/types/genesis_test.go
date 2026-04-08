@@ -289,6 +289,20 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "has duplicate controller",
 		},
 		{
+			desc: "triparty controller BTC minted - duplicate controllers different casing",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
+					{Controller: "0xAbCd000000000000000000000000000000000001", Amount: sdkmath.NewInt(100)},
+					{Controller: "0xabcd000000000000000000000000000000000001", Amount: sdkmath.NewInt(200)},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "has duplicate controller",
+		},
+		{
 			desc: "empty allowed triparty controller",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
