@@ -171,9 +171,9 @@ func (gs GenesisState) Validate() error {
 			)
 		}
 
-		if entry.Amount.IsNegative() {
+		if !entry.Amount.IsPositive() {
 			return fmt.Errorf(
-				"triparty controller BTC minted entry %d amount cannot be negative: %s",
+				"triparty controller BTC minted entry %d amount must be positive: %s",
 				i,
 				entry.Amount,
 			)

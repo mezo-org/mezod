@@ -259,7 +259,20 @@ func TestGenesisState_Validate(t *testing.T) {
 				return genState
 			},
 			valid:       false,
-			errContains: "amount cannot be negative",
+			errContains: "amount must be positive",
+		},
+		{
+			desc: "triparty controller BTC minted - zero amount",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
+					{Controller: "0x1111111111111111111111111111111111111111", Amount: sdkmath.NewInt(0)},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "amount must be positive",
 		},
 		{
 			desc: "triparty controller BTC minted - duplicate controllers",

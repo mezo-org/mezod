@@ -96,13 +96,11 @@ func (k Keeper) InitGenesis(
 	k.setTripartyWindowLastReset(ctx, genState.TripartyWindowLastReset)
 
 	for _, entry := range genState.TripartyControllerBtcMinted {
-		if entry.Amount.IsPositive() {
-			k.increaseTripartyControllerBTCMinted(
-				ctx,
-				entry.Controller,
-				entry.Amount,
-			)
-		}
+		k.increaseTripartyControllerBTCMinted(
+			ctx,
+			entry.Controller,
+			entry.Amount,
+		)
 	}
 }
 
