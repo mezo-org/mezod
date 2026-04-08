@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	testTripartyRecipient  = "0x0101010101010101010101010101010101010101"
-	testTripartyController = "0x0202020202020202020202020202020202020202"
+	testTripartyRecipient   = "0x0101010101010101010101010101010101010101"
+	testTripartyController  = "0x0202020202020202020202020202020202020202"
+	testTripartyController1 = "0x1111111111111111111111111111111111111111"
+	testTripartyController2 = "0x2222222222222222222222222222222222222222"
 )
 
 var testTripartyRecipientAddr = sdk.AccAddress(evmtypes.HexAddressToBytes(testTripartyRecipient))
@@ -569,8 +571,8 @@ func TestTripartyTotalBTCMinted(t *testing.T) {
 func TestTripartyControllerBTCMinted(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	controller1 := evmtypes.HexAddressToBytes("0x1111111111111111111111111111111111111111")
-	controller2 := evmtypes.HexAddressToBytes("0x2222222222222222222222222222222222222222")
+	controller1 := testTripartyController1
+	controller2 := testTripartyController2
 
 	// Initially zero for any controller.
 	require.True(t, keeper.GetTripartyControllerBTCMinted(ctx, controller1).IsZero())
@@ -598,8 +600,8 @@ func TestGetAllTripartyControllerBTCMinted(t *testing.T) {
 	require.Empty(t, keeper.getAllTripartyControllerBTCMinted(ctx))
 
 	// After minting, returns all controllers with amounts.
-	controller1 := evmtypes.HexAddressToBytes("0x1111111111111111111111111111111111111111")
-	controller2 := evmtypes.HexAddressToBytes("0x2222222222222222222222222222222222222222")
+	controller1 := testTripartyController1
+	controller2 := testTripartyController2
 
 	keeper.increaseTripartyControllerBTCMinted(ctx, controller1, math.NewInt(1000))
 	keeper.increaseTripartyControllerBTCMinted(ctx, controller2, math.NewInt(500))
@@ -612,8 +614,8 @@ func TestGetAllTripartyControllerBTCMinted(t *testing.T) {
 	for _, entry := range all {
 		amounts[entry.Controller] = entry.Amount
 	}
-	require.Equal(t, math.NewInt(1000), amounts["0x1111111111111111111111111111111111111111"])
-	require.Equal(t, math.NewInt(500), amounts["0x2222222222222222222222222222222222222222"])
+	require.Equal(t, math.NewInt(1000), amounts[testTripartyController1])
+	require.Equal(t, math.NewInt(500), amounts[testTripartyController2])
 }
 
 func TestTripartyProcessedSequenceTip(t *testing.T) {
@@ -779,21 +781,37 @@ func createTripartyRequest(
 	height int64,
 	amount math.Int,
 	callbackData []byte,
-) math.Int {
+) {
+	t.Helper()
+
+	createTripartyRequestFromController(
+		t, ctx, k, height, amount, callbackData, testTripartyController,
+	)
+}
+
+// createTripartyRequestFromController is a helper to create a request from a
+// specific controller at a given block height.
+func createTripartyRequestFromController(
+	t *testing.T,
+	ctx sdk.Context,
+	k Keeper,
+	height int64,
+	amount math.Int,
+	callbackData []byte,
+	controller string,
+) {
 	t.Helper()
 
 	reqCtx := ctx.WithBlockHeader(tmproto.Header{Height: height})
 
-	reqID, err := k.CreateTripartyBridgeRequest(
+	_, err := k.CreateTripartyBridgeRequest(
 		reqCtx,
 		testTripartyRecipient,
 		amount,
 		callbackData,
-		testTripartyController,
+		controller,
 	)
 	require.NoError(t, err)
-
-	return reqID
 }
 
 // expectMintBTC sets up mock expectations for a successful mintBTC call.
@@ -1080,8 +1098,11 @@ func TestProcessTripartyBridgeRequests_SuccessfulMintAndCallback(t *testing.T) {
 	_, found := k.getTripartyBridgeRequest(ctx, math.NewInt(1))
 	require.False(t, found)
 
-	// Provenance counter updated.
+	// Provenance counters updated.
 	require.Equal(t, to18Dec(5), k.GetTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(5), k.GetTripartyControllerBTCMinted(
+		ctx, testTripartyController,
+	))
 
 	// BTCMinted counter updated (via mintBTC).
 	require.Equal(t, to18Dec(5), k.GetBTCMinted(ctx))
@@ -1196,8 +1217,11 @@ func TestProcessTripartyBridgeRequests_BatchCap(t *testing.T) {
 	// Processed tip advanced to 5.
 	require.Equal(t, math.NewInt(5), k.GetTripartyProcessedSequenceTip(ctx))
 
-	// Provenance counter: 100+200+300+400+500 = 1500.
+	// Provenance counters: 100+200+300+400+500 = 1500.
 	require.Equal(t, to18Dec(15), k.GetTripartyTotalBTCMinted(ctx))
+	require.Equal(t, to18Dec(15), k.GetTripartyControllerBTCMinted(
+		ctx, testTripartyController,
+	))
 }
 
 func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
@@ -1247,4 +1271,47 @@ func TestProcessTripartyBridgeRequests_ResumesFromProcessedTip(t *testing.T) {
 
 	// Total provenance: 1+2+3+4+5 BTC.
 	require.Equal(t, to18Dec(15), k.GetTripartyTotalBTCMinted(ctx))
+}
+
+func TestProcessTripartyBridgeRequests_MultipleControllers(t *testing.T) {
+	ctx, k, bk, ek := setupTripartyProcessing(t)
+
+	// Allow a second controller.
+	controller2 := "0x0303030303030303030303030303030303030303"
+	k.AllowTripartyController(
+		ctx,
+		evmtypes.HexAddressToBytes(controller2),
+		true,
+	)
+
+	// Create requests from two different controllers.
+	// Controller 1: 3 BTC and 7 BTC.
+	createTripartyRequest(t, ctx, k, 10, to18Dec(3), nil)
+	createTripartyRequestFromController(t, ctx, k, 10, to18Dec(5), nil, controller2)
+	createTripartyRequest(t, ctx, k, 10, to18Dec(7), nil)
+	createTripartyRequestFromController(t, ctx, k, 10, to18Dec(2), nil, controller2)
+
+	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
+
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(3))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(5))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(7))
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(2))
+	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
+		&evmtypes.MsgEthereumTxResponse{}, nil,
+	)
+
+	err := k.ProcessTripartyBridgeRequests(ctx)
+	require.NoError(t, err)
+
+	// Global provenance: 3+5+7+2 = 17 BTC.
+	require.Equal(t, to18Dec(17), k.GetTripartyTotalBTCMinted(ctx))
+
+	// Per-controller provenance: controller1 = 3+7 = 10, controller2 = 5+2 = 7.
+	require.Equal(t, to18Dec(10), k.GetTripartyControllerBTCMinted(
+		ctx, testTripartyController,
+	))
+	require.Equal(t, to18Dec(7), k.GetTripartyControllerBTCMinted(
+		ctx, controller2,
+	))
 }
