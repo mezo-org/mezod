@@ -256,7 +256,7 @@ describe("TripartyBridge", function () {
     })
   })
 
-  describe("Pause state getter", function () {
+  describe("Setting paused flag", function () {
     let defaultPaused: boolean
     let afterPause: boolean
     let afterUnpause: boolean
