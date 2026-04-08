@@ -915,6 +915,12 @@ describe("TripartyBridge", function () {
     let firstReceipt: any
     let exceedsError: string
     let secondReceipt: any
+    let contractMintedBefore: bigint
+    let contractMintedAfter: bigint
+    let eoaMintedBefore: bigint
+    let eoaMintedAfter: bigint
+    let totalMintedBefore: bigint
+    let totalMintedAfter: bigint
 
     before(async function () {
       await fixture()
@@ -951,6 +957,13 @@ describe("TripartyBridge", function () {
           .setTripartyLimits(BTC(2), windowLimit)
       ).wait()
 
+      totalMintedBefore = await assetsBridge.getTripartyTotalBTCMinted()
+      contractMintedBefore =
+        await assetsBridge.getTripartyControllerBTCMinted(controllerAddress)
+      eoaMintedBefore = await assetsBridge.getTripartyControllerBTCMinted(
+        eoaController.address,
+      )
+
       const recipient = ethers.Wallet.createRandom().address
 
       // Contract controller requests 1.5 BTC — succeeds
@@ -977,6 +990,17 @@ describe("TripartyBridge", function () {
         .connect(eoaController)
         .bridgeTriparty(recipient, BTC("0.5"), "0x")
       secondReceipt = await tx2.wait()
+
+      // Wait for all requests to be processed
+      const currentBlock = await ethers.provider.getBlockNumber()
+      await waitForBlock(currentBlock + 3)
+
+      totalMintedAfter = await assetsBridge.getTripartyTotalBTCMinted()
+      contractMintedAfter =
+        await assetsBridge.getTripartyControllerBTCMinted(controllerAddress)
+      eoaMintedAfter = await assetsBridge.getTripartyControllerBTCMinted(
+        eoaController.address,
+      )
     })
 
     it("should allow first controller to use capacity", async function () {
@@ -989,6 +1013,20 @@ describe("TripartyBridge", function () {
 
     it("should allow second controller to use remaining capacity", async function () {
       expect(secondReceipt.status).to.equal(1)
+    })
+
+    it("should track 1.5 BTC for contract controller", async function () {
+      expect(contractMintedAfter).to.equal(
+        contractMintedBefore + BTC("1.5"),
+      )
+    })
+
+    it("should track 0.5 BTC for EOA controller", async function () {
+      expect(eoaMintedAfter).to.equal(eoaMintedBefore + BTC("0.5"))
+    })
+
+    it("should have total minted equal to sum of per-controller amounts", async function () {
+      expect(totalMintedAfter).to.equal(totalMintedBefore + BTC(2))
     })
   })
 
@@ -1525,6 +1563,8 @@ describe("TripartyBridge", function () {
   describe("Triparty minted counter", function () {
     let totalMintedBefore: bigint
     let totalMintedAfter: bigint
+    let controllerMintedBefore: bigint
+    let controllerMintedAfter: bigint
     let requestTipBefore: bigint
     let requestTipAfter: bigint
     let processedTipAfter: bigint
@@ -1544,6 +1584,10 @@ describe("TripartyBridge", function () {
       ).wait()
 
       totalMintedBefore = await assetsBridge.getTripartyTotalBTCMinted()
+      controllerMintedBefore =
+        await assetsBridge.getTripartyControllerBTCMinted(
+          eoaController.address,
+        )
       requestTipBefore = await assetsBridge.getTripartyRequestSequenceTip()
 
       // Submit 3 requests totaling 0.6 BTC
@@ -1561,12 +1605,22 @@ describe("TripartyBridge", function () {
       await waitForBlock(currentBlock + 5)
 
       totalMintedAfter = await assetsBridge.getTripartyTotalBTCMinted()
+      controllerMintedAfter =
+        await assetsBridge.getTripartyControllerBTCMinted(
+          eoaController.address,
+        )
       requestTipAfter = await assetsBridge.getTripartyRequestSequenceTip()
       processedTipAfter = await assetsBridge.getTripartyProcessedSequenceTip()
     })
 
     it("should increase total minted by 0.6 BTC", async function () {
       expect(totalMintedAfter).to.equal(totalMintedBefore + BTC("0.6"))
+    })
+
+    it("should increase controller minted by 0.6 BTC", async function () {
+      expect(controllerMintedAfter).to.equal(
+        controllerMintedBefore + BTC("0.6"),
+      )
     })
 
     it("should advance request tip by 3", async function () {
