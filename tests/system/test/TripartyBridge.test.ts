@@ -1158,7 +1158,7 @@ describe("TripartyBridge", function () {
       processedWhilePaused =
         await assetsBridge.getTripartyProcessedSequenceTip()
 
-      // --- D3: Unpause ---
+      // Unpause to resume processing
       await (
         await assetsBridge.connect(pauser).pauseTriparty(false)
       ).wait()
