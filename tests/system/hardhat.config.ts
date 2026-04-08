@@ -5,6 +5,8 @@ import { ethers } from 'ethers'
 import fs from 'fs'
 import path from 'path'
 
+const CHAIN_ID = 31611
+
 const localnodeKeySeed = (index: number) => `../../.localnode/dev${index}_key_seed.json`
 
 const KEY_SEEDS = [
@@ -17,12 +19,23 @@ function getPrivKeys (): string[] {
   const keys: string[] = []
   for (let i = 0; i < KEY_SEEDS.length; i++) {
     const filePath = path.resolve(KEY_SEEDS[i])
-    const seed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
-    const pk: string = ethers.Wallet.fromPhrase(seed.secret).privateKey
-    keys.push(pk)
+    try {
+      const seed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+      const pk: string = ethers.Wallet.fromPhrase(seed.secret).privateKey
+      keys.push(pk)
+    } catch {
+      console.log(`Seed file not available: ${filePath}`)
+    }
   }
 
   return keys
+}
+
+function getExtraKeys(): string[] {
+  if (process.env.PRIVATE_KEYS) {
+    return process.env.PRIVATE_KEYS.split(',')
+  }
+  return []
 }
 
 const config: HardhatUserConfig = {
@@ -44,9 +57,15 @@ const config: HardhatUserConfig = {
 
   networks: {
     localhost: {
-      url: 'http://127.0.0.1:8545', // localnode listens on this specific interface
-      chainId: 31611,
-      accounts: getPrivKeys(),
+      url: process.env.RPC_URL || 'http://127.0.0.1:8545',
+      chainId: CHAIN_ID,
+      accounts: [...getPrivKeys(), ...getExtraKeys()],
+      gas: 'auto'
+    },
+    testnet: {
+      url: process.env.RPC_URL || 'https://rpc.test.mezo.org',
+      chainId: CHAIN_ID,
+      accounts: getExtraKeys(),
       gas: 'auto'
     },
   }
