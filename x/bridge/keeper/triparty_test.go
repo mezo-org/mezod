@@ -1061,6 +1061,42 @@ func TestProcessTripartyBridgeRequests_DeauthorizedController(t *testing.T) {
 	require.Equal(t, math.NewInt(1), k.GetTripartyProcessedSequenceTip(ctx))
 }
 
+func TestProcessTripartyBridgeRequests_DeauthorizedControllerProvenancePersists(t *testing.T) {
+	ctx, k, bk, ek := setupTripartyProcessing(t)
+
+	// Mint 1 BTC through the default controller.
+	createTripartyRequest(t, ctx, k, 10, to18Dec(1), nil)
+
+	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 20})
+
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(1))
+	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
+		&evmtypes.MsgEthereumTxResponse{}, nil,
+	)
+
+	err := k.ProcessTripartyBridgeRequests(ctx)
+	require.NoError(t, err)
+
+	// Verify provenance recorded.
+	require.Equal(t, to18Dec(1), k.GetTripartyControllerBTCMinted(
+		ctx, testTripartyController,
+	))
+	require.Equal(t, to18Dec(1), k.GetTripartyTotalBTCMinted(ctx))
+
+	// Deauthorize the controller.
+	k.AllowTripartyController(
+		ctx,
+		evmtypes.HexAddressToBytes(testTripartyController),
+		false,
+	)
+
+	// Per-controller and total provenance must persist after disallow.
+	require.Equal(t, to18Dec(1), k.GetTripartyControllerBTCMinted(
+		ctx, testTripartyController,
+	))
+	require.Equal(t, to18Dec(1), k.GetTripartyTotalBTCMinted(ctx))
+}
+
 func TestProcessTripartyBridgeRequests_PerRequestLimitExceeded(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
