@@ -493,8 +493,11 @@ describe("TripartyBridge", function () {
             requestId = parsed.args.requestId
             break
           }
+          if (parsed) {
+            console.log(`Ignoring event: ${parsed.name}`)
+          }
         } catch {
-          // not our event
+          // Not a decodable event from our ABI, skip.
         }
       }
 
