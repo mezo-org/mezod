@@ -94,6 +94,9 @@ type GenesisState struct {
 	// triparty_total_btc_minted is the total BTC minted through the triparty
 	// bridge path.
 	TripartyTotalBtcMinted cosmossdk_io_math.Int `protobuf:"bytes,24,opt,name=triparty_total_btc_minted,json=tripartyTotalBtcMinted,proto3,customtype=cosmossdk.io/math.Int" json:"triparty_total_btc_minted"`
+	// triparty_controller_btc_minted tracks the BTC minted through the triparty
+	// bridge path per controller.
+	TripartyControllerBtcMinted []*TripartyControllerBTCMinted `protobuf:"bytes,25,rep,name=triparty_controller_btc_minted,json=tripartyControllerBtcMinted,proto3" json:"triparty_controller_btc_minted,omitempty"`
 }
 
 func (m *GenesisState) Reset()         { *m = GenesisState{} }
@@ -225,6 +228,13 @@ func (m *GenesisState) GetTripartyWindowLastReset() uint64 {
 		return m.TripartyWindowLastReset
 	}
 	return 0
+}
+
+func (m *GenesisState) GetTripartyControllerBtcMinted() []*TripartyControllerBTCMinted {
+	if m != nil {
+		return m.TripartyControllerBtcMinted
+	}
+	return nil
 }
 
 // CurrentOutflowAmount tracks the current outflow amount for a specific token.
@@ -372,11 +382,58 @@ func (m *TokenMinBridgeOutAmount) GetToken() string {
 	return ""
 }
 
+// TripartyControllerBTCMinted tracks the BTC minted through the triparty
+// bridge path by a specific controller.
+type TripartyControllerBTCMinted struct {
+	// controller is the controller's hex-encoded EVM address.
+	Controller string `protobuf:"bytes,1,opt,name=controller,proto3" json:"controller,omitempty"`
+	// amount is the cumulative BTC minted by this controller through triparty.
+	Amount cosmossdk_io_math.Int `protobuf:"bytes,2,opt,name=amount,proto3,customtype=cosmossdk.io/math.Int" json:"amount"`
+}
+
+func (m *TripartyControllerBTCMinted) Reset()         { *m = TripartyControllerBTCMinted{} }
+func (m *TripartyControllerBTCMinted) String() string { return proto.CompactTextString(m) }
+func (*TripartyControllerBTCMinted) ProtoMessage()    {}
+func (m *TripartyControllerBTCMinted) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TripartyControllerBTCMinted) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TripartyControllerBTCMinted.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *TripartyControllerBTCMinted) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TripartyControllerBTCMinted.Merge(m, src)
+}
+func (m *TripartyControllerBTCMinted) XXX_Size() int {
+	return m.Size()
+}
+func (m *TripartyControllerBTCMinted) XXX_DiscardUnknown() {
+	xxx_messageInfo_TripartyControllerBTCMinted.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TripartyControllerBTCMinted proto.InternalMessageInfo
+
+func (m *TripartyControllerBTCMinted) GetController() string {
+	if m != nil {
+		return m.Controller
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*GenesisState)(nil), "mezo.bridge.v1.GenesisState")
 	proto.RegisterType((*CurrentOutflowAmount)(nil), "mezo.bridge.v1.CurrentOutflowAmount")
 	proto.RegisterType((*CurrentOutflowLimit)(nil), "mezo.bridge.v1.CurrentOutflowLimit")
 	proto.RegisterType((*TokenMinBridgeOutAmount)(nil), "mezo.bridge.v1.TokenMinBridgeOutAmount")
+	proto.RegisterType((*TripartyControllerBTCMinted)(nil), "mezo.bridge.v1.TripartyControllerBTCMinted")
 }
 
 func init() { proto.RegisterFile("mezo/bridge/v1/genesis.proto", fileDescriptor_c6a9d1c622979efc) }
@@ -463,6 +520,22 @@ func (m *GenesisState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.TripartyControllerBtcMinted) > 0 {
+		for iNdEx := len(m.TripartyControllerBtcMinted) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.TripartyControllerBtcMinted[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGenesis(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0xca
+		}
+	}
 	{
 		size := m.TripartyTotalBtcMinted.Size()
 		i -= size
@@ -846,6 +919,46 @@ func (m *TokenMinBridgeOutAmount) MarshalToSizedBuffer(dAtA []byte) (int, error)
 	return len(dAtA) - i, nil
 }
 
+func (m *TripartyControllerBTCMinted) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TripartyControllerBTCMinted) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TripartyControllerBTCMinted) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size := m.Amount.Size()
+		i -= size
+		if _, err := m.Amount.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintGenesis(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	if len(m.Controller) > 0 {
+		i -= len(m.Controller)
+		copy(dAtA[i:], m.Controller)
+		i = encodeVarintGenesis(dAtA, i, uint64(len(m.Controller)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintGenesis(dAtA []byte, offset int, v uint64) int {
 	offset -= sovGenesis(v)
 	base := offset
@@ -947,6 +1060,12 @@ func (m *GenesisState) Size() (n int) {
 	}
 	l = m.TripartyTotalBtcMinted.Size()
 	n += 2 + l + sovGenesis(uint64(l))
+	if len(m.TripartyControllerBtcMinted) > 0 {
+		for _, e := range m.TripartyControllerBtcMinted {
+			l = e.Size()
+			n += 2 + l + sovGenesis(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -987,6 +1106,21 @@ func (m *TokenMinBridgeOutAmount) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Token)
+	if l > 0 {
+		n += 1 + l + sovGenesis(uint64(l))
+	}
+	l = m.Amount.Size()
+	n += 1 + l + sovGenesis(uint64(l))
+	return n
+}
+
+func (m *TripartyControllerBTCMinted) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Controller)
 	if l > 0 {
 		n += 1 + l + sovGenesis(uint64(l))
 	}
@@ -1780,6 +1914,40 @@ func (m *GenesisState) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 25:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TripartyControllerBtcMinted", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TripartyControllerBtcMinted = append(m.TripartyControllerBtcMinted, &TripartyControllerBTCMinted{})
+			if err := m.TripartyControllerBtcMinted[len(m.TripartyControllerBtcMinted)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGenesis(dAtA[iNdEx:])
@@ -2093,6 +2261,122 @@ func (m *TokenMinBridgeOutAmount) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Token = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Amount.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGenesis(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TripartyControllerBTCMinted) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGenesis
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TripartyControllerBTCMinted: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TripartyControllerBTCMinted: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Controller", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenesis
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenesis
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Controller = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {

@@ -129,6 +129,10 @@ message GenesisState {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
   ];
+
+  // triparty_controller_btc_minted tracks the BTC minted through the triparty
+  // bridge path per controller.
+  repeated TripartyControllerBTCMinted triparty_controller_btc_minted = 25;
 }
 
 // CurrentOutflowAmount tracks the current outflow amount for a specific token.
@@ -162,6 +166,19 @@ message TokenMinBridgeOutAmount {
   string token = 1;
 
   // amount is the minimum amount required for bridging out this specific token.
+  string amount = 2 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.nullable) = false
+  ];
+}
+
+// TripartyControllerBTCMinted tracks the BTC minted through the triparty
+// bridge path by a specific controller.
+message TripartyControllerBTCMinted {
+  // controller is the controller's hex-encoded EVM address.
+  string controller = 1;
+
+  // amount is the cumulative BTC minted by this controller through triparty.
   string amount = 2 [
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.nullable) = false
