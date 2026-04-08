@@ -98,6 +98,16 @@ func (k Keeper) InitGenesis(
 	if genState.TripartyTotalBtcMinted.IsPositive() {
 		k.increaseTripartyTotalBTCMinted(ctx, genState.TripartyTotalBtcMinted)
 	}
+
+	for _, entry := range genState.TripartyControllerBtcMinted {
+		if entry.Amount.IsPositive() {
+			k.increaseTripartyControllerBTCMinted(
+				ctx,
+				evmtypes.HexAddressToBytes(entry.Controller),
+				entry.Amount,
+			)
+		}
+	}
 }
 
 // ExportGenesis returns the module's exported genesis
@@ -127,5 +137,6 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		TripartyWindowConsumed:         k.getTripartyWindowConsumed(ctx),
 		TripartyWindowLastReset:        k.getTripartyWindowLastReset(ctx),
 		TripartyTotalBtcMinted:         k.GetTripartyTotalBTCMinted(ctx),
+		TripartyControllerBtcMinted:    k.getAllTripartyControllerBTCMinted(ctx),
 	}
 }
