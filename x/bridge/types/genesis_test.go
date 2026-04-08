@@ -210,17 +210,6 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "genesis triparty window consumed cannot be negative",
 		},
 		{
-			desc: "negative triparty total BTC minted",
-			genState: func() *GenesisState {
-				genState := DefaultGenesis()
-				genState.SourceBtcToken = token
-				genState.TripartyTotalBtcMinted = sdkmath.NewInt(-1)
-				return genState
-			},
-			valid:       false,
-			errContains: "genesis triparty total BTC minted cannot be negative",
-		},
-		{
 			desc: "triparty controller BTC minted - empty controller",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
@@ -634,7 +623,6 @@ func TestGenesisState_Validate(t *testing.T) {
 				}
 				genState.TripartyWindowConsumed = sdkmath.NewInt(50)
 				genState.TripartyWindowLastReset = 500
-				genState.TripartyTotalBtcMinted = sdkmath.NewInt(200)
 				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
 					{
 						Controller: "0x1111111111111111111111111111111111111111",

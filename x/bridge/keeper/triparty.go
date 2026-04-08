@@ -528,48 +528,13 @@ func (k Keeper) checkTripartyCapacity(ctx sdk.Context, amount math.Int) error {
 }
 
 // GetTripartyTotalBTCMinted returns the total BTC minted via triparty
-// bridging. This is an informational provenance counter. Returns zero
-// if not set.
+// bridging, derived by summing all per-controller provenance counters.
 func (k Keeper) GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
-	store := ctx.KVStore(k.storeKey)
-
-	bz := store.Get(types.TripartyTotalBTCMintedKey)
-	if len(bz) == 0 {
-		return math.ZeroInt()
-	}
-
 	total := math.ZeroInt()
-	if err := total.Unmarshal(bz); err != nil {
-		panic(err)
+	for _, entry := range k.getAllTripartyControllerBTCMinted(ctx) {
+		total = total.Add(entry.Amount)
 	}
-
 	return total
-}
-
-// increaseTripartyBTCMinted atomically increments both the global and
-// per-controller BTC minted provenance counters.
-func (k Keeper) increaseTripartyBTCMinted(
-	ctx sdk.Context,
-	controller string,
-	amount math.Int,
-) {
-	k.increaseTripartyTotalBTCMinted(ctx, amount)
-	k.increaseTripartyControllerBTCMinted(ctx, controller, amount)
-}
-
-// increaseTripartyTotalBTCMinted adds the given amount to the total BTC
-// minted via triparty bridging provenance counter.
-func (k Keeper) increaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int) {
-	total := k.GetTripartyTotalBTCMinted(ctx).Add(amount)
-
-	store := ctx.KVStore(k.storeKey)
-
-	bz, err := total.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	store.Set(types.TripartyTotalBTCMintedKey, bz)
 }
 
 // GetTripartyControllerBTCMinted returns the total BTC minted via triparty
@@ -719,8 +684,8 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 				)
 			}
 
-			// Update the provenance counters.
-			k.increaseTripartyBTCMinted(ctx, req.Controller, req.Amount)
+			// Update the per-controller provenance counter.
+			k.increaseTripartyControllerBTCMinted(ctx, req.Controller, req.Amount)
 
 			// Issue the EVM callback to the controller. A callback
 			// failure is logged but must not prevent the mint from

@@ -502,7 +502,7 @@ func (s *PrecompileTestSuite) TestGetTripartyTotalBTCMinted() {
 		{
 			name: "returns set value",
 			run: func() []interface{} {
-				s.bridgeKeeper.tripartyTotalBTCMinted = math.NewInt(42000)
+				s.bridgeKeeper.tripartyControllerBTCMinted["0x0000000000000000000000000000000000000001"] = math.NewInt(42000)
 				return []interface{}{}
 			},
 			as:        s.account1.EvmAddr,

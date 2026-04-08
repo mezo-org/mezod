@@ -95,10 +95,6 @@ func (k Keeper) InitGenesis(
 	}
 	k.setTripartyWindowLastReset(ctx, genState.TripartyWindowLastReset)
 
-	if genState.TripartyTotalBtcMinted.IsPositive() {
-		k.increaseTripartyTotalBTCMinted(ctx, genState.TripartyTotalBtcMinted)
-	}
-
 	for _, entry := range genState.TripartyControllerBtcMinted {
 		if entry.Amount.IsPositive() {
 			k.increaseTripartyControllerBTCMinted(
@@ -136,7 +132,6 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		TripartyPendingRequests:        k.getAllPendingTripartyBridgeRequests(ctx),
 		TripartyWindowConsumed:         k.getTripartyWindowConsumed(ctx),
 		TripartyWindowLastReset:        k.getTripartyWindowLastReset(ctx),
-		TripartyTotalBtcMinted:         k.GetTripartyTotalBTCMinted(ctx),
 		TripartyControllerBtcMinted:    k.getAllTripartyControllerBTCMinted(ctx),
 	}
 }

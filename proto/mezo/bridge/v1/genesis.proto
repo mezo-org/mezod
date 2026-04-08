@@ -123,12 +123,7 @@ message GenesisState {
   // window reset.
   uint64 triparty_window_last_reset = 23;
 
-  // triparty_total_btc_minted is the total BTC minted through the triparty
-  // bridge path.
-  string triparty_total_btc_minted = 24 [
-    (gogoproto.customtype) = "cosmossdk.io/math.Int",
-    (gogoproto.nullable) = false
-  ];
+  reserved 24;
 
   // triparty_controller_btc_minted tracks the BTC minted through the triparty
   // bridge path per controller.

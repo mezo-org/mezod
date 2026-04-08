@@ -243,7 +243,6 @@ type FakeBridgeKeeper struct {
 	tripartyWindowLimit             math.Int
 	tripartySequenceTip             math.Int
 	tripartyWindowMinted            math.Int
-	tripartyTotalBTCMinted          math.Int
 	tripartyControllerBTCMinted     map[string]math.Int
 	lastTripartyBridgeRequestParams *tripartyBridgeRequestParams
 }
@@ -265,7 +264,6 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		tripartyWindowLimit:         math.ZeroInt(),
 		tripartySequenceTip:         math.ZeroInt(),
 		tripartyWindowMinted:        math.ZeroInt(),
-		tripartyTotalBTCMinted:      math.ZeroInt(),
 		tripartyControllerBTCMinted: make(map[string]math.Int),
 	}
 }
@@ -539,7 +537,11 @@ func (k *FakeBridgeKeeper) GetTripartyCapacity(_ sdk.Context) (capacity math.Int
 }
 
 func (k *FakeBridgeKeeper) GetTripartyTotalBTCMinted(_ sdk.Context) math.Int {
-	return k.tripartyTotalBTCMinted
+	total := math.ZeroInt()
+	for _, amount := range k.tripartyControllerBTCMinted {
+		total = total.Add(amount)
+	}
+	return total
 }
 
 func (k *FakeBridgeKeeper) GetTripartyControllerBTCMinted(_ sdk.Context, controller string) math.Int {

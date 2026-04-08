@@ -557,15 +557,19 @@ func TestCheckTripartyCapacity(t *testing.T) {
 func TestTripartyTotalBTCMinted(t *testing.T) {
 	ctx, keeper := mockContext()
 
-	// Initially zero.
+	// Initially zero (no per-controller entries).
 	require.True(t, keeper.GetTripartyTotalBTCMinted(ctx).IsZero())
 
-	// Increase accumulates.
-	keeper.increaseTripartyTotalBTCMinted(ctx, math.NewInt(1000))
+	// Total is derived from per-controller entries.
+	keeper.increaseTripartyControllerBTCMinted(ctx, testTripartyController1, math.NewInt(1000))
 	require.Equal(t, math.NewInt(1000), keeper.GetTripartyTotalBTCMinted(ctx))
 
-	keeper.increaseTripartyTotalBTCMinted(ctx, math.NewInt(2500))
+	keeper.increaseTripartyControllerBTCMinted(ctx, testTripartyController2, math.NewInt(2500))
 	require.Equal(t, math.NewInt(3500), keeper.GetTripartyTotalBTCMinted(ctx))
+
+	// Further increment to an existing controller reflects in total.
+	keeper.increaseTripartyControllerBTCMinted(ctx, testTripartyController1, math.NewInt(500))
+	require.Equal(t, math.NewInt(4000), keeper.GetTripartyTotalBTCMinted(ctx))
 }
 
 func TestTripartyControllerBTCMinted(t *testing.T) {

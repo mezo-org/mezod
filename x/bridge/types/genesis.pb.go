@@ -91,9 +91,6 @@ type GenesisState struct {
 	// triparty_window_last_reset is the block height of the last triparty
 	// window reset.
 	TripartyWindowLastReset uint64 `protobuf:"varint,23,opt,name=triparty_window_last_reset,json=tripartyWindowLastReset,proto3" json:"triparty_window_last_reset,omitempty"`
-	// triparty_total_btc_minted is the total BTC minted through the triparty
-	// bridge path.
-	TripartyTotalBtcMinted cosmossdk_io_math.Int `protobuf:"bytes,24,opt,name=triparty_total_btc_minted,json=tripartyTotalBtcMinted,proto3,customtype=cosmossdk.io/math.Int" json:"triparty_total_btc_minted"`
 	// triparty_controller_btc_minted tracks the BTC minted through the triparty
 	// bridge path per controller.
 	TripartyControllerBtcMinted []*TripartyControllerBTCMinted `protobuf:"bytes,25,rep,name=triparty_controller_btc_minted,json=tripartyControllerBtcMinted,proto3" json:"triparty_controller_btc_minted,omitempty"`
@@ -542,18 +539,6 @@ func (m *GenesisState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			dAtA[i] = 0xca
 		}
 	}
-	{
-		size := m.TripartyTotalBtcMinted.Size()
-		i -= size
-		if _, err := m.TripartyTotalBtcMinted.MarshalTo(dAtA[i:]); err != nil {
-			return 0, err
-		}
-		i = encodeVarintGenesis(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0x1
-	i--
-	dAtA[i] = 0xc2
 	if m.TripartyWindowLastReset != 0 {
 		i = encodeVarintGenesis(dAtA, i, uint64(m.TripartyWindowLastReset))
 		i--
@@ -1064,8 +1049,6 @@ func (m *GenesisState) Size() (n int) {
 	if m.TripartyWindowLastReset != 0 {
 		n += 2 + sovGenesis(uint64(m.TripartyWindowLastReset))
 	}
-	l = m.TripartyTotalBtcMinted.Size()
-	n += 2 + l + sovGenesis(uint64(l))
 	if len(m.TripartyControllerBtcMinted) > 0 {
 		for _, e := range m.TripartyControllerBtcMinted {
 			l = e.Size()
@@ -1886,40 +1869,6 @@ func (m *GenesisState) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 24:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TripartyTotalBtcMinted", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowGenesis
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthGenesis
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthGenesis
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.TripartyTotalBtcMinted.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		case 25:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TripartyControllerBtcMinted", wireType)

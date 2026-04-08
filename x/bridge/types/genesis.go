@@ -38,7 +38,6 @@ func DefaultGenesis() *GenesisState {
 		TripartyPendingRequests:        nil,
 		TripartyWindowConsumed:         sdkmath.NewInt(0),
 		TripartyWindowLastReset:        0,
-		TripartyTotalBtcMinted:         sdkmath.NewInt(0),
 		TripartyControllerBtcMinted:    nil,
 	}
 }
@@ -149,13 +148,6 @@ func (gs GenesisState) Validate() error {
 		return fmt.Errorf(
 			"genesis triparty window consumed cannot be negative: %s",
 			gs.TripartyWindowConsumed,
-		)
-	}
-
-	if gs.TripartyTotalBtcMinted.IsNegative() {
-		return fmt.Errorf(
-			"genesis triparty total BTC minted cannot be negative: %s",
-			gs.TripartyTotalBtcMinted,
 		)
 	}
 
