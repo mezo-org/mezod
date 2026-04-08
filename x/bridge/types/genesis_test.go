@@ -336,6 +336,34 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "allowed triparty controller 0 cannot be the zero EVM address",
 		},
 		{
+			desc: "duplicate allowed triparty controllers",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.AllowedTripartyControllers = []string{
+					"0x1111111111111111111111111111111111111111",
+					"0x1111111111111111111111111111111111111111",
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "allowed triparty controller 1 is a duplicate",
+		},
+		{
+			desc: "duplicate allowed triparty controllers different casing",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.AllowedTripartyControllers = []string{
+					"0xAbCd000000000000000000000000000000000001",
+					"0xabcd000000000000000000000000000000000001",
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "allowed triparty controller 1 is a duplicate",
+		},
+		{
 			desc: "pending triparty request with non-positive sequence",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()

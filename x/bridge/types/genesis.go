@@ -190,6 +190,7 @@ func (gs GenesisState) Validate() error {
 		seenControllerMinted[normalizedController] = struct{}{}
 	}
 
+	seenAllowedControllers := make(map[string]struct{}, len(gs.AllowedTripartyControllers))
 	for i, controller := range gs.AllowedTripartyControllers {
 		if len(controller) == 0 {
 			return fmt.Errorf("allowed triparty controller %d cannot be empty", i)
@@ -208,6 +209,16 @@ func (gs GenesisState) Validate() error {
 				i,
 			)
 		}
+
+		normalizedController := evmtypes.BytesToHexAddress(evmtypes.HexAddressToBytes(controller))
+		if _, ok := seenAllowedControllers[normalizedController]; ok {
+			return fmt.Errorf(
+				"allowed triparty controller %d is a duplicate: %s",
+				i,
+				controller,
+			)
+		}
+		seenAllowedControllers[normalizedController] = struct{}{}
 	}
 
 	for i, req := range gs.TripartyPendingRequests {
