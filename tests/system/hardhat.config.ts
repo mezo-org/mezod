@@ -24,7 +24,7 @@ function getPrivKeys (): string[] {
       const pk: string = ethers.Wallet.fromPhrase(seed.secret).privateKey
       keys.push(pk)
     } catch {
-      // Seed file not available (e.g. running outside a localnode workspace).
+      console.log(`Seed file not available: ${filePath}`)
     }
   }
 
