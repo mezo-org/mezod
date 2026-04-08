@@ -687,7 +687,7 @@ describe("TripartyBridge", function () {
       ).wait()
 
       const currentBlock = await ethers.provider.getBlockNumber()
-      await waitForBlock(currentBlock + 3)
+      await waitForBlock(currentBlock + 2)
 
       recipientBalanceAfter = await ethers.provider.getBalance(recipient)
       gasSinkLength = await tripartyController.getGasSinkLength()
