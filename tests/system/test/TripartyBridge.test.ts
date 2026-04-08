@@ -934,7 +934,8 @@ describe("TripartyBridge", function () {
       ).wait()
 
       // Measure current window usage, then set windowLimit so that
-      // exactly 2 BTC of capacity remains (same technique as C4).
+      // exactly 2 BTC of capacity remains (same technique as
+      // "Amount exceeds window capacity").
       await (
         await assetsBridge
           .connect(poolOwner)
