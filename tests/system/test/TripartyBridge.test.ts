@@ -25,6 +25,8 @@ describe("TripartyBridge", function () {
   let tripartyController: TripartyController
   let signers: any
   let poolOwner: any
+  let eoaController: any
+  let pauser: any
 
   const fixture = async function () {
     await deployments.fixture(["TripartyController"])
@@ -46,10 +48,12 @@ describe("TripartyBridge", function () {
     tripartyController = await getDeployedContract("TripartyController")
     signers = await ethers.getSigners()
     poolOwner = await ethers.getSigner(await validatorPool.owner())
+    eoaController = signers[1]
+    pauser = signers[2]
 
-    // Set up pauser as signers[2]
+    // Set up pauser
     await (
-      await assetsBridge.connect(poolOwner).setPauser(signers[2].address)
+      await assetsBridge.connect(poolOwner).setPauser(pauser.address)
     ).wait()
 
     // Reset triparty state for test isolation (live chain state persists
@@ -57,7 +61,7 @@ describe("TripartyBridge", function () {
     const isPaused = await assetsBridge.isTripartyPaused()
     if (isPaused) {
       await (
-        await assetsBridge.connect(signers[2]).pauseTriparty(false)
+        await assetsBridge.connect(pauser).pauseTriparty(false)
       ).wait()
     }
     await (
@@ -66,7 +70,7 @@ describe("TripartyBridge", function () {
     await (
       await assetsBridge
         .connect(poolOwner)
-        .allowTripartyController(signers[1].address, false)
+        .allowTripartyController(eoaController.address, false)
     ).wait()
     const controllerAddr = await tripartyController.getAddress()
     await (
@@ -88,17 +92,17 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
 
       isAllowed = await assetsBridge.isAllowedTripartyController(
-        signers[1].address,
+        eoaController.address,
       )
 
       try {
         await assetsBridge
-          .connect(signers[1])
-          .allowTripartyController.staticCall(signers[2].address, true)
+          .connect(eoaController)
+          .allowTripartyController.staticCall(pauser.address, true)
       } catch (error: any) {
         nonOwnerError = error.message
       }
@@ -124,16 +128,16 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, false)
+          .allowTripartyController(eoaController.address, false)
       ).wait()
 
       isAllowed = await assetsBridge.isAllowedTripartyController(
-        signers[1].address,
+        eoaController.address,
       )
 
       // Set up limits so we can test bridgeTriparty rejection
@@ -145,7 +149,7 @@ describe("TripartyBridge", function () {
 
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(signers[0].address, BTC(1), "0x")
       } catch (error: any) {
         bridgeError = error.message
@@ -188,7 +192,7 @@ describe("TripartyBridge", function () {
 
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .setTripartyBlockDelay.staticCall(2)
       } catch (error: any) {
         nonOwnerError = error.message
@@ -236,7 +240,7 @@ describe("TripartyBridge", function () {
 
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .setTripartyLimits.staticCall(BTC(1), BTC(10))
       } catch (error: any) {
         nonOwnerError = error.message
@@ -270,12 +274,12 @@ describe("TripartyBridge", function () {
       defaultPaused = await assetsBridge.isTripartyPaused()
 
       await (
-        await assetsBridge.connect(signers[2]).pauseTriparty(true)
+        await assetsBridge.connect(pauser).pauseTriparty(true)
       ).wait()
       afterPause = await assetsBridge.isTripartyPaused()
 
       await (
-        await assetsBridge.connect(signers[2]).pauseTriparty(false)
+        await assetsBridge.connect(pauser).pauseTriparty(false)
       ).wait()
       afterUnpause = await assetsBridge.isTripartyPaused()
     })
@@ -314,11 +318,11 @@ describe("TripartyBridge", function () {
       const recipientWallet = ethers.Wallet.createRandom()
       recipient = recipientWallet.address
 
-      // Allow signers[1] as controller
+      // Allow eoaController as controller
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       // Set limits
       await (
@@ -334,7 +338,7 @@ describe("TripartyBridge", function () {
       // Submit triparty request
       await (
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty(recipient, BTC(1), "0x")
       ).wait()
 
@@ -397,7 +401,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -411,7 +415,7 @@ describe("TripartyBridge", function () {
       recipientBalanceBefore = await ethers.provider.getBalance(recipient)
 
       const tx = await assetsBridge
-        .connect(signers[1])
+        .connect(eoaController)
         .bridgeTriparty(recipient, BTC(1), "0x")
       const receipt = await tx.wait()
       submitBlock = receipt.blockNumber
@@ -549,7 +553,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -562,7 +566,7 @@ describe("TripartyBridge", function () {
 
       await (
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty(
             recipient,
             BTC("0.1"),
@@ -727,7 +731,7 @@ describe("TripartyBridge", function () {
 
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(recipient, BTC(1), "0x")
       } catch (error: any) {
         unauthorizedError = error.message
@@ -751,7 +755,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -764,7 +768,7 @@ describe("TripartyBridge", function () {
       // 0.001 BTC should fail (below 0.01 minimum)
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(recipient, BTC("0.001"), "0x")
       } catch (error: any) {
         belowMinError = error.message
@@ -772,7 +776,7 @@ describe("TripartyBridge", function () {
 
       // 0.01 BTC should succeed
       const tx = await assetsBridge
-        .connect(signers[1])
+        .connect(eoaController)
         .bridgeTriparty(recipient, BTC("0.01"), "0x")
       minAmountReceipt = await tx.wait()
     })
@@ -796,7 +800,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -808,14 +812,14 @@ describe("TripartyBridge", function () {
 
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(recipient, BTC(3), "0x")
       } catch (error: any) {
         exceedsError = error.message
       }
 
       const tx = await assetsBridge
-        .connect(signers[1])
+        .connect(eoaController)
         .bridgeTriparty(recipient, BTC(2), "0x")
       withinLimitReceipt = await tx.wait()
     })
@@ -841,7 +845,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
 
       // On a live chain the 25k-block window accumulates across test runs.
@@ -867,7 +871,7 @@ describe("TripartyBridge", function () {
       // Submit 3 BTC — succeeds
       await (
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty(recipient, BTC(3), "0x")
       ).wait()
 
@@ -876,7 +880,7 @@ describe("TripartyBridge", function () {
       // Submit 3 BTC — should fail (only 2 remaining)
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(recipient, BTC(3), "0x")
       } catch (error: any) {
         exceedsWindowError = error.message
@@ -884,14 +888,14 @@ describe("TripartyBridge", function () {
 
       // Submit 2 BTC — should succeed
       const tx = await assetsBridge
-        .connect(signers[1])
+        .connect(eoaController)
         .bridgeTriparty(recipient, BTC(2), "0x")
       secondReceipt = await tx.wait()
 
       // Submit any more — should fail (window exhausted)
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(recipient, BTC("0.01"), "0x")
       } catch (error: any) {
         exhaustedError = error.message
@@ -929,7 +933,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -969,7 +973,7 @@ describe("TripartyBridge", function () {
       // (calls through a contract wrapper lose the inner revert string).
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(recipient, BTC(1), "0x")
       } catch (error: any) {
         exceedsError = error.message
@@ -977,7 +981,7 @@ describe("TripartyBridge", function () {
 
       // EOA controller requests 0.5 BTC — succeeds
       const tx2 = await assetsBridge
-        .connect(signers[1])
+        .connect(eoaController)
         .bridgeTriparty(recipient, BTC("0.5"), "0x")
       secondReceipt = await tx2.wait()
     })
@@ -1005,7 +1009,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -1016,7 +1020,7 @@ describe("TripartyBridge", function () {
       // BTC precompile address as recipient
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(btcTokenPrecompileAddress, BTC(1), "0x")
       } catch (error: any) {
         btcPrecompileError = error.message
@@ -1025,7 +1029,7 @@ describe("TripartyBridge", function () {
       // Zero address as recipient
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(ethers.ZeroAddress, BTC(1), "0x")
       } catch (error: any) {
         zeroAddressError = error.message
@@ -1054,7 +1058,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -1064,7 +1068,7 @@ describe("TripartyBridge", function () {
 
       // Pause
       await (
-        await assetsBridge.connect(signers[2]).pauseTriparty(true)
+        await assetsBridge.connect(pauser).pauseTriparty(true)
       ).wait()
 
       isPaused = await assetsBridge.isTripartyPaused()
@@ -1073,7 +1077,7 @@ describe("TripartyBridge", function () {
 
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty.staticCall(recipient, BTC(1), "0x")
       } catch (error: any) {
         bridgeError = error.message
@@ -1081,7 +1085,7 @@ describe("TripartyBridge", function () {
 
       try {
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .pauseTriparty.staticCall(true)
       } catch (error: any) {
         nonPauserError = error.message
@@ -1122,7 +1126,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -1140,7 +1144,7 @@ describe("TripartyBridge", function () {
       // Submit request
       await (
         await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty(recipient, BTC(1), "0x")
       ).wait()
 
@@ -1149,7 +1153,7 @@ describe("TripartyBridge", function () {
 
       // Immediately pause
       await (
-        await assetsBridge.connect(signers[2]).pauseTriparty(true)
+        await assetsBridge.connect(pauser).pauseTriparty(true)
       ).wait()
 
       // Wait several blocks
@@ -1163,7 +1167,7 @@ describe("TripartyBridge", function () {
 
       // --- D3: Unpause ---
       await (
-        await assetsBridge.connect(signers[2]).pauseTriparty(false)
+        await assetsBridge.connect(pauser).pauseTriparty(false)
       ).wait()
 
       isPausedAfterUnpause = await assetsBridge.isTripartyPaused()
@@ -1368,7 +1372,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -1388,7 +1392,7 @@ describe("TripartyBridge", function () {
 
       // Submit R1
       const tx1 = await assetsBridge
-        .connect(signers[1])
+        .connect(eoaController)
         .bridgeTriparty(recipients[0], BTC("0.5"), "0x")
       const receipt1 = await tx1.wait()
       const submitBlockR1 = receipt1!.blockNumber
@@ -1396,7 +1400,7 @@ describe("TripartyBridge", function () {
       // Wait 2 blocks to create a gap between maturities, then submit R2
       await waitForBlock(submitBlockR1 + 2)
       const tx2 = await assetsBridge
-        .connect(signers[1])
+        .connect(eoaController)
         .bridgeTriparty(recipients[1], BTC("0.5"), "0x")
       const receipt2 = await tx2.wait()
       const submitBlockR2 = receipt2!.blockNumber
@@ -1468,7 +1472,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -1484,7 +1488,7 @@ describe("TripartyBridge", function () {
 
       // Submit request
       const tx = await assetsBridge
-        .connect(signers[1])
+        .connect(eoaController)
         .bridgeTriparty(recipient, BTC(1), "0x")
       const receipt = await tx.wait()
 
@@ -1494,7 +1498,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, false)
+          .allowTripartyController(eoaController.address, false)
       ).wait()
 
       // Wait past maturity
@@ -1538,7 +1542,7 @@ describe("TripartyBridge", function () {
       await (
         await assetsBridge
           .connect(poolOwner)
-          .allowTripartyController(signers[1].address, true)
+          .allowTripartyController(eoaController.address, true)
       ).wait()
       await (
         await assetsBridge
@@ -1554,7 +1558,7 @@ describe("TripartyBridge", function () {
       for (const amount of amounts) {
         const recipient = ethers.Wallet.createRandom().address
         const tx = await assetsBridge
-          .connect(signers[1])
+          .connect(eoaController)
           .bridgeTriparty(recipient, amount, "0x")
         await tx.wait()
       }
