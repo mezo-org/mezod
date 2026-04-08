@@ -140,13 +140,6 @@ describe("TripartyBridge", function () {
         eoaController.address,
       )
 
-      // Set up limits so we can test bridgeTriparty rejection
-      await (
-        await assetsBridge
-          .connect(poolOwner)
-          .setTripartyLimits(BTC(10), BTC(100))
-      ).wait()
-
       try {
         await assetsBridge
           .connect(eoaController)
