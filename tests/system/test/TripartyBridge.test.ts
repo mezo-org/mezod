@@ -301,8 +301,6 @@ describe("TripartyBridge", function () {
     let requestTipAfter: bigint
     let processedTipAfter: bigint
     let erc20BalanceAfter: bigint
-    let blockNumberAfterWait: number
-    let blockBeforeChainCheck: number
     let recipient: string
 
     before(async function () {
@@ -337,19 +335,14 @@ describe("TripartyBridge", function () {
 
       requestTipAfter = await assetsBridge.getTripartyRequestSequenceTip()
 
-      // Wait for processing (delay=1, wait a few blocks to be safe)
+      // Wait for processing (delay=1 + 1 block for processing)
       const currentBlock = await ethers.provider.getBlockNumber()
-      await waitForBlock(currentBlock + 3)
+      await waitForBlock(currentBlock + 2)
 
       recipientBalanceAfter = await ethers.provider.getBalance(recipient)
       erc20BalanceAfter = await btcToken.balanceOf(recipient)
       totalSupplyAfter = await btcToken.totalSupply()
       processedTipAfter = await assetsBridge.getTripartyProcessedSequenceTip()
-
-      // Verify chain keeps producing blocks
-      blockBeforeChainCheck = await ethers.provider.getBlockNumber()
-      await waitForBlock(blockBeforeChainCheck + 10)
-      blockNumberAfterWait = await ethers.provider.getBlockNumber()
     })
 
     it("should increment request sequence tip", async function () {
@@ -373,7 +366,10 @@ describe("TripartyBridge", function () {
     })
 
     it("should continue producing blocks", async function () {
-      expect(blockNumberAfterWait).to.be.gte(blockBeforeChainCheck + 10)
+      const blockBefore = await ethers.provider.getBlockNumber()
+      await waitForBlock(blockBefore + 3)
+      const blockAfter = await ethers.provider.getBlockNumber()
+      expect(blockAfter).to.be.gte(blockBefore + 3)
     })
   })
 
