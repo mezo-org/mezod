@@ -107,9 +107,10 @@ var (
 	// at which the triparty minting window was last reset.
 	TripartyWindowLastResetKey = []byte{0xA9}
 
-	// TripartyTotalBTCMintedKey is a standalone key for the total BTC
-	// minted via triparty bridging (provenance counter).
-	TripartyTotalBTCMintedKey = []byte{0xAA}
+	// TripartyControllerBTCMintedKeyPrefix is a prefix used to construct
+	// a key to a per-controller triparty BTC minted counter. A key is
+	// constructed by taking this prefix and appending the controller address.
+	TripartyControllerBTCMintedKeyPrefix = []byte{0xAA}
 )
 
 // GetERC20TokenMappingKey gets the key for an ERC20 token mapping by the
@@ -148,4 +149,10 @@ func GetTripartyControllerKey(controller []byte) []byte {
 // request by its sequence number.
 func GetTripartyBridgeRequestKey(sequence math.Int) []byte {
 	return append(TripartyRequestKeyPrefix, sequence.BigInt().Bytes()...)
+}
+
+// GetTripartyControllerBTCMintedKey gets the key for a per-controller
+// triparty BTC minted counter by controller address.
+func GetTripartyControllerBTCMintedKey(controller []byte) []byte {
+	return append(TripartyControllerBTCMintedKeyPrefix, controller...)
 }

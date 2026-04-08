@@ -38,7 +38,7 @@ func DefaultGenesis() *GenesisState {
 		TripartyPendingRequests:        nil,
 		TripartyWindowConsumed:         sdkmath.NewInt(0),
 		TripartyWindowLastReset:        0,
-		TripartyTotalBtcMinted:         sdkmath.NewInt(0),
+		TripartyControllerBtcMinted:    nil,
 	}
 }
 
@@ -151,13 +151,46 @@ func (gs GenesisState) Validate() error {
 		)
 	}
 
-	if gs.TripartyTotalBtcMinted.IsNegative() {
-		return fmt.Errorf(
-			"genesis triparty total BTC minted cannot be negative: %s",
-			gs.TripartyTotalBtcMinted,
-		)
+	seenControllerMinted := make(map[string]struct{}, len(gs.TripartyControllerBtcMinted))
+	for i, entry := range gs.TripartyControllerBtcMinted {
+		if len(entry.Controller) == 0 {
+			return fmt.Errorf("triparty controller BTC minted entry %d controller cannot be empty", i)
+		}
+
+		if !evmtypes.IsHexAddress(entry.Controller) {
+			return fmt.Errorf(
+				"triparty controller BTC minted entry %d controller must be a valid hex-encoded EVM address",
+				i,
+			)
+		}
+
+		if evmtypes.IsZeroHexAddress(entry.Controller) {
+			return fmt.Errorf(
+				"triparty controller BTC minted entry %d controller cannot be the zero EVM address",
+				i,
+			)
+		}
+
+		if !entry.Amount.IsPositive() {
+			return fmt.Errorf(
+				"triparty controller BTC minted entry %d amount must be positive: %s",
+				i,
+				entry.Amount,
+			)
+		}
+
+		normalizedController := evmtypes.BytesToHexAddress(evmtypes.HexAddressToBytes(entry.Controller))
+		if _, ok := seenControllerMinted[normalizedController]; ok {
+			return fmt.Errorf(
+				"triparty controller BTC minted entry %d has duplicate controller: %s",
+				i,
+				entry.Controller,
+			)
+		}
+		seenControllerMinted[normalizedController] = struct{}{}
 	}
 
+	seenAllowedControllers := make(map[string]struct{}, len(gs.AllowedTripartyControllers))
 	for i, controller := range gs.AllowedTripartyControllers {
 		if len(controller) == 0 {
 			return fmt.Errorf("allowed triparty controller %d cannot be empty", i)
@@ -176,6 +209,16 @@ func (gs GenesisState) Validate() error {
 				i,
 			)
 		}
+
+		normalizedController := evmtypes.BytesToHexAddress(evmtypes.HexAddressToBytes(controller))
+		if _, ok := seenAllowedControllers[normalizedController]; ok {
+			return fmt.Errorf(
+				"allowed triparty controller %d is a duplicate: %s",
+				i,
+				controller,
+			)
+		}
+		seenAllowedControllers[normalizedController] = struct{}{}
 	}
 
 	for i, req := range gs.TripartyPendingRequests {

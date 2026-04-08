@@ -528,12 +528,26 @@ func (k Keeper) checkTripartyCapacity(ctx sdk.Context, amount math.Int) error {
 }
 
 // GetTripartyTotalBTCMinted returns the total BTC minted via triparty
-// bridging. This is an informational provenance counter. Returns zero
-// if not set.
+// bridging, derived by summing all per-controller provenance counters.
 func (k Keeper) GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
+	total := math.ZeroInt()
+	for _, entry := range k.getAllTripartyControllerBTCMinted(ctx) {
+		total = total.Add(entry.Amount)
+	}
+	return total
+}
+
+// GetTripartyControllerBTCMinted returns the total BTC minted via triparty
+// bridging by the given controller. Returns zero if not set.
+func (k Keeper) GetTripartyControllerBTCMinted(
+	ctx sdk.Context,
+	controller string,
+) math.Int {
 	store := ctx.KVStore(k.storeKey)
 
-	bz := store.Get(types.TripartyTotalBTCMintedKey)
+	bz := store.Get(types.GetTripartyControllerBTCMintedKey(
+		evmtypes.HexAddressToBytes(controller),
+	))
 	if len(bz) == 0 {
 		return math.ZeroInt()
 	}
@@ -546,11 +560,16 @@ func (k Keeper) GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int {
 	return total
 }
 
-// increaseTripartyTotalBTCMinted adds the given amount to the total BTC
-// minted via triparty bridging provenance counter.
-func (k Keeper) increaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int) {
-	total := k.GetTripartyTotalBTCMinted(ctx).Add(amount)
+// increaseTripartyControllerBTCMinted adds the given amount to the BTC
+// minted via triparty bridging by the given controller.
+func (k Keeper) increaseTripartyControllerBTCMinted(
+	ctx sdk.Context,
+	controller string,
+	amount math.Int,
+) {
+	total := k.GetTripartyControllerBTCMinted(ctx, controller).Add(amount)
 
+	controllerBytes := evmtypes.HexAddressToBytes(controller)
 	store := ctx.KVStore(k.storeKey)
 
 	bz, err := total.Marshal()
@@ -558,7 +577,45 @@ func (k Keeper) increaseTripartyTotalBTCMinted(ctx sdk.Context, amount math.Int)
 		panic(err)
 	}
 
-	store.Set(types.TripartyTotalBTCMintedKey, bz)
+	store.Set(types.GetTripartyControllerBTCMintedKey(controllerBytes), bz)
+}
+
+// getAllTripartyControllerBTCMinted returns the per-controller BTC minted
+// amounts for all controllers that have minted through the triparty path.
+func (k Keeper) getAllTripartyControllerBTCMinted(
+	ctx sdk.Context,
+) []*types.TripartyControllerBTCMinted {
+	store := ctx.KVStore(k.storeKey)
+
+	iterator := storetypes.KVStorePrefixIterator(
+		store,
+		types.TripartyControllerBTCMintedKeyPrefix,
+	)
+	defer func() {
+		_ = iterator.Close()
+	}()
+
+	var out []*types.TripartyControllerBTCMinted
+
+	for ; iterator.Valid(); iterator.Next() {
+		controller := iterator.Key()[len(types.TripartyControllerBTCMintedKeyPrefix):]
+
+		var amount math.Int
+		err := amount.Unmarshal(iterator.Value())
+		if err != nil {
+			panic(err)
+		}
+
+		out = append(
+			out,
+			&types.TripartyControllerBTCMinted{
+				Controller: evmtypes.BytesToHexAddress(controller),
+				Amount:     amount,
+			},
+		)
+	}
+
+	return out
 }
 
 // ProcessTripartyBridgeRequests reads pending triparty bridge requests
@@ -627,8 +684,8 @@ func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
 				)
 			}
 
-			// Update the provenance counter.
-			k.increaseTripartyTotalBTCMinted(ctx, req.Amount)
+			// Update the per-controller provenance counter.
+			k.increaseTripartyControllerBTCMinted(ctx, req.Controller, req.Amount)
 
 			// Issue the EVM callback to the controller. A callback
 			// failure is logged but must not prevent the mint from

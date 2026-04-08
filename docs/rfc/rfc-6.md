@@ -88,6 +88,7 @@ function getTripartyCapacity() external view returns (uint256 capacity, uint256 
 
 // Provenance
 function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted);
+function getTripartyControllerBTCMinted(address controller) external view returns (uint256 minted);
 ```
 
 * `bridgeTriparty` accepts the `recipient`, `amount`, and `callbackData`.
@@ -130,8 +131,10 @@ function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted)
 * `getTripartyCapacity` returns the remaining window capacity and the block
   height at which it resets, mirroring `getOutflowCapacity`.
 * `getTripartyTotalBTCMinted` returns the cumulative BTC minted through the
-  triparty path (see
+  triparty path, derived by summing all per-controller provenance counters (see
   [Provenance tracking](#provenance-tracking-and-bridging-out)).
+* `getTripartyControllerBTCMinted` returns the cumulative BTC minted through the
+  triparty path by a specific controller.
 
 Additionally, `bridgeTriparty` should:
 
@@ -207,11 +210,13 @@ independently verify the recipient is not blocked.
 ### Provenance tracking and bridging out
 
 To distinguish BTC minted through the native bridge from BTC minted through the
-triparty path, the `x/bridge` module should maintain a separate counter tracking
-the total BTC minted from triparty requests. This counter is informational
-and does not affect the supply invariant - the existing `BTCMinted` counter
-remains the source of truth for the `verifyBTCSupply` check. The provenance
-information is useful for monitoring purposes.
+triparty path, the `x/bridge` module maintains per-controller counters tracking
+how much BTC each individual controller has minted through the triparty path.
+The total BTC minted via triparty (`getTripartyTotalBTCMinted`) is derived by
+summing all per-controller counters. These counters are informational and do not
+affect the supply invariant - the existing `BTCMinted` counter remains the source
+of truth for the `verifyBTCSupply` check. The provenance information is useful
+for monitoring purposes.
 
 We are not going to consider the provenance information during bridge outs. All
 BTC is fungible on the chain and the triparty mechanism needs to ensure BTC
