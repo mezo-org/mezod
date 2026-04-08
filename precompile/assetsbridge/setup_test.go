@@ -542,8 +542,8 @@ func (k *FakeBridgeKeeper) GetTripartyTotalBTCMinted(_ sdk.Context) math.Int {
 	return k.tripartyTotalBTCMinted
 }
 
-func (k *FakeBridgeKeeper) GetTripartyControllerBTCMinted(_ sdk.Context, controller []byte) math.Int {
-	amount, ok := k.tripartyControllerBTCMinted[common.BytesToAddress(controller).Hex()]
+func (k *FakeBridgeKeeper) GetTripartyControllerBTCMinted(_ sdk.Context, controller string) math.Int {
+	amount, ok := k.tripartyControllerBTCMinted[controller]
 	if !ok {
 		return math.ZeroInt()
 	}

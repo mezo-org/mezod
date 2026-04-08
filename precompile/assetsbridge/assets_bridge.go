@@ -296,7 +296,7 @@ type BridgeKeeper interface {
 	CreateTripartyBridgeRequest(ctx sdk.Context, recipient string, amount math.Int, callbackData []byte, controller string) (math.Int, error)
 	GetTripartyCapacity(ctx sdk.Context) (capacity math.Int, resetHeight uint64)
 	GetTripartyTotalBTCMinted(ctx sdk.Context) math.Int
-	GetTripartyControllerBTCMinted(ctx sdk.Context, controller []byte) math.Int
+	GetTripartyControllerBTCMinted(ctx sdk.Context, controller string) math.Int
 	GetTripartyRequestSequenceTip(ctx sdk.Context) math.Int
 	GetTripartyProcessedSequenceTip(ctx sdk.Context) math.Int
 }

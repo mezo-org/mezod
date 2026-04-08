@@ -822,7 +822,7 @@ func (m *GetTripartyControllerBTCMintedMethod) Run(
 
 	minted := m.bridgeKeeper.GetTripartyControllerBTCMinted(
 		context.SdkCtx(),
-		precompile.TypesConverter.Address.ToSDK(controller),
+		controller.Hex(),
 	)
 
 	return precompile.MethodOutputs{
