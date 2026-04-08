@@ -88,6 +88,7 @@ function getTripartyCapacity() external view returns (uint256 capacity, uint256 
 
 // Provenance
 function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted);
+function getTripartyControllerBTCMinted(address controller) external view returns (uint256 minted);
 ```
 
 * `bridgeTriparty` accepts the `recipient`, `amount`, and `callbackData`.
@@ -132,6 +133,9 @@ function getTripartyTotalBTCMinted() external view returns (uint256 totalMinted)
 * `getTripartyTotalBTCMinted` returns the cumulative BTC minted through the
   triparty path (see
   [Provenance tracking](#provenance-tracking-and-bridging-out)).
+* `getTripartyControllerBTCMinted` returns the cumulative BTC minted through the
+  triparty path by a specific controller. This per-controller counter is
+  maintained alongside the global `getTripartyTotalBTCMinted` counter.
 
 Additionally, `bridgeTriparty` should:
 
@@ -212,6 +216,12 @@ the total BTC minted from triparty requests. This counter is informational
 and does not affect the supply invariant - the existing `BTCMinted` counter
 remains the source of truth for the `verifyBTCSupply` check. The provenance
 information is useful for monitoring purposes.
+
+In addition to the global counter, the module maintains a per-controller counter
+tracking how much BTC each individual controller has minted through the triparty
+path. This is queried via `getTripartyControllerBTCMinted` and is also
+informational only - it does not affect the supply invariant or the global
+provenance counter.
 
 We are not going to consider the provenance information during bridge outs. All
 BTC is fungible on the chain and the triparty mechanism needs to ensure BTC
