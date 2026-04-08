@@ -993,7 +993,7 @@ describe("TripartyBridge", function () {
 
       // Wait for all requests to be processed
       const currentBlock = await ethers.provider.getBlockNumber()
-      await waitForBlock(currentBlock + 3)
+      await waitForBlock(currentBlock + 2)
 
       totalMintedAfter = await assetsBridge.getTripartyTotalBTCMinted()
       contractMintedAfter =
