@@ -221,6 +221,72 @@ func TestGenesisState_Validate(t *testing.T) {
 			errContains: "genesis triparty total BTC minted cannot be negative",
 		},
 		{
+			desc: "triparty controller BTC minted - empty controller",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
+					{Controller: "", Amount: sdkmath.NewInt(100)},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "triparty controller BTC minted entry 0 controller cannot be empty",
+		},
+		{
+			desc: "triparty controller BTC minted - invalid hex controller",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
+					{Controller: "not-hex", Amount: sdkmath.NewInt(100)},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "must be a valid hex-encoded EVM address",
+		},
+		{
+			desc: "triparty controller BTC minted - zero address controller",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
+					{Controller: "0x0000000000000000000000000000000000000000", Amount: sdkmath.NewInt(100)},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "cannot be the zero EVM address",
+		},
+		{
+			desc: "triparty controller BTC minted - negative amount",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
+					{Controller: "0x1111111111111111111111111111111111111111", Amount: sdkmath.NewInt(-1)},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "amount cannot be negative",
+		},
+		{
+			desc: "triparty controller BTC minted - duplicate controllers",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
+					{Controller: "0x1111111111111111111111111111111111111111", Amount: sdkmath.NewInt(100)},
+					{Controller: "0x1111111111111111111111111111111111111111", Amount: sdkmath.NewInt(200)},
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "has duplicate controller",
+		},
+		{
 			desc: "empty allowed triparty controller",
 			genState: func() *GenesisState {
 				genState := DefaultGenesis()
@@ -569,6 +635,12 @@ func TestGenesisState_Validate(t *testing.T) {
 				genState.TripartyWindowConsumed = sdkmath.NewInt(50)
 				genState.TripartyWindowLastReset = 500
 				genState.TripartyTotalBtcMinted = sdkmath.NewInt(200)
+				genState.TripartyControllerBtcMinted = []*TripartyControllerBTCMinted{
+					{
+						Controller: "0x1111111111111111111111111111111111111111",
+						Amount:     sdkmath.NewInt(200),
+					},
+				}
 				return genState
 			},
 			valid: true,

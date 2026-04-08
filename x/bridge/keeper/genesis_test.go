@@ -71,6 +71,16 @@ func TestGenesisTripartyState(t *testing.T) {
 	genesisState.TripartyWindowConsumed = sdkmath.NewInt(125)
 	genesisState.TripartyWindowLastReset = 500
 	genesisState.TripartyTotalBtcMinted = sdkmath.NewInt(200)
+	genesisState.TripartyControllerBtcMinted = []*types.TripartyControllerBTCMinted{
+		{
+			Controller: "0x1111111111111111111111111111111111111111",
+			Amount:     sdkmath.NewInt(100),
+		},
+		{
+			Controller: "0x2222222222222222222222222222222222222222",
+			Amount:     sdkmath.NewInt(100),
+		},
+	}
 
 	accountKeeper := newMockAccountKeeper()
 	accountKeeper.On(

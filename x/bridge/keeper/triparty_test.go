@@ -566,6 +566,56 @@ func TestTripartyTotalBTCMinted(t *testing.T) {
 	require.Equal(t, math.NewInt(3500), keeper.GetTripartyTotalBTCMinted(ctx))
 }
 
+func TestTripartyControllerBTCMinted(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	controller1 := evmtypes.HexAddressToBytes("0x1111111111111111111111111111111111111111")
+	controller2 := evmtypes.HexAddressToBytes("0x2222222222222222222222222222222222222222")
+
+	// Initially zero for any controller.
+	require.True(t, keeper.GetTripartyControllerBTCMinted(ctx, controller1).IsZero())
+	require.True(t, keeper.GetTripartyControllerBTCMinted(ctx, controller2).IsZero())
+
+	// Increase accumulates per controller.
+	keeper.increaseTripartyControllerBTCMinted(ctx, controller1, math.NewInt(1000))
+	require.Equal(t, math.NewInt(1000), keeper.GetTripartyControllerBTCMinted(ctx, controller1))
+	require.True(t, keeper.GetTripartyControllerBTCMinted(ctx, controller2).IsZero())
+
+	keeper.increaseTripartyControllerBTCMinted(ctx, controller2, math.NewInt(500))
+	require.Equal(t, math.NewInt(1000), keeper.GetTripartyControllerBTCMinted(ctx, controller1))
+	require.Equal(t, math.NewInt(500), keeper.GetTripartyControllerBTCMinted(ctx, controller2))
+
+	// Further accumulation.
+	keeper.increaseTripartyControllerBTCMinted(ctx, controller1, math.NewInt(2500))
+	require.Equal(t, math.NewInt(3500), keeper.GetTripartyControllerBTCMinted(ctx, controller1))
+	require.Equal(t, math.NewInt(500), keeper.GetTripartyControllerBTCMinted(ctx, controller2))
+}
+
+func TestGetAllTripartyControllerBTCMinted(t *testing.T) {
+	ctx, keeper := mockContext()
+
+	// Initially empty.
+	require.Empty(t, keeper.getAllTripartyControllerBTCMinted(ctx))
+
+	// After minting, returns all controllers with amounts.
+	controller1 := evmtypes.HexAddressToBytes("0x1111111111111111111111111111111111111111")
+	controller2 := evmtypes.HexAddressToBytes("0x2222222222222222222222222222222222222222")
+
+	keeper.increaseTripartyControllerBTCMinted(ctx, controller1, math.NewInt(1000))
+	keeper.increaseTripartyControllerBTCMinted(ctx, controller2, math.NewInt(500))
+
+	all := keeper.getAllTripartyControllerBTCMinted(ctx)
+	require.Len(t, all, 2)
+
+	// Build a map for order-independent assertion.
+	amounts := make(map[string]math.Int)
+	for _, entry := range all {
+		amounts[entry.Controller] = entry.Amount
+	}
+	require.Equal(t, math.NewInt(1000), amounts["0x1111111111111111111111111111111111111111"])
+	require.Equal(t, math.NewInt(500), amounts["0x2222222222222222222222222222222222222222"])
+}
+
 func TestTripartyProcessedSequenceTip(t *testing.T) {
 	ctx, keeper := mockContext()
 

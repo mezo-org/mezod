@@ -522,6 +522,48 @@ func (s *PrecompileTestSuite) TestGetTripartyTotalBTCMinted() {
 	s.RunMethodTestCases(testcases, "getTripartyTotalBTCMinted")
 }
 
+func (s *PrecompileTestSuite) TestGetTripartyControllerBTCMinted() {
+	testcases := []TestCase{
+		{
+			name: "default - zero for unknown controller",
+			run: func() []interface{} {
+				return []interface{}{testTripartyController}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(0)},
+		},
+		{
+			name: "returns set value",
+			run: func() []interface{} {
+				s.bridgeKeeper.tripartyControllerBTCMinted[testTripartyController.Hex()] = math.NewInt(42000)
+				return []interface{}{testTripartyController}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: true,
+			output:    []interface{}{big.NewInt(42000)},
+		},
+		{
+			name: "wrong number of inputs - zero",
+			run: func() []interface{} {
+				return []interface{}{}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+		{
+			name: "wrong number of inputs - too many",
+			run: func() []interface{} {
+				return []interface{}{testTripartyController, big.NewInt(1)}
+			},
+			as:        s.account1.EvmAddr,
+			basicPass: false,
+		},
+	}
+
+	s.RunMethodTestCases(testcases, "getTripartyControllerBTCMinted")
+}
+
 func (s *PrecompileTestSuite) TestIsTripartyPaused() {
 	testcases := []TestCase{
 		{
