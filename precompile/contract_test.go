@@ -242,7 +242,7 @@ func TestContract_Run(t *testing.T) {
 				StateDB: statedb.New(sdkCtx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			vmContract := vm.NewContract(&Contract{}, nil, test.value, 0)
+			vmContract := vm.NewPrecompile(common.Address{}, common.Address{}, test.value, 0)
 			// Construct an input whose first 4 bytes correspond to the method ID
 			// and the subsequent bytes are the method input arguments.
 			vmContract.Input = append([]byte{0x1, 0x2, 0x3, 0x4}, methodInputArgs...)
@@ -270,7 +270,7 @@ func TestContract_Run(t *testing.T) {
 
 func TestRunContext_MsgSender(t *testing.T) {
 	caller := common.HexToAddress("0x1")
-	contract := &vm.Contract{CallerAddress: caller}
+	contract := vm.NewPrecompile(caller, common.Address{}, nil, 0)
 
 	runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
@@ -300,7 +300,7 @@ func TestRunContext_TxOrigin(t *testing.T) {
 
 func TestRunContext_MsgValue(t *testing.T) {
 	value := uint256.NewInt(10)
-	contract := vm.NewContract(&Contract{}, nil, value, 0)
+	contract := vm.NewPrecompile(common.Address{}, common.Address{}, value, 0)
 
 	runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
@@ -338,7 +338,7 @@ func TestRunContext_IsMsgValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			contract := vm.NewContract(&Contract{}, nil, test.value, 0)
+			contract := vm.NewPrecompile(common.Address{}, common.Address{}, test.value, 0)
 
 			runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 

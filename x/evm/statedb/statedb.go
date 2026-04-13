@@ -23,6 +23,7 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	gethstate "github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/stateless"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -317,10 +318,10 @@ func (s *StateDB) Prepare(rules params.Rules, sender, coinbase common.Address, d
 //
 // The account's state object is still available until the state is committed,
 // getStateObject will return a non-nil account after SelfDestruct.
-func (s *StateDB) SelfDestruct(addr common.Address) {
+func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
-		return
+		return uint256.Int{}
 	}
 	var (
 		prev = new(uint256.Int).Set(stateObject.Balance())
@@ -336,16 +337,18 @@ func (s *StateDB) SelfDestruct(addr common.Address) {
 	}
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
+	return *prev
 }
 
-func (s *StateDB) Selfdestruct6780(addr common.Address) {
+func (s *StateDB) SelfDestruct6780(addr common.Address) (uint256.Int, bool) {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
-		return
+		return uint256.Int{}, false
 	}
 	if stateObject.newContract {
-		s.SelfDestruct(addr)
+		return s.SelfDestruct(addr), true
 	}
+	return *stateObject.Balance(), false
 }
 
 // SetTransientState sets transient storage for a given account. It
@@ -394,6 +397,16 @@ func (s *StateDB) Witness() *stateless.Witness {
 	return s.witness
 }
 
+func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
+	// TODO: implement when adding support for the new access-event flow in 1.16.9.
+	return nil
+}
+
+//nolint:misspell
+func (s *StateDB) Finalise(bool) {
+	// TODO: implement when adding support for the new state finalization flow in 1.16.9.
+}
+
 // GetCode returns the code of account, nil if not exists.
 func (s *StateDB) GetCode(addr common.Address) []byte {
 	stateObject := s.getStateObject(addr)
@@ -437,6 +450,16 @@ func (s *StateDB) GetCommittedState(addr common.Address, hash common.Hash) commo
 		return stateObject.GetCommittedState(hash)
 	}
 	return common.Hash{}
+}
+
+// GetStateAndCommittedState returns the current value and the committed value.
+func (s *StateDB) GetStateAndCommittedState(addr common.Address, hash common.Hash) (common.Hash, common.Hash) {
+	// TODO: check when reviewing state access changes in 1.16.9.
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.GetState(hash), stateObject.GetCommittedState(hash)
+	}
+	return common.Hash{}, common.Hash{}
 }
 
 // GetRefund returns the current value of the refund counter.
@@ -539,19 +562,25 @@ func (s *StateDB) setStateObject(object *stateObject) {
  */
 
 // AddBalance adds amount to the account associated with addr.
-func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) {
+func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) uint256.Int {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.AddBalance(amount)
+		return *prev
 	}
+	return *uint256.NewInt(0)
 }
 
 // SubBalance subtracts amount from the account associated with addr.
-func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) {
+func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) uint256.Int {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.SubBalance(amount)
+		return *prev
 	}
+	return *uint256.NewInt(0)
 }
 
 // OverrideBalance overrides the balance of the account associated with addr.
@@ -604,7 +633,7 @@ func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxChec
 }
 
 // SetNonce sets the nonce of account.
-func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
+func (s *StateDB) SetNonce(addr common.Address, nonce uint64, _ tracing.NonceChangeReason) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetNonce(nonce)
@@ -612,19 +641,25 @@ func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
 }
 
 // SetCode sets the code of account.
-func (s *StateDB) SetCode(addr common.Address, code []byte) {
+func (s *StateDB) SetCode(addr common.Address, code []byte, _ tracing.CodeChangeReason) []byte {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := append([]byte(nil), stateObject.Code()...)
 		stateObject.SetCode(crypto.Keccak256Hash(code), code)
+		return prev
 	}
+	return nil
 }
 
 // SetState sets the contract state.
-func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
+func (s *StateDB) SetState(addr common.Address, key, value common.Hash) common.Hash {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := stateObject.GetState(key)
 		stateObject.SetState(key, value)
+		return prev
 	}
+	return common.Hash{}
 }
 
 // AddAddressToAccessList adds the given address to the access list

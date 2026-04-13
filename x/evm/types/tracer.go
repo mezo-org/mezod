@@ -52,15 +52,19 @@ type NoOpTracer struct{}
 // NewTracer creates a new Logger tracer to collect execution traces from an
 // EVM transaction.
 func NewTracer(tracer string, msg core.Message, cfg *params.ChainConfig, height int64) *tracers.Tracer {
-	// TODO: enable additional log configuration
-	logCfg := &logger.Config{
-		Debug: true,
-	}
+	logCfg := &logger.Config{}
 
 	switch tracer {
 	case TracerAccessList:
-		preCompiles := vm.DefaultActivePrecompiles(cfg.Rules(big.NewInt(height), cfg.MergeNetsplitBlock != nil, 0))
-		lgr := logger.NewAccessListTracer(msg.AccessList, msg.From, *msg.To, preCompiles)
+		preCompiles := vm.ActivePrecompiles(cfg.Rules(big.NewInt(height), cfg.MergeNetsplitBlock != nil, 0))
+		addressesToExclude := map[common.Address]struct{}{msg.From: {}}
+		if msg.To != nil {
+			addressesToExclude[*msg.To] = struct{}{}
+		}
+		for _, addr := range preCompiles {
+			addressesToExclude[addr] = struct{}{}
+		}
+		lgr := logger.NewAccessListTracer(msg.AccessList, addressesToExclude)
 		tracer := &tracers.Tracer{
 			Hooks: lgr.Hooks(),
 		}
