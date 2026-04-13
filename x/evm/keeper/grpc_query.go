@@ -660,7 +660,6 @@ func (k *Keeper) traceTx(
 		DisableStack:     traceConfig.DisableStack,
 		DisableStorage:   traceConfig.DisableStorage,
 		EnableReturnData: traceConfig.EnableReturnData,
-		Debug:            traceConfig.Debug,
 		Limit:            int(traceConfig.Limit),
 		Overrides:        overrides,
 	})
@@ -677,7 +676,7 @@ func (k *Keeper) traceTx(
 	}
 
 	if len(traceConfig.Tracer) != 0 {
-		tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig)
+		tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig, cfg.ChainConfig)
 		if err != nil {
 			return nil, 0, status.Error(codes.Internal, err.Error())
 		}
