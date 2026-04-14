@@ -16,3 +16,8 @@ data:
       time_difference: 14400
       price_deviation: 0.1
       confidence_ratio: 100
+    - alias: MEZO/USD
+      id: "0x80beaaedbdd228e77c5d62dfcd74b0305674b7e27a5cc6a46e71bd3a696826df"
+      time_difference: 600
+      price_deviation: 1
+      confidence_ratio: 75
