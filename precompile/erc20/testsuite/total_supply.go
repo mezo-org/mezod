@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/app"
-	"github.com/mezo-org/mezod/precompile"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -48,7 +48,7 @@ func (s *TestSuite) TestTotalSupply() {
 			s.Require().NoError(err)
 			s.erc20Precompile = erc20Precompile
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(common.Address{}, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function totalSupply()'

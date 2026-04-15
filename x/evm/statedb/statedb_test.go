@@ -95,7 +95,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 
 			// create a contract account
 			db.CreateAccount(address)
-			db.SetCode(address, []byte("hello world"))
+			db.SetCode(address, []byte("hello world"), tracing.CodeChangeUnspecified)
 			db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 			db.SetState(address, key1, value1)
 			db.SetState(address, key2, value2)
@@ -144,7 +144,7 @@ func (suite *StateDBTestSuite) TestAccountOverride() {
 
 	// init an EOA account, account overridden only happens on EOA account.
 	db.AddBalance(address, amount, tracing.BalanceChangeUnspecified)
-	db.SetNonce(address, 1)
+	db.SetNonce(address, 1, tracing.NonceChangeUnspecified)
 
 	// override
 	db.CreateAccount(address)
@@ -161,10 +161,10 @@ func (suite *StateDBTestSuite) TestDBError() {
 		malleate func(vm.StateDB)
 	}{
 		{"set account", func(db vm.StateDB) {
-			db.SetNonce(errAddress, 1)
+			db.SetNonce(errAddress, 1, tracing.NonceChangeUnspecified)
 		}},
 		{"delete account", func(db vm.StateDB) {
-			db.SetNonce(errAddress, 1)
+			db.SetNonce(errAddress, 1, tracing.NonceChangeUnspecified)
 			db.SelfDestruct(errAddress)
 		}},
 	}
@@ -242,7 +242,7 @@ func (suite *StateDBTestSuite) TestCode() {
 			db.CreateAccount(address)
 		}, nil, common.BytesToHash(emptyCodeHash)},
 		{"set code", func(db vm.StateDB) {
-			db.SetCode(address, code)
+			db.SetCode(address, code, tracing.CodeChangeUnspecified)
 		}, code, codeHash},
 	}
 
@@ -280,7 +280,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			db.SetState(address, v1, v3)
 		}},
 		{"set nonce", func(db vm.StateDB) {
-			db.SetNonce(address, 10)
+			db.SetNonce(address, 10, tracing.NonceChangeUnspecified)
 		}},
 		{"change balance", func(db vm.StateDB) {
 			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
@@ -290,11 +290,11 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			db.CreateAccount(address)
 		}},
 		{"set code", func(db vm.StateDB) {
-			db.SetCode(address, []byte("hello world"))
+			db.SetCode(address, []byte("hello world"), tracing.CodeChangeUnspecified)
 		}},
 		{"suicide", func(db vm.StateDB) {
 			db.SetState(address, v1, v2)
-			db.SetCode(address, []byte("hello world"))
+			db.SetCode(address, []byte("hello world"), tracing.CodeChangeUnspecified)
 			db.SelfDestruct(address)
 		}},
 		{"add log", func(db vm.StateDB) {
@@ -319,11 +319,11 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			{
 				// do some arbitrary changes to the storage
 				db := statedb.New(ctx, keeper, emptyTxConfig)
-				db.SetNonce(address, 1)
+				db.SetNonce(address, 1, tracing.NonceChangeUnspecified)
 				db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
-				db.SetCode(address, []byte("hello world"))
+				db.SetCode(address, []byte("hello world"), tracing.CodeChangeUnspecified)
 				db.SetState(address, v1, v2)
-				db.SetNonce(address2, 1)
+				db.SetNonce(address2, 1, tracing.NonceChangeUnspecified)
 				suite.Require().NoError(db.Commit())
 			}
 
@@ -689,9 +689,9 @@ func (suite *StateDBTestSuite) TestOverrideStorage() {
 		keeper := statedb.NewMockKeeper()
 		db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 
-		db.SetNonce(address, 5)
+		db.SetNonce(address, 5, tracing.NonceChangeUnspecified)
 		db.AddBalance(address, uint256.NewInt(200), tracing.BalanceChangeUnspecified)
-		db.SetCode(address, code)
+		db.SetCode(address, code, tracing.CodeChangeUnspecified)
 		db.SetState(address, key1, value1)
 		suite.Require().NoError(db.Commit())
 

@@ -91,7 +91,8 @@ func (k *Keeper) NewEVM(
 	}
 	vmConfig := k.VMConfig(ctx, msg, cfg, tracer)
 
-	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
+	evm := vm.NewEVM(blockCtx, stateDB, cfg.ChainConfig, vmConfig)
+	evm.SetTxContext(txCtx)
 
 	precompilesVersions := make(map[common.Address]uint32)
 	for _, pv := range k.GetParams(ctx).PrecompilesVersions {
@@ -241,7 +242,8 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	// Compute block bloom filter
 	if len(logs) > 0 {
 		bloom = k.GetBlockBloomTransient(ctx)
-		bloom.Or(bloom, big.NewInt(0).SetBytes(ethtypes.LogsBloom(logs)))
+		receipt := &ethtypes.Receipt{Logs: logs}
+		bloom.Or(bloom, big.NewInt(0).SetBytes(ethtypes.CreateBloom(receipt).Bytes()))
 		bloomReceipt = ethtypes.BytesToBloom(bloom.Bytes())
 	}
 
@@ -444,7 +446,7 @@ func (k *Keeper) applyMessageWithConfig(
 		}()
 	}
 
-	sender := vm.AccountRef(msg.From)
+	sender := msg.From
 	contractCreation := msg.To == nil
 	isLondon := cfg.ChainConfig.IsLondon(evm.Context.BlockNumber)
 
@@ -493,9 +495,9 @@ func (k *Keeper) applyMessageWithConfig(
 		// take over the nonce management from evm:
 		// - reset sender's nonce to msg.Nonce() before calling evm.
 		// - increase sender's nonce by one no matter the result.
-		stateDB.SetNonce(sender.Address(), msg.Nonce)
+		stateDB.SetNonce(sender, msg.Nonce, tracing.NonceChangeUnspecified)
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, value)
-		stateDB.SetNonce(sender.Address(), msg.Nonce+1)
+		stateDB.SetNonce(sender, msg.Nonce+1, tracing.NonceChangeUnspecified)
 	} else {
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, value)
 	}

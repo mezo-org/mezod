@@ -10,7 +10,6 @@ import (
 	sdkmath "cosmossdk.io/math"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/precompile/erc20"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -151,17 +150,16 @@ func (s *TestSuite) TestTransfer() {
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			caller := s.account1.EvmAddr
+			vmContract := vm.NewPrecompile(caller, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function transfer(address to, uint256 value)'
 			vmContract.Input = append([]byte{0xa9, 0x05, 0x9c, 0xbb}, methodInputArgs...)
-			vmContract.CallerAddress = s.account1.EvmAddr
-
 			// Capture EVM balances of the from/to addresses before the transfer.
 			// This must be done in this particular place to capture the balance
 			// changes made in the test setup.
-			initialEVMBalanceFrom := getEVMBalance(vmContract.CallerAddress)
+			initialEVMBalanceFrom := getEVMBalance(caller)
 			initialEVMBalanceTo := getEVMBalance(methodInputs[0].(common.Address))
 
 			output, err := s.erc20Precompile.Run(evm, vmContract, false)
@@ -175,7 +173,7 @@ func (s *TestSuite) TestTransfer() {
 			s.Require().NoError(err)
 			s.Require().Equal(true, out[0], "expected different value")
 
-			evmBalanceFrom := getEVMBalance(vmContract.CallerAddress)
+			evmBalanceFrom := getEVMBalance(caller)
 			evmBalanceTo := getEVMBalance(methodInputs[0].(common.Address))
 
 			if s.ensureEVMBalanceChange {
@@ -359,17 +357,15 @@ func (s *TestSuite) TestTransferFrom() {
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			caller := s.account2.EvmAddr
+			if tc.isCallerOwner {
+				caller = s.account1.EvmAddr
+			}
+			vmContract := vm.NewPrecompile(caller, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function transferFrom(address from, address to, uint256 value)'
 			vmContract.Input = append([]byte{0x23, 0xb8, 0x72, 0xdd}, methodInputArgs...)
-			if tc.isCallerOwner {
-				vmContract.CallerAddress = s.account1.EvmAddr
-			} else {
-				vmContract.CallerAddress = s.account2.EvmAddr
-			}
-
 			// Capture EVM balances of the from/to addresses before the transfer.
 			// This must be done in this particular place to capture the balance
 			// changes made in the test setup.

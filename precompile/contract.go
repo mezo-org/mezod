@@ -96,6 +96,11 @@ func (c *Contract) Address() common.Address {
 	return c.address
 }
 
+// Name returns a stable identifier of the precompile.
+func (c *Contract) Name() string {
+	return c.address.Hex()
+}
+
 // RequiredGas returns the amount of gas required to execute the contract call
 // with the given input. If the target method does not determine the required
 // gas by itself, the required gas is calculated based on the default algorithm

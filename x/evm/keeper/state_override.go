@@ -30,11 +30,11 @@ type overrideAccount struct {
 func applyStateOverrides(db *statedb.StateDB, overrides stateOverride) error {
 	for addr, override := range overrides {
 		if override.Nonce != nil {
-			db.SetNonce(addr, uint64(*override.Nonce))
+			db.SetNonce(addr, uint64(*override.Nonce), tracing.NonceChangeUnspecified)
 		}
 
 		if override.Code != nil {
-			db.SetCode(addr, *override.Code)
+			db.SetCode(addr, *override.Code, tracing.CodeChangeUnspecified)
 		}
 
 		if override.Balance != nil {
