@@ -94,7 +94,7 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 
 ---
 
-### Phase 1 — Scaffolding: types + RPC registration + stubs ✅ DONE
+### Phase 1 — Scaffolding: types + RPC registration + stubs ✅ DONE ([#658](https://github.com/mezo-org/mezod/pull/658))
 
 **Goal.** Land the `eth_simulateV1` method name on the JSON-RPC surface returning a documented "not implemented" error. Zero behavior risk.
 
