@@ -6,7 +6,7 @@
 
 ## Context
 
-Add the `eth_simulateV1` JSON-RPC method to mezod's EVM RPC surface. Reference impl: go-ethereum v1.16.9 `internal/ethapi/simulate.go` (full walkthrough in `simulate-research.md`). Authoritative spec: `ethereum/execution-apis`, with 92 conformance fixtures in `tests/eth_simulateV1/`.
+Add the `eth_simulateV1` JSON-RPC method to mezod's EVM RPC surface. Reference impl: go-ethereum v1.16.9 `internal/ethapi/simulate.go` (full walkthrough in `research.md`). Authoritative spec: `ethereum/execution-apis`, with 92 conformance fixtures in `tests/eth_simulateV1/`.
 
 **Why now.** Mezod is a mission-critical Cosmos-SDK EVM chain (Evmos-derived, CometBFT consensus). The broader EVM tooling ecosystem (ethers v6, viem, wallets like MetaMask/Rabby, debug UIs) increasingly assumes `eth_simulateV1` is available for multi-tx multi-block simulation with overrides — the native fit for modern "preview this transaction batch" UX. No Cosmos/Evmos-family chain (Evmos, Cronos, Kava, Canto, cosmos/evm, Sei-EVM) has shipped it yet; mezod becomes the reference implementation for the ecosystem.
 
