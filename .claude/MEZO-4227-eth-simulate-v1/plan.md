@@ -94,7 +94,7 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 
 ---
 
-### Phase 1 — Scaffolding: types + RPC registration + stubs
+### Phase 1 — Scaffolding: types + RPC registration + stubs ✅ DONE
 
 **Goal.** Land the `eth_simulateV1` method name on the JSON-RPC surface returning a documented "not implemented" error. Zero behavior risk.
 
