@@ -31,6 +31,10 @@ const (
 	SimErrCodeInvalidParams  = -32602
 	SimErrCodeInternalError  = -32603
 
+	// SimErrCodeReverted pins to the spec's enforced `const: 3` for
+	// `CallResultFailure.error.code` (execute.yaml schema). Geth diverges
+	// here and reuses its legacy `-32000` from `eth_call`; reth follows
+	// the spec. We follow the spec / reth.
 	SimErrCodeReverted = 3
 )
 
