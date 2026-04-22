@@ -44,7 +44,7 @@ This delivery ships in **two parts**, sequenced around the separate geth v1.14.8
 | Feature parity | **Full parity** with the execution-apis spec (all flags: `TraceTransfers`, `Validation`, `ReturnFullTransactions`, plus `MovePrecompileTo`) |
 | `MovePrecompileTo` for custom mezo precompiles (0x7b7c…00 → 0x7b7c…15, 0x7b7c1…00) | **Blocked** — stdlib precompiles (0x01–0x0A) only; custom rejects with structured error |
 | DoS config | **Kill switch only**: add `SimulateDisabled bool` to `JSONRPCConfig`; reuse existing `RPCGasCap` + `RPCEVMTimeout`; hard-code 256 block cap |
-| Validation error semantics | **Spec-conformant** — tx-level validation failures (`-38010`..`-38025`) are fatal top-level errors that abort the whole request. Revert / VM errors stay per-call (`-32000`/`-32015`). |
+| Validation error semantics | **Spec-conformant** — tx-level validation failures (`-38010`..`-38025`) are fatal top-level errors that abort the whole request. Revert / VM errors stay per-call (`3`/`-32015`, per EIP-140 + execution-apis `CallResultFailure` schema). |
 | Gas numerics | **mezod-native** — reported `GasUsed` honors `MinGasMultiplier` (matches on-chain receipts); raw EVM gas is used only for internal pool accounting |
 | EIP support (Part 1, v1.14.8) | Skip EIP-4844 / 4788 / 2935 / 7685 / Prague (not present in mezod chain config at v1.14.8); reject explicit overrides for those fields |
 | EIP support (Part 2, post-upgrade) | Add EIP-2935 pre-block hook, EIP-7702 SetCode txs, EIP-7825 per-tx gas cap, `MaxUsedGas` field. Continue rejecting EIP-4844/4788/7685 and EIP-6110/7002/7251 — mezo has no beacon chain, no blob DA layer, no EL↔CL requests framework |
@@ -94,23 +94,23 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 
 ---
 
-### Phase 1 — Scaffolding: types + RPC registration + stubs
+### Phase 1 — Scaffolding: types + RPC registration + stubs ✅ DONE ([#658](https://github.com/mezo-org/mezod/pull/658))
 
 **Goal.** Land the `eth_simulateV1` method name on the JSON-RPC surface returning a documented "not implemented" error. Zero behavior risk.
 
 **Files.**
 - NEW `rpc/types/simulate.go` — `SimOpts`, `SimBlock`, `BlockOverrides` (including all spec fields: `Number`, `Time`, `GasLimit`, `FeeRecipient`, `PrevRandao`, `BaseFeePerGas`, `BlobBaseFee`, `BeaconRoot`, `Withdrawals`), `SimCallResult`, `SimBlockResult`. Plain JSON-marshalable types. Custom `MarshalJSON` for `SimCallResult` forces `Logs: []` over `null` (spec-compliant).
-- NEW `rpc/types/simulate_errors.go` — spec-reserved error codes (`-38010`..`-38026`, `-32015`, `-32005`), `jsonRPCError` with `ErrorCode() int` + `ErrorData() any`.
-- NEW `rpc/namespaces/ethereum/eth/simulate.go` — `PublicAPI.SimulateV1(opts SimOpts, blockNrOrHash *rpctypes.BlockNumberOrHash) ([]*SimBlockResult, error)` stub returning `-32601`.
+- NEW `rpc/types/errors.go` — spec-reserved error codes (`-38010`..`-38026`, `-32005`, `-32015`, `-32016`, `-32601`..`-32603`, plus `3` for reverted) under `SimErrCode*` constants named to match the spec text in `execution-apis/src/eth/execute.yaml`. Also exports a generic `RPCError{Code, Message, Data}` type with `ErrorCode() int` + `ErrorData() any` for any call path that needs to surface a structured code.
+- NEW `rpc/namespaces/ethereum/eth/simulate.go` — `PublicAPI.SimulateV1(opts SimOpts, blockNrOrHash *rpctypes.BlockNumberOrHash) ([]*SimBlockResult, error)` stub delegating to the backend.
 - EDIT `rpc/namespaces/ethereum/eth/api.go` — add `SimulateV1` to `EthereumAPI` interface (new section under "EVM/Smart Contract Execution" near L89).
 - EDIT `rpc/backend/backend.go` — add `SimulateV1` signature to `EVMBackend` interface (near L134 next to `DoCall`).
-- NEW `rpc/backend/simulate.go` — `Backend.SimulateV1` stub.
+- NEW `rpc/backend/simulate.go` — `Backend.SimulateV1` stub returning `-32603` "eth_simulateV1 is not yet implemented". Using `-32603` (spec-listed internal error for this method) rather than `-32601` avoids misleading clients that cache "method not found" signals: the method IS registered on the `eth_` namespace, so -32601 would be semantically wrong.
 
 **Security risks.** None — handler short-circuits.
 
 **Verification.**
 - Go unit: `rpc/types/simulate_test.go` — JSON round-trip for all types; `Logs: []` coerce-on-empty; unknown/extra fields tolerated on unmarshal.
-- Go unit: `rpc/backend/simulate_test.go` — stub returns `-32601`.
+- Go unit: `rpc/backend/simulate_test.go` — stub returns `-32603` with "not yet implemented" in the message.
 - System (Hardhat): `tests/system/test/SimulateV1_Stub.test.ts` — `provider.send("eth_simulateV1", [{blockStateCalls:[]}, "latest"])` asserts correct JSON-RPC error shape.
 
 **DoD.**
@@ -125,10 +125,12 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 
 **Goal.** Add `MovePrecompileTo` support to the existing state-override machinery — visible to `eth_call` today, usable by simulate later. Deny-list mezo custom precompiles.
 
-**Design.** Lift precompile-registry construction out of `NewEVM` (L96–124) into a reusable `(k *Keeper) BuildActivePrecompiles(ctx sdk.Context, rules params.Rules) map[common.Address]vm.PrecompiledContract`. Change `applyStateOverrides` to accept + mutate this registry. `MovePrecompileTo` is applied FIRST per spec ordering, with:
-1. Source must currently be a precompile (else `-38022`-shaped error).
-2. Source must **not** be a mezo custom precompile (0x7b7c…, check against `types.DefaultPrecompilesVersions`). Return structured error `"cannot move mezo custom precompile"`.
-3. Destination must not already be overridden (`-38023`-shaped error, tracked via `dirtyAddrs`).
+**Design.** Lift precompile-registry construction out of `NewEVM` (L96–124) into a reusable `(k *Keeper) BuildActivePrecompiles(ctx sdk.Context, rules params.Rules) map[common.Address]vm.PrecompiledContract`. Change `applyStateOverrides` to accept + mutate this registry. `MovePrecompileTo` is applied FIRST per spec ordering, enforcing the invariants below. The spec assigns codes `-38022` and `-38023` to two very specific conditions — match those exactly and use `-32602 invalid params` for the remaining structured rejections (mirrors geth's `override/override.go`).
+
+1. `movePrecompileToAddress == addr` (self-reference) → fatal `-38022` "MovePrecompileToAddress referenced itself in replacement" (`SimErrCodeMovePrecompileSelfReference`).
+2. Two overrides target the same destination → fatal `-38023` "Multiple MovePrecompileToAddress referencing the same address to replace" (`SimErrCodeMovePrecompileDuplicateDest`, tracked via `dirtyAddrs`).
+3. Source address is not currently a precompile → fatal `-32602` "account %s is not a precompile" (plain invalid-params; spec does not carve out a -38xxx code for this, geth uses the same mapping).
+4. Source must **not** be a mezo custom precompile (0x7b7c…, check against `types.DefaultPrecompilesVersions`). Return `-32602` with message `"cannot move mezo custom precompile"`; this is a mezo-specific policy denial, not a spec case, so it rides the generic invalid-params code.
 
 **Files.**
 - EDIT `x/evm/keeper/state_override.go` — extend `overrideAccount` with `MovePrecompileTo *common.Address`; change `applyStateOverrides` signature to take `precompiles map[common.Address]vm.PrecompiledContract`; apply move first; enforce invariants.
@@ -142,13 +144,14 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 - **State sanity** — per spec, move does NOT clear source-address state. Overwriting source's `Code`/`State` is allowed. Document.
 
 **Verification.**
-- Go unit: `x/evm/keeper/state_override_test.go` — extend with ≥8 cases:
+- Go unit: `x/evm/keeper/state_override_test.go` — extend with ≥8 cases, pinning the exact error code returned so Phase 12's spec-conformance suite can verify wire output:
   1. Move sha256 (0x02) → 0x1234, call destination, assert sha256 output.
-  2. Move from non-precompile → structured error.
-  3. Move to already-overridden destination → error.
-  4. Move each of 8 mezo custom precompile addresses → rejected with "cannot move mezo custom precompile".
-  5. Move + overwrite original `Code` → both applied correctly.
-  6. `State` and `StateDiff` mutual exclusion preserved.
+  2. Move from non-precompile → `-32602` "not a precompile".
+  3. `movePrecompileToAddress == source` (self-reference) → `-38022` (`SimErrCodeMovePrecompileSelfReference`).
+  4. Two overrides target the same destination → `-38023` (`SimErrCodeMovePrecompileDuplicateDest`).
+  5. Move each of 8 mezo custom precompile addresses → rejected `-32602` "cannot move mezo custom precompile".
+  6. Move + overwrite original `Code` → both applied correctly.
+  7. `State` and `StateDiff` mutual exclusion preserved.
 - System: `tests/system/test/SimulateV1_MovePrecompile_ethCall.test.ts` — exercise `eth_call` with `movePrecompileTo` for sha256; assert stdlib precompile works at destination.
 
 **DoD.**
@@ -231,7 +234,7 @@ func (k *Keeper) applyMessageWithOverrides(ctx sdk.Context, wrapper MessageWrapp
   - `input.go` — internal `Opts`, `Block`, `BlockOverrides`, `CallResult`, `BlockResult` types. JSON unmarshal with strict validation (reject `ParentBeaconRoot` and `Withdrawals` overrides).
   - `sanitize.go` — `SanitizeChain(base *ethtypes.Header, blocks []Block, maxBlocks int) ([]Block, error)`. Mirrors go-ethereum `simulate.go:400-459`. Rules: default number = `prev.Number + 1`; default time = `prev.Time + 12`; strict-increasing enforcement (`-38020`/`-38021`); gap-fill with empty blocks (count against `maxBlocks`); span cap (`-38026`).
   - `header.go` — `MakeHeader(prev *ethtypes.Header, overrides *BlockOverrides, rules params.Rules, validation bool) (*ethtypes.Header, error)`. Pure function. Sets `UncleHash = EmptyUncleHash`, `ReceiptHash = EmptyReceiptsHash`, `TxHash = EmptyTxsHash`; `Difficulty = 0` post-merge; `Random` non-nil zero post-merge; `BaseFee` from `eip1559.CalcBaseFee` when validation=true and override absent; `BaseFee = 0` otherwise. `ParentBeaconRoot`, `WithdrawalsHash`, `RequestsHash`, `BlobGasUsed`, `ExcessBlobGas` all nil (EIPs not active).
-- NEW `x/evm/keeper/grpc_query_simulate.go` — `Keeper.SimulateV1` gRPC handler stub: unmarshals `opts`, sanitizes, returns `-32601` "execution not yet wired" (short-circuit after sanitize for this phase).
+- NEW `x/evm/keeper/grpc_query_simulate.go` — `Keeper.SimulateV1` gRPC handler stub: unmarshals `opts`, sanitizes, returns `-32603` "execution not yet wired" via `RPCError` (short-circuit after sanitize for this phase; keeps parity with Phase 1's backend stub).
 - EDIT `rpc/backend/simulate.go` — real implementation: marshals opts, sets up timeout ctx (reuse `DoCall` pattern L462-475 verbatim), invokes gRPC.
 
 **Security risks.**
@@ -292,7 +295,7 @@ The keeper's `SimulateV1` gRPC handler constructs the driver and invokes `Simula
   - State override `Balance = 10 BTC` on sender; call `BTCToken.transfer`; assert success.
   - State override with `MovePrecompileTo` for sha256; call destination; assert correctness.
   - Call with insufficient gas limit in `TransactionArgs.Gas` → VM error reported in `simCallResult.Error` (per-call, not fatal).
-  - Reverting call → per-call `Error.code = -32000`, `Error.data = revert reason hex`.
+  - Reverting call → per-call `Error.code = 3` (`SimErrCodeReverted`, EIP-140-aligned per spec `CallResultFailure`), `Error.data = revert reason hex`, `Error.message` prefixed with `"execution reverted"`.
 - Go backend: mocked query-client integration test.
 - System: `tests/system/test/SimulateV1_SingleCall.test.ts` — Hardhat: deploy contract, simulate one `transfer` with balance override, assert event logs + returnData.
 
@@ -314,7 +317,7 @@ The keeper's `SimulateV1` gRPC handler constructs the driver and invokes `Simula
 **Files.**
 - EDIT `x/evm/keeper/simulate/driver.go` — multi-call loop inside a single simulated block; shared StateDB; cumulative `gasUsedInBlock`.
 - EDIT `x/evm/keeper/simulate/sanitize.go` — add `SanitizeCall(call *TransactionArgs, blockCtx vm.BlockContext, state *statedb.StateDB, gasUsedInBlock uint64, gasCap uint64) error`.
-- EDIT `rpc/types/simulate_errors.go` — ensure `-38015` wired.
+- EDIT `rpc/types/errors.go` — ensure `-38015` wired.
 
 **Security risks.**
 - **Shared StateDB journal growth** — a request with 1000 calls producing 4KB storage per call = 4MB journaled. Phase 8's global block cap (256) × per-block gas limit (mezod's `BlockMaxGasFromConsensusParams`) bounds this. Add an internal sanity check: per-request cumulative journal-size cap (e.g. 100MB hard fail).
@@ -396,7 +399,7 @@ Pre-execution: compute preliminary headers for all sanitized blocks so `GetHashF
 - **Kill switch.** New field `SimulateDisabled bool` on `JSONRPCConfig` (`server/config/config.go`). Default `false`. Checked in `PublicAPI.SimulateV1` before reaching backend.
 - **Block cap.** Hard-code `maxSimulateBlocks = 256` in `x/evm/keeper/simulate/driver.go`. Enforced twice: at the RPC layer (fast fail), and inside `SanitizeChain` for defense-in-depth (span check, not just input len).
 - **Gas pool.** One `uint64 gasRemaining` initialized from `b.RPCGasCap()` (existing knob). Deducted on every call's `res.GasUsed`. Exhaustion → structured `-38015`-shaped error, aborts request.
-- **Timeout.** Single `context.WithTimeout(ctx, b.RPCEVMTimeout())` at the backend entry (reuse `DoCall`'s pattern L462-475). Inside the keeper loop, check `ctx.Err()` before every call. Mirror go-ethereum's `applyMessageWithEVM` goroutine (`api.go:752-754`) that calls `evm.Cancel()` on ctx-done.
+- **Timeout.** Single `context.WithTimeout(ctx, b.RPCEVMTimeout())` at the backend entry (reuse `DoCall`'s pattern L462-475). Inside the keeper loop, check `ctx.Err()` before every call. Mirror go-ethereum's `applyMessageWithEVM` goroutine (`api.go:752-754`) that calls `evm.Cancel()` on ctx-done. On ctx-done return a top-level fatal `-32016` "execution aborted (timeout = Xs)" (`SimErrCodeTimeout`, spec-reserved for this method).
 - **Per-block gas limit.** Already from Phase 6 via `SanitizeCall`.
 - **Cumulative call count.** Soft cap of 1000 calls per request (hard-coded constant, not configurable for v1). Prevents pathological 256-block × 10000-calls requests that would still bust memory even within gas cap.
 
@@ -417,8 +420,8 @@ Pre-execution: compute preliminary headers for all sanitized blocks so `GetHashF
   1. Request with >256 blocks → `-38026`.
   2. Request with ≥1000 calls total → structured error.
   3. Request that exhausts `gasRemaining` → `-38015`-shaped error on the offending call, request continues until the next call which fails the same way (eventually whole simulation returns remaining calls unexecuted).
-  4. Timeout fires during a long call → request returns `"execution aborted (timeout = 5s)"` error within 5.2s.
-  5. Kill switch: `SimulateDisabled=true` → RPC returns `-32601` immediately.
+  4. Timeout fires during a long call → request returns `-32016` `"execution aborted (timeout = 5s)"` within 5.2s.
+  5. Kill switch: `SimulateDisabled=true` → RPC returns `-32601 "the method eth_simulateV1 does not exist/is not available"` immediately (kill-switch intentionally impersonates "method absent" so the operator can hide the endpoint wholesale; distinct from the Phase 1 "not yet implemented" stub which uses `-32603`).
 - Go unit: layered failure — each guard triggers under controlled inputs even if others are relaxed.
 - System: `tests/system/test/SimulateV1_Limits.test.ts` — 257 blocks → error; kill-switch test via config reload.
 - **Manual localnet verification** (JUSTIFIED): run 256-block × 1000-call simulation under `RPCEVMTimeout=5s`; capture pprof heap snapshot before/after; assert memory stable (<200MB delta, no leaks).
@@ -482,11 +485,12 @@ Inside simulate driver: when `TraceTransfers=true`, wrap StateDB via `state.NewH
 
 **Design.** In the driver:
 - `validation=true` → before each call: run nonce check (returns `-38010`/`-38011`), balance check for `gasLimit*gasPrice + value` (returns `-38014`), intrinsic-gas check (returns `-38013`), init-code-size check (returns `-38025`). Any failure aborts the request and returns the top-level structured error.
-- `validation=true` + no `BaseFee` override → compute via `eip1559.CalcBaseFee(cfg, parent)`; if `msg.GasFeeCap < baseFee` → top-level `-32005`.
+- `validation=true` + no `BaseFee` override → compute via `eip1559.CalcBaseFee(cfg, parent)`; if `msg.GasFeeCap < baseFee` → top-level `-32005` (`SimErrCodeFeeCapTooLow`, "Transactions maxFeePerGas is too low").
+- `validation=true` + `BlockOverrides.BaseFeePerGas` override supplied but below what the surrounding block context makes acceptable (e.g., negative after dropping out of bounds, or lower than an in-request prior-block baseFee the chain would reject) → top-level `-38012` (`SimErrCodeBaseFeeTooLow`, "Transactions baseFeePerGas is too low"). This is a separate code from `-32005` per the execution-apis spec: `-32005` is about the *transaction's* fee cap, `-38012` is about the *block's* overridden baseFee being rejected outright.
 - `validation=true` → `EVMOverrides.NoBaseFee = &false` (force real base-fee checks regardless of fee-market `NoBaseFee` param).
 - `validation=true` → `msg.SkipNonceChecks = false` (fail via core package too).
 - `validation=false` (default) → preserves Phase 4 behavior: `BaseFee = 0`, `NoBaseFee = true`, `SkipNonceChecks = true`.
-- Revert / VM errors (invalid opcode, OOG) stay per-call in `simCallResult.Error` regardless of validation mode.
+- Revert / VM errors (invalid opcode, OOG) stay per-call in `simCallResult.Error` regardless of validation mode (revert → code `3` per `CallResultFailure`; VM → `-32015`).
 
 `SkipAccountChecks = true` always (EoA check off — per research §13 and spec; custom overrides may well be a contract at the from address).
 
@@ -506,9 +510,10 @@ Inside simulate driver: when `TraceTransfers=true`, wrap StateDB via `state.NewH
   - `validation=true` + nonce-too-low → top-level `-38010`.
   - `validation=true` + nonce-too-high → top-level `-38011`.
   - `validation=true` + insufficient funds (gas*price + value > balance) → top-level `-38014`.
-  - `validation=true` + gasFeeCap < baseFee → top-level `-32005`.
+  - `validation=true` + gasFeeCap < baseFee → top-level `-32005` (`SimErrCodeFeeCapTooLow`).
+  - `validation=true` + `BlockOverrides.BaseFeePerGas` lower than the chain would accept → top-level `-38012` (`SimErrCodeBaseFeeTooLow`).
   - `validation=true` + fee-market `NoBaseFee=true` on node → still enforces base fee (spec compliance, not node config).
-  - `validation=true` + reverting call → **per-call** `-32000` (not fatal — matches spec: execution-level errors stay per-call).
+  - `validation=true` + reverting call → **per-call** `error.code = 3` (`SimErrCodeReverted`, spec `CallResultFailure` pins revert at `3`; not fatal — matches spec: execution-level errors stay per-call).
 - **Port the relevant go-ethereum conformance fixtures** from `ethereum/execution-apis/tests/eth_simulateV1/` — specifically the `-38014` and `-38011` fatal-abort cases, plus matching `validation=false` success cases.
 - System: `tests/system/test/SimulateV1_Validation.test.ts` — Hardhat, underfunded tx under both modes.
 - **Invoke `/security-review` on the branch before merge.**
@@ -675,7 +680,7 @@ The Phase 7 `simulatedGetHashFn` closure stays — it still covers the `[base, b
 
 **Design.**
 - **Input.** `TransactionArgs.AuthorizationList` is populated by the upgrade project. Simulate's JSON unmarshal passes it through unchanged; `call.ToMessage` at the keeper level absorbs it.
-- **Validation mode.** When `validation=true`, validate each auth per EIP-7702: `chainID ∈ {0, chain.ID}`, nonce matches current state, signer not a contract (unless already delegated to one), signature recoverable. Any invalid auth → top-level fatal error with new structured code (await upstream assignment; add to `rpc/types/simulate_errors.go`).
+- **Validation mode.** When `validation=true`, validate each auth per EIP-7702: `chainID ∈ {0, chain.ID}`, nonce matches current state, signer not a contract (unless already delegated to one), signature recoverable. Any invalid auth → top-level fatal error with new structured code (await upstream assignment; add to `rpc/types/errors.go`).
 - **State overrides + delegation.** `OverrideAccount.Code` set to `0xef0100` + 20-byte address is interpreted as a delegation. `applyStateOverrides` passes through unchanged — mezod's upgraded StateDB handles the prefix semantics.
 - **Cross-call nonce consistency.** Auth nonces reference current state; between calls in a simulated block, nonce advances. Validation must consult the shared StateDB, not a snapshot.
 
@@ -683,7 +688,7 @@ The Phase 7 `simulatedGetHashFn` closure stays — it still covers the `[base, b
 - EDIT `x/evm/keeper/simulate/driver.go` — recognize `authList` in the call loop; invoke per-call auth validation when `validation=true`.
 - EDIT `x/evm/keeper/simulate/input.go` — allow `authorizationList` in JSON `calls[]` unmarshal.
 - EDIT `rpc/types/simulate.go` — surface `AuthorizationList` in the serializable call-args shape if not already present from the upgrade.
-- EDIT `rpc/types/simulate_errors.go` — add EIP-7702 auth-invalid error codes.
+- EDIT `rpc/types/errors.go` — add EIP-7702 auth-invalid error codes.
 
 **Security risks.**
 - **Delegation amplification in state overrides.** A caller could set up a chain of delegations across N EOAs that inflate storage reads per call. Bounded by Phase 8's per-call gas + global request caps; the new Phase 16 per-tx 16M cap is an additional bound.
@@ -721,7 +726,7 @@ The Phase 7 `simulatedGetHashFn` closure stays — it still covers the `[base, b
 - EDIT `x/evm/keeper/simulate/sanitize.go` — add per-tx 16M gas cap check in `sanitizeCall`.
 - EDIT `rpc/types/simulate.go` — add `MaxUsedGas hexutil.Uint64` field to `SimCallResult`.
 - EDIT `x/evm/keeper/simulate/driver.go` — populate `MaxUsedGas` from `ExecutionResult`.
-- EDIT `rpc/types/simulate_errors.go` — add per-tx cap violation code.
+- EDIT `rpc/types/errors.go` — add per-tx cap violation code.
 
 **Security risks.** Negligible — the cap is a bound, not new surface.
 
@@ -762,7 +767,7 @@ Each phase's DoD is binary; but across the whole feature:
 - `x/evm/tracer/transfertracer/tracer.go` (Phase 9 — NEW package)
 - `rpc/types/types.go` (Phase 2 — `OverrideAccount.MovePrecompileTo`)
 - `rpc/types/simulate.go` (Phase 1 — NEW, spec-shaped JSON types)
-- `rpc/types/simulate_errors.go` (Phase 1 — NEW, `-380xx` codes)
+- `rpc/types/errors.go` (Phase 1 — NEW, `-380xx` codes)
 - `rpc/types/simulate_marshal.go` (Phase 11 — NEW, `MarshalJSON` with `from` patching)
 - `rpc/backend/backend.go` (Phase 1 — `SimulateV1` + `SimulateDisabled` on `EVMBackend`)
 - `rpc/backend/simulate.go` (Phase 1 — NEW, backend adapter)
@@ -782,7 +787,7 @@ Each phase's DoD is binary; but across the whole feature:
 - `x/evm/keeper/simulate/input.go` (Phase 15 — `authorizationList` unmarshal)
 - `x/evm/keeper/simulate/sanitize.go` (Phase 16 — per-tx 16M gas cap)
 - `rpc/types/simulate.go` (Phase 16 — `MaxUsedGas` field on `SimCallResult`)
-- `rpc/types/simulate_errors.go` (Phases 15, 16 — EIP-7702 auth errors, per-tx cap error)
+- `rpc/types/errors.go` (Phases 15, 16 — EIP-7702 auth errors, per-tx cap error)
 - `tests/system/test/SimulateV1_EIP2935.test.ts`, `SimulateV1_EIP7702.test.ts` (Phases 14, 15 — NEW system tests)
 
 ## Untouched (deliberately, for safety)
@@ -799,7 +804,7 @@ Each phase's DoD is binary; but across the whole feature:
 ### Part 1 (v1.14.8, Cancun)
 
 1. **EIP-4844 / 4788 / 2935 / 7685 / Prague not supported.** Overrides for `BeaconRoot`, `Withdrawals`, blob gas fields are rejected.
-2. **Custom mezo precompiles immovable.** `MovePrecompileTo` for any of the 8 addresses at `0x7b7c…` returns a structured error.
+2. **Custom mezo precompiles immovable.** `MovePrecompileTo` for any of the 8 addresses at `0x7b7c…` returns a structured `-32602` error (spec does not assign a dedicated -38xxx code to this policy rejection; geth uses the same mapping for "source is not a precompile").
 3. **`GasUsed` honors `MinGasMultiplier`.** Reported gas matches mezod on-chain receipts, not go-ethereum's raw EVM gas. Documented for callers comparing across chains.
 4. **BLOCKHASH canonical range bounded by `HistoricalEntries` param** (commonly 10000). `BLOCKHASH(base - N)` for `N > HistoricalEntries` returns zero hash. Same as go-ethereum on a pruned node.
 

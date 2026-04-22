@@ -87,6 +87,7 @@ type EthereumAPI interface {
 	// Allows developers to read data from the blockchain which includes executing
 	// smart contracts. However, no data is published to the network.
 	Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *rpctypes.StateOverride) (hexutil.Bytes, error)
+	SimulateV1(opts rpctypes.SimOpts, blockNrOrHash *rpctypes.BlockNumberOrHash) ([]*rpctypes.SimBlockResult, error)
 
 	// Chain Information
 	//
