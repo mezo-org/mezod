@@ -4,7 +4,7 @@ package types
 // values mirror the execution-apis spec; see the canonical error list
 // (message text + condition) at:
 //
-//   https://github.com/ethereum/execution-apis/blob/main/src/eth/execute.yaml
+//	https://github.com/ethereum/execution-apis/blob/main/src/eth/execute.yaml
 //
 // Also exported here is the generic `RPCError` type for any call path
 // that needs to surface a structured `{code, message, data}` payload
