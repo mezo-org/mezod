@@ -123,6 +123,7 @@ func NewPrecompile(
 		contractAbi,
 		common.HexToAddress(EvmAddress),
 		EvmByteCode,
+		"maintenance",
 	)
 
 	methods := newPrecompileMethods(poaKeeper, evmKeeper, feeMarketKeeper, settings)

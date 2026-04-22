@@ -15,8 +15,8 @@ var (
 )
 
 func TestVersionMap(t *testing.T) {
-	contract1 := NewContract(mockAbi, common.HexToAddress("0x123"), mockBytecode)
-	contract2 := NewContract(mockAbi, common.HexToAddress("0x123"), mockBytecode)
+	contract1 := NewContract(mockAbi, common.HexToAddress("0x123"), mockBytecode, "")
+	contract2 := NewContract(mockAbi, common.HexToAddress("0x123"), mockBytecode, "")
 
 	vm := NewVersionMap(map[int]*Contract{
 		0: contract1,
@@ -50,8 +50,8 @@ func TestVersionMap(t *testing.T) {
 }
 
 func TestVersionMap_UnhappyPaths(t *testing.T) {
-	contract := NewContract(mockAbi, common.HexToAddress("0x123"), mockBytecode)
-	otherContract := NewContract(mockAbi, common.HexToAddress("0x124"), mockBytecode)
+	contract := NewContract(mockAbi, common.HexToAddress("0x123"), mockBytecode, "")
+	otherContract := NewContract(mockAbi, common.HexToAddress("0x124"), mockBytecode, "")
 
 	assert.PanicsWithValue(t, "no contracts provided", func() {
 		NewVersionMap(nil)

@@ -50,6 +50,7 @@ func NewPrecompile(
 		contractAbi,
 		common.HexToAddress(EvmAddress),
 		EvmByteCode,
+		"price-oracle",
 	)
 
 	methods := newPrecompileMethods(oracleQueryServer)

@@ -19,7 +19,7 @@ import (
 func TestContract_Address(t *testing.T) {
 	address := common.HexToAddress("0x1")
 
-	contract := NewContract(abi.ABI{}, address, "")
+	contract := NewContract(abi.ABI{}, address, "", "")
 
 	if actualAddress := contract.Address(); address != actualAddress {
 		t.Errorf(
@@ -27,6 +27,36 @@ func TestContract_Address(t *testing.T) {
 			address,
 			actualAddress,
 		)
+	}
+}
+
+func TestContract_Name(t *testing.T) {
+	address := common.HexToAddress("0x1")
+
+	tests := map[string]struct {
+		contract *Contract
+		expected string
+	}{
+		"uses configured name": {
+			contract: NewContract(abi.ABI{}, address, "", "testbed"),
+			expected: "testbed",
+		},
+		"returns empty name when not configured": {
+			contract: NewContract(abi.ABI{}, address, "", ""),
+			expected: "",
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			if actualName := test.contract.Name(); test.expected != actualName {
+				t.Errorf(
+					"unexpected name\n expected: %v\n actual:   %v",
+					test.expected,
+					actualName,
+				)
+			}
+		})
 	}
 }
 
@@ -67,7 +97,7 @@ func TestContract_RequiredGas(t *testing.T) {
 				},
 			}
 
-			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "")
+			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "", "")
 
 			contract.RegisterMethods(test.method)
 
@@ -87,7 +117,7 @@ func TestContract_RequiredGas(t *testing.T) {
 }
 
 func TestContract_RegisterMethods(t *testing.T) {
-	contract := NewContract(abi.ABI{}, common.HexToAddress("0x1"), "")
+	contract := NewContract(abi.ABI{}, common.HexToAddress("0x1"), "", "")
 
 	method1 := &mockMethod{methodName: "testMethod1", methodType: Write}
 	method2Write := &mockMethod{methodName: "testMethod2", methodType: Write}
@@ -224,7 +254,7 @@ func TestContract_Run(t *testing.T) {
 				},
 			}
 
-			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "")
+			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "", "")
 
 			contract.RegisterMethods(test.method)
 
