@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJSONRPCErrorImplementsInterfaces(t *testing.T) {
-	err := &JSONRPCError{
+func TestRPCErrorImplementsInterfaces(t *testing.T) {
+	err := &RPCError{
 		Code:    SimErrCodeInsufficientFunds,
 		Message: "insufficient funds",
 		Data:    "0xdead",

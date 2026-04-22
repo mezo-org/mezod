@@ -10,8 +10,8 @@ func (suite *BackendTestSuite) TestSimulateV1_StubReturnsMethodNotFound() {
 	_, err := suite.backend.SimulateV1(rpctypes.SimOpts{}, nil)
 	suite.Require().Error(err)
 
-	var coded *rpctypes.JSONRPCError
-	suite.Require().True(errors.As(err, &coded), "error should be a *JSONRPCError, got %T", err)
+	var coded *rpctypes.RPCError
+	suite.Require().True(errors.As(err, &coded), "error should be a *RPCError, got %T", err)
 	suite.Require().Equal(rpctypes.SimErrCodeMethodNotFound, coded.ErrorCode())
 }
 
@@ -28,7 +28,7 @@ func (suite *BackendTestSuite) TestSimulateV1_StubIgnoresOptsAndBlockNr() {
 	_, err := suite.backend.SimulateV1(opts, &bnh)
 	suite.Require().Error(err)
 
-	var coded *rpctypes.JSONRPCError
+	var coded *rpctypes.RPCError
 	suite.Require().True(errors.As(err, &coded))
 	suite.Require().Equal(rpctypes.SimErrCodeMethodNotFound, coded.ErrorCode())
 }

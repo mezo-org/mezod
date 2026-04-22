@@ -1,7 +1,11 @@
 package types
 
-// Spec-reserved JSON-RPC error codes for `eth_simulateV1`, matching the
-// execution-apis spec and go-ethereum's `internal/ethapi/errors.go`.
+// Spec-reserved JSON-RPC error codes introduced by the `eth_simulateV1`
+// execution-apis spec. Every -38xxx value below appears in the simulate
+// schema, and the -32xxx values are the subset used inside simulate call
+// paths per go-ethereum's `internal/ethapi/errors.go`. Kept together here
+// so the simulate driver and RPC layer can branch on a single coded
+// vocabulary.
 const (
 	SimErrCodeNonceTooLow              = -38010
 	SimErrCodeNonceTooHigh             = -38011
@@ -24,22 +28,23 @@ const (
 	SimErrCodeInternalError  = -32603
 )
 
-// JSONRPCError is a structured JSON-RPC error carrying a numeric code plus
+// RPCError is a structured JSON-RPC error carrying a numeric code plus
 // optional data payload. Geth's rpc package populates the wire-level
 // `{code, message, data}` fields from `ErrorCode()` / `ErrorData()` methods.
-type JSONRPCError struct {
+type RPCError struct {
 	Code    int
 	Message string
 	Data    interface{}
 }
 
-func (e *JSONRPCError) Error() string          { return e.Message }
-func (e *JSONRPCError) ErrorCode() int         { return e.Code }
-func (e *JSONRPCError) ErrorData() interface{} { return e.Data }
+func (e *RPCError) Error() string          { return e.Message }
+func (e *RPCError) ErrorCode() int         { return e.Code }
+func (e *RPCError) ErrorData() interface{} { return e.Data }
 
-// NewSimNotImplementedError returns a `-32601` "method not found" error.
-func NewSimNotImplementedError() *JSONRPCError {
-	return &JSONRPCError{
+// NewSimNotImplementedError returns a `-32601` "method not found" error
+// for the `eth_simulateV1` stub.
+func NewSimNotImplementedError() *RPCError {
+	return &RPCError{
 		Code:    SimErrCodeMethodNotFound,
 		Message: "eth_simulateV1 is not implemented",
 	}

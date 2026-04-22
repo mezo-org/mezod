@@ -100,7 +100,7 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 
 **Files.**
 - NEW `rpc/types/simulate.go` — `SimOpts`, `SimBlock`, `BlockOverrides` (including all spec fields: `Number`, `Time`, `GasLimit`, `FeeRecipient`, `PrevRandao`, `BaseFeePerGas`, `BlobBaseFee`, `BeaconRoot`, `Withdrawals`), `SimCallResult`, `SimBlockResult`. Plain JSON-marshalable types. Custom `MarshalJSON` for `SimCallResult` forces `Logs: []` over `null` (spec-compliant).
-- NEW `rpc/types/simulate_errors.go` — spec-reserved error codes (`-38010`..`-38026`, `-32015`, `-32005`), `jsonRPCError` with `ErrorCode() int` + `ErrorData() any`.
+- NEW `rpc/types/errors.go` — spec-reserved error codes (`-38010`..`-38026`, `-32015`, `-32005`) under `SimErrCode*` constants, plus a generic `RPCError{Code, Message, Data}` type with `ErrorCode() int` + `ErrorData() any` for any call path that needs to surface a structured code.
 - NEW `rpc/namespaces/ethereum/eth/simulate.go` — `PublicAPI.SimulateV1(opts SimOpts, blockNrOrHash *rpctypes.BlockNumberOrHash) ([]*SimBlockResult, error)` stub returning `-32601`.
 - EDIT `rpc/namespaces/ethereum/eth/api.go` — add `SimulateV1` to `EthereumAPI` interface (new section under "EVM/Smart Contract Execution" near L89).
 - EDIT `rpc/backend/backend.go` — add `SimulateV1` signature to `EVMBackend` interface (near L134 next to `DoCall`).
@@ -314,7 +314,7 @@ The keeper's `SimulateV1` gRPC handler constructs the driver and invokes `Simula
 **Files.**
 - EDIT `x/evm/keeper/simulate/driver.go` — multi-call loop inside a single simulated block; shared StateDB; cumulative `gasUsedInBlock`.
 - EDIT `x/evm/keeper/simulate/sanitize.go` — add `SanitizeCall(call *TransactionArgs, blockCtx vm.BlockContext, state *statedb.StateDB, gasUsedInBlock uint64, gasCap uint64) error`.
-- EDIT `rpc/types/simulate_errors.go` — ensure `-38015` wired.
+- EDIT `rpc/types/errors.go` — ensure `-38015` wired.
 
 **Security risks.**
 - **Shared StateDB journal growth** — a request with 1000 calls producing 4KB storage per call = 4MB journaled. Phase 8's global block cap (256) × per-block gas limit (mezod's `BlockMaxGasFromConsensusParams`) bounds this. Add an internal sanity check: per-request cumulative journal-size cap (e.g. 100MB hard fail).
@@ -675,7 +675,7 @@ The Phase 7 `simulatedGetHashFn` closure stays — it still covers the `[base, b
 
 **Design.**
 - **Input.** `TransactionArgs.AuthorizationList` is populated by the upgrade project. Simulate's JSON unmarshal passes it through unchanged; `call.ToMessage` at the keeper level absorbs it.
-- **Validation mode.** When `validation=true`, validate each auth per EIP-7702: `chainID ∈ {0, chain.ID}`, nonce matches current state, signer not a contract (unless already delegated to one), signature recoverable. Any invalid auth → top-level fatal error with new structured code (await upstream assignment; add to `rpc/types/simulate_errors.go`).
+- **Validation mode.** When `validation=true`, validate each auth per EIP-7702: `chainID ∈ {0, chain.ID}`, nonce matches current state, signer not a contract (unless already delegated to one), signature recoverable. Any invalid auth → top-level fatal error with new structured code (await upstream assignment; add to `rpc/types/errors.go`).
 - **State overrides + delegation.** `OverrideAccount.Code` set to `0xef0100` + 20-byte address is interpreted as a delegation. `applyStateOverrides` passes through unchanged — mezod's upgraded StateDB handles the prefix semantics.
 - **Cross-call nonce consistency.** Auth nonces reference current state; between calls in a simulated block, nonce advances. Validation must consult the shared StateDB, not a snapshot.
 
@@ -683,7 +683,7 @@ The Phase 7 `simulatedGetHashFn` closure stays — it still covers the `[base, b
 - EDIT `x/evm/keeper/simulate/driver.go` — recognize `authList` in the call loop; invoke per-call auth validation when `validation=true`.
 - EDIT `x/evm/keeper/simulate/input.go` — allow `authorizationList` in JSON `calls[]` unmarshal.
 - EDIT `rpc/types/simulate.go` — surface `AuthorizationList` in the serializable call-args shape if not already present from the upgrade.
-- EDIT `rpc/types/simulate_errors.go` — add EIP-7702 auth-invalid error codes.
+- EDIT `rpc/types/errors.go` — add EIP-7702 auth-invalid error codes.
 
 **Security risks.**
 - **Delegation amplification in state overrides.** A caller could set up a chain of delegations across N EOAs that inflate storage reads per call. Bounded by Phase 8's per-call gas + global request caps; the new Phase 16 per-tx 16M cap is an additional bound.
@@ -721,7 +721,7 @@ The Phase 7 `simulatedGetHashFn` closure stays — it still covers the `[base, b
 - EDIT `x/evm/keeper/simulate/sanitize.go` — add per-tx 16M gas cap check in `sanitizeCall`.
 - EDIT `rpc/types/simulate.go` — add `MaxUsedGas hexutil.Uint64` field to `SimCallResult`.
 - EDIT `x/evm/keeper/simulate/driver.go` — populate `MaxUsedGas` from `ExecutionResult`.
-- EDIT `rpc/types/simulate_errors.go` — add per-tx cap violation code.
+- EDIT `rpc/types/errors.go` — add per-tx cap violation code.
 
 **Security risks.** Negligible — the cap is a bound, not new surface.
 
@@ -762,7 +762,7 @@ Each phase's DoD is binary; but across the whole feature:
 - `x/evm/tracer/transfertracer/tracer.go` (Phase 9 — NEW package)
 - `rpc/types/types.go` (Phase 2 — `OverrideAccount.MovePrecompileTo`)
 - `rpc/types/simulate.go` (Phase 1 — NEW, spec-shaped JSON types)
-- `rpc/types/simulate_errors.go` (Phase 1 — NEW, `-380xx` codes)
+- `rpc/types/errors.go` (Phase 1 — NEW, `-380xx` codes)
 - `rpc/types/simulate_marshal.go` (Phase 11 — NEW, `MarshalJSON` with `from` patching)
 - `rpc/backend/backend.go` (Phase 1 — `SimulateV1` + `SimulateDisabled` on `EVMBackend`)
 - `rpc/backend/simulate.go` (Phase 1 — NEW, backend adapter)
@@ -782,7 +782,7 @@ Each phase's DoD is binary; but across the whole feature:
 - `x/evm/keeper/simulate/input.go` (Phase 15 — `authorizationList` unmarshal)
 - `x/evm/keeper/simulate/sanitize.go` (Phase 16 — per-tx 16M gas cap)
 - `rpc/types/simulate.go` (Phase 16 — `MaxUsedGas` field on `SimCallResult`)
-- `rpc/types/simulate_errors.go` (Phases 15, 16 — EIP-7702 auth errors, per-tx cap error)
+- `rpc/types/errors.go` (Phases 15, 16 — EIP-7702 auth errors, per-tx cap error)
 - `tests/system/test/SimulateV1_EIP2935.test.ts`, `SimulateV1_EIP7702.test.ts` (Phases 14, 15 — NEW system tests)
 
 ## Untouched (deliberately, for safety)
