@@ -2,10 +2,14 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 
 describe("SimulateV1_Stub", function () {
-  // Phase 1 ships a stub that returns JSON-RPC -32601 (method not found).
-  // Later phases replace this with the full implementation.
+  // Phase 1 ships a stub that returns JSON-RPC -32603 (internal error)
+  // with a "not yet implemented" message. The method IS registered on
+  // the eth_ namespace, so -32603 is the spec-listed internal-error
+  // code (per execution-apis `src/eth/execute.yaml`), not -32601 which
+  // would incorrectly signal an unknown method.
+  // Later phases replace this stub with the full implementation.
 
-  it("should be registered as eth_simulateV1 and return a JSON-RPC error", async function () {
+  it("should be registered as eth_simulateV1 and return not-yet-implemented", async function () {
     let raisedError: any
     try {
       await ethers.provider.send("eth_simulateV1", [
@@ -22,9 +26,10 @@ describe("SimulateV1_Stub", function () {
     const code = extractCode(raisedError)
     const message = extractMessage(raisedError)
 
-    expect(code, `expected numeric JSON-RPC code, got ${JSON.stringify(raisedError)}`).to.equal(-32601)
+    expect(code, `expected numeric JSON-RPC code, got ${JSON.stringify(raisedError)}`).to.equal(-32603)
     expect(message).to.be.a("string")
     expect(message.toLowerCase()).to.include("eth_simulatev1")
+    expect(message.toLowerCase()).to.include("not yet implemented")
   })
 })
 
