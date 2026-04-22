@@ -6,6 +6,9 @@ metadata:
 data:
   addresses-mezo.txt: |
     passport-mezo-relayer:0xf35c1a20303ddcA464Ebf5b3b023588Cf3181c8a
+    pyth-updater:0x2585618FD0b5656C72918CC7b92207e5B6022DfD
+    safety-buffer-keeper:0x1cBbC5f210031fF947F4a17D87fcFbBe02A7a8f7
   addresses-ethereum.txt: |
     bridge-reimbursement-pool:0x700C8840aCDd035cFE35847bFD928C576f9C92A7
     bridge-worker:0x419b505186fe3880Ac6407AcD14dD0398d6e8Ec8
+    pyth-updater:0x2585618FD0b5656C72918CC7b92207e5B6022DfD
