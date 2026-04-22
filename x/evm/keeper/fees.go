@@ -94,7 +94,7 @@ func VerifyFee(
 		accessList = txData.GetAccessList()
 	}
 
-	// TODO: pass set code authorizations when supporting the new 1.16.9 transaction flow.
+	// TODO (geth-upgrade): pass set code authorizations when supporting the new 1.16.9 transaction flow.
 	intrinsicGas, err := core.IntrinsicGas(txData.GetData(), accessList, nil, isContractCreation, homestead, istanbul, isShanghai)
 	if err != nil {
 		return nil, errorsmod.Wrapf(

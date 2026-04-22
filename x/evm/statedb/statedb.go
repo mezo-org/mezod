@@ -398,13 +398,13 @@ func (s *StateDB) Witness() *stateless.Witness {
 }
 
 func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
-	// TODO: implement when adding support for the new access-event flow in 1.16.9.
+	// TODO (geth-upgrade): implement when adding support for the new access-event flow in 1.16.9.
 	return nil
 }
 
 //nolint:misspell
 func (s *StateDB) Finalise(bool) {
-	// TODO: implement when adding support for the new state finalization flow in 1.16.9.
+	// TODO (geth-upgrade): implement when adding support for the new state finalization flow in 1.16.9.
 }
 
 // GetCode returns the code of account, nil if not exists.
@@ -454,7 +454,7 @@ func (s *StateDB) GetCommittedState(addr common.Address, hash common.Hash) commo
 
 // GetStateAndCommittedState returns the current value and the committed value.
 func (s *StateDB) GetStateAndCommittedState(addr common.Address, hash common.Hash) (common.Hash, common.Hash) {
-	// TODO: check when reviewing state access changes in 1.16.9.
+	// TODO (geth-upgrade): check when reviewing state access changes in 1.16.9.
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.GetState(hash), stateObject.GetCommittedState(hash)
