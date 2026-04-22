@@ -376,13 +376,13 @@ func (k *Keeper) ApplyMessageWithConfig(
 	txConfig statedb.TxConfig,
 ) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	stateDB := statedb.New(ctx, k, txConfig)
-	return k.applyMessageWithConfig(ctx, wrapper, tracer, commit, cfg, txConfig, stateDB)
+	return k.applyMessageWithConfig(ctx, wrapper, tracer, commit, cfg, txConfig, stateDB, k.NewEVM)
 }
 
 // SimulateMessage applies the given message against the existing state without
 // committing changes. It optionally applies pre-parsed state overrides to the
-// StateDB before execution. This method is intended for read-only simulation
-// (eth_call, eth_estimateGas).
+// StateDB before execution, including MovePrecompileTo relocations. This
+// method is intended for read-only simulation (eth_call, eth_estimateGas).
 func (k *Keeper) SimulateMessage(
 	ctx sdk.Context,
 	wrapper MessageWrapper,
@@ -392,14 +392,75 @@ func (k *Keeper) SimulateMessage(
 	overrides stateOverride,
 ) (*types.MsgEthereumTxResponse, error) {
 	stateDB := statedb.New(ctx, k, txConfig)
+
+	var moves map[common.Address]common.Address
 	if overrides != nil {
-		if err := applyStateOverrides(stateDB, overrides); err != nil {
-			return nil, errorsmod.Wrap(err, "failed to apply state overrides")
+		rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
+		var err error
+		moves, err = applyStateOverrides(stateDB, overrides, rules)
+		if err != nil {
+			return nil, err
 		}
 	}
-	res, _, err := k.applyMessageWithConfig(ctx, wrapper, tracer, false, cfg, txConfig, stateDB)
+
+	buildEVM := func(
+		ctx sdk.Context,
+		msg core.Message,
+		cfg *statedb.EVMConfig,
+		tracer *tracers.Tracer,
+		stateDB vm.StateDB,
+	) *vm.EVM {
+		evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
+		if len(moves) == 0 {
+			return evm
+		}
+
+		// The v1.14.8 fork has no API to read an EVM's precompile
+		// registry back after WithPrecompiles, so the registry is
+		// rebuilt here before applying the moves.
+		//
+		// TODO (geth-upgrade): swap the rebuild + WithPrecompiles for
+		// evm.Precompiles() read, in-place mutation, and
+		// evm.SetPrecompiles() (both added in v1.16.9).
+		rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
+		precompilesVersions := make(map[common.Address]uint32)
+		for _, pv := range k.GetParams(ctx).PrecompilesVersions {
+			precompilesVersions[common.HexToAddress(pv.PrecompileAddress)] = pv.Version
+		}
+		precompiles := maps.Clone(vm.DefaultPrecompiles(rules))
+		for address, versionMap := range k.customPrecompiles {
+			version := precompilesVersions[address]
+			precompile, ok := versionMap.GetByVersion(int(version))
+			if !ok {
+				continue
+			}
+			precompiles[address] = vm.PrecompiledContract(precompile)
+		}
+		for src, dst := range moves {
+			if p, ok := precompiles[src]; ok {
+				precompiles[dst] = p
+				delete(precompiles, src)
+			}
+		}
+		evm.WithPrecompiles(precompiles, maps.Keys(precompiles))
+		return evm
+	}
+
+	res, _, err := k.applyMessageWithConfig(
+		ctx, wrapper, tracer, false, cfg, txConfig, stateDB, buildEVM,
+	)
 	return res, err
 }
+
+// evmBuilder constructs the *vm.EVM that applyMessageWithConfig runs the
+// message on.
+type evmBuilder func(
+	ctx sdk.Context,
+	msg core.Message,
+	cfg *statedb.EVMConfig,
+	tracer *tracers.Tracer,
+	stateDB vm.StateDB,
+) *vm.EVM
 
 // applyMessageWithConfig is the private core that executes an EVM message
 // against the provided StateDB.
@@ -411,6 +472,7 @@ func (k *Keeper) applyMessageWithConfig(
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
 	stateDB *statedb.StateDB,
+	buildEVM evmBuilder,
 ) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	msg := wrapper.Unwrap()
 
@@ -427,7 +489,7 @@ func (k *Keeper) applyMessageWithConfig(
 		return nil, nil, errorsmod.Wrap(types.ErrCallDisabled, "failed to call contract")
 	}
 
-	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
+	evm := buildEVM(ctx, msg, cfg, tracer, stateDB)
 
 	leftoverGas := msg.GasLimit
 
