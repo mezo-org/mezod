@@ -1,22 +1,90 @@
 package backend
 
 import (
+	"context"
+	"encoding/json"
+
+	"github.com/pkg/errors"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-// SimulateV1 runs `eth_simulateV1`.
-//
-// TODO: When the real implementation lands, state-override validation
-// failures must be surfaced as spec-reserved JSON-RPC codes (-38022,
-// -38023, -32602). The design: the gRPC SimulateV1Response carries a
-// structured override_error_kind enum (populated in the keeper from the
-// x/evm/types ErrOverrideXxx sentinels); this function translates the
-// enum here via rpctypes.TranslateOverrideKind. Error identity cannot
-// cross gRPC (status.Error destroys Go types), so the wire contract
-// must be explicit data.
+// SimulateV1 runs `eth_simulateV1`. Timeout wiring mirrors DoCall; the
+// eth_simulateV1 path inherits the same RPCEVMTimeout semantics.
 func (b *Backend) SimulateV1(
-	_ rpctypes.SimOpts,
-	_ *rpctypes.BlockNumberOrHash,
+	opts rpctypes.SimOpts,
+	blockNrOrHash *rpctypes.BlockNumberOrHash,
 ) ([]*rpctypes.SimBlockResult, error) {
-	return nil, rpctypes.NewSimNotImplementedError()
+	optsBz, err := json.Marshal(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	effectiveBnh := rpctypes.BlockNumberOrHash{}
+	if blockNrOrHash != nil {
+		effectiveBnh = *blockNrOrHash
+	}
+	if effectiveBnh.BlockNumber == nil && effectiveBnh.BlockHash == nil {
+		bn := rpctypes.EthLatestBlockNumber
+		effectiveBnh.BlockNumber = &bn
+	}
+	bnhBz, err := json.Marshal(effectiveBnh)
+	if err != nil {
+		return nil, err
+	}
+
+	blockNr := rpctypes.EthLatestBlockNumber
+	if effectiveBnh.BlockNumber != nil {
+		blockNr = *effectiveBnh.BlockNumber
+	}
+	header, err := b.TendermintBlockByNumber(blockNr)
+	if err != nil {
+		return nil, errors.New("header not found")
+	}
+
+	timeout := b.RPCEVMTimeout()
+
+	req := &evmtypes.SimulateV1Request{
+		Opts:              optsBz,
+		BlockNumberOrHash: bnhBz,
+		GasCap:            b.RPCGasCap(),
+		ProposerAddress:   sdk.ConsAddress(header.Block.ProposerAddress),
+		ChainId:           b.chainID.Int64(),
+		TimeoutMs:         timeout.Milliseconds(),
+	}
+
+	ctx := rpctypes.ContextWithHeight(blockNr.Int64())
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+	defer cancel()
+
+	res, err := b.queryClient.QueryClient.SimulateV1(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// A structured error on the response carries a spec-reserved
+	// JSON-RPC code verbatim; return it as *evmtypes.SimError so
+	// geth's RPC server emits {code, message, data} through the
+	// error-interface methods.
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	if len(res.Result) == 0 {
+		return []*rpctypes.SimBlockResult{}, nil
+	}
+
+	var out []*rpctypes.SimBlockResult
+	if err := json.Unmarshal(res.Result, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

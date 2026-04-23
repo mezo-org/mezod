@@ -2,12 +2,12 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 
 describe("SimulateV1_Stub", function () {
-  // Phase 1 ships a stub that returns JSON-RPC -32603 (internal error)
+  // The initial skeleton returns JSON-RPC -32603 (internal error)
   // with a "not yet implemented" message. The method IS registered on
   // the eth_ namespace, so -32603 is the spec-listed internal-error
   // code (per execution-apis `src/eth/execute.yaml`), not -32601 which
-  // would incorrectly signal an unknown method.
-  // Later phases replace this stub with the full implementation.
+  // would incorrectly signal an unknown method. This test guards the
+  // stub response until the full implementation replaces it.
 
   it("should be registered as eth_simulateV1 and return not-yet-implemented", async function () {
     let raisedError: any
@@ -16,7 +16,7 @@ describe("SimulateV1_Stub", function () {
         { blockStateCalls: [] },
         "latest",
       ])
-      expect.fail("eth_simulateV1 should have returned an error in Phase 1")
+      expect.fail("eth_simulateV1 should have returned an error")
     } catch (err: any) {
       raisedError = err
     }

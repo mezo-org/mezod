@@ -42,20 +42,16 @@ type BlockOverrides struct {
 	Withdrawals   *ethtypes.Withdrawals `json:"withdrawals,omitempty"`
 }
 
-// SimCallError is the per-call failure payload.
-type SimCallError struct {
-	Message string `json:"message"`
-	Code    int    `json:"code"`
-	Data    string `json:"data,omitempty"`
-}
-
-// SimCallResult is the result of one simulated call.
+// SimCallResult is the result of one simulated call. Error carries the
+// spec-reserved JSON-RPC code + message + optional hex data payload
+// directly; the keeper side emits the same *evmtypes.SimError instance
+// into the per-call JSON, so no translation happens at unmarshal time.
 type SimCallResult struct {
-	ReturnValue hexutil.Bytes   `json:"returnData"`
-	Logs        []*ethtypes.Log `json:"logs"`
-	GasUsed     hexutil.Uint64  `json:"gasUsed"`
-	Status      hexutil.Uint64  `json:"status"`
-	Error       *SimCallError   `json:"error,omitempty"`
+	ReturnValue hexutil.Bytes      `json:"returnData"`
+	Logs        []*ethtypes.Log    `json:"logs"`
+	GasUsed     hexutil.Uint64     `json:"gasUsed"`
+	Status      hexutil.Uint64     `json:"status"`
+	Error       *evmtypes.SimError `json:"error,omitempty"`
 }
 
 // MarshalJSON forces `Logs` to serialize as `[]` rather than `null` when

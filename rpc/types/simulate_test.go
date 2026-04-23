@@ -85,7 +85,7 @@ func TestSimCallResultErrorOmitEmpty(t *testing.T) {
 
 	r2 := SimCallResult{
 		Status: hexutil.Uint64(0),
-		Error: &SimCallError{
+		Error: &evmtypes.SimError{
 			Message: "boom",
 			Code:    -32000,
 			Data:    "0xdead",
