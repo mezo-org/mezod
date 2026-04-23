@@ -262,7 +262,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
-	var overrides stateOverride
+	var overrides types.StateOverride
 	if len(req.StateOverride) > 0 {
 		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
@@ -358,7 +358,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	}
 
 	// Deserialize state overrides once, before the binary search loop.
-	var overrides stateOverride
+	var overrides types.StateOverride
 	if len(req.StateOverride) > 0 {
 		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
