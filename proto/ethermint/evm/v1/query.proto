@@ -79,6 +79,11 @@ service Query {
   rpc BaseFee(QueryBaseFeeRequest) returns (QueryBaseFeeResponse) {
     option (google.api.http).get = "/mezo/evm/v1/base_fee";
   }
+
+  // SimulateV1 implements the `eth_simulateV1` rpc api
+  rpc SimulateV1(SimulateV1Request) returns (SimulateV1Response) {
+    option (google.api.http).get = "/mezo/evm/v1/simulate_v1";
+  }
 }
 
 // QueryAccountRequest is the request type for the Query/Account RPC method.
@@ -232,7 +237,8 @@ message EthCallRequest {
             "github.com/cosmos/cosmos-sdk/types.ConsAddress" ];
   // chain_id is the eip155 chain id parsed from the requested block header
   int64 chain_id = 4;
-  // state_override is the JSON-encoded state override map for eth_call (optional).
+  // state_override is the JSON-encoded state override map for eth_call
+  // (optional).
   bytes state_override = 5;
 }
 
@@ -310,4 +316,52 @@ message QueryBaseFeeRequest {}
 message QueryBaseFeeResponse {
   // base_fee is the EIP1559 base fee
   string base_fee = 1 [ (gogoproto.customtype) = "cosmossdk.io/math.Int" ];
+}
+
+// SimulateV1Request defines the SimulateV1 request. `opts` is the
+// JSON-serialized spec-shaped SimOpts (same marshaling pattern as
+// EthCallRequest.Args so the proto is stable against spec evolution).
+message SimulateV1Request {
+  // opts is the JSON-encoded simOpts payload.
+  bytes opts = 1;
+  // block_number_or_hash is the ancestor block the simulation starts from
+  // ("latest", "0x..." or a 0x-prefixed hash), serialized as JSON to match
+  // geth's rpc.BlockNumberOrHash wire shape.
+  bytes block_number_or_hash = 2;
+  // gas_cap defines the per-request gas cap (reused from the shared eth_call
+  // knob).
+  uint64 gas_cap = 3;
+  // proposer_address of the requested block in hex format.
+  bytes proposer_address = 4
+      [ (gogoproto.casttype) =
+            "github.com/cosmos/cosmos-sdk/types.ConsAddress" ];
+  // chain_id is the eip155 chain id parsed from the requested block header.
+  int64 chain_id = 5;
+  // timeout_ms is the execution timeout in milliseconds. 0 means no timeout.
+  int64 timeout_ms = 6;
+}
+
+// SimulateV1Response defines the SimulateV1 response. Spec-coded
+// failures ride on the dedicated `error` message rather than as a
+// gRPC status so Go error identity survives the wire boundary
+// (status.Error collapses type information).
+message SimulateV1Response {
+  // result is the JSON-encoded []*SimBlockResult payload. Populated only on
+  // successful runs; empty when error is set.
+  bytes result = 1;
+  // error carries a spec-reserved JSON-RPC code + message + optional
+  // data payload when the request hit a structured failure
+  // (state-override validation, sanitize-chain, unsupported-EIP
+  // override, preflight). Nil on success.
+  SimError error = 2;
+}
+
+// SimError is the unified error surface carried back to the RPC layer
+// when eth_simulateV1 cannot produce a result. `code` is a spec-reserved
+// JSON-RPC error code (execution-apis/src/eth/execute.yaml); `data` is
+// a hex-encoded payload used only for code == 3 (revert).
+message SimError {
+  int32 code = 1;
+  string message = 2;
+  string data = 3;
 }

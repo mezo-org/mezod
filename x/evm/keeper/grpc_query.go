@@ -715,6 +715,52 @@ func (k *Keeper) traceTx(
 	return &result, txConfig.LogIndex + uint(len(res.Logs)), nil
 }
 
+// SimulateV1 implements the eth_simulateV1 gRPC backend.
+func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*types.SimulateV1Response, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+
+	ctx := sdk.UnwrapSDKContext(c)
+
+	chainID, err := getChainID(ctx, req.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, req.ProposerAddress), chainID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	opts, err := types.UnmarshalSimOpts(req.Opts)
+	if err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg.BaseFee), opts, req.GasCap)
+	if err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	payload, err := json.Marshal(results)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &types.SimulateV1Response{Result: payload}, nil
+}
+
+// simulateV1ErrResponse routes a driver-layer error either onto the
+// response's structured SimError field (for spec-coded failures the
+// client should see verbatim) or onto a gRPC Internal status (for
+// genuine internals that should not collapse to -32602 on the wire).
+func simulateV1ErrResponse(err error) (*types.SimulateV1Response, error) {
+	var simErr *types.SimError
+	if errors.As(err, &simErr) {
+		return &types.SimulateV1Response{Error: simErr}, nil
+	}
+	return nil, status.Error(codes.Internal, err.Error())
+}
+
 // BaseFee implements the Query/BaseFee gRPC method
 func (k Keeper) BaseFee(c context.Context, _ *types.QueryBaseFeeRequest) (*types.QueryBaseFeeResponse, error) {
 	ctx := sdk.UnwrapSDKContext(c)
@@ -738,4 +784,20 @@ func getChainID(ctx sdk.Context, chainID int64) (*big.Int, error) {
 		return mezotypes.ParseChainID(ctx.ChainID())
 	}
 	return big.NewInt(chainID), nil
+}
+
+// baseHeaderFromContext synthesizes the execution-api base header from
+// the SDK context that the gRPC call was anchored at. The returned
+// header only populates the fields the simulate driver consumes
+// (Number, Time, GasLimit, BaseFee, Difficulty). Multi-block support
+// will swap this for a real block fetch so BLOCKHASH resolution lines
+// up with canonical chain history.
+func baseHeaderFromContext(ctx sdk.Context, baseFee *big.Int) *ethtypes.Header {
+	return &ethtypes.Header{
+		Number:     big.NewInt(ctx.BlockHeight()),
+		Time:       uint64(ctx.BlockTime().Unix()), //nolint:gosec
+		GasLimit:   mezotypes.BlockGasLimit(ctx),
+		BaseFee:    baseFee,
+		Difficulty: new(big.Int),
+	}
 }
