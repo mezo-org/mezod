@@ -394,8 +394,8 @@ func (k *Keeper) SimulateMessage(
 	stateDB := statedb.New(ctx, k, txConfig)
 
 	var moves map[common.Address]common.Address
+	rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
 	if overrides != nil {
-		rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
 		var err error
 		moves, err = applyStateOverrides(stateDB, overrides, rules)
 		if err != nil {
@@ -422,7 +422,6 @@ func (k *Keeper) SimulateMessage(
 		// TODO (geth-upgrade): swap the rebuild + WithPrecompiles for
 		// evm.Precompiles() read, in-place mutation, and
 		// evm.SetPrecompiles() (both added in v1.16.9).
-		rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
 		precompilesVersions := make(map[common.Address]uint32)
 		for _, pv := range k.GetParams(ctx).PrecompilesVersions {
 			precompilesVersions[common.HexToAddress(pv.PrecompileAddress)] = pv.Version
