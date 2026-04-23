@@ -135,10 +135,9 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(tc.as, common.Address{}, nil, 0)
 			vmContract.Input = append(vmContract.Input, method.ID...)
 			vmContract.Input = append(vmContract.Input, methodInputArgs...)
-			vmContract.CallerAddress = tc.as
 
 			output, err := s.priceOraclePrecompile.Run(evm, vmContract, false)
 			if tc.revert {

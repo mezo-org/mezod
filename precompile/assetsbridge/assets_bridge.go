@@ -158,6 +158,7 @@ func NewPrecompile(
 		contractAbi,
 		common.HexToAddress(EvmAddress),
 		EvmByteCode,
+		"assets-bridge",
 	)
 
 	var methods []precompile.Method

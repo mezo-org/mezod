@@ -19,7 +19,7 @@ import (
 func TestContract_Address(t *testing.T) {
 	address := common.HexToAddress("0x1")
 
-	contract := NewContract(abi.ABI{}, address, "")
+	contract := NewContract(abi.ABI{}, address, "", "")
 
 	if actualAddress := contract.Address(); address != actualAddress {
 		t.Errorf(
@@ -27,6 +27,36 @@ func TestContract_Address(t *testing.T) {
 			address,
 			actualAddress,
 		)
+	}
+}
+
+func TestContract_Name(t *testing.T) {
+	address := common.HexToAddress("0x1")
+
+	tests := map[string]struct {
+		contract *Contract
+		expected string
+	}{
+		"uses configured name": {
+			contract: NewContract(abi.ABI{}, address, "", "testbed"),
+			expected: "testbed",
+		},
+		"returns empty name when not configured": {
+			contract: NewContract(abi.ABI{}, address, "", ""),
+			expected: "",
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			if actualName := test.contract.Name(); test.expected != actualName {
+				t.Errorf(
+					"unexpected name\n expected: %v\n actual:   %v",
+					test.expected,
+					actualName,
+				)
+			}
+		})
 	}
 }
 
@@ -67,7 +97,7 @@ func TestContract_RequiredGas(t *testing.T) {
 				},
 			}
 
-			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "")
+			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "", "")
 
 			contract.RegisterMethods(test.method)
 
@@ -87,7 +117,7 @@ func TestContract_RequiredGas(t *testing.T) {
 }
 
 func TestContract_RegisterMethods(t *testing.T) {
-	contract := NewContract(abi.ABI{}, common.HexToAddress("0x1"), "")
+	contract := NewContract(abi.ABI{}, common.HexToAddress("0x1"), "", "")
 
 	method1 := &mockMethod{methodName: "testMethod1", methodType: Write}
 	method2Write := &mockMethod{methodName: "testMethod2", methodType: Write}
@@ -224,7 +254,7 @@ func TestContract_Run(t *testing.T) {
 				},
 			}
 
-			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "")
+			contract := NewContract(contractAbi, common.HexToAddress("0x1"), "", "")
 
 			contract.RegisterMethods(test.method)
 
@@ -242,7 +272,7 @@ func TestContract_Run(t *testing.T) {
 				StateDB: statedb.New(sdkCtx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 			}
 
-			vmContract := vm.NewContract(&Contract{}, nil, test.value, 0)
+			vmContract := vm.NewPrecompile(common.Address{}, common.Address{}, test.value, 0)
 			// Construct an input whose first 4 bytes correspond to the method ID
 			// and the subsequent bytes are the method input arguments.
 			vmContract.Input = append([]byte{0x1, 0x2, 0x3, 0x4}, methodInputArgs...)
@@ -270,7 +300,7 @@ func TestContract_Run(t *testing.T) {
 
 func TestRunContext_MsgSender(t *testing.T) {
 	caller := common.HexToAddress("0x1")
-	contract := &vm.Contract{CallerAddress: caller}
+	contract := vm.NewPrecompile(caller, common.Address{}, nil, 0)
 
 	runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
@@ -300,7 +330,7 @@ func TestRunContext_TxOrigin(t *testing.T) {
 
 func TestRunContext_MsgValue(t *testing.T) {
 	value := uint256.NewInt(10)
-	contract := vm.NewContract(&Contract{}, nil, value, 0)
+	contract := vm.NewPrecompile(common.Address{}, common.Address{}, value, 0)
 
 	runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
@@ -338,7 +368,7 @@ func TestRunContext_IsMsgValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			contract := vm.NewContract(&Contract{}, nil, test.value, 0)
+			contract := vm.NewPrecompile(common.Address{}, common.Address{}, test.value, 0)
 
 			runContext := NewRunContext(sdk.Context{}, nil, contract, nil)
 
