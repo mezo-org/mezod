@@ -46,14 +46,14 @@ This delivery ships in **two parts**, sequenced around the separate geth v1.14.8
 | DoS config | **Kill switch only**: add `SimulateDisabled bool` to `JSONRPCConfig`; reuse existing `RPCGasCap` + `RPCEVMTimeout`; hard-code 256 block cap |
 | Validation error semantics | **Spec-conformant** — tx-level validation failures (`-38010`..`-38025`) are fatal top-level errors that abort the whole request. Revert / VM errors stay per-call (`3`/`-32015`, per EIP-140 + execution-apis `CallResultFailure` schema). |
 | Gas numerics | **mezod-native** — reported `GasUsed` honors `MinGasMultiplier` (matches on-chain receipts); raw EVM gas is used only for internal pool accounting |
-| EIP support (Part 1, v1.14.8) | Skip EIP-4844 / 4788 / 2935 / 7685 / Prague (not present in mezod chain config at v1.14.8); reject explicit overrides for those fields |
+| EIP support (Part 1, v1.14.8) | Skip EIP-4844 / 4788 / 2935 / 7685 (not present in mezod chain config at v1.14.8); reject explicit overrides for those fields |
 | EIP support (Part 2, post-upgrade) | Add EIP-2935 pre-block hook, EIP-7702 SetCode txs, EIP-7825 per-tx gas cap, `MaxUsedGas` field. Continue rejecting EIP-4844/4788/7685 and EIP-6110/7002/7251 — mezo has no beacon chain, no blob DA layer, no EL↔CL requests framework |
 
 ## Architecture summary
 
 Simulation logic lives **inside the keeper** (new `SimulateV1` gRPC method). The RPC backend is a thin adapter that marshals `simOpts` to JSON bytes, sets up the timeout context, invokes gRPC, and marshals the response. This keeps consensus-sensitive EVM plumbing behind a single audit surface and matches the pattern of existing `EthCall`.
 
-A new package at `x/evm/keeper/simulate/` owns the driver, sanitize/chain-ordering, block/header construction, and the per-request `GetHashFn`. It imports from `x/evm/keeper` (for `BuildActivePrecompiles`, `NewEVMWithOverrides`, `applyMessageWithOverrides`) but is separately testable with pure-function seams.
+A new package at `x/evm/keeper/simulate/` owns the driver, sanitize/chain-ordering, block/header construction, and the per-request `GetHashFn`. It imports from `x/evm/keeper` (for `NewEVMWithOverrides`, `applyMessageWithOverrides`) but is separately testable with pure-function seams. The precompile registry is reached via whatever seam Phase 3 picks; Phase 2 left `NewEVM` untouched and added only an unexported `evmBuilder` parameter on `applyMessageWithConfig` so `SimulateMessage` can overlay precompile relocations through a closure without changing the consensus path's execution body.
 
 The existing `NewEVM` / `ApplyMessageWithConfig` / `SimulateMessage` keep their current signatures unchanged. New variants are added alongside.
 
@@ -63,7 +63,7 @@ The existing `NewEVM` / `ApplyMessageWithConfig` / `SimulateMessage` keep their 
 - `x/evm/keeper/state_transition.go:53` — `NewEVM` (becomes the nil-overrides path of new `NewEVMWithOverrides`)
 - `x/evm/keeper/state_transition.go:133` — `GetHashFn` (fallback for canonical-range BLOCKHASH)
 - `x/evm/keeper/state_transition.go:386` — `SimulateMessage` (left untouched; exemplar for new `applyMessageWithOverrides`)
-- `x/evm/keeper/state_override.go:30` — `applyStateOverrides` (extended to accept precompile registry + `MovePrecompileTo`)
+- `x/evm/keeper/state_override.go:30` — `applyStateOverrides` (extended to return validated `MovePrecompileTo` move set alongside stateDB mutations)
 - `x/evm/keeper/grpc_query.go:233` — `EthCall` gRPC handler (pattern for new `SimulateV1` gRPC handler)
 - `x/evm/keeper/config.go:32` — `EVMConfig` (reused as-is for simulate)
 - `x/evm/statedb/statedb.go:759` — `StateDB.CacheContext()` (one shared cache ctx per simulate request)
@@ -121,11 +121,15 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 
 ---
 
-### Phase 2 — Extend state overrides with `MovePrecompileTo` (block for custom mezo precompiles)
+### Phase 2 — Extend state overrides with `MovePrecompileTo` (block for custom mezo precompiles) ✅ DONE ([#660](https://github.com/mezo-org/mezod/pull/660))
 
 **Goal.** Add `MovePrecompileTo` support to the existing state-override machinery — visible to `eth_call` today, usable by simulate later. Deny-list mezo custom precompiles.
 
-**Design.** Lift precompile-registry construction out of `NewEVM` (L96–124) into a reusable `(k *Keeper) BuildActivePrecompiles(ctx sdk.Context, rules params.Rules) map[common.Address]vm.PrecompiledContract`. Change `applyStateOverrides` to accept + mutate this registry. `MovePrecompileTo` is applied FIRST per spec ordering, enforcing the invariants below. The spec assigns codes `-38022` and `-38023` to two very specific conditions — match those exactly and use `-32602 invalid params` for the remaining structured rejections (mirrors geth's `override/override.go`).
+**Design.** Leave `NewEVM` untouched (byte-identical to main). Introduce an unexported `evmBuilder` function-type parameter on `applyMessageWithConfig`: the consensus-path public wrapper `ApplyMessageWithConfig` passes `k.NewEVM` directly, preserving main's execution body byte-for-byte; `SimulateMessage` supplies a closure that calls `k.NewEVM` and then — when the request has any `MovePrecompileTo` entries — rebuilds the precompile registry inline (duplicating the construction inside `NewEVM`), applies the moves, and re-attaches via `evm.WithPrecompiles(...)`. Change `applyStateOverrides` to return `(moves, error)` rather than mutating a passed-in registry; validation uses `vm.DefaultPrecompiles(rules)` to answer "is source a stdlib precompile?" and `mezoCustomPrecompileAddrs` for the deny-list. `MovePrecompileTo` is applied FIRST per spec ordering, enforcing the invariants below. The spec assigns codes `-38022` and `-38023` to two very specific conditions — the keeper marks them via distinct sentinel errors so the RPC layer can map them exactly; the remaining structured rejections map to `-32602 invalid params` (mirrors geth's `override/override.go`).
+
+**Error surface.** `applyStateOverrides` returns typed sentinels (`ErrOverrideMovePrecompileSelfReference`, `ErrOverrideMovePrecompileDuplicateDest`, `ErrOverrideNotAPrecompile`, `ErrOverrideMoveMezoCustomPrecompile`, `ErrOverrideAccountTaintedByPrecompile`, `ErrOverrideDestAlreadyOverridden`, `ErrOverrideStateAndStateDiff`) defined in `x/evm/types/override_errors.go`. The keeper package speaks only this domain vocabulary — no imports from `rpc/types`. Mapping the sentinels to the spec-reserved JSON-RPC codes is deferred to Phase 4+: see that phase's Error surface note for the response-field approach. Today's `Query/EthCall` path continues to wrap any error from `SimulateMessage` as `status.Error(codes.Internal, err.Error())`, which is adequate for `eth_call` (the `-38xxx` codes are `eth_simulateV1`-specific; `-32602` is the generic fallback and is not produced structurally on this path today).
+
+The inline registry rebuild in `SimulateMessage`'s closure is the single piece of temporary duplication; it is marked `TODO (geth-upgrade)` so Phase 13's detection grep ([#651 discussion](https://github.com/mezo-org/mezod/pull/651#discussion_r3123274099)) surfaces it — v1.16.9 exposes `evm.Precompiles()` + `evm.SetPrecompiles()`, letting the closure drop the rebuild and mutate the live registry in place.
 
 1. `movePrecompileToAddress == addr` (self-reference) → fatal `-38022` "MovePrecompileToAddress referenced itself in replacement" (`SimErrCodeMovePrecompileSelfReference`).
 2. Two overrides target the same destination → fatal `-38023` "Multiple MovePrecompileToAddress referencing the same address to replace" (`SimErrCodeMovePrecompileDuplicateDest`, tracked via `dirtyAddrs`).
@@ -133,9 +137,8 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 4. Source must **not** be a mezo custom precompile (0x7b7c…, check against `types.DefaultPrecompilesVersions`). Return `-32602` with message `"cannot move mezo custom precompile"`; this is a mezo-specific policy denial, not a spec case, so it rides the generic invalid-params code.
 
 **Files.**
-- EDIT `x/evm/keeper/state_override.go` — extend `overrideAccount` with `MovePrecompileTo *common.Address`; change `applyStateOverrides` signature to take `precompiles map[common.Address]vm.PrecompiledContract`; apply move first; enforce invariants.
-- EDIT `x/evm/keeper/state_transition.go` — extract `BuildActivePrecompiles`; `NewEVM` calls it. No behavior change for existing callers.
-- EDIT `x/evm/keeper/grpc_query.go:272` — `EthCall` now builds precompile registry and passes it into `applyStateOverrides`.
+- EDIT `x/evm/keeper/state_override.go` — extend `overrideAccount` with `MovePrecompileTo *common.Address`; change `applyStateOverrides` to return `(map[common.Address]common.Address, error)` (the validated move set) and take `rules params.Rules` for the precompile-addr probe; apply move-validation first; enforce invariants.
+- EDIT `x/evm/keeper/state_transition.go` — leave `NewEVM` untouched; add unexported `evmBuilder` function type; thread a `buildEVM evmBuilder` parameter through `applyMessageWithConfig` (the only change to its body is `evm := k.NewEVM(...)` → `evm := buildEVM(...)`). Public `ApplyMessageWithConfig` passes `k.NewEVM` so consensus callers (`ApplyTransaction`, `ApplyMessage`) see byte-identical behavior. Rewrite `SimulateMessage` to call `applyStateOverrides` (collect moves), then call `applyMessageWithConfig` with a closure that wraps `k.NewEVM` + relocates precompiles via `evm.WithPrecompiles` — the registry is rebuilt inline (duplicating `NewEVM`'s construction, flagged `TODO (geth-upgrade)`).
 - EDIT `rpc/types/types.go` — add `MovePrecompileTo *common.Address` to `OverrideAccount` (L85).
 
 **Security risks.**
@@ -173,7 +176,7 @@ type EVMOverrides struct {
     BlockContext *vm.BlockContext                            // nil = derive from ctx
     Precompiles  map[common.Address]vm.PrecompiledContract   // nil = default
     NoBaseFee    *bool                                       // nil = derive from fee-market
-    SimulateMode bool                                        // true = bypass MinGasMultiplier (see §Gas)
+    Ephemeral    bool                                        // true = suppress committed-tx accounting side-effects (block bloom, tx-index bump, etc.)
 }
 func (k *Keeper) NewEVMWithOverrides(ctx sdk.Context, msg core.Message, cfg *statedb.EVMConfig,
     tracer *tracers.Tracer, stateDB vm.StateDB, over EVMOverrides) *vm.EVM
@@ -181,14 +184,12 @@ func (k *Keeper) applyMessageWithOverrides(ctx sdk.Context, wrapper MessageWrapp
     tracer *tracers.Tracer, commit bool, cfg *statedb.EVMConfig, txConfig statedb.TxConfig,
     stateDB *statedb.StateDB, over EVMOverrides) (*types.MsgEthereumTxResponse, error)
 ```
-`NewEVM` is refactored to call `NewEVMWithOverrides(..., EVMOverrides{})`. Semantics identical to today. `SimulateMode=true` skips the `MinGasMultiplier` branch at `state_transition.go:544-555` in favor of raw `temporaryGasUsed`; we report the inflated value separately as requested.
-
-**Wait — decision says honor `MinGasMultiplier`**. So `SimulateMode=true` is NOT about bypassing the multiplier; it's about disabling downstream accounting side-effects (transient block bloom, gas transient state, tx-index bumps — behavior that only makes sense for committed txs). For gas reporting, we pass through the mezod-inflated value. Re-label the flag as `Ephemeral bool`.
+`NewEVM` is refactored to call `NewEVMWithOverrides(..., EVMOverrides{})`. Semantics identical to today. Per the Decisions table, `GasUsed` continues to honor `MinGasMultiplier` for both consensus and simulate paths (callers comparing across chains are documented separately). `Ephemeral=true` does NOT bypass the multiplier; it disables downstream accounting side-effects (transient block bloom, gas transient state, tx-index bumps) that only make sense for committed txs.
 
 **Files.**
 - EDIT `x/evm/keeper/state_transition.go` — add `EVMOverrides`, `NewEVMWithOverrides`, `applyMessageWithOverrides`. Refactor `NewEVM` + `applyMessageWithConfig` to delegate.
 - EDIT `x/evm/keeper/config.go` — `VMConfig` accepts optional `NoBaseFee` override (nil = existing behavior).
-- EDIT `x/evm/statedb/statedb.go` — add `Discard()` (drop `flushCache` + cached multistore) and `FinaliseBetweenCalls()` (clear logs, refund, transientStorage without dropping stateObjects; reset `ongoingPrecompilesCallsCounter`).
+- EDIT `x/evm/statedb/statedb.go` — add `FinaliseBetweenCalls()` (clear logs, refund, transientStorage without dropping stateObjects; reset `ongoingPrecompilesCallsCounter`).
 
 **Security risks.**
 - **Regression in existing EVM construction** — eliminated by identical-behavior delegation; all existing keeper tests must pass unchanged.
@@ -200,12 +201,12 @@ func (k *Keeper) applyMessageWithOverrides(ctx sdk.Context, wrapper MessageWrapp
   - Override `BlockContext.BlockNumber = 999`; call a contract executing `NUMBER` opcode; assert 999.
   - Override `Precompiles = nil` → stdlib precompiles present; override with custom-only map → stdlib absent.
   - Override `NoBaseFee = &true` → fee-market param branch not consulted.
-- Go unit: `x/evm/statedb/statedb_test.go` — `Discard()` drops cache; `FinaliseBetweenCalls()` clears logs/refund but preserves stateObjects; `ongoingPrecompilesCallsCounter` resets.
+- Go unit: `x/evm/statedb/statedb_test.go` — `FinaliseBetweenCalls()` clears logs/refund but preserves stateObjects; `ongoingPrecompilesCallsCounter` resets.
 
 **DoD.**
 - All existing tests pass.
 - New tests green.
-- No call site outside tests uses `NewEVMWithOverrides`, `applyMessageWithOverrides`, `Discard`, `FinaliseBetweenCalls` yet.
+- No call site outside tests uses `NewEVMWithOverrides`, `applyMessageWithOverrides`, `FinaliseBetweenCalls` yet.
 
 ---
 
@@ -214,6 +215,8 @@ func (k *Keeper) applyMessageWithOverrides(ctx sdk.Context, wrapper MessageWrapp
 **Goal.** Generate proto bindings for `SimulateV1` gRPC. Build the pure, side-effect-free parts of the driver: input types, `sanitizeChain`, `MakeHeader`. No execution yet.
 
 **Design.** `simOpts` is passed as JSON bytes end-to-end (matches existing `EthCallRequest.Args` pattern at `grpc_query.go:240`) — keeps proto stable as spec evolves.
+
+**Error surface.** State-override validation failures travel as **structured fields on `SimulateV1Response`**, not as gRPC errors. This mirrors the pre-existing VM-error pattern where reverts/EVM failures ride on `res.VmError` + `res.Failed()` (see `rpc/backend/call_tx.go:482`) — proto fields survive the gRPC boundary cleanly, Go error identity does not (`status.Error(codes.Internal, err.Error())` destroys type identity). The keeper's `SimulateV1` gRPC handler maps the Phase-2 `ErrOverrideXxx` sentinels from `x/evm/types` to the proto enum `OverrideErrorKind` via a small `overrideErrorKind(err) (Kind, bool)` helper; the backend sees the enum on a successful gRPC response and synthesizes an `*rpctypes.RPCError` with the spec code via `TranslateOverrideKind` in `rpc/types`. This keeps `rpctypes` out of the `x/evm/keeper` import graph and makes the wire contract explicit data rather than a convention layered on top of Go error semantics.
 
 **Files.**
 - EDIT `proto/ethermint/evm/v1/query.proto` — add:
@@ -227,15 +230,32 @@ func (k *Keeper) applyMessageWithOverrides(ctx sdk.Context, wrapper MessageWrapp
       int64 chain_id = 5;
       int64 timeout_ms = 6;
   }
-  message SimulateV1Response { bytes result = 1; } // JSON: []*SimBlockResult
+  message SimulateV1Response {
+      bytes result = 1; // JSON: []*SimBlockResult
+      // Populated when state-override validation (applyStateOverrides)
+      // rejects the request. UNSPECIFIED means no rejection.
+      OverrideErrorKind override_error_kind    = 2;
+      string            override_error_message = 3;
+  }
+  enum OverrideErrorKind {
+      OVERRIDE_ERROR_UNSPECIFIED              = 0;
+      OVERRIDE_ERROR_MOVE_PRECOMPILE_SELF_REF = 1; // → -38022
+      OVERRIDE_ERROR_MOVE_PRECOMPILE_DUP_DEST = 2; // → -38023
+      OVERRIDE_ERROR_STATE_AND_STATE_DIFF     = 3; // → -32602
+      OVERRIDE_ERROR_ACCOUNT_TAINTED          = 4; // → -32602
+      OVERRIDE_ERROR_DEST_ALREADY_OVERRIDDEN  = 5; // → -32602
+      OVERRIDE_ERROR_MOVE_MEZO_CUSTOM         = 6; // → -32602
+      OVERRIDE_ERROR_NOT_A_PRECOMPILE         = 7; // → -32602
+  }
   ```
 - Regen `x/evm/types/query.pb.go`, `rpc/types/query_client.go`.
 - NEW `x/evm/keeper/simulate/` package:
   - `input.go` — internal `Opts`, `Block`, `BlockOverrides`, `CallResult`, `BlockResult` types. JSON unmarshal with strict validation (reject `ParentBeaconRoot` and `Withdrawals` overrides).
   - `sanitize.go` — `SanitizeChain(base *ethtypes.Header, blocks []Block, maxBlocks int) ([]Block, error)`. Mirrors go-ethereum `simulate.go:400-459`. Rules: default number = `prev.Number + 1`; default time = `prev.Time + 12`; strict-increasing enforcement (`-38020`/`-38021`); gap-fill with empty blocks (count against `maxBlocks`); span cap (`-38026`).
   - `header.go` — `MakeHeader(prev *ethtypes.Header, overrides *BlockOverrides, rules params.Rules, validation bool) (*ethtypes.Header, error)`. Pure function. Sets `UncleHash = EmptyUncleHash`, `ReceiptHash = EmptyReceiptsHash`, `TxHash = EmptyTxsHash`; `Difficulty = 0` post-merge; `Random` non-nil zero post-merge; `BaseFee` from `eip1559.CalcBaseFee` when validation=true and override absent; `BaseFee = 0` otherwise. `ParentBeaconRoot`, `WithdrawalsHash`, `RequestsHash`, `BlobGasUsed`, `ExcessBlobGas` all nil (EIPs not active).
-- NEW `x/evm/keeper/grpc_query_simulate.go` — `Keeper.SimulateV1` gRPC handler stub: unmarshals `opts`, sanitizes, returns `-32603` "execution not yet wired" via `RPCError` (short-circuit after sanitize for this phase; keeps parity with Phase 1's backend stub).
-- EDIT `rpc/backend/simulate.go` — real implementation: marshals opts, sets up timeout ctx (reuse `DoCall` pattern L462-475 verbatim), invokes gRPC.
+- NEW `x/evm/keeper/grpc_query_simulate.go` — `Keeper.SimulateV1` gRPC handler stub: unmarshals `opts`, sanitizes, returns `-32603` "execution not yet wired" via `RPCError` (short-circuit after sanitize for this phase; keeps parity with Phase 1's backend stub). Also adds the `overrideErrorKind(err) (OverrideErrorKind, bool)` helper mapping the `x/evm/types` sentinels to the proto enum — used by Phase 5's real implementation but introduced here alongside the proto so the mapping lives next to its data definition.
+- EDIT `rpc/backend/simulate.go` — real implementation: marshals opts, sets up timeout ctx (reuse `DoCall` pattern L462-475 verbatim), invokes gRPC. On a successful gRPC response with `override_error_kind != UNSPECIFIED`, return `rpctypes.TranslateOverrideKind(kind, message)`.
+- NEW `rpc/types/override_errors.go` — `TranslateOverrideKind(kind evmtypes.OverrideErrorKind, msg string) *RPCError` mapping the enum to spec codes (`-38022`, `-38023`, `-32602`). Lives at the RPC boundary so the code table is not duplicated across backends.
 
 **Security risks.**
 - **Gap-fill amplification** — caller sends `[{Number:base+1}, {Number:base+10000}]` → naive gap-fill allocates 9998 headers. Span check BEFORE allocation (research §19a).
@@ -278,7 +298,7 @@ func (k *Keeper) SimulateV1Core(ctx sdk.Context, cfg *statedb.EVMConfig, base *e
 The keeper's `SimulateV1` gRPC handler constructs the driver and invokes `SimulateV1Core`; the backend marshals results. Block assembly and response shaping are later (Phase 11 for full tx patching, but a minimal block envelope ships here).
 
 **Files.**
-- EDIT `x/evm/keeper/grpc_query_simulate.go` — real impl: ContextWithHeight → EVMConfig → BuildActivePrecompiles → apply state overrides → single-call execute via `applyMessageWithOverrides` with `Ephemeral:true`.
+- EDIT `x/evm/keeper/grpc_query_simulate.go` — real impl: ContextWithHeight → EVMConfig → build/obtain active precompile registry (Phase 3 picks the seam — exported helper, EVMOverrides field, or post-upgrade `evm.Precompiles()`) → apply state overrides → on a sentinel rejection from `applyStateOverrides`, return a successful `SimulateV1Response` with `override_error_kind` + `override_error_message` populated (no gRPC error) so the backend can translate to the spec JSON-RPC code; otherwise single-call execute via `applyMessageWithOverrides` with `Ephemeral:true`.
 - NEW `x/evm/keeper/simulate/driver.go` — driver struct + `SimulateV1Core` + single-block execute.
 - NEW `x/evm/keeper/simulate/assemble.go` — `AssembleBlock(header, txs, receipts, calls) *ethtypes.Block`. Minimal envelope (computes TxHash, ReceiptHash, block hash); `returnFullTransactions` patching deferred to Phase 11.
 - EDIT `rpc/backend/simulate.go` — unmarshal + basic response formatting.
@@ -367,17 +387,17 @@ Pre-execution: compute preliminary headers for all sanitized blocks so `GetHashF
 
 **Security risks (THIS IS THE KERNEL).**
 - **Forged BLOCKHASH oracle.** Simulator-provided BLOCKHASH for future blocks is fine (by design). The critical invariant: for any **canonical** (below-base) height, MUST delegate to real `k.GetHashFn(ctx)` and MUST NOT honor any `BlockOverrides` field. Audit every block-override field for whether it could leak into the canonical range.
-- **`BlockOverrides.Number < baseHeight` must be rejected.** Otherwise a caller could "simulate the past" and corrupt BLOCKHASH expectations for subsequent simulated blocks.
+- **`BlockOverrides.Number < baseHeight` must be rejected.** Otherwise a caller could "simulate the past" and corrupt BLOCKHASH expectations for subsequent simulated blocks. Covered by Phase 4's `-38020` monotonic-number check in `SanitizeChain`; no additional guard needed in this phase.
 - **Stale `sdk.Context.BlockHeight()`** — the context is fixed to base; the simulated block executes at `base + N` but any code reading `ctx.BlockHeight()` inside the EVM pipeline gets the wrong value. Audit: grep `ctx.BlockHeight()` within the call graph reachable from `applyMessageWithOverrides`. Any leak must use `blockCtx.BlockNumber` instead.
 - **State sprawl across blocks.** 256 blocks × 1000 calls × unbounded storage per call. Bounded by Phase 8's global gas cap + timeout, but note here for awareness.
-- **Historical info cutoff.** `stakingKeeper.GetHistoricalInfo` only covers the last `HistoricalEntries` blocks (commonly 10000). `BLOCKHASH(base-N)` for `N > HistoricalEntries` returns zero — matches go-ethereum; document as known.
+- **BLOCKHASH depth cap at 256.** Per standard EVM semantics, the `BLOCKHASH` opcode only reaches 256 blocks back. `BLOCKHASH(base-N)` for `N > 256` returns zero. Matches go-ethereum — no mezo-specific divergence.
 
 **Verification.**
 - Go unit: `simulate/process_block_test.go` + `chain_test.go`:
   - Multi-block state: block 1 SSTORE slot, block 2 SLOAD same slot, assert observed.
   - Chain linkage: block 3 contract call `BLOCKHASH(1)`, `BLOCKHASH(2)`, `BLOCKHASH(0)` (base) — assert all three match expected simulated/base hashes. (Port `TestSimulateV1ChainLinkage` from go-ethereum `api_test.go:2466`.)
-  - `BlockOverrides.Number < baseHeight` → structured error.
-  - `BLOCKHASH(base-N)` where `N < HistoricalEntries` returns real canonical hash (mock staking keeper's `HistoricalInfo`).
+  - `BlockOverrides.Number < baseHeight` → `-38020` via Phase 4's `SanitizeChain` (regression guard; covered there, not re-added here).
+  - `BLOCKHASH(base-N)` where `N ≤ 256` returns real canonical hash via `k.GetHashFn(ctx)`; `N > 256` returns zero hash.
 - System: `tests/system/test/SimulateV1_MultiBlock.test.ts` — 5-block simulation, contract asserts `block.number` increments correctly.
 - **Manual localnet verification** (JUSTIFIED as LAST RESORT for this phase): run against chain with ≥100 historical blocks; issue simulate that BLOCKHASHes a canonical block below base; cross-check against `eth_getBlockByNumber(height).hash`. This catches IAVL/query-at-height edge cases that mocks cannot.
 - **Invoke `/security-review` on the branch before merge.**
@@ -419,7 +439,7 @@ Pre-execution: compute preliminary headers for all sanitized blocks so `GetHashF
 - Go unit: `simulate/dos_test.go` — one test per guard:
   1. Request with >256 blocks → `-38026`.
   2. Request with ≥1000 calls total → structured error.
-  3. Request that exhausts `gasRemaining` → `-38015`-shaped error on the offending call, request continues until the next call which fails the same way (eventually whole simulation returns remaining calls unexecuted).
+  3. Request that exhausts `gasRemaining` → top-level fatal `-38015`-shaped error; request aborts immediately (matches go-ethereum).
   4. Timeout fires during a long call → request returns `-32016` `"execution aborted (timeout = 5s)"` within 5.2s.
   5. Kill switch: `SimulateDisabled=true` → RPC returns `-32601 "the method eth_simulateV1 does not exist/is not available"` immediately (kill-switch intentionally impersonates "method absent" so the operator can hide the endpoint wholesale; distinct from the Phase 1 "not yet implemented" stub which uses `-32603`).
 - Go unit: layered failure — each guard triggers under controlled inputs even if others are relaxed.
@@ -572,10 +592,15 @@ Custom `MarshalJSON` for the block envelope: invokes `RPCMarshalBlock` (existing
   - `traceTransfers`
   - Block-gas-limit overflow (-38015)
   - Span > 256 (-38026)
+- **System-test consolidation pass.** Phases 1-11 each land a focused `tests/system/test/SimulateV1_*.test.ts` file for easy attribution during development. With Phase 12's conformance suite in place, collapse the redundant ones:
+  - DELETE `SimulateV1_Stub.test.ts` — Phase 5 made the stub return real data, so the test now asserts a lie.
+  - DELETE each `SimulateV1_*.test.ts` whose cases the new conformance suite already covers (likely: `SingleCall`, `MultiCall`, `MultiBlock`, `MovePrecompile_ethCall`, `Validation`, `TraceTransfers`, `Limits`, `FullTx`). Do this only after confirming the conformance suite asserts the same response shapes.
+  - KEEP a `SimulateV1_MezoDivergences.test.ts` (NEW — may be lifted out of existing files) for behavior the execution-apis fixtures cannot cover: custom-precompile immovability, `MinGasMultiplier` gas reporting, kill-switch returning `-32601`, rejected overrides for EIPs mezo does not support (`BeaconRoot`, `Withdrawals`, blob fields).
+  - Target end state: **2 files** — `SimulateV1_Conformance.test.ts` (spec parity) + `SimulateV1_MezoDivergences.test.ts` (deliberate deltas).
 - EDIT `CHANGELOG.md`, `docs/` (or README section) — document:
   - New `eth_simulateV1` method.
   - `SimulateDisabled` config flag.
-  - Mezo-specific divergences: custom precompiles are immovable; gas reported with `MinGasMultiplier`; no EIP-4844/4788/2935/7685 support (rejected in overrides); `HistoricalEntries`-bounded BLOCKHASH for canonical-range queries.
+  - Mezo-specific divergences: custom precompiles are immovable; gas reported with `MinGasMultiplier`; no EIP-4844/4788/2935/7685 support (rejected in overrides).
   - Operator guidance: public endpoints should front with a reverse proxy for rate limiting; bound `RPCGasCap` + `RPCEVMTimeout` for your hardware.
 - **Final `/security-review` invocation** against the merged feature branch before release cut.
 
@@ -588,6 +613,7 @@ Custom `MarshalJSON` for the block envelope: invokes `RPCMarshalBlock` (existing
 - CI green with new tests.
 - Zero fuzz panics in 10-minute run.
 - Docs merged.
+- `tests/system/test/SimulateV1_*.test.ts` collapsed to the two files named above; no stub/obsolete files remain.
 - Final security review clean.
 
 ---
@@ -618,15 +644,22 @@ Custom `MarshalJSON` for the block envelope: invokes `RPCMarshalBlock` (existing
 | `ExecutionResult.RefundedGas` | renamed to `MaxUsedGas` | handled in Phase 16 below |
 
 **Files.**
-- EDIT `x/evm/keeper/state_override.go` — add `tracing.*ChangeReason` params to affected setters.
-- EDIT `x/evm/keeper/state_transition.go` — update `NewEVMWithOverrides` to the new `NewEVM` signature; insert `evm.SetTxContext(...)` calls where needed.
-- EDIT `x/evm/statedb/statedb.go` — **remove** custom `FinaliseBetweenCalls` helper (no longer needed).
+- EDIT `x/evm/keeper/state_override.go` — add `tracing.*ChangeReason` params to affected setters. `applyStateOverrides` already returns the move set as of Phase 2; no further signature change required.
+- EDIT `x/evm/keeper/state_transition.go` — update `NewEVMWithOverrides` to the new `NewEVM` signature; insert `evm.SetTxContext(...)` calls where needed. In `NewEVM`, swap the inline clone-and-layer precompile build for `evm.WithCustomPrecompiles(k.customPrecompiles, ...)` (geth v1.16.9 folds default-precompile management into the EVM itself). Resolve the Phase 2 `TODO (geth-upgrade)` marker inside `SimulateMessage`'s `buildEVM` closure: replace the duplicated precompile-registry rebuild with `precompiles := evm.Precompiles()` (live map), apply `moves`, and call `evm.SetPrecompiles(precompiles)`. The explicit `evm.WithPrecompiles(...)` re-attach goes away.
+- EDIT `x/evm/statedb/statedb.go` — **remove** custom `FinaliseBetweenCalls` helper (no longer needed) **only after confirming the behavior gap below is closed**.
 - EDIT `x/evm/keeper/simulate/driver.go` — replace `stateDB.FinaliseBetweenCalls()` call sites with `stateDB.Finalise(true)`.
 
-**Security risks.** None new. Purely mechanical.
+**⚠ VERIFY BEFORE DELETING `FinaliseBetweenCalls`.** Phase 3's helper does two things: (a) standard finalise (clear logs/refund/transientStorage, preserve stateObjects), and (b) reset mezod's custom `ongoingPrecompilesCallsCounter`. Geth's new `StateDB.Finalise(true)` covers (a). Whether it also performs (b) depends on how mezod's StateDB override of `Finalise` is written on the upgrade branch. Before removing the helper:
+  1. Read mezod's `Finalise(true)` impl on the post-upgrade branch.
+  2. If it resets `ongoingPrecompilesCallsCounter`, remove the helper as planned.
+  3. If it does NOT, either fold the counter reset into mezod's `Finalise` override, or keep a thin wrapper that resets the counter and then calls `Finalise(true)`.
+Skipping this check will silently break any simulate request that exceeds `maxPrecompilesCallsPerExecution` across call boundaries.
+
+**Security risks.** None new in the type-safe sense — purely mechanical — but see the counter-reset verification step above; a silent behavior loss there would degrade multi-call simulations.
 
 **Verification.**
 - All Phase 1-12 tests pass unchanged on the upgraded branch.
+- Multi-call simulate tests from Phase 6 (≥2 calls touching custom precompiles) still pass — this is the canary for the counter-reset gap.
 - `go build ./...` clean.
 - `make test-unit` green.
 
@@ -667,8 +700,7 @@ The Phase 7 `simulatedGetHashFn` closure stays — it still covers the `[base, b
 - System: `tests/system/test/SimulateV1_EIP2935.test.ts` — multi-block simulate; inside block 3 read `BLOCKHASH(base - 1000)`; cross-check against `eth_getBlockByNumber(base - 1000).hash`.
 
 **DoD.**
-- BLOCKHASH 257..8192 range works in simulated blocks.
-- "Known divergences" entry about `HistoricalEntries` is removed (superseded).
+- BLOCKHASH 257..8192 range works in simulated blocks (lifting the standard 256-block cap for Prague-activated simulations).
 
 ---
 
@@ -751,16 +783,16 @@ Each phase's DoD is binary; but across the whole feature:
 4. **Spec conformance** — port high-signal fixtures from `ethereum/execution-apis/tests/eth_simulateV1/` into Hardhat-compatible test cases in Phase 12.
 5. **Fuzz** — Go fuzz target to guard against panic-level bugs (Phase 12).
 6. **Manual localnet verification** — LAST RESORT, used only in Phases 7 + 8 where state-root edge cases or memory behavior cannot be reliably mocked.
-7. **Security reviews** — invoked after Phases 7, 8, 10, and 12 (final). Uses the `/security-review` skill against the feature branch.
+7. **Security reviews** — kernel reviews invoked after Phases 7, 8, 10, and 15 (security-critical kernels); a final release-cut review is invoked at Phase 12. Uses the `/security-review` skill against the feature branch.
 
 ## Critical files (modified or created)
 
 ### Part 1 (v1.14.8)
 
-- `x/evm/keeper/state_transition.go` (Phase 3 — introduce `NewEVMWithOverrides`, `applyMessageWithOverrides`, `BuildActivePrecompiles`)
+- `x/evm/keeper/state_transition.go` (Phase 2 — unexported `evmBuilder` type + `buildEVM` parameter on `applyMessageWithConfig`, rewritten `SimulateMessage` with precompile-override closure; Phase 3 — `NewEVMWithOverrides`, `applyMessageWithOverrides`, and the precompile-seam decision for the simulate package)
 - `x/evm/keeper/state_override.go` (Phase 2 — `MovePrecompileTo` support; deny-list for mezo custom precompiles)
 - `x/evm/keeper/config.go` (Phase 3 — `VMConfig` accepts optional `NoBaseFee` override)
-- `x/evm/statedb/statedb.go` (Phase 3 — `Discard`, `FinaliseBetweenCalls`)
+- `x/evm/statedb/statedb.go` (Phase 3 — `FinaliseBetweenCalls`)
 - `x/evm/keeper/grpc_query_simulate.go` (Phases 4, 5 — new gRPC handler)
 - `x/evm/keeper/simulate/` (NEW package — Phases 4–11)
   - `input.go`, `sanitize.go`, `header.go`, `chain.go`, `assemble.go`, `driver.go`, `process_block.go`
@@ -790,28 +822,32 @@ Each phase's DoD is binary; but across the whole feature:
 - `rpc/types/errors.go` (Phases 15, 16 — EIP-7702 auth errors, per-tx cap error)
 - `tests/system/test/SimulateV1_EIP2935.test.ts`, `SimulateV1_EIP7702.test.ts` (Phases 14, 15 — NEW system tests)
 
-## Untouched (deliberately, for safety)
+## Consensus path — semantics unchanged (hard requirement)
 
-- `x/evm/keeper/state_transition.go:185` — `ApplyTransaction` (consensus-critical path)
-- `x/evm/keeper/state_transition.go:319` — `ApplyMessage` (consensus-critical path)
-- `x/evm/keeper/state_transition.go:370` — `ApplyMessageWithConfig` (refactored only to delegate to overrides variant; behavior byte-identical)
-- `x/evm/keeper/state_transition.go:386` — `SimulateMessage` (left as is; existing `eth_call`/`eth_estimateGas` callers unaffected)
-- `app/ante/evm/*.go` — ante handler (never touched)
-- `x/evm/keeper/msg_server.go` — tx message server (never touched)
+**The consensus path MUST behave byte-identically to main.** This is the governing invariant for the whole feature: no phase may change the state transitions produced by a consensus-delivered transaction. Any observed behavioral delta on the consensus path is a blocking bug, regardless of how "obviously equivalent" the refactor looked.
+
+**Never modified — do not edit under any circumstance:**
+- `app/ante/evm/*.go` — ante handler
+- `x/evm/keeper/msg_server.go` — tx message server
+- `x/evm/keeper/state_transition.go:185` — `ApplyTransaction`
+- `x/evm/keeper/state_transition.go:319` — `ApplyMessage`
+
+**Public signature preserved; internal body refactored but consensus behavior byte-identical.** Both of these were touched by Phases 2/3 to grow new keeper-internal seams. The rule above still holds — the consensus call path must produce the same state transitions it does today, and every phase's DoD requires all pre-existing keeper + ante tests to pass unchanged as the regression guard:
+- `x/evm/keeper/state_transition.go:370` — `ApplyMessageWithConfig`. Phase 2 added an unexported `evmBuilder` parameter on the internal `applyMessageWithConfig`; the public wrapper passes `k.NewEVM` so consensus callers hit the same construction path. Phase 3 delegates to the overrides variant with an empty `EVMOverrides{}` — semantics identical.
+- `x/evm/keeper/state_transition.go:386` — `SimulateMessage`. Phase 2 rewrote the body to collect `MovePrecompileTo` moves and pass a precompile-override closure through `applyMessageWithConfig`. `eth_call` / `eth_estimateGas` callers see no new required fields; with zero overrides the execution path is identical to pre-Phase-2.
 
 ## Known divergences from the execution-apis spec (documented to users)
 
 ### Part 1 (v1.14.8, Cancun)
 
-1. **EIP-4844 / 4788 / 2935 / 7685 / Prague not supported.** Overrides for `BeaconRoot`, `Withdrawals`, blob gas fields are rejected.
+1. **EIP-4844 / 4788 / 2935 / 7685 not supported.** Overrides for `BeaconRoot`, `Withdrawals`, blob gas fields are rejected.
 2. **Custom mezo precompiles immovable.** `MovePrecompileTo` for any of the 8 addresses at `0x7b7c…` returns a structured `-32602` error (spec does not assign a dedicated -38xxx code to this policy rejection; geth uses the same mapping for "source is not a precompile").
 3. **`GasUsed` honors `MinGasMultiplier`.** Reported gas matches mezod on-chain receipts, not go-ethereum's raw EVM gas. Documented for callers comparing across chains.
-4. **BLOCKHASH canonical range bounded by `HistoricalEntries` param** (commonly 10000). `BLOCKHASH(base - N)` for `N > HistoricalEntries` returns zero hash. Same as go-ethereum on a pruned node.
 
 ### Part 2 (post-upgrade, Prague + Osaka)
 
 - **Divergence (1) narrows.** EIP-2935 (Phase 14) and EIP-7702 (Phase 15) become supported. **EIP-4844, EIP-4788, EIP-7685, EIP-6110, EIP-7002, EIP-7251 stay rejected permanently** because mezod has no data-availability layer, no beacon chain (uses CometBFT), and no EL↔CL messaging framework. Rejection reason text updated in the API response to reflect the mezo-specific rationale (not "EIP inactive" but "mezod chain model does not include [beacon chain / DA layer / validator queues]").
-- **Divergence (4) superseded.** EIP-2935's parent-hash state contract serves the 257..8192 canonical range; the `HistoricalEntries` ceiling effectively no longer matters for mezo callers. Zero-hash fallback only applies for `BLOCKHASH(base - N)` where `N > 8192`.
+- **BLOCKHASH range extends to 8192.** EIP-2935's parent-hash state contract serves the 257..8192 canonical range in simulated blocks, lifting the standard EVM 256-block `BLOCKHASH` cap. Zero-hash fallback only applies for `BLOCKHASH(base - N)` where `N > 8192`.
 - **Divergences (2) and (3) unchanged.** Custom mezo precompiles stay immovable; `MinGasMultiplier` gas reporting continues.
 
 ## Follow-ups / out of scope
