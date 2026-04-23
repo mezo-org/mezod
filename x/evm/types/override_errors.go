@@ -2,13 +2,9 @@ package types
 
 import "errors"
 
-// Sentinel errors returned by keeper-side validation of `eth_call` /
-// `eth_simulateV1` state overrides.
-//
-// Callers surfacing errors on the JSON-RPC wire (see rpc/types) translate
-// these with errors.Is into the spec-reserved JSON-RPC error codes from
-// execution-apis/src/eth/execute.yaml. Keeper code stays free of the RPC
-// error vocabulary.
+// Sentinel errors returned by keeper-side validation of state overrides
+// applied before an EVM message executes. Each sentinel names a specific
+// invariant over the override set; callers inspect them with errors.Is.
 var (
 	// ErrOverrideStateAndStateDiff is returned when a single account
 	// specifies both `state` (full replacement) and `stateDiff` (partial
@@ -35,14 +31,13 @@ var (
 
 	// ErrOverrideMovePrecompileSelfReference is returned when
 	// MovePrecompileToAddress names its own source address as the
-	// destination. Surfaces as the spec code -38022 at the RPC layer.
+	// destination.
 	ErrOverrideMovePrecompileSelfReference = errors.New(
 		"MovePrecompileToAddress referenced itself in replacement",
 	)
 
 	// ErrOverrideMovePrecompileDuplicateDest is returned when two or more
 	// MovePrecompileTo entries target the same destination address.
-	// Surfaces as the spec code -38023 at the RPC layer.
 	ErrOverrideMovePrecompileDuplicateDest = errors.New(
 		"multiple MovePrecompileToAddress entries reference the same destination",
 	)

@@ -52,10 +52,8 @@ var mezoCustomPrecompileAddrs = func() map[common.Address]struct{} {
 // chain's own custom precompiles.
 //
 // On the first invariant violation returns one of the sentinel errors in
-// x/evm/types (ErrOverrideXxx) wrapped with the offending address. The RPC
-// layer inspects these with errors.Is and maps them to the spec-reserved
-// JSON-RPC error codes (-38022, -38023, -32602) before returning to the
-// client. Callers outside the RPC layer can match the sentinels directly.
+// x/evm/types (ErrOverrideXxx) wrapped with the offending address. Callers
+// match the sentinels with errors.Is.
 func applyStateOverrides(
 	db *statedb.StateDB,
 	overrides stateOverride,
