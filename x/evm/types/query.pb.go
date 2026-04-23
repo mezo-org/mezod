@@ -1458,9 +1458,12 @@ func (m *SimulateV1Response) GetError() *SimError {
 // JSON-RPC error code (execution-apis/src/eth/execute.yaml); `data` is
 // a hex-encoded payload used only for code == 3 (revert).
 type SimError struct {
-	Code    int32  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	// code is the spec-reserved JSON-RPC error code.
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	// message is the human-readable error summary.
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	Data    string `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	// data is a hex-encoded payload used only for code == 3 (revert).
+	Data string `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 }
 
 func (m *SimError) Reset()         { *m = SimError{} }

@@ -361,7 +361,10 @@ message SimulateV1Response {
 // JSON-RPC error code (execution-apis/src/eth/execute.yaml); `data` is
 // a hex-encoded payload used only for code == 3 (revert).
 message SimError {
+  // code is the spec-reserved JSON-RPC error code.
   int32 code = 1;
+  // message is the human-readable error summary.
   string message = 2;
+  // data is a hex-encoded payload used only for code == 3 (revert).
   string data = 3;
 }
