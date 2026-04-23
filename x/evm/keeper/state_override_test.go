@@ -1,8 +1,8 @@
 package keeper
 
 import (
+	"errors"
 	"math/big"
-	"strings"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
-	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/require"
@@ -164,7 +163,8 @@ func TestApplyStateOverrides_StateAndStateDiffError(t *testing.T) {
 
 	_, err := applyStateOverrides(db, overrides, testRules)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "has both state and stateDiff overrides")
+	require.ErrorIs(t, err, evmtypes.ErrOverrideStateAndStateDiff)
+	require.Contains(t, err.Error(), testAddr1.Hex())
 }
 
 func TestApplyStateOverrides_Combined(t *testing.T) {
@@ -271,11 +271,8 @@ func TestApplyStateOverrides_MovePrecompileTo_SourceNotPrecompile(t *testing.T) 
 
 	_, err := applyStateOverrides(db, overrides, testRules)
 	require.Error(t, err)
-
-	rpcErr, ok := err.(*rpctypes.RPCError)
-	require.True(t, ok, "expected *RPCError, got %T", err)
-	require.Equal(t, rpctypes.SimErrCodeInvalidParams, rpcErr.Code)
-	require.Contains(t, rpcErr.Message, "is not a precompile")
+	require.ErrorIs(t, err, evmtypes.ErrOverrideNotAPrecompile)
+	require.Contains(t, err.Error(), nonPrecompile.Hex())
 }
 
 func TestApplyStateOverrides_MovePrecompileTo_SelfReference(t *testing.T) {
@@ -291,11 +288,8 @@ func TestApplyStateOverrides_MovePrecompileTo_SelfReference(t *testing.T) {
 
 	_, err := applyStateOverrides(db, overrides, testRules)
 	require.Error(t, err)
-
-	rpcErr, ok := err.(*rpctypes.RPCError)
-	require.True(t, ok, "expected *RPCError, got %T", err)
-	require.Equal(t, rpctypes.SimErrCodeMovePrecompileSelfReference, rpcErr.Code)
-	require.Contains(t, rpcErr.Message, "referenced itself")
+	require.ErrorIs(t, err, evmtypes.ErrOverrideMovePrecompileSelfReference)
+	require.Contains(t, err.Error(), sha256Addr.Hex())
 }
 
 func TestApplyStateOverrides_MovePrecompileTo_DuplicateDestination(t *testing.T) {
@@ -316,11 +310,8 @@ func TestApplyStateOverrides_MovePrecompileTo_DuplicateDestination(t *testing.T)
 
 	_, err := applyStateOverrides(db, overrides, testRules)
 	require.Error(t, err)
-
-	rpcErr, ok := err.(*rpctypes.RPCError)
-	require.True(t, ok, "expected *RPCError, got %T", err)
-	require.Equal(t, rpctypes.SimErrCodeMovePrecompileDuplicateDest, rpcErr.Code)
-	require.Contains(t, rpcErr.Message, dest.Hex())
+	require.ErrorIs(t, err, evmtypes.ErrOverrideMovePrecompileDuplicateDest)
+	require.Contains(t, err.Error(), dest.Hex())
 }
 
 func TestApplyStateOverrides_MovePrecompileTo_MezoCustomBlocked(t *testing.T) {
@@ -340,11 +331,8 @@ func TestApplyStateOverrides_MovePrecompileTo_MezoCustomBlocked(t *testing.T) {
 
 			_, err := applyStateOverrides(db, overrides, testRules)
 			require.Error(t, err)
-
-			rpcErr, ok := err.(*rpctypes.RPCError)
-			require.True(t, ok, "expected *RPCError, got %T", err)
-			require.Equal(t, rpctypes.SimErrCodeInvalidParams, rpcErr.Code)
-			require.Contains(t, rpcErr.Message, "cannot move mezo custom precompile")
+			require.ErrorIs(t, err, evmtypes.ErrOverrideMoveMezoCustomPrecompile)
+			require.Contains(t, err.Error(), customAddr.Hex())
 		})
 	}
 }
@@ -362,11 +350,8 @@ func TestApplyStateOverrides_MovePrecompileTo_DestAlreadyOverridden(t *testing.T
 
 	_, err := applyStateOverrides(db, overrides, testRules)
 	require.Error(t, err)
-
-	rpcErr, ok := err.(*rpctypes.RPCError)
-	require.True(t, ok, "expected *RPCError, got %T", err)
-	require.Equal(t, rpctypes.SimErrCodeInvalidParams, rpcErr.Code)
-	require.Contains(t, rpcErr.Message, "is already overridden")
+	require.ErrorIs(t, err, evmtypes.ErrOverrideDestAlreadyOverridden)
+	require.Contains(t, err.Error(), dest.Hex())
 }
 
 func TestApplyStateOverrides_MovePrecompileTo_ChainedMoveRejected(t *testing.T) {
@@ -383,16 +368,12 @@ func TestApplyStateOverrides_MovePrecompileTo_ChainedMoveRejected(t *testing.T) 
 
 	_, err := applyStateOverrides(db, overrides, testRules)
 	require.Error(t, err)
-
-	rpcErr, ok := err.(*rpctypes.RPCError)
-	require.True(t, ok, "expected *RPCError, got %T", err)
-	require.Equal(t, rpctypes.SimErrCodeInvalidParams, rpcErr.Code)
-	// Either guard may fire depending on iteration order; both are
+	// Either guard may fire depending on map iteration order; both are
 	// acceptable so long as one of them always does.
 	require.True(t,
-		strings.Contains(rpcErr.Message, "already overridden by a precompile") ||
-			strings.Contains(rpcErr.Message, "is already overridden"),
-		"unexpected rejection message: %s", rpcErr.Message,
+		errors.Is(err, evmtypes.ErrOverrideAccountTaintedByPrecompile) ||
+			errors.Is(err, evmtypes.ErrOverrideDestAlreadyOverridden),
+		"unexpected rejection error: %v", err,
 	)
 }
 

@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 
-	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
@@ -42,13 +41,6 @@ var mezoCustomPrecompileAddrs = func() map[common.Address]struct{} {
 	return set
 }()
 
-func invalidParams(format string, args ...any) error {
-	return &rpctypes.RPCError{
-		Code:    rpctypes.SimErrCodeInvalidParams,
-		Message: fmt.Sprintf(format, args...),
-	}
-}
-
 // applyStateOverrides validates the override set and mutates the StateDB for
 // nonce / code / balance / state / stateDiff entries. The returned map holds
 // validated MovePrecompileTo relocations (source → destination) that the
@@ -59,10 +51,11 @@ func invalidParams(format string, args ...any) error {
 // (stdlib precompiles only) with mezoCustomPrecompileAddrs rejecting the
 // chain's own custom precompiles.
 //
-// On the first invariant violation returns *rpctypes.RPCError carrying the
-// spec-reserved code (-38022, -38023) or -32602 for the mezo-custom denylist
-// and the two anti-nondeterminism guards that mirror go-ethereum's
-// override.go dirtyAddrs / diff.has checks.
+// On the first invariant violation returns one of the sentinel errors in
+// x/evm/types (ErrOverrideXxx) wrapped with the offending address. The RPC
+// layer inspects these with errors.Is and maps them to the spec-reserved
+// JSON-RPC error codes (-38022, -38023, -32602) before returning to the
+// client. Callers outside the RPC layer can match the sentinels directly.
 func applyStateOverrides(
 	db *statedb.StateDB,
 	overrides stateOverride,
@@ -74,9 +67,8 @@ func applyStateOverrides(
 
 	for addr, override := range overrides {
 		if _, dirty := moveDests[addr]; dirty {
-			return nil, invalidParams(
-				"account %s has already been overridden by a precompile",
-				addr.Hex(),
+			return nil, fmt.Errorf(
+				"%w: %s", types.ErrOverrideAccountTaintedByPrecompile, addr.Hex(),
 			)
 		}
 
@@ -84,38 +76,36 @@ func applyStateOverrides(
 			dest := *override.MovePrecompileTo
 
 			if dest == addr {
-				return nil, &rpctypes.RPCError{
-					Code: rpctypes.SimErrCodeMovePrecompileSelfReference,
-					Message: fmt.Sprintf(
-						"MovePrecompileToAddress referenced itself in replacement: %s",
-						addr.Hex(),
-					),
-				}
+				return nil, fmt.Errorf(
+					"%w: %s", types.ErrOverrideMovePrecompileSelfReference, addr.Hex(),
+				)
 			}
 
 			if _, exists := moveDests[dest]; exists {
-				return nil, &rpctypes.RPCError{
-					Code: rpctypes.SimErrCodeMovePrecompileDuplicateDest,
-					Message: fmt.Sprintf(
-						"Multiple MovePrecompileToAddress referencing the same address to replace: %s",
-						dest.Hex(),
-					),
-				}
+				return nil, fmt.Errorf(
+					"%w: %s", types.ErrOverrideMovePrecompileDuplicateDest, dest.Hex(),
+				)
 			}
 
 			if _, destOverridden := overrides[dest]; destOverridden {
-				return nil, invalidParams("account %s is already overridden", dest.Hex())
+				return nil, fmt.Errorf(
+					"%w: %s", types.ErrOverrideDestAlreadyOverridden, dest.Hex(),
+				)
 			}
 
 			// Denylist check before the DefaultPrecompiles lookup so
 			// mezo custom addresses surface the specific error rather
 			// than "is not a precompile" (they aren't stdlib entries).
 			if _, isCustom := mezoCustomPrecompileAddrs[addr]; isCustom {
-				return nil, invalidParams("cannot move mezo custom precompile: %s", addr.Hex())
+				return nil, fmt.Errorf(
+					"%w: %s", types.ErrOverrideMoveMezoCustomPrecompile, addr.Hex(),
+				)
 			}
 
 			if _, isStdlib := vm.DefaultPrecompiles(rules)[addr]; !isStdlib {
-				return nil, invalidParams("account %s is not a precompile", addr.Hex())
+				return nil, fmt.Errorf(
+					"%w: %s", types.ErrOverrideNotAPrecompile, addr.Hex(),
+				)
 			}
 
 			if moves == nil {
@@ -139,8 +129,8 @@ func applyStateOverrides(
 		}
 
 		if override.State != nil && override.StateDiff != nil {
-			return nil, invalidParams(
-				"account %s has both state and stateDiff overrides", addr.Hex(),
+			return nil, fmt.Errorf(
+				"%w: %s", types.ErrOverrideStateAndStateDiff, addr.Hex(),
 			)
 		}
 
