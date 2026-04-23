@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/keeper"
@@ -644,6 +645,101 @@ func (suite *KeeperTestSuite) TestNewEVM_PREVRANDAO() {
 			suite.Require().Equal(tc.expectedDifficulty, evm.Context.Difficulty)
 		})
 	}
+}
+
+func (suite *KeeperTestSuite) TestNewEVMWithOverrides() {
+	suite.SetupTest()
+
+	proposerAddress := suite.ctx.BlockHeader().ProposerAddress
+	cfg, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposerAddress, big.NewInt(31611))
+	suite.Require().NoError(err)
+
+	keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+	chainCfg := keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID())
+	signer := ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
+	vmdb := suite.StateDB()
+
+	msg, err := newNativeMessage(
+		vmdb.GetNonce(suite.address),
+		suite.ctx.BlockHeight(),
+		suite.address,
+		chainCfg,
+		suite.signer,
+		signer,
+		ethtypes.AccessListTxType,
+		nil,
+		nil,
+		big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
+	)
+	suite.Require().NoError(err)
+
+	stateDB := statedb.New(suite.ctx, suite.app.EvmKeeper, suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{}))
+
+	// Control: nil overrides — must match NewEVM byte-for-byte on the
+	// fields the consensus path relies on.
+	baseline := suite.app.EvmKeeper.NewEVM(suite.ctx, msg, cfg, nil, stateDB)
+	noOverride := suite.app.EvmKeeper.NewEVMWithOverrides(suite.ctx, msg, cfg, nil, stateDB, nil)
+	suite.Require().Equal(baseline.Context.BlockNumber, noOverride.Context.BlockNumber)
+	suite.Require().Equal(baseline.Context.Time, noOverride.Context.Time)
+	suite.Require().Equal(baseline.Context.GasLimit, noOverride.Context.GasLimit)
+	suite.Require().Equal(baseline.Context.Coinbase, noOverride.Context.Coinbase)
+	suite.Require().Equal(baseline.Context.BaseFee, noOverride.Context.BaseFee)
+	suite.Require().Equal(baseline.Context.BlobBaseFee, noOverride.Context.BlobBaseFee)
+	suite.Require().Equal(baseline.Context.Random, noOverride.Context.Random)
+	suite.Require().Equal(baseline.Context.Difficulty, noOverride.Context.Difficulty)
+	suite.Require().Equal(baseline.Config.NoBaseFee, noOverride.Config.NoBaseFee)
+
+	// BlockContext override: replaces the whole struct.
+	overridden := vm.BlockContext{
+		CanTransfer: core.CanTransfer,
+		Transfer:    core.Transfer,
+		GetHash:     func(uint64) common.Hash { return common.Hash{} },
+		Coinbase:    common.HexToAddress("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"),
+		GasLimit:    1_234_567,
+		BlockNumber: big.NewInt(999),
+		Time:        42,
+		Difficulty:  big.NewInt(0),
+		BaseFee:     big.NewInt(7),
+		BlobBaseFee: big.NewInt(0),
+		Random:      new(common.Hash),
+	}
+	evmBlock := suite.app.EvmKeeper.NewEVMWithOverrides(
+		suite.ctx, msg, cfg, nil, stateDB,
+		&keeper.EVMOverrides{BlockContext: &overridden},
+	)
+	suite.Require().Equal(big.NewInt(999), evmBlock.Context.BlockNumber)
+	suite.Require().Equal(uint64(42), evmBlock.Context.Time)
+	suite.Require().Equal(overridden.Coinbase, evmBlock.Context.Coinbase)
+	suite.Require().Equal(uint64(1_234_567), evmBlock.Context.GasLimit)
+
+	// Precompiles override: a single-entry custom map must wholly
+	// replace the default registry. The EVM exposes the live set via
+	// ActivePrecompiles(rules) — it must now be exactly the override.
+	custom := map[common.Address]vm.PrecompiledContract{
+		common.HexToAddress("0x1234"): nil,
+	}
+	evmPrec := suite.app.EvmKeeper.NewEVMWithOverrides(
+		suite.ctx, msg, cfg, nil, stateDB,
+		&keeper.EVMOverrides{Precompiles: custom},
+	)
+	rules := cfg.Rules(suite.ctx.BlockHeight(), uint64(suite.ctx.BlockTime().Unix())) //nolint:gosec
+	active := evmPrec.ActivePrecompiles(rules)
+	suite.Require().Equal([]common.Address{common.HexToAddress("0x1234")}, active)
+
+	// NoBaseFee override: explicitly flips the vm.Config flag
+	// regardless of fee-market derivation.
+	trueVal := true
+	evmNoBase := suite.app.EvmKeeper.NewEVMWithOverrides(
+		suite.ctx, msg, cfg, nil, stateDB,
+		&keeper.EVMOverrides{NoBaseFee: &trueVal},
+	)
+	suite.Require().True(evmNoBase.Config.NoBaseFee)
+	falseVal := false
+	evmBase := suite.app.EvmKeeper.NewEVMWithOverrides(
+		suite.ctx, msg, cfg, nil, stateDB,
+		&keeper.EVMOverrides{NoBaseFee: &falseVal},
+	)
+	suite.Require().False(evmBase.Config.NoBaseFee)
 }
 
 func (suite *KeeperTestSuite) TestContractDeployment() {
