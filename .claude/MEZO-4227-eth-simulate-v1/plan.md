@@ -125,7 +125,9 @@ Executable today. No dependency on the geth v1.16 upgrade project.
 
 **Goal.** Add `MovePrecompileTo` support to the existing state-override machinery — visible to `eth_call` today, usable by simulate later. Deny-list mezo custom precompiles.
 
-**Design.** Leave `NewEVM` untouched (byte-identical to main). Introduce an unexported `evmBuilder` function-type parameter on `applyMessageWithConfig`: the consensus-path public wrapper `ApplyMessageWithConfig` passes `k.NewEVM` directly, preserving main's execution body byte-for-byte; `SimulateMessage` supplies a closure that calls `k.NewEVM` and then — when the request has any `MovePrecompileTo` entries — rebuilds the precompile registry inline (duplicating the construction inside `NewEVM`), applies the moves, and re-attaches via `evm.WithPrecompiles(...)`. Change `applyStateOverrides` to return `(moves, error)` rather than mutating a passed-in registry; validation uses `vm.DefaultPrecompiles(rules)` to answer "is source a stdlib precompile?" and `mezoCustomPrecompileAddrs` for the deny-list. `MovePrecompileTo` is applied FIRST per spec ordering, enforcing the invariants below. The spec assigns codes `-38022` and `-38023` to two very specific conditions — match those exactly and use `-32602 invalid params` for the remaining structured rejections (mirrors geth's `override/override.go`).
+**Design.** Leave `NewEVM` untouched (byte-identical to main). Introduce an unexported `evmBuilder` function-type parameter on `applyMessageWithConfig`: the consensus-path public wrapper `ApplyMessageWithConfig` passes `k.NewEVM` directly, preserving main's execution body byte-for-byte; `SimulateMessage` supplies a closure that calls `k.NewEVM` and then — when the request has any `MovePrecompileTo` entries — rebuilds the precompile registry inline (duplicating the construction inside `NewEVM`), applies the moves, and re-attaches via `evm.WithPrecompiles(...)`. Change `applyStateOverrides` to return `(moves, error)` rather than mutating a passed-in registry; validation uses `vm.DefaultPrecompiles(rules)` to answer "is source a stdlib precompile?" and `mezoCustomPrecompileAddrs` for the deny-list. `MovePrecompileTo` is applied FIRST per spec ordering, enforcing the invariants below. The spec assigns codes `-38022` and `-38023` to two very specific conditions — the keeper marks them via distinct sentinel errors so the RPC layer can map them exactly; the remaining structured rejections map to `-32602 invalid params` (mirrors geth's `override/override.go`).
+
+**Error surface.** `applyStateOverrides` returns typed sentinels (`ErrOverrideMovePrecompileSelfReference`, `ErrOverrideMovePrecompileDuplicateDest`, `ErrOverrideNotAPrecompile`, `ErrOverrideMoveMezoCustomPrecompile`, `ErrOverrideAccountTaintedByPrecompile`, `ErrOverrideDestAlreadyOverridden`, `ErrOverrideStateAndStateDiff`) defined in `x/evm/types/override_errors.go`. The keeper package speaks only this domain vocabulary — no imports from `rpc/types`. Mapping the sentinels to the spec-reserved JSON-RPC codes is deferred to Phase 4+: see that phase's Error surface note for the response-field approach. Today's `Query/EthCall` path continues to wrap any error from `SimulateMessage` as `status.Error(codes.Internal, err.Error())`, which is adequate for `eth_call` (the `-38xxx` codes are `eth_simulateV1`-specific; `-32602` is the generic fallback and is not produced structurally on this path today).
 
 The inline registry rebuild in `SimulateMessage`'s closure is the single piece of temporary duplication; it is marked `TODO (geth-upgrade)` so Phase 13's detection grep ([#651 discussion](https://github.com/mezo-org/mezod/pull/651#discussion_r3123274099)) surfaces it — v1.16.9 exposes `evm.Precompiles()` + `evm.SetPrecompiles()`, letting the closure drop the rebuild and mutate the live registry in place.
 
@@ -214,6 +216,8 @@ func (k *Keeper) applyMessageWithOverrides(ctx sdk.Context, wrapper MessageWrapp
 
 **Design.** `simOpts` is passed as JSON bytes end-to-end (matches existing `EthCallRequest.Args` pattern at `grpc_query.go:240`) — keeps proto stable as spec evolves.
 
+**Error surface.** State-override validation failures travel as **structured fields on `SimulateV1Response`**, not as gRPC errors. This mirrors the pre-existing VM-error pattern where reverts/EVM failures ride on `res.VmError` + `res.Failed()` (see `rpc/backend/call_tx.go:482`) — proto fields survive the gRPC boundary cleanly, Go error identity does not (`status.Error(codes.Internal, err.Error())` destroys type identity). The keeper's `SimulateV1` gRPC handler maps the Phase-2 `ErrOverrideXxx` sentinels from `x/evm/types` to the proto enum `OverrideErrorKind` via a small `overrideErrorKind(err) (Kind, bool)` helper; the backend sees the enum on a successful gRPC response and synthesizes an `*rpctypes.RPCError` with the spec code via `TranslateOverrideKind` in `rpc/types`. This keeps `rpctypes` out of the `x/evm/keeper` import graph and makes the wire contract explicit data rather than a convention layered on top of Go error semantics.
+
 **Files.**
 - EDIT `proto/ethermint/evm/v1/query.proto` — add:
   ```proto
@@ -226,15 +230,32 @@ func (k *Keeper) applyMessageWithOverrides(ctx sdk.Context, wrapper MessageWrapp
       int64 chain_id = 5;
       int64 timeout_ms = 6;
   }
-  message SimulateV1Response { bytes result = 1; } // JSON: []*SimBlockResult
+  message SimulateV1Response {
+      bytes result = 1; // JSON: []*SimBlockResult
+      // Populated when state-override validation (applyStateOverrides)
+      // rejects the request. UNSPECIFIED means no rejection.
+      OverrideErrorKind override_error_kind    = 2;
+      string            override_error_message = 3;
+  }
+  enum OverrideErrorKind {
+      OVERRIDE_ERROR_UNSPECIFIED              = 0;
+      OVERRIDE_ERROR_MOVE_PRECOMPILE_SELF_REF = 1; // → -38022
+      OVERRIDE_ERROR_MOVE_PRECOMPILE_DUP_DEST = 2; // → -38023
+      OVERRIDE_ERROR_STATE_AND_STATE_DIFF     = 3; // → -32602
+      OVERRIDE_ERROR_ACCOUNT_TAINTED          = 4; // → -32602
+      OVERRIDE_ERROR_DEST_ALREADY_OVERRIDDEN  = 5; // → -32602
+      OVERRIDE_ERROR_MOVE_MEZO_CUSTOM         = 6; // → -32602
+      OVERRIDE_ERROR_NOT_A_PRECOMPILE         = 7; // → -32602
+  }
   ```
 - Regen `x/evm/types/query.pb.go`, `rpc/types/query_client.go`.
 - NEW `x/evm/keeper/simulate/` package:
   - `input.go` — internal `Opts`, `Block`, `BlockOverrides`, `CallResult`, `BlockResult` types. JSON unmarshal with strict validation (reject `ParentBeaconRoot` and `Withdrawals` overrides).
   - `sanitize.go` — `SanitizeChain(base *ethtypes.Header, blocks []Block, maxBlocks int) ([]Block, error)`. Mirrors go-ethereum `simulate.go:400-459`. Rules: default number = `prev.Number + 1`; default time = `prev.Time + 12`; strict-increasing enforcement (`-38020`/`-38021`); gap-fill with empty blocks (count against `maxBlocks`); span cap (`-38026`).
   - `header.go` — `MakeHeader(prev *ethtypes.Header, overrides *BlockOverrides, rules params.Rules, validation bool) (*ethtypes.Header, error)`. Pure function. Sets `UncleHash = EmptyUncleHash`, `ReceiptHash = EmptyReceiptsHash`, `TxHash = EmptyTxsHash`; `Difficulty = 0` post-merge; `Random` non-nil zero post-merge; `BaseFee` from `eip1559.CalcBaseFee` when validation=true and override absent; `BaseFee = 0` otherwise. `ParentBeaconRoot`, `WithdrawalsHash`, `RequestsHash`, `BlobGasUsed`, `ExcessBlobGas` all nil (EIPs not active).
-- NEW `x/evm/keeper/grpc_query_simulate.go` — `Keeper.SimulateV1` gRPC handler stub: unmarshals `opts`, sanitizes, returns `-32603` "execution not yet wired" via `RPCError` (short-circuit after sanitize for this phase; keeps parity with Phase 1's backend stub).
-- EDIT `rpc/backend/simulate.go` — real implementation: marshals opts, sets up timeout ctx (reuse `DoCall` pattern L462-475 verbatim), invokes gRPC.
+- NEW `x/evm/keeper/grpc_query_simulate.go` — `Keeper.SimulateV1` gRPC handler stub: unmarshals `opts`, sanitizes, returns `-32603` "execution not yet wired" via `RPCError` (short-circuit after sanitize for this phase; keeps parity with Phase 1's backend stub). Also adds the `overrideErrorKind(err) (OverrideErrorKind, bool)` helper mapping the `x/evm/types` sentinels to the proto enum — used by Phase 5's real implementation but introduced here alongside the proto so the mapping lives next to its data definition.
+- EDIT `rpc/backend/simulate.go` — real implementation: marshals opts, sets up timeout ctx (reuse `DoCall` pattern L462-475 verbatim), invokes gRPC. On a successful gRPC response with `override_error_kind != UNSPECIFIED`, return `rpctypes.TranslateOverrideKind(kind, message)`.
+- NEW `rpc/types/override_errors.go` — `TranslateOverrideKind(kind evmtypes.OverrideErrorKind, msg string) *RPCError` mapping the enum to spec codes (`-38022`, `-38023`, `-32602`). Lives at the RPC boundary so the code table is not duplicated across backends.
 
 **Security risks.**
 - **Gap-fill amplification** — caller sends `[{Number:base+1}, {Number:base+10000}]` → naive gap-fill allocates 9998 headers. Span check BEFORE allocation (research §19a).
@@ -277,7 +298,7 @@ func (k *Keeper) SimulateV1Core(ctx sdk.Context, cfg *statedb.EVMConfig, base *e
 The keeper's `SimulateV1` gRPC handler constructs the driver and invokes `SimulateV1Core`; the backend marshals results. Block assembly and response shaping are later (Phase 11 for full tx patching, but a minimal block envelope ships here).
 
 **Files.**
-- EDIT `x/evm/keeper/grpc_query_simulate.go` — real impl: ContextWithHeight → EVMConfig → build/obtain active precompile registry (Phase 3 picks the seam — exported helper, EVMOverrides field, or post-upgrade `evm.Precompiles()`) → apply state overrides → single-call execute via `applyMessageWithOverrides` with `Ephemeral:true`.
+- EDIT `x/evm/keeper/grpc_query_simulate.go` — real impl: ContextWithHeight → EVMConfig → build/obtain active precompile registry (Phase 3 picks the seam — exported helper, EVMOverrides field, or post-upgrade `evm.Precompiles()`) → apply state overrides → on a sentinel rejection from `applyStateOverrides`, return a successful `SimulateV1Response` with `override_error_kind` + `override_error_message` populated (no gRPC error) so the backend can translate to the spec JSON-RPC code; otherwise single-call execute via `applyMessageWithOverrides` with `Ephemeral:true`.
 - NEW `x/evm/keeper/simulate/driver.go` — driver struct + `SimulateV1Core` + single-block execute.
 - NEW `x/evm/keeper/simulate/assemble.go` — `AssembleBlock(header, txs, receipts, calls) *ethtypes.Block`. Minimal envelope (computes TxHash, ReceiptHash, block hash); `returnFullTransactions` patching deferred to Phase 11.
 - EDIT `rpc/backend/simulate.go` — unmarshal + basic response formatting.
