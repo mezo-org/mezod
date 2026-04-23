@@ -87,7 +87,7 @@ func (k Keeper) CalculateBaseFee(ctx sdk.Context) *big.Int {
 		y := x.Div(x, parentGasTargetBig)
 		baseFeeDelta := x.Div(y, baseFeeChangeDenominator)
 		if baseFeeDelta.Cmp(common.Big1) < 0 {
-			return new(big.Int).Add(parentBaseFee, common.Big1)
+			baseFeeDelta = common.Big1
 		}
 		return new(big.Int).Add(parentBaseFee, baseFeeDelta)
 	}
