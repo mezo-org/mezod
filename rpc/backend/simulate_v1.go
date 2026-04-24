@@ -15,9 +15,9 @@ import (
 // SimulateV1 runs `eth_simulateV1`. Timeout wiring mirrors DoCall; the
 // eth_simulateV1 path inherits the same RPCEVMTimeout semantics.
 func (b *Backend) SimulateV1(
-	opts rpctypes.SimOpts,
+	opts evmtypes.SimOpts,
 	blockNrOrHash *rpctypes.BlockNumberOrHash,
-) ([]*rpctypes.SimBlockResult, error) {
+) ([]*evmtypes.SimBlockResult, error) {
 	optsBz, err := json.Marshal(opts)
 	if err != nil {
 		return nil, err
@@ -79,10 +79,10 @@ func (b *Backend) SimulateV1(
 	}
 
 	if len(res.Result) == 0 {
-		return []*rpctypes.SimBlockResult{}, nil
+		return []*evmtypes.SimBlockResult{}, nil
 	}
 
-	var out []*rpctypes.SimBlockResult
+	var out []*evmtypes.SimBlockResult
 	if err := json.Unmarshal(res.Result, &out); err != nil {
 		return nil, err
 	}

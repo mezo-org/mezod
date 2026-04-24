@@ -30,7 +30,7 @@ func registerSimulateV1SimError(
 
 // registerSimulateV1OK wires the gRPC mock so the keeper returns a
 // successful response with a serialized []*SimBlockResult payload.
-func registerSimulateV1OK(queryClient *mocks.EVMQueryClient, results []*rpctypes.SimBlockResult) {
+func registerSimulateV1OK(queryClient *mocks.EVMQueryClient, results []*evmtypes.SimBlockResult) {
 	bz, _ := json.Marshal(results)
 	queryClient.On(
 		"SimulateV1", mock.Anything, mock.AnythingOfType("*types.SimulateV1Request"),
@@ -53,7 +53,7 @@ func (suite *BackendTestSuite) TestSimulateV1_EmptyResultsReturnEmptySlice() {
 
 	bn := rpctypes.BlockNumber(1)
 	bnh := rpctypes.BlockNumberOrHash{BlockNumber: &bn}
-	got, err := suite.backend.SimulateV1(rpctypes.SimOpts{}, &bnh)
+	got, err := suite.backend.SimulateV1(evmtypes.SimOpts{}, &bnh)
 	suite.Require().NoError(err)
 	suite.Require().Empty(got)
 }
@@ -83,7 +83,7 @@ func (suite *BackendTestSuite) TestSimulateV1_BubblesSimError() {
 
 			bn := rpctypes.BlockNumber(1)
 			bnh := rpctypes.BlockNumberOrHash{BlockNumber: &bn}
-			_, err = suite.backend.SimulateV1(rpctypes.SimOpts{}, &bnh)
+			_, err = suite.backend.SimulateV1(evmtypes.SimOpts{}, &bnh)
 			suite.Require().Error(err)
 
 			var simErr *evmtypes.SimError
@@ -103,14 +103,14 @@ func (suite *BackendTestSuite) TestSimulateV1_UnmarshalsResults() {
 	_, err := RegisterBlock(client, 1, bz)
 	suite.Require().NoError(err)
 
-	expected := []*rpctypes.SimBlockResult{
-		{Block: map[string]interface{}{"number": "0x1"}, Calls: []rpctypes.SimCallResult{}},
+	expected := []*evmtypes.SimBlockResult{
+		{Block: map[string]interface{}{"number": "0x1"}, Calls: []evmtypes.SimCallResult{}},
 	}
 	registerSimulateV1OK(queryClient, expected)
 
 	bn := rpctypes.BlockNumber(1)
 	bnh := rpctypes.BlockNumberOrHash{BlockNumber: &bn}
-	got, err := suite.backend.SimulateV1(rpctypes.SimOpts{}, &bnh)
+	got, err := suite.backend.SimulateV1(evmtypes.SimOpts{}, &bnh)
 	suite.Require().NoError(err)
 	suite.Require().Len(got, 1)
 	suite.Require().Equal("0x1", got[0].Block["number"])

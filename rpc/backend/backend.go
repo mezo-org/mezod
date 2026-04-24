@@ -132,7 +132,7 @@ type EVMBackend interface {
 	EstimateCost(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber) (*rpctypes.EstimateCostResult, error)
 	EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber, overrides *rpctypes.StateOverride) (hexutil.Uint64, error)
 	DoCall(args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride) (*evmtypes.MsgEthereumTxResponse, error)
-	SimulateV1(opts rpctypes.SimOpts, blockNrOrHash *rpctypes.BlockNumberOrHash) ([]*rpctypes.SimBlockResult, error)
+	SimulateV1(opts evmtypes.SimOpts, blockNrOrHash *rpctypes.BlockNumberOrHash) ([]*evmtypes.SimBlockResult, error)
 	GasPrice() (*hexutil.Big, error)
 
 	// Filter API

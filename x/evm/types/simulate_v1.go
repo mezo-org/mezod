@@ -10,10 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
-// SimOpts is the driver-side view of SimOpts (see rpc/types/simulate_v1.go).
-// The shape matches the execution-apis spec; fields not yet used by the
-// driver are still parsed so unknown-call behavior is deterministic and
-// future phases can extend without reworking the unmarshal path.
+// SimOpts are the top-level options passed to `eth_simulateV1`. Fields not
+// yet consumed by the driver are still parsed so unknown-call behavior is
+// deterministic and future phases can extend without reworking the
+// unmarshal path.
 type SimOpts struct {
 	BlockStateCalls        []SimBlock `json:"blockStateCalls"`
 	TraceTransfers         bool       `json:"traceTransfers"`
@@ -29,10 +29,12 @@ type SimBlock struct {
 	Calls          []TransactionArgs  `json:"calls"`
 }
 
-// SimBlockOverrides mirrors rpc/types.BlockOverrides. Fields for EIPs the
-// mezo chain model does not support (EIP-4788 beacon root, EIP-4895
-// withdrawals, blob-gas fields) are parsed so the driver can explicitly
-// reject them rather than silently ignore them.
+// SimBlockOverrides overrides header fields for a simulated block. All
+// fields are optional; unset fields inherit from the parent simulated (or
+// base) header. Fields for EIPs the mezo chain model does not support
+// (EIP-4788 beacon root, EIP-4895 withdrawals, blob-gas fields) are parsed
+// so the driver can explicitly reject them rather than silently ignore
+// them.
 type SimBlockOverrides struct {
 	Number        *hexutil.Big          `json:"number,omitempty"`
 	Difficulty    *hexutil.Big          `json:"difficulty,omitempty"`
@@ -46,10 +48,10 @@ type SimBlockOverrides struct {
 	Withdrawals   *ethtypes.Withdrawals `json:"withdrawals,omitempty"`
 }
 
-// SimCallResult mirrors rpc/types.SimCallResult on the keeper side.
-// Error carries a spec-reserved JSON-RPC code + message + optional hex
-// data payload directly; the wire format does not go through any
-// translation on the way to the client.
+// SimCallResult is the result of one simulated call. Error carries the
+// spec-reserved JSON-RPC code + message + optional hex data payload
+// directly; the wire format does not go through any translation between
+// driver and client.
 type SimCallResult struct {
 	ReturnValue hexutil.Bytes   `json:"returnData"`
 	Logs        []*ethtypes.Log `json:"logs"`
@@ -58,20 +60,28 @@ type SimCallResult struct {
 	Error       *SimError       `json:"error,omitempty"`
 }
 
+// MarshalJSON forces `logs` to serialize as `[]` rather than `null` when
+// empty, matching the execution-apis spec.
+func (r SimCallResult) MarshalJSON() ([]byte, error) {
+	type alias SimCallResult
+	if r.Logs == nil {
+		r.Logs = []*ethtypes.Log{}
+	}
+	return json.Marshal(alias(r))
+}
+
 // SimBlockResult envelopes a single simulated block. Block carries the
 // header fields as an untyped map; Calls carries the per-call outputs.
-// The custom MarshalJSON embeds Block's fields at the top level alongside
-// `calls`, matching the execution-apis response shape and the
-// rpc/types.SimBlockResult unmarshaler on the other side of the gRPC
-// wire.
+// MarshalJSON embeds Block's fields at the top level alongside `calls`,
+// matching the execution-apis response shape; UnmarshalJSON reverses that
+// split so the struct round-trips across the gRPC wire.
 type SimBlockResult struct {
 	Block map[string]interface{} `json:"-"`
 	Calls []SimCallResult        `json:"calls"`
 }
 
 // MarshalJSON flattens Block's fields into the top-level object and
-// appends `calls`. Keep this in sync with
-// rpc/types.SimBlockResult.UnmarshalJSON, which reads the same shape.
+// appends `calls`.
 func (r SimBlockResult) MarshalJSON() ([]byte, error) {
 	out := make(map[string]interface{}, len(r.Block)+1)
 	for k, v := range r.Block {
@@ -83,6 +93,33 @@ func (r SimBlockResult) MarshalJSON() ([]byte, error) {
 		out["calls"] = r.Calls
 	}
 	return json.Marshal(out)
+}
+
+// UnmarshalJSON extracts the `calls` field into `Calls` and stores the
+// remaining fields in `Block`. Unknown fields are tolerated to allow the
+// type to evolve alongside the spec without breaking clients.
+func (r *SimBlockResult) UnmarshalJSON(data []byte) error {
+	raw := map[string]json.RawMessage{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if callsRaw, ok := raw["calls"]; ok {
+		if err := json.Unmarshal(callsRaw, &r.Calls); err != nil {
+			return err
+		}
+		delete(raw, "calls")
+	}
+	if r.Block == nil {
+		r.Block = map[string]interface{}{}
+	}
+	for k, v := range raw {
+		var anyVal interface{}
+		if err := json.Unmarshal(v, &anyVal); err != nil {
+			return err
+		}
+		r.Block[k] = anyVal
+	}
+	return nil
 }
 
 // UnmarshalSimOpts decodes a SimulateV1Request.opts payload and rejects
