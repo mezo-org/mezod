@@ -2042,7 +2042,7 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiBlock_ChainLinkage() {
 	// ctx populates its header (ctx.HeaderHash may be empty in
 	// suite-level contexts).
 	expectedBase := "0x" + common.Bytes2Hex(
-		suite.app.EvmKeeper.GetHashFn(suite.ctx)(uint64(baseHeight)).Bytes(),
+		suite.app.EvmKeeper.GetHashFn(suite.ctx)(uint64(baseHeight)).Bytes(), //nolint:gosec // baseHeight >= 0 by construction
 	)
 	suite.Require().Equal(expectedBase, block3Calls[0].(map[string]interface{})["returnData"],
 		"BLOCKHASH(base.Number) must match k.GetHashFn(ctx)(base.Number)")
