@@ -50,10 +50,10 @@ The architectural seam is **bare types in `x/evm/types/`, flow logic in `x/evm/k
 | `x/evm/statedb/statedb.go` | `FinaliseBetweenCalls()` at L769 — clears per-call ephemeral state (logs, refund, transient storage) and resets the precompile-call counter while preserving state objects, access list, and journal across sequential calls in a shared StateDB |
 | `proto/ethermint/evm/v1/query.proto` (+ `x/evm/types/query.pb.go`) | `rpc SimulateV1(SimulateV1Request) returns (SimulateV1Response)`. `SimulateV1Request{opts bytes, block_number_or_hash bytes, gas_cap uint64, proposer_address ConsAddress, chain_id int64, timeout_ms int64}`. `SimulateV1Response{result bytes, error SimError}`. `SimError{code int32, message string, data string}` |
 | `x/evm/keeper/grpc_query.go` | `Keeper.SimulateV1` handler — validates request, parses chain ID / gas cap, unmarshals `req.Opts`, calls `k.simulateV1(...)`, marshals block results to JSON. Helper `simulateV1ErrResponse(err)` does `errors.As(err, &simErr)` to route typed failures to `response.Error` and genuine internals to `status.Error(codes.Internal, …)` |
-| `rpc/types/simulate.go` | RPC JSON shapes: `SimOpts`, `SimBlock`, `BlockOverrides`, `SimCallResult`, `SimBlockResult` with custom marshal/unmarshal forcing `Logs: []` over `null` (spec-compliant) |
+| `rpc/types/simulate_v1.go` | RPC JSON shapes: `SimOpts`, `SimBlock`, `BlockOverrides`, `SimCallResult`, `SimBlockResult` with custom marshal/unmarshal forcing `Logs: []` over `null` (spec-compliant) |
 | `rpc/types/types.go` | `OverrideAccount.MovePrecompileTo *common.Address` (RPC-side spec shape, mirrors the keeper-side `OverrideAccount`) |
-| `rpc/backend/simulate.go` | Real adapter: marshals `SimOpts` to JSON, sets up timeout context (`b.RPCEVMTimeout()`), invokes gRPC, reconstructs `*evmtypes.SimError` from `response.Error` and returns it directly — geth's RPC server emits `{code, message, data}` via the error-interface methods. Unmarshals `response.Result` to `[]*rpctypes.SimBlockResult` on success |
-| `rpc/namespaces/ethereum/eth/simulate.go` | `PublicAPI.SimulateV1` — passthrough to the backend |
+| `rpc/backend/simulate_v1.go` | Real adapter: marshals `SimOpts` to JSON, sets up timeout context (`b.RPCEVMTimeout()`), invokes gRPC, reconstructs `*evmtypes.SimError` from `response.Error` and returns it directly — geth's RPC server emits `{code, message, data}` via the error-interface methods. Unmarshals `response.Result` to `[]*rpctypes.SimBlockResult` on success |
+| `rpc/namespaces/ethereum/eth/simulate_v1.go` | `PublicAPI.SimulateV1` — passthrough to the backend |
 | `rpc/namespaces/ethereum/eth/api.go` | `SimulateV1` on the `EthereumAPI` interface |
 | `rpc/backend/backend.go` | `SimulateV1` on the `EVMBackend` interface |
 
@@ -64,7 +64,7 @@ The architectural seam is **bare types in `x/evm/types/`, flow logic in `x/evm/k
 - **Override unit tests** in `x/evm/keeper/state_override_test.go` cover `MovePrecompileTo` validation and the mezo-custom deny-list.
 - **State-transition unit tests** in `x/evm/keeper/state_transition_test.go` cover `NewEVMWithOverrides` byte-equivalence with `NewEVM` and override behavior.
 - **StateDB tests** in `x/evm/statedb/statedb_test.go` cover `FinaliseBetweenCalls`.
-- **Backend tests** in `rpc/backend/simulate_test.go` use a mocked query client to assert proto request shape + timeout context.
+- **Backend tests** in `rpc/backend/simulate_v1_test.go` use a mocked query client to assert proto request shape + timeout context.
 - **System tests** under `tests/system/test/SimulateV1_*.test.ts` are TypeScript Hardhat suites run via `./tests/system/system-tests.sh`.
 
 ### What works end-to-end today
@@ -195,8 +195,8 @@ Pre-execution: compute preliminary headers for all sanitized blocks so `GetHashF
 **Files.**
 - EDIT `server/config/config.go` — `SimulateDisabled bool` on `JSONRPCConfig`; update TOML template + defaults.
 - EDIT `rpc/backend/backend.go` — `SimulateDisabled() bool` accessor.
-- EDIT `rpc/backend/simulate.go` — kill-switch check; `RPCGasCap` plumbing into the gRPC request.
-- EDIT `rpc/namespaces/ethereum/eth/simulate.go` — kill-switch check at entry (short-circuit before backend).
+- EDIT `rpc/backend/simulate_v1.go` — kill-switch check; `RPCGasCap` plumbing into the gRPC request.
+- EDIT `rpc/namespaces/ethereum/eth/simulate_v1.go` — kill-switch check at entry (short-circuit before backend).
 - EDIT `x/evm/keeper/simulate_v1.go` — enforce 256 block cap, 1000 call cap, shared gas pool; `ctx.Err()` checks; `evm.Cancel()` on ctx-done.
 - EDIT `x/evm/types/simulate_v1_errors.go` — add `NewSimTimeout(...)` for `-32016`.
 
@@ -209,8 +209,8 @@ Pre-execution: compute preliminary headers for all sanitized blocks so `GetHashF
 - `grpc_query_test.go`: `TestSimulateV1_DoS_BlockCap` — >256 blocks → `-38026`.
 - `grpc_query_test.go`: `TestSimulateV1_DoS_CallCap` — ≥1000 calls → structured error.
 - `grpc_query_test.go`: `TestSimulateV1_DoS_GasPool` — exhausts `gasRemaining` → top-level fatal `-38015`-shaped error; aborts immediately.
-- `rpc/backend/simulate_test.go`: `TestSimulateV1_Timeout` — long call hits ctx-done → `-32016` `"execution aborted (timeout = 5s)"` within 5.2s.
-- `rpc/namespaces/ethereum/eth/simulate_test.go`: `TestSimulateV1_KillSwitch` — `SimulateDisabled=true` → `-32601` immediately.
+- `rpc/backend/simulate_v1_test.go`: `TestSimulateV1_Timeout` — long call hits ctx-done → `-32016` `"execution aborted (timeout = 5s)"` within 5.2s.
+- `rpc/namespaces/ethereum/eth/simulate_v1_test.go`: `TestSimulateV1_KillSwitch` — `SimulateDisabled=true` → `-32601` immediately.
 - System: `tests/system/test/SimulateV1_Limits.test.ts` — 257 blocks → error; kill-switch test via config reload.
 - **Manual localnet verification (justified):** run 256-block × 1000-call simulation under `RPCEVMTimeout=5s`; pprof heap snapshot before/after; assert memory stable (<200MB delta, no leaks).
 - **`/security-review` on the branch before merge.**
@@ -319,18 +319,18 @@ In the driver: when `TraceTransfers=true`, wrap StateDB via `state.NewHookedStat
 Custom `MarshalJSON` for the block envelope: invokes `RPCMarshalBlock` (existing in `rpc/backend/blocks.go`), injects `calls` field, patches `from` (mirrors go-ethereum `simulate.go:85`).
 
 **Files.**
-- EDIT `rpc/types/simulate.go` — extend `MarshalJSON` for `SimBlockResult` with `from` patching.
+- EDIT `rpc/types/simulate_v1.go` — extend `MarshalJSON` for `SimBlockResult` with `from` patching.
 - EDIT `x/evm/keeper/simulate_v1.go` — populate `senders` map in `assembleSimBlock`; construct assembled block with unsigned txs.
-- EDIT `rpc/backend/simulate.go` — apply patching on the unmarshaled response.
+- EDIT `rpc/backend/simulate_v1.go` — apply patching on the unmarshaled response.
 
 **Risks.** Low (cosmetic). Watch for:
 - `Logs: []` vs `Logs: null` (force `[]` per spec — already handled by Phase 1's marshaler).
 - Tx hash stability: unsigned tx `Hash()` depends on all fields — don't mutate tx between hashing and block assembly.
 
 **Verification.**
-- `rpc/types/simulate_test.go`: `TestSimBlockResult_FullTx_FromPatched` — `returnFullTransactions=true` → tx objects with correct `from`.
-- `rpc/types/simulate_test.go`: `TestSimBlockResult_HashOnly` — `returnFullTransactions=false` → tx hashes only.
-- `rpc/types/simulate_test.go`: `TestSimCallResult_EmptyLogsAsArray` — empty `logs` serialized as `[]` not `null`.
+- `rpc/types/simulate_v1_test.go`: `TestSimBlockResult_FullTx_FromPatched` — `returnFullTransactions=true` → tx objects with correct `from`.
+- `rpc/types/simulate_v1_test.go`: `TestSimBlockResult_HashOnly` — `returnFullTransactions=false` → tx hashes only.
+- `rpc/types/simulate_v1_test.go`: `TestSimCallResult_EmptyLogsAsArray` — empty `logs` serialized as `[]` not `null`.
 - System: `tests/system/test/SimulateV1_FullTx.test.ts` — assert full tx shape round-trips.
 
 **DoD.**
@@ -486,7 +486,7 @@ Phase 7's `newSimGetHashFn` closure stays — it covers the `[base, base+N]` sim
 **Files.**
 - EDIT `x/evm/keeper/simulate_v1.go` — recognize `authList` in the call loop; invoke per-call auth validation when `validation=true`.
 - EDIT `x/evm/types/simulate_v1.go` — allow `authorizationList` in `SimBlock` calls JSON unmarshal.
-- EDIT `rpc/types/simulate.go` — surface `AuthorizationList` in the serializable call-args shape if not already from the upgrade.
+- EDIT `rpc/types/simulate_v1.go` — surface `AuthorizationList` in the serializable call-args shape if not already from the upgrade.
 - EDIT `x/evm/types/simulate_v1_errors.go` — add EIP-7702 auth-invalid error codes + `NewSim*` constructors.
 
 **Risks.**
@@ -522,7 +522,7 @@ Phase 7's `newSimGetHashFn` closure stays — it covers the `[base, base+N]` sim
 
 **Files.**
 - EDIT `x/evm/keeper/simulate_v1.go` — per-tx 16M gas cap check in `sanitizeSimCall`; populate `MaxUsedGas` from `ExecutionResult`.
-- EDIT `rpc/types/simulate.go` — add `MaxUsedGas hexutil.Uint64` to `SimCallResult`.
+- EDIT `rpc/types/simulate_v1.go` — add `MaxUsedGas hexutil.Uint64` to `SimCallResult`.
 - EDIT `x/evm/types/simulate_v1.go` — add `MaxUsedGas` to the keeper-side type.
 - EDIT `x/evm/types/simulate_v1_errors.go` — add per-tx cap violation code + `NewSim*` constructor.
 
@@ -530,7 +530,7 @@ Phase 7's `newSimGetHashFn` closure stays — it covers the `[base, base+N]` sim
 
 **Verification.**
 - `grpc_query_test.go`: `TestSimulateV1_PerTxGasCap` — `call.Gas = 20_000_000` → structured error.
-- `rpc/types/simulate_test.go`: `TestSimCallResult_MaxUsedGas_RoundTrip`.
+- `rpc/types/simulate_v1_test.go`: `TestSimCallResult_MaxUsedGas_RoundTrip`.
 - System: extend `SimulateV1_Limits.test.ts` with the per-tx cap case.
 
 **DoD.**
@@ -542,7 +542,7 @@ Phase 7's `newSimGetHashFn` closure stays — it covers the `[base, base+N]` sim
 # End-to-end verification strategy
 
 1. **Go unit tests** — keeper internals, pure functions, override semantics, tracer semantics, DoS guards. Run via `make test-unit`.
-2. **Go backend tests** (`rpc/backend/simulate_test.go`) — mocks the query client.
+2. **Go backend tests** (`rpc/backend/simulate_v1_test.go`) — mocks the query client.
 3. **Hardhat system tests** (`tests/system/test/SimulateV1_*.test.ts`) — full JSON-RPC stack against a running localnet. Run via `tests/system/system-tests.sh`.
 4. **Spec conformance** — port high-signal fixtures from `ethereum/execution-apis/tests/eth_simulateV1/` (Phase 12).
 5. **Fuzz** — Go fuzz target to guard against panics (Phase 12).

@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
-// SimOpts is the driver-side view of SimOpts (see rpc/types/simulate.go).
+// SimOpts is the driver-side view of SimOpts (see rpc/types/simulate_v1.go).
 // The shape matches the execution-apis spec; fields not yet used by the
 // driver are still parsed so unknown-call behavior is deterministic and
 // future phases can extend without reworking the unmarshal path.
