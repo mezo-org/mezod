@@ -42,6 +42,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	ethparams "github.com/ethereum/go-ethereum/params"
 
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -723,6 +724,17 @@ func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*ty
 
 	ctx := sdk.UnwrapSDKContext(c)
 
+	// Defense-in-depth for callers reaching the keeper gRPC directly
+	// (bypassing rpc/backend, which ordinarily anchors ctx at the
+	// resolved base height via rpctypes.ContextWithHeight).
+	// rpc/backend.Backend.SimulateV1 (rpc/backend/simulate_v1.go)
+	// always populates BlockNumberOrHash, defaulting to "latest" when
+	// the caller omits it; an empty field at this point means we're on
+	// a direct-gRPC path and the ctx is authoritative.
+	if err := validateSimulateV1Anchor(ctx, req.BlockNumberOrHash); err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
 	chainID, err := getChainID(ctx, req.ChainId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -786,12 +798,55 @@ func getChainID(ctx sdk.Context, chainID int64) (*big.Int, error) {
 	return big.NewInt(chainID), nil
 }
 
+// validateSimulateV1Anchor performs a minimal consistency check between
+// the request's BlockNumberOrHash field and the SDK context's block
+// height. The backend (rpc/backend/simulate_v1.go) already resolves the
+// field into a concrete height and anchors ctx via
+// rpctypes.ContextWithHeight, so for the normal call path this is a
+// no-op. Direct gRPC callers that desynchronize the two surfaces hit
+// a spec-conformant -32602 instead of silently simulating against the
+// wrong base.
+//
+// Sentinel BlockNumber values (Latest / Earliest / Pending / Finalized
+// / Safe) and hash-only addressing skip the numeric comparison — the
+// backend's resolution is trusted for those cases.
+func validateSimulateV1Anchor(ctx sdk.Context, bnhBz []byte) error {
+	if len(bnhBz) == 0 {
+		return nil
+	}
+	var bnh rpctypes.BlockNumberOrHash
+	if err := json.Unmarshal(bnhBz, &bnh); err != nil {
+		return types.NewSimInvalidParams(fmt.Sprintf(
+			"simulate: malformed blockNumberOrHash: %s", err.Error(),
+		))
+	}
+	if bnh.BlockNumber == nil {
+		return nil
+	}
+	requested := bnh.BlockNumber.Int64()
+	if requested < 0 {
+		// Sentinel values (latest, earliest, pending, finalized, safe)
+		// are resolved in the backend; the ctx height is authoritative.
+		return nil
+	}
+	if requested != ctx.BlockHeight() {
+		return types.NewSimInvalidParams(fmt.Sprintf(
+			"simulate: blockNumberOrHash (%d) does not match anchored context height (%d)",
+			requested, ctx.BlockHeight(),
+		))
+	}
+	return nil
+}
+
 // baseHeaderFromContext synthesizes the execution-api base header from
 // the SDK context that the gRPC call was anchored at. The returned
 // header only populates the fields the simulate driver consumes
-// (Number, Time, GasLimit, BaseFee, Difficulty, Coinbase). Multi-block
-// support will swap this for a real block fetch so BLOCKHASH resolution
-// lines up with canonical chain history.
+// (Number, Time, GasLimit, BaseFee, Difficulty, Coinbase). The ctx has
+// already been anchored at the requested base height by the rpc/backend
+// layer (via rpctypes.ContextWithHeight); newSimGetHashFn delegates
+// canonical-range BLOCKHASH resolution to k.GetHashFn which reads the
+// same ctx, so all three sources (ctx, base header fields, BLOCKHASH
+// for base.Number) stay consistent.
 func baseHeaderFromContext(ctx sdk.Context, cfg *statedb.EVMConfig) *ethtypes.Header {
 	return &ethtypes.Header{
 		Number:     big.NewInt(ctx.BlockHeight()),
