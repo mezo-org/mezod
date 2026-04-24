@@ -49,10 +49,10 @@ func postMergeConfig() *params.ChainConfig {
 	}
 }
 
-// The go-ethereum TestSimulateSanitizeBlockOrder fixture: base at
-// 10/50, caller skips to block 13 with Time=80. Expected fill:
-// 11 @ 62, 12 @ 74, 13 @ 80. Verified against simulate_test.go:46-51
-// upstream.
+// Gap-fill shape mirrors the go-ethereum TestSimulateSanitizeBlockOrder
+// fixture (simulate_test.go:46-51 upstream) retimed to mezo's ~3s block
+// cadence: base at 10/50, caller skips to block 13 with Time=80.
+// Expected fill: 11 @ 53, 12 @ 56, 13 @ 80.
 func TestSanitizeSimChain_GapFill(t *testing.T) {
 	base := &ethtypes.Header{Number: big.NewInt(10), Time: 50}
 	blocks := []types.SimBlock{
@@ -63,9 +63,9 @@ func TestSanitizeSimChain_GapFill(t *testing.T) {
 	require.Len(t, out, 3)
 
 	require.Equal(t, int64(11), out[0].BlockOverrides.Number.ToInt().Int64())
-	require.Equal(t, uint64(62), uint64(*out[0].BlockOverrides.Time))
+	require.Equal(t, uint64(53), uint64(*out[0].BlockOverrides.Time))
 	require.Equal(t, int64(12), out[1].BlockOverrides.Number.ToInt().Int64())
-	require.Equal(t, uint64(74), uint64(*out[1].BlockOverrides.Time))
+	require.Equal(t, uint64(56), uint64(*out[1].BlockOverrides.Time))
 	require.Equal(t, int64(13), out[2].BlockOverrides.Number.ToInt().Int64())
 	require.Equal(t, uint64(80), uint64(*out[2].BlockOverrides.Time))
 }
@@ -77,7 +77,7 @@ func TestSanitizeSimChain_DefaultsFromParent(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, out, 1)
 	require.Equal(t, int64(101), out[0].BlockOverrides.Number.ToInt().Int64())
-	require.Equal(t, uint64(1012), uint64(*out[0].BlockOverrides.Time))
+	require.Equal(t, uint64(1003), uint64(*out[0].BlockOverrides.Time))
 }
 
 func TestSanitizeSimChain_NonMonotonicNumber(t *testing.T) {
@@ -157,10 +157,10 @@ func TestMakeSimHeader_NilOverridesDefaultsFromParent(t *testing.T) {
 		Coinbase:   common.HexToAddress("0xabc"),
 		BaseFee:    big.NewInt(1_000_000_000),
 	}
-	rules := cfg.Rules(big.NewInt(101), true, 1012)
+	rules := cfg.Rules(big.NewInt(101), true, 1003)
 	h := makeSimHeader(parent, nil, rules, cfg, false)
 	require.Equal(t, int64(101), h.Number.Int64())
-	require.Equal(t, uint64(1012), h.Time)
+	require.Equal(t, uint64(1003), h.Time)
 	require.Equal(t, parent.Coinbase, h.Coinbase)
 	require.Equal(t, parent.GasLimit, h.GasLimit)
 	// Parent-hash wired explicitly.

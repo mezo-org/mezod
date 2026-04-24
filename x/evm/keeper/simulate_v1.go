@@ -3,6 +3,7 @@ package keeper
 import (
 	"fmt"
 	"math/big"
+	"slices"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,18 +23,21 @@ const (
 	// request. Matches geth's hard-coded bound.
 	maxSimulateBlocks = 256
 
-	// simTimestampIncrement is the default gap between sequential
-	// simulated blocks when the caller omits Time overrides. Matches
-	// geth.
-	simTimestampIncrement = 12
+	// simTimestampIncrement is the default gap, in seconds, between
+	// sequential simulated blocks when the caller omits Time overrides.
+	// Matches mezo's ~3s average CometBFT block time so callers who let
+	// the sim fabricate timestamps land in a realistic ballpark.
+	simTimestampIncrement = 3
 )
 
 // sanitizeSimChain validates the block ordering rules and fills gaps
-// with empty blocks. It mutates the input slice's BlockOverrides
-// pointers in place (allocating when nil) and returns the concatenated
-// slice including any gap-fill blocks. Failures are *types.SimError
-// values carrying spec-reserved JSON-RPC codes (-38020 / -38021 /
-// -38026), returned via the plain error channel.
+// with empty blocks. It works on a shallow clone of the input slice so
+// top-level SimBlock field writes in the loop (notably the
+// BlockOverrides pointer reassignment for nil entries) never reach the
+// caller's slice. Returns the concatenated slice including any
+// gap-fill blocks. Failures are *types.SimError values carrying
+// spec-reserved JSON-RPC codes (-38020 / -38021 / -38026), returned
+// via the plain error channel.
 //
 // Design mirrors go-ethereum's internal/ethapi/simulate.go::sanitizeChain
 // (v1.15.4 source). Divergences: we never propagate a nil slice input
@@ -43,11 +47,15 @@ const (
 // base+10_000_000}]` input cannot drive the driver into a 10M-header
 // allocation.
 func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.SimBlock, error) {
-	res := make([]types.SimBlock, 0, len(blocks))
+	// Work on a clone so the loop's per-block edits stay confined to
+	// our copy and never touch the caller's slice.
+	cloned := slices.Clone(blocks)
+
+	res := make([]types.SimBlock, 0, len(cloned))
 	prevNumber := new(big.Int).Set(base.Number)
 	prevTimestamp := base.Time
 
-	for _, block := range blocks {
+	for _, block := range cloned {
 		if block.BlockOverrides == nil {
 			block.BlockOverrides = new(types.SimBlockOverrides)
 		}
@@ -129,41 +137,47 @@ func makeSimHeader(
 	chainCfg *params.ChainConfig,
 	validation bool,
 ) *ethtypes.Header {
-	// Start from the parent's inherited fields (coinbase, difficulty,
-	// gas limit) so omitted overrides follow the predecessor block.
+	// Defaults derived from the parent and chain config. Override
+	// application below layers caller-supplied values on top of these.
 	h := &ethtypes.Header{
 		ParentHash:  parent.Hash(),
 		UncleHash:   ethtypes.EmptyUncleHash,
 		TxHash:      ethtypes.EmptyTxsHash,
 		ReceiptHash: ethtypes.EmptyReceiptsHash,
 		Coinbase:    parent.Coinbase,
-		Difficulty:  new(big.Int).Set(parent.Difficulty),
 		GasLimit:    parent.GasLimit,
+		Difficulty:  new(big.Int).Set(parent.Difficulty),
+		Number:      new(big.Int).Add(parent.Number, big.NewInt(1)),
+		Time:        parent.Time + simTimestampIncrement,
 	}
 
-	// Post-merge: Difficulty is zero and MixDigest (PREVRANDAO) must be
-	// non-nil. Mezo does not support PREVRANDAO randomness — we set
-	// MixDigest to zero but keep it populated so the merge rule-switch
-	// inside go-ethereum works.
+	// Post-merge: Difficulty is zero. MixDigest carries PREVRANDAO; mezo
+	// does not support PREVRANDAO randomness, so we leave MixDigest at
+	// its zero-value default — common.Hash is a value type ([32]byte),
+	// so the field is already populated and does not need an explicit
+	// assignment to satisfy go-ethereum's merge rule-switch.
 	if chainCfg.MergeNetsplitBlock != nil {
 		h.Difficulty = new(big.Int)
 	}
 
-	// Number is required — the sanitize step has already defaulted it.
-	if overrides != nil && overrides.Number != nil {
-		h.Number = overrides.Number.ToInt()
-	} else {
-		h.Number = new(big.Int).Add(parent.Number, big.NewInt(1))
+	// Default base fee: validation=true derives via CalcBaseFee against
+	// parent; validation=false reports zero so per-call gas-price checks
+	// don't fail (spec-conformant "skip base-fee checks" relaxation).
+	switch {
+	case validation && rules.IsLondon:
+		h.BaseFee = eip1559.CalcBaseFee(chainCfg, parent)
+	default:
+		h.BaseFee = new(big.Int)
 	}
 
-	// Time is required — sanitize defaults it.
-	if overrides != nil && overrides.Time != nil {
-		h.Time = uint64(*overrides.Time)
-	} else {
-		h.Time = parent.Time + simTimestampIncrement
-	}
-
+	// Caller-supplied overrides win over the defaults above.
 	if overrides != nil {
+		if overrides.Number != nil {
+			h.Number = overrides.Number.ToInt()
+		}
+		if overrides.Time != nil {
+			h.Time = uint64(*overrides.Time)
+		}
 		if overrides.Difficulty != nil {
 			h.Difficulty = overrides.Difficulty.ToInt()
 		}
@@ -176,18 +190,9 @@ func makeSimHeader(
 		if overrides.PrevRandao != nil {
 			h.MixDigest = *overrides.PrevRandao
 		}
-	}
-
-	// Base fee: caller override wins, otherwise validation=true derives
-	// via CalcBaseFee against parent; validation=false reports a zero
-	// baseFee so the caller's per-call gas-price checks don't fail.
-	switch {
-	case overrides != nil && overrides.BaseFeePerGas != nil:
-		h.BaseFee = overrides.BaseFeePerGas.ToInt()
-	case validation && rules.IsLondon:
-		h.BaseFee = eip1559.CalcBaseFee(chainCfg, parent)
-	default:
-		h.BaseFee = new(big.Int)
+		if overrides.BaseFeePerGas != nil {
+			h.BaseFee = overrides.BaseFeePerGas.ToInt()
+		}
 	}
 
 	return h
@@ -199,9 +204,10 @@ func makeSimHeader(
 // block carries tx hashes only; `returnFullTransactions` patching is
 // not wired yet.
 //
-// `cumulativeGasUsed` is the sum of GasUsed across successful calls.
-// It patches the header's GasUsed field prior to hashing so that
-// downstream consumers see a consistent header/block relation.
+// `cumulativeGasUsed` is the sum of GasUsed across every call in the
+// block (including reverts, whose gas is still consumed). It patches
+// the header's GasUsed field prior to hashing so that downstream
+// consumers see a consistent header/block relation.
 func assembleSimBlock(
 	header *ethtypes.Header,
 	txHashes []common.Hash,
