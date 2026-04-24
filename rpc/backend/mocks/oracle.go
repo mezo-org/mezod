@@ -68,6 +68,15 @@ func (oqc *OracleQueryClient) GetPrices(
 	return nil, args.Error(1)
 }
 
+// mockConstructorTestingTNewQueryClient was previously emitted by mockery
+// into the EVM and fee-market mock files; the current generator has moved
+// to an inline interface. Keep the handwritten oracle mock working by
+// pinning the same shape locally.
+type mockConstructorTestingTNewQueryClient interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
 func NewOracleQueryClient(t mockConstructorTestingTNewQueryClient) *OracleQueryClient {
 	mock := &OracleQueryClient{}
 	mock.Mock.Test(t)

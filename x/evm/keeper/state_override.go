@@ -1,11 +1,9 @@
 package keeper
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
@@ -14,20 +12,6 @@ import (
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
-
-// stateOverride is the collection of overridden accounts for eth_call.
-type stateOverride map[common.Address]overrideAccount
-
-// overrideAccount indicates the overriding fields of account during the
-// execution of a message call.
-type overrideAccount struct {
-	Nonce            *hexutil.Uint64             `json:"nonce"`
-	Code             *hexutil.Bytes              `json:"code"`
-	Balance          *hexutil.Big                `json:"balance"`
-	State            map[common.Hash]common.Hash `json:"state"`
-	StateDiff        map[common.Hash]common.Hash `json:"stateDiff"`
-	MovePrecompileTo *common.Address             `json:"movePrecompileToAddress,omitempty"`
-}
 
 // mezoCustomPrecompileAddrs is the set of mezo custom precompile source
 // addresses that callers are NOT allowed to relocate via MovePrecompileTo.
@@ -51,12 +35,14 @@ var mezoCustomPrecompileAddrs = func() map[common.Address]struct{} {
 // (stdlib precompiles only) with mezoCustomPrecompileAddrs rejecting the
 // chain's own custom precompiles.
 //
-// On the first invariant violation returns one of the sentinel errors in
-// x/evm/types (ErrOverrideXxx) wrapped with the offending address. Callers
-// match the sentinels with errors.Is.
+// On the first invariant violation returns a *types.SimError carrying the
+// spec-reserved JSON-RPC code; the returned error rides the plain `error`
+// channel so callers that don't care about the code (eth_call,
+// eth_estimateGas) propagate it unchanged, while callers that do care
+// (SimulateV1) branch with errors.As.
 func applyStateOverrides(
 	db *statedb.StateDB,
-	overrides stateOverride,
+	overrides types.StateOverride,
 	rules params.Rules,
 ) (map[common.Address]common.Address, error) {
 	var moves map[common.Address]common.Address
@@ -65,45 +51,33 @@ func applyStateOverrides(
 
 	for addr, override := range overrides {
 		if _, dirty := moveDests[addr]; dirty {
-			return nil, fmt.Errorf(
-				"%w: %s", types.ErrOverrideAccountTaintedByPrecompile, addr.Hex(),
-			)
+			return nil, types.NewSimAccountTainted(addr)
 		}
 
 		if override.MovePrecompileTo != nil {
 			dest := *override.MovePrecompileTo
 
 			if dest == addr {
-				return nil, fmt.Errorf(
-					"%w: %s", types.ErrOverrideMovePrecompileSelfReference, addr.Hex(),
-				)
+				return nil, types.NewSimMovePrecompileSelfRef(addr)
 			}
 
 			if _, exists := moveDests[dest]; exists {
-				return nil, fmt.Errorf(
-					"%w: %s", types.ErrOverrideMovePrecompileDuplicateDest, dest.Hex(),
-				)
+				return nil, types.NewSimMovePrecompileDupDest(dest)
 			}
 
 			if _, destOverridden := overrides[dest]; destOverridden {
-				return nil, fmt.Errorf(
-					"%w: %s", types.ErrOverrideDestAlreadyOverridden, dest.Hex(),
-				)
+				return nil, types.NewSimDestAlreadyOverridden(dest)
 			}
 
 			// Denylist check before the DefaultPrecompiles lookup so
 			// mezo custom addresses surface the specific error rather
 			// than "is not a precompile" (they aren't stdlib entries).
 			if _, isCustom := mezoCustomPrecompileAddrs[addr]; isCustom {
-				return nil, fmt.Errorf(
-					"%w: %s", types.ErrOverrideMoveMezoCustomPrecompile, addr.Hex(),
-				)
+				return nil, types.NewSimMoveMezoCustom(addr)
 			}
 
 			if _, isStdlib := vm.DefaultPrecompiles(rules)[addr]; !isStdlib {
-				return nil, fmt.Errorf(
-					"%w: %s", types.ErrOverrideNotAPrecompile, addr.Hex(),
-				)
+				return nil, types.NewSimNotAPrecompile(addr)
 			}
 
 			if moves == nil {
@@ -127,9 +101,7 @@ func applyStateOverrides(
 		}
 
 		if override.State != nil && override.StateDiff != nil {
-			return nil, fmt.Errorf(
-				"%w: %s", types.ErrOverrideStateAndStateDiff, addr.Hex(),
-			)
+			return nil, types.NewSimStateAndStateDiff(addr)
 		}
 
 		if override.State != nil {
