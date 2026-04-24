@@ -129,6 +129,17 @@ func (s *StateDB) Keeper() Keeper {
 	return s.keeper
 }
 
+// SetTxConfig replaces the StateDB's tx-scoped metadata (block/tx hash,
+// tx index, starting log index). Used by simulate drivers that reuse a
+// single StateDB across many logical "transactions" (calls) and want
+// each call's logs to carry distinct TxHash / TxIndex values.
+//
+// Safe to call between calls; the txConfig is read-only from AddLog's
+// perspective and never participates in the journal.
+func (s *StateDB) SetTxConfig(cfg TxConfig) {
+	s.txConfig = cfg
+}
+
 // GetContext returns the transaction Context.
 func (s *StateDB) GetContext() sdk.Context {
 	return s.ctx
