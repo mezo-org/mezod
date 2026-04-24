@@ -105,6 +105,19 @@ func NewSimClientLimitExceeded(span *big.Int, maxSpan int64) *SimError {
 	}
 }
 
+// NewSimBlockGasLimitReached reports that a call's requested or defaulted
+// gas would push cumulative block gas past the simulated block's gas limit
+// (-38015).
+func NewSimBlockGasLimitReached(requested, remaining uint64) *SimError {
+	return &SimError{
+		Code: SimErrCodeBlockGasLimitReached,
+		Message: fmt.Sprintf(
+			"simulate: block gas limit reached: requested %d > remaining %d",
+			requested, remaining,
+		),
+	}
+}
+
 // NewSimMovePrecompileSelfRef reports a MovePrecompileTo override whose
 // destination is the source address (-38022).
 func NewSimMovePrecompileSelfRef(addr common.Address) *SimError {
