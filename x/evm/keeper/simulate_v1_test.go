@@ -237,3 +237,172 @@ func TestMakeSimHeader_OverrideFields(t *testing.T) {
 	require.Equal(t, feeRecipient, h.Coinbase)
 	require.Equal(t, prevRandao, h.MixDigest)
 }
+
+// --- sanitizeSimCall -----------------------------------------------------
+
+// fakeNonceSource implements the nonceSource interface for sanitizeSimCall
+// unit tests so we avoid standing up a full StateDB / keeper.
+type fakeNonceSource struct{ n uint64 }
+
+func (f fakeNonceSource) GetNonce(common.Address) uint64 { return f.n }
+
+func TestSanitizeSimCall_DefaultsNonce(t *testing.T) {
+	from := common.HexToAddress("0xaaaa000000000000000000000000000000000001")
+	src := fakeNonceSource{n: 7}
+	args := &types.TransactionArgs{From: &from}
+	header := &ethtypes.Header{GasLimit: 1_000_000}
+
+	simErr := sanitizeSimCall(src, args, header, 0)
+	require.Nil(t, simErr)
+	require.NotNil(t, args.Nonce)
+	require.Equal(t, uint64(7), uint64(*args.Nonce))
+}
+
+func TestSanitizeSimCall_PreservesExplicitNonce(t *testing.T) {
+	from := common.HexToAddress("0xaaaa000000000000000000000000000000000002")
+	src := fakeNonceSource{n: 7}
+	explicit := hexutil.Uint64(42)
+	args := &types.TransactionArgs{From: &from, Nonce: &explicit}
+	header := &ethtypes.Header{GasLimit: 1_000_000}
+
+	simErr := sanitizeSimCall(src, args, header, 0)
+	require.Nil(t, simErr)
+	require.Equal(t, uint64(42), uint64(*args.Nonce))
+}
+
+func TestSanitizeSimCall_DefaultsGasToRemaining(t *testing.T) {
+	from := common.HexToAddress("0xaaaa000000000000000000000000000000000003")
+	src := fakeNonceSource{n: 0}
+	args := &types.TransactionArgs{From: &from}
+	header := &ethtypes.Header{GasLimit: 1_000_000}
+
+	simErr := sanitizeSimCall(src, args, header, 400_000)
+	require.Nil(t, simErr)
+	require.NotNil(t, args.Gas)
+	require.Equal(t, uint64(600_000), uint64(*args.Gas))
+}
+
+func TestSanitizeSimCall_BlockGasLimitReached(t *testing.T) {
+	from := common.HexToAddress("0xaaaa000000000000000000000000000000000004")
+	src := fakeNonceSource{n: 0}
+	gas := hexutil.Uint64(700_000)
+	args := &types.TransactionArgs{From: &from, Gas: &gas}
+	header := &ethtypes.Header{GasLimit: 1_000_000}
+
+	simErr := sanitizeSimCall(src, args, header, 400_000)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeBlockGasLimitReached, simErr.ErrorCode())
+	require.Contains(t, simErr.Message, "700000")
+	require.Contains(t, simErr.Message, "600000")
+}
+
+// TestSanitizeSimCall_ZeroGasLimit_DefaultsToZero pins the A' behavior:
+// a block with GasLimit=0 produces remaining=0, so a caller who omits
+// args.Gas gets Gas=0 defaulted — applyMessageWithConfig will then fail
+// the call on intrinsic gas without executing any opcodes. Matches
+// geth's empty-GasPool handling.
+func TestSanitizeSimCall_ZeroGasLimit_DefaultsToZero(t *testing.T) {
+	from := common.HexToAddress("0xaaaa000000000000000000000000000000000005")
+	src := fakeNonceSource{n: 0}
+	args := &types.TransactionArgs{From: &from}
+	header := &ethtypes.Header{GasLimit: 0}
+
+	simErr := sanitizeSimCall(src, args, header, 0)
+	require.Nil(t, simErr)
+	require.NotNil(t, args.Gas)
+	require.Equal(t, uint64(0), uint64(*args.Gas))
+}
+
+// TestSanitizeSimCall_ZeroGasLimit_ExplicitGasRejected pins the A'
+// behavior when the caller supplies an explicit args.Gas against a
+// zero-limit block: -38015 is returned from preflight, no EVM work
+// runs at all.
+func TestSanitizeSimCall_ZeroGasLimit_ExplicitGasRejected(t *testing.T) {
+	from := common.HexToAddress("0xaaaa000000000000000000000000000000000006")
+	src := fakeNonceSource{n: 0}
+	gas := hexutil.Uint64(21_000)
+	args := &types.TransactionArgs{From: &from, Gas: &gas}
+	header := &ethtypes.Header{GasLimit: 0}
+
+	simErr := sanitizeSimCall(src, args, header, 0)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeBlockGasLimitReached, simErr.ErrorCode())
+}
+
+// --- newSimGetHashFn -----------------------------------------------------
+
+// canonicalHash is a fixed magic byte pattern a synthetic canonical
+// resolver returns so tests can assert the closure delegated to it.
+func canonicalHashForHeight(h uint64) common.Hash {
+	var out common.Hash
+	out[0] = 0xCA
+	out[1] = byte(h)
+	return out
+}
+
+// fakeCanonical returns a deterministic canonicalHashForHeight value
+// for every height — an in-test stand-in for k.GetHashFn(ctx). Used
+// across the newSimGetHashFn cases so the assertions can distinguish
+// canonical hits from simulated-sibling hits and zero-hash misses.
+func fakeCanonical(h uint64) common.Hash { return canonicalHashForHeight(h) }
+
+func TestNewSimGetHashFn_HitBase(t *testing.T) {
+	base := &ethtypes.Header{Number: big.NewInt(100)}
+	fn := newSimGetHashFn(fakeCanonical, base, nil)
+	require.Equal(t, canonicalHashForHeight(100), fn(100))
+}
+
+func TestNewSimGetHashFn_BelowBase_Canonical(t *testing.T) {
+	base := &ethtypes.Header{Number: big.NewInt(100)}
+	fn := newSimGetHashFn(fakeCanonical, base, nil)
+	require.Equal(t, canonicalHashForHeight(42), fn(42))
+	require.Equal(t, canonicalHashForHeight(99), fn(99))
+}
+
+func TestNewSimGetHashFn_AboveBase_ScansSim(t *testing.T) {
+	base := &ethtypes.Header{Number: big.NewInt(100)}
+	sim := []*ethtypes.Header{
+		{Number: big.NewInt(101), Time: 10},
+		{Number: big.NewInt(102), Time: 20},
+		{Number: big.NewInt(103), Time: 30},
+	}
+	fn := newSimGetHashFn(fakeCanonical, base, sim)
+
+	require.Equal(t, sim[0].Hash(), fn(101))
+	require.Equal(t, sim[1].Hash(), fn(102))
+	require.Equal(t, sim[2].Hash(), fn(103))
+}
+
+func TestNewSimGetHashFn_NotFound_Zero(t *testing.T) {
+	base := &ethtypes.Header{Number: big.NewInt(100)}
+	sim := []*ethtypes.Header{
+		{Number: big.NewInt(101), Time: 10},
+	}
+	fn := newSimGetHashFn(fakeCanonical, base, sim)
+	require.Equal(t, common.Hash{}, fn(102)) // beyond sim[] but future
+	require.Equal(t, common.Hash{}, fn(200)) // far future
+}
+
+// TestNewSimGetHashFn_CanonicalUnforgeable verifies that the closure
+// never serves an attacker-controlled hash for a canonical-range height
+// even if, hypothetically, a sim[] slot carries a Number <= base.Number
+// (bypassing sanitizeSimChain's monotonic check). Guards against future
+// refactors breaking the invariant the multi-block security argument
+// rests on.
+func TestNewSimGetHashFn_CanonicalUnforgeable(t *testing.T) {
+	base := &ethtypes.Header{Number: big.NewInt(100)}
+	// Craft a sim[] header with Number == base.Number - 1 that sanitize
+	// would never produce.
+	evil := &ethtypes.Header{
+		Number:     big.NewInt(99),
+		Time:       1,
+		Difficulty: big.NewInt(7),
+		Extra:      []byte("malicious"),
+	}
+	fn := newSimGetHashFn(fakeCanonical, base, []*ethtypes.Header{evil})
+
+	// Canonical range: must come from the canonical source, NOT from evil.
+	got := fn(99)
+	require.Equal(t, canonicalHashForHeight(99), got)
+	require.NotEqual(t, evil.Hash(), got, "attacker-controlled sim[] header must not surface as canonical hash")
+}
