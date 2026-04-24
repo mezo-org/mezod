@@ -23,22 +23,19 @@ func (b *Backend) SimulateV1(
 		return nil, err
 	}
 
-	effectiveBnh := rpctypes.BlockNumberOrHash{}
-	if blockNrOrHash != nil {
+	latest := rpctypes.EthLatestBlockNumber
+	effectiveBnh := rpctypes.BlockNumberOrHash{BlockNumber: &latest}
+	if blockNrOrHash != nil && (blockNrOrHash.BlockNumber != nil || blockNrOrHash.BlockHash != nil) {
 		effectiveBnh = *blockNrOrHash
-	}
-	if effectiveBnh.BlockNumber == nil && effectiveBnh.BlockHash == nil {
-		bn := rpctypes.EthLatestBlockNumber
-		effectiveBnh.BlockNumber = &bn
 	}
 	bnhBz, err := json.Marshal(effectiveBnh)
 	if err != nil {
 		return nil, err
 	}
 
-	blockNr := rpctypes.EthLatestBlockNumber
-	if effectiveBnh.BlockNumber != nil {
-		blockNr = *effectiveBnh.BlockNumber
+	blockNr, err := b.BlockNumberFromTendermint(effectiveBnh)
+	if err != nil {
+		return nil, err
 	}
 	header, err := b.TendermintBlockByNumber(blockNr)
 	if err != nil {
