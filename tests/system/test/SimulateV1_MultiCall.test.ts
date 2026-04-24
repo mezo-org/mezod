@@ -2,6 +2,7 @@ import { expect } from "chai"
 import hre, { ethers } from "hardhat"
 import { SimpleToken } from "../typechain-types/SimpleToken"
 import { getDeployedContract } from "./helpers/contract"
+import btcabi from "../../../precompile/btctoken/abi.json"
 
 // SimulateV1_MultiCall exercises Phase 6: multiple calls in a single
 // simulated block against one shared StateDB. The contract state written
@@ -10,6 +11,8 @@ import { getDeployedContract } from "./helpers/contract"
 // the next.
 describe("SimulateV1_MultiCall", function () {
   const { deployments } = hre
+
+  const BTC_TOKEN_PRECOMPILE = "0x7b7c000000000000000000000000000000000000"
 
   const MINT_AMOUNT = ethers.parseUnits("1000", 18)
   const TRANSFER_AMOUNT = ethers.parseUnits("500", 18)
@@ -120,6 +123,59 @@ describe("SimulateV1_MultiCall", function () {
 
       expect(calls[1].error).to.exist
       expect(calls[1].error.code).to.equal(-38015)
+    })
+  })
+
+  // Custom Mezo precompiles (btctoken, mezotoken, …) write through the
+  // Cosmos bank keeper, not the EVM journal — their mutations ride in
+  // the StateDB's cached Cosmos context and must survive call
+  // boundaries. balance stateOverrides only touch the EVM state object
+  // and do not propagate to bankKeeper, so this case leans on the
+  // localnode dev0 signer's real pre-funded BTC balance.
+  context("custom Mezo precompile state chains across calls", function () {
+    it("btctoken.transfer → btctoken.balanceOf surfaces the transferred amount", async function () {
+      const btcToken: any = new hre.ethers.Contract(
+        BTC_TOKEN_PRECOMPILE,
+        btcabi,
+        ethers.provider,
+      )
+      const transferAmount = ethers.parseEther("0.5")
+
+      const transferData = btcToken.interface.encodeFunctionData("transfer", [
+        recipientAddr,
+        transferAmount,
+      ])
+      const balanceOfData = btcToken.interface.encodeFunctionData("balanceOf", [
+        recipientAddr,
+      ])
+
+      const opts = {
+        blockStateCalls: [
+          {
+            calls: [
+              { from: senderAddr, to: BTC_TOKEN_PRECOMPILE, data: transferData },
+              { from: senderAddr, to: BTC_TOKEN_PRECOMPILE, data: balanceOfData },
+            ],
+          },
+        ],
+      }
+
+      const blocks: any[] = await ethers.provider.send(
+        "eth_simulateV1",
+        [opts, "latest"],
+      )
+      expect(blocks).to.have.lengthOf(1)
+      const calls = blocks[0].calls
+      expect(calls).to.have.lengthOf(2)
+
+      expect(calls[0].status).to.equal("0x1", "btctoken.transfer must succeed")
+      expect(calls[1].status).to.equal("0x1", "btctoken.balanceOf must succeed")
+
+      const [balance] = ethers.AbiCoder.defaultAbiCoder().decode(
+        ["uint256"],
+        calls[1].returnData,
+      )
+      expect(balance).to.equal(transferAmount)
     })
   })
 })
