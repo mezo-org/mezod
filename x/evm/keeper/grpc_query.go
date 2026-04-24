@@ -749,7 +749,7 @@ func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*ty
 		return simulateV1ErrResponse(err)
 	}
 
-	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg), opts, req.GasCap)
+	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg, req.GasCap), opts, req.GasCap)
 	if err != nil {
 		return simulateV1ErrResponse(err)
 	}
@@ -847,11 +847,23 @@ func validateSimulateV1Anchor(ctx sdk.Context, bnhBz []byte) error {
 // canonical-range BLOCKHASH resolution to k.GetHashFn which reads the
 // same ctx, so all three sources (ctx, base header fields, BLOCKHASH
 // for base.Number) stay consistent.
-func baseHeaderFromContext(ctx sdk.Context, cfg *statedb.EVMConfig) *ethtypes.Header {
+func baseHeaderFromContext(ctx sdk.Context, cfg *statedb.EVMConfig, gasCap uint64) *ethtypes.Header {
+	// BlockGasLimit(ctx) reads the block gas meter (unset outside of
+	// finalize-block) then falls back to ctx.ConsensusParams(). A gRPC
+	// query context anchored at a past height does not necessarily load
+	// consensus params, in which case BlockGasLimit returns 0 and the
+	// per-call budget in sanitizeSimCall collapses. Fall back to the
+	// RPC gas cap so a bare simulate at least has gasCap per block —
+	// matching the budget the non-simulate eth_call path uses for a
+	// single call.
+	gasLimit := mezotypes.BlockGasLimit(ctx)
+	if gasLimit == 0 {
+		gasLimit = gasCap
+	}
 	return &ethtypes.Header{
 		Number:     big.NewInt(ctx.BlockHeight()),
 		Time:       uint64(ctx.BlockTime().Unix()), //nolint:gosec
-		GasLimit:   mezotypes.BlockGasLimit(ctx),
+		GasLimit:   gasLimit,
 		BaseFee:    cfg.BaseFee,
 		Difficulty: new(big.Int),
 		// Match the non-simulate path so COINBASE returns the validator
