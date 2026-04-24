@@ -1623,8 +1623,8 @@ github.com/mezo-org/cosmos-sdk/store v1.1.1-mezo h1:1UptFWudKEtlp8yrZ90QrXpK7X4Y
 github.com/mezo-org/cosmos-sdk/store v1.1.1-mezo/go.mod h1:8DwVTz83/2PSI366FERGbWSH7hL6sB7HbYp8bqksNwM=
 github.com/mezo-org/go-ethereum v1.16.9-mezo0 h1:A+/ld8ZlOxIOyT5exQPB+KWdb0OEGW5Mt55Z3pkSsyw=
 github.com/mezo-org/go-ethereum v1.16.9-mezo0/go.mod h1:Fs6QebQbavneQTYcA39PEKv2+zIjX7rPUZ14DER46wk=
-github.com/mezo-org/keep-common v1.8.0 h1:UWTYmXbEuqWqo6j8L2H9tzSnHoJ8/kV4JsrvytL4hTg=
-github.com/mezo-org/keep-common v1.8.0/go.mod h1:OmaZrnZODf6RJ95yUn2kBjy8Z4u2npPJQkSiyimluto=
+github.com/mezo-org/keep-common v1.9.0 h1:80c+VjX0JcLfvO9KhbdmQAA17elUh4pwDnXxTh100bU=
+github.com/mezo-org/keep-common v1.9.0/go.mod h1:KIOKBjIN1ep26VKd+T9L2eR/qipQEdB6DU7jmNKh2hA=
 github.com/microcosm-cc/bluemonday v1.0.23/go.mod h1:mN70sk7UkkF8TUr2IGBpNN0jAgStuPzlK76QuruE/z4=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miguelmota/go-ethereum-hdwallet v0.1.1 h1:zdXGlHao7idpCBjEGTXThVAtMKs+IxAgivZ75xqkWK0=

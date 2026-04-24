@@ -295,7 +295,7 @@ replace (
 	// Security Advisory https://github.com/advisories/GHSA-h395-qcrw-5vmq
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.7
 	// use mezo-org fork of keep-common
-	github.com/keep-network/keep-common => github.com/mezo-org/keep-common v1.8.0
+	github.com/keep-network/keep-common => github.com/mezo-org/keep-common v1.9.0
 
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
