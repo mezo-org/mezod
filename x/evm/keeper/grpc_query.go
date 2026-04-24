@@ -737,7 +737,7 @@ func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*ty
 		return simulateV1ErrResponse(err)
 	}
 
-	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg.BaseFee), opts, req.GasCap)
+	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg), opts, req.GasCap)
 	if err != nil {
 		return simulateV1ErrResponse(err)
 	}
@@ -789,15 +789,19 @@ func getChainID(ctx sdk.Context, chainID int64) (*big.Int, error) {
 // baseHeaderFromContext synthesizes the execution-api base header from
 // the SDK context that the gRPC call was anchored at. The returned
 // header only populates the fields the simulate driver consumes
-// (Number, Time, GasLimit, BaseFee, Difficulty). Multi-block support
-// will swap this for a real block fetch so BLOCKHASH resolution lines
-// up with canonical chain history.
-func baseHeaderFromContext(ctx sdk.Context, baseFee *big.Int) *ethtypes.Header {
+// (Number, Time, GasLimit, BaseFee, Difficulty, Coinbase). Multi-block
+// support will swap this for a real block fetch so BLOCKHASH resolution
+// lines up with canonical chain history.
+func baseHeaderFromContext(ctx sdk.Context, cfg *statedb.EVMConfig) *ethtypes.Header {
 	return &ethtypes.Header{
 		Number:     big.NewInt(ctx.BlockHeight()),
 		Time:       uint64(ctx.BlockTime().Unix()), //nolint:gosec
 		GasLimit:   mezotypes.BlockGasLimit(ctx),
-		BaseFee:    baseFee,
+		BaseFee:    cfg.BaseFee,
 		Difficulty: new(big.Int),
+		// Match the non-simulate path so COINBASE returns the validator
+		// operator address rather than zero for simulated blocks that
+		// don't override FeeRecipient.
+		Coinbase: cfg.CoinBase,
 	}
 }

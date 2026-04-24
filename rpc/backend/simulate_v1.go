@@ -3,8 +3,7 @@ package backend
 import (
 	"context"
 	"encoding/json"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -39,7 +38,7 @@ func (b *Backend) SimulateV1(
 	}
 	header, err := b.TendermintBlockByNumber(blockNr)
 	if err != nil {
-		return nil, errors.New("header not found")
+		return nil, fmt.Errorf("header not found: %w", err)
 	}
 
 	timeout := b.RPCEVMTimeout()

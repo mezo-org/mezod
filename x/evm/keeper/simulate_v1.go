@@ -340,11 +340,11 @@ func (k *Keeper) simulateV1(
 		var cumGas uint64
 
 		for _, args := range block.Calls {
-			// Default nonce from current committed state so callers
-			// omitting `nonce` match eth_call behavior.
+			// Default nonce from the simulated StateDB so callers
+			// omitting `nonce` see any preceding state override (and
+			// eventually preceding calls in the same block).
 			if args.Nonce == nil {
-				nonce := k.GetNonce(ctx, args.GetFrom())
-				h := hexutil.Uint64(nonce)
+				h := hexutil.Uint64(sdb.GetNonce(args.GetFrom()))
 				args.Nonce = &h
 			}
 
