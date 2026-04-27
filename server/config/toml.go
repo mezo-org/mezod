@@ -40,6 +40,11 @@ max-tx-gas-wanted = {{ .EVM.MaxTxGasWanted }}
 # Enable defines if the gRPC server should be enabled.
 enable = {{ .JSONRPC.Enable }}
 
+# SimulateDisabled hides the eth_simulateV1 method when true. The method
+# returns -32601 (method not found) so callers cannot distinguish
+# "disabled" from "not implemented".
+simulate-disabled = {{ .JSONRPC.SimulateDisabled }}
+
 # Address defines the EVM RPC HTTP server address to bind to.
 address = "{{ .JSONRPC.Address }}"
 

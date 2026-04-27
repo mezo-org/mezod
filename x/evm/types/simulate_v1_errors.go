@@ -230,3 +230,14 @@ func NewSimReverted(data []byte) *SimError {
 func NewSimVMError(vmErr string) *SimError {
 	return &SimError{Code: SimErrCodeVMError, Message: vmErr}
 }
+
+// NewSimMethodNotFound reports the method-disabled kill switch (-32601).
+// The message matches the JSON-RPC framework's "method not registered"
+// shape so an operator hiding the endpoint is indistinguishable from a
+// node that does not implement it.
+func NewSimMethodNotFound(method string) *SimError {
+	return &SimError{
+		Code:    SimErrCodeMethodNotFound,
+		Message: fmt.Sprintf("the method %s does not exist/is not available", method),
+	}
+}
