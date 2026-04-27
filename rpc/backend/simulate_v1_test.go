@@ -4,31 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 
-	sdkmath "cosmossdk.io/math"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
-
-// registerSimulateV1BaseHashLookup mocks the chain-state reads
-// HeaderByNumber issues so the rpc backend can resolve a canonical
-// base block hash to populate SimulateV1Request.BaseBlockHash.
-// HeaderByNumber goes through TendermintBlockByNumber (already
-// covered by RegisterBlock at the call sites),
-// TendermintBlockResultByNumber, BaseFee, and BlockBloom; the latter
-// two tolerate missing data, so registering BlockResults + BaseFee
-// is sufficient.
-//
-//nolint:unparam
-func registerSimulateV1BaseHashLookup(suite *BackendTestSuite, height int64) {
-	client := suite.backend.clientCtx.Client.(*mocks.Client)
-	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
-	_, err := RegisterBlockResults(client, height)
-	suite.Require().NoError(err)
-	RegisterBaseFee(queryClient, sdkmath.NewInt(1))
-}
 
 // registerSimulateV1SimError wires the gRPC mock so the keeper returns
 // a successful response carrying a structured *SimError on the
@@ -68,7 +49,6 @@ func (suite *BackendTestSuite) TestSimulateV1_EmptyResultsReturnEmptySlice() {
 	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
 	_, err := RegisterBlock(client, 1, bz)
 	suite.Require().NoError(err)
-	registerSimulateV1BaseHashLookup(suite, 1)
 	registerSimulateV1OK(queryClient, nil)
 
 	bn := rpctypes.BlockNumber(1)
@@ -99,7 +79,6 @@ func (suite *BackendTestSuite) TestSimulateV1_BubblesSimError() {
 			queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
 			_, err := RegisterBlock(client, 1, bz)
 			suite.Require().NoError(err)
-			registerSimulateV1BaseHashLookup(suite, 1)
 			registerSimulateV1SimError(queryClient, tc.code, "boom")
 
 			bn := rpctypes.BlockNumber(1)
@@ -116,21 +95,19 @@ func (suite *BackendTestSuite) TestSimulateV1_BubblesSimError() {
 }
 
 // TestSimulateV1_PopulatesBaseBlockHash: the rpc backend forwards the
-// canonical Eth-formatted base block hash on the gRPC request so the
-// keeper can use it as the first simulated block's parentHash.
+// canonical CometBFT base block hash — the same hash
+// eth_getBlockByNumber surfaces — on the gRPC request so the keeper
+// can use it as the first simulated block's parentHash.
 func (suite *BackendTestSuite) TestSimulateV1_PopulatesBaseBlockHash() {
 	suite.SetupTest()
 	_, bz := suite.buildEthereumTx()
 
 	client := suite.backend.clientCtx.Client.(*mocks.Client)
 	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
-	_, err := RegisterBlock(client, 1, bz)
+	resBlock, err := RegisterBlock(client, 1, bz)
 	suite.Require().NoError(err)
-	registerSimulateV1BaseHashLookup(suite, 1)
 
-	wantHeader, err := suite.backend.HeaderByNumber(rpctypes.BlockNumber(1))
-	suite.Require().NoError(err)
-	wantBytes := wantHeader.Hash().Bytes()
+	wantBytes := resBlock.Block.Hash().Bytes()
 
 	var captured *evmtypes.SimulateV1Request
 	queryClient.On(
@@ -155,7 +132,6 @@ func (suite *BackendTestSuite) TestSimulateV1_UnmarshalsResults() {
 	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
 	_, err := RegisterBlock(client, 1, bz)
 	suite.Require().NoError(err)
-	registerSimulateV1BaseHashLookup(suite, 1)
 
 	expected := []*evmtypes.SimBlockResult{
 		{Block: map[string]interface{}{"number": "0x1"}, Calls: []evmtypes.SimCallResult{}},

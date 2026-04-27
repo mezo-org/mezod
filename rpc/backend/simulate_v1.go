@@ -41,19 +41,20 @@ func (b *Backend) SimulateV1(
 		return nil, fmt.Errorf("header not found: %w", err)
 	}
 
-	// Derive the Eth-formatted base hash from the already-fetched block
-	// via the same path eth_getBlockByNumber takes, so the response
-	// envelope's parentHash agrees with what eth_getBlockByNumber
-	// surfaces for the base block. nil on failure: the keeper keeps its
-	// synthetic-header fallback.
-	var baseBlockHash []byte
-	if blockRes, brErr := b.TendermintBlockResultByNumber(&header.Block.Height); brErr == nil {
-		bloom, _ := b.BlockBloom(blockRes)
-		baseFee, _ := b.BaseFee(blockRes)
-		baseBlockHash = rpctypes.EthHeaderFromTendermint(header.Block.Header, bloom, baseFee).Hash().Bytes()
-	} else {
-		b.logger.Error("eth_simulateV1: base block results not found", "height", header.Block.Height, "error", brErr)
-	}
+	// Use the canonical CometBFT block hash so the envelope's
+	// parentHash agrees with eth_getBlockByNumber. FormatBlock — the
+	// path eth_getBlockByNumber takes — surfaces the Tendermint
+	// header hash, not the hash of an Eth-formatted shadow header, so
+	// anything derived via EthHeaderFromTendermint().Hash() is a
+	// different scheme entirely and will not match. The keeper cannot
+	// resolve this hash on its own: at FinalizeBlock the SDK only
+	// puts a truncated cmtproto.Header on ctx (lacking LastBlockID,
+	// DataHash, and others), and it's exactly that truncated header
+	// PoA's TrackHistoricalInfo persists — so neither ctx.BlockHeader()
+	// nor stakingKeeper.GetHistoricalInfo can produce the canonical
+	// hash CometBFT's block store carries. Forwarding it from the
+	// rpc layer is the only way the two surfaces line up.
+	baseBlockHash := header.Block.Hash().Bytes()
 
 	timeout := b.RPCEVMTimeout()
 
