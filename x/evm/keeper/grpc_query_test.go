@@ -1904,10 +1904,8 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_RevertDoesNotLeak() {
 	)
 }
 
-// TestSimulateV1_MultiCall_BlockGasLimit — three calls against a tight
-// block gas limit. First two each consume ~21k for a plain value
-// transfer; third requests gas over the remaining budget and surfaces
-// -38015 as a per-call error while the preceding calls still succeed.
+// Two calls against a tight block gas limit; the second requests gas
+// over the remaining block budget and trips a request-level -38015.
 func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_BlockGasLimit() {
 	suite.SetupTest()
 
@@ -1928,8 +1926,7 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_BlockGasLimit() {
 			},
 			"calls": []types.TransactionArgs{
 				{From: &sender, To: &recipient, Value: value},
-				// This call's requested gas (30k) is larger than the
-				// remaining budget (50k - 21k = 29k) — expect -38015.
+				// 30k > 50k-21k=29k remaining: trips -38015.
 				{From: &sender, To: &recipient, Value: value, Gas: &overBudgetGas},
 			},
 		}},
@@ -1937,25 +1934,10 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_BlockGasLimit() {
 	suite.Require().NoError(err)
 
 	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
-	suite.Require().NoError(err)
-	suite.Require().Nil(resp.Error)
-
-	results := suite.simulateV1BlockResults(resp)
-	suite.Require().Len(results, 1)
-	calls := results[0]["calls"].([]interface{})
-	suite.Require().Len(calls, 2)
-
-	// Call 1 succeeds using the default (remaining budget) gas.
-	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"])
-
-	// Call 2 is rejected before execution: per-call Error with -38015,
-	// no status (defaults to 0).
-	call2 := calls[1].(map[string]interface{})
-	suite.Require().NotNil(call2["error"], "over-budget call must carry a SimError")
-	suite.Require().EqualValues(
-		float64(types.SimErrCodeBlockGasLimitReached),
-		call2["error"].(map[string]interface{})["code"],
-	)
+	suite.Require().NoError(err, "must NOT collapse to gRPC Internal")
+	suite.Require().NotNil(resp.Error, "over-budget call must surface a top-level fatal SimError")
+	suite.Require().Equal(int32(types.SimErrCodeBlockGasLimitReached), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
 }
 
 // TestSimulateV1_MultiCall_LogTxIndexMatchesBlockPosition — first call
@@ -2402,11 +2384,8 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiBlock_PrecompileStateChains() 
 		"block 2 balanceOf must return transferAmount; got %s (precompile cachedCtx did not survive block boundary)", got.String())
 }
 
-// TestSimulateV1_MultiCall_ImplicitGasAfterExhaustedBudget — two calls
-// against a budget the first call fully consumes. The second call omits
-// args.Gas, so the implicit-gas resolver must surface -38015 as a
-// per-call error instead of letting applyMessageWithConfig fail the
-// request with gRPC Internal and wipe the first call's success.
+// First call exhausts the per-block gas; the second omits args.Gas and
+// trips -38015 in resolveSimCallGas as a request-level fatal.
 func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_ImplicitGasAfterExhaustedBudget() {
 	suite.SetupTest()
 
@@ -2427,8 +2406,7 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_ImplicitGasAfterExhausted
 			},
 			"calls": []types.TransactionArgs{
 				{From: &sender, To: &recipient, Value: value},
-				// Omit Gas — implicit. After call 1 consumes all 21k,
-				// remaining=0; preflight must emit -38015.
+				// Omit Gas; remaining=0 after call 1 trips the preflight.
 				{From: &sender, To: &recipient, Value: value},
 			},
 		}},
@@ -2437,28 +2415,12 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_ImplicitGasAfterExhausted
 
 	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
 	suite.Require().NoError(err, "the request must NOT collapse to gRPC Internal")
-	suite.Require().Nil(resp.Error)
-
-	results := suite.simulateV1BlockResults(resp)
-	suite.Require().Len(results, 1)
-	calls := results[0]["calls"].([]interface{})
-	suite.Require().Len(calls, 2)
-
-	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"],
-		"call 1 must succeed and survive in the response envelope")
-
-	call2 := calls[1].(map[string]interface{})
-	suite.Require().NotNil(call2["error"], "call 2 must carry a per-call SimError")
-	suite.Require().EqualValues(
-		float64(types.SimErrCodeBlockGasLimitReached),
-		call2["error"].(map[string]interface{})["code"],
-	)
+	suite.Require().NotNil(resp.Error, "exhausted-budget preflight must surface a top-level fatal SimError")
+	suite.Require().Equal(int32(types.SimErrCodeBlockGasLimitReached), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
 }
 
-// TestSimulateV1_ExplicitGasBelowIntrinsic — a single call with explicit
-// args.Gas below the call's actual intrinsic-gas requirement. Pre-fix
-// this collapsed to gRPC Internal; the driver-loop catch on
-// core.ErrIntrinsicGas now surfaces it as a per-call -38013.
+// args.Gas below intrinsic surfaces as a request-level -38013.
 func (suite *KeeperTestSuite) TestSimulateV1_ExplicitGasBelowIntrinsic() {
 	suite.SetupTest()
 
@@ -2482,19 +2444,9 @@ func (suite *KeeperTestSuite) TestSimulateV1_ExplicitGasBelowIntrinsic() {
 
 	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
 	suite.Require().NoError(err, "the request must NOT collapse to gRPC Internal")
-	suite.Require().Nil(resp.Error)
-
-	results := suite.simulateV1BlockResults(resp)
-	suite.Require().Len(results, 1)
-	calls := results[0]["calls"].([]interface{})
-	suite.Require().Len(calls, 1)
-
-	call := calls[0].(map[string]interface{})
-	suite.Require().NotNil(call["error"], "below-intrinsic call must carry a per-call SimError")
-	suite.Require().EqualValues(
-		float64(types.SimErrCodeIntrinsicGas),
-		call["error"].(map[string]interface{})["code"],
-	)
+	suite.Require().NotNil(resp.Error, "below-intrinsic call must surface a top-level fatal SimError")
+	suite.Require().Equal(int32(types.SimErrCodeIntrinsicGas), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
 }
 
 // TestSimulateV1_MultiBlock_ParentHashChainCoherent — three blocks, each
@@ -2683,4 +2635,84 @@ func (suite *KeeperTestSuite) TestSimulateV1_DoS_CallCap() {
 	suite.Require().Equal(int32(types.SimErrCodeClientLimitExceeded), resp.Error.Code)
 	suite.Require().Contains(resp.Error.Message, "calls")
 	suite.Require().Contains(resp.Error.Message, fmt.Sprintf("%d", totalCalls))
+}
+
+// TestSimulateV1_DoS_GasPool_ClampsCallGas: with GasCap small relative to
+// the request's 30M-default block gas, an explicit args.Gas above GasCap
+// must be clamped down by the budget. The call still succeeds (intrinsic
+// gas is 21k, well under the clamp) and gasUsed reflects the clamp via
+// minGasMultiplier inflation.
+func (suite *KeeperTestSuite) TestSimulateV1_DoS_GasPool_ClampsCallGas() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	// Explicit args.Gas larger than GasCap.
+	gas := hexutil.Uint64(5_000_000)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipient, Value: value, Gas: &gas},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	req := suite.simulateV1Request(optsJSON)
+	req.GasCap = 1_000_000
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, req)
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+	call := calls[0].(map[string]interface{})
+	suite.Require().Equal("0x1", call["status"])
+
+	gasUsedHex := call["gasUsed"].(string)
+	gasUsed, err := hexutil.DecodeUint64(gasUsedHex)
+	suite.Require().NoError(err)
+	suite.Require().LessOrEqual(gasUsed, uint64(1_000_000), "gasUsed must respect the request-wide gas cap")
+}
+
+// gasCap=0 is unlimited.
+func (suite *KeeperTestSuite) TestSimulateV1_DoS_GasPool_ZeroIsUnlimited() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	req := suite.simulateV1Request(optsJSON)
+	req.GasCap = 0
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, req)
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"])
 }

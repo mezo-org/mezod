@@ -2,6 +2,8 @@ package keeper
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"slices"
@@ -18,6 +20,36 @@ import (
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
+
+// simGasBudget tracks the request-wide gas pool for one eth_simulateV1
+// invocation. A zero gasCap is treated as unlimited.
+type simGasBudget struct{ remaining uint64 }
+
+func newSimGasBudget(gasCap uint64) *simGasBudget {
+	if gasCap == 0 {
+		return &simGasBudget{remaining: math.MaxUint64}
+	}
+	return &simGasBudget{remaining: gasCap}
+}
+
+// clamp returns min(gas, b.remaining).
+func (b *simGasBudget) clamp(gas uint64) uint64 {
+	if gas > b.remaining {
+		return b.remaining
+	}
+	return gas
+}
+
+// consume deducts amount from the remaining budget. The clamp invariant
+// keeps amount <= remaining for valid inputs; the error path is the
+// safety net.
+func (b *simGasBudget) consume(amount uint64) error {
+	if amount > b.remaining {
+		return fmt.Errorf("RPC gas cap exhausted: need %d, remaining %d", amount, b.remaining)
+	}
+	b.remaining -= amount
+	return nil
+}
 
 // simTimestampIncrement is the default gap, in seconds, between
 // sequential simulated blocks when the caller omits Time overrides.
@@ -276,6 +308,11 @@ func (k *Keeper) simulateV1(
 		return nil, err
 	}
 
+	// Request-wide gas budget. Seeded from json-rpc.gas-cap; a zero cap
+	// is interpreted as unlimited.
+	budget := newSimGasBudget(gasCap)
+
+
 	// One Rules value covers every simulated block, derived from ctx
 	// (i.e. base) rather than from each block's own number/time. This
 	// is deliberate: applyMessageWithConfig reads ctx.BlockHeight() /
@@ -341,7 +378,7 @@ func (k *Keeper) simulateV1(
 		}
 
 		res, blockErr := k.processSimBlock(
-			ctx, cfg, sdb, base, headers, bi, block, rules, opts, gasCap,
+			ctx, cfg, sdb, base, headers, bi, block, rules, opts, gasCap, budget,
 		)
 		if blockErr != nil {
 			return nil, blockErr
@@ -375,6 +412,7 @@ func (k *Keeper) processSimBlock(
 	rules params.Rules,
 	opts *types.SimOpts,
 	gasCap uint64,
+	budget *simGasBudget,
 ) (*types.SimBlockResult, error) {
 	header := headers[bi]
 
@@ -442,13 +480,10 @@ func (k *Keeper) processSimBlock(
 		args.Nonce = resolveSimCallNonce(sdb, &args)
 
 		var simErr *types.SimError
-		args.Gas, simErr = resolveSimCallGas(&args, header, cumGas)
+		args.Gas, simErr = resolveSimCallGas(&args, header, cumGas, budget)
 		if simErr != nil {
-			calls = append(calls, types.SimCallResult{
-				Logs:  []*ethtypes.Log{},
-				Error: simErr,
-			})
-			continue
+			// -38015 is a request-level code per execute.yaml.
+			return nil, simErr
 		}
 
 		msg, msgErr := args.ToMessage(gasCap, header.BaseFee)
@@ -489,25 +524,17 @@ func (k *Keeper) processSimBlock(
 			evmOverrides,
 		)
 		if runErr != nil {
-			// applyMessageWithConfig surfaces both user-recoverable
-			// errors (intrinsic gas too low for the call's actual gas
-			// requirement) and infrastructure errors via the same
-			// channel. Convert the recoverable case to a per-call
-			// SimError so prior successful calls remain in the
-			// envelope instead of being wiped by a top-level gRPC
-			// Internal. Catch is intentionally narrow — only
-			// core.ErrIntrinsicGas — so genuine internal failures
-			// still propagate.
+			// Per execute.yaml, CallResultFailure permits only codes 3
+			// and -32015, so ErrIntrinsicGas must surface at the request
+			// level. Capture args.Gas here while it is still in scope so
+			// the SimError carries the actual provided value rather than
+			// a (0, 0) reconstruction at the gRPC handler.
 			if errors.Is(runErr, core.ErrIntrinsicGas) {
 				var provided uint64
 				if args.Gas != nil {
 					provided = uint64(*args.Gas)
 				}
-				calls = append(calls, types.SimCallResult{
-					Logs:  []*ethtypes.Log{},
-					Error: types.NewSimIntrinsicGas(provided, 0),
-				})
-				continue
+				return nil, types.NewSimIntrinsicGas(provided, 0)
 			}
 			return nil, runErr
 		}
@@ -528,6 +555,13 @@ func (k *Keeper) processSimBlock(
 		// chain.
 		if msg.To != nil {
 			sdb.SetNonce(msg.From, msg.Nonce+1)
+		}
+
+		// Request-wide gas pool. The clamp in resolveSimCallGas keeps
+		// res.GasUsed <= budget.remaining under valid inputs; the error
+		// path is the safety net.
+		if budgetErr := budget.consume(res.GasUsed); budgetErr != nil {
+			return nil, budgetErr
 		}
 
 		calls = append(calls, types.BuildSimCallResult(res))
@@ -585,35 +619,27 @@ func resolveSimCallNonce(
 	return &n
 }
 
-// resolveSimCallGas returns the gas limit to apply to a sim call,
-// drawing from the per-block budget (header.GasLimit - cumGasUsed). An
-// explicit args.Gas is preserved, but a value that would push the
-// cumulative block gas past header.GasLimit is rejected with -38015 —
-// emitted as a per-call error so preceding valid calls still surface.
-// When args.Gas is nil a freshly allocated pointer holding the
-// remaining budget is returned. On error the returned pointer is nil.
+// resolveSimCallGas returns the gas limit to apply to a sim call as
+// min(args.Gas | header-remaining, budget-remaining). When args.Gas is
+// nil the resolver defaults to header-remaining. -38015 is returned
+// when args.Gas exceeds the per-block remaining or when the per-block
+// remaining is zero; the caller surfaces it as a request-level fatal.
 //
-// header.GasLimit is treated as authoritative: a caller who sets
+// header.GasLimit is authoritative: a caller who sets
 // blockOverrides.gasLimit to 0 (or otherwise produces a zero-limit
-// block) gets a block where every call either defaults to Gas=0 and
-// fails on intrinsic gas inside applyMessageWithConfig, or — if Gas is
-// explicitly >0 — trips the -38015 preflight. This matches geth's
-// behavior (empty core.GasPool) and keeps the per-block work bound
-// real even under hostile BlockOverrides.
+// block) gets every call rejected at the preflight, keeping the
+// per-block work bound real even under hostile BlockOverrides.
 func resolveSimCallGas(
 	args *types.TransactionArgs,
 	header *ethtypes.Header,
 	cumGasUsed uint64,
+	budget *simGasBudget,
 ) (*hexutil.Uint64, *types.SimError) {
 	var remaining uint64
 	if header.GasLimit > cumGasUsed {
 		remaining = header.GasLimit - cumGasUsed
 	}
 
-	// Block budget already exhausted: any further call (default or
-	// explicit gas) would fail intrinsic-gas inside applyMessageWithConfig.
-	// Surface as a per-call -38015 so the request envelope retains
-	// preceding successful results instead of collapsing to gRPC Internal.
 	if remaining == 0 {
 		var requested uint64
 		if args.Gas != nil {
@@ -622,16 +648,19 @@ func resolveSimCallGas(
 		return nil, types.NewSimBlockGasLimitReached(requested, 0)
 	}
 
+	var resolved uint64
 	if args.Gas == nil {
-		g := hexutil.Uint64(remaining)
-		return &g, nil
+		resolved = remaining
+	} else {
+		requested := uint64(*args.Gas)
+		if requested > remaining {
+			return nil, types.NewSimBlockGasLimitReached(requested, remaining)
+		}
+		resolved = requested
 	}
-
-	requested := uint64(*args.Gas)
-	if requested > remaining {
-		return nil, types.NewSimBlockGasLimitReached(requested, remaining)
-	}
-	return args.Gas, nil
+	resolved = budget.clamp(resolved)
+	g := hexutil.Uint64(resolved)
+	return &g, nil
 }
 
 // newSimGetHashFn builds the simulate-aware BLOCKHASH resolver. The

@@ -791,14 +791,18 @@ func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*ty
 	return &types.SimulateV1Response{Result: payload}, nil
 }
 
-// simulateV1ErrResponse routes a driver-layer error either onto the
-// response's structured SimError field (for spec-coded failures the
-// client should see verbatim) or onto a gRPC Internal status (for
-// genuine internals that should not collapse to -32602 on the wire).
+// simulateV1ErrResponse routes a driver-layer error onto the response's
+// structured SimError field for spec-coded failures, or onto a gRPC
+// Internal status for everything else. core.ErrIntrinsicGas is mapped
+// to a structured -38013 SimError; CallResultFailure does not permit
+// -38013 on a per-call entry so it must surface at the request level.
 func simulateV1ErrResponse(err error) (*types.SimulateV1Response, error) {
 	var simErr *types.SimError
 	if errors.As(err, &simErr) {
 		return &types.SimulateV1Response{Error: simErr}, nil
+	}
+	if errors.Is(err, core.ErrIntrinsicGas) {
+		return &types.SimulateV1Response{Error: types.NewSimIntrinsicGas(0, 0)}, nil
 	}
 	return nil, status.Error(codes.Internal, err.Error())
 }
