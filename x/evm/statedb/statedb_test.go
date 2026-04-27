@@ -788,6 +788,12 @@ func (suite *StateDBTestSuite) TestFinaliseBetweenCalls() {
 		db.RegisterCachedCtxCheckpoint(address, ccp),
 	)
 
+	// Bump the revision stack so the post-finalize id reset is
+	// observable. Without these calls nextRevisionID is already 0 and
+	// the assertion below would hold tautologically.
+	suite.Require().Equal(0, db.Snapshot())
+	suite.Require().Equal(1, db.Snapshot())
+
 	suite.Require().NotEmpty(db.Logs())
 	suite.Require().Equal(uint64(42), db.GetRefund())
 	suite.Require().Equal(value1, db.GetTransientState(address, key1))
@@ -811,6 +817,12 @@ func (suite *StateDBTestSuite) TestFinaliseBetweenCalls() {
 	suite.Require().NoError(
 		db.RegisterCachedCtxCheckpoint(address, ccp),
 	)
+
+	// Journal and revision stack are cleared, so the next Snapshot()
+	// restarts at id 0. This bounds memory across long simulate
+	// requests (per-precompile multistore clones don't accumulate)
+	// and disarms the latent addLogChange-revert-on-empty-slice panic.
+	suite.Require().Equal(0, db.Snapshot())
 }
 
 func CollectContractStorage(db *statedb.StateDB) statedb.Storage {
