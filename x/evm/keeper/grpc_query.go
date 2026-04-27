@@ -779,7 +779,20 @@ func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*ty
 		baseHash = common.BytesToHash(req.BaseBlockHash)
 	}
 
-	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg, baseGasLimit), baseHash, opts, req.GasCap)
+	timeout := time.Duration(req.TimeoutMs) * time.Millisecond
+	// timeout <= 0 means no keeper-side deadline. The RPC backend
+	// injects b.RPCEVMTimeout() via req.TimeoutMs, so the JSON-RPC path
+	// always gets a bound. A direct gRPC peer passing 0 disables the
+	// deadline — by design, since operator config is not visible at
+	// this layer. The timestamp watcher in processSimBlock keys off
+	// this ctx.
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		c, cancel = context.WithTimeout(c, timeout)
+		defer cancel()
+	}
+
+	results, err := k.simulateV1(c, ctx, cfg, baseHeaderFromContext(ctx, cfg, baseGasLimit), baseHash, opts, req.GasCap, timeout)
 	if err != nil {
 		return simulateV1ErrResponse(err)
 	}

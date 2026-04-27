@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -263,5 +264,14 @@ func NewSimBlockCountExceeded(total, maxBlocks int) *SimError {
 			"client limit exceeded: %d blocks > max %d",
 			total, maxBlocks,
 		),
+	}
+}
+
+// NewSimTimeout reports that the request hit its evm-timeout deadline
+// (-32016).
+func NewSimTimeout(timeout time.Duration) *SimError {
+	return &SimError{
+		Code:    SimErrCodeTimeout,
+		Message: fmt.Sprintf("execution aborted (timeout = %s)", timeout),
 	}
 }

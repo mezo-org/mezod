@@ -1,9 +1,11 @@
 package keeper_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"time"
 
 	sdkmath "cosmossdk.io/math"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
@@ -2715,4 +2717,93 @@ func (suite *KeeperTestSuite) TestSimulateV1_DoS_GasPool_ZeroIsUnlimited() {
 	calls := results[0]["calls"].([]interface{})
 	suite.Require().Len(calls, 1)
 	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"])
+}
+
+// Pre-canceled request context surfaces -32016 from the loop-top check.
+func (suite *KeeperTestSuite) TestSimulateV1_Timeout_LoopCheck() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	sdkCtx := suite.ctx.WithContext(canceledCtx)
+
+	req := suite.simulateV1Request(optsJSON)
+	req.TimeoutMs = 1_000 // shape the message text; cancellation is what fires
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(sdkCtx, req)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeTimeout), resp.Error.Code)
+}
+
+// infiniteJumpBytecode is a tight EVM loop that runs until canceled or
+// out of gas:
+//
+//	@00  JUMPDEST
+//	@01  PUSH1 0x00
+//	@03  JUMP            → unconditional jump back to @00
+//
+// Each iteration costs 1 (JUMPDEST) + 3 (PUSH1) + 8 (JUMP) = 12 gas, so
+// even at the keeper's 21M GasCap the loop runs ~1.75M iterations before
+// gas runs out. With a 200ms request timeout the watcher's evm.Cancel()
+// fires long before that.
+const infiniteJumpBytecode = "0x5B600056"
+
+// Mid-call request-context cancellation surfaces -32016 from the
+// post-call timeout check. Drives a tight EVM loop (infiniteJumpBytecode)
+// against a small TimeoutMs so the cancel-watcher's evm.Cancel() fires
+// while applyMessageWithConfig is actually running, exercising a path
+// distinct from TestSimulateV1_Timeout_LoopCheck (which only covers the
+// pre-call ctx.Err() guard at the top of the per-block loop).
+func (suite *KeeperTestSuite) TestSimulateV1_Timeout_MidCall() {
+	suite.SetupTest()
+
+	sender := suite.address
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000300")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:   {"balance": balance},
+				contract: {"code": infiniteJumpBytecode},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &contract}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	req := suite.simulateV1Request(optsJSON)
+	// Gas budget high enough that the loop must be bounded by the
+	// 200ms timeout, not by gas exhaustion.
+	req.GasCap = 1_000_000_000
+	req.TimeoutMs = 200
+
+	start := time.Now()
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, req)
+	elapsed := time.Since(start)
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error, "expected request-level SimError on mid-call timeout")
+	suite.Require().Equal(int32(types.SimErrCodeTimeout), resp.Error.Code)
+	suite.Require().Empty(resp.Result, "request-level fatal must not emit per-call entries")
+	// Wall-clock bound confirms the deadline fired and the test isn't
+	// running the bytecode to gas exhaustion.
+	suite.Require().Less(elapsed, 2*time.Second,
+		"timeout did not fire mid-call; elapsed=%s", elapsed)
 }

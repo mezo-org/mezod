@@ -3,9 +3,12 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -93,6 +96,12 @@ func (b *Backend) SimulateV1(
 
 	res, err := b.queryClient.QueryClient.SimulateV1(ctx, req)
 	if err != nil {
+		// gRPC may return DeadlineExceeded before the keeper writes a
+		// NewSimTimeout response; translate both shapes to -32016.
+		if errors.Is(err, context.DeadlineExceeded) ||
+			status.Code(err) == codes.DeadlineExceeded {
+			return nil, evmtypes.NewSimTimeout(timeout)
+		}
 		return nil, err
 	}
 

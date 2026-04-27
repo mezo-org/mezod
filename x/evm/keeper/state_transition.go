@@ -49,10 +49,22 @@ import (
 // Each override is applied on top of the default value the non-override
 // path would have produced. Precompiles, when non-nil, replaces the
 // default registry wholesale — a non-nil empty map wipes it.
+//
+// OnEVMConstructed, when non-nil, is invoked synchronously with the
+// freshly constructed *vm.EVM after vm.NewEVM and before precompile
+// registration. It fires once per [Keeper.NewEVMWithOverrides] call —
+// i.e. once per applyMessageWithConfig invocation, which in the
+// simulate path means once per simulated call (not per simulated
+// block). The simulate driver uses this hook to publish the live EVM
+// to a single per-block watcher goroutine via an atomic pointer, so
+// the upstream request ctx can cancel whichever call is currently
+// executing without needing to export the EVM handle through every
+// other code path.
 type EVMOverrides struct {
-	BlockContext *vm.BlockContext
-	Precompiles  map[common.Address]vm.PrecompiledContract
-	NoBaseFee    *bool
+	BlockContext     *vm.BlockContext
+	Precompiles      map[common.Address]vm.PrecompiledContract
+	NoBaseFee        *bool
+	OnEVMConstructed func(*vm.EVM)
 }
 
 // NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
@@ -124,6 +136,10 @@ func (k *Keeper) NewEVMWithOverrides(
 	}
 
 	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
+
+	if evmOverrides != nil && evmOverrides.OnEVMConstructed != nil {
+		evmOverrides.OnEVMConstructed(evm)
+	}
 
 	precompiles := k.activePrecompiles(ctx, cfg)
 	if evmOverrides != nil && evmOverrides.Precompiles != nil {

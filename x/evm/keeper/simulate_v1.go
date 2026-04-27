@@ -1,12 +1,15 @@
 package keeper
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"reflect"
 	"slices"
+	"sync/atomic"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,9 +25,15 @@ import (
 )
 
 // simGasBudget tracks the request-wide gas pool for one eth_simulateV1
-// invocation. A zero gasCap is treated as unlimited.
+// invocation.
 type simGasBudget struct{ remaining uint64 }
 
+// newSimGasBudget builds a gas budget for one eth_simulateV1 request.
+//
+// gasCap == 0 means unlimited. The RPC backend injects the operator's
+// RPCGasCap (positive default), so the keeper trusts the value as-is.
+// A direct gRPC peer passing 0 disables the request-wide gas budget —
+// by design, since operator config is not visible at this layer.
 func newSimGasBudget(gasCap uint64) *simGasBudget {
 	if gasCap == 0 {
 		return &simGasBudget{remaining: math.MaxUint64}
@@ -292,12 +301,14 @@ func assembleSimBlock(
 // errors.As. Everything else is a genuine internal — the gRPC handler
 // maps it to codes.Internal.
 func (k *Keeper) simulateV1(
+	goCtx context.Context,
 	ctx sdk.Context,
 	cfg *statedb.EVMConfig,
 	base *ethtypes.Header,
 	baseHash common.Hash,
 	opts *types.SimOpts,
 	gasCap uint64,
+	timeout time.Duration,
 ) ([]*types.SimBlockResult, error) {
 	if len(opts.BlockStateCalls) == 0 {
 		return []*types.SimBlockResult{}, nil
@@ -378,7 +389,7 @@ func (k *Keeper) simulateV1(
 		}
 
 		res, blockErr := k.processSimBlock(
-			ctx, cfg, sdb, base, headers, bi, block, rules, opts, gasCap, budget,
+			goCtx, ctx, cfg, sdb, base, headers, bi, block, rules, opts, gasCap, budget, timeout,
 		)
 		if blockErr != nil {
 			return nil, blockErr
@@ -402,6 +413,7 @@ func (k *Keeper) simulateV1(
 // patches GasUsed before computing the block hash. Later blocks see
 // this block through headers[:laterIdx] via newSimGetHashFn.
 func (k *Keeper) processSimBlock(
+	goCtx context.Context,
 	ctx sdk.Context,
 	cfg *statedb.EVMConfig,
 	sdb *statedb.StateDB,
@@ -413,6 +425,7 @@ func (k *Keeper) processSimBlock(
 	opts *types.SimOpts,
 	gasCap uint64,
 	budget *simGasBudget,
+	timeout time.Duration,
 ) (*types.SimBlockResult, error) {
 	header := headers[bi]
 
@@ -454,14 +467,35 @@ func (k *Keeper) processSimBlock(
 
 	precompiles := k.precompilesWithMoves(ctx, cfg, moves)
 
-	// validation=false preserves the spec-compliant relaxation (no
-	// base-fee checks, caller may lack funds); validation=true forces
-	// the realistic path.
+	// One watcher goroutine per block. OnEVMConstructed publishes the
+	// per-call *vm.EVM into liveEVM synchronously, before
+	// applyMessageWithConfig starts the EVM, so a non-nil load here
+	// always points at the call we want to cancel. The ctx.Err() guard
+	// distinguishes upstream cancellation (evm.Cancel()) from the
+	// deferred cancelBlock that disarms the watcher on normal exit.
+	watchCtx, cancelBlock := context.WithCancel(goCtx)
+	defer cancelBlock()
+
+	var liveEVM atomic.Pointer[vm.EVM]
+	go func() {
+		<-watchCtx.Done()
+		if goCtx.Err() != nil {
+			if e := liveEVM.Load(); e != nil {
+				e.Cancel()
+			}
+		}
+	}()
+
+	// validation=false skips base-fee and balance checks; validation=true
+	// runs the realistic path.
 	noBaseFee := !opts.Validation
 	evmOverrides := &EVMOverrides{
 		BlockContext: &blockCtx,
 		Precompiles:  precompiles,
 		NoBaseFee:    &noBaseFee,
+		OnEVMConstructed: func(evm *vm.EVM) {
+			liveEVM.Store(evm)
+		},
 	}
 
 	calls := make([]types.SimCallResult, 0, len(block.Calls))
@@ -469,6 +503,10 @@ func (k *Keeper) processSimBlock(
 	var cumGas uint64
 
 	for i := range block.Calls {
+		if err := goCtx.Err(); err != nil {
+			return nil, types.NewSimTimeout(timeout)
+		}
+
 		// Clear per-call ephemerals (logs, refund, transient storage,
 		// precompile call counter) while preserving account/storage
 		// mutations. Runs unconditionally at the top of every call —
@@ -523,6 +561,12 @@ func (k *Keeper) processSimBlock(
 			sdb,
 			evmOverrides,
 		)
+
+		// Canceled mid-call: ignore any vm-error artifact and return -32016.
+		if err := goCtx.Err(); err != nil {
+			return nil, types.NewSimTimeout(timeout)
+		}
+
 		if runErr != nil {
 			// Per execute.yaml, CallResultFailure permits only codes 3
 			// and -32015, so ErrIntrinsicGas must surface at the request
