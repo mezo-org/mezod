@@ -20,6 +20,8 @@ import (
 // TendermintBlockResultByNumber, BaseFee, and BlockBloom; the latter
 // two tolerate missing data, so registering BlockResults + BaseFee
 // is sufficient.
+//
+//nolint:unparam
 func registerSimulateV1BaseHashLookup(suite *BackendTestSuite, height int64) {
 	client := suite.backend.clientCtx.Client.(*mocks.Client)
 	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
