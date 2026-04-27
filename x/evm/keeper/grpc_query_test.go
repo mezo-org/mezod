@@ -1727,3 +1727,828 @@ func (suite *KeeperTestSuite) TestSimulateV1_UnsupportedOverrideRejected() {
 	suite.Require().Contains(resp.Error.Message, "BeaconRoot")
 	suite.Require().Empty(resp.Result)
 }
+
+// -----------------------------------------------------------------------------
+// SimulateV1 — multi-call / multi-block / BLOCKHASH end-to-end tests
+// -----------------------------------------------------------------------------
+
+// branchingSlot0Bytecode is a tiny in-test contract whose behavior forks
+// on CALLDATASIZE:
+//   - empty calldata → SLOAD slot 0, RETURN 32-byte value.
+//   - 32-byte calldata → SSTORE slot 0 = calldata, STOP.
+//
+// Assembly trace (offsets correspond to the hex below):
+//
+//	@00  CALLDATASIZE         stack=[size]
+//	@01  ISZERO               stack=[size==0]
+//	@02  PUSH1 0x0C           stack=[cond, 12]
+//	@04  JUMPI                jump to 12 iff calldata empty
+//	@05  PUSH1 0x00           write path: offset for CALLDATALOAD
+//	@07  CALLDATALOAD         stack=[value]
+//	@08  PUSH1 0x00           stack=[value, slot=0]
+//	@0A  SSTORE               storage[0]=value
+//	@0B  STOP
+//	@0C  JUMPDEST             read path
+//	@0D  PUSH1 0x00           slot
+//	@0F  SLOAD                stack=[value]
+//	@10  PUSH1 0x00           mem offset
+//	@12  MSTORE               memory[0..32]=value
+//	@13  PUSH1 0x20           size
+//	@15  PUSH1 0x00           offset
+//	@17  RETURN
+const branchingSlot0Bytecode = "0x3615600C57600035600055005B60005460005260206000F3"
+
+// blockhashReaderBytecode reads calldata[0:32] as a uint256 height,
+// returns BLOCKHASH(height) as 32 bytes.
+//
+//	PUSH1 0 CALLDATALOAD BLOCKHASH PUSH1 0 MSTORE PUSH1 0x20 PUSH1 0 RETURN
+const blockhashReaderBytecode = "0x6000354060005260206000F3"
+
+// revertAfterWriteSlot1Bytecode branches on CALLDATASIZE so the same
+// deployed contract covers both sides of the revert-isolation assertion:
+//   - non-empty calldata → SSTORE slot 1 = 42, then REVERT(0,0).
+//   - empty calldata     → SLOAD slot 1, RETURN 32-byte value.
+//
+// Having call 1 (writer+revert) and call 2 (reader) hit the same
+// address makes the test diagnostic: if the revert leaked, call 2
+// would return 42; with correct isolation it returns 0.
+//
+//	@00  CALLDATASIZE
+//	@01  ISZERO
+//	@02  PUSH1 0x0F
+//	@04  JUMPI                → jump to reader on empty calldata
+//	@05  PUSH1 0x2A           writer path: value 42
+//	@07  PUSH1 0x01           slot 1
+//	@09  SSTORE
+//	@0A  PUSH1 0x00
+//	@0C  PUSH1 0x00
+//	@0E  REVERT
+//	@0F  JUMPDEST             reader path
+//	@10  PUSH1 0x01
+//	@12  SLOAD
+//	@13  PUSH1 0x00
+//	@15  MSTORE
+//	@16  PUSH1 0x20
+//	@18  PUSH1 0x00
+//	@1A  RETURN
+const revertAfterWriteSlot1Bytecode = "0x3615600F57602A60015560006000FD5B60015460005260206000F3"
+
+// emptyCodeDeployer deploys a contract whose runtime code is zero bytes.
+// Per EIP-161 (Spurious Dragon) the newly-created account is still
+// initialized with nonce=1, which is what makes the deployed address
+// distinct from the sender's next CREATE target. Used by the
+// nonce-auto-increment test: two CREATEs from the same sender must
+// succeed at distinct addresses, which only happens if the sender's
+// nonce advances between calls (otherwise the second CREATE collides
+// at the first address).
+//
+//	PUSH1 0x00 PUSH1 0x00 RETURN
+const emptyCodeDeployer = "0x60006000F3"
+
+// TestSimulateV1_MultiCall_StateChainsAcrossCalls — call 1 writes slot 0
+// via the branching-slot-0 contract; call 2 reads slot 0 and must see
+// the written value. Proves the shared StateDB carries storage state
+// from one call to the next.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_StateChainsAcrossCalls() {
+	suite.SetupTest()
+
+	sender := suite.address
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000100")
+
+	// 32-byte calldata for the write call encoding the value 255 in slot 0.
+	writeData := make([]byte, 32)
+	writeData[31] = 0xFF
+
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:   {"balance": balance},
+				contract: {"code": branchingSlot0Bytecode},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &contract, Input: (*hexutil.Bytes)(&writeData)},
+				{From: &sender, To: &contract},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"], "call 1 should succeed")
+	suite.Require().Equal("0x1", calls[1].(map[string]interface{})["status"], "call 2 should succeed")
+
+	// Call 2's returnData must be the 32-byte encoding of 255 that call 1
+	// wrote — confirms the shared StateDB propagated storage.
+	readBack := calls[1].(map[string]interface{})["returnData"].(string)
+	suite.Require().Equal(
+		"0x00000000000000000000000000000000000000000000000000000000000000ff",
+		readBack,
+	)
+}
+
+// TestSimulateV1_MultiCall_RevertDoesNotLeak — call 1 writes slot 1 and
+// reverts; call 2 reads slot 1 on the SAME contract and must see zero.
+// Under a (hypothetical) bug where the per-call EVM revert failed to
+// roll the shared StateDB back, call 2 would return 42.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_RevertDoesNotLeak() {
+	suite.SetupTest()
+
+	sender := suite.address
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000200")
+	writeCalldata := []byte{0x01} // any non-empty calldata takes the writer branch
+
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:   {"balance": balance},
+				contract: {"code": revertAfterWriteSlot1Bytecode},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &contract, Input: (*hexutil.Bytes)(&writeCalldata)},
+				{From: &sender, To: &contract},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	call1 := calls[0].(map[string]interface{})
+	suite.Require().Equal("0x0", call1["status"])
+	suite.Require().NotNil(call1["error"])
+	suite.Require().EqualValues(float64(types.SimErrCodeReverted), call1["error"].(map[string]interface{})["code"])
+
+	call2 := calls[1].(map[string]interface{})
+	suite.Require().Equal("0x1", call2["status"])
+	suite.Require().Equal(
+		"0x0000000000000000000000000000000000000000000000000000000000000000",
+		call2["returnData"],
+		"reader on the same contract must observe slot 1 = 0 — the SSTORE in call 1 must have rolled back with the revert",
+	)
+}
+
+// TestSimulateV1_MultiCall_BlockGasLimit — three calls against a tight
+// block gas limit. First two each consume ~21k for a plain value
+// transfer; third requests gas over the remaining budget and surfaces
+// -38015 as a per-call error while the preceding calls still succeed.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_BlockGasLimit() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000001")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	value := (*hexutil.Big)(big.NewInt(1))
+	tightGasLimit := hexutil.Uint64(50_000)
+	overBudgetGas := hexutil.Uint64(30_000)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{
+				"gasLimit": tightGasLimit,
+			},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipient, Value: value},
+				// This call's requested gas (30k) is larger than the
+				// remaining budget (50k - 21k = 29k) — expect -38015.
+				{From: &sender, To: &recipient, Value: value, Gas: &overBudgetGas},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	// Call 1 succeeds using the default (remaining budget) gas.
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"])
+
+	// Call 2 is rejected before execution: per-call Error with -38015,
+	// no status (defaults to 0).
+	call2 := calls[1].(map[string]interface{})
+	suite.Require().NotNil(call2["error"], "over-budget call must carry a SimError")
+	suite.Require().EqualValues(
+		float64(types.SimErrCodeBlockGasLimitReached),
+		call2["error"].(map[string]interface{})["code"],
+	)
+}
+
+// TestSimulateV1_MultiCall_NonceAutoIncrement — two CREATE calls from
+// the same sender with no explicit nonce. Both must succeed: if the
+// nonce didn't advance between calls, the second CREATE would resolve
+// to the same computed address as the first and fail with an address-
+// collision error.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_NonceAutoIncrement() {
+	suite.SetupTest()
+
+	sender := suite.address
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	initCode := hexutil.MustDecode(emptyCodeDeployer)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, Input: (*hexutil.Bytes)(&initCode)},
+				{From: &sender, Input: (*hexutil.Bytes)(&initCode)},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"],
+		"first CREATE must succeed")
+	suite.Require().Equal("0x1", calls[1].(map[string]interface{})["status"],
+		"second CREATE must succeed — fails with address collision if nonce stayed at 0")
+}
+
+// emptyLogDeployer is init code that emits an empty LOG0 and returns
+// zero-byte runtime. The emitted log's Address field is the deployed
+// contract's own address (set by the EVM as evm.Address during init
+// code execution), which lets a test observe which nonce the CREATE
+// consumed without a follow-up call to the predicted address.
+//
+// Bytecode (10 bytes):
+//
+//	@00  PUSH1 0x00   ; log data size = 0
+//	@02  PUSH1 0x00   ; log data offset = 0
+//	@04  LOG0
+//	@05  PUSH1 0x00   ; runtime size = 0
+//	@07  PUSH1 0x00   ; runtime offset = 0
+//	@09  RETURN
+const emptyLogDeployer = "0x60006000A060006000F3"
+
+// TestSimulateV1_MultiCall_CallNonceAdvances — two value transfers
+// from the same sender with no explicit nonce, identical in every
+// other field that feeds computeSimTxHash (Gas pinned to a fixed
+// value so the per-call default gas budget — which would otherwise
+// shrink between calls and accidentally diverge the hashes for an
+// unrelated reason — does not vary). The driver must bump the
+// StateDB nonce after every successful non-CREATE call; without
+// that bump both calls would default to the same nonce, the
+// synthesized tx hashes (computeSimTxHash, which folds nonce into
+// the LegacyTx hash) would collide, and the assembled block would
+// carry duplicate entries in its `transactions` array.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_CallNonceAdvances() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000010")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	value := (*hexutil.Big)(big.NewInt(1))
+	pinnedGas := hexutil.Uint64(30_000)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipient, Value: value, Gas: &pinnedGas},
+				{From: &sender, To: &recipient, Value: value, Gas: &pinnedGas},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"], "first CALL must succeed")
+	suite.Require().Equal("0x1", calls[1].(map[string]interface{})["status"], "second CALL must succeed")
+
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 2)
+	suite.Require().NotEqual(txs[0], txs[1],
+		"synthetic tx hashes must differ — proves the StateDB nonce advanced between CALLs")
+}
+
+// TestSimulateV1_MultiCall_CallThenCreateAddressUsesPostCallNonce —
+// one CALL followed by one CREATE from the same sender, no explicit
+// nonces. The CREATE deploys at addr(sender, 1) only if the prior
+// CALL advanced the StateDB nonce; without the post-CALL bump it
+// would land at addr(sender, 0). The init code emits an empty LOG0
+// so the deployed contract's own address surfaces in the response
+// via Log.Address — independent of the synthetic tx-hash signal.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_CallThenCreateAddressUsesPostCallNonce() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000020")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	value := (*hexutil.Big)(big.NewInt(1))
+	initCode := hexutil.MustDecode(emptyLogDeployer)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipient, Value: value},
+				{From: &sender, Input: (*hexutil.Bytes)(&initCode)},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"], "CALL must succeed")
+	suite.Require().Equal("0x1", calls[1].(map[string]interface{})["status"], "CREATE must succeed")
+
+	createLogs := calls[1].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Len(createLogs, 1, "CREATE must emit one log")
+
+	gotAddr := common.HexToAddress(createLogs[0].(map[string]interface{})["address"].(string))
+	expectedAddr := crypto.CreateAddress(sender, 1)
+	suite.Require().Equal(expectedAddr, gotAddr,
+		"CREATE deployed at addr(sender, 1); the prior CALL must have advanced the StateDB nonce — "+
+			"would be addr(sender, 0) if the bump didn't fire")
+}
+
+// TestSimulateV1_MultiBlock_StateChains — block 1 writes slot 0 on a
+// contract; block 2 reads slot 0 on the same contract and sees the
+// block-1 write. Confirms both the shared StateDB and the per-block
+// finalize step preserve state across block boundaries.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiBlock_StateChains() {
+	suite.SetupTest()
+
+	sender := suite.address
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000300")
+	writeData := make([]byte, 32)
+	writeData[31] = 0x7A // arbitrary non-zero
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender:   {"balance": balance},
+					contract: {"code": branchingSlot0Bytecode},
+				},
+				"calls": []types.TransactionArgs{
+					{From: &sender, To: &contract, Input: (*hexutil.Bytes)(&writeData)},
+				},
+			},
+			{
+				"calls": []types.TransactionArgs{
+					{From: &sender, To: &contract},
+				},
+			},
+		},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 2, "two blocks in the response")
+
+	block0Calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(block0Calls, 1)
+	suite.Require().Equal("0x1", block0Calls[0].(map[string]interface{})["status"])
+
+	block1Calls := results[1]["calls"].([]interface{})
+	suite.Require().Len(block1Calls, 1)
+	block1Call := block1Calls[0].(map[string]interface{})
+	suite.Require().Equal("0x1", block1Call["status"])
+	suite.Require().Equal(
+		"0x000000000000000000000000000000000000000000000000000000000000007a",
+		block1Call["returnData"],
+		"block 2 read must observe block 1 write",
+	)
+}
+
+// TestSimulateV1_MultiBlock_ChainLinkage — block 3 calls a BLOCKHASH
+// reader with three heights (base.Number, base+1, base+2). The canonical
+// hash must match `suite.ctx.HeaderHash()` for base.Number; the
+// simulated-sibling hashes must match the in-memory headers for
+// base+1 / base+2 as reported by the response envelope.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiBlock_ChainLinkage() {
+	suite.SetupTest()
+
+	sender := suite.address
+	reader := common.HexToAddress("0xaaaa000000000000000000000000000000000400")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	baseHeight := suite.ctx.BlockHeight()
+	heights := []int64{baseHeight, baseHeight + 1, baseHeight + 2}
+
+	callsBlock3 := make([]types.TransactionArgs, 0, len(heights))
+	for _, h := range heights {
+		hx := h
+		buf := make([]byte, 32)
+		big.NewInt(hx).FillBytes(buf)
+		calldata := make([]byte, 32)
+		copy(calldata, buf)
+		callsBlock3 = append(callsBlock3, types.TransactionArgs{
+			From: &sender, To: &reader, Input: (*hexutil.Bytes)(&calldata),
+		})
+	}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{ // block 1: install reader code + fund sender
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender: {"balance": balance},
+					reader: {"code": blockhashReaderBytecode},
+				},
+				"calls": []types.TransactionArgs{},
+			},
+			{ // block 2: no-op
+				"calls": []types.TransactionArgs{},
+			},
+			{ // block 3: BLOCKHASH reads
+				"calls": callsBlock3,
+			},
+		},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 3)
+
+	block3 := results[2]
+	block3Calls := block3["calls"].([]interface{})
+	suite.Require().Len(block3Calls, 3, "three BLOCKHASH calls in block 3")
+
+	// Call 0 asks for BLOCKHASH(base.Number) — newSimGetHashFn delegates
+	// to k.GetHashFn(ctx), which covers ctx.HeaderHash AND the
+	// tendermint-header-recompute fallback. Compute the expected value
+	// with the same function so the test stays robust to how the test
+	// ctx populates its header (ctx.HeaderHash may be empty in
+	// suite-level contexts).
+	expectedBase := "0x" + common.Bytes2Hex(
+		suite.app.EvmKeeper.GetHashFn(suite.ctx)(uint64(baseHeight)).Bytes(), //nolint:gosec // baseHeight >= 0 by construction
+	)
+	suite.Require().Equal(expectedBase, block3Calls[0].(map[string]interface{})["returnData"],
+		"BLOCKHASH(base.Number) must match k.GetHashFn(ctx)(base.Number)")
+
+	// Calls 1 and 2 ask for simulated-sibling hashes (base+1, base+2).
+	// These must match the hashes reported in the block envelope.
+	expectedHash1 := results[0]["hash"].(string)
+	expectedHash2 := results[1]["hash"].(string)
+	suite.Require().Equal(expectedHash1, block3Calls[1].(map[string]interface{})["returnData"],
+		"BLOCKHASH(base+1) must match block 1's envelope hash")
+	suite.Require().Equal(expectedHash2, block3Calls[2].(map[string]interface{})["returnData"],
+		"BLOCKHASH(base+2) must match block 2's envelope hash")
+}
+
+// TestSimulateV1_MultiBlock_PrecompileStateChains is the load-bearing
+// regression for the shared-StateDB design: it exercises a *custom
+// precompile* whose Cosmos-side writes live in the StateDB's cached
+// ctx — the layer that a naive per-block StateDB would silently drop.
+// Block 1 calls btctoken.transfer (routes through bankKeeper, mutates
+// s.cachedCtx); block 2 calls btctoken.balanceOf and must observe the
+// transferred amount. If s.cachedCtx were dropped between blocks,
+// balanceOf would return zero and the test would fail loud.
+//
+// This complements the pure-EVM TestSimulateV1_MultiBlock_StateChains
+// which only covers the EVM journal half of the shared StateDB. Both
+// halves must survive the block boundary for the design to hold.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiBlock_PrecompileStateChains() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000077")
+	btcToken := common.HexToAddress(types.BTCTokenPrecompileAddress)
+
+	// Fund sender via bank directly — StateDB balance overrides only
+	// touch the EVM state object and do not propagate to bankKeeper,
+	// which is what btctoken.transfer actually reads.
+	initialBalance := sdkmath.NewInt(1_000_000_000_000_000_000)
+	transferAmount := big.NewInt(777_000_000_000_000_000)
+	coin := sdk.NewCoin(types.DefaultEVMDenom, initialBalance)
+	suite.Require().NoError(suite.app.BankKeeper.MintCoins(
+		suite.ctx, types.ModuleName, sdk.NewCoins(coin)))
+	suite.Require().NoError(suite.app.BankKeeper.SendCoinsFromModuleToAccount(
+		suite.ctx, types.ModuleName, sender.Bytes(), sdk.NewCoins(coin)))
+
+	// ABI: transfer(address,uint256) — selector 0xa9059cbb; balanceOf(address)
+	// — selector 0x70a08231. Encoded by hand to avoid dragging ABI binding
+	// generation into keeper tests.
+	transferSelector := []byte{0xa9, 0x05, 0x9c, 0xbb}
+	balanceOfSelector := []byte{0x70, 0xa0, 0x82, 0x31}
+
+	padAddr := func(addr common.Address) []byte {
+		buf := make([]byte, 32)
+		copy(buf[12:], addr.Bytes())
+		return buf
+	}
+	padUint := func(v *big.Int) []byte {
+		buf := make([]byte, 32)
+		v.FillBytes(buf)
+		return buf
+	}
+
+	transferData := append([]byte{}, transferSelector...)
+	transferData = append(transferData, padAddr(recipient)...)
+	transferData = append(transferData, padUint(transferAmount)...)
+
+	balanceOfData := append([]byte{}, balanceOfSelector...)
+	balanceOfData = append(balanceOfData, padAddr(recipient)...)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"calls": []types.TransactionArgs{
+					{From: &sender, To: &btcToken, Input: (*hexutil.Bytes)(&transferData)},
+				},
+			},
+			{
+				"calls": []types.TransactionArgs{
+					{From: &sender, To: &btcToken, Input: (*hexutil.Bytes)(&balanceOfData)},
+				},
+			},
+		},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 2)
+
+	block1Calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(block1Calls, 1)
+	suite.Require().Equal("0x1", block1Calls[0].(map[string]interface{})["status"],
+		"block 1 btctoken.transfer must succeed")
+
+	block2Calls := results[1]["calls"].([]interface{})
+	suite.Require().Len(block2Calls, 1)
+	block2Call := block2Calls[0].(map[string]interface{})
+	suite.Require().Equal("0x1", block2Call["status"],
+		"block 2 btctoken.balanceOf must succeed")
+
+	// Decode the 32-byte returnData and verify it matches transferAmount.
+	// If s.cachedCtx were dropped between blocks, bankKeeper would read
+	// canonical state (pre-transfer) and return 0 here.
+	returnData := block2Call["returnData"].(string)
+	got := new(big.Int)
+	got.SetString(returnData[2:], 16)
+	suite.Require().Equal(0, got.Cmp(transferAmount),
+		"block 2 balanceOf must return transferAmount; got %s (precompile cachedCtx did not survive block boundary)", got.String())
+}
+
+// TestSimulateV1_MultiCall_ImplicitGasAfterExhaustedBudget — two calls
+// against a budget the first call fully consumes. The second call omits
+// args.Gas, so the implicit-gas resolver must surface -38015 as a
+// per-call error instead of letting applyMessageWithConfig fail the
+// request with gRPC Internal and wipe the first call's success.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_ImplicitGasAfterExhaustedBudget() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000201")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	value := (*hexutil.Big)(big.NewInt(1))
+
+	tightGasLimit := hexutil.Uint64(21_000)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{
+				"gasLimit": tightGasLimit,
+			},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipient, Value: value},
+				// Omit Gas — implicit. After call 1 consumes all 21k,
+				// remaining=0; preflight must emit -38015.
+				{From: &sender, To: &recipient, Value: value},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err, "the request must NOT collapse to gRPC Internal")
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"],
+		"call 1 must succeed and survive in the response envelope")
+
+	call2 := calls[1].(map[string]interface{})
+	suite.Require().NotNil(call2["error"], "call 2 must carry a per-call SimError")
+	suite.Require().EqualValues(
+		float64(types.SimErrCodeBlockGasLimitReached),
+		call2["error"].(map[string]interface{})["code"],
+	)
+}
+
+// TestSimulateV1_ExplicitGasBelowIntrinsic — a single call with explicit
+// args.Gas below the call's actual intrinsic-gas requirement. Pre-fix
+// this collapsed to gRPC Internal; the driver-loop catch on
+// core.ErrIntrinsicGas now surfaces it as a per-call -38013.
+func (suite *KeeperTestSuite) TestSimulateV1_ExplicitGasBelowIntrinsic() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000202")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	value := (*hexutil.Big)(big.NewInt(1))
+	tooLowGas := hexutil.Uint64(20_999) // intrinsic-gas baseline is 21000
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipient, Value: value, Gas: &tooLowGas},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err, "the request must NOT collapse to gRPC Internal")
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+
+	call := calls[0].(map[string]interface{})
+	suite.Require().NotNil(call["error"], "below-intrinsic call must carry a per-call SimError")
+	suite.Require().EqualValues(
+		float64(types.SimErrCodeIntrinsicGas),
+		call["error"].(map[string]interface{})["code"],
+	)
+}
+
+// TestSimulateV1_MultiBlock_ParentHashChainCoherent — three blocks, each
+// with one successful transfer, each with a non-trivial cumulative
+// gasUsed. The response envelope's `block[i+1].parentHash` must equal
+// `block[i].hash`, and `block[0].parentHash` must equal the request's
+// BaseBlockHash.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiBlock_ParentHashChainCoherent() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000200")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	value := (*hexutil.Big)(big.NewInt(1))
+
+	transfer := types.TransactionArgs{From: &sender, To: &recipient, Value: value}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender: {"balance": balance},
+				},
+				"calls": []types.TransactionArgs{transfer},
+			},
+			{"calls": []types.TransactionArgs{transfer}},
+			{"calls": []types.TransactionArgs{transfer}},
+		},
+	})
+	suite.Require().NoError(err)
+
+	canonical := common.HexToHash("0x65fdad50586258b80fdeec1e9d108e975d20a1a34ab3dfadd97eeedffa0727cc")
+	req := suite.simulateV1Request(optsJSON)
+	req.BaseBlockHash = canonical.Bytes()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, req)
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 3)
+
+	suite.Require().Equal(canonical.Hex(), results[0]["parentHash"],
+		"block[0].parentHash must echo BaseBlockHash")
+
+	for i := 0; i < len(results)-1; i++ {
+		suite.Require().Equal(
+			results[i]["hash"], results[i+1]["parentHash"],
+			"block[%d].parentHash must equal block[%d].hash", i+1, i,
+		)
+	}
+}
+
+// log0Runtime is 6 bytes: PUSH1 0; PUSH1 0; LOG0; STOP. A call to a
+// contract carrying this runtime emits one empty LOG0 (zero data, zero
+// topics) whose Address is the contract address.
+const log0Runtime = "0x60006000A000"
+
+// TestSimulateV1_MultiCall_CumulativeLogIndex — two calls in one block
+// each emitting a single LOG0 must produce log indices 0 and 1
+// respectively (geth-aligned per-block monotonicity). A second block
+// with a single LOG0 call must reset the counter to 0.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_CumulativeLogIndex() {
+	suite.SetupTest()
+
+	sender := suite.address
+	emitter := common.HexToAddress("0xbbbb000000000000000000000000000000000203")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	emit := types.TransactionArgs{From: &sender, To: &emitter}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender:  {"balance": balance},
+					emitter: {"code": log0Runtime},
+				},
+				"calls": []types.TransactionArgs{emit, emit},
+			},
+			{"calls": []types.TransactionArgs{emit}},
+		},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 2)
+
+	block0Calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(block0Calls, 2)
+
+	logs0 := block0Calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Len(logs0, 1)
+	suite.Require().Equal("0x0", logs0[0].(map[string]interface{})["logIndex"],
+		"first call's LOG0 must land at logIndex 0")
+
+	logs1 := block0Calls[1].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Len(logs1, 1)
+	suite.Require().Equal("0x1", logs1[0].(map[string]interface{})["logIndex"],
+		"second call's LOG0 must land at logIndex 1 (cumulative within block)")
+
+	// Block 2: counter must reset.
+	block1Calls := results[1]["calls"].([]interface{})
+	suite.Require().Len(block1Calls, 1)
+	logs2 := block1Calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Len(logs2, 1)
+	suite.Require().Equal("0x0", logs2[0].(map[string]interface{})["logIndex"],
+		"block 2's first log must reset to logIndex 0")
+}
