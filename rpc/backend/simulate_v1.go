@@ -27,10 +27,6 @@ func (b *Backend) SimulateV1(
 	if blockNrOrHash != nil && (blockNrOrHash.BlockNumber != nil || blockNrOrHash.BlockHash != nil) {
 		effectiveBnh = *blockNrOrHash
 	}
-	bnhBz, err := json.Marshal(effectiveBnh)
-	if err != nil {
-		return nil, err
-	}
 
 	blockNr, err := b.BlockNumberFromTendermint(effectiveBnh)
 	if err != nil {
@@ -39,6 +35,18 @@ func (b *Backend) SimulateV1(
 	header, err := b.TendermintBlockByNumber(blockNr)
 	if err != nil {
 		return nil, fmt.Errorf("header not found: %w", err)
+	}
+
+	// Resolve the sentinel / hash form to a concrete height before
+	// marshaling so the keeper's anchor validator compares the same
+	// numeric value it anchors ctx at. BlockNumber's JSON round-trip
+	// does not preserve sentinels, so emitting them here would
+	// misfire the anchor check.
+	resolvedBn := rpctypes.BlockNumber(header.Block.Height)
+	resolvedBnh := rpctypes.BlockNumberOrHash{BlockNumber: &resolvedBn}
+	bnhBz, err := json.Marshal(resolvedBnh)
+	if err != nil {
+		return nil, err
 	}
 
 	// Use the canonical CometBFT block hash so the envelope's
@@ -68,7 +76,7 @@ func (b *Backend) SimulateV1(
 		BaseBlockHash:     baseBlockHash,
 	}
 
-	ctx := rpctypes.ContextWithHeight(blockNr.Int64())
+	ctx := rpctypes.ContextWithHeight(header.Block.Height)
 	var cancel context.CancelFunc
 	if timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
