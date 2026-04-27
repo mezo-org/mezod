@@ -262,7 +262,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
-	var overrides stateOverride
+	var overrides types.StateOverride
 	if len(req.StateOverride) > 0 {
 		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
@@ -358,7 +358,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	}
 
 	// Deserialize state overrides once, before the binary search loop.
-	var overrides stateOverride
+	var overrides types.StateOverride
 	if len(req.StateOverride) > 0 {
 		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
@@ -715,6 +715,62 @@ func (k *Keeper) traceTx(
 	return &result, txConfig.LogIndex + uint(len(res.Logs)), nil
 }
 
+// SimulateV1 implements the eth_simulateV1 gRPC backend.
+func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*types.SimulateV1Response, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+
+	ctx := sdk.UnwrapSDKContext(c)
+
+	chainID, err := getChainID(ctx, req.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, req.ProposerAddress), chainID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	opts, err := types.UnmarshalSimOpts(req.Opts)
+	if err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	baseGasLimit, err := k.simulateBaseGasLimit(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get consensus params")
+	}
+
+	var baseHash common.Hash
+	if len(req.BaseBlockHash) > 0 {
+		baseHash = common.BytesToHash(req.BaseBlockHash)
+	}
+
+	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg, baseGasLimit), baseHash, opts, req.GasCap)
+	if err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	payload, err := json.Marshal(results)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &types.SimulateV1Response{Result: payload}, nil
+}
+
+// simulateV1ErrResponse routes a driver-layer error either onto the
+// response's structured SimError field (for spec-coded failures the
+// client should see verbatim) or onto a gRPC Internal status (for
+// genuine internals that should not collapse to -32602 on the wire).
+func simulateV1ErrResponse(err error) (*types.SimulateV1Response, error) {
+	var simErr *types.SimError
+	if errors.As(err, &simErr) {
+		return &types.SimulateV1Response{Error: simErr}, nil
+	}
+	return nil, status.Error(codes.Internal, err.Error())
+}
+
 // BaseFee implements the Query/BaseFee gRPC method
 func (k Keeper) BaseFee(c context.Context, _ *types.QueryBaseFeeRequest) (*types.QueryBaseFeeResponse, error) {
 	ctx := sdk.UnwrapSDKContext(c)
@@ -738,4 +794,48 @@ func getChainID(ctx sdk.Context, chainID int64) (*big.Int, error) {
 		return mezotypes.ParseChainID(ctx.ChainID())
 	}
 	return big.NewInt(chainID), nil
+}
+
+// simulateBaseGasLimit reads the consensus block gas limit via the
+// consensus keeper. baseapp.CreateQueryContext does not populate
+// ctx.ConsensusParams or attach a BlockGasMeter for query-side calls,
+// so the keeper-attached ConsensusParamsKeeper is the only path that
+// returns the chain's configured limit here.
+func (k Keeper) simulateBaseGasLimit(ctx sdk.Context) (uint64, error) {
+	consensusParamsResp, err := k.consensusKeeper.Params(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	switch maxGas := consensusParamsResp.GetParams().GetBlock().GetMaxGas(); {
+	case maxGas == -1:
+		// Consensus "unlimited" sentinel: surface max uint32 instead
+		// of a full uint64 so JS dev tooling does not choke on a value
+		// past 2^53.
+		return uint64(^uint32(0)), nil
+	case maxGas > 0:
+		return uint64(maxGas), nil //nolint:gosec
+	default:
+		return 0, nil
+	}
+}
+
+// baseHeaderFromContext synthesizes the execution-api base header from
+// the SDK context that the gRPC call was anchored at. The returned
+// header only populates the fields the simulate driver consumes
+// (Number, Time, GasLimit, BaseFee, Difficulty, Coinbase). Multi-block
+// support will swap this for a real block fetch so BLOCKHASH resolution
+// lines up with canonical chain history.
+func baseHeaderFromContext(ctx sdk.Context, cfg *statedb.EVMConfig, gasLimit uint64) *ethtypes.Header {
+	return &ethtypes.Header{
+		Number:     big.NewInt(ctx.BlockHeight()),
+		Time:       uint64(ctx.BlockTime().Unix()), //nolint:gosec
+		GasLimit:   gasLimit,
+		BaseFee:    cfg.BaseFee,
+		Difficulty: new(big.Int),
+		// Match the non-simulate path so COINBASE returns the validator
+		// operator address rather than zero for simulated blocks that
+		// don't override FeeRecipient.
+		Coinbase: cfg.CoinBase,
+	}
 }

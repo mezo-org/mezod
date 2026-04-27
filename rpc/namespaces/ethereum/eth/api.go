@@ -86,15 +86,15 @@ type EthereumAPI interface {
 	//
 	// Allows developers to read data from the blockchain which includes executing
 	// smart contracts. However, no data is published to the network.
-	Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *rpctypes.StateOverride) (hexutil.Bytes, error)
-	SimulateV1(opts rpctypes.SimOpts, blockNrOrHash *rpctypes.BlockNumberOrHash) ([]*rpctypes.SimBlockResult, error)
+	Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *evmtypes.StateOverride) (hexutil.Bytes, error)
+	SimulateV1(opts evmtypes.SimOpts, blockNrOrHash *rpctypes.BlockNumberOrHash) ([]*evmtypes.SimBlockResult, error)
 
 	// Chain Information
 	//
 	// Returns information on the Ethereum network and internal settings.
 	ProtocolVersion() hexutil.Uint
 	GasPrice() (*hexutil.Big, error)
-	EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber, overrides *rpctypes.StateOverride) (hexutil.Uint64, error)
+	EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber, overrides *evmtypes.StateOverride) (hexutil.Uint64, error)
 	FeeHistory(blockCount math.HexOrDecimal64, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*rpctypes.FeeHistoryResult, error)
 	MaxPriorityFeePerGas() (*hexutil.Big, error)
 	ChainId() (*hexutil.Big, error)
@@ -283,7 +283,7 @@ func (e *PublicAPI) GetProof(address common.Address,
 // Call performs a raw contract call.
 func (e *PublicAPI) Call(args evmtypes.TransactionArgs,
 	blockNrOrHash rpctypes.BlockNumberOrHash,
-	overrides *rpctypes.StateOverride,
+	overrides *evmtypes.StateOverride,
 ) (hexutil.Bytes, error) {
 	e.logger.Debug("eth_call", "args", args.String(), "block number or hash", blockNrOrHash)
 
@@ -321,7 +321,7 @@ func (e *PublicAPI) GasPrice() (*hexutil.Big, error) {
 }
 
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
-func (e *PublicAPI) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber, overrides *rpctypes.StateOverride) (hexutil.Uint64, error) {
+func (e *PublicAPI) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber, overrides *evmtypes.StateOverride) (hexutil.Uint64, error) {
 	e.logger.Debug("eth_estimateGas")
 	return e.backend.EstimateGas(args, blockNrOptional, overrides)
 }

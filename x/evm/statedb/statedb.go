@@ -756,6 +756,23 @@ func (ccc *CachedCtxCheckpoint) Revert(stateDB *StateDB) {
 	}
 }
 
+// FinaliseBetweenCalls clears per-call ephemeral state (logs, refund,
+// transient storage) and resets the precompile-call counter while
+// preserving state objects, access list, and journal — so accumulated
+// cross-call account/storage mutations remain visible. Used by simulate
+// drivers running several calls against a shared StateDB without
+// committing between them.
+//
+// TODO (geth-upgrade): v1.16.9 introduces the canonical-spelled geth
+// finaliser on the [vm.StateDB] interface; once the upgrade lands,
+// this helper collapses into that call plus the counter reset.
+func (s *StateDB) FinaliseBetweenCalls() {
+	s.logs = nil
+	s.refund = 0
+	s.transientStorage = newTransientStorage()
+	s.ongoingPrecompilesCallsCounter = 0
+}
+
 func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {
 	// here we create a cache context on the very first
 	// call to this function

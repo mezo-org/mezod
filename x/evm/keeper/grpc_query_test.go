@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,8 +14,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethparams "github.com/ethereum/go-ethereum/params"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	ethlogger "github.com/ethereum/go-ethereum/eth/tracers/logger"
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	"github.com/mezo-org/mezod/server/config"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -1465,4 +1469,261 @@ func (suite *KeeperTestSuite) TestEmptyRequest() {
 			suite.Require().Error(err)
 		})
 	}
+}
+
+// -----------------------------------------------------------------------------
+// SimulateV1 — eth_simulateV1 gRPC handler
+// -----------------------------------------------------------------------------
+
+// simulateV1Request constructs a SimulateV1Request for the keeper's
+// public gRPC handler from a pre-encoded opts JSON payload, populating
+// the chain-id / proposer fields from the test suite's active context.
+// Tests build opts JSON by hand rather than reaching into the driver's
+// private SimOpts type.
+func (suite *KeeperTestSuite) simulateV1Request(optsJSON []byte) *types.SimulateV1Request {
+	suite.T().Helper()
+
+	bn := rpctypes.BlockNumber(suite.ctx.BlockHeight())
+	bnh := rpctypes.BlockNumberOrHash{BlockNumber: &bn}
+	bnhBz, err := json.Marshal(bnh)
+	suite.Require().NoError(err)
+
+	return &types.SimulateV1Request{
+		Opts:              optsJSON,
+		BlockNumberOrHash: bnhBz,
+		GasCap:            21_000_000,
+		ProposerAddress:   sdk.ConsAddress(suite.ctx.BlockHeader().ProposerAddress),
+		ChainId:           suite.app.EvmKeeper.ChainID().Int64(),
+	}
+}
+
+// simulateV1BlockResults unmarshals the keeper's JSON Result payload.
+func (suite *KeeperTestSuite) simulateV1BlockResults(resp *types.SimulateV1Response) []map[string]interface{} {
+	suite.T().Helper()
+	var out []map[string]interface{}
+	suite.Require().NoError(json.Unmarshal(resp.Result, &out))
+	return out
+}
+
+// TestSimulateV1_EmptyOpts: empty blockStateCalls returns an empty
+// result payload with no structured error on the response.
+func (suite *KeeperTestSuite) TestSimulateV1_EmptyOpts() {
+	suite.SetupTest()
+
+	optsJSON, err := json.Marshal(map[string]interface{}{})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Empty(results)
+}
+
+// TestSimulateV1_SingleCallHappyPath: value transfer with a balance
+// override on the sender — asserts status=1 and non-zero gasUsed on
+// the per-call result carried in the JSON block envelope.
+func (suite *KeeperTestSuite) TestSimulateV1_SingleCallHappyPath() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls, ok := results[0]["calls"].([]interface{})
+	suite.Require().True(ok)
+	suite.Require().Len(calls, 1)
+
+	call := calls[0].(map[string]interface{})
+	suite.Require().Nil(call["error"], "simple transfer must not fail")
+	suite.Require().Equal("0x1", call["status"])
+	suite.Require().NotEqual("0x0", call["gasUsed"])
+}
+
+// TestSimulateV1_BaseBlockHashOverridesParentHash: when the request
+// carries a non-zero BaseBlockHash, the first simulated block's
+// parentHash must echo that value verbatim. Without it, the keeper
+// would hash the synthetic baseHeaderFromContext, producing a value
+// unrelated to the canonical chain hash eth_getBlockByNumber surfaces.
+func (suite *KeeperTestSuite) TestSimulateV1_BaseBlockHashOverridesParentHash() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	canonical := common.HexToHash("0x65fdad50586258b80fdeec1e9d108e975d20a1a34ab3dfadd97eeedffa0727cc")
+	req := suite.simulateV1Request(optsJSON)
+	req.BaseBlockHash = canonical.Bytes()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, req)
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Equal(canonical.Hex(), results[0]["parentHash"])
+}
+
+// TestSimulateV1_InheritsBaseBlockGasLimit: even if the incoming SDK
+// context is missing consensus params, the first simulated block should
+// still inherit the base block gas limit from consensus keeper state.
+func (suite *KeeperTestSuite) TestSimulateV1_InheritsBaseBlockGasLimit() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	ctx := suite.ctx.WithConsensusParams(tmproto.ConsensusParams{})
+	resp, err := suite.app.EvmKeeper.SimulateV1(ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	consensusParamsResp, err := suite.app.ConsensusParamsKeeper.Params(ctx, nil)
+	suite.Require().NoError(err)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Equal(
+		hexutil.EncodeUint64(uint64(consensusParamsResp.GetParams().GetBlock().MaxGas)), //nolint:gosec
+		results[0]["gasLimit"],
+	)
+}
+
+// TestSimulateV1_StateOverrideSentinelBubblesUp: a self-referencing
+// MovePrecompileTo override must surface on response.Error with code
+// -38022 — not as a gRPC error.
+func (suite *KeeperTestSuite) TestSimulateV1_StateOverrideSentinelBubblesUp() {
+	suite.SetupTest()
+
+	sha256Addr := common.HexToAddress("0x0000000000000000000000000000000000000002")
+	sender := suite.address
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sha256Addr: {"movePrecompileToAddress": sha256Addr},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &sender}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeMovePrecompileSelfReference), resp.Error.Code)
+	suite.Require().Contains(resp.Error.Message, sha256Addr.Hex())
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_MovePrecompileToSha256: relocate stdlib sha256 to a
+// fresh destination; calling the destination must return the
+// canonical sha256 digest for empty input.
+func (suite *KeeperTestSuite) TestSimulateV1_MovePrecompileToSha256() {
+	suite.SetupTest()
+
+	sha256Addr := common.HexToAddress("0x0000000000000000000000000000000000000002")
+	dest := common.HexToAddress("0x1234000000000000000000000000000000000000")
+	sender := suite.address
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sha256Addr: {"movePrecompileToAddress": dest},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &dest}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+
+	call := calls[0].(map[string]interface{})
+	suite.Require().Nil(call["error"], "call to moved precompile must succeed")
+	suite.Require().Equal(
+		"0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		call["returnData"],
+	)
+}
+
+// TestSimulateV1_NilRequest: nil request returns an InvalidArgument
+// gRPC error.
+func (suite *KeeperTestSuite) TestSimulateV1_NilRequest() {
+	suite.SetupTest()
+	_, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, nil)
+	suite.Require().Error(err)
+	st, ok := status.FromError(err)
+	suite.Require().True(ok)
+	suite.Require().Equal(codes.InvalidArgument, st.Code())
+}
+
+// TestSimulateV1_UnsupportedOverrideRejected: BeaconRoot override is
+// rejected at the opts unmarshal step with a -32602 SimError on
+// response.Error, not as a gRPC status.
+func (suite *KeeperTestSuite) TestSimulateV1_UnsupportedOverrideRejected() {
+	suite.SetupTest()
+
+	beacon := common.Hash{1}
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{"beaconRoot": beacon},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeInvalidParams), resp.Error.Code)
+	suite.Require().Contains(resp.Error.Message, "BeaconRoot")
+	suite.Require().Empty(resp.Result)
 }

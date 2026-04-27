@@ -761,6 +761,58 @@ func (suite *StateDBTestSuite) TestCommittedStateChanges() {
 	suite.Require().Equal(value2, changeMap[key2].Value)
 }
 
+func (suite *StateDBTestSuite) TestFinaliseBetweenCalls() {
+	key1 := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+
+	// The suite's ctx carries a real MultiStore, required for
+	// CacheContext() when we exercise the precompile-call counter.
+	db := statedb.New(suite.ctx, suite.app.EvmKeeper, emptyTxConfig)
+
+	// Prepare allocates the transient-storage map; without it
+	// SetTransientState panics on the bare nil map.
+	rules := params.Rules{IsBerlin: true}
+	db.Prepare(rules, address, address, nil, nil, nil)
+
+	// Prime per-call ephemeral state alongside an account mutation that
+	// must survive the finalize.
+	db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+	db.AddLog(&ethtypes.Log{Address: address})
+	db.AddRefund(42)
+	db.SetTransientState(address, key1, value1)
+
+	// Trigger the precompile-call counter via a registered cache-ctx
+	// checkpoint so we can observe it resetting.
+	_, ccp := db.CacheContext()
+	suite.Require().NoError(
+		db.RegisterCachedCtxCheckpoint(address, ccp),
+	)
+
+	suite.Require().NotEmpty(db.Logs())
+	suite.Require().Equal(uint64(42), db.GetRefund())
+	suite.Require().Equal(value1, db.GetTransientState(address, key1))
+
+	db.FinaliseBetweenCalls()
+
+	suite.Require().Empty(db.Logs())
+	suite.Require().Equal(uint64(0), db.GetRefund())
+	suite.Require().Equal(common.Hash{}, db.GetTransientState(address, key1))
+
+	// Account mutation is preserved: state objects are not dropped.
+	suite.Require().True(db.Exist(address))
+	suite.Require().Equal(uint256.NewInt(100), db.GetBalance(address))
+
+	// The counter is reset: after the finalize we can register
+	// checkpoints up to the EvmKeeper's cap anew. The cap is not
+	// exposed from the test package, so we exercise the "fresh start"
+	// guarantee by confirming at least one additional registration
+	// succeeds post-finalize even though the counter was already
+	// incremented before.
+	suite.Require().NoError(
+		db.RegisterCachedCtxCheckpoint(address, ccp),
+	)
+}
+
 func CollectContractStorage(db *statedb.StateDB) statedb.Storage {
 	storage := make(statedb.Storage)
 	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
