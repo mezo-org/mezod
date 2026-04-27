@@ -10,6 +10,25 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
+// MaxSimulateBlocks caps the number of simulated blocks in a single
+// request. The RPC layer counts submitted blocks; the keeper counts the
+// span from base.Number to the last sim block including gap-fills.
+const MaxSimulateBlocks = 256
+
+// MaxSimulateCalls caps the cumulative call count across all simulated
+// blocks (post-sanitize, gap-fills included).
+const MaxSimulateCalls = 1000
+
+// CountSimCalls returns the cumulative number of calls across the
+// supplied simulated blocks.
+func CountSimCalls(blocks []SimBlock) int {
+	var n int
+	for i := range blocks {
+		n += len(blocks[i].Calls)
+	}
+	return n
+}
+
 // SimOpts are the top-level options passed to `eth_simulateV1`. Fields not
 // yet consumed by the driver are still parsed so unknown-call behavior is
 // deterministic and future phases can extend without reworking the

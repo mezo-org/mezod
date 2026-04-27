@@ -2607,3 +2607,80 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_CumulativeLogIndex() {
 	suite.Require().Equal("0x0", logs2[0].(map[string]interface{})["logIndex"],
 		"block 2's first log must reset to logIndex 0")
 }
+
+// -----------------------------------------------------------------------------
+// SimulateV1 — DoS guards
+// -----------------------------------------------------------------------------
+
+// 257 sequential blocks must be rejected by sanitizeSimChain.
+func (suite *KeeperTestSuite) TestSimulateV1_DoS_BlockCap() {
+	suite.SetupTest()
+
+	base := suite.ctx.BlockHeight()
+	blocks := make([]map[string]interface{}, types.MaxSimulateBlocks+1)
+	for i := range blocks {
+		blocks[i] = map[string]interface{}{
+			"blockOverrides": map[string]interface{}{
+				"number": hexutil.EncodeUint64(uint64(base + int64(i+1))), //nolint:gosec
+			},
+		}
+	}
+	optsJSON, err := json.Marshal(map[string]interface{}{"blockStateCalls": blocks})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeClientLimitExceeded), resp.Error.Code)
+}
+
+// 1009 calls (> MaxSimulateCalls) within the block-count cap: keeper
+// rejects with -38026.
+func (suite *KeeperTestSuite) TestSimulateV1_DoS_CallCap() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	v := (*hexutil.Big)(big.NewInt(1))
+
+	const wide = 251
+	const widePerBlock = 4
+	const narrow = 5
+	const narrowPerBlock = 1
+	totalCalls := wide*widePerBlock + narrow*narrowPerBlock // 1009 > 1000
+
+	base := suite.ctx.BlockHeight()
+	blocks := make([]map[string]interface{}, 0, wide+narrow)
+	bn := uint64(base) //nolint:gosec
+	appendBlocks := func(count, callsPerBlock int) {
+		for b := 0; b < count; b++ {
+			bn++
+			callsList := make([]types.TransactionArgs, callsPerBlock)
+			for i := range callsList {
+				callsList[i] = types.TransactionArgs{From: &sender, To: &recipient, Value: v}
+			}
+			blocks = append(blocks, map[string]interface{}{
+				"blockOverrides": map[string]interface{}{
+					"number": hexutil.EncodeUint64(bn),
+				},
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender: {"balance": balance},
+				},
+				"calls": callsList,
+			})
+		}
+	}
+	appendBlocks(wide, widePerBlock)
+	appendBlocks(narrow, narrowPerBlock)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{"blockStateCalls": blocks})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeClientLimitExceeded), resp.Error.Code)
+	suite.Require().Contains(resp.Error.Message, "calls")
+	suite.Require().Contains(resp.Error.Message, fmt.Sprintf("%d", totalCalls))
+}

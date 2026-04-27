@@ -114,15 +114,15 @@ func TestSanitizeSimChain_MaxBlocksBoundary(t *testing.T) {
 	base := &ethtypes.Header{Number: big.NewInt(10), Time: 60}
 	// 256 blocks forward is on the allowed edge.
 	blocks := []types.SimBlock{
-		{BlockOverrides: &types.SimBlockOverrides{Number: hbig(10 + int64(maxSimulateBlocks))}},
+		{BlockOverrides: &types.SimBlockOverrides{Number: hbig(10 + int64(types.MaxSimulateBlocks))}},
 	}
 	out, err := sanitizeSimChain(base, blocks)
 	require.NoError(t, err)
-	require.Len(t, out, maxSimulateBlocks)
+	require.Len(t, out, types.MaxSimulateBlocks)
 
 	// 257 over is rejected.
 	blocks = []types.SimBlock{
-		{BlockOverrides: &types.SimBlockOverrides{Number: hbig(10 + int64(maxSimulateBlocks) + 1)}},
+		{BlockOverrides: &types.SimBlockOverrides{Number: hbig(10 + int64(types.MaxSimulateBlocks) + 1)}},
 	}
 	_, err = sanitizeSimChain(base, blocks)
 	requireSimError(t, err, types.SimErrCodeClientLimitExceeded)

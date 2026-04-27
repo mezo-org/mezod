@@ -241,3 +241,27 @@ func NewSimMethodNotFound(method string) *SimError {
 		Message: fmt.Sprintf("the method %s does not exist/is not available", method),
 	}
 }
+
+// NewSimCallLimitExceeded reports that the cumulative call count
+// exceeds MaxSimulateCalls (-38026).
+func NewSimCallLimitExceeded(total, maxCalls int) *SimError {
+	return &SimError{
+		Code: SimErrCodeClientLimitExceeded,
+		Message: fmt.Sprintf(
+			"client limit exceeded: %d calls > max %d",
+			total, maxCalls,
+		),
+	}
+}
+
+// NewSimBlockCountExceeded reports that the number of submitted blocks
+// exceeds MaxSimulateBlocks (-38026).
+func NewSimBlockCountExceeded(total, maxBlocks int) *SimError {
+	return &SimError{
+		Code: SimErrCodeClientLimitExceeded,
+		Message: fmt.Sprintf(
+			"client limit exceeded: %d blocks > max %d",
+			total, maxBlocks,
+		),
+	}
+}

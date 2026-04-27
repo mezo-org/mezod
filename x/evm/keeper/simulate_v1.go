@@ -19,17 +19,11 @@ import (
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
-const (
-	// maxSimulateBlocks caps the number of simulated blocks in a single
-	// request. Matches geth's hard-coded bound.
-	maxSimulateBlocks = 256
-
-	// simTimestampIncrement is the default gap, in seconds, between
-	// sequential simulated blocks when the caller omits Time overrides.
-	// Matches mezo's ~3s average CometBFT block time so callers who let
-	// the sim fabricate timestamps land in a realistic ballpark.
-	simTimestampIncrement = 3
-)
+// simTimestampIncrement is the default gap, in seconds, between
+// sequential simulated blocks when the caller omits Time overrides.
+// Matches mezo's ~3s average CometBFT block time so callers who let
+// the sim fabricate timestamps land in a realistic ballpark.
+const simTimestampIncrement = 3
 
 // sanitizeSimChain validates the block ordering rules and fills gaps
 // with empty blocks. It works on a shallow clone of the input slice so
@@ -43,7 +37,7 @@ const (
 // Design mirrors go-ethereum's internal/ethapi/simulate.go::sanitizeChain
 // (v1.15.4 source). Divergences: we never propagate a nil slice input
 // (caller has already enforced len > 0 at the RPC boundary), and the
-// span check against maxSimulateBlocks is performed BEFORE gap-fill
+// span check against types.MaxSimulateBlocks is performed BEFORE gap-fill
 // allocation so a pathological `[{Number: base+1}, {Number:
 // base+10_000_000}]` input cannot drive the driver into a 10M-header
 // allocation.
@@ -68,11 +62,11 @@ func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.S
 		num := block.BlockOverrides.Number.ToInt()
 
 		// Span check against base.Number runs before gap-fill
-		// allocation: any input Number more than maxSimulateBlocks
+		// allocation: any input Number more than types.MaxSimulateBlocks
 		// past base fails immediately without materializing the
 		// in-between headers.
-		if span := new(big.Int).Sub(num, base.Number); span.Cmp(big.NewInt(maxSimulateBlocks)) > 0 {
-			return nil, types.NewSimClientLimitExceeded(span, maxSimulateBlocks)
+		if span := new(big.Int).Sub(num, base.Number); span.Cmp(big.NewInt(types.MaxSimulateBlocks)) > 0 {
+			return nil, types.NewSimClientLimitExceeded(span, types.MaxSimulateBlocks)
 		}
 
 		diff := new(big.Int).Sub(num, prevNumber)

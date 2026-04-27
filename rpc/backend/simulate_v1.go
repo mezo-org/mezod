@@ -13,6 +13,12 @@ import (
 
 // SimulateV1 runs `eth_simulateV1`. Timeout wiring mirrors DoCall; the
 // eth_simulateV1 path inherits the same RPCEVMTimeout semantics.
+//
+// Block-count and cumulative call-count caps live on the keeper side
+// (see x/evm/keeper.Keeper.SimulateV1). They do not depend on RPC
+// configuration, so enforcing them once at the keeper input boundary
+// covers both the JSON-RPC path and direct gRPC peers without
+// duplicating the constants here.
 func (b *Backend) SimulateV1(
 	opts evmtypes.SimOpts,
 	blockNrOrHash *rpctypes.BlockNumberOrHash,

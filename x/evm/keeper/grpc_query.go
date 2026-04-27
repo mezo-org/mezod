@@ -717,6 +717,15 @@ func (k *Keeper) traceTx(
 }
 
 // SimulateV1 implements the eth_simulateV1 gRPC backend.
+//
+// The `simulate-disabled` operator kill switch is enforced at the
+// JSON-RPC namespace handler (PublicAPI.SimulateV1) — not here. Direct
+// gRPC peers bypass it; operators who need to suppress simulate
+// entirely must additionally restrict the SDK gRPC port (default 9090).
+// Same applies to the operator-derived RPCGasCap and RPCEVMTimeout
+// defaults, which the RPC backend injects via req.GasCap and
+// req.TimeoutMs. The keeper only sees the wire values and treats 0 as
+// "no bound" — see newSimGasBudget and the WithTimeout block below.
 func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*types.SimulateV1Response, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
@@ -747,6 +756,17 @@ func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*ty
 	opts, err := types.UnmarshalSimOpts(req.Opts)
 	if err != nil {
 		return simulateV1ErrResponse(err)
+	}
+
+	// Reject oversized envelopes before sanitizeSimChain clones the
+	// input slice. sanitizeSimChain only gap-fills with empty Calls, so
+	// the post-sanitize call total always equals the pre-sanitize one;
+	// catching it here is sufficient.
+	if n := len(opts.BlockStateCalls); n > types.MaxSimulateBlocks {
+		return simulateV1ErrResponse(types.NewSimBlockCountExceeded(n, types.MaxSimulateBlocks))
+	}
+	if n := types.CountSimCalls(opts.BlockStateCalls); n > types.MaxSimulateCalls {
+		return simulateV1ErrResponse(types.NewSimCallLimitExceeded(n, types.MaxSimulateCalls))
 	}
 
 	baseGasLimit, err := k.simulateBaseGasLimit(ctx)
