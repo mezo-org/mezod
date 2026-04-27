@@ -1557,6 +1557,42 @@ func (suite *KeeperTestSuite) TestSimulateV1_SingleCallHappyPath() {
 	suite.Require().NotEqual("0x0", call["gasUsed"])
 }
 
+// TestSimulateV1_BaseBlockHashOverridesParentHash: when the request
+// carries a non-zero BaseBlockHash, the first simulated block's
+// parentHash must echo that value verbatim. Without it, the keeper
+// would hash the synthetic baseHeaderFromContext, producing a value
+// unrelated to the canonical chain hash eth_getBlockByNumber surfaces.
+func (suite *KeeperTestSuite) TestSimulateV1_BaseBlockHashOverridesParentHash() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	canonical := common.HexToHash("0x65fdad50586258b80fdeec1e9d108e975d20a1a34ab3dfadd97eeedffa0727cc")
+	req := suite.simulateV1Request(optsJSON)
+	req.BaseBlockHash = canonical.Bytes()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, req)
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Equal(canonical.Hex(), results[0]["parentHash"])
+}
+
 // TestSimulateV1_StateOverrideSentinelBubblesUp: a self-referencing
 // MovePrecompileTo override must surface on response.Error with code
 // -38022 — not as a gRPC error.

@@ -737,7 +737,12 @@ func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*ty
 		return simulateV1ErrResponse(err)
 	}
 
-	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg), opts, req.GasCap)
+	var baseHash common.Hash
+	if len(req.BaseBlockHash) > 0 {
+		baseHash = common.BytesToHash(req.BaseBlockHash)
+	}
+
+	results, err := k.simulateV1(ctx, cfg, baseHeaderFromContext(ctx, cfg), baseHash, opts, req.GasCap)
 	if err != nil {
 		return simulateV1ErrResponse(err)
 	}

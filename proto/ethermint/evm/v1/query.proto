@@ -339,6 +339,14 @@ message SimulateV1Request {
   int64 chain_id = 5;
   // timeout_ms is the execution timeout in milliseconds. 0 means no timeout.
   int64 timeout_ms = 6;
+  // base_block_hash is the canonical Eth block hash of the base block the
+  // simulation is anchored at, resolved by the rpc backend the same way
+  // eth_getBlockByNumber surfaces it. The keeper uses it to populate the
+  // first simulated block's parentHash so callers see the same value
+  // eth_getBlockByNumber returns for the base block. Empty when the
+  // backend could not resolve the canonical hash (e.g., direct-gRPC
+  // callers); the keeper falls back to the synthetic header hash.
+  bytes base_block_hash = 7;
 }
 
 // SimulateV1Response defines the SimulateV1 response. Spec-coded

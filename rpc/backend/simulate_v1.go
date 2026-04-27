@@ -41,6 +41,20 @@ func (b *Backend) SimulateV1(
 		return nil, fmt.Errorf("header not found: %w", err)
 	}
 
+	// Derive the Eth-formatted base hash from the already-fetched block
+	// via the same path eth_getBlockByNumber takes, so the response
+	// envelope's parentHash agrees with what eth_getBlockByNumber
+	// surfaces for the base block. nil on failure: the keeper keeps its
+	// synthetic-header fallback.
+	var baseBlockHash []byte
+	if blockRes, brErr := b.TendermintBlockResultByNumber(&header.Block.Height); brErr == nil {
+		bloom, _ := b.BlockBloom(blockRes)
+		baseFee, _ := b.BaseFee(blockRes)
+		baseBlockHash = rpctypes.EthHeaderFromTendermint(header.Block.Header, bloom, baseFee).Hash().Bytes()
+	} else {
+		b.logger.Error("eth_simulateV1: base block results not found", "height", header.Block.Height, "error", brErr)
+	}
+
 	timeout := b.RPCEVMTimeout()
 
 	req := &evmtypes.SimulateV1Request{
@@ -50,6 +64,7 @@ func (b *Backend) SimulateV1(
 		ProposerAddress:   sdk.ConsAddress(header.Block.ProposerAddress),
 		ChainId:           b.chainID.Int64(),
 		TimeoutMs:         timeout.Milliseconds(),
+		BaseBlockHash:     baseBlockHash,
 	}
 
 	ctx := rpctypes.ContextWithHeight(blockNr.Int64())

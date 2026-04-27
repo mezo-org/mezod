@@ -1314,6 +1314,14 @@ type SimulateV1Request struct {
 	ChainId int64 `protobuf:"varint,5,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
 	// timeout_ms is the execution timeout in milliseconds. 0 means no timeout.
 	TimeoutMs int64 `protobuf:"varint,6,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
+	// base_block_hash is the canonical Eth block hash of the base block the
+	// simulation is anchored at, resolved by the rpc backend the same way
+	// eth_getBlockByNumber surfaces it. The keeper uses it to populate the
+	// first simulated block's parentHash so callers see the same value
+	// eth_getBlockByNumber returns for the base block. Empty when the
+	// backend could not resolve the canonical hash (e.g., direct-gRPC
+	// callers); the keeper falls back to the synthetic header hash.
+	BaseBlockHash []byte `protobuf:"bytes,7,opt,name=base_block_hash,json=baseBlockHash,proto3" json:"base_block_hash,omitempty"`
 }
 
 func (m *SimulateV1Request) Reset()         { *m = SimulateV1Request{} }
@@ -1389,6 +1397,13 @@ func (m *SimulateV1Request) GetTimeoutMs() int64 {
 		return m.TimeoutMs
 	}
 	return 0
+}
+
+func (m *SimulateV1Request) GetBaseBlockHash() []byte {
+	if m != nil {
+		return m.BaseBlockHash
+	}
+	return nil
 }
 
 // SimulateV1Response defines the SimulateV1 response. Spec-coded
@@ -3147,6 +3162,13 @@ func (m *SimulateV1Request) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.BaseBlockHash) > 0 {
+		i -= len(m.BaseBlockHash)
+		copy(dAtA[i:], m.BaseBlockHash)
+		i = encodeVarintQuery(dAtA, i, uint64(len(m.BaseBlockHash)))
+		i--
+		dAtA[i] = 0x3a
+	}
 	if m.TimeoutMs != 0 {
 		i = encodeVarintQuery(dAtA, i, uint64(m.TimeoutMs))
 		i--
@@ -3703,6 +3725,10 @@ func (m *SimulateV1Request) Size() (n int) {
 	}
 	if m.TimeoutMs != 0 {
 		n += 1 + sovQuery(uint64(m.TimeoutMs))
+	}
+	l = len(m.BaseBlockHash)
+	if l > 0 {
+		n += 1 + l + sovQuery(uint64(l))
 	}
 	return n
 }
@@ -6567,6 +6593,40 @@ func (m *SimulateV1Request) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BaseBlockHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQuery
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthQuery
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BaseBlockHash = append(m.BaseBlockHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.BaseBlockHash == nil {
+				m.BaseBlockHash = []byte{}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipQuery(dAtA[iNdEx:])

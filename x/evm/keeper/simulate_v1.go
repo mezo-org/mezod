@@ -260,6 +260,7 @@ func (k *Keeper) simulateV1(
 	ctx sdk.Context,
 	cfg *statedb.EVMConfig,
 	base *ethtypes.Header,
+	baseHash common.Hash,
 	opts *types.SimOpts,
 	gasCap uint64,
 ) ([]*types.SimBlockResult, error) {
@@ -290,8 +291,17 @@ func (k *Keeper) simulateV1(
 	results := make([]*types.SimBlockResult, 0, len(sanitized))
 	parent := base
 
-	for _, block := range sanitized {
+	for i, block := range sanitized {
 		header := makeSimHeader(parent, block.BlockOverrides, rules, cfg.ChainConfig, opts.Validation)
+
+		// baseHeaderFromContext only populates the fields the driver
+		// consumes, so base.Hash() is unrelated to the canonical chain
+		// hash. When the caller supplies one, prefer it over
+		// makeSimHeader's parent.Hash() default for the first simulated
+		// block; otherwise fall back to the legacy behavior.
+		if i == 0 && baseHash != (common.Hash{}) {
+			header.ParentHash = baseHash
+		}
 
 		// Per-block StateDB. Multi-call support will switch to a
 		// shared StateDB with FinaliseBetweenCalls between calls.
