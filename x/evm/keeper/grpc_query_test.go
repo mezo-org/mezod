@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -1591,6 +1592,43 @@ func (suite *KeeperTestSuite) TestSimulateV1_BaseBlockHashOverridesParentHash() 
 	results := suite.simulateV1BlockResults(resp)
 	suite.Require().Len(results, 1)
 	suite.Require().Equal(canonical.Hex(), results[0]["parentHash"])
+}
+
+// TestSimulateV1_InheritsBaseBlockGasLimit: even if the incoming SDK
+// context is missing consensus params, the first simulated block should
+// still inherit the base block gas limit from consensus keeper state.
+func (suite *KeeperTestSuite) TestSimulateV1_InheritsBaseBlockGasLimit() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	ctx := suite.ctx.WithConsensusParams(tmproto.ConsensusParams{})
+	resp, err := suite.app.EvmKeeper.SimulateV1(ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	consensusParamsResp, err := suite.app.ConsensusParamsKeeper.Params(ctx, nil)
+	suite.Require().NoError(err)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Equal(
+		hexutil.EncodeUint64(uint64(consensusParamsResp.GetParams().GetBlock().MaxGas)), //nolint:gosec
+		results[0]["gasLimit"],
+	)
 }
 
 // TestSimulateV1_StateOverrideSentinelBubblesUp: a self-referencing
