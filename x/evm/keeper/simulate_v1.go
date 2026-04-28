@@ -489,15 +489,12 @@ func (k *Keeper) processSimBlock(
 		},
 	}
 
-	// Per-block transfer tracer: captures real EVM logs and (when
-	// opts.TraceTransfers is set) emits synthetic ERC-7528 Transfer logs
-	// for native value-transfer call edges. The header.Hash() value is
-	// not knowable until cumulative GasUsed is sealed below; the tracer
-	// records logs with a zero block hash and the post-call back-stamp
-	// patches BlockHash + Index in one pass.
-	tt := transfertracer.New(opts.TraceTransfers, header.Number.Uint64(), header.Time, common.Hash{})
-	var perCallTracer *tracers.Tracer
+	var (
+		tt            *transfertracer.Tracer
+		perCallTracer *tracers.Tracer
+	)
 	if opts.TraceTransfers {
+		tt = transfertracer.New(opts.TraceTransfers, header.Number.Uint64(), common.Hash{})
 		perCallTracer = tt.Tracer()
 		sdb.SetLogger(tt.Hooks())
 		defer sdb.SetLogger(nil)
@@ -615,11 +612,6 @@ func (k *Keeper) processSimBlock(
 
 		callResult := types.BuildSimCallResult(res)
 		if perCallTracer != nil {
-			// Tracer-emitted logs are authoritative under TraceTransfers:
-			// they carry synthetic ERC-7528 entries and have already
-			// dropped logs from reverted nested frames. Real EVM logs
-			// also flowed through the tracer (via StateDB.AddLog firing
-			// OnLog), so this list is a complete superset of res.Logs.
 			tracerLogs := tt.Logs()
 			if tracerLogs == nil {
 				tracerLogs = []*ethtypes.Log{}

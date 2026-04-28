@@ -13,12 +13,7 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-// Test fixture context. The tracer stamps these onto every captured log,
-// so the assertions can pin them.
-const (
-	fxBlockNumber    = uint64(100)
-	fxBlockTimestamp = uint64(1_700_000_000)
-)
+const fxBlockNumber = uint64(100)
 
 var (
 	fxBlockHash = common.HexToHash("0xb10cb10cb10cb10cb10cb10cb10cb10cb10cb10cb10cb10cb10cb10cb10cb10c")
@@ -37,7 +32,7 @@ var (
 // constructs its own.
 func newFixtureTracer(t *testing.T, traceTransfers bool) *Tracer {
 	t.Helper()
-	tt := New(traceTransfers, fxBlockNumber, fxBlockTimestamp, fxBlockHash)
+	tt := New(traceTransfers, fxBlockNumber, fxBlockHash)
 	tt.Reset(fxTxHash, fxTxIdx)
 	return tt
 }
@@ -57,9 +52,9 @@ func TestTracer_PlainValueTransfer(t *testing.T) {
 	require.Len(t, logs, 1, "expected one synthetic log for the value-bearing CALL")
 	log := logs[0]
 
-	require.Equal(t, transferAddress, log.Address, "synthetic log must use the ERC-7528 pseudo-address")
+	require.Equal(t, TransferAddress, log.Address, "synthetic log must use the ERC-7528 pseudo-address")
 	require.Equal(t, []common.Hash{
-		transferTopic,
+		TransferTopic,
 		common.BytesToHash(fxFrom.Bytes()),
 		common.BytesToHash(fxTo.Bytes()),
 	}, log.Topics)
@@ -93,7 +88,7 @@ func TestTracer_TraceTransfersFalseSuppressesSynthetic(t *testing.T) {
 	logs := tt.Logs()
 	require.Len(t, logs, 1, "only the real EVM log should remain — synthetic must be suppressed")
 	require.Equal(t, fxTo, logs[0].Address)
-	require.NotEqual(t, transferAddress, logs[0].Address)
+	require.NotEqual(t, TransferAddress, logs[0].Address)
 }
 
 // TestTracer_DelegateCallNoSyntheticLog pins the DELEGATECALL exclusion:
@@ -148,7 +143,7 @@ func TestTracer_CallCodeAndCreatesEmitSynthetic(t *testing.T) {
 
 			logs := tt.Logs()
 			require.Len(t, logs, 1, "%s with value > 0 must emit a synthetic log", c.name)
-			require.Equal(t, transferAddress, logs[0].Address)
+			require.Equal(t, TransferAddress, logs[0].Address)
 			require.Equal(t, common.BigToHash(fxValue).Bytes(), logs[0].Data)
 		})
 	}
@@ -325,7 +320,7 @@ func TestTracer_LogIndexMonotonicAcrossReset(t *testing.T) {
 // OnEnter must return nil rather than panicking. Defensive coverage of
 // the empty-stack branch in Logs().
 func TestTracer_LogsBeforeAnyFrameOpened(t *testing.T) {
-	tt := New(true, fxBlockNumber, fxBlockTimestamp, fxBlockHash)
+	tt := New(true, fxBlockNumber, fxBlockHash)
 	require.Nil(t, tt.Logs())
 }
 
@@ -335,7 +330,7 @@ func TestTracer_LogsBeforeAnyFrameOpened(t *testing.T) {
 // applyMessageWithConfig path; a nil hook pointer in either would
 // silently disable the tracer at runtime.
 func TestTracer_HooksAndTracerWired(t *testing.T) {
-	tt := New(true, fxBlockNumber, fxBlockTimestamp, fxBlockHash)
+	tt := New(true, fxBlockNumber, fxBlockHash)
 	hooks := tt.Hooks()
 	require.NotNil(t, hooks)
 	require.NotNil(t, hooks.OnEnter)

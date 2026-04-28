@@ -46,9 +46,6 @@ describe("SimulateV1_TraceTransfers", function () {
   // CALLDATALOAD picks up at offset 0.
   let forwardCalldata: string
 
-  // Captured response state for each scenario, populated once in
-  // `before`. The skill-mandated convention (no beforeEach, no
-  // execute-in-it) drives all transactions through this hook.
   let traceOnEoaToEoaResult: any
   let traceOnContractCallResult: any
   let traceOffContractCallResult: any

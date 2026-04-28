@@ -156,13 +156,8 @@ func (s *StateDB) GetContext() sdk.Context {
 	return s.ctx
 }
 
-// SetLogger installs a tracing-hooks logger on the StateDB. The logger
-// receives OnLog callbacks (and the existing OnBalanceChange surface)
-// as state mutations occur. A nil hooks pointer disables tracing.
-//
-// Mirrors go-ethereum's state.NewHookedState wrapper without a separate
-// wrapper type: the simulate driver attaches a transfer tracer for the
-// duration of one request and clears it before returning.
+// SetLogger installs a tracing-hooks logger on the StateDB. A nil pointer
+// disables tracing.
 func (s *StateDB) SetLogger(hooks *tracing.Hooks) {
 	s.logger = hooks
 }

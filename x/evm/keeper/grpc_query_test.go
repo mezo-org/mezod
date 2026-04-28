@@ -3331,15 +3331,6 @@ func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_MultiBlock_LogInd
 		"block 1's first synthetic log must reset the counter to 0")
 }
 
-// TestSimulateV1_TraceTransfers_On_BTCTokenSkipped — invoking the BTC
-// precompile's ERC-20 transfer(to, amount) with traceTransfers=true:
-// the precompile emits its own real Transfer event from inside the run,
-// the tracer captures it, and the deny-list keeps the synthetic
-// emission off (no double-counting). The outer call carries no native
-// value, so this test exercises the "real precompile event flows
-// through tracer; no synthetic noise added" path; the tracer-level
-// deny-list across all 8 precompile addresses is pinned by the unit
-// test in the transfertracer package.
 func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_BTCTokenSkipped() {
 	suite.SetupTest()
 
