@@ -19,6 +19,12 @@ const MaxSimulateBlocks = 256
 // blocks (post-sanitize, gap-fills included).
 const MaxSimulateCalls = 1000
 
+// SimTimestampIncrement is the default gap, in seconds, between
+// sequential simulated blocks when the caller omits Time overrides.
+// Matches mezo's ~3s average CometBFT block time so callers who let
+// the sim fabricate timestamps land in a realistic ballpark.
+const SimTimestampIncrement = 3
+
 // CountSimCalls returns the cumulative number of calls across the
 // supplied simulated blocks.
 func CountSimCalls(blocks []SimBlock) int {

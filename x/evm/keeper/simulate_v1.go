@@ -60,12 +60,6 @@ func (b *simGasBudget) consume(amount uint64) error {
 	return nil
 }
 
-// simTimestampIncrement is the default gap, in seconds, between
-// sequential simulated blocks when the caller omits Time overrides.
-// Matches mezo's ~3s average CometBFT block time so callers who let
-// the sim fabricate timestamps land in a realistic ballpark.
-const simTimestampIncrement = 3
-
 // sanitizeSimChain validates the block ordering rules and fills gaps
 // with empty blocks. It works on a shallow clone of the input slice so
 // top-level SimBlock field writes in the loop (notably the
@@ -119,7 +113,7 @@ func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.S
 			gap := new(big.Int).Sub(diff, big.NewInt(1))
 			for i := uint64(0); i < gap.Uint64(); i++ {
 				n := new(big.Int).Add(prevNumber, big.NewInt(int64(i+1))) //nolint:gosec
-				t := prevTimestamp + simTimestampIncrement
+				t := prevTimestamp + types.SimTimestampIncrement
 				res = append(res, types.SimBlock{BlockOverrides: &types.SimBlockOverrides{
 					Number: (*hexutil.Big)(n),
 					Time:   (*hexutil.Uint64)(&t),
@@ -131,7 +125,7 @@ func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.S
 
 		var t uint64
 		if block.BlockOverrides.Time == nil {
-			t = prevTimestamp + simTimestampIncrement
+			t = prevTimestamp + types.SimTimestampIncrement
 			block.BlockOverrides.Time = (*hexutil.Uint64)(&t)
 		} else {
 			t = uint64(*block.BlockOverrides.Time)
@@ -184,7 +178,7 @@ func makeSimHeader(
 		GasLimit:    parent.GasLimit,
 		Difficulty:  new(big.Int).Set(parent.Difficulty),
 		Number:      new(big.Int).Add(parent.Number, big.NewInt(1)),
-		Time:        parent.Time + simTimestampIncrement,
+		Time:        parent.Time + types.SimTimestampIncrement,
 	}
 
 	// Post-merge: Difficulty is zero. MixDigest carries PREVRANDAO; mezo
