@@ -185,8 +185,8 @@ func TestTracer_ZeroValueNoSyntheticLog(t *testing.T) {
 func TestTracer_NestedRevertDropsFrameLogs(t *testing.T) {
 	tt := newFixtureTracer(t, true)
 
-	tt.Hooks().OnEnter(0, byte(vm.CALL), fxFrom, fxTo, nil, 0, fxValue)        // L0
-	tt.Hooks().OnEnter(1, byte(vm.CALL), fxTo, fxNested1, nil, 0, fxValue)     // L1
+	tt.Hooks().OnEnter(0, byte(vm.CALL), fxFrom, fxTo, nil, 0, fxValue)         // L0
+	tt.Hooks().OnEnter(1, byte(vm.CALL), fxTo, fxNested1, nil, 0, fxValue)      // L1
 	tt.Hooks().OnEnter(2, byte(vm.CALL), fxNested1, fxNested2, nil, 0, fxValue) // L2
 	tt.Hooks().OnExit(2, nil, 0, nil, false)                                    // success
 	tt.Hooks().OnExit(1, nil, 0, errors.New("revert"), true)                    // REVERTED — drops L1 + L2

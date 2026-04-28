@@ -537,14 +537,14 @@ func TestResolveSimCallGas_UnlimitedBudgetIsNoop(t *testing.T) {
 // Each test perturbs one field at a time off this baseline so failures
 // trace back to a single gate.
 type validateSimCallFixture struct {
-	k       *Keeper
-	sdb     *statedb.StateDB
-	ctx     sdk.Context
-	header  *ethtypes.Header
-	rules   params.Rules
-	cfg     *params.ChainConfig
-	from    common.Address
-	to      common.Address
+	k      *Keeper
+	sdb    *statedb.StateDB
+	ctx    sdk.Context
+	header *ethtypes.Header
+	rules  params.Rules
+	cfg    *params.ChainConfig
+	from   common.Address
+	to     common.Address
 }
 
 // senderBaseline pre-funds the sender with a generous balance and seeds
@@ -679,12 +679,12 @@ func TestValidateSimCall_Balance_BoundaryEqual(t *testing.T) {
 	msg := f.baselineMsg()
 	// balance == cost: gasLimit*gasFeeCap + value
 	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
-	cost := new(big.Int).Mul(big.NewInt(int64(msg.GasLimit)), msg.GasFeeCap)
+	cost := new(big.Int).Mul(new(big.Int).SetUint64(msg.GasLimit), msg.GasFeeCap)
 	cost.Add(cost, msg.Value)
 	require.Equal(t, bal.ToBig().Cmp(cost), 1, "fixture must leave headroom; lower gasLimit*gasFeeCap if it doesn't")
 
 	// Now adjust value so balance == cost exactly.
-	msg.Value = new(big.Int).Sub(bal.ToBig(), new(big.Int).Mul(big.NewInt(int64(msg.GasLimit)), msg.GasFeeCap))
+	msg.Value = new(big.Int).Sub(bal.ToBig(), new(big.Int).Mul(new(big.Int).SetUint64(msg.GasLimit), msg.GasFeeCap))
 	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 }
 
@@ -771,7 +771,7 @@ func TestValidateSimCall_FeeCap_NoBaseFeeHeader(t *testing.T) {
 func TestValidateSimCall_Order_NonceBeforeInsufficientFunds(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
-	msg.Nonce = 1                                   // nonce too high (state == 0)
+	msg.Nonce = 1 // nonce too high (state == 0)
 	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
 	msg.Value = new(big.Int).Add(bal.ToBig(), big.NewInt(1)) // also fails balance
 

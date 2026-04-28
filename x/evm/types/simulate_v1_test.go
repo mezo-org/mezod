@@ -304,7 +304,7 @@ func envelopeChainConfig() *params.ChainConfig {
 // makeEnvelopeBlock builds a minimal *ethtypes.Block carrying one
 // unsigned legacy tx and one matching receipt. Used by the marshal
 // tests to drive the typed-Block branch of SimBlockResult.MarshalJSON.
-func makeEnvelopeBlock(t *testing.T, from common.Address, to common.Address, value uint64) (*ethtypes.Block, *ethtypes.Transaction) {
+func makeEnvelopeBlock(t *testing.T, _ common.Address, to common.Address, value uint64) (*ethtypes.Block, *ethtypes.Transaction) {
 	t.Helper()
 	tx := ethtypes.NewTx(&ethtypes.LegacyTx{
 		Nonce:    7,
@@ -483,7 +483,7 @@ func TestSimBlockResult_MarshalJSON_FullTx_TwoCallsTwoSenders(t *testing.T) {
 	)
 
 	r := types.SimBlockResult{
-		EthBlock: block,
+		EthBlock:    block,
 		Senders:     []common.Address{fromA, fromB},
 		FullTx:      true,
 		ChainConfig: envelopeChainConfig(),

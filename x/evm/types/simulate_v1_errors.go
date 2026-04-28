@@ -329,12 +329,12 @@ func NewSimInsufficientFunds(addr common.Address, have, want *big.Int) *SimError
 
 // NewSimInitcodeTooLarge reports a CREATE call whose init-code size
 // exceeds params.MaxInitCodeSize on a Shanghai-active fork (-38025).
-func NewSimInitcodeTooLarge(have, max int) *SimError {
+func NewSimInitcodeTooLarge(have, limit int) *SimError {
 	return &SimError{
 		Code: SimErrCodeMaxInitCodeSizeExceeded,
 		Message: fmt.Sprintf(
 			"max initcode size exceeded: code size %d limit %d",
-			have, max,
+			have, limit,
 		),
 	}
 }

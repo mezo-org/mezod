@@ -205,8 +205,8 @@ func TestNewSimNonceTooLow_ZeroNonces(t *testing.T) {
 func TestSimError_ErrorsAsRoundTrip(t *testing.T) {
 	addr := common.HexToAddress("0x00000000000000000000000000000000000000a5")
 	cases := []struct {
-		name    string
-		err     error
+		name     string
+		err      error
 		wantCode int
 	}{
 		{"NonceTooLow", NewSimNonceTooLow(addr, 1, 2), SimErrCodeNonceTooLow},

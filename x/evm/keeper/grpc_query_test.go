@@ -2034,7 +2034,7 @@ const emptyLogDeployer = "0x60006000A060006000F3"
 // Two value transfers from the same sender with no explicit nonce.
 // The driver must bump the StateDB nonce after every successful
 // non-CREATE call; otherwise both calls would default to the same
-// nonce, the synthesised tx hashes would collide, and the assembled
+// nonce, the synthesized tx hashes would collide, and the assembled
 // block would carry duplicate entries in `transactions`.
 func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_CallNonceAdvances() {
 	suite.SetupTest()

@@ -1,4 +1,4 @@
-// Package transfertracer captures EVM logs and synthesises ERC-7528
+// Package transfertracer captures EVM logs and synthesizes ERC-7528
 // Transfer logs at the pseudo-address for native value-transfer call edges.
 package transfertracer
 
