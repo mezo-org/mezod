@@ -792,15 +792,15 @@ func TestValidateSimCall_Order_InitCodeBeforeIntrinsic(t *testing.T) {
 	require.Equal(t, types.SimErrCodeMaxInitCodeSizeExceeded, simErr.ErrorCode())
 }
 
-// Below-intrinsic gas + below-base fee-cap -> intrinsic wins.
-func TestValidateSimCall_Order_IntrinsicBeforeFeeCap(t *testing.T) {
+// Below-base fee-cap + below-intrinsic gas -> fee-cap wins.
+func TestValidateSimCall_Order_FeeCapBeforeIntrinsic(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
-	msg.GasLimit = 20_999 // fails intrinsic
+	msg.GasLimit = 20_999         // fails intrinsic
 	msg.GasFeeCap = big.NewInt(0) // also fails fee-cap
 	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
-	require.Equal(t, types.SimErrCodeIntrinsicGas, simErr.ErrorCode())
+	require.Equal(t, types.SimErrCodeFeeCapTooLow, simErr.ErrorCode())
 }
 
 // Below-base fee-cap + insufficient balance -> fee-cap wins.

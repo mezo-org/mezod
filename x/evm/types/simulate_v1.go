@@ -102,12 +102,12 @@ func (r SimCallResult) MarshalJSON() ([]byte, error) {
 // driver); UnmarshalJSON populates Block instead so gRPC round-trips
 // keep working without reconstructing a *ethtypes.Block from JSON.
 type SimBlockResult struct {
-	EthBlock    *ethtypes.Block                `json:"-"`
-	Senders     map[common.Hash]common.Address `json:"-"`
-	FullTx      bool                           `json:"-"`
-	ChainConfig *params.ChainConfig            `json:"-"`
-	Block       map[string]interface{}         `json:"-"`
-	Calls       []SimCallResult                `json:"calls"`
+	EthBlock    *ethtypes.Block        `json:"-"`
+	Senders     []common.Address       `json:"-"`
+	FullTx      bool                   `json:"-"`
+	ChainConfig *params.ChainConfig    `json:"-"`
+	Block       map[string]interface{} `json:"-"`
+	Calls       []SimCallResult        `json:"calls"`
 }
 
 func (r SimBlockResult) MarshalJSON() ([]byte, error) {
@@ -117,12 +117,14 @@ func (r SimBlockResult) MarshalJSON() ([]byte, error) {
 		out = RPCMarshalBlock(r.EthBlock, true, r.FullTx, r.ChainConfig)
 		if r.FullTx {
 			if raw, ok := out["transactions"].([]interface{}); ok {
-				for _, tx := range raw {
+				for i, tx := range raw {
 					rpcTx, ok := tx.(*RPCTransaction)
 					if !ok {
 						return nil, errors.New("simulated transaction result has invalid type")
 					}
-					rpcTx.From = r.Senders[rpcTx.Hash]
+					if i < len(r.Senders) {
+						rpcTx.From = r.Senders[i]
+					}
 				}
 			}
 		}

@@ -500,7 +500,7 @@ func (k *Keeper) processSimBlock(
 	// and the per-block GasLimit.
 	txs := make([]*ethtypes.Transaction, 0, len(block.Calls))
 	receipts := make([]*ethtypes.Receipt, 0, len(block.Calls))
-	senders := make(map[common.Hash]common.Address, len(block.Calls))
+	senders := make([]common.Address, 0, len(block.Calls))
 	var cumGas uint64
 
 	for i := range block.Calls {
@@ -656,7 +656,7 @@ func (k *Keeper) processSimBlock(
 
 		txs = append(txs, simTx)
 		receipts = append(receipts, receipt)
-		senders[callTxHash] = msg.From
+		senders = append(senders, msg.From)
 	}
 
 	// Finalize the header (GasUsed must be set before NewBlock derives
@@ -844,11 +844,12 @@ func buildSimTx(msg core.Message) *ethtypes.Transaction {
 	})
 }
 
-// validateSimCall runs the per-call validation=true gates in geth's
-// preCheck order: nonce, init-code (Shanghai+CREATE), intrinsic gas,
-// fee-cap (when header.BaseFee != nil), balance. The block-baseFee
-// floor (-38012) lives in processSimBlock since it depends on the
-// parent and the override pointer, not on the message.
+// validateSimCall runs the per-call validation=true gates in the order
+// geth's state_transition.go enforces: nonce, fee-cap-vs-baseFee, then
+// balance (preCheck), and finally init-code-size and intrinsic gas
+// (execute). The block-baseFee floor (-38012) lives in processSimBlock
+// since it depends on the parent and the override pointer, not on the
+// message.
 func (k *Keeper) validateSimCall(
 	ctx sdk.Context,
 	sdb *statedb.StateDB,
@@ -865,6 +866,18 @@ func (k *Keeper) validateSimCall(
 		return types.NewSimNonceTooHigh(msg.From, msg.Nonce, stateNonce)
 	}
 
+	if header.BaseFee != nil && msg.GasFeeCap.Cmp(header.BaseFee) < 0 {
+		return types.NewSimFeeCapTooLow(msg.GasFeeCap, header.BaseFee)
+	}
+
+	cost := new(big.Int).SetUint64(msg.GasLimit)
+	cost.Mul(cost, msg.GasFeeCap)
+	cost.Add(cost, msg.Value)
+	balance := sdb.GetBalance(msg.From).ToBig()
+	if balance.Cmp(cost) < 0 {
+		return types.NewSimInsufficientFunds(msg.From, balance, cost)
+	}
+
 	contractCreation := msg.To == nil
 	if contractCreation && rules.IsShanghai && len(msg.Data) > params.MaxInitCodeSize {
 		return types.NewSimInitcodeTooLarge(len(msg.Data), params.MaxInitCodeSize)
@@ -878,16 +891,5 @@ func (k *Keeper) validateSimCall(
 		return types.NewSimIntrinsicGas(msg.GasLimit, intrinsic)
 	}
 
-	if header.BaseFee != nil && msg.GasFeeCap.Cmp(header.BaseFee) < 0 {
-		return types.NewSimFeeCapTooLow(msg.GasFeeCap, header.BaseFee)
-	}
-
-	cost := new(big.Int).SetUint64(msg.GasLimit)
-	cost.Mul(cost, msg.GasFeeCap)
-	cost.Add(cost, msg.Value)
-	balance := sdb.GetBalance(msg.From).ToBig()
-	if balance.Cmp(cost) < 0 {
-		return types.NewSimInsufficientFunds(msg.From, balance, cost)
-	}
 	return nil
 }

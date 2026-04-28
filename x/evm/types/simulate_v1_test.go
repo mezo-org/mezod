@@ -382,7 +382,7 @@ func TestSimBlockResult_MarshalJSON_FullEnvelope_HashOnly(t *testing.T) {
 
 	r := types.SimBlockResult{
 		EthBlock:    block,
-		Senders:     map[common.Hash]common.Address{tx.Hash(): from},
+		Senders:     []common.Address{from},
 		FullTx:      false,
 		ChainConfig: envelopeChainConfig(),
 		Calls:       []types.SimCallResult{{Status: hexutil.Uint64(1), GasUsed: hexutil.Uint64(21_000), Logs: []*ethtypes.Log{}}},
@@ -421,7 +421,7 @@ func TestSimBlockResult_MarshalJSON_FullEnvelope_FullTxFromPatched(t *testing.T)
 
 	r := types.SimBlockResult{
 		EthBlock:    block,
-		Senders:     map[common.Hash]common.Address{tx.Hash(): from},
+		Senders:     []common.Address{from},
 		FullTx:      true,
 		ChainConfig: envelopeChainConfig(),
 	}
@@ -484,10 +484,7 @@ func TestSimBlockResult_MarshalJSON_FullTx_TwoCallsTwoSenders(t *testing.T) {
 
 	r := types.SimBlockResult{
 		EthBlock: block,
-		Senders: map[common.Hash]common.Address{
-			txA.Hash(): fromA,
-			txB.Hash(): fromB,
-		},
+		Senders:     []common.Address{fromA, fromB},
 		FullTx:      true,
 		ChainConfig: envelopeChainConfig(),
 	}
@@ -526,7 +523,7 @@ func TestSimBlockResult_MarshalJSON_EmptyBlock_UsesEmptyRoots(t *testing.T) {
 
 	r := types.SimBlockResult{
 		EthBlock:    block,
-		Senders:     map[common.Hash]common.Address{},
+		Senders:     nil,
 		FullTx:      false,
 		ChainConfig: envelopeChainConfig(),
 	}
@@ -586,7 +583,7 @@ func TestSimBlockResult_MarshalJSON_FullTx_HashMissingFromSenders(t *testing.T) 
 
 	r := types.SimBlockResult{
 		EthBlock:    block,
-		Senders:     map[common.Hash]common.Address{}, // empty map, no hash key
+		Senders:     nil, // no senders
 		FullTx:      true,
 		ChainConfig: envelopeChainConfig(),
 	}
@@ -614,7 +611,7 @@ func TestSimBlockResult_MarshalJSON_StateRootIsZero(t *testing.T) {
 
 	r := types.SimBlockResult{
 		EthBlock:    block,
-		Senders:     map[common.Hash]common.Address{},
+		Senders:     nil,
 		FullTx:      false,
 		ChainConfig: envelopeChainConfig(),
 	}
@@ -638,7 +635,7 @@ func TestSimBlockResult_MarshalJSON_SizeNonZero(t *testing.T) {
 
 	r := types.SimBlockResult{
 		EthBlock:    block,
-		Senders:     map[common.Hash]common.Address{},
+		Senders:     nil,
 		FullTx:      false,
 		ChainConfig: envelopeChainConfig(),
 	}
@@ -702,7 +699,7 @@ func TestSimBlockResult_MarshalJSON_LogsBloomMatchesReceipts(t *testing.T) {
 
 	r := types.SimBlockResult{
 		EthBlock:    block,
-		Senders:     map[common.Hash]common.Address{tx.Hash(): from},
+		Senders:     []common.Address{from},
 		FullTx:      false,
 		ChainConfig: envelopeChainConfig(),
 	}
@@ -727,7 +724,7 @@ func TestSimBlockResult_UnmarshalJSON_FromMarshaledFullEnvelope(t *testing.T) {
 
 	r := types.SimBlockResult{
 		EthBlock:    block,
-		Senders:     map[common.Hash]common.Address{},
+		Senders:     nil,
 		FullTx:      false,
 		ChainConfig: envelopeChainConfig(),
 		Calls: []types.SimCallResult{{
