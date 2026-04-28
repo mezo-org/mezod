@@ -18,9 +18,11 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/mezo-org/mezod/x/evm/statedb"
+	"github.com/mezo-org/mezod/x/evm/tracer/transfertracer"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -487,6 +489,20 @@ func (k *Keeper) processSimBlock(
 		},
 	}
 
+	// Per-block transfer tracer: captures real EVM logs and (when
+	// opts.TraceTransfers is set) emits synthetic ERC-7528 Transfer logs
+	// for native value-transfer call edges. The header.Hash() value is
+	// not knowable until cumulative GasUsed is sealed below; the tracer
+	// records logs with a zero block hash and the post-call back-stamp
+	// patches BlockHash + Index in one pass.
+	tt := transfertracer.New(opts.TraceTransfers, header.Number.Uint64(), header.Time, common.Hash{})
+	var perCallTracer *tracers.Tracer
+	if opts.TraceTransfers {
+		perCallTracer = tt.Tracer()
+		sdb.SetLogger(tt.Hooks())
+		defer sdb.SetLogger(nil)
+	}
+
 	calls := make([]types.SimCallResult, 0, len(block.Calls))
 	txHashes := make([]common.Hash, 0, len(block.Calls))
 	var cumGas uint64
@@ -531,13 +547,18 @@ func (k *Keeper) processSimBlock(
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
 		callTxHash := computeSimTxHash(msg)
-		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(len(txHashes)), 0) //nolint:gosec
-		sdb.SetTxContext(callCfg.TxHash, int(callCfg.TxIndex))                            //nolint:gosec
+		callIdx := len(txHashes)
+		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(callIdx), 0) //nolint:gosec
+		sdb.SetTxContext(callCfg.TxHash, callIdx)
+
+		if perCallTracer != nil {
+			tt.Reset(callTxHash, callIdx)
+		}
 
 		res, _, runErr := k.applyMessageWithConfig(
 			sdkCtx,
 			WrapMessage(msg),
-			nil,   // tracer
+			perCallTracer,
 			false, // commit = false (ephemeral simulate)
 			cfg,
 			callCfg,
@@ -592,7 +613,20 @@ func (k *Keeper) processSimBlock(
 			return nil, nil, budgetErr
 		}
 
-		calls = append(calls, types.BuildSimCallResult(res))
+		callResult := types.BuildSimCallResult(res)
+		if perCallTracer != nil {
+			// Tracer-emitted logs are authoritative under TraceTransfers:
+			// they carry synthetic ERC-7528 entries and have already
+			// dropped logs from reverted nested frames. Real EVM logs
+			// also flowed through the tracer (via StateDB.AddLog firing
+			// OnLog), so this list is a complete superset of res.Logs.
+			tracerLogs := tt.Logs()
+			if tracerLogs == nil {
+				tracerLogs = []*ethtypes.Log{}
+			}
+			callResult.Logs = tracerLogs
+		}
+		calls = append(calls, callResult)
 		txHashes = append(txHashes, callTxHash)
 		cumGas += res.GasUsed
 	}
