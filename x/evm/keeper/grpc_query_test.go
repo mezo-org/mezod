@@ -3390,33 +3390,9 @@ func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_BTCTokenSkipped()
 }
 
 // -----------------------------------------------------------------------------
-// SimulateV1 — validation=true mode (Phase 10)
+// SimulateV1 — validation=true mode
 // -----------------------------------------------------------------------------
-//
-// The driver gates a per-call message through validateSimCall when
-// opts.Validation is set: nonce, init-code-size (CREATE only), intrinsic
-// gas, fee-cap vs base-fee, and balance for gasLimit*gasFeeCap+value.
-// Any failure aborts the entire request as a top-level fatal, surfacing
-// on response.Error with a spec-reserved JSON-RPC code. Revert and VM
-// errors stay per-call regardless of the flag.
-//
-// validation=false (default) bypasses the gate entirely and matches the
-// non-validation execution-apis fixtures: nonce-too-low / no-funds /
-// fee-cap-below-baseFee all succeed.
-//
-// Most validation=true tests need an explicit MaxFeePerGas large enough
-// to clear the chain-computed eip1559 baseFee floor for the simulated
-// header. Without that the fee-cap gate would mask whatever gate the
-// test actually means to exercise (this is exactly why the upstream
-// no-funds fixture fails on -32005 even when funds are nominally the
-// failure reason).
 
-// validatedSimulateRequest builds the standard SimulateV1 opts payload
-// for the validation suite. `state` carries StateOverrides for the
-// sender (typically balance + nonce); `call` is the per-call args
-// already populated with MaxFeePerGas. `valFlag` toggles the validation
-// flag — same opts shape regardless so test pairs (validation=true vs
-// validation=false on identical calls) read straightforwardly.
 func (suite *KeeperTestSuite) validatedSimulateRequest(
 	state map[common.Address]map[string]interface{},
 	calls []types.TransactionArgs,
@@ -3891,17 +3867,7 @@ func (suite *KeeperTestSuite) TestSimulateV1_Validation_DeterminismRepeated() {
 }
 
 // --- validation=false (default) — every gate must allow the call ---------
-//
-// These are the negative twins of the validation=true cases above; they
-// pin that the gate is OFF when the flag is OFF (matches upstream
-// fixture behavior).
 
-// TestSimulateV1_NoValidation_NonceLowSucceeds — same opts as
-// TestSimulateV1_Validation_NonceLow but validation=false: the call
-// must succeed. Mirrors the upstream
-// `ethSimulate-transaction-too-low-nonce-38010.io` fixture (which
-// returns a successful per-call result, not the -38010 the filename
-// implies, because the fixture omits the validation flag).
 func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_NonceLowSucceeds() {
 	suite.SetupTest()
 
@@ -3923,20 +3889,10 @@ func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_NonceLowSucceeds() {
 	suite.Require().Equal("0x1", c["status"])
 }
 
-// TestSimulateV1_NoValidation_InsufficientFundsSucceeds — sender with
-// zero balance + non-zero value, validation=false: the request must NOT
-// abort with a top-level -38014 fatal. Mezod's EVM still rejects the
-// value transfer at the CanTransfer check (so the per-call status is
-// 0x0), but the failure is per-call, not request-wide. The pinned
-// invariant is the absence of a top-level fatal — the per-call code is
-// whatever the EVM emits.
-//
-// Geth's own behavior diverges here: even with validation omitted, geth
-// returns top-level -38014 because its per-call preCheck still runs the
-// balance check. Mezod intentionally bypasses preCheck during
-// validation=false, so the call lands on the EVM's CanTransfer guard
-// and surfaces as a per-call failure. That's the divergence pinned
-// here.
+// validation=false must not promote insufficient-funds to -38014.
+// Mezod's EVM still rejects value transfers via CanTransfer, so the
+// call surfaces as a per-call failure — the request-level pin is the
+// absence of a top-level fatal.
 func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_InsufficientFundsSucceeds() {
 	suite.SetupTest()
 
@@ -3959,11 +3915,6 @@ func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_InsufficientFundsSucce
 		"the call must show up in the per-call list, not collapse into the request error")
 }
 
-// TestSimulateV1_NoValidation_FeeCapBelowBaseFeeSucceeds — explicit
-// MaxFeePerGas=0 with validation=false: the simulated header carries
-// BaseFee=0 (per the validation=false branch in makeSimHeader), so the
-// per-call fee-cap arithmetic always passes. Mirrors the upstream
-// `ethSimulate-basefee-too-low-without-validation-38012.io` fixture.
 func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_FeeCapBelowBaseFeeSucceeds() {
 	suite.SetupTest()
 
@@ -4051,13 +4002,7 @@ func (suite *KeeperTestSuite) TestSimulateV1_Validation_BoundaryEqual_NoFatal() 
 	suite.Require().Equal("0x1", c["status"])
 }
 
-// TestSimulateV1_Validation_NonceLow_FixturePort — port the upstream
-// `ethSimulate-transaction-too-low-nonce-38010.io` shape: stateOverride
-// nonce=10 on a fresh sender, call.nonce=0, validation=true. Upstream
-// the .io fixture's filename suggests -38010 but the fixture itself
-// omits validation, so the upstream call succeeds. Here we ADD
-// validation=true and expect the -38010 the filename implied.
-func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow_FixturePort() {
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow_StateOverrideNonceAborts() {
 	suite.SetupTest()
 
 	sender := common.HexToAddress("0xc100000000000000000000000000000000000000")
@@ -4077,12 +4022,7 @@ func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow_FixturePort() {
 	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
 }
 
-// TestSimulateV1_Validation_NonceHigh_FixturePortMatchingNoValidation —
-// same opts as the FixturePort above except validation=false: the call
-// must succeed (matches the upstream fixture's actual response shape,
-// where the -38010-named scenario's .io has a successful result block
-// because the validation flag is omitted).
-func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceHigh_FixturePortMatchingNoValidation() {
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow_StateOverrideNonceSucceedsWhenOff() {
 	suite.SetupTest()
 
 	sender := common.HexToAddress("0xc100000000000000000000000000000000000000")

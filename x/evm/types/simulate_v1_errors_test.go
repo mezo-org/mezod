@@ -125,14 +125,7 @@ func TestNewSimVMError(t *testing.T) {
 	require.Equal(t, "out of gas", err.Message)
 }
 
-// --- validation=true constructors ---------------------------------------
-//
-// One test per constructor pinning the spec-reserved JSON-RPC code and
-// the user-visible message tokens. Boundary tests below cover the
-// edge-of-validity inputs (zero nonces, init-code at the limit). The
-// integration test at the bottom of this group asserts the typed errors
-// round-trip through `errors.As` so the gRPC handler's *SimError
-// fast-path picks them up.
+// --- validation-mode constructors ---------------------------------------
 
 func TestNewSimNonceTooLow(t *testing.T) {
 	addr := common.HexToAddress("0x00000000000000000000000000000000000000a1")
@@ -194,9 +187,6 @@ func TestNewSimFeeCapTooLow(t *testing.T) {
 	require.Contains(t, err.Message, want.String())
 }
 
-// NewSimIntrinsicGas predates Phase 10 but is reused as the validation
-// gate's intrinsic-gas branch. Pinning the code here keeps Phase 10's
-// gate set covered in one place.
 func TestNewSimIntrinsicGas_AlreadyExists_Sanity(t *testing.T) {
 	err := NewSimIntrinsicGas(20_000, 21_000)
 	require.Equal(t, SimErrCodeIntrinsicGas, err.ErrorCode())
@@ -205,9 +195,6 @@ func TestNewSimIntrinsicGas_AlreadyExists_Sanity(t *testing.T) {
 	require.Contains(t, err.Message, "21000")
 }
 
-// Boundary: zero nonces are a valid (and common) case for fresh accounts.
-// The constructor must format them as "0" rather than skip the value or
-// emit "<nil>".
 func TestNewSimNonceTooLow_ZeroNonces(t *testing.T) {
 	addr := common.HexToAddress("0x00000000000000000000000000000000000000a4")
 	err := NewSimNonceTooLow(addr, 0, 0)
@@ -215,23 +202,6 @@ func TestNewSimNonceTooLow_ZeroNonces(t *testing.T) {
 	require.Contains(t, err.Message, " 0")
 }
 
-// Boundary: init-code exactly at the limit must NOT trip; the
-// constructor only fires for sizes strictly above MaxInitCodeSize. This
-// test pins the message format for the smallest "over-by-one" case
-// callers will encounter in practice.
-func TestNewSimInitcodeTooLarge_BoundaryEqual(t *testing.T) {
-	// One byte over the limit — the smallest input the gate is allowed
-	// to fire on (the equal-to case must NOT fire; that branch lives in
-	// validateSimCall, covered in the keeper E2E suite).
-	err := NewSimInitcodeTooLarge(49_153, 49_152)
-	require.Equal(t, SimErrCodeMaxInitCodeSizeExceeded, err.ErrorCode())
-	require.Contains(t, err.Message, "49153")
-	require.Contains(t, err.Message, "49152")
-}
-
-// Each new constructor must round-trip through `errors.As(err, &SimError)`
-// so the gRPC handler's *SimError fast-path picks them up; ErrorCode()
-// must match the exported constant.
 func TestSimError_ErrorsAsRoundTrip(t *testing.T) {
 	addr := common.HexToAddress("0x00000000000000000000000000000000000000a5")
 	cases := []struct {

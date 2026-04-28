@@ -606,23 +606,11 @@ func (f *validateSimCallFixture) baselineMsg() *core.Message {
 	}
 }
 
-// Validation off: every gate is bypassed regardless of inputs.
-func TestValidateSimCall_ValidationFalse_BypassesAllGates(t *testing.T) {
-	f := newValidateSimCallFixture(t)
-	msg := f.baselineMsg()
-	msg.Nonce = 99 // would be a -38011 with validation=true
-	msg.GasLimit = 0
-	msg.GasFeeCap = big.NewInt(0)
-
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, false)
-	require.Nil(t, simErr)
-}
-
 // Happy path baseline. Subsequent tests perturb one field at a time, so
 // any failure here would point at fixture drift rather than gate logic.
 func TestValidateSimCall_AllGatesPass(t *testing.T) {
 	f := newValidateSimCallFixture(t)
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, f.baselineMsg(), f.header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, f.baselineMsg(), f.header, f.rules, f.cfg))
 }
 
 // --- per-gate boundaries -------------------------------------------------
@@ -631,7 +619,7 @@ func TestValidateSimCall_Nonce_EqualPasses(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
 	msg.Nonce = 0 // state nonce is 0
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 }
 
 func TestValidateSimCall_Nonce_OneLowFails_38010(t *testing.T) {
@@ -640,7 +628,7 @@ func TestValidateSimCall_Nonce_OneLowFails_38010(t *testing.T) {
 	f.sdb.SetNonce(f.from, 5)
 	msg := f.baselineMsg()
 	msg.Nonce = 4
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeNonceTooLow, simErr.ErrorCode())
 }
@@ -649,7 +637,7 @@ func TestValidateSimCall_Nonce_OneHighFails_38011(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
 	msg.Nonce = 1 // state nonce is 0
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeNonceTooHigh, simErr.ErrorCode())
 }
@@ -658,14 +646,14 @@ func TestValidateSimCall_IntrinsicGas_BoundaryEqual(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
 	msg.GasLimit = 21_000 // exactly intrinsic for a pure transfer
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 }
 
 func TestValidateSimCall_IntrinsicGas_OneBelowFails_38013(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
 	msg.GasLimit = 20_999
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeIntrinsicGas, simErr.ErrorCode())
 }
@@ -674,14 +662,14 @@ func TestValidateSimCall_FeeCap_BoundaryEqual(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
 	msg.GasFeeCap = new(big.Int).Set(f.header.BaseFee) // exactly equal -> passes
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 }
 
 func TestValidateSimCall_FeeCap_OneBelowFails_32005(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
 	msg.GasFeeCap = new(big.Int).Sub(f.header.BaseFee, big.NewInt(1))
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeFeeCapTooLow, simErr.ErrorCode())
 }
@@ -697,7 +685,7 @@ func TestValidateSimCall_Balance_BoundaryEqual(t *testing.T) {
 
 	// Now adjust value so balance == cost exactly.
 	msg.Value = new(big.Int).Sub(bal.ToBig(), new(big.Int).Mul(big.NewInt(int64(msg.GasLimit)), msg.GasFeeCap))
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 }
 
 func TestValidateSimCall_Balance_OneBelowFails_38014(t *testing.T) {
@@ -706,7 +694,7 @@ func TestValidateSimCall_Balance_OneBelowFails_38014(t *testing.T) {
 	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
 	// value = balance + 1 -> cost > balance.
 	msg.Value = new(big.Int).Add(bal.ToBig(), big.NewInt(1))
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeInsufficientFunds, simErr.ErrorCode())
 }
@@ -718,7 +706,7 @@ func TestValidateSimCall_InitCode_BoundaryEqual(t *testing.T) {
 	msg.Data = make([]byte, params.MaxInitCodeSize)
 	// Intrinsic for a CREATE this size is well above 21k; bump GasLimit.
 	msg.GasLimit = 30_000_000
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 }
 
 func TestValidateSimCall_InitCode_OneOverFails_38025(t *testing.T) {
@@ -727,7 +715,7 @@ func TestValidateSimCall_InitCode_OneOverFails_38025(t *testing.T) {
 	msg.To = nil
 	msg.Data = make([]byte, params.MaxInitCodeSize+1)
 	msg.GasLimit = 30_000_000
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeMaxInitCodeSizeExceeded, simErr.ErrorCode())
 }
@@ -746,7 +734,7 @@ func TestValidateSimCall_InitCode_PreShanghai_NoCheck(t *testing.T) {
 	msg.To = nil
 	msg.Data = make([]byte, params.MaxInitCodeSize+1)
 	msg.GasLimit = 30_000_000
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, preShanghaiRules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, preShanghaiRules, f.cfg))
 }
 
 // CALL with oversized calldata is NOT subject to the init-code gate;
@@ -757,7 +745,7 @@ func TestValidateSimCall_InitCode_Call_NotCreate(t *testing.T) {
 	msg.Data = make([]byte, params.MaxInitCodeSize+1)
 	msg.GasLimit = 30_000_000
 	// To is non-nil from baseline -> CALL.
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 }
 
 // Pre-London / no override: header.BaseFee == nil. Fee-cap check is
@@ -768,7 +756,7 @@ func TestValidateSimCall_FeeCap_NoBaseFeeHeader(t *testing.T) {
 	header.BaseFee = nil
 	msg := f.baselineMsg()
 	msg.GasFeeCap = big.NewInt(0)
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, &header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, &header, f.rules, f.cfg))
 }
 
 // --- ordering ------------------------------------------------------------
@@ -787,7 +775,7 @@ func TestValidateSimCall_Order_NonceBeforeInsufficientFunds(t *testing.T) {
 	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
 	msg.Value = new(big.Int).Add(bal.ToBig(), big.NewInt(1)) // also fails balance
 
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeNonceTooHigh, simErr.ErrorCode())
 }
@@ -799,7 +787,7 @@ func TestValidateSimCall_Order_InitCodeBeforeIntrinsic(t *testing.T) {
 	msg.To = nil
 	msg.Data = make([]byte, params.MaxInitCodeSize+1)
 	msg.GasLimit = 0 // also fails intrinsic
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeMaxInitCodeSizeExceeded, simErr.ErrorCode())
 }
@@ -810,7 +798,7 @@ func TestValidateSimCall_Order_IntrinsicBeforeFeeCap(t *testing.T) {
 	msg := f.baselineMsg()
 	msg.GasLimit = 20_999 // fails intrinsic
 	msg.GasFeeCap = big.NewInt(0) // also fails fee-cap
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeIntrinsicGas, simErr.ErrorCode())
 }
@@ -822,21 +810,19 @@ func TestValidateSimCall_Order_FeeCapBeforeBalance(t *testing.T) {
 	msg.GasFeeCap = big.NewInt(0) // fails fee-cap
 	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
 	msg.Value = new(big.Int).Add(bal.ToBig(), big.NewInt(1)) // also fails balance
-	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeFeeCapTooLow, simErr.ErrorCode())
 }
 
 // --- determinism / no mutation -------------------------------------------
 
-// Same inputs -> byte-identical *SimError. Pinned so a future refactor
-// to e.g. embed call-time stamps in the message would fail loudly.
 func TestValidateSimCall_Determinism(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	msg := f.baselineMsg()
 	msg.Nonce = 1 // forces NonceTooHigh
-	a := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
-	b := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true)
+	a := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	b := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, a)
 	require.NotNil(t, b)
 	require.Equal(t, a.Code, b.Code)
@@ -850,7 +836,7 @@ func TestValidateSimCall_DoesNotMutateMessage(t *testing.T) {
 	msg := f.baselineMsg()
 	snapshot := *msg
 
-	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg, true))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 	require.Equal(t, snapshot.From, msg.From)
 	require.Equal(t, snapshot.Nonce, msg.Nonce)
 	require.Equal(t, snapshot.GasLimit, msg.GasLimit)

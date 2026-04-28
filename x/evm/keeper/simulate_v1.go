@@ -549,15 +549,14 @@ func (k *Keeper) processSimBlock(
 			return nil, nil, types.NewSimInvalidParams(msgErr.Error())
 		}
 
-		// EoA check is always skipped — custom state overrides may make
-		// `from` a contract. Mezod's applyMessageWithConfig does not
-		// invoke core.preCheck, so this flag is documentary today; it
-		// keeps the message correct under any future refactor that
-		// routes through the core path.
+		// State overrides may make `from` a contract; the EoA check
+		// must stay off for the simulator regardless of validation mode.
 		msg.SkipAccountChecks = true
 
-		if simErr := k.validateSimCall(sdkCtx, sdb, &msg, header, rules, cfg.ChainConfig, opts.Validation); simErr != nil {
-			return nil, nil, simErr
+		if opts.Validation {
+			if simErr := k.validateSimCall(sdkCtx, sdb, &msg, header, rules, cfg.ChainConfig); simErr != nil {
+				return nil, nil, simErr
+			}
 		}
 
 		// Per-call TxConfig so AddLog stamps distinct TxHash / TxIndex
@@ -817,22 +816,11 @@ func computeSimTxHash(msg core.Message) common.Hash {
 	return tx.Hash()
 }
 
-// validateSimCall runs the validation=true pre-call gates. Callers
-// pass a `validation` flag because validation=false MUST bypass every
-// gate (spec contract). Failures are returned as *types.SimError; the
-// caller surfaces them as request-level fatals via simulateV1ErrResponse.
-//
-// Gate order mirrors geth's preCheck flow (state_transition.go preCheck
-// + state-transition init-code check):
-//  1. nonce       (-38010 / -38011)
-//  2. init-code   (-38025) — Shanghai-only, CREATE-only
-//  3. intrinsic   (-38013)
-//  4. fee-cap     (-32005) — only when header.BaseFee != nil
-//  5. balance     (-38014)
-//
-// The block-baseFee floor (-38012) is checked once per block in
-// processSimBlock (depends on parent header + override pointer, not on
-// the per-call message), keeping this helper focused on the message.
+// validateSimCall runs the per-call validation=true gates in geth's
+// preCheck order: nonce, init-code (Shanghai+CREATE), intrinsic gas,
+// fee-cap (when header.BaseFee != nil), balance. The block-baseFee
+// floor (-38012) lives in processSimBlock since it depends on the
+// parent and the override pointer, not on the message.
 func (k *Keeper) validateSimCall(
 	ctx sdk.Context,
 	sdb *statedb.StateDB,
@@ -840,12 +828,7 @@ func (k *Keeper) validateSimCall(
 	header *ethtypes.Header,
 	rules params.Rules,
 	chainCfg *params.ChainConfig,
-	validation bool,
 ) *types.SimError {
-	if !validation {
-		return nil
-	}
-
 	stateNonce := sdb.GetNonce(msg.From)
 	switch {
 	case msg.Nonce < stateNonce:
@@ -861,8 +844,6 @@ func (k *Keeper) validateSimCall(
 
 	intrinsic, err := k.GetEthIntrinsicGas(ctx, *msg, chainCfg, contractCreation)
 	if err != nil {
-		// IntrinsicGas only errors on overflow; report the data length
-		// as the offender and let the caller surface the spec code.
 		return types.NewSimIntrinsicGas(msg.GasLimit, math.MaxUint64)
 	}
 	if msg.GasLimit < intrinsic {
@@ -873,10 +854,6 @@ func (k *Keeper) validateSimCall(
 		return types.NewSimFeeCapTooLow(msg.GasFeeCap, header.BaseFee)
 	}
 
-	// Balance must cover gasLimit*gasPrice + value. Use GasFeeCap (the
-	// spec-aligned upper bound) so the check is independent of the
-	// caller's tipCap; this matches how geth's preCheck/buyGas computes
-	// `mgval`.
 	cost := new(big.Int).SetUint64(msg.GasLimit)
 	cost.Mul(cost, msg.GasFeeCap)
 	cost.Add(cost, msg.Value)
