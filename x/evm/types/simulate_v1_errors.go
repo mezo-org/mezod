@@ -105,6 +105,46 @@ func NewSimClientLimitExceeded(span *big.Int, maxSpan int64) *SimError {
 	}
 }
 
+// NewSimBlockGasLimitReached reports that a call's requested or defaulted
+// gas would push cumulative block gas past the simulated block's gas limit
+// (-38015).
+func NewSimBlockGasLimitReached(requested, remaining uint64) *SimError {
+	return &SimError{
+		Code: SimErrCodeBlockGasLimitReached,
+		Message: fmt.Sprintf(
+			"simulate: block gas limit reached: requested %d > remaining %d",
+			requested, remaining,
+		),
+	}
+}
+
+// NewSimIntrinsicGas reports a call whose explicit gas limit falls below
+// the call's intrinsic-gas requirement (-38013). `required` may be 0 when
+// the catch site does not have access to the computed intrinsic value;
+// the message stays informative as "have X, need 0".
+func NewSimIntrinsicGas(provided, required uint64) *SimError {
+	return &SimError{
+		Code: SimErrCodeIntrinsicGas,
+		Message: fmt.Sprintf(
+			"simulate: intrinsic gas too low: have %d, need %d",
+			provided, required,
+		),
+	}
+}
+
+// NewSimForkSpanUnsupported reports a simulated chain span that crosses a
+// fork activation boundary, which mezod does not yet support. Reuses
+// SimErrCodeClientLimitExceeded (-38026) — the spec does not reserve a
+// fork-boundary code, and "client-imposed limit on fork-uniformity" is a
+// defensible fit. Distinguishable from NewSimClientLimitExceeded by
+// message text.
+func NewSimForkSpanUnsupported() *SimError {
+	return &SimError{
+		Code:    SimErrCodeClientLimitExceeded,
+		Message: "simulate: span crosses a fork boundary; not yet supported",
+	}
+}
+
 // NewSimMovePrecompileSelfRef reports a MovePrecompileTo override whose
 // destination is the source address (-38022).
 func NewSimMovePrecompileSelfRef(addr common.Address) *SimError {
