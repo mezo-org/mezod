@@ -1,10 +1,13 @@
 package backend
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
@@ -122,6 +125,54 @@ func (suite *BackendTestSuite) TestSimulateV1_PopulatesBaseBlockHash() {
 	suite.Require().NoError(err)
 	suite.Require().NotNil(captured)
 	suite.Require().Equal(wantBytes, captured.BaseBlockHash)
+}
+
+// gRPC DeadlineExceeded must surface as a structured -32016 SimError.
+func (suite *BackendTestSuite) TestSimulateV1_GRPCDeadlineExceededTranslatesToSimError() {
+	suite.SetupTest()
+	_, bz := suite.buildEthereumTx()
+
+	client := suite.backend.clientCtx.Client.(*mocks.Client)
+	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+	_, err := RegisterBlock(client, 1, bz)
+	suite.Require().NoError(err)
+
+	queryClient.On(
+		"SimulateV1", mock.Anything, mock.AnythingOfType("*types.SimulateV1Request"),
+	).Return((*evmtypes.SimulateV1Response)(nil), status.Error(codes.DeadlineExceeded, "deadline exceeded"))
+
+	bn := rpctypes.BlockNumber(1)
+	bnh := rpctypes.BlockNumberOrHash{BlockNumber: &bn}
+	_, err = suite.backend.SimulateV1(evmtypes.SimOpts{}, &bnh)
+	suite.Require().Error(err)
+
+	var simErr *evmtypes.SimError
+	suite.Require().True(errors.As(err, &simErr))
+	suite.Require().Equal(evmtypes.SimErrCodeTimeout, simErr.ErrorCode())
+}
+
+// Local context.DeadlineExceeded must surface as a structured -32016 SimError.
+func (suite *BackendTestSuite) TestSimulateV1_LocalDeadlineExceededTranslatesToSimError() {
+	suite.SetupTest()
+	_, bz := suite.buildEthereumTx()
+
+	client := suite.backend.clientCtx.Client.(*mocks.Client)
+	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+	_, err := RegisterBlock(client, 1, bz)
+	suite.Require().NoError(err)
+
+	queryClient.On(
+		"SimulateV1", mock.Anything, mock.AnythingOfType("*types.SimulateV1Request"),
+	).Return((*evmtypes.SimulateV1Response)(nil), context.DeadlineExceeded)
+
+	bn := rpctypes.BlockNumber(1)
+	bnh := rpctypes.BlockNumberOrHash{BlockNumber: &bn}
+	_, err = suite.backend.SimulateV1(evmtypes.SimOpts{}, &bnh)
+	suite.Require().Error(err)
+
+	var simErr *evmtypes.SimError
+	suite.Require().True(errors.As(err, &simErr))
+	suite.Require().Equal(evmtypes.SimErrCodeTimeout, simErr.ErrorCode())
 }
 
 func (suite *BackendTestSuite) TestSimulateV1_UnmarshalsResults() {

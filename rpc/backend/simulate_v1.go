@@ -3,9 +3,12 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
@@ -13,6 +16,12 @@ import (
 
 // SimulateV1 runs `eth_simulateV1`. Timeout wiring mirrors DoCall; the
 // eth_simulateV1 path inherits the same RPCEVMTimeout semantics.
+//
+// Block-count and cumulative call-count caps live on the keeper side
+// (see x/evm/keeper.Keeper.SimulateV1). They do not depend on RPC
+// configuration, so enforcing them once at the keeper input boundary
+// covers both the JSON-RPC path and direct gRPC peers without
+// duplicating the constants here.
 func (b *Backend) SimulateV1(
 	opts evmtypes.SimOpts,
 	blockNrOrHash *rpctypes.BlockNumberOrHash,
@@ -87,6 +96,12 @@ func (b *Backend) SimulateV1(
 
 	res, err := b.queryClient.QueryClient.SimulateV1(ctx, req)
 	if err != nil {
+		// gRPC may return DeadlineExceeded before the keeper writes a
+		// NewSimTimeout response; translate both shapes to -32016.
+		if errors.Is(err, context.DeadlineExceeded) ||
+			status.Code(err) == codes.DeadlineExceeded {
+			return nil, evmtypes.NewSimTimeout(timeout)
+		}
 		return nil, err
 	}
 

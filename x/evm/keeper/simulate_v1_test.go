@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"errors"
+	"math"
 	"math/big"
 	"testing"
 
@@ -114,15 +115,15 @@ func TestSanitizeSimChain_MaxBlocksBoundary(t *testing.T) {
 	base := &ethtypes.Header{Number: big.NewInt(10), Time: 60}
 	// 256 blocks forward is on the allowed edge.
 	blocks := []types.SimBlock{
-		{BlockOverrides: &types.SimBlockOverrides{Number: hbig(10 + int64(maxSimulateBlocks))}},
+		{BlockOverrides: &types.SimBlockOverrides{Number: hbig(10 + int64(types.MaxSimulateBlocks))}},
 	}
 	out, err := sanitizeSimChain(base, blocks)
 	require.NoError(t, err)
-	require.Len(t, out, maxSimulateBlocks)
+	require.Len(t, out, types.MaxSimulateBlocks)
 
 	// 257 over is rejected.
 	blocks = []types.SimBlock{
-		{BlockOverrides: &types.SimBlockOverrides{Number: hbig(10 + int64(maxSimulateBlocks) + 1)}},
+		{BlockOverrides: &types.SimBlockOverrides{Number: hbig(10 + int64(types.MaxSimulateBlocks) + 1)}},
 	}
 	_, err = sanitizeSimChain(base, blocks)
 	requireSimError(t, err, types.SimErrCodeClientLimitExceeded)
@@ -274,7 +275,7 @@ func TestResolveSimCallGas_DefaultsToRemaining(t *testing.T) {
 	args := &types.TransactionArgs{From: &from}
 	header := &ethtypes.Header{GasLimit: 1_000_000}
 
-	gas, simErr := resolveSimCallGas(args, header, 400_000)
+	gas, simErr := resolveSimCallGas(args, header, 400_000, newSimGasBudget(0))
 	require.Nil(t, simErr)
 	require.NotNil(t, gas)
 	require.Equal(t, uint64(600_000), uint64(*gas))
@@ -286,7 +287,7 @@ func TestResolveSimCallGas_BlockGasLimitReached(t *testing.T) {
 	args := &types.TransactionArgs{From: &from, Gas: &gas}
 	header := &ethtypes.Header{GasLimit: 1_000_000}
 
-	resolved, simErr := resolveSimCallGas(args, header, 400_000)
+	resolved, simErr := resolveSimCallGas(args, header, 400_000, newSimGasBudget(0))
 	require.Nil(t, resolved)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeBlockGasLimitReached, simErr.ErrorCode())
@@ -294,44 +295,38 @@ func TestResolveSimCallGas_BlockGasLimitReached(t *testing.T) {
 	require.Contains(t, simErr.Message, "600000")
 }
 
-// When the per-block budget is exhausted and the caller omits args.Gas,
-// the resolver emits -38015 instead of defaulting Gas=0 (which would
-// fail intrinsic-gas inside applyMessageWithConfig and bubble as gRPC
-// Internal, wiping preceding successful results).
+// header.GasLimit=0 with implicit args.Gas → -38015.
 func TestResolveSimCallGas_ZeroRemaining_DefaultEmitsSimError(t *testing.T) {
 	from := common.HexToAddress("0xaaaa000000000000000000000000000000000005")
 	args := &types.TransactionArgs{From: &from}
 	header := &ethtypes.Header{GasLimit: 0}
 
-	resolved, simErr := resolveSimCallGas(args, header, 0)
+	resolved, simErr := resolveSimCallGas(args, header, 0, newSimGasBudget(0))
 	require.Nil(t, resolved)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeBlockGasLimitReached, simErr.ErrorCode())
 }
 
-// Same path with a non-zero cumGasUsed that has eaten the entire block.
+// cumGasUsed == header.GasLimit with implicit args.Gas → -38015.
 func TestResolveSimCallGas_BudgetFullyConsumed_DefaultEmitsSimError(t *testing.T) {
 	from := common.HexToAddress("0xaaaa00000000000000000000000000000000000a")
 	args := &types.TransactionArgs{From: &from}
 	header := &ethtypes.Header{GasLimit: 1_000_000}
 
-	resolved, simErr := resolveSimCallGas(args, header, 1_000_000)
+	resolved, simErr := resolveSimCallGas(args, header, 1_000_000, newSimGasBudget(0))
 	require.Nil(t, resolved)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeBlockGasLimitReached, simErr.ErrorCode())
 }
 
-// TestResolveSimCallGas_ZeroGasLimit_ExplicitGasRejected pins the
-// behavior when the caller supplies an explicit args.Gas against a
-// zero-limit block: -38015 is returned from preflight, no EVM work
-// runs at all.
+// header.GasLimit=0 with explicit args.Gas → -38015.
 func TestResolveSimCallGas_ZeroGasLimit_ExplicitGasRejected(t *testing.T) {
 	from := common.HexToAddress("0xaaaa000000000000000000000000000000000006")
 	gas := hexutil.Uint64(21_000)
 	args := &types.TransactionArgs{From: &from, Gas: &gas}
 	header := &ethtypes.Header{GasLimit: 0}
 
-	resolved, simErr := resolveSimCallGas(args, header, 0)
+	resolved, simErr := resolveSimCallGas(args, header, 0, newSimGasBudget(0))
 	require.Nil(t, resolved)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeBlockGasLimitReached, simErr.ErrorCode())
@@ -457,4 +452,63 @@ func TestSameForks_AcrossForkBoundary(t *testing.T) {
 	post := cfg.Rules(big.NewInt(100), true, cancun)
 	require.True(t, post.IsCancun && !pre.IsCancun, "fixture must straddle Cancun activation")
 	require.False(t, sameForks(pre, post))
+}
+
+// --- simGasBudget ---------------------------------------------------------
+
+func TestSimGasBudget_ZeroIsUnlimited(t *testing.T) {
+	b := newSimGasBudget(0)
+	require.Equal(t, uint64(math.MaxUint64), b.remaining)
+	require.Equal(t, uint64(1_000_000), b.clamp(1_000_000))
+}
+
+func TestSimGasBudget_ClampToRemaining(t *testing.T) {
+	b := newSimGasBudget(500_000)
+	require.Equal(t, uint64(100_000), b.clamp(100_000))
+	require.Equal(t, uint64(500_000), b.clamp(700_000))
+}
+
+func TestSimGasBudget_ConsumeDeducts(t *testing.T) {
+	b := newSimGasBudget(1_000_000)
+	require.Nil(t, b.consume(300_000))
+	require.Equal(t, uint64(700_000), b.remaining)
+	require.Nil(t, b.consume(700_000))
+	require.Equal(t, uint64(0), b.remaining)
+}
+
+func TestSimGasBudget_ConsumeOverflowsReturnsError(t *testing.T) {
+	b := newSimGasBudget(100_000)
+	err := b.consume(200_000)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "RPC gas cap exhausted")
+	require.Contains(t, err.Error(), "200000")
+	require.Contains(t, err.Error(), "100000")
+	require.Equal(t, uint64(100_000), b.remaining)
+}
+
+// Budget remaining < args.Gas → effective gas clamps to budget remaining.
+func TestResolveSimCallGas_ClampsByBudget(t *testing.T) {
+	from := common.HexToAddress("0xaaaa00000000000000000000000000000000000b")
+	gas := hexutil.Uint64(800_000)
+	args := &types.TransactionArgs{From: &from, Gas: &gas}
+	header := &ethtypes.Header{GasLimit: 1_000_000}
+	budget := newSimGasBudget(300_000)
+
+	resolved, simErr := resolveSimCallGas(args, header, 0, budget)
+	require.Nil(t, simErr)
+	require.NotNil(t, resolved)
+	require.Equal(t, uint64(300_000), uint64(*resolved))
+}
+
+// Unlimited budget (gas-cap=0) does not shrink the resolved gas.
+func TestResolveSimCallGas_UnlimitedBudgetIsNoop(t *testing.T) {
+	from := common.HexToAddress("0xaaaa00000000000000000000000000000000000c")
+	gas := hexutil.Uint64(500_000)
+	args := &types.TransactionArgs{From: &from, Gas: &gas}
+	header := &ethtypes.Header{GasLimit: 1_000_000}
+
+	resolved, simErr := resolveSimCallGas(args, header, 0, newSimGasBudget(0))
+	require.Nil(t, simErr)
+	require.NotNil(t, resolved)
+	require.Equal(t, uint64(500_000), uint64(*resolved))
 }

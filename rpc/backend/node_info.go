@@ -348,6 +348,13 @@ func (b *Backend) RPCMinGasPrice() int64 {
 	return amt
 }
 
+// SimulateDisabled reports whether the operator has hidden eth_simulateV1
+// via app.toml. When true, the method handler returns -32601 without
+// touching the backend.
+func (b *Backend) SimulateDisabled() bool {
+	return b.cfg.JSONRPC.SimulateDisabled
+}
+
 // RPCLogsFilterAddrCap returns the maximum number of contract addresses in the filter query for
 // logs calls (`eth_getLogs` and `eth_subscribe` with `logs` parameter).
 func (b *Backend) RPCLogsFilterAddrCap() int32 {

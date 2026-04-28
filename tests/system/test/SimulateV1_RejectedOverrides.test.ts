@@ -1,14 +1,13 @@
 import { expect } from "chai"
 import { ethers } from "hardhat"
+import {
+  CapturedError,
+  extractCode,
+  extractMessage,
+} from "./helpers/rpc-error"
 
 describe("SimulateV1_RejectedOverrides", function () {
-  type Captured = {
-    thrown: boolean
-    code: number | undefined
-    message: string
-  }
-
-  async function simulateWithBlockOverrides(overrides: any): Promise<Captured> {
+  async function simulateWithBlockOverrides(overrides: any): Promise<CapturedError> {
     const opts = {
       blockStateCalls: [
         { blockOverrides: overrides, calls: [] },
@@ -26,9 +25,9 @@ describe("SimulateV1_RejectedOverrides", function () {
     }
   }
 
-  let beaconRootResult: Captured
-  let withdrawalsResult: Captured
-  let blobBaseFeeResult: Captured
+  let beaconRootResult: CapturedError
+  let withdrawalsResult: CapturedError
+  let blobBaseFeeResult: CapturedError
 
   before(async function () {
     beaconRootResult = await simulateWithBlockOverrides({ beaconRoot: ethers.ZeroHash })
@@ -75,22 +74,3 @@ describe("SimulateV1_RejectedOverrides", function () {
     })
   })
 })
-
-// Providers wrap JSON-RPC errors through several layers; drill through to find
-// the original {code, message} object regardless of where it landed.
-function extractCode(err: any): number | undefined {
-  if (!err) return undefined
-  if (typeof err.code === "number") return err.code
-  if (err.error && typeof err.error.code === "number") return err.error.code
-  if (err.info && err.info.error && typeof err.info.error.code === "number") return err.info.error.code
-  if (err.data && typeof err.data.code === "number") return err.data.code
-  return undefined
-}
-
-function extractMessage(err: any): string {
-  if (!err) return ""
-  if (err.error && typeof err.error.message === "string") return err.error.message
-  if (err.info && err.info.error && typeof err.info.error.message === "string") return err.info.error.message
-  if (typeof err.message === "string") return err.message
-  return String(err)
-}

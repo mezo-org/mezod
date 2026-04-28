@@ -3,21 +3,22 @@ package types
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 // Spec-reserved JSON-RPC error codes for eth_simulateV1. Names and values
-// mirror the execution-apis spec; see the canonical error list (message
-// text + condition) at:
+// mirror the geth execution spec (ethereum/execution-apis); see the
+// canonical error list (message text + condition) at:
 //
 //	https://github.com/ethereum/execution-apis/blob/main/src/eth/execute.yaml
 const (
 	// SimErrCodeReverted pins to the spec's enforced `const: 3` for
-	// CallResultFailure.error.code (execute.yaml schema). Geth diverges
-	// here and reuses its legacy -32000 from eth_call; reth follows the
-	// spec. We follow the spec / reth.
+	// CallResultFailure.error.code (geth execution spec's `execute.yaml`
+	// schema). Geth diverges here and reuses its legacy -32000 from
+	// eth_call; reth follows the spec. We follow the spec / reth.
 	SimErrCodeReverted = 3
 
 	SimErrCodeFeeCapTooLow   = -32005
@@ -229,4 +230,48 @@ func NewSimReverted(data []byte) *SimError {
 // (-32015).
 func NewSimVMError(vmErr string) *SimError {
 	return &SimError{Code: SimErrCodeVMError, Message: vmErr}
+}
+
+// NewSimMethodNotFound reports the method-disabled kill switch (-32601).
+// The message matches the JSON-RPC framework's "method not registered"
+// shape so an operator hiding the endpoint is indistinguishable from a
+// node that does not implement it.
+func NewSimMethodNotFound(method string) *SimError {
+	return &SimError{
+		Code:    SimErrCodeMethodNotFound,
+		Message: fmt.Sprintf("the method %s does not exist/is not available", method),
+	}
+}
+
+// NewSimCallLimitExceeded reports that the cumulative call count
+// exceeds MaxSimulateCalls (-38026).
+func NewSimCallLimitExceeded(total, maxCalls int) *SimError {
+	return &SimError{
+		Code: SimErrCodeClientLimitExceeded,
+		Message: fmt.Sprintf(
+			"client limit exceeded: %d calls > max %d",
+			total, maxCalls,
+		),
+	}
+}
+
+// NewSimBlockCountExceeded reports that the number of submitted blocks
+// exceeds MaxSimulateBlocks (-38026).
+func NewSimBlockCountExceeded(total, maxBlocks int) *SimError {
+	return &SimError{
+		Code: SimErrCodeClientLimitExceeded,
+		Message: fmt.Sprintf(
+			"client limit exceeded: %d blocks > max %d",
+			total, maxBlocks,
+		),
+	}
+}
+
+// NewSimTimeout reports that the request hit its evm-timeout deadline
+// (-32016).
+func NewSimTimeout(timeout time.Duration) *SimError {
+	return &SimError{
+		Code:    SimErrCodeTimeout,
+		Message: fmt.Sprintf("execution aborted (timeout = %s)", timeout),
+	}
 }

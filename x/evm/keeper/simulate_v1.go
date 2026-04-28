@@ -1,10 +1,15 @@
 package keeper
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"slices"
+	"sync/atomic"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,23 +24,44 @@ import (
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
-const (
-	// maxSimulateBlocks caps the number of simulated blocks in a single
-	// request. Matches geth's hard-coded bound.
-	maxSimulateBlocks = 256
+// simGasBudget tracks the request-wide gas pool for one eth_simulateV1
+// invocation.
+type simGasBudget struct{ remaining uint64 }
 
-	// simTimestampIncrement is the default gap, in seconds, between
-	// sequential simulated blocks when the caller omits Time overrides.
-	// Matches mezo's ~3s average CometBFT block time so callers who let
-	// the sim fabricate timestamps land in a realistic ballpark.
-	simTimestampIncrement = 3
-)
+// newSimGasBudget builds a gas budget for one eth_simulateV1 request.
+//
+// gasCap == 0 means unlimited. The RPC backend injects the operator's
+// RPCGasCap (positive default), so the keeper trusts the value as-is.
+// A direct gRPC peer passing 0 disables the request-wide gas budget —
+// by design, since operator config is not visible at this layer.
+func newSimGasBudget(gasCap uint64) *simGasBudget {
+	if gasCap == 0 {
+		return &simGasBudget{remaining: math.MaxUint64}
+	}
+	return &simGasBudget{remaining: gasCap}
+}
+
+// clamp returns min(gas, b.remaining).
+func (b *simGasBudget) clamp(gas uint64) uint64 {
+	if gas > b.remaining {
+		return b.remaining
+	}
+	return gas
+}
+
+// consume deducts amount from the remaining budget. The clamp invariant
+// keeps amount <= remaining for valid inputs; the error path is the
+// safety net.
+func (b *simGasBudget) consume(amount uint64) error {
+	if amount > b.remaining {
+		return fmt.Errorf("RPC gas cap exhausted: need %d, remaining %d", amount, b.remaining)
+	}
+	b.remaining -= amount
+	return nil
+}
 
 // sanitizeSimChain validates the block ordering rules and fills gaps
-// with empty blocks. It works on a shallow clone of the input slice so
-// top-level SimBlock field writes in the loop (notably the
-// BlockOverrides pointer reassignment for nil entries) never reach the
-// caller's slice. Returns the concatenated slice including any
+// with empty blocks. Returns the concatenated slice including any
 // gap-fill blocks. Failures are *types.SimError values carrying
 // spec-reserved JSON-RPC codes (-38020 / -38021 / -38026), returned
 // via the plain error channel.
@@ -43,13 +69,16 @@ const (
 // Design mirrors go-ethereum's internal/ethapi/simulate.go::sanitizeChain
 // (v1.15.4 source). Divergences: we never propagate a nil slice input
 // (caller has already enforced len > 0 at the RPC boundary), and the
-// span check against maxSimulateBlocks is performed BEFORE gap-fill
+// span check against types.MaxSimulateBlocks is performed BEFORE gap-fill
 // allocation so a pathological `[{Number: base+1}, {Number:
 // base+10_000_000}]` input cannot drive the driver into a 10M-header
 // allocation.
+//
+// Mutation contract: the input slice is cloned, but caller-supplied
+// non-nil *SimBlockOverrides are aliased — when their Number or Time
+// is nil, the resolver writes the defaulted value back through that
+// shared pointer, visible to the caller.
 func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.SimBlock, error) {
-	// Work on a clone so the loop's per-block edits stay confined to
-	// our copy and never touch the caller's slice.
 	cloned := slices.Clone(blocks)
 
 	res := make([]types.SimBlock, 0, len(cloned))
@@ -68,11 +97,11 @@ func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.S
 		num := block.BlockOverrides.Number.ToInt()
 
 		// Span check against base.Number runs before gap-fill
-		// allocation: any input Number more than maxSimulateBlocks
+		// allocation: any input Number more than types.MaxSimulateBlocks
 		// past base fails immediately without materializing the
 		// in-between headers.
-		if span := new(big.Int).Sub(num, base.Number); span.Cmp(big.NewInt(maxSimulateBlocks)) > 0 {
-			return nil, types.NewSimClientLimitExceeded(span, maxSimulateBlocks)
+		if span := new(big.Int).Sub(num, base.Number); span.Cmp(big.NewInt(types.MaxSimulateBlocks)) > 0 {
+			return nil, types.NewSimClientLimitExceeded(span, types.MaxSimulateBlocks)
 		}
 
 		diff := new(big.Int).Sub(num, prevNumber)
@@ -84,7 +113,7 @@ func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.S
 			gap := new(big.Int).Sub(diff, big.NewInt(1))
 			for i := uint64(0); i < gap.Uint64(); i++ {
 				n := new(big.Int).Add(prevNumber, big.NewInt(int64(i+1))) //nolint:gosec
-				t := prevTimestamp + simTimestampIncrement
+				t := prevTimestamp + types.SimTimestampIncrement
 				res = append(res, types.SimBlock{BlockOverrides: &types.SimBlockOverrides{
 					Number: (*hexutil.Big)(n),
 					Time:   (*hexutil.Uint64)(&t),
@@ -96,7 +125,7 @@ func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.S
 
 		var t uint64
 		if block.BlockOverrides.Time == nil {
-			t = prevTimestamp + simTimestampIncrement
+			t = prevTimestamp + types.SimTimestampIncrement
 			block.BlockOverrides.Time = (*hexutil.Uint64)(&t)
 		} else {
 			t = uint64(*block.BlockOverrides.Time)
@@ -149,7 +178,7 @@ func makeSimHeader(
 		GasLimit:    parent.GasLimit,
 		Difficulty:  new(big.Int).Set(parent.Difficulty),
 		Number:      new(big.Int).Add(parent.Number, big.NewInt(1)),
-		Time:        parent.Time + simTimestampIncrement,
+		Time:        parent.Time + types.SimTimestampIncrement,
 	}
 
 	// Post-merge: Difficulty is zero. MixDigest carries PREVRANDAO; mezo
@@ -205,18 +234,11 @@ func makeSimHeader(
 // block carries tx hashes only; `returnFullTransactions` patching is
 // not wired yet.
 //
-// `cumulativeGasUsed` is the sum of GasUsed across every call in the
-// block (including reverts, whose gas is still consumed). It patches
-// the header's GasUsed field prior to hashing so that downstream
-// consumers see a consistent header/block relation.
+// Caller must seal `header.GasUsed` before calling so `Hash()` is stable.
 func assembleSimBlock(
 	header *ethtypes.Header,
 	txHashes []common.Hash,
-	cumulativeGasUsed uint64,
 ) map[string]interface{} {
-	// Patch the header's GasUsed before hashing; keep the rest of the
-	// scaffolding as-is.
-	header.GasUsed = cumulativeGasUsed
 	blockHash := header.Hash()
 
 	txList := make([]interface{}, 0, len(txHashes))
@@ -266,12 +288,14 @@ func assembleSimBlock(
 // errors.As. Everything else is a genuine internal — the gRPC handler
 // maps it to codes.Internal.
 func (k *Keeper) simulateV1(
-	ctx sdk.Context,
+	ctx context.Context,
+	sdkCtx sdk.Context,
 	cfg *statedb.EVMConfig,
 	base *ethtypes.Header,
 	baseHash common.Hash,
 	opts *types.SimOpts,
 	gasCap uint64,
+	timeout time.Duration,
 ) ([]*types.SimBlockResult, error) {
 	if len(opts.BlockStateCalls) == 0 {
 		return []*types.SimBlockResult{}, nil
@@ -282,16 +306,20 @@ func (k *Keeper) simulateV1(
 		return nil, err
 	}
 
-	// One Rules value covers every simulated block, derived from ctx
+	// Request-wide gas budget. Seeded from json-rpc.gas-cap; a zero cap
+	// is interpreted as unlimited.
+	budget := newSimGasBudget(gasCap)
+
+	// One Rules value covers every simulated block, derived from sdkCtx
 	// (i.e. base) rather than from each block's own number/time. This
-	// is deliberate: applyMessageWithConfig reads ctx.BlockHeight() /
-	// ctx.BlockTime() internally for fork-gated behavior (signer rules,
-	// access-list prep, intrinsic gas). Since those internal reads are
-	// anchored at ctx, every piece of fork-gated machinery below the
-	// driver sees
-	// the *base* ruleset regardless of which simulated block's header
-	// we hand the EVM. Using a single base-derived `rules` for header
-	// construction keeps the driver aligned with that internal truth.
+	// is deliberate: applyMessageWithConfig reads sdkCtx.BlockHeight() /
+	// sdkCtx.BlockTime() internally for fork-gated behavior (signer
+	// rules, access-list prep, intrinsic gas). Since those internal
+	// reads are anchored at sdkCtx, every piece of fork-gated machinery
+	// below the driver sees the *base* ruleset regardless of which
+	// simulated block's header we hand the EVM. Using a single
+	// base-derived `rules` for header construction keeps the driver
+	// aligned with that internal truth.
 	//
 	// The sentinel enforces this anchoring: if the span's last block
 	// would cross onto a different fork than base, rules() anywhere in
@@ -302,8 +330,8 @@ func (k *Keeper) simulateV1(
 	// match both endpoints when the endpoints match. Conservative where
 	// it matters (a span fully inside a post-fork region whose base is
 	// pre-fork is rejected rather than silently executed with
-	// pre-fork rules from ctx).
-	rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
+	// pre-fork rules from sdkCtx).
+	rules := cfg.Rules(sdkCtx.BlockHeight(), uint64(sdkCtx.BlockTime().Unix())) //nolint:gosec
 	lastBlock := sanitized[len(sanitized)-1]
 	lastRules := cfg.Rules(
 		lastBlock.BlockOverrides.Number.ToInt().Int64(),
@@ -324,36 +352,24 @@ func (k *Keeper) simulateV1(
 	// TxIndex via SetTxContext (geth-aligned: BlockHash untouched)
 	// and back-stamps log.BlockHash with the simulated block hash
 	// after the block finalizes.
-	sdb := statedb.New(ctx, k, statedb.NewEmptyTxConfig(common.Hash{}))
+	sdb := statedb.New(sdkCtx, k, statedb.NewEmptyTxConfig(common.Hash{}))
 
 	// Build, execute, and link headers in a single pass. processSimBlock
-	// patches headers[bi].GasUsed before sealing the block hash, so by
-	// the next iteration parent.Hash() (RLP-recomputed each call, no
-	// cache) already reflects the final hash — the response envelope's
-	// parent chain is coherent by construction. newSimGetHashFn resolves
-	// prior siblings via headers[:bi] and likewise recomputes Hash() on
-	// demand, so it sees up-to-date values too.
-	headers := make([]*ethtypes.Header, len(sanitized))
+	// finalizes its own header (GasUsed sealed, hash stable) before
+	// returning, so the next iteration's parent.Hash() already reflects
+	// the final hash — the response envelope's parent chain is coherent
+	// by construction.
+	headers := make([]*ethtypes.Header, 0, len(sanitized))
 	results := make([]*types.SimBlockResult, 0, len(sanitized))
-	parent := base
-	for bi, block := range sanitized {
-		headers[bi] = makeSimHeader(parent, block.BlockOverrides, rules, cfg.ChainConfig, opts.Validation)
-
-		// baseHeaderFromContext only populates the fields the driver
-		// consumes, so base.Hash() is unrelated to the canonical chain
-		// hash; prefer the caller-supplied BaseBlockHash for block 0.
-		if bi == 0 && baseHash != (common.Hash{}) {
-			headers[bi].ParentHash = baseHash
-		}
-
-		res, blockErr := k.processSimBlock(
-			ctx, cfg, sdb, base, headers, bi, block, rules, opts, gasCap,
+	for _, block := range sanitized {
+		header, res, blockErr := k.processSimBlock(
+			ctx, sdkCtx, cfg, sdb, base, headers, baseHash, block, rules, opts, gasCap, budget, timeout,
 		)
 		if blockErr != nil {
 			return nil, blockErr
 		}
 
-		parent = headers[bi]
+		headers = append(headers, header)
 		results = append(results, res)
 	}
 
@@ -361,34 +377,52 @@ func (k *Keeper) simulateV1(
 }
 
 // processSimBlock executes one simulated block against the shared
-// StateDB. It applies the block's StateOverrides (incl.
-// MovePrecompileTo), builds the per-block BlockContext with the
+// StateDB. It builds the block's header from the last `pastSiblings`
+// entry (or `base` when empty), applies the block's StateOverrides
+// (incl. MovePrecompileTo), builds the per-block BlockContext with the
 // simulate-aware GetHashFn, runs the block's calls sequentially with
 // cumulative gas accounting and per-call ephemeral resets, and
 // assembles the response envelope.
 //
-// The header at headers[bi] is mutated in place: assembleSimBlock
-// patches GasUsed before computing the block hash. Later blocks see
-// this block through headers[:laterIdx] via newSimGetHashFn.
+// `pastSiblings` is read-only; `newSimGetHashFn` consults it for
+// `BLOCKHASH` resolution in the simulated-sibling range. For the first
+// block (empty `pastSiblings`), a non-zero `baseHash` is used as
+// `header.ParentHash` — the canonical CometBFT block hash supplied by
+// the rpc/backend layer, since `base.Hash()` is the
+// `baseHeaderFromContext` synthetic hash, not the canonical one.
+//
+// Returns the finalized header (GasUsed sealed, Hash() stable) alongside
+// the assembled block result.
 func (k *Keeper) processSimBlock(
-	ctx sdk.Context,
+	ctx context.Context,
+	sdkCtx sdk.Context,
 	cfg *statedb.EVMConfig,
 	sdb *statedb.StateDB,
 	base *ethtypes.Header,
-	headers []*ethtypes.Header,
-	bi int,
+	pastSiblings []*ethtypes.Header,
+	baseHash common.Hash,
 	block types.SimBlock,
 	rules params.Rules,
 	opts *types.SimOpts,
 	gasCap uint64,
-) (*types.SimBlockResult, error) {
-	header := headers[bi]
+	budget *simGasBudget,
+	timeout time.Duration,
+) (*ethtypes.Header, *types.SimBlockResult, error) {
+	parent := base
+	if n := len(pastSiblings); n > 0 {
+		parent = pastSiblings[n-1]
+	}
+	header := makeSimHeader(parent, block.BlockOverrides, rules, cfg.ChainConfig, opts.Validation)
+
+	if len(pastSiblings) == 0 && baseHash != (common.Hash{}) {
+		header.ParentHash = baseHash
+	}
 
 	var moves map[common.Address]common.Address
 	if len(block.StateOverrides) > 0 {
 		m, applyErr := applyStateOverrides(sdb, block.StateOverrides, rules)
 		if applyErr != nil {
-			return nil, applyErr
+			return nil, nil, applyErr
 		}
 		moves = m
 	}
@@ -407,9 +441,9 @@ func (k *Keeper) processSimBlock(
 		Transfer:    core.Transfer,
 		// Simulate-aware GetHashFn: canonical-range delegated to
 		// k.GetHashFn, simulated-sibling range scanned from already-
-		// finalized past siblings (headers[:bi]). Canonical-range hashes
-		// are therefore unforgeable by any BlockOverrides field.
-		GetHash:     newSimGetHashFn(k.GetHashFn(ctx), base, headers[:bi]),
+		// finalized past siblings. Canonical-range hashes are therefore
+		// unforgeable by any BlockOverrides field.
+		GetHash:     newSimGetHashFn(k.GetHashFn(sdkCtx), base, pastSiblings),
 		Coinbase:    header.Coinbase,
 		GasLimit:    header.GasLimit,
 		BlockNumber: new(big.Int).Set(header.Number),
@@ -420,16 +454,37 @@ func (k *Keeper) processSimBlock(
 		Random:      random,
 	}
 
-	precompiles := k.precompilesWithMoves(ctx, cfg, moves)
+	precompiles := k.precompilesWithMoves(sdkCtx, cfg, moves)
 
-	// validation=false preserves the spec-compliant relaxation (no
-	// base-fee checks, caller may lack funds); validation=true forces
-	// the realistic path.
+	// One watcher goroutine per block. OnEVMConstructed publishes the
+	// per-call *vm.EVM into liveEVM synchronously, before
+	// applyMessageWithConfig starts the EVM, so a non-nil load here
+	// always points at the call we want to cancel. The ctx.Err() guard
+	// distinguishes upstream cancellation (evm.Cancel()) from the
+	// deferred cancelBlock that disarms the watcher on normal exit.
+	watchCtx, cancelBlock := context.WithCancel(ctx)
+	defer cancelBlock()
+
+	var liveEVM atomic.Pointer[vm.EVM]
+	go func() {
+		<-watchCtx.Done()
+		if ctx.Err() != nil {
+			if e := liveEVM.Load(); e != nil {
+				e.Cancel()
+			}
+		}
+	}()
+
+	// validation=false skips base-fee and balance checks; validation=true
+	// runs the realistic path.
 	noBaseFee := !opts.Validation
 	evmOverrides := &EVMOverrides{
 		BlockContext: &blockCtx,
 		Precompiles:  precompiles,
 		NoBaseFee:    &noBaseFee,
+		OnEVMConstructed: func(evm *vm.EVM) {
+			liveEVM.Store(evm)
+		},
 	}
 
 	calls := make([]types.SimCallResult, 0, len(block.Calls))
@@ -437,6 +492,10 @@ func (k *Keeper) processSimBlock(
 	var cumGas uint64
 
 	for i := range block.Calls {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, types.NewSimTimeout(timeout)
+		}
+
 		// Clear per-call ephemerals (logs, refund, transient storage,
 		// precompile call counter) while preserving account/storage
 		// mutations. Runs unconditionally at the top of every call —
@@ -448,22 +507,18 @@ func (k *Keeper) processSimBlock(
 		args.Nonce = resolveSimCallNonce(sdb, &args)
 
 		var simErr *types.SimError
-		args.Gas, simErr = resolveSimCallGas(&args, header, cumGas)
+		args.Gas, simErr = resolveSimCallGas(&args, header, cumGas, budget)
 		if simErr != nil {
-			calls = append(calls, types.SimCallResult{
-				Logs:  []*ethtypes.Log{},
-				Error: simErr,
-			})
-			continue
+			// -38015 is a request-level code per the geth execution spec
+			// (ethereum/execution-apis `execute.yaml`).
+			return nil, nil, simErr
 		}
 
 		msg, msgErr := args.ToMessage(gasCap, header.BaseFee)
 		if msgErr != nil {
-			calls = append(calls, types.SimCallResult{
-				Logs:  []*ethtypes.Log{},
-				Error: types.NewSimInvalidParams(msgErr.Error()),
-			})
-			continue
+			// -32602 is a request-level code per the geth execution spec
+			// (ethereum/execution-apis `execute.yaml`).
+			return nil, nil, types.NewSimInvalidParams(msgErr.Error())
 		}
 
 		// Per-call TxConfig so AddLog stamps distinct TxHash / TxIndex
@@ -475,17 +530,12 @@ func (k *Keeper) processSimBlock(
 		// `(*state.StateDB).SetTxContext(thash, ti)` — it only updates
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
-		//
-		// TxIndex is the call's position in the sealed block, not the
-		// loop index: pre-execution rejections above `continue` without
-		// appending to txHashes, so len(txHashes) is the index this
-		// call will land at if it succeeds.
 		callTxHash := computeSimTxHash(msg)
 		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(len(txHashes)), 0) //nolint:gosec
 		sdb.SetTxContext(callCfg.TxHash, int(callCfg.TxIndex))                            //nolint:gosec
 
 		res, _, runErr := k.applyMessageWithConfig(
-			ctx,
+			sdkCtx,
 			WrapMessage(msg),
 			nil,   // tracer
 			false, // commit = false (ephemeral simulate)
@@ -494,28 +544,27 @@ func (k *Keeper) processSimBlock(
 			sdb,
 			evmOverrides,
 		)
+
+		// Canceled mid-call: ignore any vm-error artifact and return -32016.
+		if err := ctx.Err(); err != nil {
+			return nil, nil, types.NewSimTimeout(timeout)
+		}
+
 		if runErr != nil {
-			// applyMessageWithConfig surfaces both user-recoverable
-			// errors (intrinsic gas too low for the call's actual gas
-			// requirement) and infrastructure errors via the same
-			// channel. Convert the recoverable case to a per-call
-			// SimError so prior successful calls remain in the
-			// envelope instead of being wiped by a top-level gRPC
-			// Internal. Catch is intentionally narrow — only
-			// core.ErrIntrinsicGas — so genuine internal failures
-			// still propagate.
+			// Per the geth execution spec (ethereum/execution-apis
+			// `execute.yaml`), CallResultFailure permits only codes 3
+			// and -32015, so ErrIntrinsicGas must surface at the request
+			// level. Capture args.Gas here while it is still in scope so
+			// the SimError carries the actual provided value rather than
+			// a (0, 0) reconstruction at the gRPC handler.
 			if errors.Is(runErr, core.ErrIntrinsicGas) {
 				var provided uint64
 				if args.Gas != nil {
 					provided = uint64(*args.Gas)
 				}
-				calls = append(calls, types.SimCallResult{
-					Logs:  []*ethtypes.Log{},
-					Error: types.NewSimIntrinsicGas(provided, 0),
-				})
-				continue
+				return nil, nil, types.NewSimIntrinsicGas(provided, 0)
 			}
-			return nil, runErr
+			return nil, nil, runErr
 		}
 
 		// Mirror the CREATE branch's post-call SetNonce in
@@ -536,6 +585,13 @@ func (k *Keeper) processSimBlock(
 			sdb.SetNonce(msg.From, msg.Nonce+1)
 		}
 
+		// Request-wide gas pool. The clamp in resolveSimCallGas keeps
+		// res.GasUsed <= budget.remaining under valid inputs; the error
+		// path is the safety net.
+		if budgetErr := budget.consume(res.GasUsed); budgetErr != nil {
+			return nil, nil, budgetErr
+		}
+
 		calls = append(calls, types.BuildSimCallResult(res))
 		txHashes = append(txHashes, callTxHash)
 		cumGas += res.GasUsed
@@ -546,7 +602,6 @@ func (k *Keeper) processSimBlock(
 	// block is sealed: BlockHash (depends on cumulative GasUsed) and
 	// Index (must be per-block monotonic; AddLog stamps from
 	// txConfig.LogIndex+len(s.logs), both of which reset between calls).
-	// assembleSimBlock re-patches GasUsed idempotently below.
 	header.GasUsed = cumGas
 	finalBlockHash := header.Hash()
 	var logIdx uint
@@ -558,8 +613,8 @@ func (k *Keeper) processSimBlock(
 		}
 	}
 
-	return &types.SimBlockResult{
-		Block: assembleSimBlock(header, txHashes, cumGas),
+	return header, &types.SimBlockResult{
+		Block: assembleSimBlock(header, txHashes),
 		Calls: calls,
 	}, nil
 }
@@ -591,35 +646,27 @@ func resolveSimCallNonce(
 	return &n
 }
 
-// resolveSimCallGas returns the gas limit to apply to a sim call,
-// drawing from the per-block budget (header.GasLimit - cumGasUsed). An
-// explicit args.Gas is preserved, but a value that would push the
-// cumulative block gas past header.GasLimit is rejected with -38015 —
-// emitted as a per-call error so preceding valid calls still surface.
-// When args.Gas is nil a freshly allocated pointer holding the
-// remaining budget is returned. On error the returned pointer is nil.
+// resolveSimCallGas returns the gas limit to apply to a sim call as
+// min(args.Gas | header-remaining, budget-remaining). When args.Gas is
+// nil the resolver defaults to header-remaining. -38015 is returned
+// when args.Gas exceeds the per-block remaining or when the per-block
+// remaining is zero; the caller surfaces it as a request-level fatal.
 //
-// header.GasLimit is treated as authoritative: a caller who sets
+// header.GasLimit is authoritative: a caller who sets
 // blockOverrides.gasLimit to 0 (or otherwise produces a zero-limit
-// block) gets a block where every call either defaults to Gas=0 and
-// fails on intrinsic gas inside applyMessageWithConfig, or — if Gas is
-// explicitly >0 — trips the -38015 preflight. This matches geth's
-// behavior (empty core.GasPool) and keeps the per-block work bound
-// real even under hostile BlockOverrides.
+// block) gets every call rejected at the preflight, keeping the
+// per-block work bound real even under hostile BlockOverrides.
 func resolveSimCallGas(
 	args *types.TransactionArgs,
 	header *ethtypes.Header,
 	cumGasUsed uint64,
+	budget *simGasBudget,
 ) (*hexutil.Uint64, *types.SimError) {
 	var remaining uint64
 	if header.GasLimit > cumGasUsed {
 		remaining = header.GasLimit - cumGasUsed
 	}
 
-	// Block budget already exhausted: any further call (default or
-	// explicit gas) would fail intrinsic-gas inside applyMessageWithConfig.
-	// Surface as a per-call -38015 so the request envelope retains
-	// preceding successful results instead of collapsing to gRPC Internal.
 	if remaining == 0 {
 		var requested uint64
 		if args.Gas != nil {
@@ -628,16 +675,19 @@ func resolveSimCallGas(
 		return nil, types.NewSimBlockGasLimitReached(requested, 0)
 	}
 
+	var resolved uint64
 	if args.Gas == nil {
-		g := hexutil.Uint64(remaining)
-		return &g, nil
+		resolved = remaining
+	} else {
+		requested := uint64(*args.Gas)
+		if requested > remaining {
+			return nil, types.NewSimBlockGasLimitReached(requested, remaining)
+		}
+		resolved = requested
 	}
-
-	requested := uint64(*args.Gas)
-	if requested > remaining {
-		return nil, types.NewSimBlockGasLimitReached(requested, remaining)
-	}
-	return args.Gas, nil
+	resolved = budget.clamp(resolved)
+	g := hexutil.Uint64(resolved)
+	return &g, nil
 }
 
 // newSimGetHashFn builds the simulate-aware BLOCKHASH resolver. The

@@ -1,5 +1,6 @@
 import { expect } from "chai"
 import { ethers } from "hardhat"
+import { extractMessage } from "./helpers/rpc-error"
 
 describe("SimulateV1_MovePrecompile_ethCall", function () {
   const SHA256_ADDR = "0x0000000000000000000000000000000000000002"
@@ -63,12 +64,3 @@ describe("SimulateV1_MovePrecompile_ethCall", function () {
     expect(message).to.include("referenced itself")
   })
 })
-
-function extractMessage(err: any): string {
-  if (!err) return ""
-  if (err.error && typeof err.error.message === "string") return err.error.message
-  if (err.info && err.info.error && typeof err.info.error.message === "string")
-    return err.info.error.message
-  if (typeof err.message === "string") return err.message
-  return String(err)
-}

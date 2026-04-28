@@ -163,6 +163,11 @@ type JSONRPCConfig struct {
 	FeeHistoryCap int32 `mapstructure:"feehistory-cap"`
 	// Enable defines if the EVM RPC server should be enabled.
 	Enable bool `mapstructure:"enable"`
+	// SimulateDisabled hides the eth_simulateV1 method when true. Operators
+	// who do not want to expose multi-block simulation set this; the method
+	// returns -32601 (method not found) so callers cannot distinguish
+	// "disabled" from "not implemented".
+	SimulateDisabled bool `mapstructure:"simulate-disabled"`
 	// LogsCap defines the max number of results can be returned from single `eth_getLogs` query.
 	LogsCap int32 `mapstructure:"logs-cap"`
 	// BlockRangeCap defines the max block range allowed for `eth_getLogs` query.
@@ -313,6 +318,7 @@ func DefaultJSONRPCConfig() *JSONRPCConfig {
 		MetricsAddress:           DefaultJSONRPCMetricsAddress,
 		FixRevertGasRefundHeight: DefaultFixRevertGasRefundHeight,
 		LogsFilterAddrCap:        DefaultLogsFilterAddrCap,
+		SimulateDisabled:         false,
 	}
 }
 
@@ -464,6 +470,7 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			FixRevertGasRefundHeight: v.GetInt64("json-rpc.fix-revert-gas-refund-height"),
 			AllowUnprotectedTxs:      v.GetBool("json-rpc.allow-unprotected-txs"),
 			LogsFilterAddrCap:        v.GetInt32("json-rpc.logs-filter-addr-cap"),
+			SimulateDisabled:         v.GetBool("json-rpc.simulate-disabled"),
 		},
 		TLS: TLSConfig{
 			CertificatePath: v.GetString("tls.certificate-path"),
