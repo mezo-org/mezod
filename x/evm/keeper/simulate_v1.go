@@ -475,9 +475,14 @@ func (k *Keeper) processSimBlock(
 		// `(*state.StateDB).SetTxContext(thash, ti)` — it only updates
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
+		//
+		// TxIndex is the call's position in the sealed block, not the
+		// loop index: pre-execution rejections above `continue` without
+		// appending to txHashes, so len(txHashes) is the index this
+		// call will land at if it succeeds.
 		callTxHash := computeSimTxHash(msg)
-		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(i), 0) //nolint:gosec
-		sdb.SetTxContext(callCfg.TxHash, int(callCfg.TxIndex))                //nolint:gosec
+		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(len(txHashes)), 0) //nolint:gosec
+		sdb.SetTxContext(callCfg.TxHash, int(callCfg.TxIndex))                            //nolint:gosec
 
 		res, _, runErr := k.applyMessageWithConfig(
 			ctx,

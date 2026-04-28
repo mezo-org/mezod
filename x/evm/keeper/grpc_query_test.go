@@ -1958,6 +1958,61 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_BlockGasLimit() {
 	)
 }
 
+// TestSimulateV1_MultiCall_LogTxIndexMatchesBlockPosition — first call
+// is rejected pre-execution (requested gas > block gas limit, surfaces
+// -38015 without entering the EVM), second call lands and emits a log.
+// The block's transactions array therefore contains a single tx at
+// position 0; the emitted log's transactionIndex must agree (0x0), not
+// echo the loop position the rejected call occupied.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_LogTxIndexMatchesBlockPosition() {
+	suite.SetupTest()
+
+	sender := suite.address
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	blockGasLimit := hexutil.Uint64(5_000_000)
+	overBudgetGas := hexutil.Uint64(5_000_001)
+	initCode := hexutil.MustDecode(emptyLogDeployer)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{
+				"gasLimit": blockGasLimit,
+			},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, Gas: &overBudgetGas, Input: (*hexutil.Bytes)(&initCode)},
+				{From: &sender, Input: (*hexutil.Bytes)(&initCode)},
+			},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1, "rejected call must not enter the block's transactions array")
+
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	call1 := calls[1].(map[string]interface{})
+	suite.Require().Equal("0x1", call1["status"], "second call must succeed and emit its log")
+	logs := call1["logs"].([]interface{})
+	suite.Require().Len(logs, 1)
+	suite.Require().Equal(
+		"0x0",
+		logs[0].(map[string]interface{})["transactionIndex"],
+		"log's transactionIndex must equal the call's position in the sealed block",
+	)
+}
+
 // TestSimulateV1_MultiCall_NonceAutoIncrement — two CREATE calls from
 // the same sender with no explicit nonce. Both must succeed: if the
 // nonce didn't advance between calls, the second CREATE would resolve
