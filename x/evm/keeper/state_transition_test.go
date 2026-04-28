@@ -545,6 +545,8 @@ func (suite *KeeperTestSuite) TestEVMConfig() {
 	suite.Require().Equal(big.NewInt(0), cfg.BaseFee)
 	suite.Require().Equal(suite.address, cfg.CoinBase)
 	suite.Require().Equal(types.DefaultParams().ChainConfig.EthereumConfig(big.NewInt(31611)), cfg.ChainConfig)
+	suite.Require().Nil(cfg.ChainConfig.VerkleTime)
+	suite.Require().False(cfg.ChainConfig.IsEIP4762(big.NewInt(suite.ctx.BlockHeight()), uint64(suite.ctx.BlockTime().Unix())))
 }
 
 func (suite *KeeperTestSuite) TestNewEVM_BlobBaseFee() {

@@ -398,7 +398,7 @@ func (s *StateDB) Witness() *stateless.Witness {
 }
 
 func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
-	// TODO (geth-upgrade): implement when adding support for the new access-event flow in 1.16.9.
+	// Mezo does not activate Verkle/EIP-4762 and does not rely on Verkle trees.
 	return nil
 }
 
