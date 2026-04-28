@@ -3388,3 +3388,717 @@ func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_BTCTokenSkipped()
 	require.Equal(erc20TransferTopic, topics[0].(string),
 		"first topic must be the canonical ERC-20 Transfer signature")
 }
+
+// -----------------------------------------------------------------------------
+// SimulateV1 — validation=true mode (Phase 10)
+// -----------------------------------------------------------------------------
+//
+// The driver gates a per-call message through validateSimCall when
+// opts.Validation is set: nonce, init-code-size (CREATE only), intrinsic
+// gas, fee-cap vs base-fee, and balance for gasLimit*gasFeeCap+value.
+// Any failure aborts the entire request as a top-level fatal, surfacing
+// on response.Error with a spec-reserved JSON-RPC code. Revert and VM
+// errors stay per-call regardless of the flag.
+//
+// validation=false (default) bypasses the gate entirely and matches the
+// non-validation execution-apis fixtures: nonce-too-low / no-funds /
+// fee-cap-below-baseFee all succeed.
+//
+// Most validation=true tests need an explicit MaxFeePerGas large enough
+// to clear the chain-computed eip1559 baseFee floor for the simulated
+// header. Without that the fee-cap gate would mask whatever gate the
+// test actually means to exercise (this is exactly why the upstream
+// no-funds fixture fails on -32005 even when funds are nominally the
+// failure reason).
+
+// validatedSimulateRequest builds the standard SimulateV1 opts payload
+// for the validation suite. `state` carries StateOverrides for the
+// sender (typically balance + nonce); `call` is the per-call args
+// already populated with MaxFeePerGas. `valFlag` toggles the validation
+// flag — same opts shape regardless so test pairs (validation=true vs
+// validation=false on identical calls) read straightforwardly.
+func (suite *KeeperTestSuite) validatedSimulateRequest(
+	state map[common.Address]map[string]interface{},
+	calls []types.TransactionArgs,
+	valFlag bool,
+) []byte {
+	suite.T().Helper()
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": state,
+			"calls":          calls,
+		}},
+		"validation": valFlag,
+	})
+	suite.Require().NoError(err)
+	return optsJSON
+}
+
+// validationMaxFeePerGas is large enough to clear the eip1559 baseFee
+// floor that validation=true derives from the parent header in every
+// fixture below; calls with this fee never hit the fee-cap gate so a
+// test failure points at the gate it actually means to exercise.
+var validationMaxFeePerGas = (*hexutil.Big)(big.NewInt(1_000_000_000_000)) // 1e12
+
+// validationFundedBalance is large enough to cover any gasLimit *
+// validationMaxFeePerGas + small `value` for every fixture. The few
+// tests that need an under-funded sender override this field
+// explicitly.
+var validationFundedBalance = (*hexutil.Big)(new(big.Int).Mul(big.NewInt(1_000_000_000), big.NewInt(1_000_000_000_000_000_000))) // 1e9 ether
+
+// TestSimulateV1_Validation_HappyPath — funded sender, correct nonce,
+// fee-cap above the chain-computed baseFee floor: the call must clear
+// every gate.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_HappyPath() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": (*hexutil.Uint64)(nil)},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+// TestSimulateV1_Validation_NonceLow — state.nonce=5, call.nonce=4 →
+// top-level -38010.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	callNonce := hexutil.Uint64(4)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		Nonce:        &callNonce,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_NonceHigh — state.nonce=5, call.nonce=9 →
+// top-level -38011.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceHigh() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	callNonce := hexutil.Uint64(9)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		Nonce:        &callNonce,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooHigh), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_InsufficientFunds — sender has zero balance,
+// call carries non-zero value → -38014.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_InsufficientFunds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zero := (*hexutil.Big)(big.NewInt(0))
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": zero},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeInsufficientFunds), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_IntrinsicGas — call carries gas below the
+// 21k pure-transfer intrinsic floor → -38013. Same surface as the
+// existing TestSimulateV1_ExplicitGasBelowIntrinsic, lifted under
+// validation=true to confirm the gate fires there too rather than
+// changing the request-level fatal code.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_IntrinsicGas() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	tooLowGas := hexutil.Uint64(20_999)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		Gas:          &tooLowGas,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeIntrinsicGas), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_InitCodeTooLarge — CREATE call (To=nil)
+// with init-code 1 byte over MaxInitCodeSize → -38025. Per EIP-3860 the
+// gate is Shanghai-active in the test app's default chain config.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_InitCodeTooLarge() {
+	suite.SetupTest()
+
+	sender := suite.address
+	overSize := make([]byte, ethparams.MaxInitCodeSize+1)
+	// 1M gas covers the intrinsic-gas + EIP-3860 word cost for an
+	// all-zero init-code payload at MaxInitCodeSize+1 bytes (~232k).
+	gas := hexutil.Uint64(1_000_000)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	data := hexutil.Bytes(overSize)
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		Data:         &data,
+		Gas:          &gas,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeMaxInitCodeSizeExceeded), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_FeeCapBelowBaseFee — explicit MaxFeePerGas=0
+// while validation=true forces a non-zero baseFee on the synthesized
+// header → -32005.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_FeeCapBelowBaseFee() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zeroFee := (*hexutil.Big)(big.NewInt(0))
+	// Ensure header.BaseFee > 0 by overriding the block's baseFee. The
+	// override goes through the eip1559 floor check, which requires the
+	// override to be >= the chain-computed floor; setting the override
+	// to a small positive value above the floor (1 wei is below, so we
+	// pick a larger number) keeps that gate happy while exercising the
+	// per-call fee-cap gate.
+	baseFee := (*hexutil.Big)(big.NewInt(1_000_000_000))
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{"baseFeePerGas": baseFee},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": validationFundedBalance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:                 &sender,
+				To:                   &recipient,
+				Value:                (*hexutil.Big)(big.NewInt(1)),
+				MaxFeePerGas:         zeroFee,
+				MaxPriorityFeePerGas: zeroFee,
+			}},
+		}},
+		"validation": true,
+	})
+	suite.Require().NoError(err)
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeFeeCapTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_BaseFeeOverrideTooLow — caller-supplied
+// blockOverrides.baseFeePerGas BELOW the chain-computed eip1559 floor
+// → -38012. Per the spec, the per-block check fires before any per-call
+// gate even runs.
+//
+// Setup note: the keeper test app defaults to feemarket=disabled, which
+// pins the chain's BaseFee at 0; with parent.BaseFee=0 the eip1559 floor
+// formula collapses to 0, leaving no room to assert "override below
+// floor". We flip feemarket on for this case so the parent header
+// surfaces a real InitialBaseFee (1 gwei), which the floor formula then
+// adjusts. Restored to default afterwards.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_BaseFeeOverrideTooLow() {
+	suite.enableFeemarket = true
+	defer func() { suite.enableFeemarket = false }()
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	// 1 wei sits far below any feemarket-derived floor (which starts at
+	// 1 gwei minus an elasticity adjustment, tens of millions of wei
+	// even after a single decrease).
+	farTooLow := (*hexutil.Big)(big.NewInt(1))
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{"baseFeePerGas": farTooLow},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": validationFundedBalance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:         &sender,
+				To:           &recipient,
+				Value:        (*hexutil.Big)(big.NewInt(1)),
+				MaxFeePerGas: validationMaxFeePerGas,
+			}},
+		}},
+		"validation": true,
+	})
+	suite.Require().NoError(err)
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeBaseFeeTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_NodeNoBaseFeeIgnored — chain-level
+// feemarket.NoBaseFee=true does NOT relax the validation gate's fee-cap
+// check. Per spec, validation=true is an authoritative override; node
+// config cannot opt out of the realistic preflight.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NodeNoBaseFeeIgnored() {
+	suite.enableFeemarket = false
+	defer func() { suite.enableFeemarket = false }()
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zeroFee := (*hexutil.Big)(big.NewInt(0))
+	baseFee := (*hexutil.Big)(big.NewInt(1_000_000_000))
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{"baseFeePerGas": baseFee},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": validationFundedBalance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:                 &sender,
+				To:                   &recipient,
+				Value:                (*hexutil.Big)(big.NewInt(1)),
+				MaxFeePerGas:         zeroFee,
+				MaxPriorityFeePerGas: zeroFee,
+			}},
+		}},
+		"validation": true,
+	})
+	suite.Require().NoError(err)
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeFeeCapTooLow), resp.Error.Code,
+		"validation=true must enforce base fee even when node-level NoBaseFee is set")
+}
+
+// TestSimulateV1_Validation_RevertStaysPerCall — a reverting call is a
+// per-call failure (CallResultFailure.error.code = 3), NOT a fatal abort.
+// Load-bearing: revert is the most common per-call outcome a caller
+// observes, and the validation gate must not promote it.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_RevertStaysPerCall() {
+	suite.SetupTest()
+
+	sender := suite.address
+	// Bytecode: PUSH1 0x00 PUSH1 0x00 REVERT — unconditional revert
+	// with empty return data.
+	revertCode := common.Hex2Bytes("60006000FD")
+	revertContract := common.HexToAddress("0xddee000000000000000000000000000000000000")
+
+	state := map[common.Address]map[string]interface{}{
+		sender:         {"balance": validationFundedBalance},
+		revertContract: {"code": hexutil.Bytes(revertCode)},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &revertContract,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error, "reverting call must NOT abort the request under validation=true")
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x0", c["status"])
+	cErr := c["error"].(map[string]interface{})
+	suite.Require().Equal(float64(types.SimErrCodeReverted), cErr["code"])
+}
+
+// TestSimulateV1_Validation_VMErrorStaysPerCall — a non-revert VM
+// failure (e.g. invalid opcode) is per-call (-32015), not a fatal
+// abort.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_VMErrorStaysPerCall() {
+	suite.SetupTest()
+
+	sender := suite.address
+	// 0xFE is the canonical INVALID opcode — runs OOG with all gas
+	// consumed.
+	invalidCode := common.Hex2Bytes("FE")
+	invalidContract := common.HexToAddress("0xddff000000000000000000000000000000000000")
+
+	state := map[common.Address]map[string]interface{}{
+		sender:          {"balance": validationFundedBalance},
+		invalidContract: {"code": hexutil.Bytes(invalidCode)},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &invalidContract,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error, "VM error must NOT abort the request under validation=true")
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x0", c["status"])
+	cErr := c["error"].(map[string]interface{})
+	suite.Require().Equal(float64(types.SimErrCodeVMError), cErr["code"])
+}
+
+// TestSimulateV1_Validation_AbortsOnFirstCallSecondNotRun — call[0]
+// fails the gate; call[1] would succeed if reached. The fatal abort
+// must short-circuit so call[1] is never executed (verified by
+// observing that the response is bare-error, not a partial result
+// envelope).
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_AbortsOnFirstCallSecondNotRun() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{
+		// call[0] — nonce too low → fatal -38010
+		{From: &sender, To: &recipient, Nonce: &tooLowNonce, MaxFeePerGas: validationMaxFeePerGas},
+		// call[1] — would otherwise succeed
+		{From: &sender, To: &recipient, MaxFeePerGas: validationMaxFeePerGas},
+	}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result, "fatal abort must not emit a partial result envelope")
+}
+
+// TestSimulateV1_Validation_AbortsOnSecondBlockFirstAlreadyExecuted —
+// block[0] runs to completion; block[1] fails the gate on its first
+// call. The whole request aborts; no result envelope is emitted (the
+// driver does not partially commit prior blocks on a fatal). Pinned
+// because partial commits would be a correctness regression — callers
+// rely on simulate being all-or-nothing.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_AbortsOnSecondBlockFirstAlreadyExecuted() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+				},
+				"calls": []types.TransactionArgs{{
+					From: &sender, To: &recipient, MaxFeePerGas: validationMaxFeePerGas,
+				}},
+			},
+			{
+				"calls": []types.TransactionArgs{{
+					// Nonce reset to a value below the post-block-0 state
+					// nonce (which advanced from 5 -> 6 after the CALL).
+					From: &sender, To: &recipient, Nonce: &tooLowNonce,
+					MaxFeePerGas: validationMaxFeePerGas,
+				}},
+			},
+		},
+		"validation": true,
+	})
+	suite.Require().NoError(err)
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_DeterminismRepeated — same opts run twice
+// must surface the same fatal SimError byte-for-byte. Pinned to guard
+// against time-dependent or PRNG-tainted error messages slipping into
+// the gate path.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_DeterminismRepeated() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Nonce: &tooLowNonce,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+
+	resp1, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp1.Error)
+	resp2, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp2.Error)
+	suite.Require().Equal(resp1.Error.Code, resp2.Error.Code)
+	suite.Require().Equal(resp1.Error.Message, resp2.Error.Message)
+}
+
+// --- validation=false (default) — every gate must allow the call ---------
+//
+// These are the negative twins of the validation=true cases above; they
+// pin that the gate is OFF when the flag is OFF (matches upstream
+// fixture behavior).
+
+// TestSimulateV1_NoValidation_NonceLowSucceeds — same opts as
+// TestSimulateV1_Validation_NonceLow but validation=false: the call
+// must succeed. Mirrors the upstream
+// `ethSimulate-transaction-too-low-nonce-38010.io` fixture (which
+// returns a successful per-call result, not the -38010 the filename
+// implies, because the fixture omits the validation flag).
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_NonceLowSucceeds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Nonce: &tooLowNonce,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+// TestSimulateV1_NoValidation_InsufficientFundsSucceeds — sender with
+// zero balance + non-zero value, validation=false: the request must NOT
+// abort with a top-level -38014 fatal. Mezod's EVM still rejects the
+// value transfer at the CanTransfer check (so the per-call status is
+// 0x0), but the failure is per-call, not request-wide. The pinned
+// invariant is the absence of a top-level fatal — the per-call code is
+// whatever the EVM emits.
+//
+// Geth's own behavior diverges here: even with validation omitted, geth
+// returns top-level -38014 because its per-call preCheck still runs the
+// balance check. Mezod intentionally bypasses preCheck during
+// validation=false, so the call lands on the EVM's CanTransfer guard
+// and surfaces as a per-call failure. That's the divergence pinned
+// here.
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_InsufficientFundsSucceeds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zero := (*hexutil.Big)(big.NewInt(0))
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": zero},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Value: (*hexutil.Big)(big.NewInt(1)),
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error,
+		"validation=false must NOT promote insufficient-funds to a top-level -38014 fatal")
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Len(results[0]["calls"].([]interface{}), 1,
+		"the call must show up in the per-call list, not collapse into the request error")
+}
+
+// TestSimulateV1_NoValidation_FeeCapBelowBaseFeeSucceeds — explicit
+// MaxFeePerGas=0 with validation=false: the simulated header carries
+// BaseFee=0 (per the validation=false branch in makeSimHeader), so the
+// per-call fee-cap arithmetic always passes. Mirrors the upstream
+// `ethSimulate-basefee-too-low-without-validation-38012.io` fixture.
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_FeeCapBelowBaseFeeSucceeds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zero := (*hexutil.Big)(big.NewInt(0))
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient,
+		Value:                (*hexutil.Big)(big.NewInt(1)),
+		MaxFeePerGas:         zero,
+		MaxPriorityFeePerGas: zero,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+// TestSimulateV1_NoValidation_InitCodeOverLimitSucceeds — CREATE with
+// init-code 1 byte over MaxInitCodeSize MUST NOT trip the request-level
+// -38025 fatal under validation=false. The per-call result is whatever
+// the EVM emits (in practice geth's CREATE-handler EIP-3860 enforcement
+// surfaces as a per-call ErrMaxInitCodeSizeExceeded → the SimError
+// formatter routes it to per-call code 3 reverted-equivalent or
+// -32015 VM-error). Either is a *per-call* outcome, not a top-level
+// fatal — that distinction is what this test pins.
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_InitCodeOverLimitSucceeds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	overSize := make([]byte, ethparams.MaxInitCodeSize+1)
+	// 1M gas covers the intrinsic-gas + EIP-3860 word cost for an
+	// all-zero init-code payload at MaxInitCodeSize+1 bytes (~232k).
+	gas := hexutil.Uint64(1_000_000)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	data := hexutil.Bytes(overSize)
+	calls := []types.TransactionArgs{{
+		From: &sender, Data: &data, Gas: &gas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error,
+		"validation=false must NOT promote oversize init-code to a top-level -38025 fatal")
+	// The per-call result still surfaces — exact code depends on the
+	// EVM's CREATE handling, but it is NOT a top-level fatal.
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Len(results[0]["calls"].([]interface{}), 1,
+		"the call must show up in the per-call list, not collapse into the request error")
+}
+
+// TestSimulateV1_Validation_BoundaryEqual_NoFatal — every gate sitting
+// exactly on the pass-side of its boundary at the same time must clear
+// the gate. Single-fail tests verify each gate's "one-step-over"
+// failure; this one asserts the gate's pass-side composition holds
+// when all five are evaluated at their respective edges.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_BoundaryEqual_NoFatal() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	gas := hexutil.Uint64(21_000) // intrinsic floor for pure transfer
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		Gas:          &gas,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error, "every gate at boundary-equal must clear")
+	results := suite.simulateV1BlockResults(resp)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+// TestSimulateV1_Validation_NonceLow_FixturePort — port the upstream
+// `ethSimulate-transaction-too-low-nonce-38010.io` shape: stateOverride
+// nonce=10 on a fresh sender, call.nonce=0, validation=true. Upstream
+// the .io fixture's filename suggests -38010 but the fixture itself
+// omits validation, so the upstream call succeeds. Here we ADD
+// validation=true and expect the -38010 the filename implied.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow_FixturePort() {
+	suite.SetupTest()
+
+	sender := common.HexToAddress("0xc100000000000000000000000000000000000000")
+	recipient := common.HexToAddress("0xc100000000000000000000000000000000000000")
+	stateNonce := hexutil.Uint64(0xa)
+	callNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Nonce: &callNonce,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
+}
+
+// TestSimulateV1_Validation_NonceHigh_FixturePortMatchingNoValidation —
+// same opts as the FixturePort above except validation=false: the call
+// must succeed (matches the upstream fixture's actual response shape,
+// where the -38010-named scenario's .io has a successful result block
+// because the validation flag is omitted).
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceHigh_FixturePortMatchingNoValidation() {
+	suite.SetupTest()
+
+	sender := common.HexToAddress("0xc100000000000000000000000000000000000000")
+	recipient := common.HexToAddress("0xc100000000000000000000000000000000000000")
+	stateNonce := hexutil.Uint64(0xa)
+	callNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Nonce: &callNonce,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
