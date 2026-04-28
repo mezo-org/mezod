@@ -720,10 +720,6 @@ func TestSimBlockResult_MarshalJSON_LogsBloomMatchesReceipts(t *testing.T) {
 		"bloom must affirmative-test the receipt's topic")
 }
 
-// TestSimBlockResult_UnmarshalJSON_FromMarshaledFullEnvelope:
-// asymmetric round-trip — the marshal output round-trips through
-// UnmarshalJSON, populates Calls + Block but leaves the typed
-// EthBlock nil (per Open Item 2).
 func TestSimBlockResult_UnmarshalJSON_FromMarshaledFullEnvelope(t *testing.T) {
 	from := common.HexToAddress("0x1111111111111111111111111111111111111111")
 	to := common.HexToAddress("0x2222222222222222222222222222222222222222")
@@ -744,7 +740,7 @@ func TestSimBlockResult_UnmarshalJSON_FromMarshaledFullEnvelope(t *testing.T) {
 	var roundTripped types.SimBlockResult
 	require.NoError(t, json.Unmarshal(data, &roundTripped))
 	require.Nil(t, roundTripped.EthBlock,
-		"UnmarshalJSON must NOT reconstruct the typed *ethtypes.Block (asymmetric per design)")
+		"UnmarshalJSON must not reconstruct the typed *ethtypes.Block")
 	require.Len(t, roundTripped.Calls, 1)
 	require.Equal(t, hexutil.Uint64(21_000), roundTripped.Calls[0].GasUsed)
 	require.Contains(t, roundTripped.Block, "number")

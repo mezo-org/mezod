@@ -97,41 +97,19 @@ func (r SimCallResult) MarshalJSON() ([]byte, error) {
 	return json.Marshal(alias(r))
 }
 
-// SimBlockResult envelopes a single simulated block. The marshal-side
-// fields (EthBlock, Senders, FullTx, ChainConfig) are populated by the
-// keeper driver; on the unmarshal side they remain zero and the
-// flattened header lands in the Block map. The asymmetry keeps the
-// gRPC `response.Result` round-trip working without reconstructing a
-// real *ethtypes.Block from JSON.
+// SimBlockResult envelopes a single simulated block. The marshal path
+// uses EthBlock + Senders + FullTx + ChainConfig (populated by the
+// driver); UnmarshalJSON populates Block instead so gRPC round-trips
+// keep working without reconstructing a *ethtypes.Block from JSON.
 type SimBlockResult struct {
-	// EthBlock is the synthetic block the driver assembled. When non-nil
-	// MarshalJSON renders the envelope via RPCMarshalBlock; this is the
-	// path taken for live SimulateV1 responses. Nil after UnmarshalJSON.
-	EthBlock *ethtypes.Block `json:"-"`
-	// Senders maps each synthetic tx hash to its caller address.
-	// MarshalJSON patches RPCTransaction.From from this map when FullTx
-	// is true because simulated txs are unsigned and signature-recovery
-	// would otherwise yield the zero address.
-	Senders map[common.Hash]common.Address `json:"-"`
-	// FullTx selects between hash-only and RPCTransaction objects for
-	// the `transactions` field, matching opts.ReturnFullTransactions.
-	FullTx bool `json:"-"`
-	// ChainConfig is forwarded to RPCMarshalBlock for fork-gated field
-	// selection (e.g. baseFeePerGas, withdrawalsRoot).
-	ChainConfig *params.ChainConfig `json:"-"`
-	// Block is the legacy untyped header map. Populated by UnmarshalJSON
-	// with whatever fields appeared on the wire; consulted by MarshalJSON
-	// only when EthBlock is nil so existing callers that build a result
-	// from a map keep working.
-	Block map[string]interface{} `json:"-"`
-	Calls []SimCallResult        `json:"calls"`
+	EthBlock    *ethtypes.Block                `json:"-"`
+	Senders     map[common.Hash]common.Address `json:"-"`
+	FullTx      bool                           `json:"-"`
+	ChainConfig *params.ChainConfig            `json:"-"`
+	Block       map[string]interface{}         `json:"-"`
+	Calls       []SimCallResult                `json:"calls"`
 }
 
-// MarshalJSON renders the spec-shaped envelope. The typed *ethtypes.Block
-// path mirrors go-ethereum's simulate.go: RPCMarshalBlock fills the
-// header fields, the calls slice is appended, and full-tx entries get
-// their From patched from Senders. The legacy map path is preserved for
-// tests and direct-construction callers that predate Phase 11.
 func (r SimBlockResult) MarshalJSON() ([]byte, error) {
 	var out map[string]interface{}
 	switch {

@@ -2031,17 +2031,11 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_NonceAutoIncrement() {
 //	@09  RETURN
 const emptyLogDeployer = "0x60006000A060006000F3"
 
-// TestSimulateV1_MultiCall_CallNonceAdvances — two value transfers
-// from the same sender with no explicit nonce, identical in every
-// other field that feeds computeSimTxHash (Gas pinned to a fixed
-// value so the per-call default gas budget — which would otherwise
-// shrink between calls and accidentally diverge the hashes for an
-// unrelated reason — does not vary). The driver must bump the
-// StateDB nonce after every successful non-CREATE call; without
-// that bump both calls would default to the same nonce, the
-// synthesized tx hashes (computeSimTxHash, which folds nonce into
-// the LegacyTx hash) would collide, and the assembled block would
-// carry duplicate entries in its `transactions` array.
+// Two value transfers from the same sender with no explicit nonce.
+// The driver must bump the StateDB nonce after every successful
+// non-CREATE call; otherwise both calls would default to the same
+// nonce, the synthesised tx hashes would collide, and the assembled
+// block would carry duplicate entries in `transactions`.
 func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_CallNonceAdvances() {
 	suite.SetupTest()
 

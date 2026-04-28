@@ -197,15 +197,6 @@ func (suite *BackendTestSuite) TestSimulateV1_UnmarshalsResults() {
 	suite.Require().Equal("0x1", got[0].Block["number"])
 }
 
-// TestSimulateV1_EnvelopePassthroughPreservesAllFields: the gRPC-side
-// payload encodes the full envelope shape (header fields,
-// transactions, calls). The backend layer treats the bytes opaquely
-// and the unmarshal must round-trip every field onto SimBlockResult.
-//
-// The backend.SimulateV1 unmarshal path keeps the Block as
-// map[string]interface{} (asymmetric per design — see
-// SimBlockResult.UnmarshalJSON), so the assertions read fields out of
-// the legacy map.
 func (suite *BackendTestSuite) TestSimulateV1_EnvelopePassthroughPreservesAllFields() {
 	suite.SetupTest()
 	_, bz := suite.buildEthereumTx()

@@ -26,10 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-// RPCMarshalHeader converts the given header to the RPC output. Ported
-// from go-ethereum's internal/ethapi/api.go (v1.14.8) so eth_simulateV1
-// uses the same field selection as eth_getBlockByNumber on a v1.14.8
-// node.
+// RPCMarshalHeader converts the given header to the RPC output.
 func RPCMarshalHeader(head *ethtypes.Header) map[string]interface{} {
 	result := map[string]interface{}{
 		"number":           (*hexutil.Big)(head.Number),
@@ -67,15 +64,11 @@ func RPCMarshalHeader(head *ethtypes.Header) map[string]interface{} {
 	return result
 }
 
-// RPCMarshalBlock converts the given block to the RPC output which
-// depends on fullTx. If inclTx is true transactions are returned. When
-// fullTx is true the returned block contains full transaction details,
-// otherwise it will only contain transaction hashes. Ported from
-// go-ethereum's internal/ethapi/api.go (v1.14.8). The full-tx entries
-// are *RPCTransaction values whose JSON shape matches go-ethereum's;
-// the eth_simulateV1 driver patches the From field via the Senders map
-// after marshaling because simulated txs are unsigned and Sender()
-// recovery would otherwise yield the zero address.
+// RPCMarshalBlock converts the given block to the RPC output. When
+// inclTx is true the `transactions` field is set; fullTx selects
+// between hash-only and *RPCTransaction objects (whose `from` is the
+// zero address until the caller patches it from a senders map, since
+// simulated transactions are unsigned).
 func RPCMarshalBlock(block *ethtypes.Block, inclTx bool, fullTx bool, config *params.ChainConfig) map[string]interface{} {
 	fields := RPCMarshalHeader(block.Header())
 	fields["size"] = hexutil.Uint64(block.Size())
@@ -85,10 +78,7 @@ func RPCMarshalBlock(block *ethtypes.Block, inclTx bool, fullTx bool, config *pa
 			return tx.Hash()
 		}
 		if fullTx {
-			//nolint:revive // signature mirrors the hash-only branch and the
-			// upstream go-ethereum helper; tx is intentionally unused because
-			// newRPCTransactionFromBlockIndex re-fetches via block index.
-			formatTx = func(idx int, tx *ethtypes.Transaction) interface{} {
+			formatTx = func(idx int, _ *ethtypes.Transaction) interface{} {
 				return newRPCTransactionFromBlockIndex(block, uint64(idx), config) //nolint:gosec
 			}
 		}
@@ -111,12 +101,9 @@ func RPCMarshalBlock(block *ethtypes.Block, inclTx bool, fullTx bool, config *pa
 	return fields
 }
 
-// RPCTransaction mirrors go-ethereum's internal/ethapi RPCTransaction
-// JSON shape. Field set matches v1.14.8; identical struct tags so the
-// wire output stays byte-identical to what an upstream
-// eth_getBlockByNumber on a v1.14.8 node returns. Lives in this package
-// rather than mezod's rpc/types to avoid an import cycle (rpc/types
-// already depends on x/evm/types).
+// RPCTransaction mirrors go-ethereum's internal/ethapi.RPCTransaction
+// JSON shape. Lives here rather than rpc/types because rpc/types
+// already depends on x/evm/types.
 type RPCTransaction struct {
 	BlockHash        *common.Hash         `json:"blockHash"`
 	BlockNumber      *hexutil.Big         `json:"blockNumber"`
@@ -141,7 +128,7 @@ type RPCTransaction struct {
 
 // newRPCTransactionFromBlockIndex returns a transaction that will
 // serialize to the RPC representation, located at the supplied block
-// index. Ported from go-ethereum's internal/ethapi/api.go (v1.14.8).
+// index.
 func newRPCTransactionFromBlockIndex(b *ethtypes.Block, index uint64, config *params.ChainConfig) *RPCTransaction {
 	txs := b.Transactions()
 	if index >= uint64(len(txs)) {
@@ -151,11 +138,9 @@ func newRPCTransactionFromBlockIndex(b *ethtypes.Block, index uint64, config *pa
 }
 
 // newRPCTransaction populates the location fields of an RPCTransaction.
-// The simulate driver always synthesizes legacy unsigned txs, so the
-// signature recovery path returns the zero address — the driver patches
-// From afterward via the senders-by-hash map. Mirrors mezod's existing
-// rpctypes.NewRPCTransaction so JSON output is identical for the
-// fields that matter.
+// Simulated transactions are unsigned; signature recovery yields the
+// zero address, so the caller patches From from the senders-by-hash
+// map after marshaling.
 func newRPCTransaction(
 	tx *ethtypes.Transaction,
 	blockHash common.Hash,
