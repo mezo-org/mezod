@@ -61,10 +61,7 @@ func (b *simGasBudget) consume(amount uint64) error {
 }
 
 // sanitizeSimChain validates the block ordering rules and fills gaps
-// with empty blocks. It works on a shallow clone of the input slice so
-// top-level SimBlock field writes in the loop (notably the
-// BlockOverrides pointer reassignment for nil entries) never reach the
-// caller's slice. Returns the concatenated slice including any
+// with empty blocks. Returns the concatenated slice including any
 // gap-fill blocks. Failures are *types.SimError values carrying
 // spec-reserved JSON-RPC codes (-38020 / -38021 / -38026), returned
 // via the plain error channel.
@@ -76,9 +73,12 @@ func (b *simGasBudget) consume(amount uint64) error {
 // allocation so a pathological `[{Number: base+1}, {Number:
 // base+10_000_000}]` input cannot drive the driver into a 10M-header
 // allocation.
+//
+// Mutation contract: the input slice is cloned, but caller-supplied
+// non-nil *SimBlockOverrides are aliased — when their Number or Time
+// is nil, the resolver writes the defaulted value back through that
+// shared pointer, visible to the caller.
 func sanitizeSimChain(base *ethtypes.Header, blocks []types.SimBlock) ([]types.SimBlock, error) {
-	// Work on a clone so the loop's per-block edits stay confined to
-	// our copy and never touch the caller's slice.
 	cloned := slices.Clone(blocks)
 
 	res := make([]types.SimBlock, 0, len(cloned))
@@ -234,18 +234,11 @@ func makeSimHeader(
 // block carries tx hashes only; `returnFullTransactions` patching is
 // not wired yet.
 //
-// `cumulativeGasUsed` is the sum of GasUsed across every call in the
-// block (including reverts, whose gas is still consumed). It patches
-// the header's GasUsed field prior to hashing so that downstream
-// consumers see a consistent header/block relation.
+// Caller must seal `header.GasUsed` before calling so `Hash()` is stable.
 func assembleSimBlock(
 	header *ethtypes.Header,
 	txHashes []common.Hash,
-	cumulativeGasUsed uint64,
 ) map[string]interface{} {
-	// Patch the header's GasUsed before hashing; keep the rest of the
-	// scaffolding as-is.
-	header.GasUsed = cumulativeGasUsed
 	blockHash := header.Hash()
 
 	txList := make([]interface{}, 0, len(txHashes))
@@ -362,33 +355,21 @@ func (k *Keeper) simulateV1(
 	sdb := statedb.New(sdkCtx, k, statedb.NewEmptyTxConfig(common.Hash{}))
 
 	// Build, execute, and link headers in a single pass. processSimBlock
-	// patches headers[bi].GasUsed before sealing the block hash, so by
-	// the next iteration parent.Hash() (RLP-recomputed each call, no
-	// cache) already reflects the final hash — the response envelope's
-	// parent chain is coherent by construction. newSimGetHashFn resolves
-	// prior siblings via headers[:bi] and likewise recomputes Hash() on
-	// demand, so it sees up-to-date values too.
-	headers := make([]*ethtypes.Header, len(sanitized))
+	// finalizes its own header (GasUsed sealed, hash stable) before
+	// returning, so the next iteration's parent.Hash() already reflects
+	// the final hash — the response envelope's parent chain is coherent
+	// by construction.
+	headers := make([]*ethtypes.Header, 0, len(sanitized))
 	results := make([]*types.SimBlockResult, 0, len(sanitized))
-	parent := base
-	for bi, block := range sanitized {
-		headers[bi] = makeSimHeader(parent, block.BlockOverrides, rules, cfg.ChainConfig, opts.Validation)
-
-		// baseHeaderFromContext only populates the fields the driver
-		// consumes, so base.Hash() is unrelated to the canonical chain
-		// hash; prefer the caller-supplied BaseBlockHash for block 0.
-		if bi == 0 && baseHash != (common.Hash{}) {
-			headers[bi].ParentHash = baseHash
-		}
-
-		res, blockErr := k.processSimBlock(
-			ctx, sdkCtx, cfg, sdb, base, headers, bi, block, rules, opts, gasCap, budget, timeout,
+	for _, block := range sanitized {
+		header, res, blockErr := k.processSimBlock(
+			ctx, sdkCtx, cfg, sdb, base, headers, baseHash, block, rules, opts, gasCap, budget, timeout,
 		)
 		if blockErr != nil {
 			return nil, blockErr
 		}
 
-		parent = headers[bi]
+		headers = append(headers, header)
 		results = append(results, res)
 	}
 
@@ -396,37 +377,52 @@ func (k *Keeper) simulateV1(
 }
 
 // processSimBlock executes one simulated block against the shared
-// StateDB. It applies the block's StateOverrides (incl.
-// MovePrecompileTo), builds the per-block BlockContext with the
+// StateDB. It builds the block's header from the last `pastSiblings`
+// entry (or `base` when empty), applies the block's StateOverrides
+// (incl. MovePrecompileTo), builds the per-block BlockContext with the
 // simulate-aware GetHashFn, runs the block's calls sequentially with
 // cumulative gas accounting and per-call ephemeral resets, and
 // assembles the response envelope.
 //
-// The header at headers[bi] is mutated in place: assembleSimBlock
-// patches GasUsed before computing the block hash. Later blocks see
-// this block through headers[:laterIdx] via newSimGetHashFn.
+// `pastSiblings` is read-only; `newSimGetHashFn` consults it for
+// `BLOCKHASH` resolution in the simulated-sibling range. For the first
+// block (empty `pastSiblings`), a non-zero `baseHash` is used as
+// `header.ParentHash` — the canonical CometBFT block hash supplied by
+// the rpc/backend layer, since `base.Hash()` is the
+// `baseHeaderFromContext` synthetic hash, not the canonical one.
+//
+// Returns the finalized header (GasUsed sealed, Hash() stable) alongside
+// the assembled block result.
 func (k *Keeper) processSimBlock(
 	ctx context.Context,
 	sdkCtx sdk.Context,
 	cfg *statedb.EVMConfig,
 	sdb *statedb.StateDB,
 	base *ethtypes.Header,
-	headers []*ethtypes.Header,
-	bi int,
+	pastSiblings []*ethtypes.Header,
+	baseHash common.Hash,
 	block types.SimBlock,
 	rules params.Rules,
 	opts *types.SimOpts,
 	gasCap uint64,
 	budget *simGasBudget,
 	timeout time.Duration,
-) (*types.SimBlockResult, error) {
-	header := headers[bi]
+) (*ethtypes.Header, *types.SimBlockResult, error) {
+	parent := base
+	if n := len(pastSiblings); n > 0 {
+		parent = pastSiblings[n-1]
+	}
+	header := makeSimHeader(parent, block.BlockOverrides, rules, cfg.ChainConfig, opts.Validation)
+
+	if len(pastSiblings) == 0 && baseHash != (common.Hash{}) {
+		header.ParentHash = baseHash
+	}
 
 	var moves map[common.Address]common.Address
 	if len(block.StateOverrides) > 0 {
 		m, applyErr := applyStateOverrides(sdb, block.StateOverrides, rules)
 		if applyErr != nil {
-			return nil, applyErr
+			return nil, nil, applyErr
 		}
 		moves = m
 	}
@@ -445,9 +441,9 @@ func (k *Keeper) processSimBlock(
 		Transfer:    core.Transfer,
 		// Simulate-aware GetHashFn: canonical-range delegated to
 		// k.GetHashFn, simulated-sibling range scanned from already-
-		// finalized past siblings (headers[:bi]). Canonical-range hashes
-		// are therefore unforgeable by any BlockOverrides field.
-		GetHash:     newSimGetHashFn(k.GetHashFn(sdkCtx), base, headers[:bi]),
+		// finalized past siblings. Canonical-range hashes are therefore
+		// unforgeable by any BlockOverrides field.
+		GetHash:     newSimGetHashFn(k.GetHashFn(sdkCtx), base, pastSiblings),
 		Coinbase:    header.Coinbase,
 		GasLimit:    header.GasLimit,
 		BlockNumber: new(big.Int).Set(header.Number),
@@ -497,7 +493,7 @@ func (k *Keeper) processSimBlock(
 
 	for i := range block.Calls {
 		if err := ctx.Err(); err != nil {
-			return nil, types.NewSimTimeout(timeout)
+			return nil, nil, types.NewSimTimeout(timeout)
 		}
 
 		// Clear per-call ephemerals (logs, refund, transient storage,
@@ -514,7 +510,7 @@ func (k *Keeper) processSimBlock(
 		args.Gas, simErr = resolveSimCallGas(&args, header, cumGas, budget)
 		if simErr != nil {
 			// -38015 is a request-level code per execute.yaml.
-			return nil, simErr
+			return nil, nil, simErr
 		}
 
 		msg, msgErr := args.ToMessage(gasCap, header.BaseFee)
@@ -557,7 +553,7 @@ func (k *Keeper) processSimBlock(
 
 		// Canceled mid-call: ignore any vm-error artifact and return -32016.
 		if err := ctx.Err(); err != nil {
-			return nil, types.NewSimTimeout(timeout)
+			return nil, nil, types.NewSimTimeout(timeout)
 		}
 
 		if runErr != nil {
@@ -571,9 +567,9 @@ func (k *Keeper) processSimBlock(
 				if args.Gas != nil {
 					provided = uint64(*args.Gas)
 				}
-				return nil, types.NewSimIntrinsicGas(provided, 0)
+				return nil, nil, types.NewSimIntrinsicGas(provided, 0)
 			}
-			return nil, runErr
+			return nil, nil, runErr
 		}
 
 		// Mirror the CREATE branch's post-call SetNonce in
@@ -598,7 +594,7 @@ func (k *Keeper) processSimBlock(
 		// res.GasUsed <= budget.remaining under valid inputs; the error
 		// path is the safety net.
 		if budgetErr := budget.consume(res.GasUsed); budgetErr != nil {
-			return nil, budgetErr
+			return nil, nil, budgetErr
 		}
 
 		calls = append(calls, types.BuildSimCallResult(res))
@@ -611,7 +607,6 @@ func (k *Keeper) processSimBlock(
 	// block is sealed: BlockHash (depends on cumulative GasUsed) and
 	// Index (must be per-block monotonic; AddLog stamps from
 	// txConfig.LogIndex+len(s.logs), both of which reset between calls).
-	// assembleSimBlock re-patches GasUsed idempotently below.
 	header.GasUsed = cumGas
 	finalBlockHash := header.Hash()
 	var logIdx uint
@@ -623,8 +618,8 @@ func (k *Keeper) processSimBlock(
 		}
 	}
 
-	return &types.SimBlockResult{
-		Block: assembleSimBlock(header, txHashes, cumGas),
+	return header, &types.SimBlockResult{
+		Block: assembleSimBlock(header, txHashes),
 		Calls: calls,
 	}, nil
 }
