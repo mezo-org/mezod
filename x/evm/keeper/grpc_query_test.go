@@ -2784,3 +2784,616 @@ func (suite *KeeperTestSuite) TestSimulateV1_Timeout_MidCall() {
 	suite.Require().Less(elapsed, 2*time.Second,
 		"timeout did not fire mid-call; elapsed=%s", elapsed)
 }
+
+// -----------------------------------------------------------------------------
+// SimulateV1 — TraceTransfers (ERC-7528 synthetic Transfer logs)
+// -----------------------------------------------------------------------------
+
+// erc7528Address is the canonical ERC-7528 pseudo-address used as the
+// emitter of synthetic native-value Transfer logs.
+const erc7528Address = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+
+// erc20TransferTopic is keccak256("Transfer(address,address,uint256)").
+const erc20TransferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
+// valueForwarderRuntime forwards CALLVALUE to the address packed (left-
+// padded) into the first 32 bytes of calldata. Two value-bearing call
+// edges land per top-level invocation: outer (caller -> forwarder) and
+// inner (forwarder -> recipient). Used by the nested-CALL synthetic-log
+// test.
+//
+//	@00  PUSH1 0x00          ; retSize
+//	@02  PUSH1 0x00          ; retOffset
+//	@04  PUSH1 0x00          ; argsSize
+//	@06  PUSH1 0x00          ; argsOffset
+//	@08  CALLVALUE           ; value
+//	@09  PUSH1 0x00          ; CALLDATALOAD offset
+//	@0B  CALLDATALOAD        ; recipient (low 20 bytes of calldata[0..32])
+//	@0C  GAS                 ; forward all remaining gas
+//	@0D  CALL
+//	@0E  STOP
+const valueForwarderRuntime = "0x6000600060006000346000355AF100"
+
+// log0RevertRuntime emits an empty LOG0 then reverts. Used to pin the
+// "tracer drops logs from a reverted frame" path.
+//
+//	@00  PUSH1 0x00          ; LOG0 size
+//	@02  PUSH1 0x00          ; LOG0 offset
+//	@04  LOG0
+//	@05  PUSH1 0x00          ; REVERT size
+//	@07  PUSH1 0x00          ; REVERT offset
+//	@09  REVERT
+const log0RevertRuntime = "0x60006000A060006000FD"
+
+// erc20TransferCalldata builds calldata for ERC-20 transfer(to, amount).
+// Selector is keccak256("transfer(address,uint256)")[:4] = 0xa9059cbb.
+func erc20TransferCalldata(to common.Address, amount *big.Int) []byte {
+	const transferSelector = "a9059cbb"
+	out := common.Hex2Bytes(transferSelector)
+	out = append(out, common.LeftPadBytes(to.Bytes(), 32)...)
+	out = append(out, common.LeftPadBytes(amount.Bytes(), 32)...)
+	return out
+}
+
+// syntheticTransferLogs filters a logs JSON array down to entries whose
+// `address` matches the ERC-7528 pseudo-address (case-insensitive). The
+// JSON encoding of ethtypes.Log lower-cases the address, but the helper
+// stays case-insensitive to survive future encoding tweaks.
+func syntheticTransferLogs(logs []interface{}) []map[string]interface{} {
+	out := make([]map[string]interface{}, 0, len(logs))
+	for _, raw := range logs {
+		entry := raw.(map[string]interface{})
+		addr, ok := entry["address"].(string)
+		if !ok {
+			continue
+		}
+		if common.HexToAddress(addr) == common.HexToAddress(erc7528Address) {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
+// TestSimulateV1_TraceTransfers_On_NativeTransfer_OneSyntheticLog —
+// happy path: a single native value-transfer call with traceTransfers
+// enabled produces exactly one synthetic ERC-7528 Transfer log carrying
+// the canonical Transfer topic, indexed sender / recipient, and the
+// value as 32-byte data.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_NativeTransfer_OneSyntheticLog() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+
+	call := calls[0].(map[string]interface{})
+	suite.Require().Equal("0x1", call["status"])
+
+	logs := call["logs"].([]interface{})
+	synthetic := syntheticTransferLogs(logs)
+	suite.Require().Len(synthetic, 1, "value transfer must produce exactly one synthetic ERC-7528 log")
+
+	log := synthetic[0]
+	topics := log["topics"].([]interface{})
+	suite.Require().Len(topics, 3)
+	suite.Require().Equal(erc20TransferTopic, topics[0].(string))
+
+	// Indexed sender / recipient: 12 zero bytes + 20 address bytes.
+	expectedFrom := "0x" + common.Bytes2Hex(common.LeftPadBytes(sender.Bytes(), 32))
+	expectedTo := "0x" + common.Bytes2Hex(common.LeftPadBytes(recipient.Bytes(), 32))
+	suite.Require().Equal(expectedFrom, topics[1].(string))
+	suite.Require().Equal(expectedTo, topics[2].(string))
+
+	// Data: 32-byte big-endian value.
+	expectedData := "0x" + common.Bytes2Hex(common.LeftPadBytes(big.NewInt(1_000_000).Bytes(), 32))
+	suite.Require().Equal(expectedData, log["data"].(string))
+}
+
+// TestSimulateV1_TraceTransfers_Off_NoSyntheticLogs — explicit
+// traceTransfers=false produces no synthetic logs.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_Off_NoSyntheticLogs() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+		"traceTransfers": false,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Empty(syntheticTransferLogs(logs),
+		"traceTransfers=false must not produce synthetic ERC-7528 logs")
+}
+
+// TestSimulateV1_TraceTransfers_OmittedDefaultsToFalse — when the
+// option is absent the driver behaves as if it were false: no synthetic
+// logs.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_OmittedDefaultsToFalse() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Empty(syntheticTransferLogs(logs),
+		"omitted traceTransfers must default to false")
+}
+
+// TestSimulateV1_TraceTransfers_On_ZeroValueCall_NoSyntheticLog —
+// traceTransfers=true with a zero-value call must not emit a synthetic
+// log. The deny-list and DELEGATECALL guards both sit behind the value
+// > 0 check; this test pins the value-sign branch.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_ZeroValueCall_NoSyntheticLog() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Empty(logs, "zero-value call must produce no logs at all")
+}
+
+// TestSimulateV1_TraceTransfers_On_RealLogStillCaptured — a real EVM
+// log emitted by user bytecode (LOG0 here) is captured into the call's
+// log list when traceTransfers is on, even with no synthetic emission.
+// Pins the StateDB.AddLog -> tracer.OnLog -> captured-log path.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_RealLogStillCaptured() {
+	suite.SetupTest()
+
+	sender := suite.address
+	emitter := common.HexToAddress("0xbbbb000000000000000000000000000000000301")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:  {"balance": balance},
+				emitter: {"code": log0Runtime},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &emitter}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Len(logs, 1, "real LOG0 must surface even when no synthetic log fires")
+
+	log := logs[0].(map[string]interface{})
+	suite.Require().Equal(emitter, common.HexToAddress(log["address"].(string)),
+		"captured real log must carry the emitter contract's address")
+	suite.Require().Empty(syntheticTransferLogs(logs),
+		"zero-value call must not produce any synthetic log")
+}
+
+// TestSimulateV1_TraceTransfers_On_NativeTransfer_BlockHashBackStamped —
+// captured logs carry the per-block hash that the response envelope
+// surfaces under `hash`. Only observable end-to-end because the driver
+// records logs with a zero block hash and patches BlockHash + Index in
+// a post-call back-stamp.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_NativeTransfer_BlockHashBackStamped() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	blockHash := results[0]["hash"].(string)
+	suite.Require().NotEmpty(blockHash)
+
+	calls := results[0]["calls"].([]interface{})
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	synthetic := syntheticTransferLogs(logs)
+	suite.Require().Len(synthetic, 1)
+	suite.Require().Equal(blockHash, synthetic[0]["blockHash"].(string),
+		"synthetic log blockHash must equal the assembled block's hash post-back-stamp")
+}
+
+// TestSimulateV1_TraceTransfers_On_RevertingCall_LogsDropped — a call
+// that emits a real log and then reverts surfaces with `error.code = 3`
+// and an empty logs list (the revert must drop both real and synthetic
+// frame contents).
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_RevertingCall_LogsDropped() {
+	suite.SetupTest()
+
+	sender := suite.address
+	contract := common.HexToAddress("0xbbbb000000000000000000000000000000000302")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:   {"balance": balance},
+				contract: {"code": log0RevertRuntime},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &contract}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	call := calls[0].(map[string]interface{})
+
+	suite.Require().Equal("0x0", call["status"])
+	errObj := call["error"].(map[string]interface{})
+	suite.Require().EqualValues(float64(types.SimErrCodeReverted), errObj["code"])
+
+	logs := call["logs"].([]interface{})
+	suite.Require().Empty(logs, "revert must drop the real LOG0 the contract emitted before REVERT")
+}
+
+// TestSimulateV1_TraceTransfers_On_NestedCalls_OneSyntheticPerEdge — a
+// top-level value-bearing CALL into a forwarder contract that
+// re-CALLs the recipient with the same value produces TWO synthetic
+// logs: outer (sender -> forwarder), inner (forwarder -> recipient).
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_NestedCalls_OneSyntheticPerEdge() {
+	suite.SetupTest()
+
+	sender := suite.address
+	forwarder := common.HexToAddress("0xbbbb000000000000000000000000000000000303")
+	recipient := common.HexToAddress("0x2222222222222222222222222222222222222222")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	value := (*hexutil.Big)(big.NewInt(123_456))
+	calldata := common.LeftPadBytes(recipient.Bytes(), 32)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:    {"balance": balance},
+				forwarder: {"code": valueForwarderRuntime},
+			},
+			"calls": []types.TransactionArgs{{
+				From:  &sender,
+				To:    &forwarder,
+				Value: value,
+				Input: (*hexutil.Bytes)(&calldata),
+			}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"])
+
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	synthetic := syntheticTransferLogs(logs)
+	suite.Require().Len(synthetic, 2,
+		"forwarder pattern produces two value-transfer call edges (outer + inner)")
+
+	outerTopics := synthetic[0]["topics"].([]interface{})
+	innerTopics := synthetic[1]["topics"].([]interface{})
+
+	expectedSender := "0x" + common.Bytes2Hex(common.LeftPadBytes(sender.Bytes(), 32))
+	expectedForwarder := "0x" + common.Bytes2Hex(common.LeftPadBytes(forwarder.Bytes(), 32))
+	expectedRecipient := "0x" + common.Bytes2Hex(common.LeftPadBytes(recipient.Bytes(), 32))
+
+	suite.Require().Equal(expectedSender, outerTopics[1].(string))
+	suite.Require().Equal(expectedForwarder, outerTopics[2].(string))
+	suite.Require().Equal(expectedForwarder, innerTopics[1].(string))
+	suite.Require().Equal(expectedRecipient, innerTopics[2].(string))
+}
+
+// TestSimulateV1_TraceTransfers_On_MultiCall_PerCallLogsIsolated — two
+// value-transfer calls in the same block each surface their own
+// synthetic log on the corresponding call result; neither call's log
+// list contains the other's entries.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_MultiCall_PerCallLogsIsolated() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipientA := common.HexToAddress("0xaaaa000000000000000000000000000000000401")
+	recipientB := common.HexToAddress("0xbbbb000000000000000000000000000000000402")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipientA, Value: value},
+				{From: &sender, To: &recipientB, Value: value},
+			},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	logsA := calls[0].(map[string]interface{})["logs"].([]interface{})
+	logsB := calls[1].(map[string]interface{})["logs"].([]interface{})
+
+	syntheticA := syntheticTransferLogs(logsA)
+	syntheticB := syntheticTransferLogs(logsB)
+	suite.Require().Len(syntheticA, 1, "call 0's logs must contain only its own synthetic")
+	suite.Require().Len(syntheticB, 1, "call 1's logs must contain only its own synthetic")
+
+	expectedToA := "0x" + common.Bytes2Hex(common.LeftPadBytes(recipientA.Bytes(), 32))
+	expectedToB := "0x" + common.Bytes2Hex(common.LeftPadBytes(recipientB.Bytes(), 32))
+	suite.Require().Equal(expectedToA, syntheticA[0]["topics"].([]interface{})[2].(string))
+	suite.Require().Equal(expectedToB, syntheticB[0]["topics"].([]interface{})[2].(string))
+}
+
+// TestSimulateV1_TraceTransfers_On_MultiCall_TxIndexMatchesCallPosition
+// — transactionIndex on each captured synthetic log equals that call's
+// position in the block's calls array.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_MultiCall_TxIndexMatchesCallPosition() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xaaaa000000000000000000000000000000000403")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipient, Value: value},
+				{From: &sender, To: &recipient, Value: value},
+				{From: &sender, To: &recipient, Value: value},
+			},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 3)
+
+	for i, expected := range []string{"0x0", "0x1", "0x2"} {
+		logs := calls[i].(map[string]interface{})["logs"].([]interface{})
+		synthetic := syntheticTransferLogs(logs)
+		suite.Require().Len(synthetic, 1)
+		suite.Require().Equal(expected, synthetic[0]["transactionIndex"].(string),
+			"call %d's synthetic log must carry transactionIndex=%s", i, expected)
+	}
+}
+
+// TestSimulateV1_TraceTransfers_On_MultiBlock_LogIndexResetsPerBlock —
+// per-block log index counter must reset between blocks. Block 0
+// carries two value transfers (logIndex 0, 1); block 1 carries one
+// (logIndex 0).
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_MultiBlock_LogIndexResetsPerBlock() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xaaaa000000000000000000000000000000000404")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	transfer := types.TransactionArgs{From: &sender, To: &recipient, Value: value}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender: {"balance": balance},
+				},
+				"calls": []types.TransactionArgs{transfer, transfer},
+			},
+			{"calls": []types.TransactionArgs{transfer}},
+		},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 2)
+
+	block0 := results[0]["calls"].([]interface{})
+	block1 := results[1]["calls"].([]interface{})
+
+	logs00 := syntheticTransferLogs(block0[0].(map[string]interface{})["logs"].([]interface{}))
+	logs01 := syntheticTransferLogs(block0[1].(map[string]interface{})["logs"].([]interface{}))
+	logs10 := syntheticTransferLogs(block1[0].(map[string]interface{})["logs"].([]interface{}))
+
+	suite.Require().Len(logs00, 1)
+	suite.Require().Len(logs01, 1)
+	suite.Require().Len(logs10, 1)
+
+	suite.Require().Equal("0x0", logs00[0]["logIndex"].(string),
+		"block 0 call 0's synthetic log must be at logIndex 0")
+	suite.Require().Equal("0x1", logs01[0]["logIndex"].(string),
+		"block 0 call 1's synthetic log must be at logIndex 1 (cumulative within block)")
+	suite.Require().Equal("0x0", logs10[0]["logIndex"].(string),
+		"block 1's first synthetic log must reset the counter to 0")
+}
+
+// TestSimulateV1_TraceTransfers_On_BTCTokenSkipped — invoking the BTC
+// precompile's ERC-20 transfer(to, amount) with traceTransfers=true:
+// the precompile emits its own real Transfer event from inside the run,
+// the tracer captures it, and the deny-list keeps the synthetic
+// emission off (no double-counting). The outer call carries no native
+// value, so this test exercises the "real precompile event flows
+// through tracer; no synthetic noise added" path; the tracer-level
+// deny-list across all 8 precompile addresses is pinned by the unit
+// test in the transfertracer package.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_BTCTokenSkipped() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	btcToken := common.HexToAddress(types.BTCTokenPrecompileAddress)
+
+	// Fund the sender via bank directly — StateDB balance overrides
+	// only touch the EVM state object and do not propagate to
+	// bankKeeper, which is what btctoken.transfer actually reads.
+	initial := sdkmath.NewInt(1_000_000_000_000_000_000)
+	coin := sdk.NewCoin(types.DefaultEVMDenom, initial)
+	suite.Require().NoError(suite.app.BankKeeper.MintCoins(
+		suite.ctx, types.ModuleName, sdk.NewCoins(coin)))
+	suite.Require().NoError(suite.app.BankKeeper.SendCoinsFromModuleToAccount(
+		suite.ctx, types.ModuleName, sender.Bytes(), sdk.NewCoins(coin)))
+
+	calldata := erc20TransferCalldata(recipient, big.NewInt(1))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"calls": []types.TransactionArgs{{
+				From:  &sender,
+				To:    &btcToken,
+				Input: (*hexutil.Bytes)(&calldata),
+			}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"],
+		"btctoken.transfer must succeed when the sender's bank balance is funded")
+
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Empty(syntheticTransferLogs(logs),
+		"BTC token precompile address must not produce a synthetic ERC-7528 log")
+
+	// Real precompile-emitted Transfer event must still be present and
+	// flow through the tracer. The address must be the precompile, the
+	// topic must be the canonical ERC-20 Transfer signature.
+	require := suite.Require()
+	require.NotEmpty(logs, "BTC precompile transfer must surface its own real Transfer event")
+	realLog := logs[0].(map[string]interface{})
+	require.Equal(btcToken, common.HexToAddress(realLog["address"].(string)),
+		"real Transfer event must carry the BTC precompile address as emitter")
+	topics := realLog["topics"].([]interface{})
+	require.NotEmpty(topics)
+	require.Equal(erc20TransferTopic, topics[0].(string),
+		"first topic must be the canonical ERC-20 Transfer signature")
+}
