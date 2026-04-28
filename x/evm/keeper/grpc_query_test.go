@@ -1942,31 +1942,25 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_BlockGasLimit() {
 	suite.Require().Empty(resp.Result)
 }
 
-// TestSimulateV1_MultiCall_LogTxIndexMatchesBlockPosition — first call
-// is rejected pre-execution (requested gas > block gas limit, surfaces
-// -38015 without entering the EVM), second call lands and emits a log.
-// The block's transactions array therefore contains a single tx at
-// position 0; the emitted log's transactionIndex must agree (0x0), not
-// echo the loop position the rejected call occupied.
-func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_LogTxIndexMatchesBlockPosition() {
+// A call combining legacy GasPrice with EIP-1559 MaxFeePerGas fails
+// ToMessage and surfaces a request-level -32602; any later call in the
+// block must not execute.
+func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_ToMessageRejection() {
 	suite.SetupTest()
 
 	sender := suite.address
 	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
-	blockGasLimit := hexutil.Uint64(5_000_000)
-	overBudgetGas := hexutil.Uint64(5_000_001)
+	gasPrice := (*hexutil.Big)(big.NewInt(1))
+	maxFee := (*hexutil.Big)(big.NewInt(1))
 	initCode := hexutil.MustDecode(emptyLogDeployer)
 
 	optsJSON, err := json.Marshal(map[string]interface{}{
 		"blockStateCalls": []map[string]interface{}{{
-			"blockOverrides": map[string]interface{}{
-				"gasLimit": blockGasLimit,
-			},
 			"stateOverrides": map[common.Address]map[string]interface{}{
 				sender: {"balance": balance},
 			},
 			"calls": []types.TransactionArgs{
-				{From: &sender, Gas: &overBudgetGas, Input: (*hexutil.Bytes)(&initCode)},
+				{From: &sender, GasPrice: gasPrice, MaxFeePerGas: maxFee, Input: (*hexutil.Bytes)(&initCode)},
 				{From: &sender, Input: (*hexutil.Bytes)(&initCode)},
 			},
 		}},
@@ -1974,27 +1968,10 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_LogTxIndexMatchesBlockPos
 	suite.Require().NoError(err)
 
 	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
-	suite.Require().NoError(err)
-	suite.Require().Nil(resp.Error)
-
-	results := suite.simulateV1BlockResults(resp)
-	suite.Require().Len(results, 1)
-
-	txs := results[0]["transactions"].([]interface{})
-	suite.Require().Len(txs, 1, "rejected call must not enter the block's transactions array")
-
-	calls := results[0]["calls"].([]interface{})
-	suite.Require().Len(calls, 2)
-
-	call1 := calls[1].(map[string]interface{})
-	suite.Require().Equal("0x1", call1["status"], "second call must succeed and emit its log")
-	logs := call1["logs"].([]interface{})
-	suite.Require().Len(logs, 1)
-	suite.Require().Equal(
-		"0x0",
-		logs[0].(map[string]interface{})["transactionIndex"],
-		"log's transactionIndex must equal the call's position in the sealed block",
-	)
+	suite.Require().NoError(err, "must NOT collapse to gRPC Internal")
+	suite.Require().NotNil(resp.Error, "ToMessage failure must surface a top-level fatal SimError")
+	suite.Require().Equal(int32(types.SimErrCodeInvalidParams), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
 }
 
 // TestSimulateV1_MultiCall_NonceAutoIncrement — two CREATE calls from

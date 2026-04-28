@@ -515,11 +515,8 @@ func (k *Keeper) processSimBlock(
 
 		msg, msgErr := args.ToMessage(gasCap, header.BaseFee)
 		if msgErr != nil {
-			calls = append(calls, types.SimCallResult{
-				Logs:  []*ethtypes.Log{},
-				Error: types.NewSimInvalidParams(msgErr.Error()),
-			})
-			continue
+			// -32602 is a request-level code per execute.yaml.
+			return nil, nil, types.NewSimInvalidParams(msgErr.Error())
 		}
 
 		// Per-call TxConfig so AddLog stamps distinct TxHash / TxIndex
@@ -531,11 +528,6 @@ func (k *Keeper) processSimBlock(
 		// `(*state.StateDB).SetTxContext(thash, ti)` — it only updates
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
-		//
-		// TxIndex is the call's position in the sealed block, not the
-		// loop index: pre-execution rejections above `continue` without
-		// appending to txHashes, so len(txHashes) is the index this
-		// call will land at if it succeeds.
 		callTxHash := computeSimTxHash(msg)
 		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(len(txHashes)), 0) //nolint:gosec
 		sdb.SetTxContext(callCfg.TxHash, int(callCfg.TxIndex))                            //nolint:gosec
