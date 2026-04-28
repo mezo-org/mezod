@@ -420,6 +420,21 @@ func (k *Keeper) processSimBlock(
 		header.ParentHash = baseHash
 	}
 
+	// -38012: caller-supplied BlockOverrides.BaseFeePerGas must not fall
+	// below the chain-computed eip1559 floor. Per-block (not per-call),
+	// hoisted out of validateSimCall to keep that helper focused on
+	// message-level checks. Skipped when validation=false, when no
+	// override is supplied, or pre-London (no floor exists).
+	if opts.Validation &&
+		rules.IsLondon &&
+		block.BlockOverrides != nil &&
+		block.BlockOverrides.BaseFeePerGas != nil {
+		floor := eip1559.CalcBaseFee(cfg.ChainConfig, parent)
+		if override := block.BlockOverrides.BaseFeePerGas.ToInt(); override.Cmp(floor) < 0 {
+			return nil, nil, types.NewSimBaseFeeTooLow(override, floor)
+		}
+	}
+
 	var moves map[common.Address]common.Address
 	if len(block.StateOverrides) > 0 {
 		m, applyErr := applyStateOverrides(sdb, block.StateOverrides, rules)
@@ -532,6 +547,17 @@ func (k *Keeper) processSimBlock(
 			// -32602 is a request-level code per the geth execution spec
 			// (ethereum/execution-apis `execute.yaml`).
 			return nil, nil, types.NewSimInvalidParams(msgErr.Error())
+		}
+
+		// EoA check is always skipped — custom state overrides may make
+		// `from` a contract. Mezod's applyMessageWithConfig does not
+		// invoke core.preCheck, so this flag is documentary today; it
+		// keeps the message correct under any future refactor that
+		// routes through the core path.
+		msg.SkipAccountChecks = true
+
+		if simErr := k.validateSimCall(sdkCtx, sdb, &msg, header, rules, cfg.ChainConfig, opts.Validation); simErr != nil {
+			return nil, nil, simErr
 		}
 
 		// Per-call TxConfig so AddLog stamps distinct TxHash / TxIndex
@@ -789,4 +815,74 @@ func computeSimTxHash(msg core.Message) common.Hash {
 		Data:     msg.Data,
 	})
 	return tx.Hash()
+}
+
+// validateSimCall runs the validation=true pre-call gates. Callers
+// pass a `validation` flag because validation=false MUST bypass every
+// gate (spec contract). Failures are returned as *types.SimError; the
+// caller surfaces them as request-level fatals via simulateV1ErrResponse.
+//
+// Gate order mirrors geth's preCheck flow (state_transition.go preCheck
+// + state-transition init-code check):
+//  1. nonce       (-38010 / -38011)
+//  2. init-code   (-38025) — Shanghai-only, CREATE-only
+//  3. intrinsic   (-38013)
+//  4. fee-cap     (-32005) — only when header.BaseFee != nil
+//  5. balance     (-38014)
+//
+// The block-baseFee floor (-38012) is checked once per block in
+// processSimBlock (depends on parent header + override pointer, not on
+// the per-call message), keeping this helper focused on the message.
+func (k *Keeper) validateSimCall(
+	ctx sdk.Context,
+	sdb *statedb.StateDB,
+	msg *core.Message,
+	header *ethtypes.Header,
+	rules params.Rules,
+	chainCfg *params.ChainConfig,
+	validation bool,
+) *types.SimError {
+	if !validation {
+		return nil
+	}
+
+	stateNonce := sdb.GetNonce(msg.From)
+	switch {
+	case msg.Nonce < stateNonce:
+		return types.NewSimNonceTooLow(msg.From, msg.Nonce, stateNonce)
+	case msg.Nonce > stateNonce:
+		return types.NewSimNonceTooHigh(msg.From, msg.Nonce, stateNonce)
+	}
+
+	contractCreation := msg.To == nil
+	if contractCreation && rules.IsShanghai && len(msg.Data) > params.MaxInitCodeSize {
+		return types.NewSimInitcodeTooLarge(len(msg.Data), params.MaxInitCodeSize)
+	}
+
+	intrinsic, err := k.GetEthIntrinsicGas(ctx, *msg, chainCfg, contractCreation)
+	if err != nil {
+		// IntrinsicGas only errors on overflow; report the data length
+		// as the offender and let the caller surface the spec code.
+		return types.NewSimIntrinsicGas(msg.GasLimit, math.MaxUint64)
+	}
+	if msg.GasLimit < intrinsic {
+		return types.NewSimIntrinsicGas(msg.GasLimit, intrinsic)
+	}
+
+	if header.BaseFee != nil && msg.GasFeeCap.Cmp(header.BaseFee) < 0 {
+		return types.NewSimFeeCapTooLow(msg.GasFeeCap, header.BaseFee)
+	}
+
+	// Balance must cover gasLimit*gasPrice + value. Use GasFeeCap (the
+	// spec-aligned upper bound) so the check is independent of the
+	// caller's tipCap; this matches how geth's preCheck/buyGas computes
+	// `mgval`.
+	cost := new(big.Int).SetUint64(msg.GasLimit)
+	cost.Mul(cost, msg.GasFeeCap)
+	cost.Add(cost, msg.Value)
+	balance := sdb.GetBalance(msg.From).ToBig()
+	if balance.Cmp(cost) < 0 {
+		return types.NewSimInsufficientFunds(msg.From, balance, cost)
+	}
+	return nil
 }
