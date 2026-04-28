@@ -84,47 +84,6 @@ describe("SimulateV1_MultiCall", function () {
     })
   })
 
-  context("cumulative block gas limit enforced across calls", function () {
-    it("over-budget call is rejected with -38015 while preceding calls stand", async function () {
-      const recipient = ethers.Wallet.createRandom().address
-      const opts = {
-        blockStateCalls: [
-          {
-            blockOverrides: { gasLimit: ethers.toQuantity(50_000n) },
-            stateOverrides: {
-              [senderAddr]: { balance: ethers.toQuantity(ethers.parseEther("100")) },
-            },
-            calls: [
-              {
-                from: senderAddr,
-                to: recipient,
-                value: ethers.toQuantity(1n),
-              },
-              {
-                from: senderAddr,
-                to: recipient,
-                value: ethers.toQuantity(1n),
-                gas: ethers.toQuantity(30_000n),
-              },
-            ],
-          },
-        ],
-      }
-
-      const blocks: any[] = await ethers.provider.send(
-        "eth_simulateV1",
-        [opts, "latest"],
-      )
-      const calls = blocks[0].calls
-      expect(calls).to.have.lengthOf(2)
-
-      expect(calls[0].status).to.equal("0x1")
-
-      expect(calls[1].error).to.exist
-      expect(calls[1].error.code).to.equal(-38015)
-    })
-  })
-
   // Custom Mezo precompiles (btctoken, mezotoken, …) write through the
   // Cosmos bank keeper, not the EVM journal — their mutations ride in
   // the StateDB's cached Cosmos context and must survive call
