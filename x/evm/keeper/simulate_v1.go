@@ -295,8 +295,8 @@ func assembleSimBlock(
 // errors.As. Everything else is a genuine internal — the gRPC handler
 // maps it to codes.Internal.
 func (k *Keeper) simulateV1(
-	goCtx context.Context,
-	ctx sdk.Context,
+	ctx context.Context,
+	sdkCtx sdk.Context,
 	cfg *statedb.EVMConfig,
 	base *ethtypes.Header,
 	baseHash common.Hash,
@@ -317,17 +317,16 @@ func (k *Keeper) simulateV1(
 	// is interpreted as unlimited.
 	budget := newSimGasBudget(gasCap)
 
-
-	// One Rules value covers every simulated block, derived from ctx
+	// One Rules value covers every simulated block, derived from sdkCtx
 	// (i.e. base) rather than from each block's own number/time. This
-	// is deliberate: applyMessageWithConfig reads ctx.BlockHeight() /
-	// ctx.BlockTime() internally for fork-gated behavior (signer rules,
-	// access-list prep, intrinsic gas). Since those internal reads are
-	// anchored at ctx, every piece of fork-gated machinery below the
-	// driver sees
-	// the *base* ruleset regardless of which simulated block's header
-	// we hand the EVM. Using a single base-derived `rules` for header
-	// construction keeps the driver aligned with that internal truth.
+	// is deliberate: applyMessageWithConfig reads sdkCtx.BlockHeight() /
+	// sdkCtx.BlockTime() internally for fork-gated behavior (signer
+	// rules, access-list prep, intrinsic gas). Since those internal
+	// reads are anchored at sdkCtx, every piece of fork-gated machinery
+	// below the driver sees the *base* ruleset regardless of which
+	// simulated block's header we hand the EVM. Using a single
+	// base-derived `rules` for header construction keeps the driver
+	// aligned with that internal truth.
 	//
 	// The sentinel enforces this anchoring: if the span's last block
 	// would cross onto a different fork than base, rules() anywhere in
@@ -338,8 +337,8 @@ func (k *Keeper) simulateV1(
 	// match both endpoints when the endpoints match. Conservative where
 	// it matters (a span fully inside a post-fork region whose base is
 	// pre-fork is rejected rather than silently executed with
-	// pre-fork rules from ctx).
-	rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
+	// pre-fork rules from sdkCtx).
+	rules := cfg.Rules(sdkCtx.BlockHeight(), uint64(sdkCtx.BlockTime().Unix())) //nolint:gosec
 	lastBlock := sanitized[len(sanitized)-1]
 	lastRules := cfg.Rules(
 		lastBlock.BlockOverrides.Number.ToInt().Int64(),
@@ -360,7 +359,7 @@ func (k *Keeper) simulateV1(
 	// TxIndex via SetTxContext (geth-aligned: BlockHash untouched)
 	// and back-stamps log.BlockHash with the simulated block hash
 	// after the block finalizes.
-	sdb := statedb.New(ctx, k, statedb.NewEmptyTxConfig(common.Hash{}))
+	sdb := statedb.New(sdkCtx, k, statedb.NewEmptyTxConfig(common.Hash{}))
 
 	// Build, execute, and link headers in a single pass. processSimBlock
 	// patches headers[bi].GasUsed before sealing the block hash, so by
@@ -383,7 +382,7 @@ func (k *Keeper) simulateV1(
 		}
 
 		res, blockErr := k.processSimBlock(
-			goCtx, ctx, cfg, sdb, base, headers, bi, block, rules, opts, gasCap, budget, timeout,
+			ctx, sdkCtx, cfg, sdb, base, headers, bi, block, rules, opts, gasCap, budget, timeout,
 		)
 		if blockErr != nil {
 			return nil, blockErr
@@ -407,8 +406,8 @@ func (k *Keeper) simulateV1(
 // patches GasUsed before computing the block hash. Later blocks see
 // this block through headers[:laterIdx] via newSimGetHashFn.
 func (k *Keeper) processSimBlock(
-	goCtx context.Context,
-	ctx sdk.Context,
+	ctx context.Context,
+	sdkCtx sdk.Context,
 	cfg *statedb.EVMConfig,
 	sdb *statedb.StateDB,
 	base *ethtypes.Header,
@@ -448,7 +447,7 @@ func (k *Keeper) processSimBlock(
 		// k.GetHashFn, simulated-sibling range scanned from already-
 		// finalized past siblings (headers[:bi]). Canonical-range hashes
 		// are therefore unforgeable by any BlockOverrides field.
-		GetHash:     newSimGetHashFn(k.GetHashFn(ctx), base, headers[:bi]),
+		GetHash:     newSimGetHashFn(k.GetHashFn(sdkCtx), base, headers[:bi]),
 		Coinbase:    header.Coinbase,
 		GasLimit:    header.GasLimit,
 		BlockNumber: new(big.Int).Set(header.Number),
@@ -459,7 +458,7 @@ func (k *Keeper) processSimBlock(
 		Random:      random,
 	}
 
-	precompiles := k.precompilesWithMoves(ctx, cfg, moves)
+	precompiles := k.precompilesWithMoves(sdkCtx, cfg, moves)
 
 	// One watcher goroutine per block. OnEVMConstructed publishes the
 	// per-call *vm.EVM into liveEVM synchronously, before
@@ -467,13 +466,13 @@ func (k *Keeper) processSimBlock(
 	// always points at the call we want to cancel. The ctx.Err() guard
 	// distinguishes upstream cancellation (evm.Cancel()) from the
 	// deferred cancelBlock that disarms the watcher on normal exit.
-	watchCtx, cancelBlock := context.WithCancel(goCtx)
+	watchCtx, cancelBlock := context.WithCancel(ctx)
 	defer cancelBlock()
 
 	var liveEVM atomic.Pointer[vm.EVM]
 	go func() {
 		<-watchCtx.Done()
-		if goCtx.Err() != nil {
+		if ctx.Err() != nil {
 			if e := liveEVM.Load(); e != nil {
 				e.Cancel()
 			}
@@ -497,7 +496,7 @@ func (k *Keeper) processSimBlock(
 	var cumGas uint64
 
 	for i := range block.Calls {
-		if err := goCtx.Err(); err != nil {
+		if err := ctx.Err(); err != nil {
 			return nil, types.NewSimTimeout(timeout)
 		}
 
@@ -546,7 +545,7 @@ func (k *Keeper) processSimBlock(
 		sdb.SetTxContext(callCfg.TxHash, int(callCfg.TxIndex))                            //nolint:gosec
 
 		res, _, runErr := k.applyMessageWithConfig(
-			ctx,
+			sdkCtx,
 			WrapMessage(msg),
 			nil,   // tracer
 			false, // commit = false (ephemeral simulate)
@@ -557,7 +556,7 @@ func (k *Keeper) processSimBlock(
 		)
 
 		// Canceled mid-call: ignore any vm-error artifact and return -32016.
-		if err := goCtx.Err(); err != nil {
+		if err := ctx.Err(); err != nil {
 			return nil, types.NewSimTimeout(timeout)
 		}
 
