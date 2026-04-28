@@ -509,13 +509,15 @@ func (k *Keeper) processSimBlock(
 		var simErr *types.SimError
 		args.Gas, simErr = resolveSimCallGas(&args, header, cumGas, budget)
 		if simErr != nil {
-			// -38015 is a request-level code per execute.yaml.
+			// -38015 is a request-level code per the geth execution spec
+			// (ethereum/execution-apis `execute.yaml`).
 			return nil, nil, simErr
 		}
 
 		msg, msgErr := args.ToMessage(gasCap, header.BaseFee)
 		if msgErr != nil {
-			// -32602 is a request-level code per execute.yaml.
+			// -32602 is a request-level code per the geth execution spec
+			// (ethereum/execution-apis `execute.yaml`).
 			return nil, nil, types.NewSimInvalidParams(msgErr.Error())
 		}
 
@@ -549,7 +551,8 @@ func (k *Keeper) processSimBlock(
 		}
 
 		if runErr != nil {
-			// Per execute.yaml, CallResultFailure permits only codes 3
+			// Per the geth execution spec (ethereum/execution-apis
+			// `execute.yaml`), CallResultFailure permits only codes 3
 			// and -32015, so ErrIntrinsicGas must surface at the request
 			// level. Capture args.Gas here while it is still in scope so
 			// the SimError carries the actual provided value rather than

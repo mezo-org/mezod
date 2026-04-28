@@ -8,13 +8,14 @@ import {
 
 // SimulateV1_Limits exercises the structured top-level errors that
 // abort an eth_simulateV1 request: the request-envelope DoS caps
-// (-38026) and the gas-error semantics that execute.yaml routes through
-// the request channel rather than per-call entries (-38015 block gas
-// limit, -38013 intrinsic gas). Each case confirms the structured
-// SimError survives keeper -> gRPC -> JSON-RPC -> ethers with code and
-// message intact. The DoS guards that need a node restart (kill switch)
-// or runtime knob tuning the harness can't orchestrate (timeout,
-// gas-pool clamp) stay covered by Go unit tests.
+// (-38026) and the gas-error semantics that the geth execution spec
+// (ethereum/execution-apis `execute.yaml`) routes through the request
+// channel rather than per-call entries (-38015 block gas limit, -38013
+// intrinsic gas). Each case confirms the structured SimError survives
+// keeper -> gRPC -> JSON-RPC -> ethers with code and message intact.
+// The DoS guards that need a node restart (kill switch) or runtime
+// knob tuning the harness can't orchestrate (timeout, gas-pool clamp)
+// stay covered by Go unit tests.
 describe("SimulateV1_Limits", function () {
   async function simulate(opts: any): Promise<CapturedError> {
     try {
@@ -54,7 +55,8 @@ describe("SimulateV1_Limits", function () {
     // call asks for 30000 against ~29000 remaining. resolveSimCallGas
     // returns NewSimBlockGasLimitReached, which the driver surfaces as
     // a top-level fatal (CallResultFailure permits only codes 3 and
-    // -32015 per execute.yaml, so -38015 cannot ride per-call).
+    // -32015 per the geth execution spec's `execute.yaml`, so -38015
+    // cannot ride per-call).
     blockGasLimitResult = await simulate({
       blockStateCalls: [
         {
@@ -84,7 +86,7 @@ describe("SimulateV1_Limits", function () {
     // Explicit gas of 1000 is well below the 21000 intrinsic baseline.
     // applyMessageWithConfig returns core.ErrIntrinsicGas; the driver
     // wraps it in NewSimIntrinsicGas and surfaces it as a top-level
-    // fatal for the same execute.yaml reason as -38015.
+    // fatal for the same geth-execution-spec reason as -38015.
     intrinsicGasResult = await simulate({
       blockStateCalls: [
         {

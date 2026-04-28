@@ -1470,8 +1470,9 @@ func (m *SimulateV1Response) GetError() *SimError {
 
 // SimError is the unified error surface carried back to the RPC layer
 // when eth_simulateV1 cannot produce a result. `code` is a spec-reserved
-// JSON-RPC error code (execution-apis/src/eth/execute.yaml); `data` is
-// a hex-encoded payload used only for code == 3 (revert).
+// JSON-RPC error code from the geth execution spec
+// (ethereum/execution-apis `src/eth/execute.yaml`); `data` is a
+// hex-encoded payload used only for code == 3 (revert).
 type SimError struct {
 	// code is the spec-reserved JSON-RPC error code.
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`

@@ -10,15 +10,15 @@ import (
 )
 
 // Spec-reserved JSON-RPC error codes for eth_simulateV1. Names and values
-// mirror the execution-apis spec; see the canonical error list (message
-// text + condition) at:
+// mirror the geth execution spec (ethereum/execution-apis); see the
+// canonical error list (message text + condition) at:
 //
 //	https://github.com/ethereum/execution-apis/blob/main/src/eth/execute.yaml
 const (
 	// SimErrCodeReverted pins to the spec's enforced `const: 3` for
-	// CallResultFailure.error.code (execute.yaml schema). Geth diverges
-	// here and reuses its legacy -32000 from eth_call; reth follows the
-	// spec. We follow the spec / reth.
+	// CallResultFailure.error.code (geth execution spec's `execute.yaml`
+	// schema). Geth diverges here and reuses its legacy -32000 from
+	// eth_call; reth follows the spec. We follow the spec / reth.
 	SimErrCodeReverted = 3
 
 	SimErrCodeFeeCapTooLow   = -32005
