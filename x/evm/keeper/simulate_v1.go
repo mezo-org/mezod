@@ -18,8 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/tracer/transfertracer"
@@ -230,46 +232,22 @@ func makeSimHeader(
 	return h
 }
 
-// assembleSimBlock turns a simulated header plus the calls that ran
-// inside it into a spec-shaped block envelope suitable for JSON
-// marshaling. Fields match RPCMarshalBlock's output. The assembled
-// block carries tx hashes only; `returnFullTransactions` patching is
-// not wired yet.
+// assembleSimBlock builds the synthetic *ethtypes.Block for a simulated
+// block. NewBlock derives transactionsRoot, receiptsRoot, and bloom
+// from the supplied txs and receipts; CreateBloom in turn ORs each
+// receipt's pre-computed Bloom. Caller must seal header.GasUsed before
+// invoking so block.Hash() (used by RPCMarshalBlock) is stable.
 //
-// Caller must seal `header.GasUsed` before calling so `Hash()` is stable.
+// stateRoot stays at the header's zero Root: mezod's StateDB wraps a
+// Cosmos cached multistore and has no MPT to call IntermediateRoot on,
+// so any non-zero value would be misleading. Documented as a known
+// Mezo divergence from the geth simulate envelope.
 func assembleSimBlock(
 	header *ethtypes.Header,
-	txHashes []common.Hash,
-) map[string]interface{} {
-	blockHash := header.Hash()
-
-	txList := make([]interface{}, 0, len(txHashes))
-	for _, h := range txHashes {
-		txList = append(txList, h)
-	}
-
-	return map[string]interface{}{
-		"number":           (*hexutil.Big)(new(big.Int).Set(header.Number)),
-		"hash":             blockHash,
-		"parentHash":       header.ParentHash,
-		"nonce":            ethtypes.BlockNonce{},
-		"mixHash":          header.MixDigest,
-		"sha3Uncles":       header.UncleHash,
-		"logsBloom":        header.Bloom,
-		"stateRoot":        header.Root,
-		"miner":            header.Coinbase,
-		"difficulty":       (*hexutil.Big)(header.Difficulty),
-		"extraData":        hexutil.Bytes(header.Extra),
-		"size":             hexutil.Uint64(0),
-		"gasLimit":         hexutil.Uint64(header.GasLimit),
-		"gasUsed":          hexutil.Uint64(header.GasUsed),
-		"timestamp":        hexutil.Uint64(header.Time),
-		"transactionsRoot": header.TxHash,
-		"receiptsRoot":     header.ReceiptHash,
-		"baseFeePerGas":    (*hexutil.Big)(header.BaseFee),
-		"uncles":           []common.Hash{},
-		"transactions":     txList,
-	}
+	txs []*ethtypes.Transaction,
+	receipts []*ethtypes.Receipt,
+) *ethtypes.Block {
+	return ethtypes.NewBlock(header, &ethtypes.Body{Transactions: txs}, receipts, trie.NewStackTrie(nil))
 }
 
 // simulateV1 is the keeper-side entry point for eth_simulateV1. It
@@ -516,7 +494,13 @@ func (k *Keeper) processSimBlock(
 	}
 
 	calls := make([]types.SimCallResult, 0, len(block.Calls))
-	txHashes := make([]common.Hash, 0, len(block.Calls))
+	// Synthetic txs and receipts feed NewBlock so the assembled envelope
+	// has correct transactionsRoot, receiptsRoot, and bloom. They are
+	// kept for the lifetime of one block — bounded by MaxSimulateCalls
+	// and the per-block GasLimit.
+	txs := make([]*ethtypes.Transaction, 0, len(block.Calls))
+	receipts := make([]*ethtypes.Receipt, 0, len(block.Calls))
+	senders := make(map[common.Hash]common.Address, len(block.Calls))
 	var cumGas uint64
 
 	for i := range block.Calls {
@@ -568,8 +552,9 @@ func (k *Keeper) processSimBlock(
 		// `(*state.StateDB).SetTxContext(thash, ti)` — it only updates
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
-		callTxHash := computeSimTxHash(msg)
-		callIdx := len(txHashes)
+		simTx := buildSimTx(msg)
+		callTxHash := simTx.Hash()
+		callIdx := len(txs)
 		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(callIdx), 0) //nolint:gosec
 		sdb.SetTxContext(callCfg.TxHash, callIdx)
 
@@ -644,17 +629,50 @@ func (k *Keeper) processSimBlock(
 			callResult.Logs = tracerLogs
 		}
 		calls = append(calls, callResult)
-		txHashes = append(txHashes, callTxHash)
 		cumGas += res.GasUsed
+
+		// Build the synthetic receipt for this call. Fields mirror
+		// core/state_processor.go's receipt assembly; PostState stays
+		// nil because mezod's StateDB has no MPT root, BlockHash is
+		// back-stamped after header.Hash() stabilizes below.
+		status := ethtypes.ReceiptStatusSuccessful
+		if res.Failed() {
+			status = ethtypes.ReceiptStatusFailed
+		}
+		receipt := &ethtypes.Receipt{
+			Type:              simTx.Type(),
+			Status:            status,
+			CumulativeGasUsed: cumGas,
+			TxHash:            callTxHash,
+			GasUsed:           res.GasUsed,
+			Logs:              callResult.Logs,
+			BlockNumber:       new(big.Int).Set(header.Number),
+			TransactionIndex:  uint(callIdx), //nolint:gosec
+		}
+		if msg.To == nil {
+			receipt.ContractAddress = crypto.CreateAddress(msg.From, msg.Nonce)
+		}
+		receipt.Bloom = ethtypes.CreateBloom(ethtypes.Receipts{receipt})
+
+		txs = append(txs, simTx)
+		receipts = append(receipts, receipt)
+		senders[callTxHash] = msg.From
 	}
 
-	// Finalize the header (GasUsed must be set before Hash()) and
-	// back-stamp every log with values that aren't knowable until the
-	// block is sealed: BlockHash (depends on cumulative GasUsed) and
-	// Index (must be per-block monotonic; AddLog stamps from
-	// txConfig.LogIndex+len(s.logs), both of which reset between calls).
+	// Finalize the header (GasUsed must be set before NewBlock derives
+	// the trie roots and bloom) and assemble the *ethtypes.Block. NewBlock
+	// stamps header.TxHash, header.ReceiptHash, and header.Bloom from the
+	// supplied txs/receipts; block.Hash() reads from the resulting header.
 	header.GasUsed = cumGas
-	finalBlockHash := header.Hash()
+	ethBlock := assembleSimBlock(header, txs, receipts)
+	finalBlockHash := ethBlock.Hash()
+
+	// Back-stamp the values that aren't knowable until the block is
+	// sealed: log.BlockHash (depends on cumulative GasUsed via
+	// header.Hash()), log.Index (must be per-block monotonic; AddLog
+	// stamps from txConfig.LogIndex+len(s.logs), both of which reset
+	// between calls), and receipt.BlockHash (mirrors the per-log stamp
+	// for envelope consistency).
 	var logIdx uint
 	for i := range calls {
 		for _, log := range calls[i].Logs {
@@ -663,10 +681,16 @@ func (k *Keeper) processSimBlock(
 			logIdx++
 		}
 	}
+	for _, r := range receipts {
+		r.BlockHash = finalBlockHash
+	}
 
-	return header, &types.SimBlockResult{
-		Block: assembleSimBlock(header, txHashes),
-		Calls: calls,
+	return ethBlock.Header(), &types.SimBlockResult{
+		EthBlock:    ethBlock,
+		Senders:     senders,
+		FullTx:      opts.ReturnFullTransactions,
+		ChainConfig: cfg.ChainConfig,
+		Calls:       calls,
 	}, nil
 }
 
@@ -800,12 +824,17 @@ func sameForks(a, b params.Rules) bool {
 	return reflect.DeepEqual(a, b)
 }
 
-// computeSimTxHash derives a deterministic "tx hash" for a simulated
-// call. Simulate txs are unsigned and have no canonical Ethereum hash;
-// we synthesize one from the message fields so the assembled block
-// carries stable, distinct identifiers per call.
-func computeSimTxHash(msg core.Message) common.Hash {
-	tx := ethtypes.NewTx(&ethtypes.LegacyTx{
+// buildSimTx materializes the synthetic *ethtypes.Transaction for a
+// simulated call. Returning the transaction (rather than just the hash)
+// lets the driver pass the same value into NewBlock to derive
+// transactionsRoot and into the Senders map without rebuilding it.
+//
+// Simulate txs are unsigned legacy txs: V/R/S = 0, signing fields left
+// zero. tx.Hash() is therefore stable and distinct per (nonce, to,
+// value, data, gas, gasPrice) tuple — sufficient for the assembled
+// block's per-call identifiers.
+func buildSimTx(msg core.Message) *ethtypes.Transaction {
+	return ethtypes.NewTx(&ethtypes.LegacyTx{
 		Nonce:    msg.Nonce,
 		GasPrice: msg.GasPrice,
 		Gas:      msg.GasLimit,
@@ -813,7 +842,6 @@ func computeSimTxHash(msg core.Message) common.Hash {
 		Value:    msg.Value,
 		Data:     msg.Data,
 	})
-	return tx.Hash()
 }
 
 // validateSimCall runs the per-call validation=true gates in geth's
