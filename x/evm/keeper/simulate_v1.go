@@ -24,7 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/mezo-org/mezod/x/evm/statedb"
-	"github.com/mezo-org/mezod/x/evm/tracer/transfertracer"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -483,13 +482,14 @@ func (k *Keeper) processSimBlock(
 	}
 
 	var (
-		tt            *transfertracer.Tracer
+		tt            *simTracer
 		perCallTracer *tracers.Tracer
 	)
 	if opts.TraceTransfers {
-		tt = transfertracer.New(opts.TraceTransfers, header.Number.Uint64(), common.Hash{})
-		perCallTracer = tt.Tracer()
-		sdb.SetLogger(tt.Hooks())
+		tt = newSimTracer(opts.TraceTransfers, header.Number.Uint64(), common.Hash{})
+		hooks := tt.Hooks()
+		perCallTracer = &tracers.Tracer{Hooks: hooks}
+		sdb.SetLogger(hooks)
 		defer sdb.SetLogger(nil)
 	}
 
@@ -559,7 +559,7 @@ func (k *Keeper) processSimBlock(
 		sdb.SetTxContext(callCfg.TxHash, callIdx)
 
 		if perCallTracer != nil {
-			tt.Reset(callTxHash, callIdx)
+			tt.reset(callTxHash, callIdx)
 		}
 
 		res, _, runErr := k.applyMessageWithConfig(

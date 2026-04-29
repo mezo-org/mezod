@@ -13,9 +13,8 @@ import (
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
-// mezoCustomPrecompileAddrs is the set of mezo custom precompile source
-// addresses that callers are NOT allowed to relocate via MovePrecompileTo.
-// Derived from types.DefaultPrecompilesVersions so the denylist cannot drift
+// mezoCustomPrecompileAddrs is the set of mezo custom precompile addresses,
+// derived from types.DefaultPrecompilesVersions so consumers cannot drift
 // out of sync with the chain's registered custom precompiles.
 var mezoCustomPrecompileAddrs = func() map[common.Address]struct{} {
 	set := make(map[common.Address]struct{}, len(types.DefaultPrecompilesVersions))
