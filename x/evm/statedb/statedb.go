@@ -434,9 +434,33 @@ func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
 	return nil
 }
 
+// Finalise clears per-call state for flows that reuse one StateDB without
+// committing between calls, such as simulations. Normal transaction execution
+// does not call it because Mezod creates and discards a StateDB per transaction.
+//
+// State objects, access list, and the live cached Cosmos context are preserved,
+// so accumulated cross-call account/storage mutations and precompile-side writes
+// remain visible. The journal and revision stack are cleared to bound memory and
+// to prevent reverting across call boundaries. Callers must not hold a live
+// Snapshot() across this call.
+//
 //nolint:misspell
-func (s *StateDB) Finalise(bool) {
-	// TODO (geth-upgrade): implement when adding support for the new state finalization flow in 1.16.9.
+func (s *StateDB) Finalise(deleteEmptyObjects bool) {
+	// Required by geth's StateDB interface. Mezod does not use Finalise for
+	// canonical empty-account deletion.
+	_ = deleteEmptyObjects
+
+	s.logs = nil
+	s.refund = 0
+	s.transientStorage = newTransientStorage()
+	s.ongoingPrecompilesCallsCounter = 0
+	s.journal = newJournal()
+	s.validRevisions = nil
+	s.nextRevisionID = 0
+
+	for _, obj := range s.stateObjects {
+		obj.newContract = false
+	}
 }
 
 // GetCode returns the code of account, nil if not exists.
@@ -821,38 +845,6 @@ func (ccc *CachedCtxCheckpoint) Revert(stateDB *StateDB) {
 		// at time of creation
 		ccc.ms.Write()
 	}
-}
-
-// FinaliseBetweenCalls clears per-call ephemeral state (logs, refund,
-// transient storage, journal, and revision stack) and resets the
-// precompile-call counter while preserving state objects, access list,
-// and the live cached cosmos ctx — so accumulated cross-call
-// account/storage mutations and precompile-side writes remain visible.
-// Used by simulate drivers running several calls against a shared
-// StateDB without committing between them.
-//
-// Clearing the journal bounds memory: each custom-precompile call
-// appends a multistore Clone() to the journal, which would otherwise
-// accumulate across the whole request. It also disarms the latent
-// panic where addLogChange.Revert reads s.logs[len-1] after s.logs has
-// been niled by a prior FinaliseBetweenCalls.
-//
-// Invariant: callers must not hold a live Snapshot() across this call.
-// The revision stack is wiped, so a stale revision id will fail
-// RevertToSnapshot. The simulate driver does not snapshot at the
-// top level; future drivers must preserve that.
-//
-// TODO (geth-upgrade): v1.16.9 introduces the canonical-spelled geth
-// finaliser on the [vm.StateDB] interface; once the upgrade lands,
-// this helper collapses into that call plus the counter reset.
-func (s *StateDB) FinaliseBetweenCalls() {
-	s.logs = nil
-	s.refund = 0
-	s.transientStorage = newTransientStorage()
-	s.ongoingPrecompilesCallsCounter = 0
-	s.journal = newJournal()
-	s.validRevisions = nil
-	s.nextRevisionID = 0
 }
 
 func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {

@@ -513,7 +513,8 @@ func (k *Keeper) processSimBlock(
 		// mutations. Runs unconditionally at the top of every call —
 		// idempotent on a fresh StateDB, covers both call boundaries
 		// within a block and block boundaries (call 0 of block N+1).
-		sdb.FinaliseBetweenCalls()
+		//nolint:misspell
+		sdb.Finalise(false)
 
 		args := block.Calls[i]
 		args.Nonce = resolveSimCallNonce(sdb, &args)
