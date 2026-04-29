@@ -504,6 +504,42 @@ func TestSimBlockResult_MarshalJSON_FullTx_TwoCallsTwoSenders(t *testing.T) {
 	}
 }
 
+// TestSimBlockResult_MarshalJSON_NonEmptyBlock_RootsNonEmpty: the
+// converse of the empty-block case. A block carrying one tx + receipt
+// must surface transactionsRoot and receiptsRoot that differ from the
+// canonical empty-trie hashes — otherwise root derivation is silently
+// returning the empty values regardless of contents.
+func TestSimBlockResult_MarshalJSON_NonEmptyBlock_RootsNonEmpty(t *testing.T) {
+	from := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	to := common.HexToAddress("0x2222222222222222222222222222222222222222")
+	block, _ := makeEnvelopeBlock(t, from, to, 42)
+
+	r := types.NewSimBlockResult(block, []common.Address{from}, false,
+		envelopeChainConfig(),
+		[]types.SimCallResult{{
+			Status:  hexutil.Uint64(1),
+			GasUsed: hexutil.Uint64(21_000),
+			Logs:    []*ethtypes.Log{},
+		}},
+	)
+
+	data, err := json.Marshal(r)
+	require.NoError(t, err)
+
+	var decoded map[string]interface{}
+	require.NoError(t, json.Unmarshal(data, &decoded))
+
+	txsRoot, ok := decoded["transactionsRoot"].(string)
+	require.True(t, ok)
+	require.NotEqual(t, ethtypes.EmptyTxsHash.Hex(), txsRoot,
+		"non-empty block must not surface the empty-trie root for transactions")
+
+	receiptsRoot, ok := decoded["receiptsRoot"].(string)
+	require.True(t, ok)
+	require.NotEqual(t, ethtypes.EmptyReceiptsHash.Hex(), receiptsRoot,
+		"non-empty block must not surface the empty-trie root for receipts")
+}
+
 // TestSimBlockResult_MarshalJSON_EmptyBlock_UsesEmptyRoots: an empty
 // block produces an envelope where transactionsRoot/receiptsRoot are
 // the canonical empty roots, logsBloom is zero, and `transactions` is

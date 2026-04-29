@@ -242,6 +242,45 @@ func TestSimTracer_RealLogCapturedWithContext(t *testing.T) {
 	require.Equal(t, uint(fxTxIdx), got.TxIndex) //nolint:gosec
 }
 
+// A single CALL frame that emits a real EVM log AND carries value must
+// surface both: the synthetic ERC-7528 transfer log first (recorded on
+// OnEnter), then the real log (recorded on OnLog). Both share the
+// tracer's per-block / per-tx context.
+func TestSimTracer_RealAndSyntheticLogsCoexist(t *testing.T) {
+	tt := newFixtureTracer(t, true)
+	realLog := &ethtypes.Log{
+		Address: fxTo,
+		Topics:  []common.Hash{common.HexToHash("0xfeedface")},
+		Data:    []byte{0xAB, 0xCD},
+	}
+
+	tt.Hooks().OnEnter(0, byte(vm.CALL), fxFrom, fxTo, nil, 0, fxValue)
+	tt.Hooks().OnLog(realLog)
+	tt.Hooks().OnExit(0, nil, 0, nil, false)
+
+	logs := tt.Logs()
+	require.Len(t, logs, 2)
+
+	synthetic := logs[0]
+	require.Equal(t, simTransferAddress, synthetic.Address)
+	require.Equal(t, simTransferTopic, synthetic.Topics[0])
+	require.Equal(t, common.BytesToHash(fxFrom.Bytes()), synthetic.Topics[1])
+	require.Equal(t, common.BytesToHash(fxTo.Bytes()), synthetic.Topics[2])
+	require.Equal(t, fxBlockNumber, synthetic.BlockNumber)
+	require.Equal(t, fxBlockHash, synthetic.BlockHash)
+	require.Equal(t, fxTxHash, synthetic.TxHash)
+	require.Equal(t, uint(fxTxIdx), synthetic.TxIndex) //nolint:gosec
+
+	got := logs[1]
+	require.Equal(t, realLog.Address, got.Address)
+	require.Equal(t, realLog.Topics, got.Topics)
+	require.Equal(t, realLog.Data, got.Data)
+	require.Equal(t, fxBlockNumber, got.BlockNumber)
+	require.Equal(t, fxBlockHash, got.BlockHash)
+	require.Equal(t, fxTxHash, got.TxHash)
+	require.Equal(t, uint(fxTxIdx), got.TxIndex) //nolint:gosec
+}
+
 // reset clears per-tx log buffers but does NOT reset the request-scoped log
 // index counter; pin that across two calls.
 func TestSimTracer_LogIndexMonotonicAcrossReset(t *testing.T) {
