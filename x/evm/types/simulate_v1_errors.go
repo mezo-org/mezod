@@ -304,7 +304,7 @@ func NewSimNonceTooHigh(addr common.Address, have, want uint64) *SimError {
 // BlockOverrides.BaseFeePerGas falls below the chain-computed
 // eip1559.CalcBaseFee floor for the parent (-38012). Distinct from
 // -32005, which targets the transaction's gasFeeCap rather than the
-// block's overridden baseFee.
+// block's overridden baseFee. Fires only when validation=true.
 func NewSimBaseFeeTooLow(have, want *big.Int) *SimError {
 	return &SimError{
 		Code: SimErrCodeBaseFeeTooLow,
@@ -316,7 +316,8 @@ func NewSimBaseFeeTooLow(have, want *big.Int) *SimError {
 }
 
 // NewSimInsufficientFunds reports a call whose sender lacks the funds
-// required to cover gasLimit*gasPrice + value (-38014).
+// required to cover gasLimit*gasPrice + value (-38014). Fires only
+// when validation=true.
 func NewSimInsufficientFunds(addr common.Address, have, want *big.Int) *SimError {
 	return &SimError{
 		Code: SimErrCodeInsufficientFunds,
@@ -329,6 +330,7 @@ func NewSimInsufficientFunds(addr common.Address, have, want *big.Int) *SimError
 
 // NewSimInitcodeTooLarge reports a CREATE call whose init-code size
 // exceeds params.MaxInitCodeSize on a Shanghai-active fork (-38025).
+// Fires only when validation=true.
 func NewSimInitcodeTooLarge(have, limit int) *SimError {
 	return &SimError{
 		Code: SimErrCodeMaxInitCodeSizeExceeded,
