@@ -4568,6 +4568,12 @@ func recomputeTxRoot(tx *ethtypes.Transaction) common.Hash {
 // pin the transactionsRoot against a freshly-built DeriveSha over
 // an equivalent synthetic tx. Anchors the driver to the upstream
 // hashing algorithm so any drift surfaces immediately.
+//
+// A bare (no fee fields) request resolves to a DynamicFeeTx envelope
+// per geth's eth_simulateV1 default-type rule — see buildSimTx for the
+// shape selection. Earlier revisions of this test pinned a LegacyTx;
+// the move to DynamicFeeTx happened together with the buildSimTx fix
+// that emits typed envelopes per request shape.
 func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_TxRootMatchesIndependentRecompute() {
 	suite.SetupTest()
 
@@ -4594,20 +4600,27 @@ func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_TxRootMatchesIndepend
 	results := suite.simulateV1BlockResults(resp)
 	suite.Require().Len(results, 1)
 
-	// Lift the actual tx hash from the response so the recomputed
+	// Lift the actual tx fields from the response so the recomputed
 	// trie covers the exact tx the driver synthesized — buildSimTx's
 	// nonce default (StateDB.GetNonce) and gas resolver are too
 	// coupled to the keeper to safely reconstruct here.
 	txs := results[0]["transactions"].([]interface{})
 	suite.Require().Len(txs, 1)
 	txObj := txs[0].(map[string]interface{})
-	wantTx := ethtypes.NewTx(&ethtypes.LegacyTx{
-		Nonce:    mustHexUint64(txObj["nonce"].(string)),
-		GasPrice: mustHexBig(txObj["gasPrice"].(string)),
-		Gas:      mustHexUint64(txObj["gas"].(string)),
-		To:       &recipient,
-		Value:    mustHexBig(txObj["value"].(string)),
-		Data:     common.FromHex(txObj["input"].(string)),
+
+	suite.Require().Equal("0x2", txObj["type"].(string),
+		"bare-default request must surface as a DynamicFeeTx envelope (type 2)")
+
+	wantTx := ethtypes.NewTx(&ethtypes.DynamicFeeTx{
+		ChainID:    mustHexBig(txObj["chainId"].(string)),
+		Nonce:      mustHexUint64(txObj["nonce"].(string)),
+		GasTipCap:  mustHexBig(txObj["maxPriorityFeePerGas"].(string)),
+		GasFeeCap:  mustHexBig(txObj["maxFeePerGas"].(string)),
+		Gas:        mustHexUint64(txObj["gas"].(string)),
+		To:         &recipient,
+		Value:      mustHexBig(txObj["value"].(string)),
+		Data:       common.FromHex(txObj["input"].(string)),
+		AccessList: ethtypes.AccessList{},
 	})
 
 	// Sanity-check: our reconstructed tx hash matches what the
@@ -4619,6 +4632,128 @@ func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_TxRootMatchesIndepend
 	want := recomputeTxRoot(wantTx)
 	suite.Require().Equal(want.Hex(), results[0]["transactionsRoot"].(string),
 		"transactionsRoot must equal DeriveSha over the synthetic tx")
+}
+
+// TestSimulateV1_BlockEnvelope_LegacyShapeWhenGasPriceSet — when a
+// caller specifies the legacy `gasPrice` field, geth's ToTransaction
+// force-overrides the envelope back to LegacyTx regardless of the
+// simulator's defaultType. Pin that behavior so a future buildSimTx
+// rewrite can't silently drop it.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_LegacyShapeWhenGasPriceSet() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb00000000000000000000000000000000050b")
+	value := (*hexutil.Big)(big.NewInt(1))
+	gasPrice := (*hexutil.Big)(big.NewInt(0))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value, GasPrice: gasPrice}},
+		}},
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1)
+	txObj := txs[0].(map[string]interface{})
+
+	suite.Require().Equal("0x0", txObj["type"].(string),
+		"explicit gasPrice must force a LegacyTx envelope")
+	suite.Require().Nil(txObj["maxFeePerGas"],
+		"LegacyTx must not carry maxFeePerGas")
+	suite.Require().Nil(txObj["accessList"],
+		"LegacyTx must not carry accessList")
+
+	wantTx := ethtypes.NewTx(&ethtypes.LegacyTx{
+		Nonce:    mustHexUint64(txObj["nonce"].(string)),
+		GasPrice: mustHexBig(txObj["gasPrice"].(string)),
+		Gas:      mustHexUint64(txObj["gas"].(string)),
+		To:       &recipient,
+		Value:    mustHexBig(txObj["value"].(string)),
+		Data:     common.FromHex(txObj["input"].(string)),
+	})
+	suite.Require().Equal(txObj["hash"].(string), wantTx.Hash().Hex(),
+		"reconstructed legacy tx must match the published hash")
+	suite.Require().Equal(recomputeTxRoot(wantTx).Hex(), results[0]["transactionsRoot"].(string))
+}
+
+// TestSimulateV1_BlockEnvelope_DynamicFeeShapeWithAccessList —
+// access-list and dynamic-fee fields combined produce a DynamicFeeTx
+// envelope that nests the access list. Mirrors geth eth_simulateV1's
+// behavior under defaultType=DynamicFeeTxType, where the AccessList
+// case in ToTransaction's switch is unreachable except via the
+// default-type fall-through.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_DynamicFeeShapeWithAccessList() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb00000000000000000000000000000000050c")
+	value := (*hexutil.Big)(big.NewInt(1))
+	maxFee := (*hexutil.Big)(big.NewInt(100))
+	maxPrio := (*hexutil.Big)(big.NewInt(2))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	emptyAL := ethtypes.AccessList{}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:                 &sender,
+				To:                   &recipient,
+				Value:                value,
+				MaxFeePerGas:         maxFee,
+				MaxPriorityFeePerGas: maxPrio,
+				AccessList:           &emptyAL,
+			}},
+		}},
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1)
+	txObj := txs[0].(map[string]interface{})
+
+	suite.Require().Equal("0x2", txObj["type"].(string),
+		"dynamic-fee shape must surface as type 2")
+	suite.Require().Equal("0x64", txObj["maxFeePerGas"].(string))
+	suite.Require().Equal("0x2", txObj["maxPriorityFeePerGas"].(string))
+	suite.Require().NotNil(txObj["accessList"], "type-2 tx must carry an accessList field")
+
+	wantTx := ethtypes.NewTx(&ethtypes.DynamicFeeTx{
+		ChainID:    mustHexBig(txObj["chainId"].(string)),
+		Nonce:      mustHexUint64(txObj["nonce"].(string)),
+		GasTipCap:  mustHexBig(txObj["maxPriorityFeePerGas"].(string)),
+		GasFeeCap:  mustHexBig(txObj["maxFeePerGas"].(string)),
+		Gas:        mustHexUint64(txObj["gas"].(string)),
+		To:         &recipient,
+		Value:      mustHexBig(txObj["value"].(string)),
+		Data:       common.FromHex(txObj["input"].(string)),
+		AccessList: emptyAL,
+	})
+	suite.Require().Equal(txObj["hash"].(string), wantTx.Hash().Hex(),
+		"reconstructed dynamic-fee tx must match the published hash")
+	suite.Require().Equal(recomputeTxRoot(wantTx).Hex(), results[0]["transactionsRoot"].(string))
 }
 
 // mustHexUint64 parses an `0x`-prefixed hex string into a uint64.

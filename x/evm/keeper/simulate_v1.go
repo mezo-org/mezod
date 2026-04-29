@@ -553,7 +553,10 @@ func (k *Keeper) processSimBlock(
 		// `(*state.StateDB).SetTxContext(thash, ti)` — it only updates
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
-		simTx := buildSimTx(msg)
+		// DynamicFeeTxType matches go-ethereum v1.16's eth_simulateV1
+		// driver (`internal/ethapi/simulate.go`), so when Mezo upgrades
+		// off v1.14 the wire-shape of the response stays stable.
+		simTx := buildSimTx(&args, cfg.ChainConfig.ChainID, ethtypes.DynamicFeeTxType)
 		callTxHash := simTx.Hash()
 		callIdx := len(txs)
 		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(callIdx), 0) //nolint:gosec
@@ -826,19 +829,104 @@ func sameForks(a, b params.Rules) bool {
 // lets the driver pass the same value into NewBlock to derive
 // transactionsRoot and into the Senders map without rebuilding it.
 //
-// Simulate txs are unsigned legacy txs: V/R/S = 0, signing fields left
-// zero. tx.Hash() is therefore stable and distinct per (nonce, to,
-// value, data, gas, gasPrice) tuple — sufficient for the assembled
-// block's per-call identifiers.
-func buildSimTx(msg core.Message) *ethtypes.Transaction {
-	return ethtypes.NewTx(&ethtypes.LegacyTx{
-		Nonce:    msg.Nonce,
-		GasPrice: msg.GasPrice,
-		Gas:      msg.GasLimit,
-		To:       msg.To,
-		Value:    msg.Value,
-		Data:     msg.Data,
-	})
+// The envelope shape mirrors go-ethereum v1.16's
+// `internal/ethapi.TransactionArgs.ToTransaction(defaultType)` so that
+// Mezo's wire shape stays consistent across the pinned v1.14 baseline
+// and the v1.16 upgrade target. The selection rule, in order:
+//
+//  1. `MaxFeePerGas` set, or `defaultType == DynamicFeeTxType` →
+//     DynamicFeeTx (accessList is nested if provided).
+//  2. `AccessList` set, or `defaultType == AccessListTxType` →
+//     AccessListTx.
+//  3. Otherwise LegacyTx.
+//  4. As a final override, if the caller provided `gasPrice`, force
+//     LegacyTx — geth uses this to fall back to a legacy envelope
+//     whenever the legacy fee field is present, even when defaultType
+//     would otherwise pick a typed one.
+//
+// Simulate txs are unsigned: V/R/S = 0, so tx.Hash() is stable and
+// distinct per request — sufficient for the assembled block's
+// per-call identifiers, transactionsRoot, and the typed JSON-RPC
+// representation returned to the caller. Mezo rejects blob (type 3)
+// and set-code (type 4) txs upstream, so this switch covers types 0/1/2
+// only.
+//
+// chainID flows in from the chain config so type-1/2 hashes match the
+// network the simulator runs against. args.Nonce and args.Gas are
+// expected to be resolved by the caller before this function runs;
+// other args are tolerant of nil pointers (treated as zero).
+func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8) *ethtypes.Transaction {
+	nonce := uint64(0)
+	if args.Nonce != nil {
+		nonce = uint64(*args.Nonce)
+	}
+	gas := uint64(0)
+	if args.Gas != nil {
+		gas = uint64(*args.Gas)
+	}
+	value := bigOrZero(args.Value)
+	data := args.GetData()
+
+	usedType := uint8(ethtypes.LegacyTxType)
+	switch {
+	case args.MaxFeePerGas != nil || defaultType == ethtypes.DynamicFeeTxType:
+		usedType = ethtypes.DynamicFeeTxType
+	case args.AccessList != nil || defaultType == ethtypes.AccessListTxType:
+		usedType = ethtypes.AccessListTxType
+	}
+	if args.GasPrice != nil {
+		usedType = ethtypes.LegacyTxType
+	}
+
+	switch usedType {
+	case ethtypes.DynamicFeeTxType:
+		al := ethtypes.AccessList{}
+		if args.AccessList != nil {
+			al = *args.AccessList
+		}
+		return ethtypes.NewTx(&ethtypes.DynamicFeeTx{
+			ChainID:    chainID,
+			Nonce:      nonce,
+			GasTipCap:  bigOrZero(args.MaxPriorityFeePerGas),
+			GasFeeCap:  bigOrZero(args.MaxFeePerGas),
+			Gas:        gas,
+			To:         args.To,
+			Value:      value,
+			Data:       data,
+			AccessList: al,
+		})
+	case ethtypes.AccessListTxType:
+		return ethtypes.NewTx(&ethtypes.AccessListTx{
+			ChainID:    chainID,
+			Nonce:      nonce,
+			GasPrice:   bigOrZero(args.GasPrice),
+			Gas:        gas,
+			To:         args.To,
+			Value:      value,
+			Data:       data,
+			AccessList: *args.AccessList,
+		})
+	default:
+		return ethtypes.NewTx(&ethtypes.LegacyTx{
+			Nonce:    nonce,
+			GasPrice: bigOrZero(args.GasPrice),
+			Gas:      gas,
+			To:       args.To,
+			Value:    value,
+			Data:     data,
+		})
+	}
+}
+
+// bigOrZero unwraps a hexutil.Big into a *big.Int, returning a fresh
+// zero when the pointer is nil. Keeps buildSimTx's typed-tx
+// constructors free of nil-fee fields, which would otherwise panic
+// inside ethtypes' RLP encoding.
+func bigOrZero(v *hexutil.Big) *big.Int {
+	if v == nil {
+		return new(big.Int)
+	}
+	return v.ToInt()
 }
 
 // validateSimCall runs the per-call validation=true gates in the order
