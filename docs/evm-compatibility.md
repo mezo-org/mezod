@@ -454,6 +454,16 @@ functions.
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
+#### eth_simulateV1
+
+- **Description**: Simulates a chain of transactions across one or more
+synthetic blocks, with state and block overrides. See
+[`docs/spec/eth-simulate-v1.md`](./spec/eth-simulate-v1.md) for the full spec.
+
+```bash
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_simulateV1","params":[{"blockStateCalls":[{"calls":[{"from":"0xc100000000000000000000000000000000000001","to":"0xc100000000000000000000000000000000000002","value":"0x1"}]}]},"latest"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
+```
+
 #### eth_estimateGas
 
 - **Description**: Estimates the gas necessary to execute a transaction.
