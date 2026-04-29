@@ -489,8 +489,8 @@ func (k *Keeper) processSimBlock(
 		tt = newSimTracer(opts.TraceTransfers, header.Number.Uint64(), common.Hash{})
 		hooks := tt.Hooks()
 		perCallTracer = &tracers.Tracer{Hooks: hooks}
-		sdb.SetLogger(hooks)
-		defer sdb.SetLogger(nil)
+		sdb.SetTracingHooks(hooks)
+		defer sdb.SetTracingHooks(nil)
 	}
 
 	calls := make([]types.SimCallResult, 0, len(block.Calls))

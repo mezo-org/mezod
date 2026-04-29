@@ -70,7 +70,7 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionID int
 
-	logger *tracing.Hooks
+	tracingHooks *tracing.Hooks
 
 	stateObjects map[common.Address]*stateObject
 
@@ -156,10 +156,10 @@ func (s *StateDB) GetContext() sdk.Context {
 	return s.ctx
 }
 
-// SetLogger installs a tracing-hooks logger on the StateDB. A nil pointer
+// SetTracingHooks installs tracing hooks on the StateDB. A nil pointer
 // disables tracing.
-func (s *StateDB) SetLogger(hooks *tracing.Hooks) {
-	s.logger = hooks
+func (s *StateDB) SetTracingHooks(hooks *tracing.Hooks) {
+	s.tracingHooks = hooks
 }
 
 // AddLog adds a log, called by evm.
@@ -172,8 +172,8 @@ func (s *StateDB) AddLog(log *ethtypes.Log) {
 	log.Index = s.txConfig.LogIndex + uint(len(s.logs))
 	s.logs = append(s.logs, log)
 
-	if s.logger != nil && s.logger.OnLog != nil {
-		s.logger.OnLog(log)
+	if s.tracingHooks != nil && s.tracingHooks.OnLog != nil {
+		s.tracingHooks.OnLog(log)
 	}
 }
 
@@ -363,8 +363,8 @@ func (s *StateDB) SelfDestruct(addr common.Address) {
 		prev:        stateObject.selfDestructed,
 		prevbalance: prev,
 	})
-	if s.logger != nil && s.logger.OnBalanceChange != nil && prev.Sign() > 0 {
-		s.logger.OnBalanceChange(addr, prev.ToBig(), n.ToBig(), tracing.BalanceDecreaseSelfdestruct)
+	if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && prev.Sign() > 0 {
+		s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), n.ToBig(), tracing.BalanceDecreaseSelfdestruct)
 	}
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
