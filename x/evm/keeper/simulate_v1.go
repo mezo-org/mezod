@@ -235,7 +235,8 @@ func makeSimHeader(
 // block. NewBlock derives transactionsRoot, receiptsRoot, and bloom
 // from the supplied txs and receipts; CreateBloom in turn ORs each
 // receipt's pre-computed Bloom. Caller must seal header.GasUsed before
-// invoking so block.Hash() (used by RPCMarshalBlock) is stable.
+// invoking so block.Hash() (referenced by NewSimBlockResult's marshal
+// path) is stable.
 //
 // stateRoot stays at the header's zero Root: mezod's StateDB wraps a
 // Cosmos cached multistore and has no MPT to call IntermediateRoot on,
@@ -685,13 +686,9 @@ func (k *Keeper) processSimBlock(
 		r.BlockHash = finalBlockHash
 	}
 
-	return ethBlock.Header(), &types.SimBlockResult{
-		EthBlock:    ethBlock,
-		Senders:     senders,
-		FullTx:      opts.ReturnFullTransactions,
-		ChainConfig: cfg.ChainConfig,
-		Calls:       calls,
-	}, nil
+	return ethBlock.Header(), types.NewSimBlockResult(
+		ethBlock, senders, opts.ReturnFullTransactions, cfg.ChainConfig, calls,
+	), nil
 }
 
 // nonceSource narrows *statedb.StateDB down to the single method

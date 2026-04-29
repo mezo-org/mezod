@@ -4067,7 +4067,7 @@ func (suite *KeeperTestSuite) envelopeStandardOpts() []byte {
 
 // TestSimulateV1_BlockEnvelope_PopulatesAllHeaderFields — every
 // canonical RPC envelope key surfaces on the response, sourced from
-// RPCMarshalBlock applied to the assembled *ethtypes.Block.
+// types.NewSimBlockResult applied to the assembled *ethtypes.Block.
 func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_PopulatesAllHeaderFields() {
 	suite.SetupTest()
 

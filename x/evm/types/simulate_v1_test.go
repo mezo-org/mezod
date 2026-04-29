@@ -280,10 +280,10 @@ func TestSimBlockOverrides_AllFields(t *testing.T) {
 // SimBlockResult — full block envelope marshaling
 // -----------------------------------------------------------------------------
 
-// envelopeChainConfig returns a minimal post-London chain config so
-// RPCMarshalBlock includes baseFeePerGas in the rendered envelope. The
-// test app's full chain config is anchored higher up the stack; here
-// only the fork bits the marshaler reads need to be present.
+// envelopeChainConfig returns a minimal post-London chain config so the
+// envelope's marshaler includes baseFeePerGas in the rendered output.
+// The test app's full chain config is anchored higher up the stack;
+// here only the fork bits the marshaler reads need to be present.
 func envelopeChainConfig() *params.ChainConfig {
 	return &params.ChainConfig{
 		ChainID:             big.NewInt(31611),
@@ -303,7 +303,7 @@ func envelopeChainConfig() *params.ChainConfig {
 
 // makeEnvelopeBlock builds a minimal *ethtypes.Block carrying one
 // unsigned legacy tx and one matching receipt. Used by the marshal
-// tests to drive the typed-Block branch of SimBlockResult.MarshalJSON.
+// tests to drive SimBlockResult.MarshalJSON via NewSimBlockResult.
 func makeEnvelopeBlock(t *testing.T, _ common.Address, to common.Address, value uint64) (*ethtypes.Block, *ethtypes.Transaction) {
 	t.Helper()
 	tx := ethtypes.NewTx(&ethtypes.LegacyTx{
@@ -380,13 +380,10 @@ func TestSimBlockResult_MarshalJSON_FullEnvelope_HashOnly(t *testing.T) {
 	to := common.HexToAddress("0x2222222222222222222222222222222222222222")
 	block, tx := makeEnvelopeBlock(t, from, to, 1_000_000)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     []common.Address{from},
-		FullTx:      false,
-		ChainConfig: envelopeChainConfig(),
-		Calls:       []types.SimCallResult{{Status: hexutil.Uint64(1), GasUsed: hexutil.Uint64(21_000), Logs: []*ethtypes.Log{}}},
-	}
+	r := types.NewSimBlockResult(
+		block, []common.Address{from}, false, envelopeChainConfig(),
+		[]types.SimCallResult{{Status: hexutil.Uint64(1), GasUsed: hexutil.Uint64(21_000), Logs: []*ethtypes.Log{}}},
+	)
 
 	data, err := json.Marshal(r)
 	require.NoError(t, err)
@@ -419,12 +416,7 @@ func TestSimBlockResult_MarshalJSON_FullEnvelope_FullTxFromPatched(t *testing.T)
 	to := common.HexToAddress("0x4444444444444444444444444444444444444444")
 	block, tx := makeEnvelopeBlock(t, from, to, 555)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     []common.Address{from},
-		FullTx:      true,
-		ChainConfig: envelopeChainConfig(),
-	}
+	r := types.NewSimBlockResult(block, []common.Address{from}, true, envelopeChainConfig(), nil)
 
 	data, err := json.Marshal(r)
 	require.NoError(t, err)
@@ -435,14 +427,17 @@ func TestSimBlockResult_MarshalJSON_FullEnvelope_FullTxFromPatched(t *testing.T)
 	require.NoError(t, json.Unmarshal(data, &decoded))
 	require.Len(t, decoded.Transactions, 1)
 	require.Equal(t, from.Hex(), common.HexToAddress(decoded.Transactions[0]["from"].(string)).Hex(),
-		"FullTx=true must patch `from` from Senders")
+		"FullTx=true must patch `from` from senders")
 	require.Equal(t, tx.Hash().Hex(), decoded.Transactions[0]["hash"].(string))
 }
 
 // TestSimBlockResult_MarshalJSON_FullTx_TwoCallsTwoSenders: the patch
-// matches by tx hash, not by index — verified by feeding two calls
-// from two different senders and asserting each tx's `from` resolves
-// to the right address even after the marshaler reorders them.
+// matches by call index, which aligns with block.Transactions() order
+// because ethtypes.NewBlock preserves the input order. The test feeds
+// two calls from two different senders and asserts each tx's `from`
+// resolves to the right address; matching by hash on the decoded side
+// just makes the assertion robust to whatever order the JSON
+// round-trip surfaces.
 func TestSimBlockResult_MarshalJSON_FullTx_TwoCallsTwoSenders(t *testing.T) {
 	fromA := common.HexToAddress("0xa1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa11")
 	fromB := common.HexToAddress("0xb2bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22")
@@ -482,12 +477,7 @@ func TestSimBlockResult_MarshalJSON_FullTx_TwoCallsTwoSenders(t *testing.T) {
 		trie.NewStackTrie(nil),
 	)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     []common.Address{fromA, fromB},
-		FullTx:      true,
-		ChainConfig: envelopeChainConfig(),
-	}
+	r := types.NewSimBlockResult(block, []common.Address{fromA, fromB}, true, envelopeChainConfig(), nil)
 
 	data, err := json.Marshal(r)
 	require.NoError(t, err)
@@ -521,12 +511,7 @@ func TestSimBlockResult_MarshalJSON_FullTx_TwoCallsTwoSenders(t *testing.T) {
 func TestSimBlockResult_MarshalJSON_EmptyBlock_UsesEmptyRoots(t *testing.T) {
 	block := makeEmptyEnvelopeBlock(t)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     nil,
-		FullTx:      false,
-		ChainConfig: envelopeChainConfig(),
-	}
+	r := types.NewSimBlockResult(block, nil, false, envelopeChainConfig(), nil)
 
 	data, err := json.Marshal(r)
 	require.NoError(t, err)
@@ -559,14 +544,8 @@ func TestSimBlockResult_MarshalJSON_FullTx_NilSendersMap(t *testing.T) {
 	to := common.HexToAddress("0x6666666666666666666666666666666666666666")
 	block, _ := makeEnvelopeBlock(t, from, to, 1)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     nil,
-		FullTx:      true,
-		ChainConfig: envelopeChainConfig(),
-	}
-
 	require.NotPanics(t, func() {
+		r := types.NewSimBlockResult(block, nil, true, envelopeChainConfig(), nil)
 		_, err := json.Marshal(r)
 		require.NoError(t, err)
 	})
@@ -581,12 +560,7 @@ func TestSimBlockResult_MarshalJSON_FullTx_HashMissingFromSenders(t *testing.T) 
 	to := common.HexToAddress("0x6666666666666666666666666666666666666666")
 	block, _ := makeEnvelopeBlock(t, from, to, 1)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     nil, // no senders
-		FullTx:      true,
-		ChainConfig: envelopeChainConfig(),
-	}
+	r := types.NewSimBlockResult(block, nil /* no senders */, true, envelopeChainConfig(), nil)
 
 	data, err := json.Marshal(r)
 	require.NoError(t, err)
@@ -609,12 +583,7 @@ func TestSimBlockResult_MarshalJSON_StateRootIsZero(t *testing.T) {
 	to := common.HexToAddress("0x2222222222222222222222222222222222222222")
 	block, _ := makeEnvelopeBlock(t, from, to, 1)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     nil,
-		FullTx:      false,
-		ChainConfig: envelopeChainConfig(),
-	}
+	r := types.NewSimBlockResult(block, nil, false, envelopeChainConfig(), nil)
 
 	data, err := json.Marshal(r)
 	require.NoError(t, err)
@@ -633,12 +602,7 @@ func TestSimBlockResult_MarshalJSON_SizeNonZero(t *testing.T) {
 	to := common.HexToAddress("0x2222222222222222222222222222222222222222")
 	block, _ := makeEnvelopeBlock(t, from, to, 1)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     nil,
-		FullTx:      false,
-		ChainConfig: envelopeChainConfig(),
-	}
+	r := types.NewSimBlockResult(block, nil, false, envelopeChainConfig(), nil)
 
 	data, err := json.Marshal(r)
 	require.NoError(t, err)
@@ -697,12 +661,7 @@ func TestSimBlockResult_MarshalJSON_LogsBloomMatchesReceipts(t *testing.T) {
 		trie.NewStackTrie(nil),
 	)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     []common.Address{from},
-		FullTx:      false,
-		ChainConfig: envelopeChainConfig(),
-	}
+	r := types.NewSimBlockResult(block, []common.Address{from}, false, envelopeChainConfig(), nil)
 
 	data, err := json.Marshal(r)
 	require.NoError(t, err)
@@ -717,27 +676,27 @@ func TestSimBlockResult_MarshalJSON_LogsBloomMatchesReceipts(t *testing.T) {
 		"bloom must affirmative-test the receipt's topic")
 }
 
-func TestSimBlockResult_UnmarshalJSON_FromMarshaledFullEnvelope(t *testing.T) {
+// TestSimBlockResult_RoundTripsThroughGRPCBytes: JSON-marshaling a
+// keeper-built SimBlockResult and unmarshaling into a fresh
+// SimBlockResult preserves the calls and surfaces all the header fields
+// on the rpc-side Block map. This is the contract that lets the gRPC
+// payload bridge the keeper and rpc lifecycles.
+func TestSimBlockResult_RoundTripsThroughGRPCBytes(t *testing.T) {
 	from := common.HexToAddress("0x1111111111111111111111111111111111111111")
 	to := common.HexToAddress("0x2222222222222222222222222222222222222222")
 	block, _ := makeEnvelopeBlock(t, from, to, 1)
 
-	r := types.SimBlockResult{
-		EthBlock:    block,
-		Senders:     nil,
-		FullTx:      false,
-		ChainConfig: envelopeChainConfig(),
-		Calls: []types.SimCallResult{{
+	built := types.NewSimBlockResult(
+		block, nil, false, envelopeChainConfig(),
+		[]types.SimCallResult{{
 			Status: hexutil.Uint64(1), GasUsed: hexutil.Uint64(21_000), Logs: []*ethtypes.Log{},
 		}},
-	}
-	data, err := json.Marshal(r)
+	)
+	data, err := json.Marshal(built)
 	require.NoError(t, err)
 
 	var roundTripped types.SimBlockResult
 	require.NoError(t, json.Unmarshal(data, &roundTripped))
-	require.Nil(t, roundTripped.EthBlock,
-		"UnmarshalJSON must not reconstruct the typed *ethtypes.Block")
 	require.Len(t, roundTripped.Calls, 1)
 	require.Equal(t, hexutil.Uint64(21_000), roundTripped.Calls[0].GasUsed)
 	require.Contains(t, roundTripped.Block, "number")
