@@ -84,7 +84,7 @@ spec-conformant flip surfaces loudly.
    `-32602 invalid params`. EIP-2935 (parent-hash storage contract) and
    EIP-7685 (general EL requests) are Prague-era surfaces that this Cancun-
    era build does not yet support; their post-upgrade status is tracked in
-   the MEZO-4336 plan.
+   [`.claude/MEZO-4336-eth-simulate-v1-geth116/plan.md`](../../.claude/MEZO-4336-eth-simulate-v1-geth116/plan.md).
 2. **Custom mezo precompiles immovable.** `MovePrecompileTo` works for the
    standard precompiles at `0x01..0x0a`, but is rejected for any of the
    mezo custom precompiles enumerated in `x/evm/types/precompile.go`
@@ -224,19 +224,3 @@ fee in the second:
 For more examples — including every documented error path, override shape,
 and edge case — see the conformance fixtures under
 [`ethereum/execution-apis/tests/eth_simulateV1/*.io`](https://github.com/ethereum/execution-apis/tree/main/tests/eth_simulateV1).
-
-## Future work
-
-Tracked for follow-up:
-
-- Split `SimulateV1_SpecCompliance.test.ts`'s single `before()` into
-  per-context blocks for better failure attribution.
-- Promote shared `simulate()` / `simulateAt()` / `captureSim()` helpers into
-  `tests/system/test/helpers/simulate-v1.ts`.
-- Generate the SpecCompliance scenario-map docstring from the AST instead
-  of maintaining it by hand.
-- Port additional execution-apis fixtures: `extcodehash-*` (overrides),
-  `override-ecrecover/sha256`, `move-ecrecover-*` edges, `overflow-nonce`,
-  `precompile-is-sending-transaction`, `simple-send-from-contract`.
-- Document kill-switch coverage cross-reference (currently only in
-  `SimulateV1_MezoDivergence.test.ts` comment).
