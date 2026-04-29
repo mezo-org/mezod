@@ -415,6 +415,38 @@ func (suite *StateDBTestSuite) TestInvalidSnapshotId() {
 	})
 }
 
+func (suite *StateDBTestSuite) TestFinalise() {
+	key := common.BigToHash(big.NewInt(1))
+	value := common.BigToHash(big.NewInt(2))
+
+	db := statedb.New(suite.ctx, suite.app.EvmKeeper, emptyTxConfig)
+	rules := params.Rules{IsBerlin: true}
+	db.Prepare(rules, address, address, nil, nil, nil)
+
+	db.CreateAccount(address)
+	db.CreateContract(address)
+	db.AddRefund(42)
+	db.SetTransientState(address, key, value)
+	db.AddLog(&ethtypes.Log{Address: address})
+	db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+	db.SetState(address, key, value)
+	db.Snapshot()
+
+	db.Finalise(false)
+
+	suite.Require().Equal(uint64(0), db.GetRefund())
+	suite.Require().Equal(value, db.GetTransientState(address, key))
+	suite.Require().NotEmpty(db.Logs())
+	suite.Require().Panics(func() {
+		db.RevertToSnapshot(0)
+	})
+	balance, destroyed := db.SelfDestruct6780(address)
+	suite.Require().False(destroyed)
+	suite.Require().Equal(*uint256.NewInt(100), balance)
+
+	suite.Require().NoError(db.Commit())
+}
+
 func (suite *StateDBTestSuite) TestAccessList() {
 	value1 := common.BigToHash(big.NewInt(1))
 	value2 := common.BigToHash(big.NewInt(2))

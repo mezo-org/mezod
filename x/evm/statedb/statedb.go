@@ -398,13 +398,28 @@ func (s *StateDB) Witness() *stateless.Witness {
 }
 
 func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
-	// TODO (geth-upgrade): implement when adding support for the new access-event flow in 1.16.9.
+	// Mezo does not activate Verkle/EIP-4762 and does not rely on Verkle trees.
 	return nil
 }
 
 //nolint:misspell
 func (s *StateDB) Finalise(bool) {
-	// TODO (geth-upgrade): implement when adding support for the new state finalization flow in 1.16.9.
+	s.refund = 0
+	s.validRevisions = nil
+	s.nextRevisionID = 0
+
+	for _, obj := range s.stateObjects {
+		obj.newContract = false
+	}
+
+	// TODO (geth-upgrade): reset transient storage here if we need strict
+	// end-of-transaction cleanup instead of relying on Prepare().
+	// TODO (geth-upgrade): align self-destruct and empty-account finalization
+	// with geth once Commit() stops depending on journal dirties.
+	// TODO (geth-upgrade): clear the journal here once Commit() no longer
+	// relies on journal.sortedDirties().
+	// TODO (geth-upgrade): decide whether logs should also be cleared here
+	// or only after the caller has consumed them.
 }
 
 // GetCode returns the code of account, nil if not exists.
