@@ -1043,19 +1043,14 @@ describe("SimulateV1_SpecCompliance", function () {
 
     // -------- block-number resolution -------------------------------
 
-    // Single empty blockStateCall anchored at a concrete numeric height
-    // surfaces one envelope at anchor+1. Mezod's localnode does not
-    // retain unbounded historical-info, so the upstream "earliest" tag
-    // (genesis) cannot be used as an anchor here without depending on
-    // historical retention — exercise the empty-blockStateCalls path
-    // with a recent height instead.
+    // Single empty blockStateCall surfaces one envelope at anchor+1.
+    // Anchored at "latest" (server-resolved atomically) because mezod's
+    // localnode runs with pruning-keep-recent=2: any captured numeric
+    // anchor races against block advance and pruning. The upstream
+    // "earliest" tag (genesis) cannot be used either without depending
+    // on historical-info retention.
     {
-      const anchor =
-        latestBlockNum > 5n ? latestBlockNum - 5n : latestBlockNum
-      const r = await simulateAt(
-        { blockStateCalls: [{ calls: [] }] },
-        ethers.toQuantity(anchor),
-      )
+      const r = await simulate({ blockStateCalls: [{ calls: [] }] })
       emptyEarliestBlocks = r.result!
     }
 
@@ -1727,27 +1722,24 @@ describe("SimulateV1_SpecCompliance", function () {
       const r = await simulate({
         blockStateCalls: [
           {
-            blockOverrides: { baseFeePerGas: "0x9" },
-            stateOverrides: {
-              [DETACHED_SENDER]: { balance: "0x4a817c800" },
-            },
+            stateOverrides: validationFunded,
             calls: [
               {
                 from: DETACHED_SENDER,
                 to: DETACHED_SENDER,
-                maxFeePerGas: "0xf",
+                maxFeePerGas: HIGH_FEE,
                 nonce: "0x0",
               },
               {
                 from: DETACHED_SENDER,
                 to: DETACHED_SENDER,
-                maxFeePerGas: "0xf",
+                maxFeePerGas: HIGH_FEE,
                 nonce: "0x1",
               },
               {
                 from: DETACHED_SENDER,
                 to: DETACHED_SENDER,
-                maxFeePerGas: "0xf",
+                maxFeePerGas: HIGH_FEE,
                 nonce: "0x2",
               },
             ],
@@ -2174,8 +2166,8 @@ describe("SimulateV1_SpecCompliance", function () {
     })
   })
 
-  context("empty blockStateCalls anchored at earliest", function () {
-    it("yields exactly one envelope at earliest+1", function () {
+  context("empty blockStateCalls", function () {
+    it("yields exactly one envelope with no transactions", function () {
       expect(emptyEarliestBlocks).to.have.lengthOf(1)
       expect(emptyEarliestBlocks[0].transactions).to.have.lengthOf(0)
     })
