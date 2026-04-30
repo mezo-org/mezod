@@ -2359,6 +2359,104 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiBlock_PrecompileStateChains() 
 		"block 2 balanceOf must return transferAmount; got %s (precompile cachedCtx did not survive block boundary)", got.String())
 }
 
+// Precompile-emitted logs stamp log.BlockNumber from sdkCtx.BlockHeight()
+// in EmitEvent; the driver anchors sdkCtx at the parent height for
+// fork-gated reads, so without the back-stamp normalization those logs
+// would report parent-height instead of the simulated height.
+func (suite *KeeperTestSuite) TestSimulateV1_LogBlockNumber_MatchesSimulatedHeader() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000088")
+	btcToken := common.HexToAddress(types.BTCTokenPrecompileAddress)
+
+	// Fund sender via bank — btctoken.transfer reads bankKeeper, not
+	// the EVM state-object balance, so a stateOverride wouldn't help.
+	initialBalance := sdkmath.NewInt(1_000_000_000_000_000_000)
+	transferAmount1 := big.NewInt(500_000_000_000_000_000)
+	transferAmount2 := big.NewInt(123_000_000_000_000_000)
+	coin := sdk.NewCoin(types.DefaultEVMDenom, initialBalance)
+	suite.Require().NoError(suite.app.BankKeeper.MintCoins(
+		suite.ctx, types.ModuleName, sdk.NewCoins(coin)))
+	suite.Require().NoError(suite.app.BankKeeper.SendCoinsFromModuleToAccount(
+		suite.ctx, types.ModuleName, sender.Bytes(), sdk.NewCoins(coin)))
+
+	// transfer(address,uint256) — selector 0xa9059cbb. Encoded by hand
+	// to avoid pulling ABI binding generation into keeper tests.
+	transferSelector := []byte{0xa9, 0x05, 0x9c, 0xbb}
+	padAddr := func(addr common.Address) []byte {
+		buf := make([]byte, 32)
+		copy(buf[12:], addr.Bytes())
+		return buf
+	}
+	padUint := func(v *big.Int) []byte {
+		buf := make([]byte, 32)
+		v.FillBytes(buf)
+		return buf
+	}
+	encodeTransfer := func(to common.Address, amount *big.Int) []byte {
+		out := append([]byte{}, transferSelector...)
+		out = append(out, padAddr(to)...)
+		out = append(out, padUint(amount)...)
+		return out
+	}
+
+	transferData1 := encodeTransfer(recipient, transferAmount1)
+	transferData2 := encodeTransfer(recipient, transferAmount2)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"calls": []types.TransactionArgs{
+					{From: &sender, To: &btcToken, Input: (*hexutil.Bytes)(&transferData1)},
+					{From: &sender, To: &btcToken, Input: (*hexutil.Bytes)(&transferData2)},
+				},
+			},
+		},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	blockNumber := results[0]["number"].(string)
+	blockHash := results[0]["hash"].(string)
+	suite.Require().NotEmpty(blockNumber)
+	suite.Require().NotEmpty(blockHash)
+
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	totalLogs := 0
+	for callIdx, raw := range calls {
+		call := raw.(map[string]interface{})
+		suite.Require().Equal("0x1", call["status"],
+			"call %d btctoken.transfer must succeed", callIdx)
+
+		logsRaw, ok := call["logs"].([]interface{})
+		suite.Require().True(ok, "call %d logs must be present as a JSON array", callIdx)
+
+		for logIdx, lraw := range logsRaw {
+			log := lraw.(map[string]interface{})
+			suite.Require().Equal(blockNumber, log["blockNumber"],
+				"call %d log %d blockNumber must equal simulated header number", callIdx, logIdx)
+			suite.Require().Equal(blockHash, log["blockHash"],
+				"call %d log %d blockHash must equal simulated header hash", callIdx, logIdx)
+			totalLogs++
+		}
+	}
+
+	// Guard against a future change that silently drops the precompile
+	// Transfer event — the per-log assertions above are vacuous on an
+	// empty logs array.
+	suite.Require().Greater(totalLogs, 0,
+		"at least one log must be emitted across the two btctoken.transfer calls")
+}
+
 // First call exhausts the per-block gas; the second omits args.Gas and
 // trips -38015 in resolveSimCallGas as a request-level fatal.
 func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_ImplicitGasAfterExhaustedBudget() {

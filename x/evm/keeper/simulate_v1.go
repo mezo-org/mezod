@@ -676,10 +676,16 @@ func (k *Keeper) processSimBlock(
 	// header.Hash()), log.Index (must be per-block monotonic; AddLog
 	// stamps from txConfig.LogIndex+len(s.logs), both of which reset
 	// between calls), and receipt.BlockHash (mirrors the per-log stamp
-	// for envelope consistency).
+	// for envelope consistency). log.BlockNumber is also normalized
+	// here: custom precompiles stamp it from sdkCtx.BlockHeight() in
+	// EmitEvent, and the driver anchors sdkCtx at base for fork-gated
+	// reads — so without this normalization, precompile-emitted logs
+	// report the parent block's number while regular EVM logs report
+	// the simulated header's number.
 	var logIdx uint
 	for i := range calls {
 		for _, log := range calls[i].Logs {
+			log.BlockNumber = header.Number.Uint64()
 			log.BlockHash = finalBlockHash
 			log.Index = logIdx
 			logIdx++
