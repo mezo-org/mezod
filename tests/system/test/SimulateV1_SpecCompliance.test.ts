@@ -90,6 +90,7 @@ import {
  * | block envelope: logsBloom                 | one Transfer log                       | eth_simulateV1                         | bloom positive-tests the topic                             |
  * | block envelope: size > 0                  | one ERC-20 transfer                    | eth_simulateV1                         | size > 0                                                   |
  * | block hash determinism                    | identical opts                         | rerun                                  | block.hash unchanged                                       |
+ * | log.blockNumber/blockHash match envelope  | one ERC-20 transfer                    | eth_simulateV1                         | every log's blockNumber/blockHash match the simulated block|
  * | gap-fill empty envelope                   | base+1 then base+3                     | eth_simulateV1                         | gap block has empty roots and zero bloom                   |
  */
 describe("SimulateV1_SpecCompliance", function () {
@@ -2378,6 +2379,23 @@ describe("SimulateV1_SpecCompliance", function () {
 
     it("hash is stable across identical re-runs", function () {
       expect(block.hash).to.equal(blockRerun.hash)
+    })
+
+    it("each log.blockNumber and log.blockHash match the envelope", function () {
+      // Cross-checks the back-stamp loop in processSimBlock that
+      // normalizes log.BlockNumber and log.BlockHash from the sealed
+      // simulated header. The keeper-level
+      // TestSimulateV1_LogBlockNumber_MatchesSimulatedHeader pins the
+      // regression at the keeper layer; this assertion guards the
+      // JSON-RPC marshaling surface.
+      const calls = block.calls
+      expect(calls).to.have.lengthOf(1)
+      const logs = calls[0].logs
+      expect(logs).to.have.lengthOf(1)
+      for (const log of logs) {
+        expect(log.blockNumber).to.equal(block.number)
+        expect(log.blockHash.toLowerCase()).to.equal(block.hash.toLowerCase())
+      }
     })
   })
 
