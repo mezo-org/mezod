@@ -146,7 +146,8 @@ spec-conformant flip surfaces loudly.
 
 ## Usage examples
 
-Single-call happy path. Simulate one transfer at the latest block:
+Single-call happy path. Pre-fund the sender via `stateOverrides`, then simulate
+one transfer at the latest block:
 
 ```json
 {
@@ -157,6 +158,11 @@ Single-call happy path. Simulate one transfer at the latest block:
     {
       "blockStateCalls": [
         {
+          "stateOverrides": {
+            "0xc100000000000000000000000000000000000001": {
+              "balance": "0x56bc75e2d63100000"
+            }
+          },
           "calls": [
             {
               "from": "0xc100000000000000000000000000000000000001",
@@ -173,8 +179,11 @@ Single-call happy path. Simulate one transfer at the latest block:
 ```
 
 Multi-block with state and block overrides. Pre-fund a sender via
-`stateOverrides`, then simulate two blocks with a bumped timestamp and base
-fee in the second:
+`stateOverrides`, then simulate two blocks with a bumped base fee in the
+second. Per-block `time` is intentionally omitted — the driver auto-increments
+synthetic-block timestamps from the parent block, and any explicit override
+must be strictly greater than the parent (otherwise the request fails
+`-38021`):
 
 ```json
 {
@@ -200,7 +209,6 @@ fee in the second:
         },
         {
           "blockOverrides": {
-            "time": "0x66000000",
             "baseFeePerGas": "0x3b9aca00"
           },
           "calls": [
