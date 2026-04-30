@@ -23,95 +23,114 @@ import {
  * against the upstream fixtures (mezod's localnode chain id, base block,
  * and account state never match the reference replay) — invariants only.
  *
- * +-------------------------------------+--------------------------------+--------------------------------+--------------------------------+
- * | Scenario                            | Given                          | When                           | Then                           |
- * +-------------------------------------+--------------------------------+--------------------------------+--------------------------------+
- * | erc20 transfer happy path           | SimpleToken with sender funded | one transfer call              | status 0x1, gasUsed > 0,       |
- * |                                     |                                |                                | returnData decodes true,       |
- * |                                     |                                |                                | one Transfer log               |
- * | erc20 transfer revert path          | sender lacks balance           | transfer of HUGE amount        | status 0x0, error.code 3,      |
- * |                                     |                                |                                | message "execution reverted",  |
- * |                                     |                                |                                | data starts with Panic(0x11)   |
- * | mint -> transfer -> balanceOf chain | empty SimpleToken              | three calls in one block       | all three succeed, balanceOf   |
- * |                                     |                                |                                | reads transferred amount       |
- * | block 1 mint -> block 2 balanceOf   | empty SimpleToken              | two-block opts                 | block 2 reads block 1 mint     |
- * | BLOCKHASH(base+1)/(base+2)          | reader stub installed in blk 1 | block 3 reads sibling hashes   | matches blocks[0].hash and     |
- * |                                     |                                |                                | blocks[1].hash                 |
- * | sha256 move-and-call                | sha256 moved to 0x..1234       | call dest with "hello"         | returns sha256("hello")        |
- * | self-referencing move rejected      | precompile -> itself           | eth_call with that override    | rejected, message includes     |
- * |                                     |                                |                                | "referenced itself" (typed     |
- * |                                     |                                |                                | -38022 only on simulateV1)     |
- * | block cap                           | 257 empty blocks               | eth_simulateV1                 | -38026, "blocks > max 256"     |
- * | call cap                            | 1001 calls in one block        | eth_simulateV1                 | -38026, "calls > max 1000"     |
- * | block-gas-limit cap                 | gasLimit 50k, two calls        | second call needs 30k          | top-level -38015               |
- * | intrinsic-gas cap                   | call.gas 1000 < 21000          | eth_simulateV1                 | top-level -38013               |
- * | trace EOA->EOA                      | traceTransfers=true            | one value transfer             | status 0x1, one synthetic log  |
- * | trace contract->EOA                 | forwarder bytecode             | top-level CALL with value      | two synthetic logs (each edge) |
- * | trace omitted                       | flag absent                    | same forwarder call            | zero synthetic logs            |
- * | validation happy path               | balance funded                 | validation=true                | per-call status 0x1            |
- * | -38010 nonce too low                | state nonce 5, call.nonce 4    | validation=true                | request aborts -38010          |
- * | -38011 nonce too high               | state nonce 5, call.nonce 9    | validation=true                | request aborts -38011          |
- * | -38013 intrinsic gas                | call.gas 20999                 | validation=true                | request aborts -38013          |
- * | -38014 insufficient funds           | balance 0, value 1             | validation=true                | request aborts -38014          |
- * | -38025 init-code too large          | initcode 49153 bytes           | validation=true                | request aborts -38025          |
- * | -32005 fee-cap below base           | maxFeePerGas=0 + baseFee=1gwei | validation=true                | request aborts -32005          |
- * | -38012 base-fee override low        | baseFee override 1 wei         | validation=true                | request aborts -38012          |
- * | revert per-call under validation    | revert bytecode                | validation=true                | request OK, per-call code 3    |
- * | nonce-low under validation=false    | state nonce 5, call.nonce 4    | flag omitted                   | per-call status 0x1            |
- * | fee-cap-low under validation=false  | maxFeePerGas=0 + baseFee=1gwei | flag omitted                   | per-call status 0x1            |
- * | nonce-too-high success              | state nonce 0, call.nonce 100  | validation=false               | per-call status 0x1            |
- * | nonce increments per call           | three calls nonce 0,1,2        | validation=true                | three per-call status 0x1      |
- * | balance after empty new block       | base, then empty block         | second block reads balance     | request succeeds               |
- * | block-num order -38020              | second block goes backwards    | eth_simulateV1                 | -38020, "blocks must be in     |
- * |                                     |                                |                                | order"                         |
- * | block-timestamp order -38021        | equal timestamps both > base   | eth_simulateV1                 | -38021                         |
- * | timestamp non-increment             | second block goes backwards    | eth_simulateV1                 | -38021                         |
- * | timestamp auto-increment            | only first time set            | eth_simulateV1                 | second block.timestamp >       |
- * |                                     |                                |                                | first                          |
- * | timestamp incrementing pair         | strictly monotonic times       | eth_simulateV1                 | both blocks present, in order  |
- * | blocknumber auto-increment          | gap-fill 1 then 5              | eth_simulateV1                 | five blocks numbered           |
- * |                                     |                                |                                | sequentially                   |
- * | empty at numeric anchor             | empty blockStateCalls          | concrete numeric anchor        | one block at anchor+1          |
- * | future block anchor                 | anchor far past head           | validation=true                | header not found / -32000      |
- * | override-block-num                  | sequential override numbers    | NUMBER opcode in each          | each call returns its number   |
- * | BLOCKHASH below base                | reader on canonical height     | call hits canonical chain      | matches canonical block hash   |
- * |                                     |                                |                                | OR zero (mezod historical info |
- * |                                     |                                |                                | retention is best-effort)      |
- * | simple-state-diff                   | code override + state override | call reads slot 0              | gets overridden value          |
- * | override-storage-slots              | stateDiff slot vs state slot   | call reads same slot           | both return overridden value   |
- * | override-address-twice              | code override + balance from   | sender balance 0, value 1      | -38014 with validation true    |
- * |                                     |                                |                                |                                |
- * | override across separate blocks     | balance set in block 1 and 2   | EOA-EOA value transfer twice   | both blocks succeed            |
- * | overwrite-existing-contract         | call once -> override -> call  | second call has new bytecode   | first reverts, second OK       |
- * | block-override reflected            | timeline-clean overrides       | NUMBER/TIMESTAMP probe         | values match overrides         |
- * | fee-recipient receives funds        | feeRecipient override          | tx with non-zero value         | request succeeds, status 0x1   |
- * | move-ecrecover happy                | ecrecover -> 0x..123456        | call dest with sig             | returns recovered addr         |
- * | move two precompiles to one         | sha256+id both -> dest         | eth_simulateV1                 | -38023                         |
- * | move non-precompile rejected        | EOA -> dest, validation=true   | eth_simulateV1                 | -32000, "is not a precompile"  |
- * | override ecrecover                  | code override + move           | call original ecrecover addr   | call succeeds, returns user    |
- * |                                     |                                |                                | code's result                  |
- * | override identity                   | identity -> 0x..123456 + code  | call dest with 0x1234          | dest returns 0x1234 (id),      |
- * |                                     |                                |                                | original returns empty (code)  |
- * | logs: eth send no logs by default   | EOA->EOA with value, no flag   | eth_simulateV1                 | logs == []                     |
- * | logs: forward then revert           | forwarder -> reverter          | traceTransfers=true            | status 0x0, code 3, logs == [] |
- * | logs: selfdestruct produces log     | self-destruct contract         | traceTransfers=true            | one synthetic log on selfdest  |
- * | delegate-call to EOA logs once      | wallet contract via delegate   | traceTransfers=true            | one synthetic log only         |
- * | comprehensive: simple two transfers | sender funded                  | two value transfers in block   | both per-call status 0x1       |
- * | transfer over BlockStateCalls       | balance set in two blocks      | several transfers              | all status 0x1                 |
- * | set-read-storage                    | storage contract               | set then read slot             | second call returns set value  |
- * | contract-calls-itself               | self-calling contract          | one call                       | status 0x1                     |
- * | run gas spending across blocks      | gas-burning contract           | three blocks                   | all calls status 0x1           |
- * | hash-only default                   | omitted returnFullTransactions | ERC-20 transfer                | transactions[] are 32-byte hex |
- * | full-tx mode: from patched          | returnFullTransactions=true    | ERC-20 transfer                | tx.from matches sender         |
- * | multi-sender full-tx                | two senders one block          | full-tx mode                   | each tx.from resolves          |
- * | block envelope: tx root             | one ERC-20 transfer            | eth_simulateV1                 | transactionsRoot != empty      |
- * | block envelope: receipts root       | one ERC-20 transfer            | eth_simulateV1                 | receiptsRoot != empty          |
- * | block envelope: logsBloom           | one Transfer log               | eth_simulateV1                 | bloom positive-tests topic     |
- * | block envelope: size                | one ERC-20 transfer            | eth_simulateV1                 | size > 0                       |
- * | block hash determinism              | identical opts                 | rerun                          | block.hash unchanged           |
- * | gap-fill empty envelope             | base+1 then base+3             | eth_simulateV1                 | gap block has empty            |
- * |                                     |                                |                                | tx/receipts roots & zero bloom |
- * +-------------------------------------+--------------------------------+--------------------------------+--------------------------------+
+ * +-------------------------------------+--------------------------------+------------------------------+--------------------------------+
+ * | Scenario                            | Given                          | When                         | Then                           |
+ * +-------------------------------------+--------------------------------+------------------------------+--------------------------------+
+ * | erc20 transfer happy path           | SimpleToken with sender funded | one transfer call            | status 0x1, gasUsed > 0,       |
+ * |                                     |                                |                              | returnData decodes true,       |
+ * |                                     |                                |                              | one Transfer log               |
+ * |                                     |                                |                              |                                |
+ * | erc20 transfer revert path          | sender lacks balance           | transfer of HUGE amount      | status 0x0, error.code 3,      |
+ * |                                     |                                |                              | message "execution reverted",  |
+ * |                                     |                                |                              | data starts with Panic(0x11)   |
+ * |                                     |                                |                              |                                |
+ * | mint -> transfer -> balanceOf chain | empty SimpleToken              | three calls in one block     | all three succeed, balanceOf   |
+ * |                                     |                                |                              | reads transferred amount       |
+ * |                                     |                                |                              |                                |
+ * | block 1 mint -> block 2 balanceOf   | empty SimpleToken              | two-block opts               | block 2 reads block 1 mint     |
+ * |                                     |                                |                              |                                |
+ * | BLOCKHASH(base+1)/(base+2)          | reader stub installed in blk 1 | block 3 reads sibling hashes | matches blocks[0].hash and     |
+ * |                                     |                                |                              | blocks[1].hash                 |
+ * |                                     |                                |                              |                                |
+ * | sha256 move-and-call                | sha256 moved to 0x..1234       | call dest with "hello"       | returns sha256("hello")        |
+ * |                                     |                                |                              |                                |
+ * | self-referencing move rejected      | precompile -> itself           | eth_call with that override  | rejected, message includes     |
+ * |                                     |                                |                              | "referenced itself" (typed     |
+ * |                                     |                                |                              | -38022 only on simulateV1)     |
+ * |                                     |                                |                              |                                |
+ * | block cap                           | 257 empty blocks               | eth_simulateV1               | -38026, "blocks > max 256"     |
+ * | call cap                            | 1001 calls in one block        | eth_simulateV1               | -38026, "calls > max 1000"     |
+ * | block-gas-limit cap                 | gasLimit 50k, two calls        | second call needs 30k        | top-level -38015               |
+ * | intrinsic-gas cap                   | call.gas 1000 < 21000          | eth_simulateV1               | top-level -38013               |
+ * | trace EOA->EOA                      | traceTransfers=true            | one value transfer           | status 0x1, one synthetic log  |
+ * | trace contract->EOA                 | forwarder bytecode             | top-level CALL with value    | two synthetic logs (each edge) |
+ * | trace omitted                       | flag absent                    | same forwarder call          | zero synthetic logs            |
+ * | validation happy path               | balance funded                 | validation=true              | per-call status 0x1            |
+ * | -38010 nonce too low                | state nonce 5, call.nonce 4    | validation=true              | request aborts -38010          |
+ * | -38011 nonce too high               | state nonce 5, call.nonce 9    | validation=true              | request aborts -38011          |
+ * | -38013 intrinsic gas                | call.gas 20999                 | validation=true              | request aborts -38013          |
+ * | -38014 insufficient funds           | balance 0, value 1             | validation=true              | request aborts -38014          |
+ * | -38025 init-code too large          | initcode 49153 bytes           | validation=true              | request aborts -38025          |
+ * | -32005 fee-cap below base           | maxFeePerGas=0 + baseFee=1gwei | validation=true              | request aborts -32005          |
+ * | -38012 base-fee override low        | baseFee override 1 wei         | validation=true              | request aborts -38012          |
+ * | revert per-call under validation    | revert bytecode                | validation=true              | request OK, per-call code 3    |
+ * | nonce-low under validation=false    | state nonce 5, call.nonce 4    | flag omitted                 | per-call status 0x1            |
+ * | fee-cap-low under validation=false  | maxFeePerGas=0 + baseFee=1gwei | flag omitted                 | per-call status 0x1            |
+ * | nonce-too-high success              | state nonce 0, call.nonce 100  | validation=false             | per-call status 0x1            |
+ * | nonce increments per call           | three calls nonce 0,1,2        | validation=true              | three per-call status 0x1      |
+ * | balance after empty new block       | base, then empty block         | second block reads balance   | request succeeds               |
+ * |                                     |                                |                              |                                |
+ * | block-num order -38020              | second block goes backwards    | eth_simulateV1               | -38020, "blocks must be in     |
+ * |                                     |                                |                              | order"                         |
+ * |                                     |                                |                              |                                |
+ * | block-timestamp order -38021        | equal timestamps both > base   | eth_simulateV1               | -38021                         |
+ * | timestamp non-increment             | second block goes backwards    | eth_simulateV1               | -38021                         |
+ * |                                     |                                |                              |                                |
+ * | timestamp auto-increment            | only first time set            | eth_simulateV1               | second block.timestamp >       |
+ * |                                     |                                |                              | first                          |
+ * |                                     |                                |                              |                                |
+ * | timestamp incrementing pair         | strictly monotonic times       | eth_simulateV1               | both blocks present, in order  |
+ * |                                     |                                |                              |                                |
+ * | blocknumber auto-increment          | gap-fill 1 then 5              | eth_simulateV1               | five blocks numbered           |
+ * |                                     |                                |                              | sequentially                   |
+ * |                                     |                                |                              |                                |
+ * | empty at numeric anchor             | empty blockStateCalls          | concrete numeric anchor      | one block at anchor+1          |
+ * | future block anchor                 | anchor far past head           | validation=true              | header not found / -32000      |
+ * | override-block-num                  | sequential override numbers    | NUMBER opcode in each        | each call returns its number   |
+ * |                                     |                                |                              |                                |
+ * | BLOCKHASH below base                | reader on canonical height     | call hits canonical chain    | matches canonical block hash   |
+ * |                                     |                                |                              | OR zero (mezod historical info |
+ * |                                     |                                |                              | retention is best-effort)      |
+ * |                                     |                                |                              |                                |
+ * | simple-state-diff                   | code override + state override | call reads slot 0            | gets overridden value          |
+ * | override-storage-slots              | stateDiff slot vs state slot   | call reads same slot         | both return overridden value   |
+ * | override-address-twice              | code override + balance from   | sender balance 0, value 1    | -38014 with validation true    |
+ * |                                     |                                |                              |                                |
+ * | override across separate blocks     | balance set in block 1 and 2   | EOA-EOA value transfer twice | both blocks succeed            |
+ * | overwrite-existing-contract         | call once -> override -> call  | second call has new bytecode | first reverts, second OK       |
+ * | block-override reflected            | timeline-clean overrides       | NUMBER/TIMESTAMP probe       | values match overrides         |
+ * | fee-recipient receives funds        | feeRecipient override          | tx with non-zero value       | request succeeds, status 0x1   |
+ * | move-ecrecover happy                | ecrecover -> 0x..123456        | call dest with sig           | returns recovered addr         |
+ * | move two precompiles to one         | sha256+id both -> dest         | eth_simulateV1               | -38023                         |
+ * | move non-precompile rejected        | EOA -> dest, validation=true   | eth_simulateV1               | -32000, "is not a precompile"  |
+ * |                                     |                                |                              |                                |
+ * | override ecrecover                  | code override + move           | call original ecrecover addr | call succeeds, returns user    |
+ * |                                     |                                |                              | code's result                  |
+ * |                                     |                                |                              |                                |
+ * | override identity                   | identity -> 0x..123456 + code  | call dest with 0x1234        | dest returns 0x1234 (id),      |
+ * |                                     |                                |                              | original returns empty (code)  |
+ * |                                     |                                |                              |                                |
+ * | logs: eth send no logs by default   | EOA->EOA with value, no flag   | eth_simulateV1               | logs == []                     |
+ * | logs: forward then revert           | forwarder -> reverter          | traceTransfers=true          | status 0x0, code 3, logs == [] |
+ * | logs: selfdestruct produces log     | self-destruct contract         | traceTransfers=true          | one synthetic log on selfdest  |
+ * | delegate-call to EOA logs once      | wallet contract via delegate   | traceTransfers=true          | one synthetic log only         |
+ * | comprehensive: simple two transfers | sender funded                  | two value transfers in block | both per-call status 0x1       |
+ * | transfer over BlockStateCalls       | balance set in two blocks      | several transfers            | all status 0x1                 |
+ * | set-read-storage                    | storage contract               | set then read slot           | second call returns set value  |
+ * | contract-calls-itself               | self-calling contract          | one call                     | status 0x1                     |
+ * | run gas spending across blocks      | gas-burning contract           | three blocks                 | all calls status 0x1           |
+ * | hash-only default                   | omitted returnFullTransactions | ERC-20 transfer              | transactions[] are 32-byte hex |
+ * | full-tx mode: from patched          | returnFullTransactions=true    | ERC-20 transfer              | tx.from matches sender         |
+ * | multi-sender full-tx                | two senders one block          | full-tx mode                 | each tx.from resolves          |
+ * | block envelope: tx root             | one ERC-20 transfer            | eth_simulateV1               | transactionsRoot != empty      |
+ * | block envelope: receipts root       | one ERC-20 transfer            | eth_simulateV1               | receiptsRoot != empty          |
+ * | block envelope: logsBloom           | one Transfer log               | eth_simulateV1               | bloom positive-tests topic     |
+ * | block envelope: size                | one ERC-20 transfer            | eth_simulateV1               | size > 0                       |
+ * | block hash determinism              | identical opts                 | rerun                        | block.hash unchanged           |
+ * |                                     |                                |                              |                                |
+ * | gap-fill empty envelope             | base+1 then base+3             | eth_simulateV1               | gap block has empty            |
+ * |                                     |                                |                              | tx/receipts roots & zero bloom |
+ * +-------------------------------------+--------------------------------+------------------------------+--------------------------------+
  */
 describe("SimulateV1_SpecCompliance", function () {
   const { deployments } = hre

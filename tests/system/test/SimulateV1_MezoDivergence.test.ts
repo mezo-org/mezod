@@ -10,12 +10,13 @@ import {
 import btcabi from "../../../precompile/btctoken/abi.json"
 
 /**
- * SimulateV1_MezoDivergence — divergence-tripwire suite.
+ * SimulateV1_MezoDivergence — pins mezod's intentional deviations from
+ * the spec, so any drift back toward it surfaces as a test failure.
  *
  * Each `it()` here pins a behavior where mezod intentionally deviates
- * from `execution-apis` and geth's reference `eth_simulateV1`. If any of
- * these flips green-by-accident-of-spec, treat it as a regression in the
- * divergence boundary and investigate before adjusting the assertion.
+ * from `execution-apis` and geth's reference `eth_simulateV1`. If one of
+ * these starts failing, mezod has drifted toward the spec; investigate
+ * the divergence before flipping the assertion to make it green again.
  *
  * The companion suite `SimulateV1_SpecCompliance.test.ts` pins the
  * spec-conformant surface; the two files are mutually exclusive — no
@@ -30,17 +31,17 @@ import btcabi from "../../../precompile/btctoken/abi.json"
  *
  * Test scenarios:
  *
- * | Scenario                                | Given                                                                         | When                                                                  | Then                                                                                     |
- * |-----------------------------------------|-------------------------------------------------------------------------------|-----------------------------------------------------------------------|------------------------------------------------------------------------------------------|
- * | btctoken cached-Cosmos chain (1 block)  | dev0 sender pre-funded with native BTC                                        | btctoken.transfer then btctoken.balanceOf simulated in one block      | both calls succeed; balanceOf returns the transferred amount                             |
- * | btctoken cross-block visibility         | dev0 sender pre-funded with native BTC                                        | btctoken.transfer in block 1; btctoken.balanceOf in block 2           | block 2 reads the block-1-transferred amount through the cached Cosmos context          |
- * | BTC custom precompile move rejected     | eth_call request with movePrecompileToAddress for the btctoken precompile     | eth_call dispatches the override                                       | request rejected; error message contains "cannot move mezo custom precompile"            |
- * | BlockOverrides.beaconRoot rejected      | blockStateCalls[0].blockOverrides.beaconRoot supplied                         | eth_simulateV1 dispatches the override                                | request fails with -32602 and a BeaconRoot-specific message                              |
- * | BlockOverrides.withdrawals rejected     | blockStateCalls[0].blockOverrides.withdrawals supplied                        | eth_simulateV1 dispatches the override                                | request fails with -32602 and a Withdrawals-specific message                             |
- * | BlockOverrides.blobBaseFee rejected     | blockStateCalls[0].blockOverrides.blobBaseFee supplied                        | eth_simulateV1 dispatches the override                                | request fails with -32602 and a BlobBaseFee-specific message                             |
- * | stateRoot is the zero hash              | a single-block simulate that mutates state via an ERC-20 transfer             | eth_simulateV1 returns the assembled block envelope                   | block.stateRoot equals the 32-byte zero hash                                              |
- * | gasUsed honors MinGasMultiplier         | a value-transfer call with gas=0x186a0 (100000) so floor (50000) > raw (21000)| eth_simulateV1 returns the per-call result                            | call.gasUsed equals 50000 (gasLimit * MinGasMultiplier), not raw 21000                   |
- * | insufficient-funds is per-call          | sender with zero balance, validation flag omitted                             | eth_simulateV1 dispatches the value-transfer call                     | top-level result is success; per-call status is 0x0; per-call error.code is -32015      |
+ * | Scenario                               | Given                                                                          | When                                                             | Then                                                                               |
+ * |----------------------------------------|--------------------------------------------------------------------------------|------------------------------------------------------------------|------------------------------------------------------------------------------------|
+ * | btctoken cached-Cosmos chain (1 block) | dev0 sender pre-funded with native BTC                                         | btctoken.transfer then btctoken.balanceOf simulated in one block | both calls succeed; balanceOf returns the transferred amount                       |
+ * | btctoken cross-block visibility        | dev0 sender pre-funded with native BTC                                         | btctoken.transfer in block 1; btctoken.balanceOf in block 2      | block 2 reads the block-1-transferred amount through the cached Cosmos context     |
+ * | BTC custom precompile move rejected    | eth_call request with movePrecompileToAddress for the btctoken precompile      | eth_call dispatches the override                                 | request rejected; error message contains "cannot move mezo custom precompile"      |
+ * | BlockOverrides.beaconRoot rejected     | blockStateCalls[0].blockOverrides.beaconRoot supplied                          | eth_simulateV1 dispatches the override                           | request fails with -32602 and a BeaconRoot-specific message                        |
+ * | BlockOverrides.withdrawals rejected    | blockStateCalls[0].blockOverrides.withdrawals supplied                         | eth_simulateV1 dispatches the override                           | request fails with -32602 and a Withdrawals-specific message                       |
+ * | BlockOverrides.blobBaseFee rejected    | blockStateCalls[0].blockOverrides.blobBaseFee supplied                         | eth_simulateV1 dispatches the override                           | request fails with -32602 and a BlobBaseFee-specific message                       |
+ * | stateRoot is the zero hash             | a single-block simulate that mutates state via an ERC-20 transfer              | eth_simulateV1 returns the assembled block envelope              | block.stateRoot equals the 32-byte zero hash                                       |
+ * | gasUsed honors MinGasMultiplier        | a value-transfer call with gas=0x186a0 (100000) so floor (50000) > raw (21000) | eth_simulateV1 returns the per-call result                       | call.gasUsed equals 50000 (gasLimit * MinGasMultiplier), not raw 21000             |
+ * | insufficient-funds is per-call         | sender with zero balance, validation flag omitted                              | eth_simulateV1 dispatches the value-transfer call                | top-level result is success; per-call status is 0x0; per-call error.code is -32015 |
  */
 describe("SimulateV1_MezoDivergence", function () {
   const { deployments } = hre
