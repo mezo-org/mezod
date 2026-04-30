@@ -6,12 +6,16 @@ import (
 	"math/big"
 	"testing"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
 )
 
@@ -511,4 +515,331 @@ func TestResolveSimCallGas_UnlimitedBudgetIsNoop(t *testing.T) {
 	require.Nil(t, simErr)
 	require.NotNil(t, resolved)
 	require.Equal(t, uint64(500_000), uint64(*resolved))
+}
+
+// --- validateSimCall (validation=true gate) ------------------------------
+//
+// The gate runs five checks in geth's preCheck order: nonce -> init-code
+// (CREATE only, Shanghai-gated) -> intrinsic gas -> fee-cap (when
+// header.BaseFee is non-nil) -> balance. Boundary tests below pin each
+// gate's pass/fail edge with a single-field perturbation against a
+// shared baseline.
+//
+// Construction: the Keeper itself is empty (validateSimCall only calls
+// k.GetEthIntrinsicGas, which reads ctx height/time + chain config and
+// no keeper-stored state). The StateDB is backed by a MockKeeper so the
+// nonce/balance reads come from the in-memory mock rather than a real
+// IAVL store. The chain config has every fork active at height 0 so
+// rules.IsShanghai is true; the contract-creation gate fires only when
+// To==nil regardless of the height/time arithmetic.
+
+// validateSimCallFixture builds the shared inputs for the gate tests.
+// Each test perturbs one field at a time off this baseline so failures
+// trace back to a single gate.
+type validateSimCallFixture struct {
+	k      *Keeper
+	sdb    *statedb.StateDB
+	ctx    sdk.Context
+	header *ethtypes.Header
+	rules  params.Rules
+	cfg    *params.ChainConfig
+	from   common.Address
+	to     common.Address
+}
+
+// senderBaseline pre-funds the sender with a generous balance and seeds
+// nonce 0 so each test can perturb either field cleanly.
+const validateSimCallSenderBalance = "1000000000000000000" // 1e18 wei
+
+func newValidateSimCallFixture(t *testing.T) *validateSimCallFixture {
+	t.Helper()
+	cfg := postMergeConfig()
+	// Shanghai active at genesis so the init-code gate is reachable.
+	zeroTime := uint64(0)
+	cfg.ShanghaiTime = &zeroTime
+
+	mk := statedb.NewMockKeeper()
+	from := common.HexToAddress("0xaaaa000000000000000000000000000000000010")
+	to := common.HexToAddress("0xbbbb000000000000000000000000000000000020")
+	sdb := statedb.New(sdk.Context{}, mk, testTxConfig)
+	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
+	sdb.AddBalance(from, bal, 0)
+	require.NoError(t, sdb.Commit())
+
+	// Re-instantiate so the committed balance is the persisted state
+	// rather than the journal's pending change. validateSimCall calls
+	// GetBalance / GetNonce which read through the StateDB's keeper.
+	sdb = statedb.New(sdk.Context{}, mk, testTxConfig)
+
+	rules := cfg.Rules(big.NewInt(1), true, 1)
+	require.True(t, rules.IsShanghai, "fixture must activate Shanghai for the init-code gate")
+	header := &ethtypes.Header{
+		Number:   big.NewInt(1),
+		Time:     1,
+		GasLimit: 30_000_000,
+		BaseFee:  big.NewInt(1_000_000_000),
+	}
+	return &validateSimCallFixture{
+		k:      &Keeper{},
+		sdb:    sdb,
+		ctx:    sdk.Context{},
+		header: header,
+		rules:  rules,
+		cfg:    cfg,
+		from:   from,
+		to:     to,
+	}
+}
+
+// validateSimCallBaselineMsg returns a message that passes every gate:
+// nonce 0 (matches the seeded state nonce), 21k gas (intrinsic for a
+// pure transfer), gasFeeCap >= header.BaseFee, value < balance.
+func (f *validateSimCallFixture) baselineMsg() *core.Message {
+	return &core.Message{
+		From:      f.from,
+		To:        &f.to,
+		Nonce:     0,
+		GasLimit:  21_000,
+		GasFeeCap: new(big.Int).Set(f.header.BaseFee),
+		GasTipCap: big.NewInt(0),
+		Value:     big.NewInt(0),
+	}
+}
+
+// Happy path baseline. Subsequent tests perturb one field at a time, so
+// any failure here would point at fixture drift rather than gate logic.
+func TestValidateSimCall_AllGatesPass(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, f.baselineMsg(), f.header, f.rules, f.cfg))
+}
+
+// --- per-gate boundaries -------------------------------------------------
+
+func TestValidateSimCall_Nonce_EqualPasses(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.Nonce = 0 // state nonce is 0
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
+}
+
+func TestValidateSimCall_Nonce_OneLowFails_38010(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	// Bump state nonce so the gate has a non-zero target to compare against.
+	f.sdb.SetNonce(f.from, 5)
+	msg := f.baselineMsg()
+	msg.Nonce = 4
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeNonceTooLow, simErr.ErrorCode())
+}
+
+func TestValidateSimCall_Nonce_OneHighFails_38011(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.Nonce = 1 // state nonce is 0
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeNonceTooHigh, simErr.ErrorCode())
+}
+
+func TestValidateSimCall_IntrinsicGas_BoundaryEqual(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.GasLimit = 21_000 // exactly intrinsic for a pure transfer
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
+}
+
+func TestValidateSimCall_IntrinsicGas_OneBelowFails_38013(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.GasLimit = 20_999
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeIntrinsicGas, simErr.ErrorCode())
+}
+
+func TestValidateSimCall_FeeCap_BoundaryEqual(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.GasFeeCap = new(big.Int).Set(f.header.BaseFee) // exactly equal -> passes
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
+}
+
+func TestValidateSimCall_FeeCap_OneBelowFails_32005(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.GasFeeCap = new(big.Int).Sub(f.header.BaseFee, big.NewInt(1))
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeFeeCapTooLow, simErr.ErrorCode())
+}
+
+func TestValidateSimCall_Balance_BoundaryEqual(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	// balance == cost: gasLimit*gasFeeCap + value
+	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
+	cost := new(big.Int).Mul(new(big.Int).SetUint64(msg.GasLimit), msg.GasFeeCap)
+	cost.Add(cost, msg.Value)
+	require.Equal(t, bal.ToBig().Cmp(cost), 1, "fixture must leave headroom; lower gasLimit*gasFeeCap if it doesn't")
+
+	// Now adjust value so balance == cost exactly.
+	msg.Value = new(big.Int).Sub(bal.ToBig(), new(big.Int).Mul(new(big.Int).SetUint64(msg.GasLimit), msg.GasFeeCap))
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
+}
+
+func TestValidateSimCall_Balance_OneBelowFails_38014(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
+	// value = balance + 1 -> cost > balance.
+	msg.Value = new(big.Int).Add(bal.ToBig(), big.NewInt(1))
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeInsufficientFunds, simErr.ErrorCode())
+}
+
+func TestValidateSimCall_InitCode_BoundaryEqual(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.To = nil // CREATE
+	msg.Data = make([]byte, params.MaxInitCodeSize)
+	// Intrinsic for a CREATE this size is well above 21k; bump GasLimit.
+	msg.GasLimit = 30_000_000
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
+}
+
+func TestValidateSimCall_InitCode_OneOverFails_38025(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.To = nil
+	msg.Data = make([]byte, params.MaxInitCodeSize+1)
+	msg.GasLimit = 30_000_000
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeMaxInitCodeSizeExceeded, simErr.ErrorCode())
+}
+
+// --- fork gating / null-guard --------------------------------------------
+
+// Pre-Shanghai chain rules: the init-code gate must not fire even when
+// data length exceeds MaxInitCodeSize. The gate is forked at Shanghai
+// activation per EIP-3860.
+func TestValidateSimCall_InitCode_PreShanghai_NoCheck(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	preShanghaiRules := f.rules
+	preShanghaiRules.IsShanghai = false
+
+	msg := f.baselineMsg()
+	msg.To = nil
+	msg.Data = make([]byte, params.MaxInitCodeSize+1)
+	msg.GasLimit = 30_000_000
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, preShanghaiRules, f.cfg))
+}
+
+// CALL with oversized calldata is NOT subject to the init-code gate;
+// only CREATE (To == nil) is.
+func TestValidateSimCall_InitCode_Call_NotCreate(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.Data = make([]byte, params.MaxInitCodeSize+1)
+	msg.GasLimit = 30_000_000
+	// To is non-nil from baseline -> CALL.
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
+}
+
+// Pre-London / no override: header.BaseFee == nil. Fee-cap check is
+// skipped per the explicit nil guard in validateSimCall.
+func TestValidateSimCall_FeeCap_NoBaseFeeHeader(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	header := *f.header
+	header.BaseFee = nil
+	msg := f.baselineMsg()
+	msg.GasFeeCap = big.NewInt(0)
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, &header, f.rules, f.cfg))
+}
+
+// --- ordering ------------------------------------------------------------
+//
+// Geth's preCheck order is nonce -> init-code -> intrinsic -> fee-cap ->
+// balance. The driver mirrors that order so a tx that would fail
+// multiple gates surfaces the leftmost code (matching geth's wire
+// behavior). Each test below sets two gates to fail simultaneously and
+// asserts the leftmost wins.
+
+// Nonce mismatch + insufficient funds -> nonce wins.
+func TestValidateSimCall_Order_NonceBeforeInsufficientFunds(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.Nonce = 1 // nonce too high (state == 0)
+	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
+	msg.Value = new(big.Int).Add(bal.ToBig(), big.NewInt(1)) // also fails balance
+
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeNonceTooHigh, simErr.ErrorCode())
+}
+
+// Init-code overflow + below-intrinsic gas -> init-code wins.
+func TestValidateSimCall_Order_InitCodeBeforeIntrinsic(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.To = nil
+	msg.Data = make([]byte, params.MaxInitCodeSize+1)
+	msg.GasLimit = 0 // also fails intrinsic
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeMaxInitCodeSizeExceeded, simErr.ErrorCode())
+}
+
+// Below-base fee-cap + below-intrinsic gas -> fee-cap wins.
+func TestValidateSimCall_Order_FeeCapBeforeIntrinsic(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.GasLimit = 20_999         // fails intrinsic
+	msg.GasFeeCap = big.NewInt(0) // also fails fee-cap
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeFeeCapTooLow, simErr.ErrorCode())
+}
+
+// Below-base fee-cap + insufficient balance -> fee-cap wins.
+func TestValidateSimCall_Order_FeeCapBeforeBalance(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.GasFeeCap = big.NewInt(0) // fails fee-cap
+	bal, _ := uint256.FromDecimal(validateSimCallSenderBalance)
+	msg.Value = new(big.Int).Add(bal.ToBig(), big.NewInt(1)) // also fails balance
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeFeeCapTooLow, simErr.ErrorCode())
+}
+
+// --- determinism / no mutation -------------------------------------------
+
+func TestValidateSimCall_Determinism(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	msg.Nonce = 1 // forces NonceTooHigh
+	a := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	b := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
+	require.NotNil(t, a)
+	require.NotNil(t, b)
+	require.Equal(t, a.Code, b.Code)
+	require.Equal(t, a.Message, b.Message)
+}
+
+// validateSimCall must not mutate the message it inspects; the driver
+// reuses the same Message for the EVM call after the gate clears.
+func TestValidateSimCall_DoesNotMutateMessage(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	msg := f.baselineMsg()
+	snapshot := *msg
+
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
+	require.Equal(t, snapshot.From, msg.From)
+	require.Equal(t, snapshot.Nonce, msg.Nonce)
+	require.Equal(t, snapshot.GasLimit, msg.GasLimit)
+	require.Equal(t, snapshot.GasFeeCap.String(), msg.GasFeeCap.String())
+	require.Equal(t, snapshot.Value.String(), msg.Value.String())
 }

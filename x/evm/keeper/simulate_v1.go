@@ -18,7 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -228,46 +231,23 @@ func makeSimHeader(
 	return h
 }
 
-// assembleSimBlock turns a simulated header plus the calls that ran
-// inside it into a spec-shaped block envelope suitable for JSON
-// marshaling. Fields match RPCMarshalBlock's output. The assembled
-// block carries tx hashes only; `returnFullTransactions` patching is
-// not wired yet.
+// assembleSimBlock builds the synthetic *ethtypes.Block for a simulated
+// block. NewBlock derives transactionsRoot, receiptsRoot, and bloom
+// from the supplied txs and receipts; CreateBloom in turn ORs each
+// receipt's pre-computed Bloom. Caller must seal header.GasUsed before
+// invoking so block.Hash() (referenced by NewSimBlockResult's marshal
+// path) is stable.
 //
-// Caller must seal `header.GasUsed` before calling so `Hash()` is stable.
+// stateRoot stays at the header's zero Root: mezod's StateDB wraps a
+// Cosmos cached multistore and has no MPT to call IntermediateRoot on,
+// so any non-zero value would be misleading. Documented as a known
+// Mezo divergence from the geth simulate envelope.
 func assembleSimBlock(
 	header *ethtypes.Header,
-	txHashes []common.Hash,
-) map[string]interface{} {
-	blockHash := header.Hash()
-
-	txList := make([]interface{}, 0, len(txHashes))
-	for _, h := range txHashes {
-		txList = append(txList, h)
-	}
-
-	return map[string]interface{}{
-		"number":           (*hexutil.Big)(new(big.Int).Set(header.Number)),
-		"hash":             blockHash,
-		"parentHash":       header.ParentHash,
-		"nonce":            ethtypes.BlockNonce{},
-		"mixHash":          header.MixDigest,
-		"sha3Uncles":       header.UncleHash,
-		"logsBloom":        header.Bloom,
-		"stateRoot":        header.Root,
-		"miner":            header.Coinbase,
-		"difficulty":       (*hexutil.Big)(header.Difficulty),
-		"extraData":        hexutil.Bytes(header.Extra),
-		"size":             hexutil.Uint64(0),
-		"gasLimit":         hexutil.Uint64(header.GasLimit),
-		"gasUsed":          hexutil.Uint64(header.GasUsed),
-		"timestamp":        hexutil.Uint64(header.Time),
-		"transactionsRoot": header.TxHash,
-		"receiptsRoot":     header.ReceiptHash,
-		"baseFeePerGas":    (*hexutil.Big)(header.BaseFee),
-		"uncles":           []common.Hash{},
-		"transactions":     txList,
-	}
+	txs []*ethtypes.Transaction,
+	receipts []*ethtypes.Receipt,
+) *ethtypes.Block {
+	return ethtypes.NewBlock(header, &ethtypes.Body{Transactions: txs}, receipts, trie.NewStackTrie(nil))
 }
 
 // simulateV1 is the keeper-side entry point for eth_simulateV1. It
@@ -418,6 +398,21 @@ func (k *Keeper) processSimBlock(
 		header.ParentHash = baseHash
 	}
 
+	// -38012: caller-supplied BlockOverrides.BaseFeePerGas must not fall
+	// below the chain-computed eip1559 floor. Per-block (not per-call),
+	// hoisted out of validateSimCall to keep that helper focused on
+	// message-level checks. Skipped when validation=false, when no
+	// override is supplied, or pre-London (no floor exists).
+	if opts.Validation &&
+		rules.IsLondon &&
+		block.BlockOverrides != nil &&
+		block.BlockOverrides.BaseFeePerGas != nil {
+		floor := eip1559.CalcBaseFee(cfg.ChainConfig, parent)
+		if override := block.BlockOverrides.BaseFeePerGas.ToInt(); override.Cmp(floor) < 0 {
+			return nil, nil, types.NewSimBaseFeeTooLow(override, floor)
+		}
+	}
+
 	var moves map[common.Address]common.Address
 	if len(block.StateOverrides) > 0 {
 		m, applyErr := applyStateOverrides(sdb, block.StateOverrides, rules)
@@ -487,8 +482,26 @@ func (k *Keeper) processSimBlock(
 		},
 	}
 
+	var (
+		tt            *simTracer
+		perCallTracer *tracers.Tracer
+	)
+	if opts.TraceTransfers {
+		tt = newSimTracer(opts.TraceTransfers, header.Number.Uint64(), common.Hash{})
+		hooks := tt.Hooks()
+		perCallTracer = &tracers.Tracer{Hooks: hooks}
+		sdb.SetTracingHooks(hooks)
+		defer sdb.SetTracingHooks(nil)
+	}
+
 	calls := make([]types.SimCallResult, 0, len(block.Calls))
-	txHashes := make([]common.Hash, 0, len(block.Calls))
+	// Synthetic txs and receipts feed NewBlock so the assembled envelope
+	// has correct transactionsRoot, receiptsRoot, and bloom. They are
+	// kept for the lifetime of one block — bounded by MaxSimulateCalls
+	// and the per-block GasLimit.
+	txs := make([]*ethtypes.Transaction, 0, len(block.Calls))
+	receipts := make([]*ethtypes.Receipt, 0, len(block.Calls))
+	senders := make([]common.Address, 0, len(block.Calls))
 	var cumGas uint64
 
 	for i := range block.Calls {
@@ -521,6 +534,16 @@ func (k *Keeper) processSimBlock(
 			return nil, nil, types.NewSimInvalidParams(msgErr.Error())
 		}
 
+		// State overrides may make `from` a contract; the EoA check
+		// must stay off for the simulator regardless of validation mode.
+		msg.SkipAccountChecks = true
+
+		if opts.Validation {
+			if simErr := k.validateSimCall(sdkCtx, sdb, &msg, header, rules, cfg.ChainConfig); simErr != nil {
+				return nil, nil, simErr
+			}
+		}
+
 		// Per-call TxConfig so AddLog stamps distinct TxHash / TxIndex
 		// on every emitted log. BlockHash is left zero in callCfg
 		// because the block hash depends on cumulative GasUsed, which
@@ -530,14 +553,23 @@ func (k *Keeper) processSimBlock(
 		// `(*state.StateDB).SetTxContext(thash, ti)` — it only updates
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
-		callTxHash := computeSimTxHash(msg)
-		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(len(txHashes)), 0) //nolint:gosec
-		sdb.SetTxContext(callCfg.TxHash, int(callCfg.TxIndex))                            //nolint:gosec
+		// DynamicFeeTxType matches go-ethereum v1.16's eth_simulateV1
+		// driver (`internal/ethapi/simulate.go`), so when Mezo upgrades
+		// off v1.14 the wire-shape of the response stays stable.
+		simTx := buildSimTx(&args, cfg.ChainConfig.ChainID, ethtypes.DynamicFeeTxType)
+		callTxHash := simTx.Hash()
+		callIdx := len(txs)
+		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(callIdx), 0) //nolint:gosec
+		sdb.SetTxContext(callCfg.TxHash, callIdx)
+
+		if perCallTracer != nil {
+			tt.reset(callTxHash, callIdx)
+		}
 
 		res, _, runErr := k.applyMessageWithConfig(
 			sdkCtx,
 			WrapMessage(msg),
-			nil,   // tracer
+			perCallTracer,
 			false, // commit = false (ephemeral simulate)
 			cfg,
 			callCfg,
@@ -592,31 +624,80 @@ func (k *Keeper) processSimBlock(
 			return nil, nil, budgetErr
 		}
 
-		calls = append(calls, types.BuildSimCallResult(res))
-		txHashes = append(txHashes, callTxHash)
+		callResult := types.BuildSimCallResult(res)
+		if perCallTracer != nil {
+			tracerLogs := tt.Logs()
+			if tracerLogs == nil {
+				tracerLogs = []*ethtypes.Log{}
+			}
+			callResult.Logs = tracerLogs
+		}
+		calls = append(calls, callResult)
 		cumGas += res.GasUsed
+
+		// Build the synthetic receipt for this call. Fields mirror
+		// core/state_processor.go's receipt assembly; PostState stays
+		// nil because mezod's StateDB has no MPT root, BlockHash is
+		// back-stamped after header.Hash() stabilizes below.
+		status := ethtypes.ReceiptStatusSuccessful
+		if res.Failed() {
+			status = ethtypes.ReceiptStatusFailed
+		}
+		receipt := &ethtypes.Receipt{
+			Type:              simTx.Type(),
+			Status:            status,
+			CumulativeGasUsed: cumGas,
+			TxHash:            callTxHash,
+			GasUsed:           res.GasUsed,
+			Logs:              callResult.Logs,
+			BlockNumber:       new(big.Int).Set(header.Number),
+			TransactionIndex:  uint(callIdx), //nolint:gosec
+		}
+		if msg.To == nil {
+			receipt.ContractAddress = crypto.CreateAddress(msg.From, msg.Nonce)
+		}
+		receipt.Bloom = ethtypes.CreateBloom(ethtypes.Receipts{receipt})
+
+		txs = append(txs, simTx)
+		receipts = append(receipts, receipt)
+		senders = append(senders, msg.From)
 	}
 
-	// Finalize the header (GasUsed must be set before Hash()) and
-	// back-stamp every log with values that aren't knowable until the
-	// block is sealed: BlockHash (depends on cumulative GasUsed) and
-	// Index (must be per-block monotonic; AddLog stamps from
-	// txConfig.LogIndex+len(s.logs), both of which reset between calls).
+	// Finalize the header (GasUsed must be set before NewBlock derives
+	// the trie roots and bloom) and assemble the *ethtypes.Block. NewBlock
+	// stamps header.TxHash, header.ReceiptHash, and header.Bloom from the
+	// supplied txs/receipts; block.Hash() reads from the resulting header.
 	header.GasUsed = cumGas
-	finalBlockHash := header.Hash()
+	ethBlock := assembleSimBlock(header, txs, receipts)
+	finalBlockHash := ethBlock.Hash()
+
+	// Back-stamp the values that aren't knowable until the block is
+	// sealed: log.BlockHash (depends on cumulative GasUsed via
+	// header.Hash()), log.Index (must be per-block monotonic; AddLog
+	// stamps from txConfig.LogIndex+len(s.logs), both of which reset
+	// between calls), and receipt.BlockHash (mirrors the per-log stamp
+	// for envelope consistency). log.BlockNumber is also normalized
+	// here: custom precompiles stamp it from sdkCtx.BlockHeight() in
+	// EmitEvent, and the driver anchors sdkCtx at base for fork-gated
+	// reads — so without this normalization, precompile-emitted logs
+	// report the parent block's number while regular EVM logs report
+	// the simulated header's number.
 	var logIdx uint
 	for i := range calls {
 		for _, log := range calls[i].Logs {
+			log.BlockNumber = header.Number.Uint64()
 			log.BlockHash = finalBlockHash
 			log.Index = logIdx
 			logIdx++
 		}
 	}
+	for _, r := range receipts {
+		r.BlockHash = finalBlockHash
+	}
 
-	return header, &types.SimBlockResult{
-		Block: assembleSimBlock(header, txHashes),
-		Calls: calls,
-	}, nil
+	return ethBlock.Header(), types.NewSimBlockResult(
+		ethBlock, senders, opts.ReturnFullTransactions, cfg.ChainConfig, calls,
+	), nil
 }
 
 // nonceSource narrows *statedb.StateDB down to the single method
@@ -749,18 +830,157 @@ func sameForks(a, b params.Rules) bool {
 	return reflect.DeepEqual(a, b)
 }
 
-// computeSimTxHash derives a deterministic "tx hash" for a simulated
-// call. Simulate txs are unsigned and have no canonical Ethereum hash;
-// we synthesize one from the message fields so the assembled block
-// carries stable, distinct identifiers per call.
-func computeSimTxHash(msg core.Message) common.Hash {
-	tx := ethtypes.NewTx(&ethtypes.LegacyTx{
-		Nonce:    msg.Nonce,
-		GasPrice: msg.GasPrice,
-		Gas:      msg.GasLimit,
-		To:       msg.To,
-		Value:    msg.Value,
-		Data:     msg.Data,
-	})
-	return tx.Hash()
+// buildSimTx materializes the synthetic *ethtypes.Transaction for a
+// simulated call. Returning the transaction (rather than just the hash)
+// lets the driver pass the same value into NewBlock to derive
+// transactionsRoot and into the Senders map without rebuilding it.
+//
+// The envelope shape mirrors go-ethereum v1.16's
+// `internal/ethapi.TransactionArgs.ToTransaction(defaultType)` so that
+// Mezo's wire shape stays consistent across the pinned v1.14 baseline
+// and the v1.16 upgrade target. The selection rule, in order:
+//
+//  1. `MaxFeePerGas` set, or `defaultType == DynamicFeeTxType` →
+//     DynamicFeeTx (accessList is nested if provided).
+//  2. `AccessList` set, or `defaultType == AccessListTxType` →
+//     AccessListTx.
+//  3. Otherwise LegacyTx.
+//  4. As a final override, if the caller provided `gasPrice`, force
+//     LegacyTx — geth uses this to fall back to a legacy envelope
+//     whenever the legacy fee field is present, even when defaultType
+//     would otherwise pick a typed one.
+//
+// Simulate txs are unsigned: V/R/S = 0, so tx.Hash() is stable and
+// distinct per request — sufficient for the assembled block's
+// per-call identifiers, transactionsRoot, and the typed JSON-RPC
+// representation returned to the caller. Mezo rejects blob (type 3)
+// and set-code (type 4) txs upstream, so this switch covers types 0/1/2
+// only.
+//
+// chainID flows in from the chain config so type-1/2 hashes match the
+// network the simulator runs against. args.Nonce and args.Gas are
+// expected to be resolved by the caller before this function runs;
+// other args are tolerant of nil pointers (treated as zero).
+func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8) *ethtypes.Transaction {
+	nonce := uint64(0)
+	if args.Nonce != nil {
+		nonce = uint64(*args.Nonce)
+	}
+	gas := uint64(0)
+	if args.Gas != nil {
+		gas = uint64(*args.Gas)
+	}
+	value := bigOrZero(args.Value)
+	data := args.GetData()
+
+	usedType := uint8(ethtypes.LegacyTxType)
+	switch {
+	case args.MaxFeePerGas != nil || defaultType == ethtypes.DynamicFeeTxType:
+		usedType = ethtypes.DynamicFeeTxType
+	case args.AccessList != nil || defaultType == ethtypes.AccessListTxType:
+		usedType = ethtypes.AccessListTxType
+	}
+	if args.GasPrice != nil {
+		usedType = ethtypes.LegacyTxType
+	}
+
+	switch usedType {
+	case ethtypes.DynamicFeeTxType:
+		al := ethtypes.AccessList{}
+		if args.AccessList != nil {
+			al = *args.AccessList
+		}
+		return ethtypes.NewTx(&ethtypes.DynamicFeeTx{
+			ChainID:    chainID,
+			Nonce:      nonce,
+			GasTipCap:  bigOrZero(args.MaxPriorityFeePerGas),
+			GasFeeCap:  bigOrZero(args.MaxFeePerGas),
+			Gas:        gas,
+			To:         args.To,
+			Value:      value,
+			Data:       data,
+			AccessList: al,
+		})
+	case ethtypes.AccessListTxType:
+		return ethtypes.NewTx(&ethtypes.AccessListTx{
+			ChainID:    chainID,
+			Nonce:      nonce,
+			GasPrice:   bigOrZero(args.GasPrice),
+			Gas:        gas,
+			To:         args.To,
+			Value:      value,
+			Data:       data,
+			AccessList: *args.AccessList,
+		})
+	default:
+		return ethtypes.NewTx(&ethtypes.LegacyTx{
+			Nonce:    nonce,
+			GasPrice: bigOrZero(args.GasPrice),
+			Gas:      gas,
+			To:       args.To,
+			Value:    value,
+			Data:     data,
+		})
+	}
+}
+
+// bigOrZero unwraps a hexutil.Big into a *big.Int, returning a fresh
+// zero when the pointer is nil. Keeps buildSimTx's typed-tx
+// constructors free of nil-fee fields, which would otherwise panic
+// inside ethtypes' RLP encoding.
+func bigOrZero(v *hexutil.Big) *big.Int {
+	if v == nil {
+		return new(big.Int)
+	}
+	return v.ToInt()
+}
+
+// validateSimCall runs the per-call validation=true gates in the order
+// geth's state_transition.go enforces: nonce, fee-cap-vs-baseFee, then
+// balance (preCheck), and finally init-code-size and intrinsic gas
+// (execute). The block-baseFee floor (-38012) lives in processSimBlock
+// since it depends on the parent and the override pointer, not on the
+// message.
+func (k *Keeper) validateSimCall(
+	ctx sdk.Context,
+	sdb *statedb.StateDB,
+	msg *core.Message,
+	header *ethtypes.Header,
+	rules params.Rules,
+	chainCfg *params.ChainConfig,
+) *types.SimError {
+	stateNonce := sdb.GetNonce(msg.From)
+	switch {
+	case msg.Nonce < stateNonce:
+		return types.NewSimNonceTooLow(msg.From, msg.Nonce, stateNonce)
+	case msg.Nonce > stateNonce:
+		return types.NewSimNonceTooHigh(msg.From, msg.Nonce, stateNonce)
+	}
+
+	if header.BaseFee != nil && msg.GasFeeCap.Cmp(header.BaseFee) < 0 {
+		return types.NewSimFeeCapTooLow(msg.GasFeeCap, header.BaseFee)
+	}
+
+	cost := new(big.Int).SetUint64(msg.GasLimit)
+	cost.Mul(cost, msg.GasFeeCap)
+	cost.Add(cost, msg.Value)
+	balance := sdb.GetBalance(msg.From).ToBig()
+	if balance.Cmp(cost) < 0 {
+		return types.NewSimInsufficientFunds(msg.From, balance, cost)
+	}
+
+	contractCreation := msg.To == nil
+	if contractCreation && rules.IsShanghai && len(msg.Data) > params.MaxInitCodeSize {
+		return types.NewSimInitcodeTooLarge(len(msg.Data), params.MaxInitCodeSize)
+	}
+
+	intrinsic, err := k.GetEthIntrinsicGas(ctx, *msg, chainCfg, contractCreation)
+	if err != nil {
+		return types.NewSimIntrinsicGas(msg.GasLimit, math.MaxUint64)
+	}
+	if msg.GasLimit < intrinsic {
+		return types.NewSimIntrinsicGas(msg.GasLimit, intrinsic)
+	}
+
+	return nil
 }

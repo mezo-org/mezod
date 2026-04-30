@@ -124,3 +124,104 @@ func TestNewSimVMError(t *testing.T) {
 	require.Equal(t, SimErrCodeVMError, err.ErrorCode())
 	require.Equal(t, "out of gas", err.Message)
 }
+
+// --- validation-mode constructors ---------------------------------------
+
+func TestNewSimNonceTooLow(t *testing.T) {
+	addr := common.HexToAddress("0x00000000000000000000000000000000000000a1")
+	err := NewSimNonceTooLow(addr, 5, 7)
+	require.Equal(t, SimErrCodeNonceTooLow, err.ErrorCode())
+	require.Contains(t, err.Message, "nonce too low")
+	require.Contains(t, err.Message, addr.Hex())
+	require.Contains(t, err.Message, "5")
+	require.Contains(t, err.Message, "7")
+}
+
+func TestNewSimNonceTooHigh(t *testing.T) {
+	addr := common.HexToAddress("0x00000000000000000000000000000000000000a2")
+	err := NewSimNonceTooHigh(addr, 9, 7)
+	require.Equal(t, SimErrCodeNonceTooHigh, err.ErrorCode())
+	require.Contains(t, err.Message, "nonce too high")
+	require.Contains(t, err.Message, addr.Hex())
+	require.Contains(t, err.Message, "9")
+	require.Contains(t, err.Message, "7")
+}
+
+func TestNewSimBaseFeeTooLow(t *testing.T) {
+	have := big.NewInt(1_000_000_000)
+	want := big.NewInt(2_000_000_000)
+	err := NewSimBaseFeeTooLow(have, want)
+	require.Equal(t, SimErrCodeBaseFeeTooLow, err.ErrorCode())
+	require.Contains(t, err.Message, "base fee too low")
+	require.Contains(t, err.Message, have.String())
+	require.Contains(t, err.Message, want.String())
+}
+
+func TestNewSimInsufficientFunds(t *testing.T) {
+	addr := common.HexToAddress("0x00000000000000000000000000000000000000a3")
+	have := big.NewInt(10)
+	want := big.NewInt(1000)
+	err := NewSimInsufficientFunds(addr, have, want)
+	require.Equal(t, SimErrCodeInsufficientFunds, err.ErrorCode())
+	require.Contains(t, err.Message, "insufficient funds")
+	require.Contains(t, err.Message, addr.Hex())
+	require.Contains(t, err.Message, "10")
+	require.Contains(t, err.Message, "1000")
+}
+
+func TestNewSimInitcodeTooLarge(t *testing.T) {
+	err := NewSimInitcodeTooLarge(49_153, 49_152)
+	require.Equal(t, SimErrCodeMaxInitCodeSizeExceeded, err.ErrorCode())
+	require.Contains(t, err.Message, "max initcode size exceeded")
+	require.Contains(t, err.Message, "49153")
+	require.Contains(t, err.Message, "49152")
+}
+
+func TestNewSimFeeCapTooLow(t *testing.T) {
+	have := big.NewInt(1_000_000_000)
+	want := big.NewInt(2_000_000_000)
+	err := NewSimFeeCapTooLow(have, want)
+	require.Equal(t, SimErrCodeFeeCapTooLow, err.ErrorCode())
+	require.Contains(t, err.Message, "max fee per gas less than block base fee")
+	require.Contains(t, err.Message, have.String())
+	require.Contains(t, err.Message, want.String())
+}
+
+func TestNewSimIntrinsicGas_AlreadyExists_Sanity(t *testing.T) {
+	err := NewSimIntrinsicGas(20_000, 21_000)
+	require.Equal(t, SimErrCodeIntrinsicGas, err.ErrorCode())
+	require.Contains(t, err.Message, "intrinsic gas too low")
+	require.Contains(t, err.Message, "20000")
+	require.Contains(t, err.Message, "21000")
+}
+
+func TestNewSimNonceTooLow_ZeroNonces(t *testing.T) {
+	addr := common.HexToAddress("0x00000000000000000000000000000000000000a4")
+	err := NewSimNonceTooLow(addr, 0, 0)
+	require.Equal(t, SimErrCodeNonceTooLow, err.ErrorCode())
+	require.Contains(t, err.Message, " 0")
+}
+
+func TestSimError_ErrorsAsRoundTrip(t *testing.T) {
+	addr := common.HexToAddress("0x00000000000000000000000000000000000000a5")
+	cases := []struct {
+		name     string
+		err      error
+		wantCode int
+	}{
+		{"NonceTooLow", NewSimNonceTooLow(addr, 1, 2), SimErrCodeNonceTooLow},
+		{"NonceTooHigh", NewSimNonceTooHigh(addr, 5, 2), SimErrCodeNonceTooHigh},
+		{"BaseFeeTooLow", NewSimBaseFeeTooLow(big.NewInt(1), big.NewInt(2)), SimErrCodeBaseFeeTooLow},
+		{"InsufficientFunds", NewSimInsufficientFunds(addr, big.NewInt(1), big.NewInt(2)), SimErrCodeInsufficientFunds},
+		{"InitcodeTooLarge", NewSimInitcodeTooLarge(49_153, 49_152), SimErrCodeMaxInitCodeSizeExceeded},
+		{"FeeCapTooLow", NewSimFeeCapTooLow(big.NewInt(1), big.NewInt(2)), SimErrCodeFeeCapTooLow},
+		{"IntrinsicGas", NewSimIntrinsicGas(0, 21_000), SimErrCodeIntrinsicGas},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var simErr *SimError
+			require.True(t, errors.As(tc.err, &simErr))
+			require.Equal(t, tc.wantCode, simErr.ErrorCode())
+		})
+	}
+}

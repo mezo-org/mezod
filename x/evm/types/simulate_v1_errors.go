@@ -275,3 +275,80 @@ func NewSimTimeout(timeout time.Duration) *SimError {
 		Message: fmt.Sprintf("execution aborted (timeout = %s)", timeout),
 	}
 }
+
+// NewSimNonceTooLow reports a call whose nonce is below the sender's
+// state nonce (-38010). Fires only when validation=true.
+func NewSimNonceTooLow(addr common.Address, have, want uint64) *SimError {
+	return &SimError{
+		Code: SimErrCodeNonceTooLow,
+		Message: fmt.Sprintf(
+			"nonce too low: address %s, tx: %d state: %d",
+			addr.Hex(), have, want,
+		),
+	}
+}
+
+// NewSimNonceTooHigh reports a call whose nonce exceeds the sender's
+// state nonce (-38011). Fires only when validation=true.
+func NewSimNonceTooHigh(addr common.Address, have, want uint64) *SimError {
+	return &SimError{
+		Code: SimErrCodeNonceTooHigh,
+		Message: fmt.Sprintf(
+			"nonce too high: address %s, tx: %d state: %d",
+			addr.Hex(), have, want,
+		),
+	}
+}
+
+// NewSimBaseFeeTooLow reports that the caller-supplied
+// BlockOverrides.BaseFeePerGas falls below the chain-computed
+// eip1559.CalcBaseFee floor for the parent (-38012). Distinct from
+// -32005, which targets the transaction's gasFeeCap rather than the
+// block's overridden baseFee. Fires only when validation=true.
+func NewSimBaseFeeTooLow(have, want *big.Int) *SimError {
+	return &SimError{
+		Code: SimErrCodeBaseFeeTooLow,
+		Message: fmt.Sprintf(
+			"base fee too low: override %s, floor %s",
+			have.String(), want.String(),
+		),
+	}
+}
+
+// NewSimInsufficientFunds reports a call whose sender lacks the funds
+// required to cover gasLimit*gasPrice + value (-38014). Fires only
+// when validation=true.
+func NewSimInsufficientFunds(addr common.Address, have, want *big.Int) *SimError {
+	return &SimError{
+		Code: SimErrCodeInsufficientFunds,
+		Message: fmt.Sprintf(
+			"insufficient funds: address %s have %s, want %s",
+			addr.Hex(), have.String(), want.String(),
+		),
+	}
+}
+
+// NewSimInitcodeTooLarge reports a CREATE call whose init-code size
+// exceeds params.MaxInitCodeSize on a Shanghai-active fork (-38025).
+// Fires only when validation=true.
+func NewSimInitcodeTooLarge(have, limit int) *SimError {
+	return &SimError{
+		Code: SimErrCodeMaxInitCodeSizeExceeded,
+		Message: fmt.Sprintf(
+			"max initcode size exceeded: code size %d limit %d",
+			have, limit,
+		),
+	}
+}
+
+// NewSimFeeCapTooLow reports a call whose gasFeeCap is below the
+// active block base fee (-32005). Fires only when validation=true.
+func NewSimFeeCapTooLow(have, want *big.Int) *SimError {
+	return &SimError{
+		Code: SimErrCodeFeeCapTooLow,
+		Message: fmt.Sprintf(
+			"max fee per gas less than block base fee: maxFeePerGas: %s, baseFee: %s",
+			have.String(), want.String(),
+		),
+	}
+}

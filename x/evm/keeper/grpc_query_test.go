@@ -13,9 +13,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethparams "github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/trie"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -2029,17 +2031,11 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_NonceAutoIncrement() {
 //	@09  RETURN
 const emptyLogDeployer = "0x60006000A060006000F3"
 
-// TestSimulateV1_MultiCall_CallNonceAdvances — two value transfers
-// from the same sender with no explicit nonce, identical in every
-// other field that feeds computeSimTxHash (Gas pinned to a fixed
-// value so the per-call default gas budget — which would otherwise
-// shrink between calls and accidentally diverge the hashes for an
-// unrelated reason — does not vary). The driver must bump the
-// StateDB nonce after every successful non-CREATE call; without
-// that bump both calls would default to the same nonce, the
-// synthesized tx hashes (computeSimTxHash, which folds nonce into
-// the LegacyTx hash) would collide, and the assembled block would
-// carry duplicate entries in its `transactions` array.
+// Two value transfers from the same sender with no explicit nonce.
+// The driver must bump the StateDB nonce after every successful
+// non-CREATE call; otherwise both calls would default to the same
+// nonce, the synthesized tx hashes would collide, and the assembled
+// block would carry duplicate entries in `transactions`.
 func (suite *KeeperTestSuite) TestSimulateV1_MultiCall_CallNonceAdvances() {
 	suite.SetupTest()
 
@@ -2361,6 +2357,104 @@ func (suite *KeeperTestSuite) TestSimulateV1_MultiBlock_PrecompileStateChains() 
 	got.SetString(returnData[2:], 16)
 	suite.Require().Equal(0, got.Cmp(transferAmount),
 		"block 2 balanceOf must return transferAmount; got %s (precompile cachedCtx did not survive block boundary)", got.String())
+}
+
+// Precompile-emitted logs stamp log.BlockNumber from sdkCtx.BlockHeight()
+// in EmitEvent; the driver anchors sdkCtx at the parent height for
+// fork-gated reads, so without the back-stamp normalization those logs
+// would report parent-height instead of the simulated height.
+func (suite *KeeperTestSuite) TestSimulateV1_LogBlockNumber_MatchesSimulatedHeader() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000088")
+	btcToken := common.HexToAddress(types.BTCTokenPrecompileAddress)
+
+	// Fund sender via bank — btctoken.transfer reads bankKeeper, not
+	// the EVM state-object balance, so a stateOverride wouldn't help.
+	initialBalance := sdkmath.NewInt(1_000_000_000_000_000_000)
+	transferAmount1 := big.NewInt(500_000_000_000_000_000)
+	transferAmount2 := big.NewInt(123_000_000_000_000_000)
+	coin := sdk.NewCoin(types.DefaultEVMDenom, initialBalance)
+	suite.Require().NoError(suite.app.BankKeeper.MintCoins(
+		suite.ctx, types.ModuleName, sdk.NewCoins(coin)))
+	suite.Require().NoError(suite.app.BankKeeper.SendCoinsFromModuleToAccount(
+		suite.ctx, types.ModuleName, sender.Bytes(), sdk.NewCoins(coin)))
+
+	// transfer(address,uint256) — selector 0xa9059cbb. Encoded by hand
+	// to avoid pulling ABI binding generation into keeper tests.
+	transferSelector := []byte{0xa9, 0x05, 0x9c, 0xbb}
+	padAddr := func(addr common.Address) []byte {
+		buf := make([]byte, 32)
+		copy(buf[12:], addr.Bytes())
+		return buf
+	}
+	padUint := func(v *big.Int) []byte {
+		buf := make([]byte, 32)
+		v.FillBytes(buf)
+		return buf
+	}
+	encodeTransfer := func(to common.Address, amount *big.Int) []byte {
+		out := append([]byte{}, transferSelector...)
+		out = append(out, padAddr(to)...)
+		out = append(out, padUint(amount)...)
+		return out
+	}
+
+	transferData1 := encodeTransfer(recipient, transferAmount1)
+	transferData2 := encodeTransfer(recipient, transferAmount2)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"calls": []types.TransactionArgs{
+					{From: &sender, To: &btcToken, Input: (*hexutil.Bytes)(&transferData1)},
+					{From: &sender, To: &btcToken, Input: (*hexutil.Bytes)(&transferData2)},
+				},
+			},
+		},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	blockNumber := results[0]["number"].(string)
+	blockHash := results[0]["hash"].(string)
+	suite.Require().NotEmpty(blockNumber)
+	suite.Require().NotEmpty(blockHash)
+
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	totalLogs := 0
+	for callIdx, raw := range calls {
+		call := raw.(map[string]interface{})
+		suite.Require().Equal("0x1", call["status"],
+			"call %d btctoken.transfer must succeed", callIdx)
+
+		logsRaw, ok := call["logs"].([]interface{})
+		suite.Require().True(ok, "call %d logs must be present as a JSON array", callIdx)
+
+		for logIdx, lraw := range logsRaw {
+			log := lraw.(map[string]interface{})
+			suite.Require().Equal(blockNumber, log["blockNumber"],
+				"call %d log %d blockNumber must equal simulated header number", callIdx, logIdx)
+			suite.Require().Equal(blockHash, log["blockHash"],
+				"call %d log %d blockHash must equal simulated header hash", callIdx, logIdx)
+			totalLogs++
+		}
+	}
+
+	// Guard against a future change that silently drops the precompile
+	// Transfer event — the per-log assertions above are vacuous on an
+	// empty logs array.
+	suite.Require().Greater(totalLogs, 0,
+		"at least one log must be emitted across the two btctoken.transfer calls")
 }
 
 // First call exhausts the per-block gas; the second omits args.Gas and
@@ -2783,4 +2877,2001 @@ func (suite *KeeperTestSuite) TestSimulateV1_Timeout_MidCall() {
 	// running the bytecode to gas exhaustion.
 	suite.Require().Less(elapsed, 2*time.Second,
 		"timeout did not fire mid-call; elapsed=%s", elapsed)
+}
+
+// -----------------------------------------------------------------------------
+// SimulateV1 — TraceTransfers (ERC-7528 synthetic Transfer logs)
+// -----------------------------------------------------------------------------
+
+// erc7528Address is the canonical ERC-7528 pseudo-address used as the
+// emitter of synthetic native-value Transfer logs.
+const erc7528Address = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+
+// erc20TransferTopic is keccak256("Transfer(address,address,uint256)").
+const erc20TransferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
+// valueForwarderRuntime forwards CALLVALUE to the address packed (left-
+// padded) into the first 32 bytes of calldata. Two value-bearing call
+// edges land per top-level invocation: outer (caller -> forwarder) and
+// inner (forwarder -> recipient). Used by the nested-CALL synthetic-log
+// test.
+//
+//	@00  PUSH1 0x00          ; retSize
+//	@02  PUSH1 0x00          ; retOffset
+//	@04  PUSH1 0x00          ; argsSize
+//	@06  PUSH1 0x00          ; argsOffset
+//	@08  CALLVALUE           ; value
+//	@09  PUSH1 0x00          ; CALLDATALOAD offset
+//	@0B  CALLDATALOAD        ; recipient (low 20 bytes of calldata[0..32])
+//	@0C  GAS                 ; forward all remaining gas
+//	@0D  CALL
+//	@0E  STOP
+const valueForwarderRuntime = "0x6000600060006000346000355AF100"
+
+// log0RevertRuntime emits an empty LOG0 then reverts. Used to pin the
+// "tracer drops logs from a reverted frame" path.
+//
+//	@00  PUSH1 0x00          ; LOG0 size
+//	@02  PUSH1 0x00          ; LOG0 offset
+//	@04  LOG0
+//	@05  PUSH1 0x00          ; REVERT size
+//	@07  PUSH1 0x00          ; REVERT offset
+//	@09  REVERT
+const log0RevertRuntime = "0x60006000A060006000FD"
+
+// erc20TransferCalldata builds calldata for ERC-20 transfer(to, amount).
+// Selector is keccak256("transfer(address,uint256)")[:4] = 0xa9059cbb.
+func erc20TransferCalldata(to common.Address, amount *big.Int) []byte {
+	const transferSelector = "a9059cbb"
+	out := common.Hex2Bytes(transferSelector)
+	out = append(out, common.LeftPadBytes(to.Bytes(), 32)...)
+	out = append(out, common.LeftPadBytes(amount.Bytes(), 32)...)
+	return out
+}
+
+// syntheticTransferLogs filters a logs JSON array down to entries whose
+// `address` matches the ERC-7528 pseudo-address (case-insensitive). The
+// JSON encoding of ethtypes.Log lower-cases the address, but the helper
+// stays case-insensitive to survive future encoding tweaks.
+func syntheticTransferLogs(logs []interface{}) []map[string]interface{} {
+	out := make([]map[string]interface{}, 0, len(logs))
+	for _, raw := range logs {
+		entry := raw.(map[string]interface{})
+		addr, ok := entry["address"].(string)
+		if !ok {
+			continue
+		}
+		if common.HexToAddress(addr) == common.HexToAddress(erc7528Address) {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
+// TestSimulateV1_TraceTransfers_On_NativeTransfer_OneSyntheticLog —
+// happy path: a single native value-transfer call with traceTransfers
+// enabled produces exactly one synthetic ERC-7528 Transfer log carrying
+// the canonical Transfer topic, indexed sender / recipient, and the
+// value as 32-byte data.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_NativeTransfer_OneSyntheticLog() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+
+	call := calls[0].(map[string]interface{})
+	suite.Require().Equal("0x1", call["status"])
+
+	logs := call["logs"].([]interface{})
+	synthetic := syntheticTransferLogs(logs)
+	suite.Require().Len(synthetic, 1, "value transfer must produce exactly one synthetic ERC-7528 log")
+
+	log := synthetic[0]
+	topics := log["topics"].([]interface{})
+	suite.Require().Len(topics, 3)
+	suite.Require().Equal(erc20TransferTopic, topics[0].(string))
+
+	// Indexed sender / recipient: 12 zero bytes + 20 address bytes.
+	expectedFrom := "0x" + common.Bytes2Hex(common.LeftPadBytes(sender.Bytes(), 32))
+	expectedTo := "0x" + common.Bytes2Hex(common.LeftPadBytes(recipient.Bytes(), 32))
+	suite.Require().Equal(expectedFrom, topics[1].(string))
+	suite.Require().Equal(expectedTo, topics[2].(string))
+
+	// Data: 32-byte big-endian value.
+	expectedData := "0x" + common.Bytes2Hex(common.LeftPadBytes(big.NewInt(1_000_000).Bytes(), 32))
+	suite.Require().Equal(expectedData, log["data"].(string))
+}
+
+// TestSimulateV1_TraceTransfers_Off_NoSyntheticLogs — explicit
+// traceTransfers=false produces no synthetic logs.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_Off_NoSyntheticLogs() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+		"traceTransfers": false,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Empty(syntheticTransferLogs(logs),
+		"traceTransfers=false must not produce synthetic ERC-7528 logs")
+}
+
+// TestSimulateV1_TraceTransfers_OmittedDefaultsToFalse — when the
+// option is absent the driver behaves as if it were false: no synthetic
+// logs.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_OmittedDefaultsToFalse() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Empty(syntheticTransferLogs(logs),
+		"omitted traceTransfers must default to false")
+}
+
+// TestSimulateV1_TraceTransfers_On_ZeroValueCall_NoSyntheticLog —
+// traceTransfers=true with a zero-value call must not emit a synthetic
+// log. The deny-list and DELEGATECALL guards both sit behind the value
+// > 0 check; this test pins the value-sign branch.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_ZeroValueCall_NoSyntheticLog() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Empty(logs, "zero-value call must produce no logs at all")
+}
+
+// TestSimulateV1_TraceTransfers_On_RealLogStillCaptured — a real EVM
+// log emitted by user bytecode (LOG0 here) is captured into the call's
+// log list when traceTransfers is on, even with no synthetic emission.
+// Pins the StateDB.AddLog -> tracer.OnLog -> captured-log path.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_RealLogStillCaptured() {
+	suite.SetupTest()
+
+	sender := suite.address
+	emitter := common.HexToAddress("0xbbbb000000000000000000000000000000000301")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:  {"balance": balance},
+				emitter: {"code": log0Runtime},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &emitter}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Len(logs, 1, "real LOG0 must surface even when no synthetic log fires")
+
+	log := logs[0].(map[string]interface{})
+	suite.Require().Equal(emitter, common.HexToAddress(log["address"].(string)),
+		"captured real log must carry the emitter contract's address")
+	suite.Require().Empty(syntheticTransferLogs(logs),
+		"zero-value call must not produce any synthetic log")
+}
+
+// TestSimulateV1_TraceTransfers_On_NativeTransfer_BlockHashBackStamped —
+// captured logs carry the per-block hash that the response envelope
+// surfaces under `hash`. Only observable end-to-end because the driver
+// records logs with a zero block hash and patches BlockHash + Index in
+// a post-call back-stamp.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_NativeTransfer_BlockHashBackStamped() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	blockHash := results[0]["hash"].(string)
+	suite.Require().NotEmpty(blockHash)
+
+	calls := results[0]["calls"].([]interface{})
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	synthetic := syntheticTransferLogs(logs)
+	suite.Require().Len(synthetic, 1)
+	suite.Require().Equal(blockHash, synthetic[0]["blockHash"].(string),
+		"synthetic log blockHash must equal the assembled block's hash post-back-stamp")
+}
+
+// TestSimulateV1_TraceTransfers_On_RevertingCall_LogsDropped — a call
+// that emits a real log and then reverts surfaces with `error.code = 3`
+// and an empty logs list (the revert must drop both real and synthetic
+// frame contents).
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_RevertingCall_LogsDropped() {
+	suite.SetupTest()
+
+	sender := suite.address
+	contract := common.HexToAddress("0xbbbb000000000000000000000000000000000302")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:   {"balance": balance},
+				contract: {"code": log0RevertRuntime},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &contract}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	call := calls[0].(map[string]interface{})
+
+	suite.Require().Equal("0x0", call["status"])
+	errObj := call["error"].(map[string]interface{})
+	suite.Require().EqualValues(float64(types.SimErrCodeReverted), errObj["code"])
+
+	logs := call["logs"].([]interface{})
+	suite.Require().Empty(logs, "revert must drop the real LOG0 the contract emitted before REVERT")
+}
+
+// TestSimulateV1_TraceTransfers_On_NestedCalls_OneSyntheticPerEdge — a
+// top-level value-bearing CALL into a forwarder contract that
+// re-CALLs the recipient with the same value produces TWO synthetic
+// logs: outer (sender -> forwarder), inner (forwarder -> recipient).
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_NestedCalls_OneSyntheticPerEdge() {
+	suite.SetupTest()
+
+	sender := suite.address
+	forwarder := common.HexToAddress("0xbbbb000000000000000000000000000000000303")
+	recipient := common.HexToAddress("0x2222222222222222222222222222222222222222")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	value := (*hexutil.Big)(big.NewInt(123_456))
+	calldata := common.LeftPadBytes(recipient.Bytes(), 32)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:    {"balance": balance},
+				forwarder: {"code": valueForwarderRuntime},
+			},
+			"calls": []types.TransactionArgs{{
+				From:  &sender,
+				To:    &forwarder,
+				Value: value,
+				Input: (*hexutil.Bytes)(&calldata),
+			}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"])
+
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	synthetic := syntheticTransferLogs(logs)
+	suite.Require().Len(synthetic, 2,
+		"forwarder pattern produces two value-transfer call edges (outer + inner)")
+
+	outerTopics := synthetic[0]["topics"].([]interface{})
+	innerTopics := synthetic[1]["topics"].([]interface{})
+
+	expectedSender := "0x" + common.Bytes2Hex(common.LeftPadBytes(sender.Bytes(), 32))
+	expectedForwarder := "0x" + common.Bytes2Hex(common.LeftPadBytes(forwarder.Bytes(), 32))
+	expectedRecipient := "0x" + common.Bytes2Hex(common.LeftPadBytes(recipient.Bytes(), 32))
+
+	suite.Require().Equal(expectedSender, outerTopics[1].(string))
+	suite.Require().Equal(expectedForwarder, outerTopics[2].(string))
+	suite.Require().Equal(expectedForwarder, innerTopics[1].(string))
+	suite.Require().Equal(expectedRecipient, innerTopics[2].(string))
+}
+
+// TestSimulateV1_TraceTransfers_On_MultiCall_PerCallLogsIsolated — two
+// value-transfer calls in the same block each surface their own
+// synthetic log on the corresponding call result; neither call's log
+// list contains the other's entries.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_MultiCall_PerCallLogsIsolated() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipientA := common.HexToAddress("0xaaaa000000000000000000000000000000000401")
+	recipientB := common.HexToAddress("0xbbbb000000000000000000000000000000000402")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipientA, Value: value},
+				{From: &sender, To: &recipientB, Value: value},
+			},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 2)
+
+	logsA := calls[0].(map[string]interface{})["logs"].([]interface{})
+	logsB := calls[1].(map[string]interface{})["logs"].([]interface{})
+
+	syntheticA := syntheticTransferLogs(logsA)
+	syntheticB := syntheticTransferLogs(logsB)
+	suite.Require().Len(syntheticA, 1, "call 0's logs must contain only its own synthetic")
+	suite.Require().Len(syntheticB, 1, "call 1's logs must contain only its own synthetic")
+
+	expectedToA := "0x" + common.Bytes2Hex(common.LeftPadBytes(recipientA.Bytes(), 32))
+	expectedToB := "0x" + common.Bytes2Hex(common.LeftPadBytes(recipientB.Bytes(), 32))
+	suite.Require().Equal(expectedToA, syntheticA[0]["topics"].([]interface{})[2].(string))
+	suite.Require().Equal(expectedToB, syntheticB[0]["topics"].([]interface{})[2].(string))
+}
+
+// TestSimulateV1_TraceTransfers_On_MultiCall_TxIndexMatchesCallPosition
+// — transactionIndex on each captured synthetic log equals that call's
+// position in the block's calls array.
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_MultiCall_TxIndexMatchesCallPosition() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xaaaa000000000000000000000000000000000403")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &sender, To: &recipient, Value: value},
+				{From: &sender, To: &recipient, Value: value},
+				{From: &sender, To: &recipient, Value: value},
+			},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 3)
+
+	for i, expected := range []string{"0x0", "0x1", "0x2"} {
+		logs := calls[i].(map[string]interface{})["logs"].([]interface{})
+		synthetic := syntheticTransferLogs(logs)
+		suite.Require().Len(synthetic, 1)
+		suite.Require().Equal(expected, synthetic[0]["transactionIndex"].(string),
+			"call %d's synthetic log must carry transactionIndex=%s", i, expected)
+	}
+}
+
+// TestSimulateV1_TraceTransfers_On_MultiBlock_LogIndexResetsPerBlock —
+// per-block log index counter must reset between blocks. Block 0
+// carries two value transfers (logIndex 0, 1); block 1 carries one
+// (logIndex 0).
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_MultiBlock_LogIndexResetsPerBlock() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xaaaa000000000000000000000000000000000404")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	transfer := types.TransactionArgs{From: &sender, To: &recipient, Value: value}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender: {"balance": balance},
+				},
+				"calls": []types.TransactionArgs{transfer, transfer},
+			},
+			{"calls": []types.TransactionArgs{transfer}},
+		},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 2)
+
+	block0 := results[0]["calls"].([]interface{})
+	block1 := results[1]["calls"].([]interface{})
+
+	logs00 := syntheticTransferLogs(block0[0].(map[string]interface{})["logs"].([]interface{}))
+	logs01 := syntheticTransferLogs(block0[1].(map[string]interface{})["logs"].([]interface{}))
+	logs10 := syntheticTransferLogs(block1[0].(map[string]interface{})["logs"].([]interface{}))
+
+	suite.Require().Len(logs00, 1)
+	suite.Require().Len(logs01, 1)
+	suite.Require().Len(logs10, 1)
+
+	suite.Require().Equal("0x0", logs00[0]["logIndex"].(string),
+		"block 0 call 0's synthetic log must be at logIndex 0")
+	suite.Require().Equal("0x1", logs01[0]["logIndex"].(string),
+		"block 0 call 1's synthetic log must be at logIndex 1 (cumulative within block)")
+	suite.Require().Equal("0x0", logs10[0]["logIndex"].(string),
+		"block 1's first synthetic log must reset the counter to 0")
+}
+
+func (suite *KeeperTestSuite) TestSimulateV1_TraceTransfers_On_BTCTokenSkipped() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	btcToken := common.HexToAddress(types.BTCTokenPrecompileAddress)
+
+	// Fund the sender via bank directly — StateDB balance overrides
+	// only touch the EVM state object and do not propagate to
+	// bankKeeper, which is what btctoken.transfer actually reads.
+	initial := sdkmath.NewInt(1_000_000_000_000_000_000)
+	coin := sdk.NewCoin(types.DefaultEVMDenom, initial)
+	suite.Require().NoError(suite.app.BankKeeper.MintCoins(
+		suite.ctx, types.ModuleName, sdk.NewCoins(coin)))
+	suite.Require().NoError(suite.app.BankKeeper.SendCoinsFromModuleToAccount(
+		suite.ctx, types.ModuleName, sender.Bytes(), sdk.NewCoins(coin)))
+
+	calldata := erc20TransferCalldata(recipient, big.NewInt(1))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"calls": []types.TransactionArgs{{
+				From:  &sender,
+				To:    &btcToken,
+				Input: (*hexutil.Bytes)(&calldata),
+			}},
+		}},
+		"traceTransfers": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Equal("0x1", calls[0].(map[string]interface{})["status"],
+		"btctoken.transfer must succeed when the sender's bank balance is funded")
+
+	logs := calls[0].(map[string]interface{})["logs"].([]interface{})
+	suite.Require().Empty(syntheticTransferLogs(logs),
+		"BTC token precompile address must not produce a synthetic ERC-7528 log")
+
+	// Real precompile-emitted Transfer event must still be present and
+	// flow through the tracer. The address must be the precompile, the
+	// topic must be the canonical ERC-20 Transfer signature.
+	require := suite.Require()
+	require.NotEmpty(logs, "BTC precompile transfer must surface its own real Transfer event")
+	realLog := logs[0].(map[string]interface{})
+	require.Equal(btcToken, common.HexToAddress(realLog["address"].(string)),
+		"real Transfer event must carry the BTC precompile address as emitter")
+	topics := realLog["topics"].([]interface{})
+	require.NotEmpty(topics)
+	require.Equal(erc20TransferTopic, topics[0].(string),
+		"first topic must be the canonical ERC-20 Transfer signature")
+}
+
+// -----------------------------------------------------------------------------
+// SimulateV1 — validation=true mode
+// -----------------------------------------------------------------------------
+
+func (suite *KeeperTestSuite) validatedSimulateRequest(
+	state map[common.Address]map[string]interface{},
+	calls []types.TransactionArgs,
+	valFlag bool,
+) []byte {
+	suite.T().Helper()
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": state,
+			"calls":          calls,
+		}},
+		"validation": valFlag,
+	})
+	suite.Require().NoError(err)
+	return optsJSON
+}
+
+// validationMaxFeePerGas is large enough to clear the eip1559 baseFee
+// floor that validation=true derives from the parent header in every
+// fixture below; calls with this fee never hit the fee-cap gate so a
+// test failure points at the gate it actually means to exercise.
+var validationMaxFeePerGas = (*hexutil.Big)(big.NewInt(1_000_000_000_000)) // 1e12
+
+// validationFundedBalance is large enough to cover any gasLimit *
+// validationMaxFeePerGas + small `value` for every fixture. The few
+// tests that need an under-funded sender override this field
+// explicitly.
+var validationFundedBalance = (*hexutil.Big)(new(big.Int).Mul(big.NewInt(1_000_000_000), big.NewInt(1_000_000_000_000_000_000))) // 1e9 ether
+
+// TestSimulateV1_Validation_HappyPath — funded sender, correct nonce,
+// fee-cap above the chain-computed baseFee floor: the call must clear
+// every gate.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_HappyPath() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": (*hexutil.Uint64)(nil)},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+// TestSimulateV1_Validation_NonceLow — state.nonce=5, call.nonce=4 →
+// top-level -38010.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	callNonce := hexutil.Uint64(4)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		Nonce:        &callNonce,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_NonceHigh — state.nonce=5, call.nonce=9 →
+// top-level -38011.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceHigh() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	callNonce := hexutil.Uint64(9)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		Nonce:        &callNonce,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooHigh), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_InsufficientFunds — sender has zero balance,
+// call carries non-zero value → -38014.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_InsufficientFunds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zero := (*hexutil.Big)(big.NewInt(0))
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": zero},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeInsufficientFunds), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_IntrinsicGas — call carries gas below the
+// 21k pure-transfer intrinsic floor → -38013. Same surface as the
+// existing TestSimulateV1_ExplicitGasBelowIntrinsic, lifted under
+// validation=true to confirm the gate fires there too rather than
+// changing the request-level fatal code.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_IntrinsicGas() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	tooLowGas := hexutil.Uint64(20_999)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		Gas:          &tooLowGas,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeIntrinsicGas), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_InitCodeTooLarge — CREATE call (To=nil)
+// with init-code 1 byte over MaxInitCodeSize → -38025. Per EIP-3860 the
+// gate is Shanghai-active in the test app's default chain config.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_InitCodeTooLarge() {
+	suite.SetupTest()
+
+	sender := suite.address
+	overSize := make([]byte, ethparams.MaxInitCodeSize+1)
+	// 1M gas covers the intrinsic-gas + EIP-3860 word cost for an
+	// all-zero init-code payload at MaxInitCodeSize+1 bytes (~232k).
+	gas := hexutil.Uint64(1_000_000)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	data := hexutil.Bytes(overSize)
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		Data:         &data,
+		Gas:          &gas,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeMaxInitCodeSizeExceeded), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_FeeCapBelowBaseFee — explicit MaxFeePerGas=0
+// while validation=true forces a non-zero baseFee on the synthesized
+// header → -32005.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_FeeCapBelowBaseFee() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zeroFee := (*hexutil.Big)(big.NewInt(0))
+	// Ensure header.BaseFee > 0 by overriding the block's baseFee. The
+	// override goes through the eip1559 floor check, which requires the
+	// override to be >= the chain-computed floor; setting the override
+	// to a small positive value above the floor (1 wei is below, so we
+	// pick a larger number) keeps that gate happy while exercising the
+	// per-call fee-cap gate.
+	baseFee := (*hexutil.Big)(big.NewInt(1_000_000_000))
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{"baseFeePerGas": baseFee},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": validationFundedBalance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:                 &sender,
+				To:                   &recipient,
+				Value:                (*hexutil.Big)(big.NewInt(1)),
+				MaxFeePerGas:         zeroFee,
+				MaxPriorityFeePerGas: zeroFee,
+			}},
+		}},
+		"validation": true,
+	})
+	suite.Require().NoError(err)
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeFeeCapTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_BaseFeeOverrideTooLow — caller-supplied
+// blockOverrides.baseFeePerGas BELOW the chain-computed eip1559 floor
+// → -38012. Per the spec, the per-block check fires before any per-call
+// gate even runs.
+//
+// Setup note: the keeper test app defaults to feemarket=disabled, which
+// pins the chain's BaseFee at 0; with parent.BaseFee=0 the eip1559 floor
+// formula collapses to 0, leaving no room to assert "override below
+// floor". We flip feemarket on for this case so the parent header
+// surfaces a real InitialBaseFee (1 gwei), which the floor formula then
+// adjusts. Restored to default afterwards.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_BaseFeeOverrideTooLow() {
+	suite.enableFeemarket = true
+	defer func() { suite.enableFeemarket = false }()
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	// 1 wei sits far below any feemarket-derived floor (which starts at
+	// 1 gwei minus an elasticity adjustment, tens of millions of wei
+	// even after a single decrease).
+	farTooLow := (*hexutil.Big)(big.NewInt(1))
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{"baseFeePerGas": farTooLow},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": validationFundedBalance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:         &sender,
+				To:           &recipient,
+				Value:        (*hexutil.Big)(big.NewInt(1)),
+				MaxFeePerGas: validationMaxFeePerGas,
+			}},
+		}},
+		"validation": true,
+	})
+	suite.Require().NoError(err)
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeBaseFeeTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_NodeNoBaseFeeIgnored — chain-level
+// feemarket.NoBaseFee=true does NOT relax the validation gate's fee-cap
+// check. Per spec, validation=true is an authoritative override; node
+// config cannot opt out of the realistic preflight.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NodeNoBaseFeeIgnored() {
+	suite.enableFeemarket = false
+	defer func() { suite.enableFeemarket = false }()
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zeroFee := (*hexutil.Big)(big.NewInt(0))
+	baseFee := (*hexutil.Big)(big.NewInt(1_000_000_000))
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{"baseFeePerGas": baseFee},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": validationFundedBalance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:                 &sender,
+				To:                   &recipient,
+				Value:                (*hexutil.Big)(big.NewInt(1)),
+				MaxFeePerGas:         zeroFee,
+				MaxPriorityFeePerGas: zeroFee,
+			}},
+		}},
+		"validation": true,
+	})
+	suite.Require().NoError(err)
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeFeeCapTooLow), resp.Error.Code,
+		"validation=true must enforce base fee even when node-level NoBaseFee is set")
+}
+
+// TestSimulateV1_Validation_RevertStaysPerCall — a reverting call is a
+// per-call failure (CallResultFailure.error.code = 3), NOT a fatal abort.
+// Load-bearing: revert is the most common per-call outcome a caller
+// observes, and the validation gate must not promote it.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_RevertStaysPerCall() {
+	suite.SetupTest()
+
+	sender := suite.address
+	// Bytecode: PUSH1 0x00 PUSH1 0x00 REVERT — unconditional revert
+	// with empty return data.
+	revertCode := common.Hex2Bytes("60006000FD")
+	revertContract := common.HexToAddress("0xddee000000000000000000000000000000000000")
+
+	state := map[common.Address]map[string]interface{}{
+		sender:         {"balance": validationFundedBalance},
+		revertContract: {"code": hexutil.Bytes(revertCode)},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &revertContract,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error, "reverting call must NOT abort the request under validation=true")
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x0", c["status"])
+	cErr := c["error"].(map[string]interface{})
+	suite.Require().Equal(float64(types.SimErrCodeReverted), cErr["code"])
+}
+
+// TestSimulateV1_Validation_VMErrorStaysPerCall — a non-revert VM
+// failure (e.g. invalid opcode) is per-call (-32015), not a fatal
+// abort.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_VMErrorStaysPerCall() {
+	suite.SetupTest()
+
+	sender := suite.address
+	// 0xFE is the canonical INVALID opcode — runs OOG with all gas
+	// consumed.
+	invalidCode := common.Hex2Bytes("FE")
+	invalidContract := common.HexToAddress("0xddff000000000000000000000000000000000000")
+
+	state := map[common.Address]map[string]interface{}{
+		sender:          {"balance": validationFundedBalance},
+		invalidContract: {"code": hexutil.Bytes(invalidCode)},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &invalidContract,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error, "VM error must NOT abort the request under validation=true")
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x0", c["status"])
+	cErr := c["error"].(map[string]interface{})
+	suite.Require().Equal(float64(types.SimErrCodeVMError), cErr["code"])
+}
+
+// TestSimulateV1_Validation_AbortsOnFirstCallSecondNotRun — call[0]
+// fails the gate; call[1] would succeed if reached. The fatal abort
+// must short-circuit so call[1] is never executed (verified by
+// observing that the response is bare-error, not a partial result
+// envelope).
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_AbortsOnFirstCallSecondNotRun() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{
+		// call[0] — nonce too low → fatal -38010
+		{From: &sender, To: &recipient, Nonce: &tooLowNonce, MaxFeePerGas: validationMaxFeePerGas},
+		// call[1] — would otherwise succeed
+		{From: &sender, To: &recipient, MaxFeePerGas: validationMaxFeePerGas},
+	}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result, "fatal abort must not emit a partial result envelope")
+}
+
+// TestSimulateV1_Validation_AbortsOnSecondBlockFirstAlreadyExecuted —
+// block[0] runs to completion; block[1] fails the gate on its first
+// call. The whole request aborts; no result envelope is emitted (the
+// driver does not partially commit prior blocks on a fatal). Pinned
+// because partial commits would be a correctness regression — callers
+// rely on simulate being all-or-nothing.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_AbortsOnSecondBlockFirstAlreadyExecuted() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+				},
+				"calls": []types.TransactionArgs{{
+					From: &sender, To: &recipient, MaxFeePerGas: validationMaxFeePerGas,
+				}},
+			},
+			{
+				"calls": []types.TransactionArgs{{
+					// Nonce reset to a value below the post-block-0 state
+					// nonce (which advanced from 5 -> 6 after the CALL).
+					From: &sender, To: &recipient, Nonce: &tooLowNonce,
+					MaxFeePerGas: validationMaxFeePerGas,
+				}},
+			},
+		},
+		"validation": true,
+	})
+	suite.Require().NoError(err)
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_DeterminismRepeated — same opts run twice
+// must surface the same fatal SimError byte-for-byte. Pinned to guard
+// against time-dependent or PRNG-tainted error messages slipping into
+// the gate path.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_DeterminismRepeated() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Nonce: &tooLowNonce,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+
+	resp1, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp1.Error)
+	resp2, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp2.Error)
+	suite.Require().Equal(resp1.Error.Code, resp2.Error.Code)
+	suite.Require().Equal(resp1.Error.Message, resp2.Error.Message)
+}
+
+// --- validation=false (default) — every gate must allow the call ---------
+
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_NonceLowSucceeds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Nonce: &tooLowNonce,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+// validation=false must not promote insufficient-funds to -38014.
+// Mezod's EVM still rejects value transfers via CanTransfer, so the
+// call surfaces as a per-call failure — the request-level pin is the
+// absence of a top-level fatal.
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_InsufficientFundsSucceeds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zero := (*hexutil.Big)(big.NewInt(0))
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": zero},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Value: (*hexutil.Big)(big.NewInt(1)),
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error,
+		"validation=false must NOT promote insufficient-funds to a top-level -38014 fatal")
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Len(results[0]["calls"].([]interface{}), 1,
+		"the call must show up in the per-call list, not collapse into the request error")
+}
+
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_FeeCapBelowBaseFeeSucceeds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	zero := (*hexutil.Big)(big.NewInt(0))
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient,
+		Value:                (*hexutil.Big)(big.NewInt(1)),
+		MaxFeePerGas:         zero,
+		MaxPriorityFeePerGas: zero,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+// TestSimulateV1_NoValidation_InitCodeOverLimitSucceeds — CREATE with
+// init-code 1 byte over MaxInitCodeSize MUST NOT trip the request-level
+// -38025 fatal under validation=false. The per-call result is whatever
+// the EVM emits (in practice geth's CREATE-handler EIP-3860 enforcement
+// surfaces as a per-call ErrMaxInitCodeSizeExceeded → the SimError
+// formatter routes it to per-call code 3 reverted-equivalent or
+// -32015 VM-error). Either is a *per-call* outcome, not a top-level
+// fatal — that distinction is what this test pins.
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_InitCodeOverLimitSucceeds() {
+	suite.SetupTest()
+
+	sender := suite.address
+	overSize := make([]byte, ethparams.MaxInitCodeSize+1)
+	// 1M gas covers the intrinsic-gas + EIP-3860 word cost for an
+	// all-zero init-code payload at MaxInitCodeSize+1 bytes (~232k).
+	gas := hexutil.Uint64(1_000_000)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	data := hexutil.Bytes(overSize)
+	calls := []types.TransactionArgs{{
+		From: &sender, Data: &data, Gas: &gas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error,
+		"validation=false must NOT promote oversize init-code to a top-level -38025 fatal")
+	// The per-call result still surfaces — exact code depends on the
+	// EVM's CREATE handling, but it is NOT a top-level fatal.
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Len(results[0]["calls"].([]interface{}), 1,
+		"the call must show up in the per-call list, not collapse into the request error")
+}
+
+// TestSimulateV1_Validation_BoundaryEqual_NoFatal — every gate sitting
+// exactly on the pass-side of its boundary at the same time must clear
+// the gate. Single-fail tests verify each gate's "one-step-over"
+// failure; this one asserts the gate's pass-side composition holds
+// when all five are evaluated at their respective edges.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_BoundaryEqual_NoFatal() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	gas := hexutil.Uint64(21_000) // intrinsic floor for pure transfer
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Value:        (*hexutil.Big)(big.NewInt(1)),
+		Gas:          &gas,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error, "every gate at boundary-equal must clear")
+	results := suite.simulateV1BlockResults(resp)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow_StateOverrideNonceAborts() {
+	suite.SetupTest()
+
+	sender := common.HexToAddress("0xc100000000000000000000000000000000000000")
+	recipient := common.HexToAddress("0xc100000000000000000000000000000000000000")
+	stateNonce := hexutil.Uint64(0xa)
+	callNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Nonce: &callNonce,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeNonceTooLow), resp.Error.Code)
+}
+
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_NonceLow_StateOverrideNonceSucceedsWhenOff() {
+	suite.SetupTest()
+
+	sender := common.HexToAddress("0xc100000000000000000000000000000000000000")
+	recipient := common.HexToAddress("0xc100000000000000000000000000000000000000")
+	stateNonce := hexutil.Uint64(0xa)
+	callNonce := hexutil.Uint64(0)
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender, To: &recipient, Nonce: &callNonce,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
+	suite.Require().Equal("0x1", c["status"])
+}
+
+// -----------------------------------------------------------------------------
+// SimulateV1 — block envelope
+// -----------------------------------------------------------------------------
+
+// envelopeStandardOpts builds the simulate opts JSON for a single
+// successful native transfer — the workhorse fixture for envelope
+// assertions where the per-call shape is uninteresting.
+func (suite *KeeperTestSuite) envelopeStandardOpts() []byte {
+	suite.T().Helper()
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000500")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+	})
+	suite.Require().NoError(err)
+	return optsJSON
+}
+
+// TestSimulateV1_BlockEnvelope_PopulatesAllHeaderFields — every
+// canonical RPC envelope key surfaces on the response, sourced from
+// types.NewSimBlockResult applied to the assembled *ethtypes.Block.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_PopulatesAllHeaderFields() {
+	suite.SetupTest()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.envelopeStandardOpts()))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	for _, key := range []string{
+		"number", "hash", "parentHash", "logsBloom", "stateRoot",
+		"miner", "difficulty", "extraData", "gasLimit", "gasUsed",
+		"timestamp", "transactionsRoot", "receiptsRoot", "size",
+		"transactions", "uncles", "calls",
+	} {
+		suite.Require().Contains(results[0], key, "envelope must contain %q", key)
+	}
+}
+
+// TestSimulateV1_BlockEnvelope_TxRootNonEmpty — block carrying a
+// successful tx surfaces a non-empty transactionsRoot, computed via
+// DeriveSha over the synthetic txs.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_TxRootNonEmpty() {
+	suite.SetupTest()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.envelopeStandardOpts()))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	root := results[0]["transactionsRoot"].(string)
+	suite.Require().NotEqual(ethtypes.EmptyTxsHash.Hex(), root,
+		"transactionsRoot for a non-empty block must not be the empty-trie root")
+}
+
+// TestSimulateV1_BlockEnvelope_ReceiptsRootNonEmpty — analogous to
+// TxRootNonEmpty but on the receipts side. A successful call yields a
+// non-empty receipts root.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_ReceiptsRootNonEmpty() {
+	suite.SetupTest()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.envelopeStandardOpts()))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	root := results[0]["receiptsRoot"].(string)
+	suite.Require().NotEqual(ethtypes.EmptyReceiptsHash.Hex(), root,
+		"receiptsRoot for a non-empty block must not be the empty-trie root")
+}
+
+// TestSimulateV1_BlockEnvelope_BloomMatchesLogs — when a call emits a
+// real LOG with a known topic, the assembled block's logsBloom must
+// affirmative-test that topic via BloomLookup.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_BloomMatchesLogs() {
+	suite.SetupTest()
+
+	sender := suite.address
+	emitter := common.HexToAddress("0xbbbb000000000000000000000000000000000501")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	// log0Runtime emits LOG0 (no topics) — but we need a topic for the
+	// bloom check. Build a contract that emits LOG1 with a known topic.
+	//
+	//   PUSH32 <topic>     ; topic
+	//   PUSH1  0x00        ; size
+	//   PUSH1  0x00        ; offset
+	//   LOG1
+	//   STOP
+	topic := common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+	log1Runtime := "0x7f" + topic.Hex()[2:] + "60006000A100"
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:  {"balance": balance},
+				emitter: {"code": log1Runtime},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &emitter}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	bloomStr := results[0]["logsBloom"].(string)
+	bloom := ethtypes.BytesToBloom(common.FromHex(bloomStr))
+	suite.Require().True(bloom.Test(topic.Bytes()),
+		"block bloom must affirmative-test the LOG1 topic")
+}
+
+// TestSimulateV1_BlockEnvelope_SizeNonZero — `size` is non-zero on
+// any sealed envelope (header alone is several dozen bytes).
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_SizeNonZero() {
+	suite.SetupTest()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.envelopeStandardOpts()))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	sizeStr := results[0]["size"].(string)
+	sizeVal := new(big.Int)
+	_, ok := sizeVal.SetString(sizeStr[2:], 16)
+	suite.Require().True(ok)
+	suite.Require().Equal(1, sizeVal.Sign(), "size must be positive")
+}
+
+// TestSimulateV1_BlockEnvelope_StateRootZero — pinned divergence:
+// stateRoot is always the zero hash on a Mezo simulate envelope
+// (no MPT to derive an intermediate root from).
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_StateRootZero() {
+	suite.SetupTest()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.envelopeStandardOpts()))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	suite.Require().Equal(common.Hash{}.Hex(), results[0]["stateRoot"].(string),
+		"stateRoot must be the zero hash (Mezo divergence)")
+}
+
+// TestSimulateV1_BlockEnvelope_EmptyBlockUsesEmptyRoots — a gap-fill
+// block (one with no calls inserted by sanitizeSimChain to honor a
+// non-contiguous block-number override) surfaces the canonical
+// transactionsRoot/receiptsRoot for an empty trie.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_EmptyBlockUsesEmptyRoots() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000502")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	// Block 1 is implicit (number = base+1, has the call). Block 2
+	// has no override so it's also a normal sim block. The gap-fill
+	// is triggered by an explicit jump to base+5; sanitizeSimChain
+	// inserts empty blocks at base+2..base+4.
+	jumpNumber := (*hexutil.Big)(new(big.Int).Add(big.NewInt(suite.ctx.BlockHeight()), big.NewInt(5)))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender: {"balance": balance},
+				},
+				"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+			},
+			{
+				"blockOverrides": map[string]interface{}{"number": jumpNumber},
+				"calls":          []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+			},
+		},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	// 1 explicit + 3 gap-fills + 1 explicit = 5 results.
+	suite.Require().Len(results, 5)
+
+	// Inspect a gap-fill (results[1] through results[3]). They must
+	// have empty calls + empty roots.
+	for i := 1; i <= 3; i++ {
+		gap := results[i]
+		calls := gap["calls"].([]interface{})
+		suite.Require().Empty(calls, "gap-fill block %d must have empty calls", i)
+		suite.Require().Equal(ethtypes.EmptyTxsHash.Hex(), gap["transactionsRoot"].(string),
+			"gap-fill block %d must use the empty txs root", i)
+		suite.Require().Equal(ethtypes.EmptyReceiptsHash.Hex(), gap["receiptsRoot"].(string),
+			"gap-fill block %d must use the empty receipts root", i)
+		txs := gap["transactions"].([]interface{})
+		suite.Require().Empty(txs, "gap-fill block %d transactions must be []", i)
+	}
+}
+
+// TestSimulateV1_BlockEnvelope_HashStable — running the same opts
+// twice yields the same block hash on the corresponding envelope.
+// Pinned because the simulate driver synthesizes hashes from header
+// fields; any non-determinism (timestamp drift, randomness leaking in)
+// would break this.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_HashStable() {
+	suite.SetupTest()
+
+	opts := suite.envelopeStandardOpts()
+
+	resp1, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(opts))
+	suite.Require().NoError(err)
+	resp2, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(opts))
+	suite.Require().NoError(err)
+
+	r1 := suite.simulateV1BlockResults(resp1)
+	r2 := suite.simulateV1BlockResults(resp2)
+	suite.Require().Len(r1, 1)
+	suite.Require().Len(r2, 1)
+	suite.Require().Equal(r1[0]["hash"], r2[0]["hash"],
+		"identical opts must produce identical block hash (deterministic envelope)")
+}
+
+// TestSimulateV1_BlockEnvelope_GasUsedAggregates — block.gasUsed
+// equals the sum of per-call gasUsed values.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_GasUsedAggregates() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000503")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	transfer := types.TransactionArgs{From: &sender, To: &recipient, Value: value}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{transfer, transfer, transfer},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	calls := results[0]["calls"].([]interface{})
+	var sum uint64
+	for _, c := range calls {
+		gasUsed := c.(map[string]interface{})["gasUsed"].(string)
+		v, ok := new(big.Int).SetString(gasUsed[2:], 16)
+		suite.Require().True(ok)
+		sum += v.Uint64()
+	}
+	blockGasUsedStr := results[0]["gasUsed"].(string)
+	blockGasUsed, ok := new(big.Int).SetString(blockGasUsedStr[2:], 16)
+	suite.Require().True(ok)
+	suite.Require().Equal(sum, blockGasUsed.Uint64(),
+		"block.gasUsed must equal sum of per-call gasUsed")
+}
+
+// TestSimulateV1_BlockEnvelope_MultiBlock_PerBlockBloomIsolated — a
+// log emitted in block 0 must not leak into block 1's bloom. Pins the
+// per-block isolation contract.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_MultiBlock_PerBlockBloomIsolated() {
+	suite.SetupTest()
+
+	sender := suite.address
+	emitter := common.HexToAddress("0xbbbb000000000000000000000000000000000504")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	topic := common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+	log1Runtime := "0x7f" + topic.Hex()[2:] + "60006000A100"
+
+	emit := types.TransactionArgs{From: &sender, To: &emitter}
+	recipient := common.HexToAddress("0xcccc000000000000000000000000000000000505")
+	plain := types.TransactionArgs{From: &sender, To: &recipient, Value: (*hexutil.Big)(big.NewInt(1))}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{
+			{
+				"stateOverrides": map[common.Address]map[string]interface{}{
+					sender:  {"balance": balance},
+					emitter: {"code": log1Runtime},
+				},
+				"calls": []types.TransactionArgs{emit},
+			},
+			{"calls": []types.TransactionArgs{plain}},
+		},
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 2)
+
+	bloom0 := ethtypes.BytesToBloom(common.FromHex(results[0]["logsBloom"].(string)))
+	bloom1 := ethtypes.BytesToBloom(common.FromHex(results[1]["logsBloom"].(string)))
+
+	suite.Require().True(bloom0.Test(topic.Bytes()), "block 0 bloom must carry the LOG1 topic")
+	suite.Require().False(bloom1.Test(topic.Bytes()),
+		"block 1 bloom must NOT carry block 0's topic — per-block bloom is isolated")
+}
+
+// TestSimulateV1_FullTx_HashOnly_DefaultBehavior — opts without
+// returnFullTransactions surface `transactions` as a list of hash
+// strings (66 hex chars each).
+func (suite *KeeperTestSuite) TestSimulateV1_FullTx_HashOnly_DefaultBehavior() {
+	suite.SetupTest()
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.envelopeStandardOpts()))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1)
+
+	hashStr, ok := txs[0].(string)
+	suite.Require().True(ok, "default returnFullTransactions must yield hash strings, got %T", txs[0])
+	suite.Require().Len(hashStr, 66, "tx hash must be 66 hex chars (0x + 32 bytes)")
+}
+
+// TestSimulateV1_FullTx_FromPatched — returnFullTransactions=true
+// emits transaction objects whose `from` is patched from the Senders
+// map. Without the patch the unsigned-tx ECRECOVER returns the zero
+// address.
+func (suite *KeeperTestSuite) TestSimulateV1_FullTx_FromPatched() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000506")
+	value := (*hexutil.Big)(big.NewInt(1_000_000))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1)
+
+	tx, ok := txs[0].(map[string]interface{})
+	suite.Require().True(ok, "returnFullTransactions=true must yield tx objects, got %T", txs[0])
+	suite.Require().Equal(sender.Hex(), common.HexToAddress(tx["from"].(string)).Hex(),
+		"transactions[0].from must be patched from Senders map")
+}
+
+// TestSimulateV1_FullTx_FromPatched_MultipleSendersInOneBlock — two
+// calls from two different senders in one block; each tx's `from`
+// must resolve to its own sender. Match by tx hash to guard against
+// index-based confusion.
+//
+// Distinct values are required: synthetic txs are unsigned legacy
+// txs whose hash does not depend on the sender, so two identical
+// (nonce, to, value, data, gas, gasPrice) tuples from different
+// senders would collide in the Senders-by-hash map. The values
+// below are deliberately distinct to keep the assertion meaningful.
+func (suite *KeeperTestSuite) TestSimulateV1_FullTx_FromPatched_MultipleSendersInOneBlock() {
+	suite.SetupTest()
+
+	senderA := suite.address
+	senderB := common.HexToAddress("0xa2b30000000000000000000000000000000a2b30")
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000507")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				senderA: {"balance": balance},
+				senderB: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{
+				{From: &senderA, To: &recipient, Value: (*hexutil.Big)(big.NewInt(111))},
+				{From: &senderB, To: &recipient, Value: (*hexutil.Big)(big.NewInt(222))},
+			},
+		}},
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 2)
+
+	gotFroms := make(map[string]struct{})
+	for _, raw := range txs {
+		tx := raw.(map[string]interface{})
+		gotFroms[common.HexToAddress(tx["from"].(string)).Hex()] = struct{}{}
+	}
+	suite.Require().Contains(gotFroms, senderA.Hex())
+	suite.Require().Contains(gotFroms, senderB.Hex())
+}
+
+// TestSimulateV1_FullTx_RevertedCallStillIncludedAsTx — a reverted
+// call still appears in `transactions[]` (the synthetic tx is
+// emitted regardless of execution outcome) and its `from` is
+// patched.
+func (suite *KeeperTestSuite) TestSimulateV1_FullTx_RevertedCallStillIncludedAsTx() {
+	suite.SetupTest()
+
+	sender := suite.address
+	revertContract := common.HexToAddress("0xbbbb000000000000000000000000000000000508")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	// PUSH1 0x00 PUSH1 0x00 REVERT.
+	revertCode := common.Hex2Bytes("60006000FD")
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:         {"balance": balance},
+				revertContract: {"code": hexutil.Bytes(revertCode)},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &revertContract}},
+		}},
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	calls := results[0]["calls"].([]interface{})
+	suite.Require().Len(calls, 1)
+	suite.Require().Equal("0x0", calls[0].(map[string]interface{})["status"],
+		"reverted call must surface status 0")
+
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1, "reverted call's synthetic tx must still appear in transactions[]")
+	tx := txs[0].(map[string]interface{})
+	suite.Require().Equal(sender.Hex(), common.HexToAddress(tx["from"].(string)).Hex())
+}
+
+// TestSimulateV1_FullTx_PreflightFailedCallNotInTransactions — a call
+// that fails preflight (e.g. validation=true with nonce-too-low)
+// aborts the entire request before assembling the block; no
+// transactions[] envelope is emitted at all.
+func (suite *KeeperTestSuite) TestSimulateV1_FullTx_PreflightFailedCallNotInTransactions() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb000000000000000000000000000000000509")
+	stateNonce := hexutil.Uint64(5)
+	tooLowNonce := hexutil.Uint64(0)
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": validationFundedBalance, "nonce": &stateNonce},
+			},
+			"calls": []types.TransactionArgs{{
+				From: &sender, To: &recipient, Nonce: &tooLowNonce,
+				MaxFeePerGas: validationMaxFeePerGas,
+			}},
+		}},
+		"validation":             true,
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error,
+		"preflight-failed validation must abort the request as a top-level fatal")
+	suite.Require().Empty(resp.Result,
+		"fatal abort must not emit any result envelope (so nothing claims the call ran)")
+}
+
+// recomputeTxRoot independently computes the transactions trie root
+// for a single legacy unsigned tx whose fields mirror what
+// simulate's buildSimTx synthesizes — used to cross-check the
+// driver's transactionsRoot against an out-of-band derivation.
+func recomputeTxRoot(tx *ethtypes.Transaction) common.Hash {
+	return ethtypes.DeriveSha(ethtypes.Transactions{tx}, trie.NewStackTrie(nil))
+}
+
+// TestSimulateV1_BlockEnvelope_TxRootMatchesIndependentRecompute —
+// pin the transactionsRoot against a freshly-built DeriveSha over
+// an equivalent synthetic tx. Anchors the driver to the upstream
+// hashing algorithm so any drift surfaces immediately.
+//
+// A bare (no fee fields) request resolves to a DynamicFeeTx envelope
+// per geth's eth_simulateV1 default-type rule — see buildSimTx for the
+// shape selection. Earlier revisions of this test pinned a LegacyTx;
+// the move to DynamicFeeTx happened together with the buildSimTx fix
+// that emits typed envelopes per request shape.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_TxRootMatchesIndependentRecompute() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb00000000000000000000000000000000050a")
+	value := (*hexutil.Big)(big.NewInt(1))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value}},
+		}},
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	// Lift the actual tx fields from the response so the recomputed
+	// trie covers the exact tx the driver synthesized — buildSimTx's
+	// nonce default (StateDB.GetNonce) and gas resolver are too
+	// coupled to the keeper to safely reconstruct here.
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1)
+	txObj := txs[0].(map[string]interface{})
+
+	suite.Require().Equal("0x2", txObj["type"].(string),
+		"bare-default request must surface as a DynamicFeeTx envelope (type 2)")
+
+	wantTx := ethtypes.NewTx(&ethtypes.DynamicFeeTx{
+		ChainID:    mustHexBig(txObj["chainId"].(string)),
+		Nonce:      mustHexUint64(txObj["nonce"].(string)),
+		GasTipCap:  mustHexBig(txObj["maxPriorityFeePerGas"].(string)),
+		GasFeeCap:  mustHexBig(txObj["maxFeePerGas"].(string)),
+		Gas:        mustHexUint64(txObj["gas"].(string)),
+		To:         &recipient,
+		Value:      mustHexBig(txObj["value"].(string)),
+		Data:       common.FromHex(txObj["input"].(string)),
+		AccessList: ethtypes.AccessList{},
+	})
+
+	// Sanity-check: our reconstructed tx hash matches what the
+	// driver published — if it doesn't, the trie comparison below
+	// covers the wrong thing.
+	suite.Require().Equal(txObj["hash"].(string), wantTx.Hash().Hex(),
+		"reconstructed tx must hash to what the response carries")
+
+	want := recomputeTxRoot(wantTx)
+	suite.Require().Equal(want.Hex(), results[0]["transactionsRoot"].(string),
+		"transactionsRoot must equal DeriveSha over the synthetic tx")
+}
+
+// TestSimulateV1_BlockEnvelope_LegacyShapeWhenGasPriceSet — when a
+// caller specifies the legacy `gasPrice` field, geth's ToTransaction
+// force-overrides the envelope back to LegacyTx regardless of the
+// simulator's defaultType. Pin that behavior so a future buildSimTx
+// rewrite can't silently drop it.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_LegacyShapeWhenGasPriceSet() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb00000000000000000000000000000000050b")
+	value := (*hexutil.Big)(big.NewInt(1))
+	gasPrice := (*hexutil.Big)(big.NewInt(0))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &recipient, Value: value, GasPrice: gasPrice}},
+		}},
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1)
+	txObj := txs[0].(map[string]interface{})
+
+	suite.Require().Equal("0x0", txObj["type"].(string),
+		"explicit gasPrice must force a LegacyTx envelope")
+	suite.Require().Nil(txObj["maxFeePerGas"],
+		"LegacyTx must not carry maxFeePerGas")
+	suite.Require().Nil(txObj["accessList"],
+		"LegacyTx must not carry accessList")
+
+	wantTx := ethtypes.NewTx(&ethtypes.LegacyTx{
+		Nonce:    mustHexUint64(txObj["nonce"].(string)),
+		GasPrice: mustHexBig(txObj["gasPrice"].(string)),
+		Gas:      mustHexUint64(txObj["gas"].(string)),
+		To:       &recipient,
+		Value:    mustHexBig(txObj["value"].(string)),
+		Data:     common.FromHex(txObj["input"].(string)),
+	})
+	suite.Require().Equal(txObj["hash"].(string), wantTx.Hash().Hex(),
+		"reconstructed legacy tx must match the published hash")
+	suite.Require().Equal(recomputeTxRoot(wantTx).Hex(), results[0]["transactionsRoot"].(string))
+}
+
+// TestSimulateV1_BlockEnvelope_DynamicFeeShapeWithAccessList —
+// access-list and dynamic-fee fields combined produce a DynamicFeeTx
+// envelope that nests the access list. Mirrors geth eth_simulateV1's
+// behavior under defaultType=DynamicFeeTxType, where the AccessList
+// case in ToTransaction's switch is unreachable except via the
+// default-type fall-through.
+func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_DynamicFeeShapeWithAccessList() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0xbbbb00000000000000000000000000000000050c")
+	value := (*hexutil.Big)(big.NewInt(1))
+	maxFee := (*hexutil.Big)(big.NewInt(100))
+	maxPrio := (*hexutil.Big)(big.NewInt(2))
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+	emptyAL := ethtypes.AccessList{}
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:                 &sender,
+				To:                   &recipient,
+				Value:                value,
+				MaxFeePerGas:         maxFee,
+				MaxPriorityFeePerGas: maxPrio,
+				AccessList:           &emptyAL,
+			}},
+		}},
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+	txs := results[0]["transactions"].([]interface{})
+	suite.Require().Len(txs, 1)
+	txObj := txs[0].(map[string]interface{})
+
+	suite.Require().Equal("0x2", txObj["type"].(string),
+		"dynamic-fee shape must surface as type 2")
+	suite.Require().Equal("0x64", txObj["maxFeePerGas"].(string))
+	suite.Require().Equal("0x2", txObj["maxPriorityFeePerGas"].(string))
+	suite.Require().NotNil(txObj["accessList"], "type-2 tx must carry an accessList field")
+
+	wantTx := ethtypes.NewTx(&ethtypes.DynamicFeeTx{
+		ChainID:    mustHexBig(txObj["chainId"].(string)),
+		Nonce:      mustHexUint64(txObj["nonce"].(string)),
+		GasTipCap:  mustHexBig(txObj["maxPriorityFeePerGas"].(string)),
+		GasFeeCap:  mustHexBig(txObj["maxFeePerGas"].(string)),
+		Gas:        mustHexUint64(txObj["gas"].(string)),
+		To:         &recipient,
+		Value:      mustHexBig(txObj["value"].(string)),
+		Data:       common.FromHex(txObj["input"].(string)),
+		AccessList: emptyAL,
+	})
+	suite.Require().Equal(txObj["hash"].(string), wantTx.Hash().Hex(),
+		"reconstructed dynamic-fee tx must match the published hash")
+	suite.Require().Equal(recomputeTxRoot(wantTx).Hex(), results[0]["transactionsRoot"].(string))
+}
+
+// mustHexUint64 parses an `0x`-prefixed hex string into a uint64.
+// Panics on malformed input — only used by envelope tests against
+// well-formed JSON-RPC envelopes.
+func mustHexUint64(s string) uint64 {
+	v := new(big.Int)
+	_, ok := v.SetString(s[2:], 16)
+	if !ok {
+		panic("mustHexUint64: " + s)
+	}
+	return v.Uint64()
+}
+
+// mustHexBig parses an `0x`-prefixed hex string into *big.Int.
+func mustHexBig(s string) *big.Int {
+	v := new(big.Int)
+	_, ok := v.SetString(s[2:], 16)
+	if !ok {
+		panic("mustHexBig: " + s)
+	}
+	return v
 }
