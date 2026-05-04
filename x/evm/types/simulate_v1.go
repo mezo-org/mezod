@@ -430,10 +430,9 @@ func newRPCTransaction(
 		result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
 		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
 		if baseFee != nil && blockHash != (common.Hash{}) {
-			tipPlusBase := new(big.Int).Add(tx.GasTipCap(), baseFee)
-			price := tipPlusBase
-			if cap := tx.GasFeeCap(); cap.Cmp(price) < 0 {
-				price = cap
+			price := new(big.Int).Add(tx.GasTipCap(), baseFee)
+			if feeCap := tx.GasFeeCap(); feeCap.Cmp(price) < 0 {
+				price = feeCap
 			}
 			result.GasPrice = (*hexutil.Big)(price)
 		} else {
