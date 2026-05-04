@@ -1,7 +1,0 @@
-self-hosted-runner:
-  # ubuntu-24.04 is a first-party GitHub-hosted runner label, but the
-  # actionlint version pinned in super-linter v4 has a stale runner
-  # whitelist. Declaring it here as a known label silences the
-  # "unknown runner label" diagnostic without changing actual job routing.
-  labels:
-    - ubuntu-24.04
