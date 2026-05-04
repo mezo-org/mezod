@@ -229,6 +229,20 @@ describe("SimulateV1_SpecCompliance", function () {
     }
   }
 
+  // freshAnchor fetches the chain's current latest header. Contexts
+  // that derive override values from `latest.{timestamp,number}` MUST
+  // call this inside their own before(): on a live chain the head
+  // advances during the suite (50+ s wall-clock), so a one-shot
+  // file-level capture goes stale and `latestTime + N` falls below
+  // the simulate's parent.timestamp, tripping a spurious -38021. The
+  // per-context refresh keeps the override window valid regardless of
+  // when the context runs.
+  async function freshAnchor(): Promise<{ time: bigint; num: bigint }> {
+    const latest = await ethers.provider.getBlock("latest")
+    if (!latest) throw new Error("no latest block")
+    return { time: BigInt(latest.timestamp), num: BigInt(latest.number) }
+  }
+
   // -----------------------------------------------------------------
   // Shared resources captured once, used by many contexts. Each
   // context's own setup goes in its local before() below.
@@ -237,11 +251,6 @@ describe("SimulateV1_SpecCompliance", function () {
   let tokenAddr: string
   let senderAddr: string
   let recipientAddr: string
-  // Captured at file-level so override values that anchor on
-  // latestTime/latestBlockNum stay valid even if the live localnode
-  // head advances during the suite.
-  let latestTime: bigint
-  let latestBlockNum: bigint
   let baseStateOverrides: Record<string, { balance: string }>
 
   const AMOUNT = ethers.parseUnits("1", 18)
@@ -254,11 +263,6 @@ describe("SimulateV1_SpecCompliance", function () {
     const [deployer] = await ethers.getSigners()
     senderAddr = deployer.address
     recipientAddr = ethers.Wallet.createRandom().address
-
-    const latest = await ethers.provider.getBlock("latest")
-    if (!latest) throw new Error("no latest block")
-    latestTime = BigInt(latest.timestamp)
-    latestBlockNum = BigInt(latest.number)
 
     baseStateOverrides = {
       [senderAddr]: { balance: ethers.toQuantity(ethers.parseEther("100")) },
@@ -541,6 +545,7 @@ describe("SimulateV1_SpecCompliance", function () {
       // BLOCKHASH(genesis_height) can return zero on some EVM rules,
       // so the previous block is the safer probe.
       const reader = ethers.getAddress("0x" + "babe".repeat(10))
+      const { num: latestBlockNum } = await freshAnchor()
       const probedHeight = latestBlockNum - 1n
       const r = await simulate({
         blockStateCalls: [
@@ -1353,6 +1358,8 @@ describe("SimulateV1_SpecCompliance", function () {
     }
 
     before(async function () {
+      const { time: latestTime, num: latestBlockNum } = await freshAnchor()
+
       // -38020: numbers must be strictly increasing. Both overrides
       // must sit above latestBlockNum so the first block clears the
       // base-anchored span check; -38020 then fires on the second
@@ -1405,6 +1412,8 @@ describe("SimulateV1_SpecCompliance", function () {
     let blocknumberIncrementBlocks: any[]
 
     before(async function () {
+      const { time: latestTime, num: latestBlockNum } = await freshAnchor()
+
       // Auto-increment: only first `time` set; second block must end
       // up with timestamp > first. Anchor the explicit timestamp above
       // latestTime so the first block does not trip -38021 against base.
@@ -1491,6 +1500,7 @@ describe("SimulateV1_SpecCompliance", function () {
     let r: { error: CapturedError; result: any[] | undefined }
 
     before(async function () {
+      const { num: latestBlockNum } = await freshAnchor()
       const future = latestBlockNum + 1_000_000n
       r = await simulateAt(
         {
@@ -1521,6 +1531,7 @@ describe("SimulateV1_SpecCompliance", function () {
       // monotonicity path. Pin the anchor to latestBlockNum so the
       // override stays valid even if the live localnode head advances
       // during the suite.
+      const { num: latestBlockNum } = await freshAnchor()
       const a = latestBlockNum + 1n
       const b = a + 1n
       const r = await simulateAt(
@@ -1758,6 +1769,7 @@ describe("SimulateV1_SpecCompliance", function () {
       // the live localnode head advances during the suite. base+1 keeps
       // the simulator from gap-filling empty headers.
       const target = "0xc100000000000000000000000000000000000000"
+      const { num: latestBlockNum } = await freshAnchor()
       const probeNumber = latestBlockNum + 1n
       const r = await simulateAt(
         {
@@ -2336,14 +2348,20 @@ describe("SimulateV1_SpecCompliance", function () {
           { calls: [{ from: senderAddr, to: tokenAddr, data: transferData }] },
         ],
       }
+      // Both runs MUST anchor at the same explicit block number, not
+      // "latest" — on a live chain a new canonical block can land
+      // between the two calls, swapping the parent and changing the
+      // simulated block hash. Capturing the anchor once here keeps the
+      // determinism invariant the test pins.
+      const anchor = ethers.toQuantity((await freshAnchor()).num)
       const blocks: any[] = await ethers.provider.send("eth_simulateV1", [
         opts,
-        "latest",
+        anchor,
       ])
       block = blocks[0]
       const blocksRerun: any[] = await ethers.provider.send(
         "eth_simulateV1",
-        [opts, "latest"],
+        [opts, anchor],
       )
       blockRerun = blocksRerun[0]
     })
