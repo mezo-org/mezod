@@ -33,8 +33,8 @@ import btcabi from "../../../precompile/btctoken/abi.json"
  *
  * | Scenario                            | Given                                | When                                              | Then                                                                    |
  * |-------------------------------------|--------------------------------------|---------------------------------------------------|-------------------------------------------------------------------------|
- * | btctoken state chains across calls  | dev0 pre-funded with native BTC      | btctoken.transfer + .balanceOf in one block       | both succeed; balanceOf returns the transferred amount                  |
- * | btctoken state chains across blocks | dev0 pre-funded with native BTC      | btctoken.transfer in block 1; .balanceOf in 2     | block 2 reads block 1's amount via the cached Cosmos context            |
+ * | btctoken state chains across calls  | signer holds any non-zero native BTC | btctoken.transfer + .balanceOf in one block       | both succeed; balanceOf returns the transferred amount                  |
+ * | btctoken state chains across blocks | signer holds any non-zero native BTC | btctoken.transfer in block 1; .balanceOf in 2     | block 2 reads block 1's amount via the cached Cosmos context            |
  * | BTC custom precompile move rejected | btctoken precompile (immovable)      | eth_call with movePrecompileToAddress             | request rejected; message contains "cannot move mezo custom precompile" |
  * | BlockOverrides.beaconRoot rejected  | post-Cancun field unsupported        | eth_simulateV1 with blockOverrides.beaconRoot     | -32602 with a BeaconRoot-specific message                               |
  * | BlockOverrides.withdrawals rejected | post-Cancun field unsupported        | eth_simulateV1 with blockOverrides.withdrawals    | -32602 with a Withdrawals-specific message                              |
@@ -111,8 +111,9 @@ describe("SimulateV1_MezoDivergence", function () {
     // Cosmos bank keeper, not the EVM journal — their mutations ride in
     // the StateDB's cached Cosmos context and must survive call
     // boundaries. balance stateOverrides only touch the EVM state object
-    // and do not propagate to bankKeeper, so this case leans on the
-    // localnode dev0 signer's real pre-funded BTC balance.
+    // and do not propagate to bankKeeper, so the signer must hold real
+    // on-chain BTC of at least transferAmount. Pinned to 1000 wei to
+    // keep the case light on live chains (localnode, staging, testnet).
     let result: any[]
 
     before(async function () {
@@ -121,7 +122,7 @@ describe("SimulateV1_MezoDivergence", function () {
         btcabi,
         ethers.provider,
       )
-      const transferAmount = ethers.parseEther("0.5")
+      const transferAmount = 1000n
       const transferData = btcToken.interface.encodeFunctionData("transfer", [
         recipientAddr,
         transferAmount,
@@ -157,7 +158,7 @@ describe("SimulateV1_MezoDivergence", function () {
         ["uint256"],
         calls[1].returnData,
       )
-      expect(balance).to.equal(ethers.parseEther("0.5"))
+      expect(balance).to.equal(1000n)
     })
   })
 
@@ -173,7 +174,7 @@ describe("SimulateV1_MezoDivergence", function () {
         btcabi,
         ethers.provider,
       )
-      const transferAmount = ethers.parseEther("0.5")
+      const transferAmount = 1000n
       const transferData = btcToken.interface.encodeFunctionData("transfer", [
         recipient,
         transferAmount,
@@ -220,7 +221,7 @@ describe("SimulateV1_MezoDivergence", function () {
         block2Call.returnData,
       )
       expect(balance).to.equal(
-        ethers.parseEther("0.5"),
+        1000n,
         "block 2 must observe block 1's btctoken.transfer through the StateDB's cached Cosmos context",
       )
     })
