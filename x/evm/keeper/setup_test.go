@@ -182,6 +182,11 @@ func (suite *KeeperTestSuite) SetupAppWithT(checkTx bool, t require.TestingT) {
 		tmhash.Sum([]byte("app")), tmhash.Sum([]byte("validators")),
 	)
 	suite.ctx = suite.app.NewContextLegacy(checkTx, header)
+	// NewContextLegacy does not inject consensus params; baseapp
+	// normally does this inside FinalizeBlock. Populate them here so
+	// downstream readers (notably mezotypes.BlockGasLimit) see the
+	// chain's real MaxGas instead of the zero-value fallback.
+	suite.ctx = suite.ctx.WithConsensusParams(*app.DefaultConsensusParams)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
 	evmtypes.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)

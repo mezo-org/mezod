@@ -71,7 +71,7 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionID int
 
-	logger *tracing.Hooks
+	tracingHooks *tracing.Hooks
 
 	stateObjects map[common.Address]*stateObject
 
@@ -130,9 +130,37 @@ func (s *StateDB) Keeper() Keeper {
 	return s.keeper
 }
 
+// SetTxContext mirrors go-ethereum's `(*state.StateDB).SetTxContext` —
+// it replaces the per-tx hash and tx index used by AddLog when stamping
+// emitted logs. Reusing a single StateDB across many logical
+// "transactions" (calls) and calling SetTxContext between them lets
+// each call's logs carry distinct TxHash / TxIndex values.
+//
+// BlockHash and LogIndex on the StateDB's txConfig are intentionally
+// left untouched, matching the geth signature; per-block hash patching
+// happens separately, after each block finalizes.
+//
+// Safe to call between calls; the txConfig is read-only from AddLog's
+// perspective and never participates in the journal.
+//
+// TODO (geth-upgrade): once go-ethereum v1.16.9 lands, decide whether
+// the simulate driver should call geth's native
+// `(*state.StateDB).SetTxContext` directly — and whether this wrapper
+// can be dropped in favor of it.
+func (s *StateDB) SetTxContext(thash common.Hash, ti int) {
+	s.txConfig.TxHash = thash
+	s.txConfig.TxIndex = uint(ti) //nolint:gosec
+}
+
 // GetContext returns the transaction Context.
 func (s *StateDB) GetContext() sdk.Context {
 	return s.ctx
+}
+
+// SetTracingHooks installs tracing hooks on the StateDB. A nil pointer
+// disables tracing.
+func (s *StateDB) SetTracingHooks(hooks *tracing.Hooks) {
+	s.tracingHooks = hooks
 }
 
 // AddLog adds a log, called by evm.
@@ -144,6 +172,10 @@ func (s *StateDB) AddLog(log *ethtypes.Log) {
 	log.TxIndex = s.txConfig.TxIndex
 	log.Index = s.txConfig.LogIndex + uint(len(s.logs))
 	s.logs = append(s.logs, log)
+
+	if s.tracingHooks != nil && s.tracingHooks.OnLog != nil {
+		s.tracingHooks.OnLog(log)
+	}
 }
 
 // Logs returns the logs of current transaction.
@@ -332,8 +364,8 @@ func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 		prev:        stateObject.selfDestructed,
 		prevbalance: prev,
 	})
-	if s.logger != nil && s.logger.OnBalanceChange != nil && prev.Sign() > 0 {
-		s.logger.OnBalanceChange(addr, prev.ToBig(), n.ToBig(), tracing.BalanceDecreaseSelfdestruct)
+	if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && prev.Sign() > 0 {
+		s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), n.ToBig(), tracing.BalanceDecreaseSelfdestruct)
 	}
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
@@ -789,6 +821,38 @@ func (ccc *CachedCtxCheckpoint) Revert(stateDB *StateDB) {
 		// at time of creation
 		ccc.ms.Write()
 	}
+}
+
+// FinaliseBetweenCalls clears per-call ephemeral state (logs, refund,
+// transient storage, journal, and revision stack) and resets the
+// precompile-call counter while preserving state objects, access list,
+// and the live cached cosmos ctx — so accumulated cross-call
+// account/storage mutations and precompile-side writes remain visible.
+// Used by simulate drivers running several calls against a shared
+// StateDB without committing between them.
+//
+// Clearing the journal bounds memory: each custom-precompile call
+// appends a multistore Clone() to the journal, which would otherwise
+// accumulate across the whole request. It also disarms the latent
+// panic where addLogChange.Revert reads s.logs[len-1] after s.logs has
+// been niled by a prior FinaliseBetweenCalls.
+//
+// Invariant: callers must not hold a live Snapshot() across this call.
+// The revision stack is wiped, so a stale revision id will fail
+// RevertToSnapshot. The simulate driver does not snapshot at the
+// top level; future drivers must preserve that.
+//
+// TODO (geth-upgrade): v1.16.9 introduces the canonical-spelled geth
+// finaliser on the [vm.StateDB] interface; once the upgrade lands,
+// this helper collapses into that call plus the counter reset.
+func (s *StateDB) FinaliseBetweenCalls() {
+	s.logs = nil
+	s.refund = 0
+	s.transientStorage = newTransientStorage()
+	s.ongoingPrecompilesCallsCounter = 0
+	s.journal = newJournal()
+	s.validRevisions = nil
+	s.nextRevisionID = 0
 }
 
 func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {

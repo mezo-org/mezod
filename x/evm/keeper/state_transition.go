@@ -42,6 +42,32 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
+// EVMOverrides carries optional construction-time overrides for read-only
+// simulate paths. All fields are optional; a nil *EVMOverrides reproduces
+// the default [Keeper.NewEVM] behavior.
+//
+// Each override is applied on top of the default value the non-override
+// path would have produced. PrecompileMoves, when non-empty, relocates
+// the listed stdlib precompiles src→dst on the live EVM registry after
+// the default registry (geth defaults + mezo customs) is installed.
+//
+// OnEVMConstructed, when non-nil, is invoked synchronously with the
+// freshly constructed *vm.EVM after vm.NewEVM and before precompile
+// registration. It fires once per [Keeper.NewEVMWithOverrides] call —
+// i.e. once per applyMessageWithConfig invocation, which in the
+// simulate path means once per simulated call (not per simulated
+// block). The simulate driver uses this hook to publish the live EVM
+// to a single per-block watcher goroutine via an atomic pointer, so
+// the upstream request ctx can cancel whichever call is currently
+// executing without needing to export the EVM handle through every
+// other code path.
+type EVMOverrides struct {
+	BlockContext     *vm.BlockContext
+	PrecompileMoves  map[common.Address]common.Address
+	NoBaseFee        *bool
+	OnEVMConstructed func(*vm.EVM)
+}
+
 // NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
 // (ChainConfig and module Params). It additionally sets the validator operator address as the
 // coinbase address to make it available for the COINBASE opcode, even though there is no
@@ -49,7 +75,6 @@ import (
 //
 // NOTE: Mezo does not support PREVRANDAO randomness semantics. However, a
 // non-nil Random value is needed to activate Merge fork rules/opcodes.
-
 func (k *Keeper) NewEVM(
 	ctx sdk.Context,
 	msg core.Message,
@@ -57,15 +82,28 @@ func (k *Keeper) NewEVM(
 	tracer *tracers.Tracer,
 	stateDB vm.StateDB,
 ) *vm.EVM {
-	blockNumber := big.NewInt(ctx.BlockHeight())
+	return k.NewEVMWithOverrides(ctx, msg, cfg, tracer, stateDB, nil)
+}
 
+// NewEVMWithOverrides constructs a [vm.EVM] using the default derivation of
+// block context / precompile registry / VM config, optionally replacing any
+// of those with values carried in evmOverrides. A nil evmOverrides reproduces
+// the legacy [Keeper.NewEVM] behavior; non-nil usage is reserved for simulate.
+func (k *Keeper) NewEVMWithOverrides(
+	ctx sdk.Context,
+	msg core.Message,
+	cfg *statedb.EVMConfig,
+	tracer *tracers.Tracer,
+	stateDB vm.StateDB,
+	evmOverrides *EVMOverrides,
+) *vm.EVM {
 	// Enable Merge rules when MergeNetsplitBlock is configured.
 	isMerge := cfg.ChainConfig.MergeNetsplitBlock != nil
 
 	// Mezo does NOT support PREVRANDAO. However, go-ethereum uses
-	// `BlockContext.Random != nil` as the switch to enable Paris (the Merge)
-	// when selecting fork rules/opcodes (e.g. PUSH0 in Shanghai). Therefore we
-	// set Random to a non-nil zero hash post-merge.
+	// `BlockContext.Random != nil` as the switch to enable Paris (the
+	// Merge) when selecting fork rules/opcodes (e.g. PUSH0 in Shanghai).
+	// Therefore we set Random to a non-nil zero hash post-merge.
 	var random *common.Hash // nil pre-merge
 	if isMerge {
 		random = new(common.Hash) // non-nil post-merge
@@ -77,31 +115,58 @@ func (k *Keeper) NewEVM(
 		GetHash:     k.GetHashFn(ctx),
 		Coinbase:    cfg.CoinBase,
 		GasLimit:    mezotypes.BlockGasLimit(ctx),
-		BlockNumber: blockNumber,
+		BlockNumber: big.NewInt(ctx.BlockHeight()),
 		Time:        uint64(ctx.BlockHeader().Time.Unix()), //nolint:gosec
 		Difficulty:  big.NewInt(0),                         // unused. Only required in PoW context
 		BaseFee:     cfg.BaseFee,
 		BlobBaseFee: big.NewInt(0), // EIP-4844: blob txs are rejected
 		Random:      random,
 	}
+	if evmOverrides != nil && evmOverrides.BlockContext != nil {
+		blockCtx = *evmOverrides.BlockContext
+	}
 
 	txCtx := core.NewEVMTxContext(&msg)
 	if tracer == nil {
 		tracer = k.Tracer(ctx, msg, cfg.ChainConfig)
 	}
+
 	vmConfig := k.VMConfig(ctx, msg, cfg, tracer)
+	if evmOverrides != nil && evmOverrides.NoBaseFee != nil {
+		vmConfig.NoBaseFee = *evmOverrides.NoBaseFee
+	}
 
 	evm := vm.NewEVM(blockCtx, stateDB, cfg.ChainConfig, vmConfig)
 	evm.SetTxContext(txCtx)
 
+	if evmOverrides != nil && evmOverrides.OnEVMConstructed != nil {
+		evmOverrides.OnEVMConstructed(evm)
+	}
+
+	// Default path: geth seeds the EVM with the fork-default precompile set;
+	// WithCustomPrecompiles overlays the chain's mezo-custom entries on top.
+	evm.WithCustomPrecompiles(k.resolveCustomPrecompiles(ctx))
+
+	// Simulate-only path: relocate selected stdlib precompiles on the live
+	// registry. SetPrecompiles is reached here only when a simulate caller
+	// supplied a non-empty PrecompileMoves override.
+	if evmOverrides != nil && len(evmOverrides.PrecompileMoves) > 0 {
+		applyPrecompileMoves(evm, evmOverrides.PrecompileMoves)
+	}
+
+	return evm
+}
+
+// resolveCustomPrecompiles flattens the keeper's versioned custom-precompile
+// registry into an address→contract map by resolving each entry to the
+// version recorded in chain params. The returned map carries only mezo
+// custom precompiles; stdlib defaults come from geth via WithCustomPrecompiles.
+func (k *Keeper) resolveCustomPrecompiles(ctx sdk.Context) map[common.Address]vm.PrecompiledContract {
 	precompilesVersions := make(map[common.Address]uint32)
 	for _, pv := range k.GetParams(ctx).PrecompilesVersions {
 		precompilesVersions[common.HexToAddress(pv.PrecompileAddress)] = pv.Version
 	}
 
-	// Add custom precompiles into the EVM instance. The EVM starts with the
-	// fork-default precompiles and clones that shared map before overlaying
-	// custom entries.
 	customPrecompiles := make(map[common.Address]vm.PrecompiledContract)
 	for address, versionMap := range k.customPrecompiles {
 		// If the precompile version is not in the state, it will resolve to 0.
@@ -114,10 +179,20 @@ func (k *Keeper) NewEVM(
 
 		customPrecompiles[address] = vm.PrecompiledContract(precompile)
 	}
-	// Add all custom precompiles to the EVM instance.
-	evm.WithCustomPrecompiles(customPrecompiles)
+	return customPrecompiles
+}
 
-	return evm
+// applyPrecompileMoves relocates each src→dst pair on the EVM's live
+// precompile registry. Used only by simulate paths via [EVMOverrides].
+func applyPrecompileMoves(evm *vm.EVM, moves map[common.Address]common.Address) {
+	live := evm.Precompiles()
+	for src, dst := range moves {
+		if p, ok := live[src]; ok {
+			live[dst] = p
+			delete(live, src)
+		}
+	}
+	evm.SetPrecompiles(live)
 }
 
 // GetHashFn implements vm.GetHashFunc for Ethermint. It handles 3 cases:
@@ -371,33 +446,48 @@ func (k *Keeper) ApplyMessageWithConfig(
 	txConfig statedb.TxConfig,
 ) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	stateDB := statedb.New(ctx, k, txConfig)
-	return k.applyMessageWithConfig(ctx, wrapper, tracer, commit, cfg, txConfig, stateDB)
+	return k.applyMessageWithConfig(ctx, wrapper, tracer, commit, cfg, txConfig, stateDB, nil)
 }
 
 // SimulateMessage applies the given message against the existing state without
 // committing changes. It optionally applies pre-parsed state overrides to the
-// StateDB before execution. This method is intended for read-only simulation
-// (eth_call, eth_estimateGas).
+// StateDB before execution, including MovePrecompileTo relocations. This
+// method is intended for read-only simulation (eth_call, eth_estimateGas).
 func (k *Keeper) SimulateMessage(
 	ctx sdk.Context,
 	wrapper MessageWrapper,
 	tracer *tracers.Tracer,
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
-	overrides stateOverride,
+	overrides types.StateOverride,
 ) (*types.MsgEthereumTxResponse, error) {
 	stateDB := statedb.New(ctx, k, txConfig)
+
+	var moves map[common.Address]common.Address
 	if overrides != nil {
-		if err := applyStateOverrides(stateDB, overrides); err != nil {
-			return nil, errorsmod.Wrap(err, "failed to apply state overrides")
+		var err error
+		rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
+		moves, err = applyStateOverrides(stateDB, overrides, rules)
+		if err != nil {
+			return nil, err
 		}
 	}
-	res, _, err := k.applyMessageWithConfig(ctx, wrapper, tracer, false, cfg, txConfig, stateDB)
+
+	var evmOverrides *EVMOverrides
+	if len(moves) > 0 {
+		evmOverrides = &EVMOverrides{PrecompileMoves: moves}
+	}
+
+	res, _, err := k.applyMessageWithConfig(
+		ctx, wrapper, tracer, false, cfg, txConfig, stateDB, evmOverrides,
+	)
 	return res, err
 }
 
 // applyMessageWithConfig is the private core that executes an EVM message
-// against the provided StateDB.
+// against the provided StateDB. A nil evmOverrides is equivalent to the
+// default consensus build; simulate paths inject custom block contexts or
+// precompile registries through it.
 func (k *Keeper) applyMessageWithConfig(
 	ctx sdk.Context,
 	wrapper MessageWrapper,
@@ -406,6 +496,7 @@ func (k *Keeper) applyMessageWithConfig(
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
 	stateDB *statedb.StateDB,
+	evmOverrides *EVMOverrides,
 ) (*types.MsgEthereumTxResponse, []statedb.StateChange, error) {
 	msg := wrapper.Unwrap()
 
@@ -422,7 +513,7 @@ func (k *Keeper) applyMessageWithConfig(
 		return nil, nil, errorsmod.Wrap(types.ErrCallDisabled, "failed to call contract")
 	}
 
-	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
+	evm := k.NewEVMWithOverrides(ctx, msg, cfg, tracer, stateDB, evmOverrides)
 
 	leftoverGas := msg.GasLimit
 

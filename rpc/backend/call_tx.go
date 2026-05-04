@@ -306,7 +306,7 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 }
 
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
-func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber, overrides *rpctypes.StateOverride) (hexutil.Uint64, error) {
+func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber, overrides *evmtypes.StateOverride) (hexutil.Uint64, error) {
 	blockNr := rpctypes.EthPendingBlockNumber
 	if blockNrOptional != nil {
 		blockNr = *blockNrOptional
@@ -428,7 +428,7 @@ func rescalePrecision(inputValue *big.Int, actualDecimals, targetDecimals uint64
 func (b *Backend) DoCall(
 	args evmtypes.TransactionArgs,
 	blockNr rpctypes.BlockNumber,
-	overrides *rpctypes.StateOverride,
+	overrides *evmtypes.StateOverride,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
 	bz, err := json.Marshal(&args)
 	if err != nil {
