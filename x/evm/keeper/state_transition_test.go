@@ -712,19 +712,29 @@ func (suite *KeeperTestSuite) TestNewEVMWithOverrides() {
 	suite.Require().Equal(overridden.Coinbase, evmBlock.Context.Coinbase)
 	suite.Require().Equal(uint64(1_234_567), evmBlock.Context.GasLimit)
 
-	// Precompiles override: a single-entry custom map must wholly
-	// replace the default registry. The EVM exposes the live set via
-	// ActivePrecompiles(rules) — it must now be exactly the override.
-	custom := map[common.Address]vm.PrecompiledContract{
-		common.HexToAddress("0x1234"): nil,
-	}
+	// PrecompileMoves override: relocate sha256 (0x02) to 0x500 on the
+	// live registry. After the move, 0x02 must be absent and 0x500 must
+	// hold the original sha256 contract. The default path's customs and
+	// the rest of the stdlib registry stay untouched.
+	const sha256Addr = "0x0000000000000000000000000000000000000002"
+	const sha256Dest = "0x0000000000000000000000000000000000000500"
+	src := common.HexToAddress(sha256Addr)
+	dst := common.HexToAddress(sha256Dest)
+
+	baseline2 := suite.app.EvmKeeper.NewEVM(suite.ctx, msg, cfg, nil, stateDB)
+	originalSha256, ok := baseline2.Precompiles()[src]
+	suite.Require().True(ok, "sha256 precompile must be present in the default registry")
+
 	evmPrec := suite.app.EvmKeeper.NewEVMWithOverrides(
 		suite.ctx, msg, cfg, nil, stateDB,
-		&keeper.EVMOverrides{Precompiles: custom},
+		&keeper.EVMOverrides{PrecompileMoves: map[common.Address]common.Address{src: dst}},
 	)
-	rules := cfg.Rules(suite.ctx.BlockHeight(), uint64(suite.ctx.BlockTime().Unix())) //nolint:gosec
-	active := evmPrec.ActivePrecompiles(rules)
-	suite.Require().Equal([]common.Address{common.HexToAddress("0x1234")}, active)
+	live := evmPrec.Precompiles()
+	_, srcStillThere := live[src]
+	suite.Require().False(srcStillThere, "sha256 must have been moved off 0x02")
+	moved, dstThere := live[dst]
+	suite.Require().True(dstThere, "sha256 must now sit at 0x500")
+	suite.Require().Same(originalSha256, moved, "destination must point at the original sha256 contract")
 
 	// NoBaseFee override: explicitly flips the vm.Config flag
 	// regardless of fee-market derivation.

@@ -52,6 +52,7 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		TerminalTotalDifficulty: nil,
 		Ethash:                  nil,
 		Clique:                  nil,
+		BlobScheduleConfig:      params.DefaultBlobSchedule,
 	}
 }
 

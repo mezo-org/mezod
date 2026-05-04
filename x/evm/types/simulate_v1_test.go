@@ -323,7 +323,7 @@ func makeEnvelopeBlock(t *testing.T, _ common.Address, to common.Address, value 
 		Logs:              []*ethtypes.Log{},
 		BlockNumber:       big.NewInt(11),
 	}
-	receipt.Bloom = ethtypes.CreateBloom(ethtypes.Receipts{receipt})
+	receipt.Bloom = ethtypes.CreateBloom(receipt)
 	header := &ethtypes.Header{
 		ParentHash:  common.HexToHash("0xaaa1"),
 		UncleHash:   ethtypes.EmptyUncleHash,
@@ -453,12 +453,12 @@ func TestSimBlockResult_MarshalJSON_FullTx_TwoCallsTwoSenders(t *testing.T) {
 		Type: ethtypes.LegacyTxType, Status: 1, CumulativeGasUsed: 21_000,
 		GasUsed: 21_000, TxHash: txA.Hash(), Logs: []*ethtypes.Log{}, BlockNumber: big.NewInt(11),
 	}
-	receiptA.Bloom = ethtypes.CreateBloom(ethtypes.Receipts{receiptA})
+	receiptA.Bloom = ethtypes.CreateBloom(receiptA)
 	receiptB := &ethtypes.Receipt{
 		Type: ethtypes.LegacyTxType, Status: 1, CumulativeGasUsed: 42_000,
 		GasUsed: 21_000, TxHash: txB.Hash(), Logs: []*ethtypes.Log{}, BlockNumber: big.NewInt(11),
 	}
-	receiptB.Bloom = ethtypes.CreateBloom(ethtypes.Receipts{receiptB})
+	receiptB.Bloom = ethtypes.CreateBloom(receiptB)
 
 	header := &ethtypes.Header{
 		ParentHash:  common.HexToHash("0xaaa1"),
@@ -678,7 +678,7 @@ func TestSimBlockResult_MarshalJSON_LogsBloomMatchesReceipts(t *testing.T) {
 		Type: ethtypes.LegacyTxType, Status: 1, CumulativeGasUsed: 21_000,
 		GasUsed: 21_000, TxHash: tx.Hash(), Logs: []*ethtypes.Log{logEntry}, BlockNumber: big.NewInt(11),
 	}
-	receipt.Bloom = ethtypes.CreateBloom(ethtypes.Receipts{receipt})
+	receipt.Bloom = ethtypes.CreateBloom(receipt)
 
 	header := &ethtypes.Header{
 		ParentHash:  common.HexToHash("0xaaa1"),

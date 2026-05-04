@@ -9,6 +9,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -232,7 +233,7 @@ func TestApplyStateOverrides_NilFieldsSkipped(t *testing.T) {
 	db, _ := newTestDB()
 
 	// Set initial state
-	db.SetNonce(testAddr1, 5)
+	db.SetNonce(testAddr1, 5, tracing.NonceChangeUnspecified)
 
 	overrides := evmtypes.StateOverride{
 		testAddr1: evmtypes.OverrideAccount{

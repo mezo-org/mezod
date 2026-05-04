@@ -47,8 +47,9 @@ import (
 // the default [Keeper.NewEVM] behavior.
 //
 // Each override is applied on top of the default value the non-override
-// path would have produced. Precompiles, when non-nil, replaces the
-// default registry wholesale — a non-nil empty map wipes it.
+// path would have produced. PrecompileMoves, when non-empty, relocates
+// the listed stdlib precompiles src→dst on the live EVM registry after
+// the default registry (geth defaults + mezo customs) is installed.
 //
 // OnEVMConstructed, when non-nil, is invoked synchronously with the
 // freshly constructed *vm.EVM after vm.NewEVM and before precompile
@@ -62,7 +63,7 @@ import (
 // other code path.
 type EVMOverrides struct {
 	BlockContext     *vm.BlockContext
-	Precompiles      map[common.Address]vm.PrecompiledContract
+	PrecompileMoves  map[common.Address]common.Address
 	NoBaseFee        *bool
 	OnEVMConstructed func(*vm.EVM)
 }
@@ -135,65 +136,38 @@ func (k *Keeper) NewEVMWithOverrides(
 		vmConfig.NoBaseFee = *evmOverrides.NoBaseFee
 	}
 
-	evm := vm.NewEVM(blockCtx, txCtx, stateDB, cfg.ChainConfig, vmConfig)
+	evm := vm.NewEVM(blockCtx, stateDB, cfg.ChainConfig, vmConfig)
+	evm.SetTxContext(txCtx)
 
 	if evmOverrides != nil && evmOverrides.OnEVMConstructed != nil {
 		evmOverrides.OnEVMConstructed(evm)
 	}
 
-	precompiles := k.activePrecompiles(ctx, cfg)
-	if evmOverrides != nil && evmOverrides.Precompiles != nil {
-		precompiles = evmOverrides.Precompiles
+	// Default path: geth seeds the EVM with the fork-default precompile set;
+	// WithCustomPrecompiles overlays the chain's mezo-custom entries on top.
+	evm.WithCustomPrecompiles(k.resolveCustomPrecompiles(ctx))
+
+	// Simulate-only path: relocate selected stdlib precompiles on the live
+	// registry. SetPrecompiles is reached here only when a simulate caller
+	// supplied a non-empty PrecompileMoves override.
+	if evmOverrides != nil && len(evmOverrides.PrecompileMoves) > 0 {
+		applyPrecompileMoves(evm, evmOverrides.PrecompileMoves)
 	}
-	// Add all precompiles to the EVM instance.
-	evm.WithPrecompiles(precompiles, maps.Keys(precompiles))
 
 	return evm
 }
 
-// precompilesWithMoves builds the active precompile registry (stdlib +
-// mezo-custom) and applies the requested MovePrecompileTo relocations.
-// Returns the active registry unchanged when moves is empty.
-//
-// TODO (geth-upgrade): drop this when evm.Precompiles() +
-// evm.SetPrecompiles() land in v1.16.9 — the simulate path will then
-// mutate the live registry instead of pre-building a relocated copy.
-func (k *Keeper) precompilesWithMoves(
-	ctx sdk.Context,
-	cfg *statedb.EVMConfig,
-	moves map[common.Address]common.Address,
-) map[common.Address]vm.PrecompiledContract {
-	precompiles := k.activePrecompiles(ctx, cfg)
-	for src, dst := range moves {
-		if p, ok := precompiles[src]; ok {
-			precompiles[dst] = p
-			delete(precompiles, src)
-		}
-	}
-	return precompiles
-}
-
-// activePrecompiles builds the live precompile registry used by the
-// non-override [Keeper.NewEVM] path: stdlib entries from the active
-// fork layered with the chain's custom precompiles. The returned map
-// is a fresh clone — safe to mutate.
-func (k *Keeper) activePrecompiles(ctx sdk.Context, cfg *statedb.EVMConfig) map[common.Address]vm.PrecompiledContract {
+// resolveCustomPrecompiles flattens the keeper's versioned custom-precompile
+// registry into an address→contract map by resolving each entry to the
+// version recorded in chain params. The returned map carries only mezo
+// custom precompiles; stdlib defaults come from geth via WithCustomPrecompiles.
+func (k *Keeper) resolveCustomPrecompiles(ctx sdk.Context) map[common.Address]vm.PrecompiledContract {
 	precompilesVersions := make(map[common.Address]uint32)
 	for _, pv := range k.GetParams(ctx).PrecompilesVersions {
 		precompilesVersions[common.HexToAddress(pv.PrecompileAddress)] = pv.Version
 	}
 
-	// Load default EVM precompiles for the recent fork. The `vm.DefaultPrecompiles`
-	// function returns a global map of default precompiles. We need to clone it
-	// before assigning it to the `precompiles` variable to avoid modifying
-	// the global map with custom precompiles. Moreover, multiple goroutines
-	// can call NewEVM concurrently. Each goroutine must work with its own
-	// copy of the global map to avoid the `concurrent map writes` fatal error.
-	precompiles := maps.Clone(
-		vm.DefaultPrecompiles(cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix()))), //nolint:gosec
-	)
-	// Add custom precompiles into the mix. Note that if a custom precompile
-	// uses the same address as a default precompile, the custom one will be used.
+	customPrecompiles := make(map[common.Address]vm.PrecompiledContract)
 	for address, versionMap := range k.customPrecompiles {
 		// If the precompile version is not in the state, it will resolve to 0.
 		version := precompilesVersions[address]
@@ -203,9 +177,22 @@ func (k *Keeper) activePrecompiles(ctx sdk.Context, cfg *statedb.EVMConfig) map[
 			continue
 		}
 
-		precompiles[address] = vm.PrecompiledContract(precompile)
+		customPrecompiles[address] = vm.PrecompiledContract(precompile)
 	}
-	return precompiles
+	return customPrecompiles
+}
+
+// applyPrecompileMoves relocates each src→dst pair on the EVM's live
+// precompile registry. Used only by simulate paths via [EVMOverrides].
+func applyPrecompileMoves(evm *vm.EVM, moves map[common.Address]common.Address) {
+	live := evm.Precompiles()
+	for src, dst := range moves {
+		if p, ok := live[src]; ok {
+			live[dst] = p
+			delete(live, src)
+		}
+	}
+	evm.SetPrecompiles(live)
 }
 
 // GetHashFn implements vm.GetHashFunc for Ethermint. It handles 3 cases:
@@ -323,7 +310,8 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	// Compute block bloom filter
 	if len(logs) > 0 {
 		bloom = k.GetBlockBloomTransient(ctx)
-		bloom.Or(bloom, big.NewInt(0).SetBytes(ethtypes.LogsBloom(logs)))
+		receipt := &ethtypes.Receipt{Logs: logs}
+		bloom.Or(bloom, big.NewInt(0).SetBytes(ethtypes.CreateBloom(receipt).Bytes()))
 		bloomReceipt = ethtypes.BytesToBloom(bloom.Bytes())
 	}
 
@@ -487,7 +475,7 @@ func (k *Keeper) SimulateMessage(
 
 	var evmOverrides *EVMOverrides
 	if len(moves) > 0 {
-		evmOverrides = &EVMOverrides{Precompiles: k.precompilesWithMoves(ctx, cfg, moves)}
+		evmOverrides = &EVMOverrides{PrecompileMoves: moves}
 	}
 
 	res, _, err := k.applyMessageWithConfig(
@@ -542,7 +530,7 @@ func (k *Keeper) applyMessageWithConfig(
 		}()
 	}
 
-	sender := vm.AccountRef(msg.From)
+	sender := msg.From
 	contractCreation := msg.To == nil
 	isLondon := cfg.ChainConfig.IsLondon(evm.Context.BlockNumber)
 
@@ -582,7 +570,7 @@ func (k *Keeper) applyMessageWithConfig(
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
 	if rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())); rules.IsBerlin { //nolint:gosec
-		stateDB.Prepare(rules, msg.From, evm.Context.Coinbase, msg.To, evm.ActivePrecompiles(rules), msg.AccessList)
+		stateDB.Prepare(rules, msg.From, evm.Context.Coinbase, msg.To, maps.Keys(evm.Precompiles()), msg.AccessList)
 	}
 
 	value := uint256.NewInt(0)
@@ -591,9 +579,9 @@ func (k *Keeper) applyMessageWithConfig(
 		// take over the nonce management from evm:
 		// - reset sender's nonce to msg.Nonce() before calling evm.
 		// - increase sender's nonce by one no matter the result.
-		stateDB.SetNonce(sender.Address(), msg.Nonce)
+		stateDB.SetNonce(sender, msg.Nonce, tracing.NonceChangeUnspecified)
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, value)
-		stateDB.SetNonce(sender.Address(), msg.Nonce+1)
+		stateDB.SetNonce(sender, msg.Nonce+1, tracing.NonceChangeUnspecified)
 	} else {
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, value)
 	}

@@ -6,7 +6,6 @@ import (
 	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
 
@@ -16,7 +15,7 @@ func (s *PrecompileTestSuite) TestGetMinterWhenNotSet() {
 	methodInputArgs, err := method.Inputs.Pack()
 	s.Require().NoError(err)
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(common.Address{}, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(method.ID, methodInputArgs...)
 
@@ -46,10 +45,9 @@ func (s *PrecompileTestSuite) TestSetMinterByOwner() {
 	s.Require().NoError(err)
 
 	stateDB := statedb.New(s.ctx, s.app.EvmKeeper, statedb.TxConfig{})
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.poaOwner, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(method.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.poaOwner
 
 	evm := &vm.EVM{
 		StateDB: stateDB,
@@ -73,10 +71,9 @@ func (s *PrecompileTestSuite) TestSetMinterByNonOwner() {
 	methodInputArgs, err := method.Inputs.Pack(s.minter)
 	s.Require().NoError(err)
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.unauthorizedAddr, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(method.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.unauthorizedAddr
 
 	evm := &vm.EVM{
 		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
@@ -94,10 +91,9 @@ func (s *PrecompileTestSuite) TestGetMinterAfterSet() {
 	methodInputArgs, err := setMethod.Inputs.Pack(s.minter)
 	s.Require().NoError(err)
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.poaOwner, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(setMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.poaOwner
 
 	evm := &vm.EVM{
 		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
@@ -111,7 +107,7 @@ func (s *PrecompileTestSuite) TestGetMinterAfterSet() {
 	methodInputArgs, err = getMethod.Inputs.Pack()
 	s.Require().NoError(err)
 
-	vmContract = vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract = vm.NewPrecompile(common.Address{}, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(getMethod.ID, methodInputArgs...)
 
@@ -138,10 +134,9 @@ func (s *PrecompileTestSuite) TestMintByMinter() {
 	methodInputArgs, err := setMethod.Inputs.Pack(s.minter)
 	s.Require().NoError(err)
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.poaOwner, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(setMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.poaOwner
 
 	_, err = s.mezoPrecompile.Run(evm, vmContract, false)
 	s.Require().NoError(err)
@@ -165,10 +160,9 @@ func (s *PrecompileTestSuite) TestMintByMinter() {
 	methodInputArgs, err = mintMethod.Inputs.Pack(s.recipient, mintAmount)
 	s.Require().NoError(err)
 
-	vmContract = vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract = vm.NewPrecompile(s.minter, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(mintMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.minter
 
 	_, err = s.mezoPrecompile.Run(evm, vmContract, false)
 	s.Require().NoError(err)
@@ -188,10 +182,9 @@ func (s *PrecompileTestSuite) TestMintByNonMinter() {
 	methodInputArgs, err := setMethod.Inputs.Pack(s.minter)
 	s.Require().NoError(err)
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.poaOwner, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(setMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.poaOwner
 
 	evm := &vm.EVM{
 		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
@@ -206,10 +199,9 @@ func (s *PrecompileTestSuite) TestMintByNonMinter() {
 	methodInputArgs, err = mintMethod.Inputs.Pack(s.recipient, mintAmount)
 	s.Require().NoError(err)
 
-	vmContract = vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract = vm.NewPrecompile(s.unauthorizedAddr, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(mintMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.unauthorizedAddr
 
 	output, err := s.mezoPrecompile.Run(evm, vmContract, false)
 	s.Require().Error(err)
@@ -223,10 +215,9 @@ func (s *PrecompileTestSuite) TestMintWhenMinterNotSet() {
 	methodInputArgs, err := mintMethod.Inputs.Pack(s.recipient, mintAmount)
 	s.Require().NoError(err)
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.minter, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(mintMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.minter
 
 	evm := &vm.EVM{
 		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
@@ -244,10 +235,9 @@ func (s *PrecompileTestSuite) TestMintToZeroAddress() {
 	methodInputArgs, err := setMethod.Inputs.Pack(s.minter)
 	s.Require().NoError(err)
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.poaOwner, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(setMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.poaOwner
 
 	evm := &vm.EVM{
 		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
@@ -262,10 +252,9 @@ func (s *PrecompileTestSuite) TestMintToZeroAddress() {
 	methodInputArgs, err = mintMethod.Inputs.Pack(common.Address{}, mintAmount)
 	s.Require().NoError(err)
 
-	vmContract = vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract = vm.NewPrecompile(s.minter, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(mintMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.minter
 
 	output, err := s.mezoPrecompile.Run(evm, vmContract, false)
 	s.Require().Error(err)
@@ -279,10 +268,9 @@ func (s *PrecompileTestSuite) TestMintZeroAmount() {
 	methodInputArgs, err := setMethod.Inputs.Pack(s.minter)
 	s.Require().NoError(err)
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.poaOwner, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(setMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.poaOwner
 
 	evm := &vm.EVM{
 		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
@@ -297,10 +285,9 @@ func (s *PrecompileTestSuite) TestMintZeroAmount() {
 	methodInputArgs, err = mintMethod.Inputs.Pack(s.recipient, mintAmount)
 	s.Require().NoError(err)
 
-	vmContract = vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract = vm.NewPrecompile(s.minter, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(mintMethod.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.minter
 
 	output, err := s.mezoPrecompile.Run(evm, vmContract, false)
 	s.Require().Error(err)
@@ -315,10 +302,9 @@ func (s *PrecompileTestSuite) TestSetMinterToZeroAddress() {
 	s.Require().NoError(err)
 
 	stateDB := statedb.New(s.ctx, s.app.EvmKeeper, statedb.TxConfig{})
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(s.poaOwner, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(method.ID, methodInputArgs...)
-	vmContract.CallerAddress = s.poaOwner
 
 	evm := &vm.EVM{
 		StateDB: stateDB,
@@ -341,7 +327,7 @@ func (s *PrecompileTestSuite) TestSetMinterToZeroAddress() {
 	methodInputArgs, err = getMethod.Inputs.Pack()
 	s.Require().NoError(err)
 
-	vmContract = vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract = vm.NewPrecompile(common.Address{}, common.Address{}, nil, 0)
 	//nolint:gocritic
 	vmContract.Input = append(getMethod.ID, methodInputArgs...)
 

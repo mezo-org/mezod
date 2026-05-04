@@ -30,7 +30,7 @@ var mezoCustomPrecompileAddrs = func() map[common.Address]struct{} {
 // caller must install on the EVM's precompile registry before the message
 // executes; the map is nil when no MovePrecompileTo entries are present.
 //
-// Source-address eligibility is checked against vm.DefaultPrecompiles(rules)
+// Source-address eligibility is checked against vm.ActivePrecompiledContracts(rules)
 // (stdlib precompiles only) with mezoCustomPrecompileAddrs rejecting the
 // chain's own custom precompiles.
 //
@@ -68,14 +68,14 @@ func applyStateOverrides(
 				return nil, types.NewSimDestAlreadyOverridden(dest)
 			}
 
-			// Denylist check before the DefaultPrecompiles lookup so
-			// mezo custom addresses surface the specific error rather
-			// than "is not a precompile" (they aren't stdlib entries).
+			// Denylist check before the stdlib lookup so mezo custom
+			// addresses surface the specific error rather than
+			// "is not a precompile" (they aren't stdlib entries).
 			if _, isCustom := mezoCustomPrecompileAddrs[addr]; isCustom {
 				return nil, types.NewSimMoveMezoCustom(addr)
 			}
 
-			if _, isStdlib := vm.DefaultPrecompiles(rules)[addr]; !isStdlib {
+			if _, isStdlib := vm.ActivePrecompiledContracts(rules)[addr]; !isStdlib {
 				return nil, types.NewSimNotAPrecompile(addr)
 			}
 
@@ -87,11 +87,11 @@ func applyStateOverrides(
 		}
 
 		if override.Nonce != nil {
-			db.SetNonce(addr, uint64(*override.Nonce))
+			db.SetNonce(addr, uint64(*override.Nonce), tracing.NonceChangeUnspecified)
 		}
 
 		if override.Code != nil {
-			db.SetCode(addr, *override.Code)
+			db.SetCode(addr, *override.Code, tracing.CodeChangeUnspecified)
 		}
 
 		if override.Balance != nil {

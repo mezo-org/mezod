@@ -1140,7 +1140,7 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint() {
 
 			root := common.Hash{}.Bytes()
 			receipt := ethtypes.NewReceipt(root, false, gasUsed.Uint64())
-			bloom := ethtypes.CreateBloom(ethtypes.Receipts{receipt})
+			bloom := ethtypes.CreateBloom(receipt)
 
 			ethRPCTxs := []interface{}{}
 
@@ -1251,7 +1251,7 @@ func (suite *BackendTestSuite) TestGetEthBlockFromTendermint_PsuedoTx() {
 
 			root := common.Hash{}.Bytes()
 			receipt := ethtypes.NewReceipt(root, false, gasUsed.Uint64())
-			bloom := ethtypes.CreateBloom(ethtypes.Receipts{receipt})
+			bloom := ethtypes.CreateBloom(receipt)
 
 			expBlock := ethrpc.FormatBlock(
 				header,

@@ -39,19 +39,19 @@ func (k *Keeper) ExecuteContractCall(
 	}
 
 	msg := core.Message{
-		To:                call.To(),
-		From:              call.From(),
-		Nonce:             nonce,
-		Value:             big.NewInt(0),
-		GasLimit:          gasLimit,
-		GasPrice:          big.NewInt(0),
-		GasFeeCap:         big.NewInt(0),
-		GasTipCap:         big.NewInt(0),
-		Data:              call.Data(),
-		AccessList:        ethtypes.AccessList{},
-		BlobGasFeeCap:     big.NewInt(0),
-		BlobHashes:        []common.Hash{},
-		SkipAccountChecks: false,
+		To:                    call.To(),
+		From:                  call.From(),
+		Nonce:                 nonce,
+		Value:                 big.NewInt(0),
+		GasLimit:              gasLimit,
+		GasPrice:              big.NewInt(0),
+		GasFeeCap:             big.NewInt(0),
+		GasTipCap:             big.NewInt(0),
+		Data:                  call.Data(),
+		AccessList:            ethtypes.AccessList{},
+		BlobGasFeeCap:         big.NewInt(0),
+		BlobHashes:            []common.Hash{},
+		SkipTransactionChecks: false,
 	}
 
 	res, changes, err := k.ApplyMessage(ctx, msg, &tracers.Tracer{}, true)

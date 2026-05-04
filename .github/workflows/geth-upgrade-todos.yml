@@ -1,0 +1,17 @@
+name: Geth Upgrade TODOs
+
+on:
+  pull_request:
+
+jobs:
+  grep-todos:
+    name: Check geth-upgrade TODOs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for geth-upgrade TODOs
+        run: |
+          if git grep -n "TODO (geth-upgrade):"; then
+            echo "Remove all TODO (geth-upgrade): markers before merging out of geth-upgrade."
+            exit 1
+          fi

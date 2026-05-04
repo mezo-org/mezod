@@ -98,13 +98,11 @@ func (s *TestSuite) TestAllowance() {
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(s.account2.EvmAddr, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function allowance(address owner, address spender)'
 			vmContract.Input = append([]byte{0xdd, 0x62, 0xed, 0x3e}, methodInputArgs...)
-			vmContract.CallerAddress = s.account2.EvmAddr
-
 			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")

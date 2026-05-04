@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
@@ -625,7 +626,7 @@ func TestValidateSimCall_Nonce_EqualPasses(t *testing.T) {
 func TestValidateSimCall_Nonce_OneLowFails_38010(t *testing.T) {
 	f := newValidateSimCallFixture(t)
 	// Bump state nonce so the gate has a non-zero target to compare against.
-	f.sdb.SetNonce(f.from, 5)
+	f.sdb.SetNonce(f.from, 5, tracing.NonceChangeUnspecified)
 	msg := f.baselineMsg()
 	msg.Nonce = 4
 	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)

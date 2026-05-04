@@ -163,7 +163,7 @@ func (suite *KeeperTestSuite) TestGetNonce() {
 			suite.address,
 			1,
 			func(vmdb vm.StateDB) {
-				vmdb.SetNonce(suite.address, 1)
+				vmdb.SetNonce(suite.address, 1, tracing.NonceChangeUnspecified)
 			},
 		},
 	}
@@ -203,7 +203,7 @@ func (suite *KeeperTestSuite) TestSetNonce() {
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
 			vmdb := suite.StateDB()
-			vmdb.SetNonce(tc.address, tc.nonce)
+			vmdb.SetNonce(tc.address, tc.nonce, tracing.NonceChangeUnspecified)
 			nonce := vmdb.GetNonce(tc.address)
 			suite.Require().Equal(tc.nonce, nonce)
 		})
@@ -240,7 +240,7 @@ func (suite *KeeperTestSuite) TestGetCodeHash() {
 			suite.address,
 			crypto.Keccak256Hash([]byte("codeHash")),
 			func(vmdb vm.StateDB) {
-				vmdb.SetCode(suite.address, []byte("codeHash"))
+				vmdb.SetCode(suite.address, []byte("codeHash"), tracing.CodeChangeUnspecified)
 			},
 		},
 	}
@@ -299,7 +299,7 @@ func (suite *KeeperTestSuite) TestSetCode() {
 		suite.Run(tc.name, func() {
 			vmdb := suite.StateDB()
 			prev := vmdb.GetCode(tc.address)
-			vmdb.SetCode(tc.address, tc.code)
+			vmdb.SetCode(tc.address, tc.code, tracing.CodeChangeUnspecified)
 			post := vmdb.GetCode(tc.address)
 
 			if tc.isNoOp {
@@ -443,7 +443,7 @@ func (suite *KeeperTestSuite) TestSuicide() {
 	code := []byte("code")
 	db := suite.StateDB()
 	// Add code to account
-	db.SetCode(suite.address, code)
+	db.SetCode(suite.address, code, tracing.CodeChangeUnspecified)
 	suite.Require().Equal(code, db.GetCode(suite.address))
 	// Add state to account
 	for i := 0; i < 5; i++ {
@@ -460,7 +460,7 @@ func (suite *KeeperTestSuite) TestSuicide() {
 	addr2 := crypto.PubkeyToAddress(key.PublicKey)
 
 	// Add code and state to account 2
-	db.SetCode(addr2, code)
+	db.SetCode(addr2, code, tracing.CodeChangeUnspecified)
 	suite.Require().Equal(code, db.GetCode(addr2))
 	for i := 0; i < 5; i++ {
 		db.SetState(addr2, common.BytesToHash([]byte(fmt.Sprintf("key%d", i))), common.BytesToHash([]byte(fmt.Sprintf("value%d", i))))

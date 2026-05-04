@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -449,8 +450,6 @@ func (k *Keeper) processSimBlock(
 		Random:      random,
 	}
 
-	precompiles := k.precompilesWithMoves(sdkCtx, cfg, moves)
-
 	// One watcher goroutine per block. OnEVMConstructed publishes the
 	// per-call *vm.EVM into liveEVM synchronously, before
 	// applyMessageWithConfig starts the EVM, so a non-nil load here
@@ -474,9 +473,9 @@ func (k *Keeper) processSimBlock(
 	// runs the realistic path.
 	noBaseFee := !opts.Validation
 	evmOverrides := &EVMOverrides{
-		BlockContext: &blockCtx,
-		Precompiles:  precompiles,
-		NoBaseFee:    &noBaseFee,
+		BlockContext:    &blockCtx,
+		PrecompileMoves: moves,
+		NoBaseFee:       &noBaseFee,
 		OnEVMConstructed: func(evm *vm.EVM) {
 			liveEVM.Store(evm)
 		},
@@ -536,7 +535,11 @@ func (k *Keeper) processSimBlock(
 
 		// State overrides may make `from` a contract; the EoA check
 		// must stay off for the simulator regardless of validation mode.
-		msg.SkipAccountChecks = true
+		// v1.16.9 split the legacy SkipAccountChecks knob into
+		// SkipNonceChecks (nonce vs. state) and SkipTransactionChecks
+		// (EoA / tx-level). Preserve previous behavior by setting both.
+		msg.SkipNonceChecks = true
+		msg.SkipTransactionChecks = true
 
 		if opts.Validation {
 			if simErr := k.validateSimCall(sdkCtx, sdb, &msg, header, rules, cfg.ChainConfig); simErr != nil {
@@ -614,7 +617,7 @@ func (k *Keeper) processSimBlock(
 		// a reverted CALL still consumes the nonce on the real
 		// chain.
 		if msg.To != nil {
-			sdb.SetNonce(msg.From, msg.Nonce+1)
+			sdb.SetNonce(msg.From, msg.Nonce+1, tracing.NonceChangeUnspecified)
 		}
 
 		// Request-wide gas pool. The clamp in resolveSimCallGas keeps
@@ -656,7 +659,7 @@ func (k *Keeper) processSimBlock(
 		if msg.To == nil {
 			receipt.ContractAddress = crypto.CreateAddress(msg.From, msg.Nonce)
 		}
-		receipt.Bloom = ethtypes.CreateBloom(ethtypes.Receipts{receipt})
+		receipt.Bloom = ethtypes.CreateBloom(receipt)
 
 		txs = append(txs, simTx)
 		receipts = append(receipts, receipt)

@@ -75,6 +75,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 		contractAbi,
 		evmAddress,
 		EvmByteCode,
+		"btc-token",
 	)
 
 	methods := newPrecompileMethods(bankKeeper, authzkeeper, evmkeeper, denom, domainSeparator, nonceKey)
