@@ -16,7 +16,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	ethparams "github.com/ethereum/go-ethereum/params"
+	"github.com/holiman/uint256"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
@@ -1090,4 +1092,60 @@ func (suite *AnteTestSuite) TestAnteWithMulitpleSdkMsgs() {
 	if suite.Error(err, "expected error") {
 		suite.EqualError(err, "cannot submit more than one transaction at a time: feature not supported")
 	}
+}
+
+func (suite *AnteTestSuite) TestAnteHandlerSetCodeTxRequiresPrague() {
+	addr, privKey := utiltx.NewAddrKey()
+	to := utiltx.GenerateAddress()
+
+	buildTx := func() sdk.Tx {
+		chainID := suite.app.EvmKeeper.ChainID()
+
+		authPriv, err := ethcrypto.GenerateKey()
+		suite.Require().NoError(err)
+		signedAuth, err := types.SignSetCode(authPriv, types.SetCodeAuthorization{
+			ChainID: *uint256.MustFromBig(chainID),
+			Address: utiltx.GenerateAddress(),
+			Nonce:   1,
+		})
+		suite.Require().NoError(err)
+
+		setCodeTx := &types.SetCodeTx{
+			ChainID:   uint256.MustFromBig(chainID),
+			Nonce:     1,
+			GasTipCap: uint256.NewInt(1),
+			GasFeeCap: uint256.MustFromBig(big.NewInt(ethparams.InitialBaseFee + 1)),
+			Gas:       100000,
+			To:        to,
+			Value:     uint256.NewInt(10),
+			AuthList:  []types.SetCodeAuthorization{signedAuth},
+		}
+
+		msg := &evmtypes.MsgEthereumTx{}
+		suite.Require().NoError(msg.FromEthereumTx(types.NewTx(setCodeTx)))
+		msg.From = addr.Hex()
+
+		return suite.CreateTestTx(msg, privKey, 1, false)
+	}
+
+	suite.enableFeemarket = true
+	suite.enableLondonHF = false
+	suite.SetupTest()
+
+	acc := suite.app.AccountKeeper.NewAccountWithAddress(suite.ctx, addr.Bytes())
+	suite.Require().NoError(acc.SetSequence(1))
+	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
+
+	suite.Require().NoError(
+		suite.app.EvmKeeper.SetBalance(
+			suite.ctx, addr, big.NewInt((ethparams.InitialBaseFee+10)*100000),
+		),
+	)
+
+	_, err := suite.anteHandler(suite.ctx, buildTx(), false)
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), "set code tx not supported")
+
+	suite.enableFeemarket = false
+	suite.enableLondonHF = true
 }
