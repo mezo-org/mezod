@@ -438,6 +438,9 @@ func newRPCTransaction(
 		} else {
 			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
 		}
+	case ethtypes.SetCodeTxType:
+		// TODO (geth-upgrade): full SetCodeTx support is covered by .claude/MEZO-4336-eth-simulate-v1-geth116/plan.md
+		panic(fmt.Sprintf("newRPCTransaction: SetCodeTxType (0x%x) is not supported", ethtypes.SetCodeTxType))
 	}
 	return result
 }
