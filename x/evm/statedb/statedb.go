@@ -510,7 +510,6 @@ func (s *StateDB) GetCommittedState(addr common.Address, hash common.Hash) commo
 
 // GetStateAndCommittedState returns the current value and the committed value.
 func (s *StateDB) GetStateAndCommittedState(addr common.Address, hash common.Hash) (common.Hash, common.Hash) {
-	// TODO (geth-upgrade): check when reviewing state access changes in 1.16.9.
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.GetState(hash), stateObject.GetCommittedState(hash)

@@ -415,6 +415,47 @@ func (suite *StateDBTestSuite) TestInvalidSnapshotId() {
 	})
 }
 
+func (suite *StateDBTestSuite) TestGetStateAndCommittedState() {
+	key1 := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	value2 := common.BigToHash(big.NewInt(3))
+	key2 := common.BigToHash(big.NewInt(4))
+	value3 := common.BigToHash(big.NewInt(5))
+
+	keeper := statedb.NewMockKeeper()
+	db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+
+	current, committed := db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(common.Hash{}, current)
+	suite.Require().Equal(common.Hash{}, committed)
+
+	db.SetState(address, key1, value1)
+	suite.Require().NoError(db.Commit())
+
+	db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(value1, current)
+	suite.Require().Equal(value1, committed)
+
+	db.SetState(address, key1, value2)
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(value2, current)
+	suite.Require().Equal(value1, committed)
+
+	db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+	db.OverrideStorage(address, map[common.Hash]common.Hash{
+		key2: value3,
+	})
+
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(common.Hash{}, current)
+	suite.Require().Equal(common.Hash{}, committed)
+
+	current, committed = db.GetStateAndCommittedState(address, key2)
+	suite.Require().Equal(value3, current)
+	suite.Require().Equal(common.Hash{}, committed)
+}
+
 func (suite *StateDBTestSuite) TestFinalise() {
 	key := common.BigToHash(big.NewInt(1))
 	value := common.BigToHash(big.NewInt(2))
