@@ -456,6 +456,57 @@ func (suite *StateDBTestSuite) TestGetStateAndCommittedState() {
 	suite.Require().Equal(common.Hash{}, committed)
 }
 
+func (suite *StateDBTestSuite) TestMutationReturnValues() {
+	key := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	value2 := common.BigToHash(big.NewInt(3))
+	code1 := []byte("hello world")
+	code2 := []byte("goodbye world")
+
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+
+	prevBalance := db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(0), prevBalance)
+
+	prevBalance = db.AddBalance(address, uint256.NewInt(5), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+
+	prevBalance = db.SubBalance(address, uint256.NewInt(3), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(15), prevBalance)
+
+	prevCode := db.SetCode(address, code1, tracing.CodeChangeUnspecified)
+	suite.Require().Nil(prevCode)
+
+	prevCode = db.SetCode(address, code2, tracing.CodeChangeUnspecified)
+	suite.Require().Equal(code1, prevCode)
+
+	prevState := db.SetState(address, key, value1)
+	suite.Require().Equal(common.Hash{}, prevState)
+
+	prevState = db.SetState(address, key, value2)
+	suite.Require().Equal(value1, prevState)
+
+	prevBalance = db.SelfDestruct(address)
+	suite.Require().Equal(*uint256.NewInt(12), prevBalance)
+}
+
+func (suite *StateDBTestSuite) TestSelfDestruct6780ReturnValues() {
+	existingDB := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	existingDB.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+
+	prevBalance, destroyed := existingDB.SelfDestruct6780(address)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+	suite.Require().False(destroyed)
+
+	createdDB := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	createdDB.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+	createdDB.CreateContract(address)
+
+	prevBalance, destroyed = createdDB.SelfDestruct6780(address)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+	suite.Require().True(destroyed)
+}
+
 func (suite *StateDBTestSuite) TestFinalise() {
 	key := common.BigToHash(big.NewInt(1))
 	value := common.BigToHash(big.NewInt(2))
