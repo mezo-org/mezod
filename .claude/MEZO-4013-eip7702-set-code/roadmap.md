@@ -6,6 +6,12 @@
 
 # Roadmap — EIP-7702 Set Code Transactions
 
+## Current progress
+
+- **Phase 1 — done.** `prague_time` plumbed through `ChainConfig`, plus
+  the eight additional fork-time placeholders bundled in via MEZO-4007.
+  PR: [#673](https://github.com/mezo-org/mezod/pull/673).
+
 ## Status of prerequisites
 
 The geth bump to `mezo-org/go-ethereum v1.16.9-mezo0` is on `main`
