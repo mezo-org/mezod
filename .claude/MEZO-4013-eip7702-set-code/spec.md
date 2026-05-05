@@ -135,13 +135,7 @@ accidental flip surfaces loudly in CI.
    path as the rest of the transaction. The implementation is pinned by
    comment to a specific upstream geth commit and is exercised by both
    keeper-level differential tests and the system suite.
-3. **Storage retained when delegation is cleared.** Per spec, clearing a
-   delegation (signing an authorization with `target = 0x0`) sets the
-   authority's code back to nil but does not wipe its storage. Mezo
-   matches this verbatim. Callers re-delegating the same authority after
-   a clear may observe stale storage written by the previous delegate;
-   this is canonical EVM behavior, documented for awareness.
-4. **No new tx-type signer adapter beyond what `MakeSigner` returns.**
+3. **No new tx-type signer adapter beyond what `MakeSigner` returns.**
    Once Prague is active, `ethtypes.MakeSigner` returns geth's
    `PragueSigner`, which already handles type-`0x04` recovery. Mezo's
    ante and RPC paths use `MakeSigner` (with `LatestSignerForChainID`
@@ -235,7 +229,9 @@ need to detect a delegation inspect this prefix via `EXTCODECOPY`.
 Clear a delegation. The EOA signs an authorization with
 `address = 0x0000000000000000000000000000000000000000`. After inclusion,
 `eth_getCode` returns `0x` and subsequent calls execute as plain
-value-only transfers.
+value-only transfers. Storage is not cleared: slots written by the
+previous delegate persist, and a later re-delegation of the same
+authority will read them.
 
 For the full envelope shapes, error codes, and edge cases, see the
 EIP-7702 specification text and the system suite under
