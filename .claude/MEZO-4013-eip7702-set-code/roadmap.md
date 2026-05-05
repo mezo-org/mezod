@@ -251,11 +251,12 @@ and ensure regressions are visible.
   designator.
 - New suite `tests/system/test/Eip7702MezoDivergence.test.ts`:
   pin every spec divergence (no mempool authority reservation;
-  storage retained on delegation clear; reimplemented
-  validate/apply path in keeper; no Mezo-specific signer adapter).
+  reimplemented validate/apply path in keeper; no Mezo-specific
+  signer adapter).
 - Keeper-level fuzz target on the `SetCodeTx` proto unmarshaler.
-- Update `docs/evm-compatibility.md` to flip EIP-7702 from "out of
-  scope" / "deferred" to "supported", with a back-link to the spec.
+- Add a Prague section to `docs/evm-compatibility.md` following the
+  Cancun template, listing EIP-7702 as supported with a back-link to
+  `spec.md`.
 
 **Out of scope.** Production activation and any change to live chain
 config.
@@ -340,7 +341,9 @@ on cadence and gate the live-chain switch on its own review.
   §"Key decisions" (reimplement, don't refactor).
 - New per-node configuration for EIP-7702 enable/disable. Per spec
   §"Configuration".
-- Storage-clearing extensions when a delegation is cleared. Per spec
-  divergence #3.
+- Storage-clearing extensions when a delegation is cleared. Slots
+  written by a prior delegate persist after the delegation is cleared
+  and remain readable by a subsequent re-delegation of the same
+  authority.
 - `eth_simulateV1` validation-mode handling for auth lists. Tracked in
   `MEZO-4336` Phase 15.
