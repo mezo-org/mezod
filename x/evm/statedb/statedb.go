@@ -450,7 +450,6 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 		panic("unsupported on Mezo: empty-account deletion during Finalise")
 	}
 
-	s.logs = nil
 	s.refund = 0
 	s.transientStorage = newTransientStorage()
 	s.ongoingPrecompilesCallsCounter = 0
@@ -461,6 +460,9 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	for _, obj := range s.stateObjects {
 		obj.newContract = false
 	}
+
+	// Since we are using Finalise() for simulations, we also clear the logs.
+	s.logs = nil
 }
 
 // GetCode returns the code of account, nil if not exists.
