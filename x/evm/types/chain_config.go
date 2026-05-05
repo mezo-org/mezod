@@ -193,37 +193,37 @@ func (cc ChainConfig) Validate() error {
 	if err := validateBlock(cc.MergeNetsplitBlock); err != nil {
 		return errorsmod.Wrap(err, "MergeNetsplitBlock")
 	}
-	if err := validateBlock(cc.ShanghaiTime); err != nil {
+	if err := validateTime(cc.ShanghaiTime); err != nil {
 		return errorsmod.Wrap(err, "ShanghaiTime")
 	}
-	if err := validateBlock(cc.CancunTime); err != nil {
+	if err := validateTime(cc.CancunTime); err != nil {
 		return errorsmod.Wrap(err, "CancunTime")
 	}
-	if err := validateBlock(cc.PragueTime); err != nil {
+	if err := validateTime(cc.PragueTime); err != nil {
 		return errorsmod.Wrap(err, "PragueTime")
 	}
-	if err := validateBlock(cc.OsakaTime); err != nil {
+	if err := validateTime(cc.OsakaTime); err != nil {
 		return errorsmod.Wrap(err, "OsakaTime")
 	}
-	if err := validateBlock(cc.BPO1Time); err != nil {
+	if err := validateTime(cc.BPO1Time); err != nil {
 		return errorsmod.Wrap(err, "BPO1Time")
 	}
-	if err := validateBlock(cc.BPO2Time); err != nil {
+	if err := validateTime(cc.BPO2Time); err != nil {
 		return errorsmod.Wrap(err, "BPO2Time")
 	}
-	if err := validateBlock(cc.BPO3Time); err != nil {
+	if err := validateTime(cc.BPO3Time); err != nil {
 		return errorsmod.Wrap(err, "BPO3Time")
 	}
-	if err := validateBlock(cc.BPO4Time); err != nil {
+	if err := validateTime(cc.BPO4Time); err != nil {
 		return errorsmod.Wrap(err, "BPO4Time")
 	}
-	if err := validateBlock(cc.BPO5Time); err != nil {
+	if err := validateTime(cc.BPO5Time); err != nil {
 		return errorsmod.Wrap(err, "BPO5Time")
 	}
-	if err := validateBlock(cc.AmsterdamTime); err != nil {
+	if err := validateTime(cc.AmsterdamTime); err != nil {
 		return errorsmod.Wrap(err, "AmsterdamTime")
 	}
-	if err := validateBlock(cc.VerkleTime); err != nil {
+	if err := validateTime(cc.VerkleTime); err != nil {
 		return errorsmod.Wrap(err, "VerkleTime")
 	}
 	// NOTE: chain ID is not needed to check config order
@@ -250,6 +250,21 @@ func validateBlock(block *sdkmath.Int) error {
 	if block.IsNegative() {
 		return errorsmod.Wrapf(
 			ErrInvalidChainConfig, "block value cannot be negative: %s", block,
+		)
+	}
+
+	return nil
+}
+
+func validateTime(time *sdkmath.Int) error {
+	// nil value means that the fork has not yet been applied
+	if time == nil {
+		return nil
+	}
+
+	if time.IsNegative() {
+		return errorsmod.Wrapf(
+			ErrInvalidChainConfig, "time value cannot be negative: %s", time,
 		)
 	}
 
