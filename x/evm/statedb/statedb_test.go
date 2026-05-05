@@ -540,6 +540,18 @@ func (suite *StateDBTestSuite) TestFinalise() {
 	suite.Require().NoError(db.Commit())
 }
 
+func (suite *StateDBTestSuite) TestFinaliseDeleteEmptyObjectsUnsupported() {
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+
+	suite.Require().PanicsWithValue(
+		"unsupported on Mezo: empty-account deletion during Finalise",
+		func() {
+			//nolint:misspell
+			db.Finalise(true)
+		},
+	)
+}
+
 func (suite *StateDBTestSuite) TestAccessList() {
 	value1 := common.BigToHash(big.NewInt(1))
 	value2 := common.BigToHash(big.NewInt(2))

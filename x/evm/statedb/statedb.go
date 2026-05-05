@@ -446,9 +446,9 @@ func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
 //
 //nolint:misspell
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
-	// Required by geth's StateDB interface. Mezod does not use Finalise for
-	// canonical empty-account deletion.
-	_ = deleteEmptyObjects
+	if deleteEmptyObjects {
+		panic("unsupported on Mezo: empty-account deletion during Finalise")
+	}
 
 	s.logs = nil
 	s.refund = 0
