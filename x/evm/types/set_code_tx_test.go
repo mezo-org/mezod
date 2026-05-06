@@ -255,12 +255,10 @@ func TestSetCodeTxValidate(t *testing.T) {
 			errMatch: "chain ID must be present",
 		},
 		{
-			name: "nil Amount rejected",
+			name: "nil Amount accepted (treated as zero, mirrors DynamicFeeTx)",
 			mutate: func(tx *evmtypes.SetCodeTx) {
 				tx.Amount = nil
 			},
-			wantErr:  true,
-			errMatch: "amount cannot be nil",
 		},
 		{
 			name: "outer R out of int256 bounds rejected",
@@ -368,24 +366,34 @@ func TestSetCodeTxValidate(t *testing.T) {
 			errMatch: "authorization[0]",
 		},
 		{
-			name: "auth with R longer than 32 bytes (overflow shape)",
+			name: "auth with R out of int256 bounds rejected",
 			mutate: func(tx *evmtypes.SetCodeTx) {
 				bad := validAuth()
 				bad.R = overflowBytes
 				tx.AuthList = evmtypes.AuthorizationList{bad}
 			},
 			wantErr:  true,
-			errMatch: "authorization[0] R or S length out of bound",
+			errMatch: "authorization[0] V, R or S out of bound",
 		},
 		{
-			name: "auth with S longer than 32 bytes (overflow shape)",
+			name: "auth with S out of int256 bounds rejected",
 			mutate: func(tx *evmtypes.SetCodeTx) {
 				bad := validAuth()
 				bad.S = overflowBytes
 				tx.AuthList = evmtypes.AuthorizationList{bad}
 			},
 			wantErr:  true,
-			errMatch: "authorization[0] R or S length out of bound",
+			errMatch: "authorization[0] V, R or S out of bound",
+		},
+		{
+			name: "auth with V out of int256 bounds rejected",
+			mutate: func(tx *evmtypes.SetCodeTx) {
+				bad := validAuth()
+				bad.V = overflowBytes
+				tx.AuthList = evmtypes.AuthorizationList{bad}
+			},
+			wantErr:  true,
+			errMatch: "authorization[0] V, R or S out of bound",
 		},
 		{
 			name: "auth with nil chain id",
@@ -407,24 +415,13 @@ func TestSetCodeTxValidate(t *testing.T) {
 			},
 		},
 		{
-			name: "auth with len(V) > 1 rejected",
+			name: "auth with non-Mezo, non-zero chain id accepted (apply-time skip per EIP-7702)",
 			mutate: func(tx *evmtypes.SetCodeTx) {
-				bad := validAuth()
-				bad.V = []byte{0x01, 0x00}
-				tx.AuthList = evmtypes.AuthorizationList{bad}
+				ok := validAuth()
+				cid := sdkmath.NewInt(99999)
+				ok.ChainID = &cid
+				tx.AuthList = evmtypes.AuthorizationList{ok}
 			},
-			wantErr:  true,
-			errMatch: "V length out of bound",
-		},
-		{
-			name: "auth with V[0] == 2 rejected",
-			mutate: func(tx *evmtypes.SetCodeTx) {
-				bad := validAuth()
-				bad.V = []byte{0x02}
-				tx.AuthList = evmtypes.AuthorizationList{bad}
-			},
-			wantErr:  true,
-			errMatch: "V must be 0 or 1",
 		},
 		{
 			name: "auth with V[0] == 0 accepted",
@@ -435,44 +432,28 @@ func TestSetCodeTxValidate(t *testing.T) {
 			},
 		},
 		{
-			name: "auth with R == 0 rejected",
+			name: "auth with V[0] > 1 accepted (canonical check deferred to keeper)",
 			mutate: func(tx *evmtypes.SetCodeTx) {
-				bad := validAuth()
-				bad.R = []byte{}
-				tx.AuthList = evmtypes.AuthorizationList{bad}
+				ok := validAuth()
+				ok.V = []byte{0x02}
+				tx.AuthList = evmtypes.AuthorizationList{ok}
 			},
-			wantErr:  true,
-			errMatch: "R and S must be non-zero",
 		},
 		{
-			name: "auth with S == 0 rejected",
+			name: "auth with R == 0 accepted (canonical check deferred to keeper)",
 			mutate: func(tx *evmtypes.SetCodeTx) {
-				bad := validAuth()
-				bad.S = []byte{}
-				tx.AuthList = evmtypes.AuthorizationList{bad}
+				ok := validAuth()
+				ok.R = []byte{}
+				tx.AuthList = evmtypes.AuthorizationList{ok}
 			},
-			wantErr:  true,
-			errMatch: "R and S must be non-zero",
 		},
 		{
-			name: "auth with len(R) > 32 rejected",
+			name: "auth with S == 0 accepted (canonical check deferred to keeper)",
 			mutate: func(tx *evmtypes.SetCodeTx) {
-				bad := validAuth()
-				bad.R = append([]byte{0x00}, big.NewInt(7).FillBytes(make([]byte, 32))...)
-				tx.AuthList = evmtypes.AuthorizationList{bad}
+				ok := validAuth()
+				ok.S = []byte{}
+				tx.AuthList = evmtypes.AuthorizationList{ok}
 			},
-			wantErr:  true,
-			errMatch: "R or S length out of bound",
-		},
-		{
-			name: "auth with len(S) > 32 rejected",
-			mutate: func(tx *evmtypes.SetCodeTx) {
-				bad := validAuth()
-				bad.S = append([]byte{0x00}, big.NewInt(11).FillBytes(make([]byte, 32))...)
-				tx.AuthList = evmtypes.AuthorizationList{bad}
-			},
-			wantErr:  true,
-			errMatch: "R or S length out of bound",
 		},
 	}
 

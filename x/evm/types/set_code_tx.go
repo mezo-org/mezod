@@ -194,7 +194,8 @@ func (tx *SetCodeTx) GetTo() *common.Address {
 
 // AsEthereumData returns a geth-side SetCodeTx built from this proto-formatted
 // TxData. Validate() must have run first: it guarantees ChainID, gas caps,
-// value, V/R/S, and To are all within bounds for uint256.MustFromBig.
+// V/R/S, and To are all within bounds for uint256.MustFromBig. A nil Amount
+// is treated as zero, mirroring DynamicFeeTx semantics.
 func (tx *SetCodeTx) AsEthereumData() ethtypes.TxData {
 	v, r, s := tx.GetRawSignatureValues()
 
@@ -206,7 +207,10 @@ func (tx *SetCodeTx) AsEthereumData() ethtypes.TxData {
 	chainID := uint256.MustFromBig(tx.GetChainID())
 	gasTipCap := uint256.MustFromBig(tx.GetGasTipCap())
 	gasFeeCap := uint256.MustFromBig(tx.GetGasFeeCap())
-	value := uint256.MustFromBig(tx.GetValue())
+	value := new(uint256.Int)
+	if amount := tx.GetValue(); amount != nil {
+		value = uint256.MustFromBig(amount)
+	}
 
 	vU := new(uint256.Int)
 	if v != nil {
@@ -299,10 +303,8 @@ func (tx SetCodeTx) Validate() error {
 	}
 
 	amount := tx.GetValue()
-	if amount == nil {
-		return errorsmod.Wrap(ErrInvalidAmount, "amount cannot be nil")
-	}
-	if amount.Sign() == -1 {
+	// Amount can be nil (treated as zero) or zero, mirroring DynamicFeeTx.
+	if amount != nil && amount.Sign() == -1 {
 		return errorsmod.Wrapf(ErrInvalidAmount, "amount cannot be negative %s", amount)
 	}
 	if !types.IsValidInt256(amount) {
@@ -345,8 +347,14 @@ func (tx SetCodeTx) Validate() error {
 		return errorsmod.Wrap(ErrSetCodeEmptyAuthList, "auth list must be non-empty")
 	}
 
-	var rTmp, sTmp big.Int
+	var vTmp, rTmp, sTmp big.Int
 	for i, auth := range tx.AuthList {
+		// The tx-level chain ID above is bound to a specific Mezo network.
+		// Per-authorization chain IDs are intentionally only nil-and-bounds
+		// checked here: EIP-7702 allows auth.ChainID to be 0 (cross-chain) or
+		// the current chain id, with any other value making that single tuple
+		// invalid. Per EIP-7702 invalid tuples are silently skipped at apply
+		// time, not tx-fatal, so the 0-or-current check belongs in the keeper.
 		if auth.ChainID == nil {
 			return errorsmod.Wrapf(
 				errortypes.ErrInvalidChainID,
@@ -362,25 +370,21 @@ func (tx SetCodeTx) Validate() error {
 		if err := types.ValidateAddress(auth.Address); err != nil {
 			return errorsmod.Wrapf(err, "authorization[%d] invalid address", i)
 		}
-		if len(auth.V) > 1 {
-			return errorsmod.Wrapf(ErrInvalidSigner, "authorization[%d] V length out of bound", i)
-		}
-		if len(auth.V) == 1 && auth.V[0] > 1 {
-			return errorsmod.Wrapf(ErrInvalidSigner, "authorization[%d] V must be 0 or 1", i)
-		}
-		if len(auth.R) > 32 || len(auth.S) > 32 {
-			return errorsmod.Wrapf(ErrInvalidSigner, "authorization[%d] R or S length out of bound", i)
-		}
+		// Auth V/R/S shape is checked only for int256 bounds, mirroring
+		// tx-level signature validation. Canonical-form checks (V in {0,1},
+		// R/S non-zero, low-S, length <= 32) are deferred to the keeper's
+		// authorization recovery, where failures result in silent per-tuple
+		// skips per EIP-7702.
+		vTmp.SetBytes(auth.V)
 		rTmp.SetBytes(auth.R)
 		sTmp.SetBytes(auth.S)
-		if rTmp.Sign() == 0 || sTmp.Sign() == 0 {
-			return errorsmod.Wrapf(ErrInvalidSigner, "authorization[%d] R and S must be non-zero", i)
-		}
-		if !types.IsValidInt256(&rTmp) {
-			return errorsmod.Wrapf(ErrInvalidSigner, "authorization[%d] R out of bound", i)
-		}
-		if !types.IsValidInt256(&sTmp) {
-			return errorsmod.Wrapf(ErrInvalidSigner, "authorization[%d] S out of bound", i)
+		if !types.IsValidInt256(&vTmp) ||
+			!types.IsValidInt256(&rTmp) ||
+			!types.IsValidInt256(&sTmp) {
+			return errorsmod.Wrapf(
+				ErrInvalidSigner,
+				"authorization[%d] V, R or S out of bound", i,
+			)
 		}
 	}
 
