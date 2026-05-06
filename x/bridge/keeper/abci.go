@@ -19,7 +19,9 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 	var asserts []func(context.Context) error
 
 	if params.BtcSupplyAssertionEnabled {
-		asserts = append(asserts, k.verifyBTCSupply)
+		asserts = append(asserts, func(innerCtx context.Context) error {
+			return k.verifyBTCSupply(innerCtx, true)
+		})
 	}
 
 	for _, f := range asserts {
@@ -34,12 +36,22 @@ func (k *Keeper) EndBlock(ctx context.Context) error {
 	return nil
 }
 
+// VerifyBTCSupply is a silent wrapper over verifyBTCSupply, exported
+// for callers that want to enforce the same invariant outside the
+// bridge end-blocker.
+func (k *Keeper) VerifyBTCSupply(ctx context.Context) error {
+	return k.verifyBTCSupply(ctx, false)
+}
+
 // verifyBTCSupply asserts that:
 // btc_supply = total_btc_minted - total_btc_burnt.
 // btc_supply being the total supply of BTC as tracked by x/bank
 // and total_btc_{minted/burnt} being value tracked when the x/bridge
 // is instructed to burn or mint BTC.
-func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
+//
+// The verbose flag controls the per-block "safe BTC supply state"
+// info log so callers other than the end-blocker stay silent.
+func (k *Keeper) verifyBTCSupply(ctx context.Context, verbose bool) error {
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 
 	var (
@@ -55,11 +67,13 @@ func (k *Keeper) verifyBTCSupply(ctx context.Context) error {
 		)
 	}
 
-	k.Logger(sdkCtx).Info("safe BTC supply state",
-		"totalSupply", totalSupply.String(),
-		"totalMinted", totalMinted.String(),
-		"totalBurnt", totalBurnt.String(),
-	)
+	if verbose {
+		k.Logger(sdkCtx).Info("safe BTC supply state",
+			"totalSupply", totalSupply.String(),
+			"totalMinted", totalMinted.String(),
+			"totalBurnt", totalBurnt.String(),
+		)
+	}
 
 	return nil
 }
