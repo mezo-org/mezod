@@ -544,7 +544,7 @@ func (suite *StateDBTestSuite) TestFinaliseDeleteEmptyObjectsUnsupported() {
 	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
 
 	suite.Require().PanicsWithValue(
-		"unsupported on Mezo: empty-account deletion during Finalise",
+		"unsupported on Mezo: empty-account deletion during Finalise", //nolint:misspell
 		func() {
 			//nolint:misspell
 			db.Finalise(true)
