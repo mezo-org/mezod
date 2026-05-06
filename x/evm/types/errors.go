@@ -44,6 +44,7 @@ const (
 	codeErrInvalidGasLimit
 	codeErrInvalidSigner
 	codeErrTxTypeNotSupported
+	codeErrInvalidSupply
 )
 
 var ErrPostTxProcessing = errors.New("failed to execute post processing")
@@ -95,6 +96,11 @@ var (
 	ErrInvalidGasLimit    = errorsmod.Register(ModuleName, codeErrInvalidGasLimit, "invalid gas limit")
 	ErrInvalidSigner      = errorsmod.Register(ModuleName, codeErrInvalidSigner, "invalid signer")
 	ErrTxTypeNotSupported = errorsmod.Register(ModuleName, codeErrTxTypeNotSupported, "transaction type not supported")
+
+	// ErrInvalidSupply is returned when a post-commit invariant check
+	// rejects an EVM transaction.
+	ErrInvalidSupply = errorsmod.Register(ModuleName, codeErrInvalidSupply,
+		"EVM transaction failed post-commit invariant check")
 )
 
 // NewExecErrorWithReason unpacks the revert return bytes and returns a wrapped error
