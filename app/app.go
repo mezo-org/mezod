@@ -419,6 +419,11 @@ func NewMezo(
 		app.BlockedAddrs(),
 	)
 
+	// Inject the bridge BTC supply invariant check into the EVM keeper.
+	// Wired here (after both keepers exist) to keep x/evm free of any
+	// x/bridge import.
+	app.EvmKeeper.SetVerifyBTCSupply(app.BridgeKeeper.VerifyBTCSupply)
+
 	precompiles, err := customEvmPrecompiles(
 		logger,
 		app.BankKeeper,
