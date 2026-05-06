@@ -629,6 +629,15 @@ func (k *Keeper) applyMessageWithConfig(
 		if err := stateDB.Commit(); err != nil {
 			return nil, nil, errorsmod.Wrap(err, "failed to commit stateDB")
 		}
+
+		// Fail fast on txs whose post-commit state would break the
+		// bridge BTC supply invariant; rejecting here turns it into a
+		// regular tx-level failure instead of a downstream cosmos-level
+		// failure.
+		if err := k.verifyBTCSupply(ctx); err != nil {
+			return nil, nil, errorsmod.Wrap(types.ErrInvalidSupply, err.Error())
+		}
+
 		committedChanges = stateDB.CommittedStateChanges()
 		if len(committedChanges) > 0 {
 			ctx.Logger().Debug(
