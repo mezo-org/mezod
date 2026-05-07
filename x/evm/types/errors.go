@@ -44,6 +44,7 @@ const (
 	codeErrInvalidGasLimit
 	codeErrInvalidSigner
 	codeErrTxTypeNotSupported
+	codeErrInvalidSupply
 	codeErrSetCodeMissingTo
 	codeErrSetCodeEmptyAuthList
 )
@@ -97,6 +98,11 @@ var (
 	ErrInvalidGasLimit    = errorsmod.Register(ModuleName, codeErrInvalidGasLimit, "invalid gas limit")
 	ErrInvalidSigner      = errorsmod.Register(ModuleName, codeErrInvalidSigner, "invalid signer")
 	ErrTxTypeNotSupported = errorsmod.Register(ModuleName, codeErrTxTypeNotSupported, "transaction type not supported")
+
+	// ErrInvalidSupply is returned when a post-commit invariant check
+	// rejects an EVM transaction.
+	ErrInvalidSupply = errorsmod.Register(ModuleName, codeErrInvalidSupply,
+		"EVM transaction failed post-commit invariant check")
 
 	// ErrSetCodeMissingTo is returned when an EIP-7702 set-code transaction
 	// omits the recipient address. EIP-7702 forbids contract creation, which
