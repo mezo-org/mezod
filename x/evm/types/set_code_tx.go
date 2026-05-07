@@ -193,9 +193,11 @@ func (tx *SetCodeTx) GetTo() *common.Address {
 }
 
 // AsEthereumData returns a geth-side SetCodeTx built from this proto-formatted
-// TxData. Validate() must have run first: it guarantees ChainID, gas caps,
-// V/R/S, and To are all within bounds for uint256.MustFromBig. A nil Amount
-// is treated as zero, mirroring DynamicFeeTx semantics.
+// TxData. Validate() must have run first: it guarantees ChainID and gas caps
+// are non-nil and within int256 bounds, making uint256.MustFromBig safe on
+// them. Amount and V/R/S are bounds-checked but Validate permits them to be
+// nil — Amount for txs that transfer no value, V/R/S for unsigned txs — so
+// this method defaults them to a non-nil zero *uint256.Int.
 func (tx *SetCodeTx) AsEthereumData() ethtypes.TxData {
 	v, r, s := tx.GetRawSignatureValues()
 
@@ -207,6 +209,7 @@ func (tx *SetCodeTx) AsEthereumData() ethtypes.TxData {
 	chainID := uint256.MustFromBig(tx.GetChainID())
 	gasTipCap := uint256.MustFromBig(tx.GetGasTipCap())
 	gasFeeCap := uint256.MustFromBig(tx.GetGasFeeCap())
+
 	value := new(uint256.Int)
 	if amount := tx.GetValue(); amount != nil {
 		value = uint256.MustFromBig(amount)
