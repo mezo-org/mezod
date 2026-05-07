@@ -1,6 +1,8 @@
 package keeper_test
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -20,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
+	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/keeper"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -546,6 +549,8 @@ func (suite *KeeperTestSuite) TestEVMConfig() {
 	suite.Require().Equal(big.NewInt(0), cfg.BaseFee)
 	suite.Require().Equal(suite.address, cfg.CoinBase)
 	suite.Require().Equal(types.DefaultParams().ChainConfig.EthereumConfig(big.NewInt(31611)), cfg.ChainConfig)
+	suite.Require().Nil(cfg.ChainConfig.VerkleTime)
+	suite.Require().False(cfg.ChainConfig.IsEIP4762(big.NewInt(suite.ctx.BlockHeight()), big.NewInt(suite.ctx.BlockTime().Unix()).Uint64()))
 }
 
 func (suite *KeeperTestSuite) TestNewEVM_BlobBaseFee() {
@@ -890,6 +895,65 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 			suite.Require().Equal(expectedGasUsed, res.GasUsed)
 		})
 	}
+}
+
+func (suite *KeeperTestSuite) TestApplyMessageWithConfigInvalidSupply() {
+	suite.SetupTest()
+
+	amt := sdk.Coins{mezotypes.NewMezoCoinInt64(100)}
+	err := suite.app.BankKeeper.MintCoins(suite.ctx, types.ModuleName, amt)
+	suite.Require().NoError(err)
+	err = suite.app.BankKeeper.SendCoinsFromModuleToAccount(
+		suite.ctx,
+		types.ModuleName,
+		suite.address.Bytes(),
+		amt,
+	)
+	suite.Require().NoError(err)
+
+	proposerAddress := suite.ctx.BlockHeader().ProposerAddress
+	config, err := suite.app.EvmKeeper.EVMConfig(
+		suite.ctx,
+		proposerAddress,
+		big.NewInt(31611),
+	)
+	suite.Require().NoError(err)
+
+	keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+	chainCfg := keeperParams.ChainConfig.EthereumConfig(
+		suite.app.EvmKeeper.ChainID(),
+	)
+	signer := ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
+	vmdb := suite.StateDB()
+	msg, err := newNativeMessage(
+		vmdb.GetNonce(suite.address),
+		suite.ctx.BlockHeight(),
+		suite.address,
+		chainCfg,
+		suite.signer,
+		signer,
+		ethtypes.AccessListTxType,
+		nil,
+		nil,
+		big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
+	)
+	suite.Require().NoError(err)
+
+	suite.app.EvmKeeper.SetVerifyBTCSupply(func(_ context.Context) error {
+		return errors.New("invalid supply")
+	})
+
+	txConfig := suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{})
+	_, _, err = suite.app.EvmKeeper.ApplyMessageWithConfig(
+		suite.ctx,
+		keeper.WrapMessage(msg),
+		nil,
+		true,
+		config,
+		txConfig,
+	)
+
+	suite.Require().ErrorIs(err, types.ErrInvalidSupply)
 }
 
 func (suite *KeeperTestSuite) createContractGethMsg(nonce uint64, signer ethtypes.Signer, cfg *params.ChainConfig, gasPrice, blockTime *big.Int) (core.Message, error) {

@@ -40,6 +40,31 @@ func TestEndBlock(t *testing.T) {
 	})
 }
 
+func TestVerifyBTCSupply(t *testing.T) {
+	ctx, k := mockContext()
+
+	require.NoError(t, k.IncreaseBTCMinted(ctx, math.NewInt(42)))
+	require.NoError(t, k.IncreaseBTCBurnt(ctx, math.NewInt(21)))
+
+	t.Run("returns nil when state is valid", func(t *testing.T) {
+		k.bankKeeper.(*mockBankKeeper).
+			On("GetSupply", ctx, evmtypes.DefaultEVMDenom).
+			Return(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(21))).
+			Times(1)
+
+		require.NoError(t, k.VerifyBTCSupply(ctx))
+	})
+
+	t.Run("returns error when state is invalid", func(t *testing.T) {
+		k.bankKeeper.(*mockBankKeeper).
+			On("GetSupply", ctx, evmtypes.DefaultEVMDenom).
+			Return(sdk.NewCoin(evmtypes.DefaultEVMDenom, math.NewInt(37))).
+			Times(1)
+
+		require.ErrorContains(t, k.VerifyBTCSupply(ctx), "invalid asset supply")
+	})
+}
+
 func TestHandleOutflowReset(t *testing.T) {
 	ctx, keeper := mockContext()
 	tokenAddr1 := common.HexToAddress("0x1111111111111111111111111111111111111111").Bytes()
