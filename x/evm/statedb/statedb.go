@@ -434,22 +434,38 @@ func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
 	return nil
 }
 
-// Finalise clears per-call state for flows that reuse one StateDB without
-// committing between calls, such as simulations. Normal transaction execution
-// does not call it because Mezod creates and discards a StateDB per transaction.
+// Finalise satisfies vm.StateDB on go-ethereum v1.16.9. It's a no-op
+// stub kept solely for interface compliance.
 //
-// State objects, access list, and the live cached Cosmos context are preserved,
-// so accumulated cross-call account/storage mutations and precompile-side writes
-// remain visible. The journal and revision stack are cleared to bound memory and
-// to prevent reverting across call boundaries. Callers must not hold a live
-// Snapshot() across this call.
+// Geth's Finalise flushes dirty objects toward a trie root and may
+// delete EIP-158-empty accounts. Mezo does neither, because it uses
+// a fresh StateDB per tx and account-level deletion lives at the
+// keeper layer.
 //
 //nolint:misspell
-func (s *StateDB) Finalise(deleteEmptyObjects bool) {
-	if deleteEmptyObjects {
-		panic("unsupported on Mezo: empty-account deletion during Finalise")
-	}
+func (s *StateDB) Finalise(_ bool) {}
 
+// ResetTxEphemerals clears per-call ephemeral state (logs, refund,
+// transient storage, journal, revision stack, and the EIP-6780
+// newContract flag) and resets the precompile-call counter while
+// preserving state objects, access list, and the live cached cosmos
+// ctx — so accumulated cross-call account/storage mutations and
+// precompile-side writes remain visible. Used by simulate drivers
+// running several calls against a shared StateDB without committing
+// between them.
+//
+// Clearing the journal bounds memory: each custom-precompile call
+// appends a multistore Clone() to the journal, which would otherwise
+// accumulate across the whole request. It also disarms the latent
+// panic where addLogChange.Revert reads s.logs[len-1] after s.logs
+// has been cleared by a prior ResetTxEphemerals call.
+//
+// Invariant: callers must not hold a live Snapshot() across this call.
+// The revision stack is wiped, so a stale revision id will fail
+// RevertToSnapshot. The simulate driver does not snapshot at the top
+// level; future drivers must preserve that.
+func (s *StateDB) ResetTxEphemerals() {
+	s.logs = nil
 	s.refund = 0
 	s.transientStorage = newTransientStorage()
 	s.ongoingPrecompilesCallsCounter = 0
@@ -457,12 +473,17 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	s.validRevisions = nil
 	s.nextRevisionID = 0
 
+	// EIP-6780: each simulated call is a separate transaction, so
+	// newContract has to be cleared between calls — otherwise a
+	// contract created in call N could be 6780-destroyed in call N+1.
+	// Geth handles this at end-of-tx by iterating journal.dirties;
+	// we just reset the journal above, so dirties is empty by the
+	// time this loop runs. Iterating live state objects sidesteps
+	// that ordering dependency, and the assignment is a no-op for
+	// anything that never had the flag.
 	for _, obj := range s.stateObjects {
 		obj.newContract = false
 	}
-
-	// Since we are using Finalise() for simulations, we also clear the logs.
-	s.logs = nil
 }
 
 // GetCode returns the code of account, nil if not exists.

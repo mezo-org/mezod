@@ -507,7 +507,7 @@ func (suite *StateDBTestSuite) TestSelfDestruct6780ReturnValues() {
 	suite.Require().True(destroyed)
 }
 
-func (suite *StateDBTestSuite) TestFinalise() {
+func (suite *StateDBTestSuite) TestFinaliseNoOp() {
 	key := common.BigToHash(big.NewInt(1))
 	value := common.BigToHash(big.NewInt(2))
 
@@ -524,32 +524,20 @@ func (suite *StateDBTestSuite) TestFinalise() {
 	db.SetState(address, key, value)
 	db.Snapshot()
 
-	//nolint:misspell
 	db.Finalise(false)
+	db.Finalise(true)
 
-	suite.Require().Equal(uint64(0), db.GetRefund())
-	suite.Require().Equal(common.Hash{}, db.GetTransientState(address, key))
-	suite.Require().Empty(db.Logs())
-	suite.Require().Panics(func() {
+	suite.Require().Equal(uint64(42), db.GetRefund())
+	suite.Require().Equal(value, db.GetTransientState(address, key))
+	suite.Require().Len(db.Logs(), 1)
+	suite.Require().NotPanics(func() {
 		db.RevertToSnapshot(0)
 	})
 	balance, destroyed := db.SelfDestruct6780(address)
-	suite.Require().False(destroyed)
+	suite.Require().True(destroyed)
 	suite.Require().Equal(*uint256.NewInt(100), balance)
 
 	suite.Require().NoError(db.Commit())
-}
-
-func (suite *StateDBTestSuite) TestFinaliseDeleteEmptyObjectsUnsupported() {
-	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
-
-	suite.Require().PanicsWithValue(
-		"unsupported on Mezo: empty-account deletion during Finalise", //nolint:misspell
-		func() {
-			//nolint:misspell
-			db.Finalise(true)
-		},
-	)
 }
 
 func (suite *StateDBTestSuite) TestAccessList() {
@@ -898,7 +886,7 @@ func (suite *StateDBTestSuite) TestCommittedStateChanges() {
 	suite.Require().Equal(value2, changeMap[key2].Value)
 }
 
-func (suite *StateDBTestSuite) TestFinaliseReusableStateDB() {
+func (suite *StateDBTestSuite) TestResetTxEphemeralsReusableStateDB() {
 	key1 := common.BigToHash(big.NewInt(1))
 	value1 := common.BigToHash(big.NewInt(2))
 
@@ -912,7 +900,7 @@ func (suite *StateDBTestSuite) TestFinaliseReusableStateDB() {
 	db.Prepare(rules, address, address, nil, nil, nil)
 
 	// Prime per-call ephemeral state alongside an account mutation that
-	// must survive the finalize.
+	// must survive the reset.
 	db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 	db.CreateContract(address)
 	db.AddLog(&ethtypes.Log{Address: address})
@@ -926,7 +914,7 @@ func (suite *StateDBTestSuite) TestFinaliseReusableStateDB() {
 		db.RegisterCachedCtxCheckpoint(address, ccp),
 	)
 
-	// Bump the revision stack so the post-finalize id reset is
+	// Bump the revision stack so the post-reset id reset is
 	// observable. Without these calls nextRevisionID is already 0 and
 	// the assertion below would hold tautologically.
 	suite.Require().Equal(0, db.Snapshot())
@@ -936,8 +924,7 @@ func (suite *StateDBTestSuite) TestFinaliseReusableStateDB() {
 	suite.Require().Equal(uint64(42), db.GetRefund())
 	suite.Require().Equal(value1, db.GetTransientState(address, key1))
 
-	//nolint:misspell
-	db.Finalise(false)
+	db.ResetTxEphemerals()
 
 	suite.Require().Empty(db.Logs())
 	suite.Require().Equal(uint64(0), db.GetRefund())
@@ -950,11 +937,11 @@ func (suite *StateDBTestSuite) TestFinaliseReusableStateDB() {
 	suite.Require().False(destroyed)
 	suite.Require().Equal(*uint256.NewInt(100), balance)
 
-	// The counter is reset: after the finalize we can register
+	// The counter is reset: after the reset we can register
 	// checkpoints up to the EvmKeeper's cap anew. The cap is not
 	// exposed from the test package, so we exercise the "fresh start"
 	// guarantee by confirming at least one additional registration
-	// succeeds post-finalize even though the counter was already
+	// succeeds post-reset even though the counter was already
 	// incremented before.
 	suite.Require().NoError(
 		db.RegisterCachedCtxCheckpoint(address, ccp),
