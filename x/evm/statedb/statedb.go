@@ -430,13 +430,65 @@ func (s *StateDB) Witness() *stateless.Witness {
 }
 
 func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
-	// TODO (geth-upgrade): implement when adding support for the new access-event flow in 1.16.9.
+	// Mezo does not activate Verkle/EIP-4762 and does not rely on Verkle trees.
 	return nil
 }
 
+// Finalise satisfies vm.StateDB on go-ethereum v1.16.9. It's a no-op
+// stub kept solely for interface compliance.
+//
+// Geth's Finalise flushes dirty objects toward a trie root and may
+// delete EIP-158-empty accounts. Mezo does neither, because it uses
+// a fresh StateDB per tx and account-level deletion lives at the
+// keeper layer.
+//
 //nolint:misspell
-func (s *StateDB) Finalise(bool) {
-	// TODO (geth-upgrade): implement when adding support for the new state finalization flow in 1.16.9.
+func (s *StateDB) Finalise(_ bool) {}
+
+// ResetTxEphemerals clears per-call ephemeral state (logs, refund,
+// transient storage, journal, revision stack, and the EIP-6780
+// newContract flag) and resets the precompile-call counter while
+// preserving state objects, access list, and the live cached cosmos
+// ctx — so accumulated cross-call account/storage mutations and
+// precompile-side writes remain visible. Used by simulate drivers
+// running several calls against a shared StateDB without committing
+// between them.
+//
+// Clearing the journal bounds memory: each custom-precompile call
+// appends a multistore Clone() to the journal, which would otherwise
+// accumulate across the whole request. It also disarms the latent
+// panic where addLogChange.Revert reads s.logs[len-1] after s.logs
+// has been cleared by a prior ResetTxEphemerals call.
+//
+// Invariant: callers must not hold a live Snapshot() across this call.
+// The revision stack is wiped, so a stale revision id will fail
+// RevertToSnapshot. The simulate driver does not snapshot at the top
+// level; future drivers must preserve that.
+//
+// Divergence from geth: self-destructed objects stay live in
+// s.stateObjects until Commit. In a simulated call sequence, call N+1
+// can therefore still observe Exist(addr)==true for an account
+// self-destructed in call N.
+func (s *StateDB) ResetTxEphemerals() {
+	s.logs = nil
+	s.refund = 0
+	s.transientStorage = newTransientStorage()
+	s.ongoingPrecompilesCallsCounter = 0
+	s.journal = newJournal()
+	s.validRevisions = nil
+	s.nextRevisionID = 0
+
+	// EIP-6780: each simulated call is a separate transaction, so
+	// newContract has to be cleared between calls — otherwise a
+	// contract created in call N could be 6780-destroyed in call N+1.
+	// Geth handles this at end-of-tx by iterating journal.dirties;
+	// we just reset the journal above, so dirties is empty by the
+	// time this loop runs. Iterating live state objects sidesteps
+	// that ordering dependency, and the assignment is a no-op for
+	// anything that never had the flag.
+	for _, obj := range s.stateObjects {
+		obj.newContract = false
+	}
 }
 
 // GetCode returns the code of account, nil if not exists.
@@ -486,7 +538,6 @@ func (s *StateDB) GetCommittedState(addr common.Address, hash common.Hash) commo
 
 // GetStateAndCommittedState returns the current value and the committed value.
 func (s *StateDB) GetStateAndCommittedState(addr common.Address, hash common.Hash) (common.Hash, common.Hash) {
-	// TODO (geth-upgrade): check when reviewing state access changes in 1.16.9.
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.GetState(hash), stateObject.GetCommittedState(hash)
@@ -821,38 +872,6 @@ func (ccc *CachedCtxCheckpoint) Revert(stateDB *StateDB) {
 		// at time of creation
 		ccc.ms.Write()
 	}
-}
-
-// FinaliseBetweenCalls clears per-call ephemeral state (logs, refund,
-// transient storage, journal, and revision stack) and resets the
-// precompile-call counter while preserving state objects, access list,
-// and the live cached cosmos ctx — so accumulated cross-call
-// account/storage mutations and precompile-side writes remain visible.
-// Used by simulate drivers running several calls against a shared
-// StateDB without committing between them.
-//
-// Clearing the journal bounds memory: each custom-precompile call
-// appends a multistore Clone() to the journal, which would otherwise
-// accumulate across the whole request. It also disarms the latent
-// panic where addLogChange.Revert reads s.logs[len-1] after s.logs has
-// been niled by a prior FinaliseBetweenCalls.
-//
-// Invariant: callers must not hold a live Snapshot() across this call.
-// The revision stack is wiped, so a stale revision id will fail
-// RevertToSnapshot. The simulate driver does not snapshot at the
-// top level; future drivers must preserve that.
-//
-// TODO (geth-upgrade): v1.16.9 introduces the canonical-spelled geth
-// finaliser on the [vm.StateDB] interface; once the upgrade lands,
-// this helper collapses into that call plus the counter reset.
-func (s *StateDB) FinaliseBetweenCalls() {
-	s.logs = nil
-	s.refund = 0
-	s.transientStorage = newTransientStorage()
-	s.ongoingPrecompilesCallsCounter = 0
-	s.journal = newJournal()
-	s.validRevisions = nil
-	s.nextRevisionID = 0
 }
 
 func (s *StateDB) CacheContext() (sdk.Context, *CachedCtxCheckpoint) {
