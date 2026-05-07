@@ -8,9 +8,13 @@
 
 ## Current progress
 
-- **Phase 1 — done.** `prague_time` plumbed through `ChainConfig`, plus
-  the eight additional fork-time placeholders bundled in via MEZO-4007.
+- **Phase 1.** `prague_time` plumbed through `ChainConfig`, plus the
+  eight additional fork-time placeholders bundled in via MEZO-4007.
   PR: [#673](https://github.com/mezo-org/mezod/pull/673).
+- **Phase 2.** `SetCodeTx` and `SetCodeAuthorization` proto messages
+  plus the Cosmos `TxData` implementation, with stateless validation
+  and a pre-Prague ante gate.
+  PR: [#674](https://github.com/mezo-org/mezod/pull/674).
 
 ## Status of prerequisites
 
