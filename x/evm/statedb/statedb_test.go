@@ -524,7 +524,9 @@ func (suite *StateDBTestSuite) TestFinaliseNoOp() {
 	db.SetState(address, key, value)
 	db.Snapshot()
 
+	//nolint:misspell
 	db.Finalise(false)
+	//nolint:misspell
 	db.Finalise(true)
 
 	suite.Require().Equal(uint64(42), db.GetRefund())
