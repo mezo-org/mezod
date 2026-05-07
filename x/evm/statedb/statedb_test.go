@@ -456,6 +456,11 @@ func (suite *StateDBTestSuite) TestGetStateAndCommittedState() {
 	suite.Require().Equal(common.Hash{}, committed)
 }
 
+func (suite *StateDBTestSuite) TestAccessEvents() {
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	suite.Require().Nil(db.AccessEvents())
+}
+
 func (suite *StateDBTestSuite) TestMutationReturnValues() {
 	key := common.BigToHash(big.NewInt(1))
 	value1 := common.BigToHash(big.NewInt(2))
@@ -891,6 +896,7 @@ func (suite *StateDBTestSuite) TestCommittedStateChanges() {
 func (suite *StateDBTestSuite) TestResetTxEphemeralsReusableStateDB() {
 	key1 := common.BigToHash(big.NewInt(1))
 	value1 := common.BigToHash(big.NewInt(2))
+	addr2 := common.BigToAddress(big.NewInt(202))
 
 	// The suite's ctx carries a real MultiStore, required for
 	// CacheContext() when we exercise the precompile-call counter.
@@ -905,14 +911,23 @@ func (suite *StateDBTestSuite) TestResetTxEphemeralsReusableStateDB() {
 	// must survive the reset.
 	db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 	db.CreateContract(address)
+	db.AddBalance(addr2, uint256.NewInt(50), tracing.BalanceChangeUnspecified)
+	db.CreateContract(addr2)
 	db.AddLog(&ethtypes.Log{Address: address})
 	db.AddRefund(42)
 	db.SetTransientState(address, key1, value1)
 
 	// Trigger the precompile-call counter via a registered cache-ctx
-	// checkpoint so we can observe it resetting.
+	// checkpoint so we can observe it hitting the cap and then resetting.
 	_, ccp := db.CacheContext()
-	suite.Require().NoError(
+	maxCalls := suite.app.EvmKeeper.GetMaxPrecompilesCallsPerExecution(suite.ctx)
+	suite.Require().NotZero(maxCalls)
+	for i := uint(0); i < maxCalls; i++ {
+		suite.Require().NoError(
+			db.RegisterCachedCtxCheckpoint(address, ccp),
+		)
+	}
+	suite.Require().Error(
 		db.RegisterCachedCtxCheckpoint(address, ccp),
 	)
 
@@ -935,17 +950,23 @@ func (suite *StateDBTestSuite) TestResetTxEphemeralsReusableStateDB() {
 	// Account mutation is preserved: state objects are not dropped.
 	suite.Require().True(db.Exist(address))
 	suite.Require().Equal(uint256.NewInt(100), db.GetBalance(address))
+	suite.Require().True(db.Exist(addr2))
+	suite.Require().Equal(uint256.NewInt(50), db.GetBalance(addr2))
 	balance, destroyed := db.SelfDestruct6780(address)
 	suite.Require().False(destroyed)
 	suite.Require().Equal(*uint256.NewInt(100), balance)
+	balance, destroyed = db.SelfDestruct6780(addr2)
+	suite.Require().False(destroyed)
+	suite.Require().Equal(*uint256.NewInt(50), balance)
 
-	// The counter is reset: after the reset we can register
-	// checkpoints up to the EvmKeeper's cap anew. The cap is not
-	// exposed from the test package, so we exercise the "fresh start"
-	// guarantee by confirming at least one additional registration
-	// succeeds post-reset even though the counter was already
-	// incremented before.
-	suite.Require().NoError(
+	// The counter is reset: after the reset we can register up to the
+	// cap anew, and the next registration fails again.
+	for i := uint(0); i < maxCalls; i++ {
+		suite.Require().NoError(
+			db.RegisterCachedCtxCheckpoint(address, ccp),
+		)
+	}
+	suite.Require().Error(
 		db.RegisterCachedCtxCheckpoint(address, ccp),
 	)
 

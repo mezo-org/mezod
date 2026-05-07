@@ -464,6 +464,11 @@ func (s *StateDB) Finalise(_ bool) {}
 // The revision stack is wiped, so a stale revision id will fail
 // RevertToSnapshot. The simulate driver does not snapshot at the top
 // level; future drivers must preserve that.
+//
+// Divergence from geth: self-destructed objects stay live in
+// s.stateObjects until Commit. In a simulated call sequence, call N+1
+// can therefore still observe Exist(addr)==true for an account
+// self-destructed in call N.
 func (s *StateDB) ResetTxEphemerals() {
 	s.logs = nil
 	s.refund = 0
