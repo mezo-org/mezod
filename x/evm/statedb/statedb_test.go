@@ -415,6 +415,138 @@ func (suite *StateDBTestSuite) TestInvalidSnapshotId() {
 	})
 }
 
+func (suite *StateDBTestSuite) TestGetStateAndCommittedState() {
+	key1 := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	value2 := common.BigToHash(big.NewInt(3))
+	key2 := common.BigToHash(big.NewInt(4))
+	value3 := common.BigToHash(big.NewInt(5))
+
+	keeper := statedb.NewMockKeeper()
+	db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+
+	current, committed := db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(common.Hash{}, current)
+	suite.Require().Equal(common.Hash{}, committed)
+
+	db.SetState(address, key1, value1)
+	suite.Require().NoError(db.Commit())
+
+	db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(value1, current)
+	suite.Require().Equal(value1, committed)
+
+	db.SetState(address, key1, value2)
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(value2, current)
+	suite.Require().Equal(value1, committed)
+
+	db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+	db.OverrideStorage(address, map[common.Hash]common.Hash{
+		key2: value3,
+	})
+
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(common.Hash{}, current)
+	suite.Require().Equal(common.Hash{}, committed)
+
+	current, committed = db.GetStateAndCommittedState(address, key2)
+	suite.Require().Equal(value3, current)
+	suite.Require().Equal(common.Hash{}, committed)
+}
+
+func (suite *StateDBTestSuite) TestAccessEvents() {
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	suite.Require().Nil(db.AccessEvents())
+}
+
+func (suite *StateDBTestSuite) TestMutationReturnValues() {
+	key := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	value2 := common.BigToHash(big.NewInt(3))
+	code1 := []byte("hello world")
+	code2 := []byte("goodbye world")
+
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+
+	prevBalance := db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(0), prevBalance)
+
+	prevBalance = db.AddBalance(address, uint256.NewInt(5), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+
+	prevBalance = db.SubBalance(address, uint256.NewInt(3), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(15), prevBalance)
+
+	prevCode := db.SetCode(address, code1, tracing.CodeChangeUnspecified)
+	suite.Require().Nil(prevCode)
+
+	prevCode = db.SetCode(address, code2, tracing.CodeChangeUnspecified)
+	suite.Require().Equal(code1, prevCode)
+
+	prevState := db.SetState(address, key, value1)
+	suite.Require().Equal(common.Hash{}, prevState)
+
+	prevState = db.SetState(address, key, value2)
+	suite.Require().Equal(value1, prevState)
+
+	prevBalance = db.SelfDestruct(address)
+	suite.Require().Equal(*uint256.NewInt(12), prevBalance)
+}
+
+func (suite *StateDBTestSuite) TestSelfDestruct6780ReturnValues() {
+	existingDB := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	existingDB.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+
+	prevBalance, destroyed := existingDB.SelfDestruct6780(address)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+	suite.Require().False(destroyed)
+
+	createdDB := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	createdDB.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+	createdDB.CreateContract(address)
+
+	prevBalance, destroyed = createdDB.SelfDestruct6780(address)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+	suite.Require().True(destroyed)
+}
+
+func (suite *StateDBTestSuite) TestFinaliseNoOp() {
+	key := common.BigToHash(big.NewInt(1))
+	value := common.BigToHash(big.NewInt(2))
+
+	db := statedb.New(suite.ctx, suite.app.EvmKeeper, emptyTxConfig)
+	rules := params.Rules{IsBerlin: true}
+	db.Prepare(rules, address, address, nil, nil, nil)
+
+	db.CreateAccount(address)
+	db.CreateContract(address)
+	db.AddRefund(42)
+	db.SetTransientState(address, key, value)
+	db.AddLog(&ethtypes.Log{Address: address})
+	db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+	db.SetState(address, key, value)
+	db.Snapshot()
+
+	//nolint:misspell
+	db.Finalise(false)
+	//nolint:misspell
+	db.Finalise(true)
+
+	suite.Require().Equal(uint64(42), db.GetRefund())
+	suite.Require().Equal(value, db.GetTransientState(address, key))
+	suite.Require().Len(db.Logs(), 1)
+	suite.Require().NotPanics(func() {
+		db.RevertToSnapshot(0)
+	})
+	balance, destroyed := db.SelfDestruct6780(address)
+	suite.Require().True(destroyed)
+	suite.Require().Equal(*uint256.NewInt(100), balance)
+
+	suite.Require().NoError(db.Commit())
+}
+
 func (suite *StateDBTestSuite) TestAccessList() {
 	value1 := common.BigToHash(big.NewInt(1))
 	value2 := common.BigToHash(big.NewInt(2))
@@ -761,9 +893,10 @@ func (suite *StateDBTestSuite) TestCommittedStateChanges() {
 	suite.Require().Equal(value2, changeMap[key2].Value)
 }
 
-func (suite *StateDBTestSuite) TestFinaliseBetweenCalls() {
+func (suite *StateDBTestSuite) TestResetTxEphemeralsReusableStateDB() {
 	key1 := common.BigToHash(big.NewInt(1))
 	value1 := common.BigToHash(big.NewInt(2))
+	addr2 := common.BigToAddress(big.NewInt(202))
 
 	// The suite's ctx carries a real MultiStore, required for
 	// CacheContext() when we exercise the precompile-call counter.
@@ -775,20 +908,30 @@ func (suite *StateDBTestSuite) TestFinaliseBetweenCalls() {
 	db.Prepare(rules, address, address, nil, nil, nil)
 
 	// Prime per-call ephemeral state alongside an account mutation that
-	// must survive the finalize.
+	// must survive the reset.
 	db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+	db.CreateContract(address)
+	db.AddBalance(addr2, uint256.NewInt(50), tracing.BalanceChangeUnspecified)
+	db.CreateContract(addr2)
 	db.AddLog(&ethtypes.Log{Address: address})
 	db.AddRefund(42)
 	db.SetTransientState(address, key1, value1)
 
 	// Trigger the precompile-call counter via a registered cache-ctx
-	// checkpoint so we can observe it resetting.
+	// checkpoint so we can observe it hitting the cap and then resetting.
 	_, ccp := db.CacheContext()
-	suite.Require().NoError(
+	maxCalls := suite.app.EvmKeeper.GetMaxPrecompilesCallsPerExecution(suite.ctx)
+	suite.Require().NotZero(maxCalls)
+	for i := uint(0); i < maxCalls; i++ {
+		suite.Require().NoError(
+			db.RegisterCachedCtxCheckpoint(address, ccp),
+		)
+	}
+	suite.Require().Error(
 		db.RegisterCachedCtxCheckpoint(address, ccp),
 	)
 
-	// Bump the revision stack so the post-finalize id reset is
+	// Bump the revision stack so the post-reset id reset is
 	// observable. Without these calls nextRevisionID is already 0 and
 	// the assertion below would hold tautologically.
 	suite.Require().Equal(0, db.Snapshot())
@@ -798,7 +941,7 @@ func (suite *StateDBTestSuite) TestFinaliseBetweenCalls() {
 	suite.Require().Equal(uint64(42), db.GetRefund())
 	suite.Require().Equal(value1, db.GetTransientState(address, key1))
 
-	db.FinaliseBetweenCalls()
+	db.ResetTxEphemerals()
 
 	suite.Require().Empty(db.Logs())
 	suite.Require().Equal(uint64(0), db.GetRefund())
@@ -807,14 +950,23 @@ func (suite *StateDBTestSuite) TestFinaliseBetweenCalls() {
 	// Account mutation is preserved: state objects are not dropped.
 	suite.Require().True(db.Exist(address))
 	suite.Require().Equal(uint256.NewInt(100), db.GetBalance(address))
+	suite.Require().True(db.Exist(addr2))
+	suite.Require().Equal(uint256.NewInt(50), db.GetBalance(addr2))
+	balance, destroyed := db.SelfDestruct6780(address)
+	suite.Require().False(destroyed)
+	suite.Require().Equal(*uint256.NewInt(100), balance)
+	balance, destroyed = db.SelfDestruct6780(addr2)
+	suite.Require().False(destroyed)
+	suite.Require().Equal(*uint256.NewInt(50), balance)
 
-	// The counter is reset: after the finalize we can register
-	// checkpoints up to the EvmKeeper's cap anew. The cap is not
-	// exposed from the test package, so we exercise the "fresh start"
-	// guarantee by confirming at least one additional registration
-	// succeeds post-finalize even though the counter was already
-	// incremented before.
-	suite.Require().NoError(
+	// The counter is reset: after the reset we can register up to the
+	// cap anew, and the next registration fails again.
+	for i := uint(0); i < maxCalls; i++ {
+		suite.Require().NoError(
+			db.RegisterCachedCtxCheckpoint(address, ccp),
+		)
+	}
+	suite.Require().Error(
 		db.RegisterCachedCtxCheckpoint(address, ccp),
 	)
 

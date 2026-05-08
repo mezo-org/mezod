@@ -508,12 +508,12 @@ func (k *Keeper) processSimBlock(
 			return nil, nil, types.NewSimTimeout(timeout)
 		}
 
-		// Clear per-call ephemerals (logs, refund, transient storage,
-		// precompile call counter) while preserving account/storage
-		// mutations. Runs unconditionally at the top of every call —
-		// idempotent on a fresh StateDB, covers both call boundaries
-		// within a block and block boundaries (call 0 of block N+1).
-		sdb.FinaliseBetweenCalls()
+		// Clear per-call ephemeral bookkeeping while preserving
+		// account/storage mutations. Runs unconditionally at the top
+		// of every call — idempotent on a fresh StateDB, covers both
+		// call boundaries within a block and block boundaries
+		// (call 0 of block N+1).
+		sdb.ResetTxEphemerals()
 
 		args := block.Calls[i]
 		args.Nonce = resolveSimCallNonce(sdb, &args)
