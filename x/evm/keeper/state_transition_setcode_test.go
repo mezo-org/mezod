@@ -3,7 +3,6 @@ package keeper_test
 import (
 	"crypto/ecdsa"
 	"encoding/json"
-	"math"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
@@ -36,6 +35,7 @@ func (suite *KeeperTestSuite) signedAuth(
 	nonce uint64,
 	priv *ecdsa.PrivateKey,
 ) ethtypes.SetCodeAuthorization {
+	suite.T().Helper()
 	chainU256 := new(uint256.Int)
 	if chainID != nil {
 		chainU256 = uint256.MustFromBig(chainID)
@@ -54,371 +54,18 @@ func (suite *KeeperTestSuite) signedAuth(
 // authority account is *not* yet present in state until something funds it
 // or sets its code/nonce.
 func (suite *KeeperTestSuite) makeAuthorityKey() (*ecdsa.PrivateKey, common.Address) {
+	suite.T().Helper()
 	priv, err := crypto.GenerateKey()
 	suite.Require().NoError(err)
 	return priv, crypto.PubkeyToAddress(priv.PublicKey)
 }
 
-// ensureAuthorityExists creates an empty account at `addr` and commits it,
-// so subsequent reads via a fresh StateDB see it as existing.
-func (suite *KeeperTestSuite) ensureAuthorityExists(addr common.Address) {
-	acc := &mezotypes.EthAccount{
-		BaseAccount: authtypes.NewBaseAccount(
-			addr.Bytes(),
-			nil,
-			suite.app.AccountKeeper.NextAccountNumber(suite.ctx),
-			0,
-		),
-		CodeHash: common.BytesToHash(crypto.Keccak256(nil)).String(),
-	}
-	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
-}
-
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_Validation() {
-	chainID := suite.app.EvmKeeper.ChainID()
-	target := common.HexToAddress("0xdEAD000000000000000000000000000000000001")
-
-	type tc struct {
-		name string
-		// build returns the auth + the authority address. The authority's
-		// pre-existing nonce/code is set up in `setup`.
-		build func() (ethtypes.SetCodeAuthorization, common.Address)
-		setup func(common.Address)
-		// expectErr is the exact sentinel the validation branch must
-		// return. Asserted via errors.Is so the wrapped invalid-signature
-		// case (fmt.Errorf("%w: %v", ...)) still matches.
-		expectErr error
-		// expectWarmed reports whether the authority must be in the access
-		// list after the (failing) call. Geth's ordering warms the authority
-		// after signature recovery but before the destination-code and
-		// nonce-mismatch checks, so failures past signature recovery leave
-		// the authority warmed.
-		expectWarmed bool
-		// expectCodeUnchanged, when non-nil, asserts the authority retains
-		// this exact code after the failing call (vs. nil/empty for fresh
-		// authorities).
-		expectCodeUnchanged []byte
-	}
-
-	cases := []tc{
-		{
-			name: "wrong chain id",
-			build: func() (ethtypes.SetCodeAuthorization, common.Address) {
-				priv, authority := suite.makeAuthorityKey()
-				wrong := new(big.Int).Add(chainID, big.NewInt(1))
-				return suite.signedAuth(wrong, target, 0, priv), authority
-			},
-			expectErr:    keeper.ErrSetCodeAuthorizationWrongChainID,
-			expectWarmed: false,
-		},
-		{
-			name: "nonce overflow",
-			build: func() (ethtypes.SetCodeAuthorization, common.Address) {
-				priv, authority := suite.makeAuthorityKey()
-				return suite.signedAuth(chainID, target, math.MaxUint64, priv), authority
-			},
-			expectErr:    keeper.ErrSetCodeAuthorizationNonceOverflow,
-			expectWarmed: false,
-		},
-		{
-			name: "nonce mismatch",
-			build: func() (ethtypes.SetCodeAuthorization, common.Address) {
-				priv, authority := suite.makeAuthorityKey()
-				// authority has nonce 0 in state; sign with nonce 5.
-				return suite.signedAuth(chainID, target, 5, priv), authority
-			},
-			expectErr:    keeper.ErrSetCodeAuthorizationNonceMismatch,
-			expectWarmed: true,
-		},
-		{
-			// EIP-7702's destination-has-code check is on the AUTHORITY's
-			// existing code (not the target's): an authority that already
-			// holds non-delegation bytecode cannot be re-delegated.
-			name: "authority already has non-delegation code",
-			build: func() (ethtypes.SetCodeAuthorization, common.Address) {
-				priv, authority := suite.makeAuthorityKey()
-				return suite.signedAuth(chainID, target, 0, priv), authority
-			},
-			setup: func(authority common.Address) {
-				vmdb := suite.StateDB()
-				vmdb.SetCode(authority, []byte{0x60, 0x60, 0x60, 0x40}, tracing.CodeChangeUnspecified)
-				suite.Require().NoError(vmdb.Commit())
-			},
-			expectErr:           keeper.ErrSetCodeAuthorizationDestinationHasCode,
-			expectWarmed:        true,
-			expectCodeUnchanged: []byte{0x60, 0x60, 0x60, 0x40},
-		},
-		{
-			name: "invalid signature",
-			build: func() (ethtypes.SetCodeAuthorization, common.Address) {
-				priv, authority := suite.makeAuthorityKey()
-				signed := suite.signedAuth(chainID, target, 0, priv)
-				// Mutate R to a value that fails ValidateSignatureValues
-				// (R = 0 is canonical-form-invalid).
-				signed.R = *uint256.NewInt(0)
-				return signed, authority
-			},
-			expectErr: keeper.ErrSetCodeAuthorizationInvalidSignature,
-			// Signature recovery fails before AddAddressToAccessList runs.
-			expectWarmed: false,
-		},
-	}
-
-	for _, c := range cases {
-		suite.Run(c.name, func() {
-			suite.SetupTest()
-			auth, authority := c.build()
-			if c.setup != nil {
-				c.setup(authority)
-			}
-
-			vmdb := suite.StateDB()
-			err := keeper.ApplySetCodeAuthorization(vmdb, chainID, &auth)
-			suite.Require().ErrorIs(err, c.expectErr,
-				"auth must be rejected with the matching sentinel")
-
-			// No nonce bump on the authority.
-			suite.Require().Equal(uint64(0), vmdb.GetNonce(authority))
-
-			if c.expectCodeUnchanged != nil {
-				suite.Require().Equal(c.expectCodeUnchanged, vmdb.GetCode(authority))
-			} else {
-				suite.Require().Empty(vmdb.GetCode(authority))
-			}
-
-			if c.expectWarmed {
-				suite.Require().True(vmdb.AddressInAccessList(authority))
-			} else {
-				suite.Require().False(vmdb.AddressInAccessList(authority))
-			}
-		})
-	}
-}
-
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_InstallDelegation() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-	target := common.HexToAddress("0xCAfE000000000000000000000000000000000001")
-
-	priv, authority := suite.makeAuthorityKey()
-	auth := suite.signedAuth(chainID, target, 0, priv)
-
-	vmdb := suite.StateDB()
-	err := keeper.ApplySetCodeAuthorization(vmdb, chainID, &auth)
-	suite.Require().NoError(err)
-
-	// Access list lives on the StateDB instance, not the backing store —
-	// assert before commit/recreation.
-	suite.Require().True(vmdb.AddressInAccessList(authority))
-
-	suite.Require().NoError(vmdb.Commit())
-
-	// Re-read to confirm persistence of nonce + delegation code.
-	post := suite.StateDB()
-	suite.Require().Equal(uint64(1), post.GetNonce(authority))
-	suite.Require().Equal(ethtypes.AddressToDelegation(target), post.GetCode(authority))
-}
-
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_ClearDelegation() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-	priv, authority := suite.makeAuthorityKey()
-
-	// Pre-install some delegation code AND a storage slot to confirm clear
-	// only affects code, not storage.
-	target := common.HexToAddress("0x0000000000000000000000000000000000000099")
-	slot := common.HexToHash("0x01")
-	val := common.HexToHash("0xbeef")
-	vmdb := suite.StateDB()
-	vmdb.SetCode(authority, ethtypes.AddressToDelegation(target), tracing.CodeChangeUnspecified)
-	vmdb.SetState(authority, slot, val)
-	suite.Require().NoError(vmdb.Commit())
-
-	clearAuth := suite.signedAuth(chainID, common.Address{}, 0, priv)
-	vmdb = suite.StateDB()
-	err := keeper.ApplySetCodeAuthorization(vmdb, chainID, &clearAuth)
-	suite.Require().NoError(err)
-	suite.Require().NoError(vmdb.Commit())
-
-	post := suite.StateDB()
-	suite.Require().Equal(uint64(1), post.GetNonce(authority))
-	suite.Require().Empty(post.GetCode(authority), "code should be cleared")
-	suite.Require().Equal(val, post.GetState(authority, slot), "storage must persist after clear")
-}
-
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_RotateDelegation() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-	targetA := common.HexToAddress("0xAAaA000000000000000000000000000000000001")
-	targetB := common.HexToAddress("0xBbBB000000000000000000000000000000000002")
-
-	priv, authority := suite.makeAuthorityKey()
-
-	// Install A.
-	authA := suite.signedAuth(chainID, targetA, 0, priv)
-	vmdb := suite.StateDB()
-	suite.Require().NoError(keeper.ApplySetCodeAuthorization(vmdb, chainID, &authA))
-	suite.Require().NoError(vmdb.Commit())
-
-	// Install B (nonce now 1).
-	authB := suite.signedAuth(chainID, targetB, 1, priv)
-	vmdb = suite.StateDB()
-	suite.Require().NoError(keeper.ApplySetCodeAuthorization(vmdb, chainID, &authB))
-	suite.Require().NoError(vmdb.Commit())
-
-	post := suite.StateDB()
-	suite.Require().Equal(uint64(2), post.GetNonce(authority))
-	suite.Require().Equal(ethtypes.AddressToDelegation(targetB), post.GetCode(authority))
-}
-
-// TestApplySetCodeAuthorization_TargetIsContract pins the spec semantics
-// of EIP-7702's destination-has-code check: it gates on the AUTHORITY's
-// existing code, not the target's. A target address that holds arbitrary
-// non-delegation bytecode is a perfectly valid delegation target — the
-// auth must succeed and install the delegation marker on the authority.
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_TargetIsContract() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-	target := common.HexToAddress("0xc0DE000000000000000000000000000000000001")
-
-	// Deploy non-delegation bytecode at target. The check the authority
-	// goes through is on the authority's code, not target's, so this must
-	// not block the delegation install.
-	vmdb := suite.StateDB()
-	vmdb.SetCode(target, []byte{0x60, 0x60, 0x60, 0x40}, tracing.CodeChangeUnspecified)
-	suite.Require().NoError(vmdb.Commit())
-
-	priv, authority := suite.makeAuthorityKey()
-	auth := suite.signedAuth(chainID, target, 0, priv)
-
-	vmdb = suite.StateDB()
-	err := keeper.ApplySetCodeAuthorization(vmdb, chainID, &auth)
-	suite.Require().NoError(err, "auth must succeed even when target holds non-delegation code")
-	suite.Require().NoError(vmdb.Commit())
-
-	post := suite.StateDB()
-	suite.Require().Equal(uint64(1), post.GetNonce(authority))
-	suite.Require().Equal(ethtypes.AddressToDelegation(target), post.GetCode(authority))
-}
-
-// TestApplySetCodeAuthorization_AuthorityWasDelegated pins EIP-7702's
-// rotate semantics: the destination-has-code check parses the authority's
-// existing code as a delegation marker — so an authority that ALREADY holds
-// 0xef0100||addr is re-delegatable. The new tuple rotates the marker to the
-// new target and bumps the authority's nonce.
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_AuthorityWasDelegated() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-
-	priv, authority := suite.makeAuthorityKey()
-	oldTarget := common.HexToAddress("0x0DD0000000000000000000000000000000000001")
-	newTarget := common.HexToAddress("0xAce0000000000000000000000000000000000002")
-
-	// Pre-install a delegation marker on the authority. ParseDelegation
-	// must accept this so the destination-code check passes.
-	vmdb := suite.StateDB()
-	vmdb.SetCode(authority, ethtypes.AddressToDelegation(oldTarget), tracing.CodeChangeUnspecified)
-	suite.Require().NoError(vmdb.Commit())
-
-	auth := suite.signedAuth(chainID, newTarget, 0, priv)
-	vmdb = suite.StateDB()
-	err := keeper.ApplySetCodeAuthorization(vmdb, chainID, &auth)
-	suite.Require().NoError(err, "auth must succeed when authority's existing code is a delegation marker")
-	suite.Require().NoError(vmdb.Commit())
-
-	post := suite.StateDB()
-	suite.Require().Equal(uint64(1), post.GetNonce(authority))
-	suite.Require().Equal(
-		ethtypes.AddressToDelegation(newTarget),
-		post.GetCode(authority),
-		"delegation must rotate to the new target",
-	)
-}
-
-// TestApplySetCodeAuthorization_ClearOnFreshAuthority pins clear-path
-// semantics on an authority that has no pre-existing delegation: clear
-// (auth.Address == 0x0) must succeed, bump the nonce to 1, and leave code
-// empty. Sibling to the existing rotate-then-clear test, which exercises
-// clear on a delegated authority.
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_ClearOnFreshAuthority() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-
-	priv, authority := suite.makeAuthorityKey()
-	clearAuth := suite.signedAuth(chainID, common.Address{}, 0, priv)
-
-	vmdb := suite.StateDB()
-	err := keeper.ApplySetCodeAuthorization(vmdb, chainID, &clearAuth)
-	suite.Require().NoError(err, "clear must succeed on a fresh authority")
-	suite.Require().NoError(vmdb.Commit())
-
-	post := suite.StateDB()
-	suite.Require().Equal(uint64(1), post.GetNonce(authority))
-	suite.Require().Empty(post.GetCode(authority), "code must remain empty after clear on fresh authority")
-}
-
-// TestApplySetCodeAuthorization_CrossChainNilChainID pins EIP-7702's
-// universal-authorization branch: a tuple signed with chainID == 0 is
-// accepted on any chain. Drives signedAuth with chainID == nil (the helper
-// builds a 0-chain auth) and asserts the delegation installs against the
-// running mezod chain id.
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_CrossChainNilChainID() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-	target := common.HexToAddress("0xCAfE000000000000000000000000000000000ccc")
-
-	priv, authority := suite.makeAuthorityKey()
-	auth := suite.signedAuth(nil, target, 0, priv)
-
-	vmdb := suite.StateDB()
-	err := keeper.ApplySetCodeAuthorization(vmdb, chainID, &auth)
-	suite.Require().NoError(err, "cross-chain (chainID==0) auth must be accepted on this chain")
-	suite.Require().NoError(vmdb.Commit())
-
-	post := suite.StateDB()
-	suite.Require().Equal(uint64(1), post.GetNonce(authority))
-	suite.Require().Equal(ethtypes.AddressToDelegation(target), post.GetCode(authority))
-}
-
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_RefundExistingAuthority() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-	target := common.HexToAddress("0xCAfE000000000000000000000000000000000099")
-
-	priv, authority := suite.makeAuthorityKey()
-	suite.ensureAuthorityExists(authority)
-
-	auth := suite.signedAuth(chainID, target, 0, priv)
-	vmdb := suite.StateDB()
-
-	before := vmdb.GetRefund()
-	suite.Require().NoError(keeper.ApplySetCodeAuthorization(vmdb, chainID, &auth))
-	after := vmdb.GetRefund()
-
-	expected := ethparams.CallNewAccountGas - ethparams.TxAuthTupleGas
-	suite.Require().Equal(expected, after-before, "refund must increment by 12500 when authority pre-exists")
-}
-
-func (suite *KeeperTestSuite) TestApplySetCodeAuthorization_NoRefundFreshAuthority() {
-	suite.SetupTest()
-	chainID := suite.app.EvmKeeper.ChainID()
-	target := common.HexToAddress("0xCAfE0000000000000000000000000000000000Aa")
-
-	priv, _ := suite.makeAuthorityKey()
-	auth := suite.signedAuth(chainID, target, 0, priv)
-	vmdb := suite.StateDB()
-	before := vmdb.GetRefund()
-	suite.Require().NoError(keeper.ApplySetCodeAuthorization(vmdb, chainID, &auth))
-	after := vmdb.GetRefund()
-
-	suite.Require().Equal(uint64(0), after-before, "no refund on fresh authority")
-}
-
 // TestApplyMessageWithConfig_AuthListInstallsDelegation drives a SetCodeTx
 // through applyMessageWithConfig with a single auth tuple and asserts that
-// the delegation is installed on the authority (code + nonce bump). This
-// pins the auth-loop side-effects only; access-list warming is covered
-// separately in TestApplyMessageWithConfig_PostLoopWarmsResolvedTarget.
+// the delegation is installed on the authority (code + nonce bump). The
+// per-tuple validation, install/clear/rotate, and access-list warming
+// branches are pinned at the helper level in
+// set_code_authorization_test.go.
 func (suite *KeeperTestSuite) TestApplyMessageWithConfig_AuthListInstallsDelegation() {
 	suite.SetupTest()
 	chainID := suite.app.EvmKeeper.ChainID()
@@ -461,189 +108,18 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig_AuthListInstallsDelegat
 	suite.Require().Equal(uint64(1), post.GetNonce(authority))
 }
 
-// TestApplyMessageWithConfig_PostLoopWarmsResolvedTarget pins the post-loop
-// access-list warming branch in applyMessageWithConfig: after the auth loop
-// runs, if msg.To resolves to a 0xef0100||addr delegation marker, the
-// resolved target must be added to the access list. The test runs through
-// the test-only ApplyMessageWithStateDB seam so the run StateDB instance
-// (which holds the access list) is observable after the call returns —
-// access lists do not survive Commit() and are not reachable via the
-// public ApplyMessage entry point.
-//
-// Coverage:
-//   - "installed in this tx": the auth tuple installs a delegation on
-//     msg.To during the loop; the post-loop branch must then warm the
-//     resolved target.
-//   - "pre-existing delegation": msg.To already holds a delegation marker
-//     in committed state (no auth tuples in the tx); the post-loop branch
-//     must still warm the resolved target.
-//   - "no delegation on msg.To": negative pin — msg.To is a fresh EOA with
-//     no delegation marker; the post-loop branch must NOT add an unrelated
-//     sentinel address to the access list. Without this case a regression
-//     that warmed every authority/target unconditionally would still pass
-//     the two positive cases above.
-//
-// Removing the post-loop warming branch (state_transition.go) makes the
-// positive sub-cases fail at AddressInAccessList(target); making it
-// unconditionally warm an extra address makes the negative sub-case fail.
-func (suite *KeeperTestSuite) TestApplyMessageWithConfig_PostLoopWarmsResolvedTarget() {
-	type tc struct {
-		name string
-		// build returns msg.To (the delegated EOA), the resolved target
-		// (or zero when there is no delegation), and auth tuples to thread
-		// into the SetCodeTx. setup runs against a committed StateDB
-		// before the message is applied.
-		build func() (msgTo common.Address, target common.Address, authList []ethtypes.SetCodeAuthorization)
-		setup func(msgTo, target common.Address)
-		// expectTargetWarmed reports whether `target` must be in the
-		// access list after the call. False for the negative pin where
-		// msg.To has no delegation; we then assert a sentinel address
-		// is NOT warmed instead.
-		expectTargetWarmed bool
-	}
-
-	// notWarmedSentinel is an arbitrary deterministic address never
-	// touched by any code path under test. Used by the negative case to
-	// pin "the post-loop branch does not blanket-warm unrelated addrs".
-	notWarmedSentinel := common.HexToAddress("0xDEadDeAdDeAdDeAdDeAdDeAdDeAdDeAd00000C0C")
-
-	cases := []tc{
-		{
-			name: "installed in this tx",
-			build: func() (common.Address, common.Address, []ethtypes.SetCodeAuthorization) {
-				priv, authority := suite.makeAuthorityKey()
-				target := common.HexToAddress("0xDeAd0000000000000000000000000000000000aA")
-				chainID := suite.app.EvmKeeper.ChainID()
-				return authority, target, []ethtypes.SetCodeAuthorization{
-					suite.signedAuth(chainID, target, 0, priv),
-				}
-			},
-			expectTargetWarmed: true,
-		},
-		{
-			name: "pre-existing delegation",
-			build: func() (common.Address, common.Address, []ethtypes.SetCodeAuthorization) {
-				_, delegated := suite.makeAuthorityKey()
-				target := common.HexToAddress("0xCAfE000000000000000000000000000000000fff")
-				return delegated, target, nil
-			},
-			setup: func(delegated, target common.Address) {
-				vmdb := suite.StateDB()
-				vmdb.SetCode(delegated, ethtypes.AddressToDelegation(target), tracing.CodeChangeUnspecified)
-				suite.Require().NoError(vmdb.Commit())
-			},
-			expectTargetWarmed: true,
-		},
-		{
-			// Negative pin: msg.To is a fresh EOA with no delegation; the
-			// auth tuple points at a DIFFERENT authority so the loop has
-			// real work to do but the post-loop branch must not warm an
-			// unrelated sentinel address. Using a SetCodeTx (rather than
-			// switching tx types) keeps the wire-shape consistent across
-			// all sub-cases — the only varying axis is msg.To's resolved
-			// code, which is what the post-loop branch keys on.
-			name: "no delegation on msg.To",
-			build: func() (common.Address, common.Address, []ethtypes.SetCodeAuthorization) {
-				_, plainTo := suite.makeAuthorityKey()
-				priv, _ := suite.makeAuthorityKey()
-				otherTarget := common.HexToAddress("0xCAfE000000000000000000000000000000000123")
-				chainID := suite.app.EvmKeeper.ChainID()
-				return plainTo, otherTarget, []ethtypes.SetCodeAuthorization{
-					suite.signedAuth(chainID, otherTarget, 0, priv),
-				}
-			},
-			expectTargetWarmed: false,
-		},
-	}
-
-	for _, c := range cases {
-		suite.Run(c.name, func() {
-			suite.SetupTest()
-			msgTo, target, authList := c.build()
-			if c.setup != nil {
-				c.setup(msgTo, target)
-			}
-
-			keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
-			ethCfg := keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID())
-			signer := ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
-
-			msg, err := newNativeMessage(
-				suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
-				suite.ctx.BlockHeight(),
-				suite.address,
-				ethCfg,
-				suite.signer,
-				signer,
-				ethtypes.SetCodeTxType,
-				msgTo,
-				nil,
-				nil,
-				authList,
-				big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
-			)
-			suite.Require().NoError(err)
-
-			cfg, err := suite.app.EvmKeeper.EVMConfig(
-				suite.ctx,
-				sdk.ConsAddress(suite.ctx.BlockHeader().ProposerAddress),
-				suite.app.EvmKeeper.ChainID(),
-			)
-			suite.Require().NoError(err)
-			txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(suite.ctx.HeaderHash()))
-
-			vmdb := statedb.New(suite.ctx, suite.app.EvmKeeper, txConfig)
-			res, _, err := suite.app.EvmKeeper.ApplyMessageWithStateDB(
-				suite.ctx,
-				keeper.WrapMessage(msg),
-				nil,
-				false,
-				cfg,
-				txConfig,
-				vmdb,
-			)
-			suite.Require().NoError(err)
-			suite.Require().False(res.Failed(), "vm error: %s", res.VmError)
-
-			// Sanity: msg.To is in the access list — Prepare always adds dst.
-			suite.Require().True(
-				vmdb.AddressInAccessList(msgTo),
-				"msg.To must be in the access list (Prepare contract)",
-			)
-
-			if c.expectTargetWarmed {
-				suite.Require().True(
-					vmdb.AddressInAccessList(target),
-					"resolved delegation target must be warmed by the post-loop branch",
-				)
-			} else {
-				// Negative pin: post-loop branch must not blanket-warm
-				// unrelated addresses when msg.To has no delegation.
-				suite.Require().False(
-					vmdb.AddressInAccessList(notWarmedSentinel),
-					"sentinel address must NOT be in the access list — post-loop branch must be a no-op when msg.To has no delegation marker",
-				)
-			}
-		})
-	}
-}
-
 // TestApplyMessageWithConfig_InvalidTupleSilentlySkipped drives a SetCodeTx
-// through ApplyMessage with two tuples: one signed against the wrong chainID
-// (must be silently skipped) and one signed correctly (must apply). Asserts
-// the spec's "invalid tuples are skipped, valid ones still apply" behavior
-// at the keeper boundary. The wrong-chainID tuple also exercises the
-// debug-log branch in applyMessageWithConfig that surfaces the rejection
-// sentinel for operator diagnosis; the assertions below pin that production
-// rejection path is reached without inspecting log output.
+// through ApplyMessageWithConfig with two tuples: one signed against the
+// wrong chainID (must be silently skipped) and one signed correctly (must
+// apply). Pins the spec's "invalid tuples are skipped, valid ones still
+// apply" behavior at the keeper boundary using only post-commit observable
+// state.
 //
-// Routes through ApplyMessageWithStateDB so the post-call StateDB instance
-// (which holds the access list) is observable: validateSetCodeAuthorization
-// rejects the wrong-chainID tuple BEFORE AddAddressToAccessList(authority)
-// runs, so authA must NOT be warmed; the accepted authB tuple advances past
-// signature recovery so it MUST be warmed. Without the access-list pin, a
-// regression that warmed every authority unconditionally would still pass
-// the nonce/code assertions.
+// The access-list ordering pin (rejected authority NOT warmed; accepted
+// authority warmed) is covered at the loop level by
+// TestApplySetCodeAuthorizations_InvalidTupleSilentlySkipped in
+// set_code_authorization_test.go — that pin needs the run StateDB
+// instance, which is not reachable through the public entry point.
 func (suite *KeeperTestSuite) TestApplyMessageWithConfig_InvalidTupleSilentlySkipped() {
 	suite.SetupTest()
 	chainID := suite.app.EvmKeeper.ChainID()
@@ -659,11 +135,10 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig_InvalidTupleSilentlySki
 	tupleB := suite.signedAuth(chainID, targetB, 0, privB)
 
 	keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
-	ethCfg := keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID())
-	signer := ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
+	ethCfg := keeperParams.ChainConfig.EthereumConfig(chainID)
+	signer := ethtypes.LatestSignerForChainID(chainID)
 
-	// msg.To is irrelevant to this test; pick authB so the post-loop warming
-	// branch has a concrete address to dereference.
+	// msg.To is irrelevant to this test; any address works.
 	msg, err := newNativeMessage(
 		suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
 		suite.ctx.BlockHeight(),
@@ -683,37 +158,21 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig_InvalidTupleSilentlySki
 	cfg, err := suite.app.EvmKeeper.EVMConfig(
 		suite.ctx,
 		sdk.ConsAddress(suite.ctx.BlockHeader().ProposerAddress),
-		suite.app.EvmKeeper.ChainID(),
+		chainID,
 	)
 	suite.Require().NoError(err)
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(suite.ctx.HeaderHash()))
 
-	vmdb := statedb.New(suite.ctx, suite.app.EvmKeeper, txConfig)
-	res, _, err := suite.app.EvmKeeper.ApplyMessageWithStateDB(
+	res, _, err := suite.app.EvmKeeper.ApplyMessageWithConfig(
 		suite.ctx,
 		keeper.WrapMessage(msg),
 		nil,
 		true,
 		cfg,
 		txConfig,
-		vmdb,
 	)
 	suite.Require().NoError(err)
 	suite.Require().False(res.Failed(), "vm error: %s", res.VmError)
-
-	// Access-list pin (observable only via the run StateDB instance):
-	// authA was rejected at the wrong-chainID gate, which fires BEFORE
-	// AddAddressToAccessList(authority); authB was accepted past sig
-	// recovery and must be warmed. The map iteration order is irrelevant
-	// since each authority is checked individually.
-	suite.Require().False(
-		vmdb.AddressInAccessList(authA),
-		"rejected authority must NOT be in the access list — wrong-chainID rejection fires before AddAddressToAccessList",
-	)
-	suite.Require().True(
-		vmdb.AddressInAccessList(authB),
-		"accepted authority must be in the access list — sig recovery passes, warming runs",
-	)
 
 	post := suite.StateDB()
 
