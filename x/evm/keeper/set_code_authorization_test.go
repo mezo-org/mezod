@@ -17,9 +17,33 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 var testChainID = big.NewInt(31611)
+
+// noPrecompiles is the default isPrecompile predicate for tests that don't
+// exercise EIP-7702's precompile-target rejection. Returning false for every
+// address preserves the pre-rejection behavior of validateSetCodeAuthorization.
+func noPrecompiles(common.Address) bool { return false }
+
+// testPrecompileSet is the address set behind testPrecompiles. Includes a
+// representative stock-fork precompile per fork (Frontier/Istanbul/Cancun)
+// plus two of Mezo's custom precompiles. Custom-precompile addresses are
+// sourced from x/evm/types (not the precompile/ packages themselves) to
+// avoid an import cycle: precompile/btctoken imports x/evm/keeper.
+var testPrecompileSet = map[common.Address]struct{}{
+	common.HexToAddress("0x01"):                                 {},
+	common.HexToAddress("0x09"):                                 {},
+	common.HexToAddress("0x0a"):                                 {},
+	common.HexToAddress(evmtypes.BTCTokenPrecompileAddress):     {},
+	common.HexToAddress(evmtypes.AssetsBridgePrecompileAddress): {},
+}
+
+func testPrecompiles(a common.Address) bool {
+	_, ok := testPrecompileSet[a]
+	return ok
+}
 
 func newAuthorityKey(t *testing.T) (*ecdsa.PrivateKey, common.Address) {
 	t.Helper()
@@ -147,7 +171,7 @@ func TestApplySetCodeAuthorization_Validation(t *testing.T) {
 				c.setup(vmdb, authority)
 			}
 
-			err := applySetCodeAuthorization(vmdb, testChainID, &auth)
+			err := applySetCodeAuthorization(vmdb, testChainID, &auth, noPrecompiles)
 			require.ErrorIs(t, err, c.expectErr,
 				"auth must be rejected with the matching sentinel")
 
@@ -175,7 +199,7 @@ func TestApplySetCodeAuthorization_InstallDelegation(t *testing.T) {
 	auth := signAuth(t, testChainID, target, 0, priv)
 
 	vmdb, _ := newTestDB()
-	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth))
+	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth, noPrecompiles))
 
 	// Access list lives on the StateDB instance, not the backing store —
 	// assert before commit/recreation.
@@ -201,7 +225,7 @@ func TestApplySetCodeAuthorization_ClearDelegation(t *testing.T) {
 	require.NoError(t, vmdb.Commit())
 
 	clearAuth := signAuth(t, testChainID, common.Address{}, 0, priv)
-	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &clearAuth))
+	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &clearAuth, noPrecompiles))
 	require.NoError(t, vmdb.Commit())
 
 	require.Equal(t, uint64(1), vmdb.GetNonce(authority))
@@ -218,12 +242,12 @@ func TestApplySetCodeAuthorization_RotateDelegation(t *testing.T) {
 
 	// Install A.
 	authA := signAuth(t, testChainID, targetA, 0, priv)
-	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &authA))
+	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &authA, noPrecompiles))
 
 	// Install B (nonce now 1). The journal carries A's writes, so no
 	// intermediate Commit is needed.
 	authB := signAuth(t, testChainID, targetB, 1, priv)
-	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &authB))
+	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &authB, noPrecompiles))
 	require.NoError(t, vmdb.Commit())
 
 	require.Equal(t, uint64(2), vmdb.GetNonce(authority))
@@ -248,7 +272,7 @@ func TestApplySetCodeAuthorization_TargetIsContract(t *testing.T) {
 	priv, authority := newAuthorityKey(t)
 	auth := signAuth(t, testChainID, target, 0, priv)
 
-	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth),
+	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth, noPrecompiles),
 		"auth must succeed even when target holds non-delegation code")
 	require.NoError(t, vmdb.Commit())
 
@@ -273,7 +297,7 @@ func TestApplySetCodeAuthorization_AuthorityWasDelegated(t *testing.T) {
 	require.NoError(t, vmdb.Commit())
 
 	auth := signAuth(t, testChainID, newTarget, 0, priv)
-	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth),
+	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth, noPrecompiles),
 		"auth must succeed when authority's existing code is a delegation marker")
 	require.NoError(t, vmdb.Commit())
 
@@ -295,7 +319,7 @@ func TestApplySetCodeAuthorization_ClearOnFreshAuthority(t *testing.T) {
 	clearAuth := signAuth(t, testChainID, common.Address{}, 0, priv)
 
 	vmdb, _ := newTestDB()
-	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &clearAuth),
+	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &clearAuth, noPrecompiles),
 		"clear must succeed on a fresh authority")
 	require.NoError(t, vmdb.Commit())
 
@@ -316,7 +340,7 @@ func TestApplySetCodeAuthorization_CrossChainNilChainID(t *testing.T) {
 	auth := signAuth(t, nil, target, 0, priv)
 
 	vmdb, _ := newTestDB()
-	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth),
+	require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth, noPrecompiles),
 		"cross-chain (chainID==0) auth must be accepted on this chain")
 	require.NoError(t, vmdb.Commit())
 
@@ -360,7 +384,7 @@ func TestApplySetCodeAuthorization_Refund(t *testing.T) {
 
 			auth := signAuth(t, testChainID, target, 0, priv)
 			before := vmdb.GetRefund()
-			require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth))
+			require.NoError(t, applySetCodeAuthorization(vmdb, testChainID, &auth, noPrecompiles))
 			after := vmdb.GetRefund()
 
 			require.Equal(t, c.expectedDelta, after-before)
@@ -461,7 +485,7 @@ func TestApplySetCodeAuthorizations_PostLoopWarmsResolvedTarget(t *testing.T) {
 				To:                    &msgTo,
 				SetCodeAuthorizations: authList,
 			}
-			applySetCodeAuthorizations(log.NewNopLogger(), vmdb, testChainID, msg)
+			applySetCodeAuthorizations(log.NewNopLogger(), vmdb, testChainID, msg, noPrecompiles)
 
 			if c.expectTargetWarmed {
 				require.True(t, vmdb.AddressInAccessList(target),
@@ -499,7 +523,7 @@ func TestApplySetCodeAuthorizations_InvalidTupleSilentlySkipped(t *testing.T) {
 		To:                    &to,
 		SetCodeAuthorizations: []ethtypes.SetCodeAuthorization{tupleA, tupleB},
 	}
-	applySetCodeAuthorizations(log.NewNopLogger(), vmdb, testChainID, msg)
+	applySetCodeAuthorizations(log.NewNopLogger(), vmdb, testChainID, msg, noPrecompiles)
 
 	// Rejected tuple: no state mutation, no warming.
 	require.Empty(t, vmdb.GetCode(authA),
@@ -516,4 +540,136 @@ func TestApplySetCodeAuthorizations_InvalidTupleSilentlySkipped(t *testing.T) {
 		"accepted tuple must bump authority nonce")
 	require.True(t, vmdb.AddressInAccessList(authB),
 		"accepted tuple must warm authority")
+}
+
+// TestApplySetCodeAuthorization_RejectsPrecompile pins the Mezo-specific
+// rule that an EIP-7702 authorization whose target is any precompile —
+// stock Ethereum or a Mezo custom precompile — must be rejected.
+//
+// For each rejection case we assert:
+//   - the matching sentinel error is returned;
+//   - the authority's nonce did NOT advance and code did NOT change;
+//   - the authority is NOT in the access list — the precompile-target
+//     check sits before AddAddressToAccessList, so warming never runs.
+//
+// A clear-delegation auth (auth.Address == 0x0) is included as a negative
+// control: zero-address is not a precompile, so the path must succeed.
+func TestApplySetCodeAuthorization_RejectsPrecompile(t *testing.T) {
+	type tc struct {
+		name      string
+		target    common.Address
+		expectErr error
+	}
+
+	cases := []tc{
+		{
+			name:      "stock_precompile_ecrecover",
+			target:    common.HexToAddress("0x01"),
+			expectErr: errSetCodeAuthorizationTargetIsPrecompile,
+		},
+		{
+			name:      "stock_precompile_blake2f",
+			target:    common.HexToAddress("0x09"),
+			expectErr: errSetCodeAuthorizationTargetIsPrecompile,
+		},
+		{
+			name:      "stock_precompile_kzg",
+			target:    common.HexToAddress("0x0a"),
+			expectErr: errSetCodeAuthorizationTargetIsPrecompile,
+		},
+		{
+			name:      "custom_precompile_btctoken",
+			target:    common.HexToAddress(evmtypes.BTCTokenPrecompileAddress),
+			expectErr: errSetCodeAuthorizationTargetIsPrecompile,
+		},
+		{
+			name:      "custom_precompile_assetsbridge",
+			target:    common.HexToAddress(evmtypes.AssetsBridgePrecompileAddress),
+			expectErr: errSetCodeAuthorizationTargetIsPrecompile,
+		},
+		{
+			// Negative control: zero address is not a precompile in any
+			// fork or in Mezo's custom set. The clear-delegation path
+			// must remain unaffected by the new rejection rule.
+			name:      "clear_delegation_unaffected",
+			target:    common.Address{},
+			expectErr: nil,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			priv, authority := newAuthorityKey(t)
+			auth := signAuth(t, testChainID, c.target, 0, priv)
+
+			vmdb, _ := newTestDB()
+			err := applySetCodeAuthorization(vmdb, testChainID, &auth, testPrecompiles)
+
+			if c.expectErr == nil {
+				require.NoError(t, err)
+				require.Equal(t, uint64(1), vmdb.GetNonce(authority),
+					"successful auth must bump authority nonce")
+				return
+			}
+
+			require.ErrorIs(t, err, c.expectErr)
+			require.Equal(t, uint64(0), vmdb.GetNonce(authority),
+				"rejected auth must leave authority nonce untouched")
+			require.Empty(t, vmdb.GetCode(authority),
+				"rejected auth must leave authority code untouched")
+			require.False(t, vmdb.AddressInAccessList(authority),
+				"precompile-target rejection happens before AddAddressToAccessList — authority must not be warmed")
+		})
+	}
+}
+
+// TestApplySetCodeAuthorizations_PrecompileTupleSilentlySkipped pins the
+// loop-level behavior of the precompile-target rejection: when a multi-tuple
+// message contains one tuple targeting a precompile and one targeting a
+// regular contract, the bad tuple is silently skipped while the good tuple
+// applies normally. Also asserts the post-loop msg.To warming branch still
+// runs.
+func TestApplySetCodeAuthorizations_PrecompileTupleSilentlySkipped(t *testing.T) {
+	privBad, authBad := newAuthorityKey(t)
+	privGood, authGood := newAuthorityKey(t)
+
+	precompileTarget := common.HexToAddress(evmtypes.BTCTokenPrecompileAddress)
+	goodTarget := common.HexToAddress("0xCAfE000000000000000000000000000000000777")
+
+	tupleBad := signAuth(t, testChainID, precompileTarget, 0, privBad)
+	tupleGood := signAuth(t, testChainID, goodTarget, 0, privGood)
+
+	vmdb, _ := newTestDB()
+	// msg.To holds a pre-existing delegation marker so the post-loop
+	// resolved-target warming branch has something to warm.
+	msgTo := common.HexToAddress("0xDEAd000000000000000000000000000000000A0A")
+	msgToTarget := common.HexToAddress("0xCAfE000000000000000000000000000000000B0B")
+	vmdb.SetCode(msgTo, ethtypes.AddressToDelegation(msgToTarget), tracing.CodeChangeUnspecified)
+	require.NoError(t, vmdb.Commit())
+
+	msg := core.Message{
+		To:                    &msgTo,
+		SetCodeAuthorizations: []ethtypes.SetCodeAuthorization{tupleBad, tupleGood},
+	}
+	applySetCodeAuthorizations(log.NewNopLogger(), vmdb, testChainID, msg, testPrecompiles)
+
+	// Bad tuple: silently skipped — no state mutation, no warming.
+	require.Empty(t, vmdb.GetCode(authBad),
+		"precompile-target tuple must leave authority code untouched")
+	require.Equal(t, uint64(0), vmdb.GetNonce(authBad),
+		"precompile-target tuple must leave authority nonce untouched")
+	require.False(t, vmdb.AddressInAccessList(authBad),
+		"precompile-target rejection happens before AddAddressToAccessList")
+
+	// Good tuple: delegation installed, nonce bumped, authority warmed.
+	require.Equal(t, ethtypes.AddressToDelegation(goodTarget), vmdb.GetCode(authGood),
+		"good tuple must install delegation marker")
+	require.Equal(t, uint64(1), vmdb.GetNonce(authGood),
+		"good tuple must bump authority nonce")
+	require.True(t, vmdb.AddressInAccessList(authGood),
+		"good tuple must warm authority")
+
+	// Post-loop branch: msg.To's resolved delegation target must be warmed.
+	require.True(t, vmdb.AddressInAccessList(msgToTarget),
+		"post-loop warming of msg.To's resolved target must still run")
 }

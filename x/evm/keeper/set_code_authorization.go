@@ -29,12 +29,20 @@ var (
 	errSetCodeAuthorizationInvalidSignature   = errors.New("set-code authorization invalid signature")
 	errSetCodeAuthorizationDestinationHasCode = errors.New("set-code authorization destination has non-delegation code")
 	errSetCodeAuthorizationNonceMismatch      = errors.New("set-code authorization nonce mismatch")
+	errSetCodeAuthorizationTargetIsPrecompile = errors.New("set-code authorization target is a precompile")
 )
 
 // validateSetCodeAuthorization validates an EIP-7702 authorization against the
 // provided state. Mirrors geth's `validateAuthorization` in
 // core/state_transition.go (mezo-org/go-ethereum@v1.16.9-mezo0,
-// commit 859c41bdcb7141276fc9c7a7c3486190025f9ec1).
+// commit 859c41bdcb7141276fc9c7a7c3486190025f9ec1) with one Mezo-specific
+// deviation: any authorization whose target is a precompile (stock Ethereum
+// or a Mezo custom precompile) is rejected via isPrecompile. Mezo's custom
+// precompiles register stored facade bytecode at their addresses, so a
+// delegation there would actually execute in the authority's context;
+// rejecting all precompile targets keeps the semantics surface narrow and
+// matches stock geth's no-op behavior on its precompiles. Re-audit on every
+// geth bump and preserve this check.
 //
 // Note: the authority is added to the access list even if a later check fails
 // — this matches upstream's deliberate ordering (the AddAddressToAccessList
@@ -43,6 +51,7 @@ func validateSetCodeAuthorization(
 	stateDB *statedb.StateDB,
 	chainID *big.Int,
 	auth *ethtypes.SetCodeAuthorization,
+	isPrecompile func(common.Address) bool,
 ) (common.Address, error) {
 	var authority common.Address
 	if !auth.ChainID.IsZero() && auth.ChainID.CmpBig(chainID) != 0 {
@@ -50,6 +59,9 @@ func validateSetCodeAuthorization(
 	}
 	if auth.Nonce+1 < auth.Nonce {
 		return authority, errSetCodeAuthorizationNonceOverflow
+	}
+	if isPrecompile(auth.Address) {
+		return authority, errSetCodeAuthorizationTargetIsPrecompile
 	}
 	authority, err := auth.Authority()
 	if err != nil {
@@ -79,8 +91,9 @@ func applySetCodeAuthorization(
 	stateDB *statedb.StateDB,
 	chainID *big.Int,
 	auth *ethtypes.SetCodeAuthorization,
+	isPrecompile func(common.Address) bool,
 ) error {
-	authority, err := validateSetCodeAuthorization(stateDB, chainID, auth)
+	authority, err := validateSetCodeAuthorization(stateDB, chainID, auth, isPrecompile)
 	if err != nil {
 		return err
 	}
@@ -121,10 +134,11 @@ func applySetCodeAuthorizations(
 	stateDB *statedb.StateDB,
 	chainID *big.Int,
 	msg core.Message,
+	isPrecompile func(common.Address) bool,
 ) {
 	if msg.SetCodeAuthorizations != nil {
 		for i := range msg.SetCodeAuthorizations {
-			if err := applySetCodeAuthorization(stateDB, chainID, &msg.SetCodeAuthorizations[i]); err != nil {
+			if err := applySetCodeAuthorization(stateDB, chainID, &msg.SetCodeAuthorizations[i], isPrecompile); err != nil {
 				logger.Debug(
 					"set-code authorization rejected",
 					"index", i,

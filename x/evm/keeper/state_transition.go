@@ -599,7 +599,12 @@ func (k *Keeper) applyMessageWithConfig(
 		// keeper-internal paths (EthCall, EstimateGas, TraceTx, traceTx,
 		// SimulateV1). Self-sponsored auths therefore see the post-bump
 		// value here regardless of path.
-		applySetCodeAuthorizations(k.Logger(ctx), stateDB, cfg.ChainConfig.ChainID, msg)
+		precompiles := evm.Precompiles()
+		isPrecompile := func(addr common.Address) bool {
+			_, ok := precompiles[addr]
+			return ok
+		}
+		applySetCodeAuthorizations(k.Logger(ctx), stateDB, cfg.ChainConfig.ChainID, msg, isPrecompile)
 
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, value)
 	}
