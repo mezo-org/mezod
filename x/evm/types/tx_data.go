@@ -39,6 +39,7 @@ type TxData interface {
 	Copy() TxData
 	GetChainID() *big.Int
 	GetAccessList() ethtypes.AccessList
+	GetAuthorizationList() []ethtypes.SetCodeAuthorization
 	GetData() []byte
 	GetNonce() uint64
 	GetGas() uint64
