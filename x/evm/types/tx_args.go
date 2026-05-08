@@ -52,6 +52,9 @@ type TransactionArgs struct {
 	// Introduced by AccessListTxType transaction.
 	AccessList *ethtypes.AccessList `json:"accessList,omitempty"`
 	ChainID    *hexutil.Big         `json:"chainId,omitempty"`
+
+	// Introduced by SetCodeTxType transaction (EIP-7702).
+	AuthorizationList []ethtypes.SetCodeAuthorization `json:"authorizationList,omitempty"`
 }
 
 // String return the struct in a string format
@@ -244,16 +247,17 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 	}
 
 	msg := core.Message{
-		From:       addr,
-		To:         args.To,
-		Nonce:      nonce,
-		Value:      value,
-		GasLimit:   gas,
-		GasPrice:   gasPrice,
-		GasFeeCap:  gasFeeCap,
-		GasTipCap:  gasTipCap,
-		Data:       data,
-		AccessList: accessList,
+		From:                  addr,
+		To:                    args.To,
+		Nonce:                 nonce,
+		Value:                 value,
+		GasLimit:              gas,
+		GasPrice:              gasPrice,
+		GasFeeCap:             gasFeeCap,
+		GasTipCap:             gasTipCap,
+		Data:                  data,
+		AccessList:            accessList,
+		SetCodeAuthorizations: args.AuthorizationList,
 	}
 	return msg, nil
 }

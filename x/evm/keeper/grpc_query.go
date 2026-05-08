@@ -373,16 +373,17 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	executable := func(gas uint64) (vmError bool, rsp *types.MsgEthereumTxResponse, err error) {
 		// update the message with the new gas value
 		msg = core.Message{
-			From:       msg.From,
-			To:         msg.To,
-			Nonce:      msg.Nonce,
-			Value:      msg.Value,
-			GasLimit:   gas,
-			GasPrice:   msg.GasPrice,
-			GasFeeCap:  msg.GasFeeCap,
-			GasTipCap:  msg.GasTipCap,
-			Data:       msg.Data,
-			AccessList: msg.AccessList,
+			From:                  msg.From,
+			To:                    msg.To,
+			Nonce:                 msg.Nonce,
+			Value:                 msg.Value,
+			GasLimit:              gas,
+			GasPrice:              msg.GasPrice,
+			GasFeeCap:             msg.GasFeeCap,
+			GasTipCap:             msg.GasTipCap,
+			Data:                  msg.Data,
+			AccessList:            msg.AccessList,
+			SetCodeAuthorizations: msg.SetCodeAuthorizations,
 		}
 
 		tmpCtx := ctx
