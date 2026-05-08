@@ -135,6 +135,29 @@ func TestNewTxDataFromTx_SupportedTypes(t *testing.T) {
 				Value:     big.NewInt(0),
 			}),
 		},
+		{
+			"set code tx (type 4)",
+			ethtypes.SetCodeTxType,
+			ethtypes.NewTx(&ethtypes.SetCodeTx{
+				ChainID:   uint256.NewInt(31611),
+				Nonce:     0,
+				GasTipCap: uint256.NewInt(1),
+				GasFeeCap: uint256.NewInt(1),
+				Gas:       21000,
+				To:        to,
+				Value:     uint256.NewInt(0),
+				AuthList: []ethtypes.SetCodeAuthorization{
+					{
+						ChainID: *uint256.NewInt(31611),
+						Address: to,
+						Nonce:   1,
+						V:       1,
+						R:       *uint256.NewInt(7),
+						S:       *uint256.NewInt(11),
+					},
+				},
+			}),
+		},
 	}
 
 	for _, tc := range testCases {

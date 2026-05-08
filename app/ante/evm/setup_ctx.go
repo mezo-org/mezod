@@ -17,6 +17,7 @@ package evm
 
 import (
 	"errors"
+	"math/big"
 	"strconv"
 
 	errorsmod "cosmossdk.io/errors"
@@ -191,6 +192,11 @@ func (vbd EthValidateBasicDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simu
 
 		if baseFee == nil && txData.TxType() == ethtypes.DynamicFeeTxType {
 			return ctx, errorsmod.Wrap(ethtypes.ErrTxTypeNotSupported, "dynamic fee tx not supported")
+		}
+
+		if txData.TxType() == ethtypes.SetCodeTxType &&
+			!ethCfg.IsPrague(big.NewInt(ctx.BlockHeight()), uint64(ctx.BlockTime().Unix())) { //nolint:gosec
+			return ctx, errorsmod.Wrap(ethtypes.ErrTxTypeNotSupported, "set code tx not supported")
 		}
 
 		txFee = txFee.Add(sdk.Coin{Denom: evmDenom, Amount: sdkmath.NewIntFromBigInt(txData.Fee())})

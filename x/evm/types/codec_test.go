@@ -30,6 +30,11 @@ func TestPackTxData(t *testing.T) {
 			true,
 		},
 		{
+			"set code tx",
+			&SetCodeTx{},
+			true,
+		},
+		{
 			"nil",
 			nil,
 			false,
