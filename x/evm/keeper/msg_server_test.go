@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -45,6 +46,8 @@ func (suite *KeeperTestSuite) TestEthereumTx() {
 					suite.signer,
 					signer,
 					ethtypes.AccessListTxType,
+					common.Address{},
+					nil,
 					nil,
 					nil,
 				)

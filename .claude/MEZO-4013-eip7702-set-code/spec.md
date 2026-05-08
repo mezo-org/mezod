@@ -47,7 +47,22 @@ post-Prague chain — works against mezod without external relayers.
   the transaction. Successful authorizations bump the authority's nonce,
   install (or clear, if `target == 0x0`) the 23-byte delegation
   designator on the authority's code field, and warm the delegation
-  target in the access list.
+  target in the access list. Self-sponsored authorizations (where the
+  authority equals the transaction sender) sign their tuple against the
+  post-bump sender nonce; on consensus paths the ante's
+  `EthIncrementSenderSequenceDecorator` supplies the bump, and on
+  keeper-internal simulate / trace paths (`EthCall`, `TraceTx`,
+  `traceTx`, `SimulateV1`) each entry point mirrors the bump inline so
+  authorization validation reads the same post-bump value regardless
+  of path.
+- **Post-loop call-target warming.** After the authorization loop, if
+  `msg.To`'s code resolves to a delegation designator, the resolved
+  target is also added to the access list — mirroring upstream
+  `core.ApplyMessage` post-loop warming. This complements the
+  per-tuple warming of the delegation target inside the loop and
+  covers the case where the tx itself just installed a delegation on
+  `msg.To`, so the subsequent `evm.Call` does not pay cold-access gas
+  for the freshly delegated address.
 - **EVM call resolution.** The geth EVM (`v1.16.9-mezo0`) handles
   delegation resolution natively: `Call`, `CallCode`, `DelegateCall`, and
   `StaticCall` follow exactly one level of delegation when reading code.

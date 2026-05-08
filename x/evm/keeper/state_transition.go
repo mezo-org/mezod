@@ -506,6 +506,14 @@ func (k *Keeper) applyMessageWithConfig(
 		gasUsed uint64
 	)
 
+	// EIP-7702 forbids combining a non-empty auth list with contract creation.
+	// SetCodeTx.Validate and the ante reject this on the consensus path, but
+	// simulate / RPC ingress can construct a core.Message that bypasses both
+	// — enforce the invariant directly so the create branch is unreachable.
+	if len(msg.SetCodeAuthorizations) > 0 && msg.To == nil {
+		return nil, nil, errorsmod.Wrap(core.ErrSetCodeTxCreate, "apply message")
+	}
+
 	// return error if contract creation or call are disabled through governance
 	if !cfg.Params.EnableCreate && msg.To == nil {
 		return nil, nil, errorsmod.Wrap(types.ErrCreateDisabled, "failed to create new contract")
@@ -583,6 +591,13 @@ func (k *Keeper) applyMessageWithConfig(
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, value)
 		stateDB.SetNonce(sender, msg.Nonce+1, tracing.NonceChangeUnspecified)
 	} else {
+		// Sender nonce is bumped before this point — by
+		// EthIncrementSenderSequenceDecorator on consensus paths
+		// (CheckTx/DeliverTx) and by per-entry-point ante emulation on
+		// keeper-internal paths (EthCall, EstimateGas, TraceTx, traceTx,
+		// SimulateV1). Self-sponsored auths therefore see the post-bump
+		// value here regardless of path.
+		applySetCodeAuthorizations(k.Logger(ctx), stateDB, cfg.ChainConfig.ChainID, msg)
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, value)
 	}
 

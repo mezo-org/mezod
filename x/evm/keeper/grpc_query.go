@@ -270,6 +270,10 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 		}
 	}
 
+	if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	res, err := k.SimulateMessage(ctx, WrapMessage(msg), nil, cfg, txConfig, overrides)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -390,18 +394,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		if fromType == types.RPC {
 			tmpCtx, _ = ctx.CacheContext()
 
-			acct := k.GetAccount(tmpCtx, msg.From)
-
-			from := msg.From
-			if acct == nil {
-				acc := k.accountKeeper.NewAccountWithAddress(tmpCtx, from[:])
-				k.accountKeeper.SetAccount(tmpCtx, acc)
-				acct = statedb.NewEmptyAccount()
-			}
-			// When submitting a transaction, the `EthIncrementSenderSequence` ante handler increases the account nonce
-			acct.Nonce = nonce + 1
-			err = k.SetAccount(tmpCtx, from, *acct)
-			if err != nil {
+			if err := k.bumpAccNonce(tmpCtx, msg.From); err != nil {
 				return true, nil, err
 			}
 			// Resetting the gasMeter after increasing the sequence to have an accurate gas estimation on transactions against EVM precompiles.
@@ -517,6 +510,11 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
+		if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
 		rsp, _, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, ethTx), tracer, true, cfg, txConfig)
 		if err != nil {
 			continue
@@ -701,6 +699,10 @@ func (k *Keeper) traceTx(
 			tracer.Stop(errors.New("execution timeout"))
 		}
 	}()
+
+	if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+		return nil, 0, status.Error(codes.Internal, err.Error())
+	}
 
 	res, _, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, tx), tracer, commitMessage, cfg, txConfig)
 	if err != nil {

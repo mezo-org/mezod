@@ -569,6 +569,31 @@ func (k *Keeper) processSimBlock(
 			tt.reset(callTxHash, callIdx)
 		}
 
+		// Mirror the consensus-path sender-nonce bump that
+		// EthIncrementSenderSequenceDecorator performs in ante. CALL
+		// nonce progression is owned by ante on the consensus path,
+		// but eth_simulateV1 bypasses ante. Without this, multi-CALL
+		// chains from the same sender all read the same defaulted
+		// nonce, producing colliding synthetic tx hashes and wrong
+		// CREATE addresses for any follow-up CREATE in the same block.
+		//
+		// The bump must precede applyMessageWithConfig: its EIP-7702
+		// auth loop validates auth.Nonce against the post-bump sender
+		// nonce for self-sponsored auths, and a post-call
+		// SetNonce(msg.Nonce+1) would clobber the auth loop's bump to
+		// msg.Nonce+2.
+		//
+		// Uses sdb.SetNonce rather than the AccountKeeper-level
+		// bumpAccNonce because the simulate StateDB caches state
+		// objects across calls; an AccountKeeper write would not be
+		// visible through the cached object. Anchored on
+		// sdb.GetNonce(msg.From)+1 so chained calls advance when
+		// args.Nonce is omitted. Skipped when msg.To is nil because
+		// the CREATE branch manages its own nonce.
+		if msg.To != nil {
+			sdb.SetNonce(msg.From, sdb.GetNonce(msg.From)+1, tracing.NonceChangeEoACall)
+		}
+
 		res, _, runErr := k.applyMessageWithConfig(
 			sdkCtx,
 			WrapMessage(msg),
@@ -600,24 +625,6 @@ func (k *Keeper) processSimBlock(
 				return nil, nil, types.NewSimIntrinsicGas(provided, 0)
 			}
 			return nil, nil, runErr
-		}
-
-		// Mirror the CREATE branch's post-call SetNonce in
-		// applyMessageWithConfig (state_transition.go:580). For
-		// MsgEthereumTx, CALL nonce progression is owned by the
-		// ante handler — but eth_simulateV1 bypasses ante, so the
-		// driver has to advance the StateDB nonce here. Without
-		// this, multi-CALL chains from the same sender all read
-		// the same defaulted nonce, producing colliding synthetic
-		// tx hashes and wrong CREATE addresses for any follow-up
-		// CREATE in the same block. Anchored on msg.Nonce+1 (not
-		// GetNonce+1) so the post-state mirrors CREATE when the
-		// caller supplies an explicit args.Nonce that diverges
-		// from the StateDB value. Runs regardless of res.VmError —
-		// a reverted CALL still consumes the nonce on the real
-		// chain.
-		if msg.To != nil {
-			sdb.SetNonce(msg.From, msg.Nonce+1, tracing.NonceChangeUnspecified)
 		}
 
 		// Request-wide gas pool. The clamp in resolveSimCallGas keeps
