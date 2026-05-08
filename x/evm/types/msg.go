@@ -248,6 +248,8 @@ func MsgEthereumTxGetSigners(msgV2 protov2.Message) ([][]byte, error) {
 		txData = new(DynamicFeeTx)
 	case "/ethermint.evm.v1.LegacyTx":
 		txData = new(LegacyTx)
+	case "/ethermint.evm.v1.SetCodeTx":
+		txData = new(SetCodeTx)
 	default:
 		return nil, fmt.Errorf("unrecognized TxData type: %s", msgEthTx.Data.TypeUrl)
 	}
