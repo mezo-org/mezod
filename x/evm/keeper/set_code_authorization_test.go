@@ -420,7 +420,7 @@ func TestApplySetCodeAuthorizations_PostLoopWarmsResolvedTarget(t *testing.T) {
 		},
 		{
 			name: "pre-existing delegation",
-			build: func(t *testing.T) (common.Address, common.Address, []ethtypes.SetCodeAuthorization) {
+			build: func(_ *testing.T) (common.Address, common.Address, []ethtypes.SetCodeAuthorization) {
 				delegated := common.HexToAddress("0xDEAd000000000000000000000000000000000DE1")
 				target := common.HexToAddress("0xCAfE000000000000000000000000000000000fff")
 				return delegated, target, nil

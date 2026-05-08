@@ -51,6 +51,8 @@ func (k *Keeper) ExecuteContractCall(
 		AccessList:            ethtypes.AccessList{},
 		BlobGasFeeCap:         big.NewInt(0),
 		BlobHashes:            []common.Hash{},
+		SetCodeAuthorizations: []ethtypes.SetCodeAuthorization{},
+		SkipNonceChecks:       false,
 		SkipTransactionChecks: false,
 	}
 

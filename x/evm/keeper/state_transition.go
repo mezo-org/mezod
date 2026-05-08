@@ -591,13 +591,16 @@ func (k *Keeper) applyMessageWithConfig(
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, value)
 		stateDB.SetNonce(sender, msg.Nonce+1, tracing.NonceChangeUnspecified)
 	} else {
+		// Apply set-code authorizations before calling evm.Call.
+		//
 		// Sender nonce is bumped before this point — by
-		// EthIncrementSenderSequenceDecorator on consensus paths
-		// (CheckTx/DeliverTx) and by per-entry-point ante emulation on
+		// EthIncrementSenderSequenceDecorator ante handler on consensus paths
+		// (CheckTx/DeliverTx) and by per-entry-point explicit bump on
 		// keeper-internal paths (EthCall, EstimateGas, TraceTx, traceTx,
 		// SimulateV1). Self-sponsored auths therefore see the post-bump
 		// value here regardless of path.
 		applySetCodeAuthorizations(k.Logger(ctx), stateDB, cfg.ChainConfig.ChainID, msg)
+
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, value)
 	}
 
