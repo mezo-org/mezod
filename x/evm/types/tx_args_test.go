@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/holiman/uint256"
 
 	"github.com/mezo-org/mezod/x/evm/types"
 )
@@ -19,7 +20,7 @@ func (suite *TxDataTestSuite) TestTxArgsString() {
 		{
 			"empty tx args",
 			types.TransactionArgs{},
-			"TransactionArgs{From:<nil>, To:<nil>, Gas:<nil>, Nonce:<nil>, Data:<nil>, Input:<nil>, AccessList:<nil>}",
+			"TransactionArgs{From:<nil>, To:<nil>, Gas:<nil>, Nonce:<nil>, Data:<nil>, Input:<nil>, AccessList:<nil>, AuthorizationList:[]}",
 		},
 		{
 			"tx args with fields",
@@ -32,14 +33,28 @@ func (suite *TxDataTestSuite) TestTxArgsString() {
 				Data:       &suite.hexDataBytes,
 				AccessList: &ethtypes.AccessList{},
 			},
-			fmt.Sprintf("TransactionArgs{From:%v, To:%v, Gas:%v, Nonce:%v, Data:%v, Input:%v, AccessList:%v}",
+			fmt.Sprintf("TransactionArgs{From:%v, To:%v, Gas:%v, Nonce:%v, Data:%v, Input:%v, AccessList:%v, AuthorizationList:%v}",
 				&suite.addr,
 				&suite.addr,
 				&suite.hexUint64,
 				&suite.hexUint64,
 				&suite.hexDataBytes,
 				&suite.hexInputBytes,
-				&ethtypes.AccessList{}),
+				&ethtypes.AccessList{},
+				[]string{}),
+		},
+		{
+			"tx args with auth list",
+			types.TransactionArgs{
+				AuthorizationList: []ethtypes.SetCodeAuthorization{
+					{ChainID: *uint256.NewInt(31611), Address: suite.addr, Nonce: 7},
+					{ChainID: *uint256.NewInt(31611), Address: suite.addr, Nonce: 8},
+				},
+			},
+			fmt.Sprintf(
+				"TransactionArgs{From:<nil>, To:<nil>, Gas:<nil>, Nonce:<nil>, Data:<nil>, Input:<nil>, AccessList:<nil>, AuthorizationList:[(chainId=31611 address=%s nonce=7) (chainId=31611 address=%s nonce=8)]}",
+				suite.addr.Hex(), suite.addr.Hex(),
+			),
 		},
 	}
 	for _, tc := range testCases {
@@ -96,6 +111,191 @@ func (suite *TxDataTestSuite) TestConvertTxArgsEthTx() {
 		res := tc.txArgs.ToTransaction()
 		suite.Require().NotNil(res)
 	}
+}
+
+func (suite *TxDataTestSuite) TestToTransactionSetCode() {
+	auth := ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.NewInt(31611),
+		Address: suite.addr,
+		Nonce:   42,
+		V:       1,
+		R:       *uint256.NewInt(7),
+		S:       *uint256.NewInt(11),
+	}
+
+	// wantAccesses lets callers distinguish a populated AccessList from the
+	// empty fallback used when args.AccessList is nil.
+	assertSetCodeFields := func(setCodeTx *types.SetCodeTx, wantAccesses types.AccessList) {
+		suite.Require().Equal(suite.addr.Hex(), setCodeTx.To)
+		suite.Require().NotNil(setCodeTx.ChainID)
+		suite.Require().Equal(suite.hexBigInt.ToInt(), setCodeTx.ChainID.BigInt())
+		suite.Require().Equal(uint64(suite.hexUint64), setCodeTx.Nonce)
+		suite.Require().Equal(uint64(suite.hexUint64), setCodeTx.GasLimit)
+		suite.Require().NotNil(setCodeTx.GasFeeCap)
+		suite.Require().Equal(suite.hexBigInt.ToInt(), setCodeTx.GasFeeCap.BigInt())
+		suite.Require().NotNil(setCodeTx.GasTipCap)
+		suite.Require().Equal(suite.hexBigInt.ToInt(), setCodeTx.GasTipCap.BigInt())
+		suite.Require().NotNil(setCodeTx.Amount)
+		suite.Require().Equal(suite.hexBigInt.ToInt(), setCodeTx.Amount.BigInt())
+		// Input is preferred over Data when both are set (see GetData).
+		suite.Require().Equal([]byte(suite.hexInputBytes), setCodeTx.Data)
+		suite.Require().Equal(wantAccesses, setCodeTx.Accesses)
+		suite.Require().Len(setCodeTx.AuthList, 1)
+		suite.Require().Equal(auth, setCodeTx.AuthList[0].ToEthAuthorization())
+	}
+
+	suite.Run("with auth list, builds SetCodeTx", func() {
+		accessList := ethtypes.AccessList{{Address: suite.addr, StorageKeys: []common.Hash{{0}}}}
+		args := types.TransactionArgs{
+			From:                 &suite.addr,
+			To:                   &suite.addr,
+			Gas:                  &suite.hexUint64,
+			MaxFeePerGas:         &suite.hexBigInt,
+			MaxPriorityFeePerGas: &suite.hexBigInt,
+			Value:                &suite.hexBigInt,
+			Nonce:                &suite.hexUint64,
+			Data:                 &suite.hexDataBytes,
+			Input:                &suite.hexInputBytes,
+			AccessList:           &accessList,
+			AuthorizationList:    []ethtypes.SetCodeAuthorization{auth},
+			ChainID:              &suite.hexBigInt,
+		}
+
+		msg := args.ToTransaction()
+		suite.Require().NotNil(msg)
+
+		txData, err := types.UnpackTxData(msg.Data)
+		suite.Require().NoError(err)
+
+		setCodeTx, ok := txData.(*types.SetCodeTx)
+		suite.Require().True(ok, "expected *SetCodeTx, got %T", txData)
+		assertSetCodeFields(setCodeTx, types.NewAccessList(&accessList))
+
+		// Round-trip through AsTransaction() must succeed and yield a
+		// non-empty hash with the SetCode type.
+		ethTx := msg.AsTransaction()
+		suite.Require().Equal(uint8(ethtypes.SetCodeTxType), ethTx.Type())
+		suite.Require().NotEmpty(ethTx.Hash().Hex())
+	})
+
+	suite.Run("nil access list, builds SetCodeTx with empty Accesses", func() {
+		args := types.TransactionArgs{
+			From:                 &suite.addr,
+			To:                   &suite.addr,
+			Gas:                  &suite.hexUint64,
+			MaxFeePerGas:         &suite.hexBigInt,
+			MaxPriorityFeePerGas: &suite.hexBigInt,
+			Value:                &suite.hexBigInt,
+			Nonce:                &suite.hexUint64,
+			Data:                 &suite.hexDataBytes,
+			Input:                &suite.hexInputBytes,
+			AccessList:           nil,
+			AuthorizationList:    []ethtypes.SetCodeAuthorization{auth},
+			ChainID:              &suite.hexBigInt,
+		}
+
+		msg := args.ToTransaction()
+		suite.Require().NotNil(msg)
+
+		txData, err := types.UnpackTxData(msg.Data)
+		suite.Require().NoError(err)
+
+		setCodeTx, ok := txData.(*types.SetCodeTx)
+		suite.Require().True(ok, "expected *SetCodeTx, got %T", txData)
+		// When args.AccessList is nil the branch must fall back to an
+		// empty (non-nil) AccessList{}, not propagate nil.
+		assertSetCodeFields(setCodeTx, types.AccessList{})
+		suite.Require().NotNil(setCodeTx.Accesses)
+
+		// Round-trip through AsTransaction() must not panic and must
+		// produce a non-empty hash.
+		ethTx := msg.AsTransaction()
+		suite.Require().Equal(uint8(ethtypes.SetCodeTxType), ethTx.Type())
+		suite.Require().NotEmpty(ethTx.Hash().Hex())
+	})
+
+	suite.Run("nil auth list, builds DynamicFeeTx", func() {
+		args := types.TransactionArgs{
+			From:                 &suite.addr,
+			To:                   &suite.addr,
+			Gas:                  &suite.hexUint64,
+			MaxFeePerGas:         &suite.hexBigInt,
+			MaxPriorityFeePerGas: &suite.hexBigInt,
+			Value:                &suite.hexBigInt,
+			Nonce:                &suite.hexUint64,
+			Data:                 &suite.hexDataBytes,
+			Input:                &suite.hexInputBytes,
+			AccessList:           &ethtypes.AccessList{},
+			AuthorizationList:    nil,
+			ChainID:              &suite.hexBigInt,
+		}
+
+		msg := args.ToTransaction()
+		suite.Require().NotNil(msg)
+
+		txData, err := types.UnpackTxData(msg.Data)
+		suite.Require().NoError(err)
+
+		_, ok := txData.(*types.DynamicFeeTx)
+		suite.Require().True(ok, "expected *DynamicFeeTx, got %T", txData)
+	})
+
+	suite.Run("empty non-nil auth list, builds SetCodeTx", func() {
+		args := types.TransactionArgs{
+			From:                 &suite.addr,
+			To:                   &suite.addr,
+			Gas:                  &suite.hexUint64,
+			MaxFeePerGas:         &suite.hexBigInt,
+			MaxPriorityFeePerGas: &suite.hexBigInt,
+			Value:                &suite.hexBigInt,
+			Nonce:                &suite.hexUint64,
+			Data:                 &suite.hexDataBytes,
+			Input:                &suite.hexInputBytes,
+			AccessList:           &ethtypes.AccessList{},
+			AuthorizationList:    []ethtypes.SetCodeAuthorization{},
+			ChainID:              &suite.hexBigInt,
+		}
+
+		msg := args.ToTransaction()
+		suite.Require().NotNil(msg)
+
+		txData, err := types.UnpackTxData(msg.Data)
+		suite.Require().NoError(err)
+
+		setCodeTx, ok := txData.(*types.SetCodeTx)
+		suite.Require().True(ok, "expected *SetCodeTx, got %T", txData)
+		suite.Require().Empty(setCodeTx.AuthList)
+	})
+
+	suite.Run("gasPrice + auth list, falls through to LegacyTx", func() {
+		auth := ethtypes.SetCodeAuthorization{
+			ChainID: *uint256.NewInt(31611),
+			Address: suite.addr,
+			Nonce:   1,
+		}
+		args := types.TransactionArgs{
+			From:              &suite.addr,
+			To:                &suite.addr,
+			Gas:               &suite.hexUint64,
+			GasPrice:          &suite.hexBigInt,
+			Value:             &suite.hexBigInt,
+			Nonce:             &suite.hexUint64,
+			Data:              &suite.hexDataBytes,
+			Input:             &suite.hexInputBytes,
+			AuthorizationList: []ethtypes.SetCodeAuthorization{auth},
+			ChainID:           &suite.hexBigInt,
+		}
+
+		msg := args.ToTransaction()
+		suite.Require().NotNil(msg)
+
+		txData, err := types.UnpackTxData(msg.Data)
+		suite.Require().NoError(err)
+
+		_, ok := txData.(*types.LegacyTx)
+		suite.Require().True(ok, "expected *LegacyTx, got %T", txData)
+		suite.Require().NotEmpty(msg.AsTransaction().Hash().Hex())
+	})
 }
 
 func (suite *TxDataTestSuite) TestToMessageEVM() {

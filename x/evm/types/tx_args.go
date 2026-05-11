@@ -59,16 +59,24 @@ type TransactionArgs struct {
 
 // String return the struct in a string format
 func (args *TransactionArgs) String() string {
+	authSummaries := make([]string, 0, len(args.AuthorizationList))
+	for _, auth := range args.AuthorizationList {
+		authSummaries = append(authSummaries, fmt.Sprintf(
+			"(chainId=%s address=%s nonce=%d)",
+			auth.ChainID.String(), auth.Address.Hex(), auth.Nonce,
+		))
+	}
 	// Todo: There is currently a bug with hexutil.Big when the value its nil, printing would trigger an exception
 	return fmt.Sprintf("TransactionArgs{From:%v, To:%v, Gas:%v,"+
-		" Nonce:%v, Data:%v, Input:%v, AccessList:%v}",
+		" Nonce:%v, Data:%v, Input:%v, AccessList:%v, AuthorizationList:%v}",
 		args.From,
 		args.To,
 		args.Gas,
 		args.Nonce,
 		args.Data,
 		args.Input,
-		args.AccessList)
+		args.AccessList,
+		authSummaries)
 }
 
 // ToTransaction converts the arguments to an ethereum transaction.
@@ -115,6 +123,27 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 
 	var data TxData
 	switch {
+	// GasPrice + AuthorizationList: drop the auth list and fall through to
+	// LegacyTx. Otherwise the 1559 fee caps stay nil and AsTransaction().Hash()
+	// panics on a nil GasTipCap.
+	case args.AuthorizationList != nil && args.GasPrice == nil:
+		al := AccessList{}
+		if args.AccessList != nil {
+			al = NewAccessList(args.AccessList)
+		}
+
+		data = &SetCodeTx{
+			To:        to,
+			ChainID:   &chainID,
+			Nonce:     nonce,
+			GasLimit:  gas,
+			GasFeeCap: &maxFeePerGas,
+			GasTipCap: &maxPriorityFeePerGas,
+			Amount:    &value,
+			Data:      args.GetData(),
+			Accesses:  al,
+			AuthList:  NewAuthorizationList(args.AuthorizationList),
+		}
 	case args.MaxFeePerGas != nil:
 		al := AccessList{}
 		if args.AccessList != nil {
