@@ -577,7 +577,8 @@ func (k *Keeper) applyMessageWithConfig(
 
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
-	if rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())); rules.IsBerlin { //nolint:gosec
+	rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
+	if rules.IsBerlin {
 		stateDB.Prepare(rules, msg.From, evm.Context.Coinbase, msg.To, maps.Keys(evm.Precompiles()), msg.AccessList)
 	}
 
@@ -599,12 +600,18 @@ func (k *Keeper) applyMessageWithConfig(
 		// keeper-internal paths (EthCall, EstimateGas, TraceTx, traceTx,
 		// SimulateV1). Self-sponsored auths therefore see the post-bump
 		// value here regardless of path.
-		precompiles := evm.Precompiles()
-		isPrecompile := func(addr common.Address) bool {
-			_, ok := precompiles[addr]
-			return ok
+		//
+		// Gated explicitly: simulate/eth_call/eth_estimateGas bypass the ante,
+		// so the consensus-side Prague check in setup_ctx.go isn't reached on
+		// those paths.
+		if rules.IsPrague {
+			precompiles := evm.Precompiles()
+			isPrecompile := func(addr common.Address) bool {
+				_, ok := precompiles[addr]
+				return ok
+			}
+			applySetCodeAuthorizations(k.Logger(ctx), stateDB, cfg.ChainConfig.ChainID, msg, isPrecompile)
 		}
-		applySetCodeAuthorizations(k.Logger(ctx), stateDB, cfg.ChainConfig.ChainID, msg, isPrecompile)
 
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, value)
 	}
