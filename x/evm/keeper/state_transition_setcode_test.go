@@ -757,6 +757,39 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig_RejectsAuthListWithNilT
 		"no delegation marker must be installed when the message is rejected")
 }
 
+// TestApplyMessageWithConfig_RejectsEmptyAuthList pins the keeper-level
+// guard that mirrors geth's preCheck: a core.Message carrying a non-nil
+// but empty SetCodeAuthorizations list must be rejected up-front with
+// core.ErrEmptyAuthList. SetCodeTx.Validate and the Prague-gating ante
+// cover the consensus path; this guard is the chokepoint for simulate /
+// RPC ingress that builds a core.Message directly and would otherwise
+// slip past those checks.
+func (suite *KeeperTestSuite) TestApplyMessageWithConfig_RejectsEmptyAuthList() {
+	suite.SetupTest()
+
+	msg := core.Message{
+		From:                  suite.address,
+		To:                    &suite.address,
+		Nonce:                 suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
+		Value:                 big.NewInt(0),
+		GasLimit:              200_000,
+		GasPrice:              big.NewInt(0),
+		GasFeeCap:             big.NewInt(0),
+		GasTipCap:             big.NewInt(0),
+		Data:                  nil,
+		AccessList:            ethtypes.AccessList{},
+		SetCodeAuthorizations: []ethtypes.SetCodeAuthorization{},
+		SkipNonceChecks:       true,
+		SkipTransactionChecks: true,
+	}
+
+	res, _, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, msg, nil, true)
+	suite.Require().Error(err, "non-nil but empty auth list must be rejected")
+	suite.Require().ErrorIs(err, core.ErrEmptyAuthList,
+		"rejection must surface geth's EIP-7702 sentinel via errors.Is")
+	suite.Require().Nil(res, "no response on early reject")
+}
+
 // TestApplyMessageWithConfig_DuplicateAuthorityLastWins pins the spec
 // language for repeated authorities in the same tuple list: geth processes
 // tuples in order, with last-write semantics on the authority's code.
@@ -811,43 +844,4 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig_DuplicateAuthorityLastW
 		post.GetCode(authority),
 		"last-wins: final delegation must point to the second target",
 	)
-}
-
-// TestApplyMessageWithConfig_EmptyAuthList pins keeper behavior for a
-// SetCode-shaped core.Message carrying a length-0 (non-nil) auth list:
-// the auth loop iterates zero times, no nonce bumps occur, and msg.To
-// dispatches as a normal call. SetCodeTx envelope validation runs in
-// the ante / preCheck layer; this test pins the keeper-internal slice
-// for simulate / RPC ingress that may construct the message directly.
-func (suite *KeeperTestSuite) TestApplyMessageWithConfig_EmptyAuthList() {
-	suite.SetupTest()
-
-	to := common.HexToAddress("0xCAfE000000000000000000000000000000000eee")
-	preNonce := suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address)
-
-	msg := core.Message{
-		From:                  suite.address,
-		To:                    &to,
-		Nonce:                 preNonce,
-		Value:                 big.NewInt(0),
-		GasLimit:              100_000,
-		GasPrice:              big.NewInt(0),
-		GasFeeCap:             big.NewInt(0),
-		GasTipCap:             big.NewInt(0),
-		Data:                  nil,
-		AccessList:            ethtypes.AccessList{},
-		SetCodeAuthorizations: []ethtypes.SetCodeAuthorization{},
-		SkipNonceChecks:       true,
-		SkipTransactionChecks: true,
-	}
-
-	res, _, err := suite.app.EvmKeeper.ApplyMessage(suite.ctx, msg, nil, true)
-	suite.Require().NoError(err, "empty auth list must be a no-op for the auth loop, not an error")
-	suite.Require().False(res.Failed(), "vm error: %s", res.VmError)
-
-	// No nonce bumps anywhere: msg.To is an EOA so the call is a no-op,
-	// and the empty auth list contributes no per-tuple bumps.
-	post := suite.StateDB()
-	suite.Require().Empty(post.GetCode(to), "msg.To must remain code-less after no-op call")
-	suite.Require().Equal(uint64(0), post.GetNonce(to))
 }
