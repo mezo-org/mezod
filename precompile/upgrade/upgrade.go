@@ -49,6 +49,7 @@ func NewPrecompile(upgradeKeeper UpgradeKeeper, poaKeeper PoaKeeper) (*precompil
 		contractAbi,
 		common.HexToAddress(EvmAddress),
 		EvmByteCode,
+		"upgrade",
 	)
 
 	methods := newPrecompileMethods(upgradeKeeper, poaKeeper)

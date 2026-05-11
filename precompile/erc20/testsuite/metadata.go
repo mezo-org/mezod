@@ -1,7 +1,7 @@
 package testsuite
 
 import (
-	"github.com/mezo-org/mezod/precompile"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -18,7 +18,7 @@ func (s *TestSuite) runMetadataTest(input []byte, expected interface{}, methodNa
 		StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
 	}
 
-	vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+	vmContract := vm.NewPrecompile(common.Address{}, common.Address{}, nil, 0)
 	vmContract.Input = input
 	output, err := s.erc20Precompile.Run(evm, vmContract, true)
 	s.Require().NoError(err)

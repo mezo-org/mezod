@@ -44,6 +44,9 @@ const (
 	codeErrInvalidGasLimit
 	codeErrInvalidSigner
 	codeErrTxTypeNotSupported
+	codeErrInvalidSupply
+	codeErrSetCodeMissingTo
+	codeErrSetCodeEmptyAuthList
 )
 
 var ErrPostTxProcessing = errors.New("failed to execute post processing")
@@ -95,6 +98,22 @@ var (
 	ErrInvalidGasLimit    = errorsmod.Register(ModuleName, codeErrInvalidGasLimit, "invalid gas limit")
 	ErrInvalidSigner      = errorsmod.Register(ModuleName, codeErrInvalidSigner, "invalid signer")
 	ErrTxTypeNotSupported = errorsmod.Register(ModuleName, codeErrTxTypeNotSupported, "transaction type not supported")
+
+	// ErrInvalidSupply is returned when a post-commit invariant check
+	// rejects an EVM transaction.
+	ErrInvalidSupply = errorsmod.Register(ModuleName, codeErrInvalidSupply,
+		"EVM transaction failed post-commit invariant check")
+
+	// ErrSetCodeMissingTo is returned when an EIP-7702 set-code transaction
+	// omits the recipient address. EIP-7702 forbids contract creation, which
+	// the RLP wire format encodes as an absent `to` field.
+	ErrSetCodeMissingTo = errorsmod.Register(ModuleName, codeErrSetCodeMissingTo,
+		"set-code transaction must specify a recipient")
+
+	// ErrSetCodeEmptyAuthList is returned when an EIP-7702 set-code
+	// transaction carries an empty authorization list.
+	ErrSetCodeEmptyAuthList = errorsmod.Register(ModuleName, codeErrSetCodeEmptyAuthList,
+		"set-code transaction must contain at least one authorization")
 )
 
 // NewExecErrorWithReason unpacks the revert return bytes and returns a wrapped error

@@ -56,6 +56,7 @@ func NewPrecompile(bankKeeper bankkeeper.Keeper, authzkeeper authzkeeper.Keeper,
 		contractAbi,
 		common.HexToAddress(EvmAddress),
 		EvmByteCode,
+		"testbed",
 	)
 
 	methods := newPrecompileMethods(bankKeeper, authzkeeper, evmkeeper)

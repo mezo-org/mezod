@@ -16,6 +16,7 @@
 package keeper
 
 import (
+	"context"
 	"math/big"
 	"slices"
 	"strings"
@@ -70,6 +71,8 @@ type Keeper struct {
 	feeMarketKeeper types.FeeMarketKeeper
 	// access to consensus params
 	consensusKeeper types.ConsensusKeeper
+	// post-commit invariant check; wired in via SetVerifyBTCSupply.
+	verifyBTCSupply func(ctx context.Context) error
 
 	// chain ID number obtained from the context's chain id
 	eip155ChainID *big.Int
@@ -124,6 +127,13 @@ func NewKeeper(
 		ss:                ss,
 		customPrecompiles: make(map[common.Address]*precompile.VersionMap),
 	}
+}
+
+// SetVerifyBTCSupply registers the post-commit invariant check. Wired
+// in app.go after both keepers exist; using a function field keeps the
+// EVM keeper free of a direct x/bridge dependency.
+func (k *Keeper) SetVerifyBTCSupply(fn func(ctx context.Context) error) {
+	k.verifyBTCSupply = fn
 }
 
 // Logger returns a module-specific logger.

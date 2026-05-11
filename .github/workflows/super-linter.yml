@@ -43,6 +43,7 @@ jobs:
           VALIDATE_SQLFLUFF: false
           VALIDATE_TERRAFORM_TERRASCAN: false
           VALIDATE_KUBERNETES_KUBEVAL: false
+          VALIDATE_GITHUB_ACTIONS: false
           DEFAULT_BRANCH: "main"
           FILTER_REGEX_EXCLUDE: ".*\\.env\\.example"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

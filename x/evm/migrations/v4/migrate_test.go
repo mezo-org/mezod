@@ -87,5 +87,28 @@ func TestMigrate(t *testing.T) {
 	require.Equal(t, legacySubspace.ps.EnableCreate, params.EnableCreate)
 	require.Equal(t, legacySubspace.ps.AllowUnprotectedTxs, params.AllowUnprotectedTxs)
 	require.Equal(t, legacySubspace.ps.ExtraEIPs, params.ExtraEIPs.EIPs)
-	require.EqualValues(t, legacySubspace.ps.ChainConfig, params.V4ChainConfig)
+
+	srcCfg := legacySubspace.ps.ChainConfig
+	expectedV4 := v4types.V4ChainConfig{
+		HomesteadBlock:      srcCfg.HomesteadBlock,
+		DAOForkBlock:        srcCfg.DAOForkBlock,
+		DAOForkSupport:      srcCfg.DAOForkSupport,
+		EIP150Block:         srcCfg.EIP150Block,
+		EIP150Hash:          srcCfg.EIP150Hash,
+		EIP155Block:         srcCfg.EIP155Block,
+		EIP158Block:         srcCfg.EIP158Block,
+		ByzantiumBlock:      srcCfg.ByzantiumBlock,
+		ConstantinopleBlock: srcCfg.ConstantinopleBlock,
+		PetersburgBlock:     srcCfg.PetersburgBlock,
+		IstanbulBlock:       srcCfg.IstanbulBlock,
+		MuirGlacierBlock:    srcCfg.MuirGlacierBlock,
+		BerlinBlock:         srcCfg.BerlinBlock,
+		LondonBlock:         srcCfg.LondonBlock,
+		ArrowGlacierBlock:   srcCfg.ArrowGlacierBlock,
+		GrayGlacierBlock:    srcCfg.GrayGlacierBlock,
+		MergeNetsplitBlock:  srcCfg.MergeNetsplitBlock,
+		ShanghaiTime:        srcCfg.ShanghaiTime,
+		CancunTime:          srcCfg.CancunTime,
+	}
+	require.Equal(t, expectedV4, params.V4ChainConfig)
 }

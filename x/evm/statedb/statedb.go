@@ -23,6 +23,7 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	gethstate "github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/stateless"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -70,7 +71,7 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionID int
 
-	logger *tracing.Hooks
+	tracingHooks *tracing.Hooks
 
 	stateObjects map[common.Address]*stateObject
 
@@ -129,9 +130,37 @@ func (s *StateDB) Keeper() Keeper {
 	return s.keeper
 }
 
+// SetTxContext mirrors go-ethereum's `(*state.StateDB).SetTxContext` —
+// it replaces the per-tx hash and tx index used by AddLog when stamping
+// emitted logs. Reusing a single StateDB across many logical
+// "transactions" (calls) and calling SetTxContext between them lets
+// each call's logs carry distinct TxHash / TxIndex values.
+//
+// BlockHash and LogIndex on the StateDB's txConfig are intentionally
+// left untouched, matching the geth signature; per-block hash patching
+// happens separately, after each block finalizes.
+//
+// Safe to call between calls; the txConfig is read-only from AddLog's
+// perspective and never participates in the journal.
+//
+// TODO (geth-upgrade): once go-ethereum v1.16.9 lands, decide whether
+// the simulate driver should call geth's native
+// `(*state.StateDB).SetTxContext` directly — and whether this wrapper
+// can be dropped in favor of it.
+func (s *StateDB) SetTxContext(thash common.Hash, ti int) {
+	s.txConfig.TxHash = thash
+	s.txConfig.TxIndex = uint(ti) //nolint:gosec
+}
+
 // GetContext returns the transaction Context.
 func (s *StateDB) GetContext() sdk.Context {
 	return s.ctx
+}
+
+// SetTracingHooks installs tracing hooks on the StateDB. A nil pointer
+// disables tracing.
+func (s *StateDB) SetTracingHooks(hooks *tracing.Hooks) {
+	s.tracingHooks = hooks
 }
 
 // AddLog adds a log, called by evm.
@@ -143,6 +172,10 @@ func (s *StateDB) AddLog(log *ethtypes.Log) {
 	log.TxIndex = s.txConfig.TxIndex
 	log.Index = s.txConfig.LogIndex + uint(len(s.logs))
 	s.logs = append(s.logs, log)
+
+	if s.tracingHooks != nil && s.tracingHooks.OnLog != nil {
+		s.tracingHooks.OnLog(log)
+	}
 }
 
 // Logs returns the logs of current transaction.
@@ -317,10 +350,10 @@ func (s *StateDB) Prepare(rules params.Rules, sender, coinbase common.Address, d
 //
 // The account's state object is still available until the state is committed,
 // getStateObject will return a non-nil account after SelfDestruct.
-func (s *StateDB) SelfDestruct(addr common.Address) {
+func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
-		return
+		return uint256.Int{}
 	}
 	var (
 		prev = new(uint256.Int).Set(stateObject.Balance())
@@ -331,21 +364,23 @@ func (s *StateDB) SelfDestruct(addr common.Address) {
 		prev:        stateObject.selfDestructed,
 		prevbalance: prev,
 	})
-	if s.logger != nil && s.logger.OnBalanceChange != nil && prev.Sign() > 0 {
-		s.logger.OnBalanceChange(addr, prev.ToBig(), n.ToBig(), tracing.BalanceDecreaseSelfdestruct)
+	if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && prev.Sign() > 0 {
+		s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), n.ToBig(), tracing.BalanceDecreaseSelfdestruct)
 	}
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
+	return *prev
 }
 
-func (s *StateDB) Selfdestruct6780(addr common.Address) {
+func (s *StateDB) SelfDestruct6780(addr common.Address) (uint256.Int, bool) {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
-		return
+		return uint256.Int{}, false
 	}
 	if stateObject.newContract {
-		s.SelfDestruct(addr)
+		return s.SelfDestruct(addr), true
 	}
+	return *stateObject.Balance(), false
 }
 
 // SetTransientState sets transient storage for a given account. It
@@ -394,6 +429,68 @@ func (s *StateDB) Witness() *stateless.Witness {
 	return s.witness
 }
 
+func (s *StateDB) AccessEvents() *gethstate.AccessEvents {
+	// Mezo does not activate Verkle/EIP-4762 and does not rely on Verkle trees.
+	return nil
+}
+
+// Finalise satisfies vm.StateDB on go-ethereum v1.16.9. It's a no-op
+// stub kept solely for interface compliance.
+//
+// Geth's Finalise flushes dirty objects toward a trie root and may
+// delete EIP-158-empty accounts. Mezo does neither, because it uses
+// a fresh StateDB per tx and account-level deletion lives at the
+// keeper layer.
+//
+//nolint:misspell
+func (s *StateDB) Finalise(_ bool) {}
+
+// ResetTxEphemerals clears per-call ephemeral state (logs, refund,
+// transient storage, journal, revision stack, and the EIP-6780
+// newContract flag) and resets the precompile-call counter while
+// preserving state objects, access list, and the live cached cosmos
+// ctx — so accumulated cross-call account/storage mutations and
+// precompile-side writes remain visible. Used by simulate drivers
+// running several calls against a shared StateDB without committing
+// between them.
+//
+// Clearing the journal bounds memory: each custom-precompile call
+// appends a multistore Clone() to the journal, which would otherwise
+// accumulate across the whole request. It also disarms the latent
+// panic where addLogChange.Revert reads s.logs[len-1] after s.logs
+// has been cleared by a prior ResetTxEphemerals call.
+//
+// Invariant: callers must not hold a live Snapshot() across this call.
+// The revision stack is wiped, so a stale revision id will fail
+// RevertToSnapshot. The simulate driver does not snapshot at the top
+// level; future drivers must preserve that.
+//
+// Divergence from geth: self-destructed objects stay live in
+// s.stateObjects until Commit. In a simulated call sequence, call N+1
+// can therefore still observe Exist(addr)==true for an account
+// self-destructed in call N.
+func (s *StateDB) ResetTxEphemerals() {
+	s.logs = nil
+	s.refund = 0
+	s.transientStorage = newTransientStorage()
+	s.ongoingPrecompilesCallsCounter = 0
+	s.journal = newJournal()
+	s.validRevisions = nil
+	s.nextRevisionID = 0
+
+	// EIP-6780: each simulated call is a separate transaction, so
+	// newContract has to be cleared between calls — otherwise a
+	// contract created in call N could be 6780-destroyed in call N+1.
+	// Geth handles this at end-of-tx by iterating journal.dirties;
+	// we just reset the journal above, so dirties is empty by the
+	// time this loop runs. Iterating live state objects sidesteps
+	// that ordering dependency, and the assignment is a no-op for
+	// anything that never had the flag.
+	for _, obj := range s.stateObjects {
+		obj.newContract = false
+	}
+}
+
 // GetCode returns the code of account, nil if not exists.
 func (s *StateDB) GetCode(addr common.Address) []byte {
 	stateObject := s.getStateObject(addr)
@@ -437,6 +534,15 @@ func (s *StateDB) GetCommittedState(addr common.Address, hash common.Hash) commo
 		return stateObject.GetCommittedState(hash)
 	}
 	return common.Hash{}
+}
+
+// GetStateAndCommittedState returns the current value and the committed value.
+func (s *StateDB) GetStateAndCommittedState(addr common.Address, hash common.Hash) (common.Hash, common.Hash) {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.GetState(hash), stateObject.GetCommittedState(hash)
+	}
+	return common.Hash{}, common.Hash{}
 }
 
 // GetRefund returns the current value of the refund counter.
@@ -539,19 +645,25 @@ func (s *StateDB) setStateObject(object *stateObject) {
  */
 
 // AddBalance adds amount to the account associated with addr.
-func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) {
+func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) uint256.Int {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.AddBalance(amount)
+		return *prev
 	}
+	return *uint256.NewInt(0)
 }
 
 // SubBalance subtracts amount from the account associated with addr.
-func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) {
+func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) uint256.Int {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.SubBalance(amount)
+		return *prev
 	}
+	return *uint256.NewInt(0)
 }
 
 // OverrideBalance overrides the balance of the account associated with addr.
@@ -604,7 +716,7 @@ func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxChec
 }
 
 // SetNonce sets the nonce of account.
-func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
+func (s *StateDB) SetNonce(addr common.Address, nonce uint64, _ tracing.NonceChangeReason) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetNonce(nonce)
@@ -612,19 +724,25 @@ func (s *StateDB) SetNonce(addr common.Address, nonce uint64) {
 }
 
 // SetCode sets the code of account.
-func (s *StateDB) SetCode(addr common.Address, code []byte) {
+func (s *StateDB) SetCode(addr common.Address, code []byte, _ tracing.CodeChangeReason) []byte {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := append([]byte(nil), stateObject.Code()...)
 		stateObject.SetCode(crypto.Keccak256Hash(code), code)
+		return prev
 	}
+	return nil
 }
 
 // SetState sets the contract state.
-func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
+func (s *StateDB) SetState(addr common.Address, key, value common.Hash) common.Hash {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := stateObject.GetState(key)
 		stateObject.SetState(key, value)
+		return prev
 	}
+	return common.Hash{}
 }
 
 // AddAddressToAccessList adds the given address to the access list

@@ -95,7 +95,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 
 			// create a contract account
 			db.CreateAccount(address)
-			db.SetCode(address, []byte("hello world"))
+			db.SetCode(address, []byte("hello world"), tracing.CodeChangeUnspecified)
 			db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
 			db.SetState(address, key1, value1)
 			db.SetState(address, key2, value2)
@@ -144,7 +144,7 @@ func (suite *StateDBTestSuite) TestAccountOverride() {
 
 	// init an EOA account, account overridden only happens on EOA account.
 	db.AddBalance(address, amount, tracing.BalanceChangeUnspecified)
-	db.SetNonce(address, 1)
+	db.SetNonce(address, 1, tracing.NonceChangeUnspecified)
 
 	// override
 	db.CreateAccount(address)
@@ -161,10 +161,10 @@ func (suite *StateDBTestSuite) TestDBError() {
 		malleate func(vm.StateDB)
 	}{
 		{"set account", func(db vm.StateDB) {
-			db.SetNonce(errAddress, 1)
+			db.SetNonce(errAddress, 1, tracing.NonceChangeUnspecified)
 		}},
 		{"delete account", func(db vm.StateDB) {
-			db.SetNonce(errAddress, 1)
+			db.SetNonce(errAddress, 1, tracing.NonceChangeUnspecified)
 			db.SelfDestruct(errAddress)
 		}},
 	}
@@ -242,7 +242,7 @@ func (suite *StateDBTestSuite) TestCode() {
 			db.CreateAccount(address)
 		}, nil, common.BytesToHash(emptyCodeHash)},
 		{"set code", func(db vm.StateDB) {
-			db.SetCode(address, code)
+			db.SetCode(address, code, tracing.CodeChangeUnspecified)
 		}, code, codeHash},
 	}
 
@@ -280,7 +280,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			db.SetState(address, v1, v3)
 		}},
 		{"set nonce", func(db vm.StateDB) {
-			db.SetNonce(address, 10)
+			db.SetNonce(address, 10, tracing.NonceChangeUnspecified)
 		}},
 		{"change balance", func(db vm.StateDB) {
 			db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
@@ -290,11 +290,11 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			db.CreateAccount(address)
 		}},
 		{"set code", func(db vm.StateDB) {
-			db.SetCode(address, []byte("hello world"))
+			db.SetCode(address, []byte("hello world"), tracing.CodeChangeUnspecified)
 		}},
 		{"suicide", func(db vm.StateDB) {
 			db.SetState(address, v1, v2)
-			db.SetCode(address, []byte("hello world"))
+			db.SetCode(address, []byte("hello world"), tracing.CodeChangeUnspecified)
 			db.SelfDestruct(address)
 		}},
 		{"add log", func(db vm.StateDB) {
@@ -319,11 +319,11 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 			{
 				// do some arbitrary changes to the storage
 				db := statedb.New(ctx, keeper, emptyTxConfig)
-				db.SetNonce(address, 1)
+				db.SetNonce(address, 1, tracing.NonceChangeUnspecified)
 				db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
-				db.SetCode(address, []byte("hello world"))
+				db.SetCode(address, []byte("hello world"), tracing.CodeChangeUnspecified)
 				db.SetState(address, v1, v2)
-				db.SetNonce(address2, 1)
+				db.SetNonce(address2, 1, tracing.NonceChangeUnspecified)
 				suite.Require().NoError(db.Commit())
 			}
 
@@ -413,6 +413,138 @@ func (suite *StateDBTestSuite) TestInvalidSnapshotId() {
 	suite.Require().Panics(func() {
 		db.RevertToSnapshot(1)
 	})
+}
+
+func (suite *StateDBTestSuite) TestGetStateAndCommittedState() {
+	key1 := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	value2 := common.BigToHash(big.NewInt(3))
+	key2 := common.BigToHash(big.NewInt(4))
+	value3 := common.BigToHash(big.NewInt(5))
+
+	keeper := statedb.NewMockKeeper()
+	db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+
+	current, committed := db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(common.Hash{}, current)
+	suite.Require().Equal(common.Hash{}, committed)
+
+	db.SetState(address, key1, value1)
+	suite.Require().NoError(db.Commit())
+
+	db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(value1, current)
+	suite.Require().Equal(value1, committed)
+
+	db.SetState(address, key1, value2)
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(value2, current)
+	suite.Require().Equal(value1, committed)
+
+	db = statedb.New(sdk.Context{}, keeper, emptyTxConfig)
+	db.OverrideStorage(address, map[common.Hash]common.Hash{
+		key2: value3,
+	})
+
+	current, committed = db.GetStateAndCommittedState(address, key1)
+	suite.Require().Equal(common.Hash{}, current)
+	suite.Require().Equal(common.Hash{}, committed)
+
+	current, committed = db.GetStateAndCommittedState(address, key2)
+	suite.Require().Equal(value3, current)
+	suite.Require().Equal(common.Hash{}, committed)
+}
+
+func (suite *StateDBTestSuite) TestAccessEvents() {
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	suite.Require().Nil(db.AccessEvents())
+}
+
+func (suite *StateDBTestSuite) TestMutationReturnValues() {
+	key := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	value2 := common.BigToHash(big.NewInt(3))
+	code1 := []byte("hello world")
+	code2 := []byte("goodbye world")
+
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+
+	prevBalance := db.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(0), prevBalance)
+
+	prevBalance = db.AddBalance(address, uint256.NewInt(5), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+
+	prevBalance = db.SubBalance(address, uint256.NewInt(3), tracing.BalanceChangeUnspecified)
+	suite.Require().Equal(*uint256.NewInt(15), prevBalance)
+
+	prevCode := db.SetCode(address, code1, tracing.CodeChangeUnspecified)
+	suite.Require().Nil(prevCode)
+
+	prevCode = db.SetCode(address, code2, tracing.CodeChangeUnspecified)
+	suite.Require().Equal(code1, prevCode)
+
+	prevState := db.SetState(address, key, value1)
+	suite.Require().Equal(common.Hash{}, prevState)
+
+	prevState = db.SetState(address, key, value2)
+	suite.Require().Equal(value1, prevState)
+
+	prevBalance = db.SelfDestruct(address)
+	suite.Require().Equal(*uint256.NewInt(12), prevBalance)
+}
+
+func (suite *StateDBTestSuite) TestSelfDestruct6780ReturnValues() {
+	existingDB := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	existingDB.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+
+	prevBalance, destroyed := existingDB.SelfDestruct6780(address)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+	suite.Require().False(destroyed)
+
+	createdDB := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	createdDB.AddBalance(address, uint256.NewInt(10), tracing.BalanceChangeUnspecified)
+	createdDB.CreateContract(address)
+
+	prevBalance, destroyed = createdDB.SelfDestruct6780(address)
+	suite.Require().Equal(*uint256.NewInt(10), prevBalance)
+	suite.Require().True(destroyed)
+}
+
+func (suite *StateDBTestSuite) TestFinaliseNoOp() {
+	key := common.BigToHash(big.NewInt(1))
+	value := common.BigToHash(big.NewInt(2))
+
+	db := statedb.New(suite.ctx, suite.app.EvmKeeper, emptyTxConfig)
+	rules := params.Rules{IsBerlin: true}
+	db.Prepare(rules, address, address, nil, nil, nil)
+
+	db.CreateAccount(address)
+	db.CreateContract(address)
+	db.AddRefund(42)
+	db.SetTransientState(address, key, value)
+	db.AddLog(&ethtypes.Log{Address: address})
+	db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+	db.SetState(address, key, value)
+	db.Snapshot()
+
+	//nolint:misspell
+	db.Finalise(false)
+	//nolint:misspell
+	db.Finalise(true)
+
+	suite.Require().Equal(uint64(42), db.GetRefund())
+	suite.Require().Equal(value, db.GetTransientState(address, key))
+	suite.Require().Len(db.Logs(), 1)
+	suite.Require().NotPanics(func() {
+		db.RevertToSnapshot(0)
+	})
+	balance, destroyed := db.SelfDestruct6780(address)
+	suite.Require().True(destroyed)
+	suite.Require().Equal(*uint256.NewInt(100), balance)
+
+	suite.Require().NoError(db.Commit())
 }
 
 func (suite *StateDBTestSuite) TestAccessList() {
@@ -533,7 +665,7 @@ func (suite *StateDBTestSuite) TestPrepareWarmCoinbase() {
 				sender,
 				coinbase,
 				&destination,
-				vm.DefaultActivePrecompiles(tc.rules),
+				vm.ActivePrecompiles(tc.rules),
 				nil,
 			)
 
@@ -689,9 +821,9 @@ func (suite *StateDBTestSuite) TestOverrideStorage() {
 		keeper := statedb.NewMockKeeper()
 		db := statedb.New(sdk.Context{}, keeper, emptyTxConfig)
 
-		db.SetNonce(address, 5)
+		db.SetNonce(address, 5, tracing.NonceChangeUnspecified)
 		db.AddBalance(address, uint256.NewInt(200), tracing.BalanceChangeUnspecified)
-		db.SetCode(address, code)
+		db.SetCode(address, code, tracing.CodeChangeUnspecified)
 		db.SetState(address, key1, value1)
 		suite.Require().NoError(db.Commit())
 
@@ -759,6 +891,90 @@ func (suite *StateDBTestSuite) TestCommittedStateChanges() {
 	suite.Require().Equal(value1, changeMap[key1].Value)
 	suite.Require().Equal(address, changeMap[key2].Address)
 	suite.Require().Equal(value2, changeMap[key2].Value)
+}
+
+func (suite *StateDBTestSuite) TestResetTxEphemeralsReusableStateDB() {
+	key1 := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(2))
+	addr2 := common.BigToAddress(big.NewInt(202))
+
+	// The suite's ctx carries a real MultiStore, required for
+	// CacheContext() when we exercise the precompile-call counter.
+	db := statedb.New(suite.ctx, suite.app.EvmKeeper, emptyTxConfig)
+
+	// Prepare allocates the transient-storage map; without it
+	// SetTransientState panics on the bare nil map.
+	rules := params.Rules{IsBerlin: true}
+	db.Prepare(rules, address, address, nil, nil, nil)
+
+	// Prime per-call ephemeral state alongside an account mutation that
+	// must survive the reset.
+	db.AddBalance(address, uint256.NewInt(100), tracing.BalanceChangeUnspecified)
+	db.CreateContract(address)
+	db.AddBalance(addr2, uint256.NewInt(50), tracing.BalanceChangeUnspecified)
+	db.CreateContract(addr2)
+	db.AddLog(&ethtypes.Log{Address: address})
+	db.AddRefund(42)
+	db.SetTransientState(address, key1, value1)
+
+	// Trigger the precompile-call counter via a registered cache-ctx
+	// checkpoint so we can observe it hitting the cap and then resetting.
+	_, ccp := db.CacheContext()
+	maxCalls := suite.app.EvmKeeper.GetMaxPrecompilesCallsPerExecution(suite.ctx)
+	suite.Require().NotZero(maxCalls)
+	for i := uint(0); i < maxCalls; i++ {
+		suite.Require().NoError(
+			db.RegisterCachedCtxCheckpoint(address, ccp),
+		)
+	}
+	suite.Require().Error(
+		db.RegisterCachedCtxCheckpoint(address, ccp),
+	)
+
+	// Bump the revision stack so the post-reset id reset is
+	// observable. Without these calls nextRevisionID is already 0 and
+	// the assertion below would hold tautologically.
+	suite.Require().Equal(0, db.Snapshot())
+	suite.Require().Equal(1, db.Snapshot())
+
+	suite.Require().NotEmpty(db.Logs())
+	suite.Require().Equal(uint64(42), db.GetRefund())
+	suite.Require().Equal(value1, db.GetTransientState(address, key1))
+
+	db.ResetTxEphemerals()
+
+	suite.Require().Empty(db.Logs())
+	suite.Require().Equal(uint64(0), db.GetRefund())
+	suite.Require().Equal(common.Hash{}, db.GetTransientState(address, key1))
+
+	// Account mutation is preserved: state objects are not dropped.
+	suite.Require().True(db.Exist(address))
+	suite.Require().Equal(uint256.NewInt(100), db.GetBalance(address))
+	suite.Require().True(db.Exist(addr2))
+	suite.Require().Equal(uint256.NewInt(50), db.GetBalance(addr2))
+	balance, destroyed := db.SelfDestruct6780(address)
+	suite.Require().False(destroyed)
+	suite.Require().Equal(*uint256.NewInt(100), balance)
+	balance, destroyed = db.SelfDestruct6780(addr2)
+	suite.Require().False(destroyed)
+	suite.Require().Equal(*uint256.NewInt(50), balance)
+
+	// The counter is reset: after the reset we can register up to the
+	// cap anew, and the next registration fails again.
+	for i := uint(0); i < maxCalls; i++ {
+		suite.Require().NoError(
+			db.RegisterCachedCtxCheckpoint(address, ccp),
+		)
+	}
+	suite.Require().Error(
+		db.RegisterCachedCtxCheckpoint(address, ccp),
+	)
+
+	// Journal and revision stack are cleared, so the next Snapshot()
+	// restarts at id 0. This bounds memory across long simulate
+	// requests (per-precompile multistore clones don't accumulate)
+	// and disarms the latent addLogChange-revert-on-empty-slice panic.
+	suite.Require().Equal(0, db.Snapshot())
 }
 
 func CollectContractStorage(db *statedb.StateDB) statedb.Storage {

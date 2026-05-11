@@ -42,6 +42,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	ethparams "github.com/ethereum/go-ethereum/params"
 
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -262,7 +263,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
-	var overrides stateOverride
+	var overrides types.StateOverride
 	if len(req.StateOverride) > 0 {
 		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
@@ -358,7 +359,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	}
 
 	// Deserialize state overrides once, before the binary search loop.
-	var overrides stateOverride
+	var overrides types.StateOverride
 	if len(req.StateOverride) > 0 {
 		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
@@ -660,7 +661,6 @@ func (k *Keeper) traceTx(
 		DisableStack:     traceConfig.DisableStack,
 		DisableStorage:   traceConfig.DisableStorage,
 		EnableReturnData: traceConfig.EnableReturnData,
-		Debug:            traceConfig.Debug,
 		Limit:            int(traceConfig.Limit),
 		Overrides:        overrides,
 	})
@@ -677,7 +677,7 @@ func (k *Keeper) traceTx(
 	}
 
 	if len(traceConfig.Tracer) != 0 {
-		tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig)
+		tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig, cfg.ChainConfig)
 		if err != nil {
 			return nil, 0, status.Error(codes.Internal, err.Error())
 		}
@@ -715,6 +715,110 @@ func (k *Keeper) traceTx(
 	return &result, txConfig.LogIndex + uint(len(res.Logs)), nil
 }
 
+// SimulateV1 implements the eth_simulateV1 gRPC backend.
+//
+// The `simulate-disabled` operator kill switch is enforced at the
+// JSON-RPC namespace handler (PublicAPI.SimulateV1) — not here. Direct
+// gRPC peers bypass it; operators who need to suppress simulate
+// entirely must additionally restrict the SDK gRPC port (default 9090).
+// Same applies to the operator-derived RPCGasCap and RPCEVMTimeout
+// defaults, which the RPC backend injects via req.GasCap and
+// req.TimeoutMs. The keeper only sees the wire values and treats 0 as
+// "no bound" — see newSimGasBudget and the WithTimeout block below.
+func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*types.SimulateV1Response, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+
+	ctx := sdk.UnwrapSDKContext(c)
+
+	// Defense-in-depth for callers reaching the keeper gRPC directly
+	// (bypassing rpc/backend, which ordinarily anchors ctx at the
+	// resolved base height via rpctypes.ContextWithHeight).
+	// rpc/backend.Backend.SimulateV1 (rpc/backend/simulate_v1.go)
+	// always populates BlockNumberOrHash, defaulting to "latest" when
+	// the caller omits it; an empty field at this point means we're on
+	// a direct-gRPC path and the ctx is authoritative.
+	if err := validateSimulateV1Anchor(ctx, req.BlockNumberOrHash); err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	chainID, err := getChainID(ctx, req.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, req.ProposerAddress), chainID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	opts, err := types.UnmarshalSimOpts(req.Opts)
+	if err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	// Reject oversized envelopes before sanitizeSimChain clones the
+	// input slice. sanitizeSimChain only gap-fills with empty Calls, so
+	// the post-sanitize call total always equals the pre-sanitize one;
+	// catching it here is sufficient.
+	if n := len(opts.BlockStateCalls); n > types.MaxSimulateBlocks {
+		return simulateV1ErrResponse(types.NewSimBlockCountExceeded(n, types.MaxSimulateBlocks))
+	}
+	if n := types.CountSimCalls(opts.BlockStateCalls); n > types.MaxSimulateCalls {
+		return simulateV1ErrResponse(types.NewSimCallLimitExceeded(n, types.MaxSimulateCalls))
+	}
+
+	baseGasLimit, err := k.simulateBaseGasLimit(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get consensus params")
+	}
+
+	var baseHash common.Hash
+	if len(req.BaseBlockHash) > 0 {
+		baseHash = common.BytesToHash(req.BaseBlockHash)
+	}
+
+	timeout := time.Duration(req.TimeoutMs) * time.Millisecond
+	// timeout <= 0 means no keeper-side deadline. The RPC backend
+	// injects b.RPCEVMTimeout() via req.TimeoutMs, so the JSON-RPC path
+	// always gets a bound. A direct gRPC peer passing 0 disables the
+	// deadline — by design, since operator config is not visible at
+	// this layer. The timestamp watcher in processSimBlock keys off
+	// this ctx.
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		c, cancel = context.WithTimeout(c, timeout)
+		defer cancel()
+	}
+
+	results, err := k.simulateV1(c, ctx, cfg, baseHeaderFromContext(ctx, cfg, baseGasLimit), baseHash, opts, req.GasCap, timeout)
+	if err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	payload, err := json.Marshal(results)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &types.SimulateV1Response{Result: payload}, nil
+}
+
+// simulateV1ErrResponse routes a driver-layer error onto the response's
+// structured SimError field for spec-coded failures, or onto a gRPC
+// Internal status for everything else. core.ErrIntrinsicGas is mapped
+// to a structured -38013 SimError; CallResultFailure does not permit
+// -38013 on a per-call entry so it must surface at the request level.
+func simulateV1ErrResponse(err error) (*types.SimulateV1Response, error) {
+	var simErr *types.SimError
+	if errors.As(err, &simErr) {
+		return &types.SimulateV1Response{Error: simErr}, nil
+	}
+	if errors.Is(err, core.ErrIntrinsicGas) {
+		return &types.SimulateV1Response{Error: types.NewSimIntrinsicGas(0, 0)}, nil
+	}
+	return nil, status.Error(codes.Internal, err.Error())
+}
+
 // BaseFee implements the Query/BaseFee gRPC method
 func (k Keeper) BaseFee(c context.Context, _ *types.QueryBaseFeeRequest) (*types.QueryBaseFeeResponse, error) {
 	ctx := sdk.UnwrapSDKContext(c)
@@ -738,4 +842,91 @@ func getChainID(ctx sdk.Context, chainID int64) (*big.Int, error) {
 		return mezotypes.ParseChainID(ctx.ChainID())
 	}
 	return big.NewInt(chainID), nil
+}
+
+// validateSimulateV1Anchor performs a minimal consistency check between
+// the request's BlockNumberOrHash field and the SDK context's block
+// height. The backend (rpc/backend/simulate_v1.go) already resolves the
+// field into a concrete height and anchors ctx via
+// rpctypes.ContextWithHeight, so for the normal call path this is a
+// no-op. Direct gRPC callers that desynchronize the two surfaces hit
+// a spec-conformant -32602 instead of silently simulating against the
+// wrong base.
+//
+// Sentinel BlockNumber values (Latest / Earliest / Pending / Finalized
+// / Safe) and hash-only addressing skip the numeric comparison — the
+// backend's resolution is trusted for those cases.
+func validateSimulateV1Anchor(ctx sdk.Context, bnhBz []byte) error {
+	if len(bnhBz) == 0 {
+		return nil
+	}
+	var bnh rpctypes.BlockNumberOrHash
+	if err := json.Unmarshal(bnhBz, &bnh); err != nil {
+		return types.NewSimInvalidParams(fmt.Sprintf(
+			"simulate: malformed blockNumberOrHash: %s", err.Error(),
+		))
+	}
+	if bnh.BlockNumber == nil {
+		return nil
+	}
+	requested := bnh.BlockNumber.Int64()
+	if requested < 0 {
+		// Sentinel values (latest, earliest, pending, finalized, safe)
+		// are resolved in the backend; the ctx height is authoritative.
+		return nil
+	}
+	if requested != ctx.BlockHeight() {
+		return types.NewSimInvalidParams(fmt.Sprintf(
+			"simulate: blockNumberOrHash (%d) does not match anchored context height (%d)",
+			requested, ctx.BlockHeight(),
+		))
+	}
+	return nil
+}
+
+// simulateBaseGasLimit reads the consensus block gas limit via the
+// consensus keeper. baseapp.CreateQueryContext does not populate
+// ctx.ConsensusParams or attach a BlockGasMeter for query-side calls,
+// so the keeper-attached ConsensusParamsKeeper is the only path that
+// returns the chain's configured limit here.
+func (k Keeper) simulateBaseGasLimit(ctx sdk.Context) (uint64, error) {
+	consensusParamsResp, err := k.consensusKeeper.Params(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	switch maxGas := consensusParamsResp.GetParams().GetBlock().GetMaxGas(); {
+	case maxGas == -1:
+		// Consensus "unlimited" sentinel: surface max uint32 instead
+		// of a full uint64 so JS dev tooling does not choke on a value
+		// past 2^53.
+		return uint64(^uint32(0)), nil
+	case maxGas > 0:
+		return uint64(maxGas), nil //nolint:gosec
+	default:
+		return 0, nil
+	}
+}
+
+// baseHeaderFromContext synthesizes the execution-api base header from
+// the SDK context that the gRPC call was anchored at. The returned
+// header only populates the fields the simulate driver consumes
+// (Number, Time, GasLimit, BaseFee, Difficulty, Coinbase). The ctx has
+// already been anchored at the requested base height by the rpc/backend
+// layer (via rpctypes.ContextWithHeight); newSimGetHashFn delegates
+// canonical-range BLOCKHASH resolution to k.GetHashFn which reads the
+// same ctx, so all three sources (ctx, base header fields, BLOCKHASH
+// for base.Number) stay consistent.
+func baseHeaderFromContext(ctx sdk.Context, cfg *statedb.EVMConfig, gasLimit uint64) *ethtypes.Header {
+	return &ethtypes.Header{
+		Number:     big.NewInt(ctx.BlockHeight()),
+		Time:       uint64(ctx.BlockTime().Unix()), //nolint:gosec
+		GasLimit:   gasLimit,
+		BaseFee:    cfg.BaseFee,
+		Difficulty: new(big.Int),
+		// Match the non-simulate path so COINBASE returns the validator
+		// operator address rather than zero for simulated blocks that
+		// don't override FeeRecipient.
+		Coinbase: cfg.CoinBase,
+	}
 }

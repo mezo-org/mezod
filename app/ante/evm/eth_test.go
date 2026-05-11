@@ -62,7 +62,7 @@ func (suite *AnteTestSuite) TestNewEthAccountVerificationDecorator() {
 			tx,
 			func() {
 				// set not as an EOA
-				vmdb.SetCode(addr, []byte("1"))
+				vmdb.SetCode(addr, []byte("1"), tracing.CodeChangeUnspecified)
 			},
 			true,
 			false,
@@ -72,7 +72,7 @@ func (suite *AnteTestSuite) TestNewEthAccountVerificationDecorator() {
 			tx,
 			func() {
 				// reset back to EOA
-				vmdb.SetCode(addr, nil)
+				vmdb.SetCode(addr, nil, tracing.CodeChangeUnspecified)
 			},
 			true,
 			false,

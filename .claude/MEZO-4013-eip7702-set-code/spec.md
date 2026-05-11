@@ -1,0 +1,238 @@
+> **Note:** This file is the source of truth for the EIP-7702 (Set Code
+> Transactions) implementation in mezod while the work is in flight. Once
+> the feature ships, this file moves to `docs/spec/eip7702-set-code.md`.
+> Until then, the roadmap (`roadmap.md` next to this file) refers back to
+> this document for canonical behavior.
+
+# EIP-7702 Set Code Transactions
+
+## Overview
+
+EIP-7702 introduces transaction type `0x04` ("set code"), which lets an
+externally owned account (EOA) attach a per-account delegation designator
+to one or more contract addresses. Calls to a delegated EOA execute the
+target contract's code in the EOA's storage and balance context, with the
+EOA's address in `CALLER`. The delegation is a 23-byte code value of the
+form `0xef0100 || target_address`; the EOA can rotate or clear it by
+signing a fresh authorization.
+
+The EIP shipped with the Ethereum Prague hardfork.
+
+Mezo ships EIP-7702 so that the broader EVM tooling ecosystem (account
+abstraction-aware wallets, viem/ethers v6 sponsored-tx flows, MetaMask
+batched-action UX) — which now assumes the feature is available on any
+post-Prague chain — works against mezod without external relayers.
+
+## Implementation summary
+
+- **Fork activation.** A new `prague_time` field on the EVM module's
+  `ChainConfig` (`proto/ethermint/evm/v1/evm.proto`) plumbs through to
+  `params.ChainConfig.PragueTime`. The genesis default activates Prague
+  immediately (`prague_time = 0`), matching how Shanghai and Cancun are
+  wired today; the live mainnet and testnet networks pick up activation
+  through a dedicated upgrade handler that writes a chosen unix
+  timestamp into the stored chain config.
+- **Transaction type.** `SetCodeTx` (type `0x04`) is added as a first-class
+  Cosmos-encoded `TxData` alongside `LegacyTx`, `AccessListTx`, and
+  `DynamicFeeTx`. A new `SetCodeAuthorization` message carries the
+  per-tuple `(chain_id, address, nonce, v, r, s)` payload. Strict
+  validation rejects type-`0x04` transactions whose `to` is nil or whose
+  `auth_list` is empty before they reach the keeper.
+- **Authorization processing.** The keeper's state-transition driver
+  reimplements geth 1.16.x's `validateAuthorization` and
+  `applyAuthorization` semantics on top of mezod's `statedb.StateDB`,
+  pinned by version comment to a specific upstream commit. Authorization
+  tuples are processed after intrinsic-gas accounting and before EVM
+  call execution; invalid tuples are silently skipped and do not abort
+  the transaction. Successful authorizations bump the authority's nonce,
+  install (or clear, if `target == 0x0`) the 23-byte delegation
+  designator on the authority's code field, and warm the delegation
+  target in the access list.
+- **EVM call resolution.** The geth EVM (`v1.16.9-mezo0`) handles
+  delegation resolution natively: `Call`, `CallCode`, `DelegateCall`, and
+  `StaticCall` follow exactly one level of delegation when reading code.
+  `EXTCODESIZE`, `EXTCODECOPY`, and `EXTCODEHASH` deliberately return the
+  raw 23-byte designator so on-chain contracts can detect delegations.
+  Mezo inherits this behavior unchanged.
+- **Ante handler exemption.** `EthAccountVerificationDecorator` rejects
+  contract-coded senders today (the long-standing EIP-3607 enforcement).
+  The decorator gains a delegation-aware exemption: an account whose code
+  parses as a valid EIP-7702 delegation designator is treated as an EOA
+  for sender purposes. Accounts with non-delegation contract code are
+  still rejected.
+- **JSON-RPC.** `eth_sendRawTransaction` flows through unchanged once
+  `NewTxDataFromTx` learns to map `SetCodeTxType`. `eth_sendTransaction`
+  and `eth_signTransaction` accept an `authorizationList` field on
+  `TransactionArgs`. The transaction-formatting layer
+  (`rpc/types/utils.go`) emits `authorizationList` and the type-`0x04`
+  envelope for both subscriptions and historical lookups.
+- **Indexing.** Mezod runs two transaction indexers and `SetCodeTx`
+  must surface through both on equal footing with the existing types.
+  The always-on CometBFT tx indexer indexes by tx events emitted by
+  the EVM module and is the default backing for
+  `eth_getTransactionByHash`, `eth_getTransactionReceipt`, and the
+  `tx_search` flows when the custom indexer is disabled. The opt-in
+  custom KV indexer (`indexer/kv_indexer.go`, enabled per node via
+  `enable-indexer = true` in `app.toml`) is the same surface plus the
+  pseudo-transaction observability path (so block explorers can see
+  bridge activity at index 0) and the `mezo_*` RPC additions. Both
+  indexers are tx-type-agnostic at the indexing layer: they ride on
+  the `MsgEthereumTx` event-emission path, which set-code transactions
+  use unchanged.
+
+## Conformance with the EIP
+
+The authoritative spec is [EIP-7702][eip-7702] in the
+`ethereum/EIPs` repository, anchored to its post-Prague freeze; the
+reference implementation lives in `core/types/tx_setcode.go` and
+`core/state_transition.go` of go-ethereum.
+
+[eip-7702]: https://eips.ethereum.org/EIPS/eip-7702
+
+Mezo's conformance posture mirrors the project's stance for prior
+EVM forks: the in-VM behavior (delegation resolution, gas costs,
+intrinsic-gas charges, opcode semantics, signer recovery) is delegated
+to geth verbatim by way of the upgraded `mezo-org/go-ethereum`
+fork. The application layer added in this scope (proto types, ante
+handlers, RPC plumbing, upgrade handler) is exercised by:
+
+- A dedicated system test suite (`Eip7702*.test.ts`) that drives every
+  documented spec path (delegation install, rotation, clearing, replay
+  rejection, gas accounting, EXTCODE\* opacity, EIP-3607 exemption,
+  precompile interaction) end-to-end via `eth_sendRawTransaction` against
+  localnode.
+- Keeper-level unit and table tests covering authorization
+  validation/application, intrinsic-gas plumbing, the chain-config
+  `PragueTime` migration, and ante-handler exemption decisions.
+- A fuzz target on the `SetCodeTx` proto unmarshaler that asserts no
+  panics and that every error carries a typed mezod error code.
+
+The system test asserts per-field invariants (status, gasUsed, codeHash,
+nonce, log topics) rather than byte-level response equality: mezod's
+chain id, base block, fee market, and account state never match the
+upstream replay corpus, so byte-for-byte hashes are not a meaningful
+check. Fuzz seeds and any spec-conformance fixtures the upstream
+project ships are wired in as the seed corpus.
+
+## Mezo-specific divergences
+
+Each divergence has a tripwire in `Eip7702MezoDivergence.test.ts` so any
+accidental flip surfaces loudly in CI.
+
+1. **No mempool-level authority reservation or single-slot delegation
+   limit.** Geth's txpool rejects a second pending transaction from a
+   delegated account, and reserves each authority across all in-flight
+   set-code transactions. Mezo runs on CometBFT, where validators control
+   block proposal directly and there is no peer-to-peer transaction pool
+   in the geth sense. The hardenings are not ported. The risk model is
+   covered by the existing per-block gas envelope plus the per-tx
+   intrinsic-gas charge of `CallNewAccountGas` per authorization.
+2. **Authorization processing reimplemented in mezod's keeper.** Geth's
+   `validateAuthorization` and `applyAuthorization` are unexported
+   methods on an unexported struct. Mezo reimplements them on the
+   keeper's `statedb.StateDB` so that authorization side-effects (nonce
+   bump, code write, target warming) commit through the same store
+   path as the rest of the transaction. The implementation is pinned by
+   comment to a specific upstream geth commit and is exercised by both
+   keeper-level differential tests and the system suite.
+3. **No new tx-type signer adapter beyond what `MakeSigner` returns.**
+   Once Prague is active, `ethtypes.MakeSigner` returns geth's
+   `PragueSigner`, which already handles type-`0x04` recovery. Mezo's
+   ante and RPC paths use `MakeSigner` (with `LatestSignerForChainID`
+   in caching paths), so no Mezo-specific signer is introduced.
+
+## Key decisions
+
+- **Genesis-default activation, upgrade-driven for live chains.** The
+  default chain config sets `prague_time = 0` so new chains and devnets
+  inherit Prague immediately on next restart. Activation on the live
+  mainnet and testnet networks happens through a dedicated upgrade
+  handler that writes a chosen unix timestamp into the stored EVM
+  module params, so every node enables 7702 at the same height.
+- **Reimplement, don't refactor.** mezod keeps its custom
+  `applyMessageWithConfig` (which preserves `MinGasMultiplier`-aware
+  gas accounting, custom precompile registries, and the simulate
+  driver's call hooks) and reimplements just the authorization-validation
+  and authorization-application steps from geth. Folding mezod onto
+  `core.ApplyMessage` is a much larger refactor and is explicitly out of
+  scope.
+- **One typed `*EvmError` family for set-code paths.** Authorization
+  validation failures, missing `to`, empty `auth_list`, malformed RLP,
+  and PragueTime-not-active rejections each get a distinct code in the
+  existing EVM error catalog. Per-call validation errors stay per-tuple
+  (silently skipped at execution time, per spec); transaction-level
+  validation failures become top-level fatals at the same boundary as
+  for prior types.
+- **No txpool hardening.** The geth-style single-slot and authority
+  reservation protections are not ported. Documented as a divergence.
+- **Custom precompiles unaffected.** The custom mezo precompiles
+  enumerated in `x/evm/types/precompile.go` (`DefaultPrecompilesVersions`)
+  remain at their canonical addresses. A delegated EOA can call them
+  through its delegate exactly as a normal contract can today; nothing
+  in this scope special-cases the precompile address space.
+
+## Configuration
+
+- **`prague_time` (proto field 24, EVM `ChainConfig`).** Mirrors the
+  shape of `shanghai_time` and `cancun_time`. Maps directly onto
+  `params.ChainConfig.PragueTime` in the geth runtime config. `nil`
+  means the fork is not yet scheduled; `0` means already active. The
+  genesis default is `0`. The field is read by the keeper on every
+  message-application path (`applyMessageWithConfig`,
+  `GetEthIntrinsicGas`, `feeChecker`), so flipping it through the
+  upgrade handler is sufficient — no per-call wiring elsewhere.
+- **No new `json-rpc.*` knob.** The feature is governed by chain config
+  alone; operators do not get a per-node toggle. Once Prague is active,
+  every node accepts type-`0x04` transactions. This matches how
+  Shanghai/Cancun-era surfaces were rolled out and avoids creating a
+  validator-vs-RPC consensus split.
+- **Existing `json-rpc.gas-cap` and `json-rpc.evm-timeout` apply
+  unchanged.** Per-tx gas budget for `eth_call` / `eth_estimateGas` /
+  `eth_simulateV1` is enforced as today; the per-authorization
+  intrinsic charge is included in the same accounting.
+
+## Usage examples
+
+Install a delegation. The EOA at `0xc100…01` signs an authorization
+delegating its code to a contract at `0xc200…01`, then submits a
+type-`0x04` transaction (`to` is the EOA itself in this self-sponsored
+flow, but it can be any address):
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "eth_sendRawTransaction",
+  "params": ["0x04..."]
+}
+```
+
+After inclusion, calling the EOA's address from any contract executes
+the delegate's code:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "eth_call",
+  "params": [
+    { "to": "0xc100000000000000000000000000000000000001", "data": "0x..." },
+    "latest"
+  ]
+}
+```
+
+`eth_getCode` on the EOA returns the 23-byte delegation designator
+(`0xef0100` followed by the target address). On-chain contracts that
+need to detect a delegation inspect this prefix via `EXTCODECOPY`.
+
+Clear a delegation. The EOA signs an authorization with
+`address = 0x0000000000000000000000000000000000000000`. After inclusion,
+`eth_getCode` returns `0x` and subsequent calls execute as plain
+value-only transfers. Storage is not cleared: slots written by the
+previous delegate persist, and a later re-delegation of the same
+authority will read them.
+
+For the full envelope shapes, error codes, and edge cases, see the
+EIP-7702 specification text and the system suite under
+`tests/system/test/Eip7702*.test.ts`.
