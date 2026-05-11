@@ -113,6 +113,11 @@ func (tx *DynamicFeeTx) GetAccessList() ethtypes.AccessList {
 	return *tx.Accesses.ToEthAccessList()
 }
 
+// GetAuthorizationList returns nil
+func (tx *DynamicFeeTx) GetAuthorizationList() []ethtypes.SetCodeAuthorization {
+	return nil
+}
+
 // GetData returns the a copy of the input data bytes.
 func (tx *DynamicFeeTx) GetData() []byte {
 	return common.CopyBytes(tx.Data)

@@ -89,6 +89,11 @@ func (tx *LegacyTx) GetAccessList() ethtypes.AccessList {
 	return nil
 }
 
+// GetAuthorizationList returns nil
+func (tx *LegacyTx) GetAuthorizationList() []ethtypes.SetCodeAuthorization {
+	return nil
+}
+
 // GetData returns the a copy of the input data bytes.
 func (tx *LegacyTx) GetData() []byte {
 	return common.CopyBytes(tx.Data)

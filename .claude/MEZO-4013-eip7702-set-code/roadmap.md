@@ -15,6 +15,11 @@
   plus the Cosmos `TxData` implementation, with stateless validation
   and a pre-Prague ante gate.
   PR: [#674](https://github.com/mezo-org/mezod/pull/674).
+- **Phase 3.** Authorization processing in the EVM state transition:
+  intrinsic-gas wiring for `SetCodeAuthorizations`, reimplemented
+  `validateAuthorization`/`applyAuthorization` mirroring geth
+  `v1.16.9`, and exposure of the auth list on the `TxData` interface.
+  PR: [#680](https://github.com/mezo-org/mezod/pull/680).
 
 ## Status of prerequisites
 

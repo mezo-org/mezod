@@ -270,6 +270,10 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 		}
 	}
 
+	if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	res, err := k.SimulateMessage(ctx, WrapMessage(msg), nil, cfg, txConfig, overrides)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -373,34 +377,24 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	executable := func(gas uint64) (vmError bool, rsp *types.MsgEthereumTxResponse, err error) {
 		// update the message with the new gas value
 		msg = core.Message{
-			From:       msg.From,
-			To:         msg.To,
-			Nonce:      msg.Nonce,
-			Value:      msg.Value,
-			GasLimit:   gas,
-			GasPrice:   msg.GasPrice,
-			GasFeeCap:  msg.GasFeeCap,
-			GasTipCap:  msg.GasTipCap,
-			Data:       msg.Data,
-			AccessList: msg.AccessList,
+			From:                  msg.From,
+			To:                    msg.To,
+			Nonce:                 msg.Nonce,
+			Value:                 msg.Value,
+			GasLimit:              gas,
+			GasPrice:              msg.GasPrice,
+			GasFeeCap:             msg.GasFeeCap,
+			GasTipCap:             msg.GasTipCap,
+			Data:                  msg.Data,
+			AccessList:            msg.AccessList,
+			SetCodeAuthorizations: msg.SetCodeAuthorizations,
 		}
 
 		tmpCtx := ctx
 		if fromType == types.RPC {
 			tmpCtx, _ = ctx.CacheContext()
 
-			acct := k.GetAccount(tmpCtx, msg.From)
-
-			from := msg.From
-			if acct == nil {
-				acc := k.accountKeeper.NewAccountWithAddress(tmpCtx, from[:])
-				k.accountKeeper.SetAccount(tmpCtx, acc)
-				acct = statedb.NewEmptyAccount()
-			}
-			// When submitting a transaction, the `EthIncrementSenderSequence` ante handler increases the account nonce
-			acct.Nonce = nonce + 1
-			err = k.SetAccount(tmpCtx, from, *acct)
-			if err != nil {
+			if err := k.bumpAccNonce(tmpCtx, msg.From); err != nil {
 				return true, nil, err
 			}
 			// Resetting the gasMeter after increasing the sequence to have an accurate gas estimation on transactions against EVM precompiles.
@@ -516,9 +510,14 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
+		if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
 		rsp, _, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, ethTx), tracer, true, cfg, txConfig)
 		if err != nil {
-			continue
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 		txConfig.LogIndex += uint(len(rsp.Logs))
 	}
@@ -590,18 +589,15 @@ func (k Keeper) TraceBlock(c context.Context, req *types.QueryTraceBlockRequest)
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 	for i, tx := range req.Txs {
-		result := types.TxTraceResult{}
 		ethTx := tx.AsTransaction()
 		txConfig.TxHash = ethTx.Hash()
 		txConfig.TxIndex = uint(i) //nolint:gosec
 		traceResult, logIndex, err := k.traceTx(ctx, cfg, txConfig, signer, ethTx, req.TraceConfig, true, nil)
 		if err != nil {
-			result.Error = err.Error()
-		} else {
-			txConfig.LogIndex = logIndex
-			result.Result = traceResult
+			return nil, err
 		}
-		results = append(results, &result)
+		txConfig.LogIndex = logIndex
+		results = append(results, &types.TxTraceResult{Result: traceResult})
 	}
 
 	resultData, err := json.Marshal(results)
@@ -700,6 +696,10 @@ func (k *Keeper) traceTx(
 			tracer.Stop(errors.New("execution timeout"))
 		}
 	}()
+
+	if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+		return nil, 0, status.Error(codes.Internal, err.Error())
+	}
 
 	res, _, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, tx), tracer, commitMessage, cfg, txConfig)
 	if err != nil {

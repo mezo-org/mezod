@@ -47,7 +47,22 @@ post-Prague chain — works against mezod without external relayers.
   the transaction. Successful authorizations bump the authority's nonce,
   install (or clear, if `target == 0x0`) the 23-byte delegation
   designator on the authority's code field, and warm the delegation
-  target in the access list.
+  target in the access list. Self-sponsored authorizations (where the
+  authority equals the transaction sender) sign their tuple against the
+  post-bump sender nonce; on consensus paths the ante's
+  `EthIncrementSenderSequenceDecorator` supplies the bump, and on
+  keeper-internal simulate / trace paths (`EthCall`, `TraceTx`,
+  `traceTx`, `SimulateV1`) each entry point mirrors the bump inline so
+  authorization validation reads the same post-bump value regardless
+  of path.
+- **Post-loop call-target warming.** After the authorization loop, if
+  `msg.To`'s code resolves to a delegation designator, the resolved
+  target is also added to the access list — mirroring upstream
+  `core.ApplyMessage` post-loop warming. This complements the
+  per-tuple warming of the delegation target inside the loop and
+  covers the case where the tx itself just installed a delegation on
+  `msg.To`, so the subsequent `evm.Call` does not pay cold-access gas
+  for the freshly delegated address.
 - **EVM call resolution.** The geth EVM (`v1.16.9-mezo0`) handles
   delegation resolution natively: `Call`, `CallCode`, `DelegateCall`, and
   `StaticCall` follow exactly one level of delegation when reading code.
@@ -140,6 +155,24 @@ accidental flip surfaces loudly in CI.
    `PragueSigner`, which already handles type-`0x04` recovery. Mezo's
    ante and RPC paths use `MakeSigner` (with `LatestSignerForChainID`
    in caching paths), so no Mezo-specific signer is introduced.
+4. **Authorization targets that are precompiles are rejected.** Geth's
+   `validateAuthorization` accepts any 20-byte address as
+   `auth.Address`, including the stock precompile space (0x01..0x12).
+   On stock geth those addresses hold no stored bytecode, so a
+   delegation pointing there is a no-op at runtime. Mezo additionally
+   stores facade bytecode at the custom precompile addresses
+   (`0x7b7c…` range, registered via `CustomPrecompileGenesisAccounts`
+   in `x/evm/keeper/keeper.go`), so a delegation pointing at a custom
+   precompile would actually execute in the authority's context —
+   surprising semantics and a fragile surface to leave open. To keep
+   the rule uniform across both precompile families, mezod rejects any
+   authorization whose target is in `evm.Precompiles()` (the union of
+   fork-active stock precompiles and Mezo custom precompiles for the
+   current EVM). Rejection follows the EIP's per-tuple rule: the
+   offending tuple is silently skipped, the rest of the transaction
+   proceeds. The clear-delegation path (`auth.Address == 0x0`) is
+   unaffected — the zero address is not a precompile in any fork or in
+   Mezo's custom set.
 
 ## Key decisions
 
@@ -165,11 +198,15 @@ accidental flip surfaces loudly in CI.
   for prior types.
 - **No txpool hardening.** The geth-style single-slot and authority
   reservation protections are not ported. Documented as a divergence.
-- **Custom precompiles unaffected.** The custom mezo precompiles
-  enumerated in `x/evm/types/precompile.go` (`DefaultPrecompilesVersions`)
-  remain at their canonical addresses. A delegated EOA can call them
-  through its delegate exactly as a normal contract can today; nothing
-  in this scope special-cases the precompile address space.
+- **Precompile-target authorizations rejected.** Mezo special-cases the
+  precompile address space at the authorization-validation step:
+  authorizations whose target is any precompile (stock or custom) are
+  rejected at validate time and silently skipped per the EIP's
+  per-tuple rule. The custom mezo precompiles enumerated in
+  `x/evm/types/precompile.go` (`DefaultPrecompilesVersions`) remain at
+  their canonical addresses and are still callable from a delegated EOA
+  through normal contract calls — only authorization targets are
+  restricted. See divergence #4 for the rationale.
 
 ## Configuration
 

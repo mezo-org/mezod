@@ -1109,8 +1109,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 					Tracer:         "invalid_tracer",
 				}
 			},
-			expPass:       true,
-			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = ReferenceError: invalid_tracer is not defined at \\u003ceval\\u003e:1:2(0)\"}]",
+			expPass: false,
 		},
 		{
 			msg: "invalid chain id",
@@ -1119,8 +1118,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 				tmp := sdkmath.NewInt(1)
 				chainID = &tmp
 			},
-			expPass:       true,
-			traceResponse: "[{\"error\":\"rpc error: code = Internal desc = invalid chain id for signer: have 31611 want 1\"}]",
+			expPass: false,
 		},
 	}
 

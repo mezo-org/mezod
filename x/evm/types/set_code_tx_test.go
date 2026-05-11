@@ -113,6 +113,27 @@ func TestSetCodeTxAsEthereumData(t *testing.T) {
 	require.Equal(t, &original.To, resTx.To())
 	require.Equal(t, original.AuthList, resTx.SetCodeAuthorizations())
 	require.Equal(t, bigMezoChainID, resTx.ChainId())
+
+	// Signed round-trip pin: the unsigned-field assertions above don't
+	// touch V/R/S, so a regression that dropped or rewrote the outer-tx
+	// signature on the proto<->geth round-trip would slip through. Sign
+	// the original, run the same proto round-trip on the SIGNED form,
+	// and recover the signer from the rebuilt geth tx — the recovered
+	// address must match the signing key.
+	signerKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	expectedSigner := crypto.PubkeyToAddress(signerKey.PublicKey)
+	signer := ethtypes.LatestSignerForChainID(bigMezoChainID)
+	signedTx, err := ethtypes.SignNewTx(signerKey, signer, original)
+	require.NoError(t, err)
+
+	signedCosmosTx, err := evmtypes.NewSetCodeTx(signedTx)
+	require.NoError(t, err)
+	rebuilt := ethtypes.NewTx(signedCosmosTx.AsEthereumData())
+	recovered, err := ethtypes.Sender(signer, rebuilt)
+	require.NoError(t, err, "rebuilt signed tx must remain ECDSA-recoverable")
+	require.Equal(t, expectedSigner, recovered,
+		"V/R/S must survive the proto<->geth round-trip so the signer recovers")
 }
 
 func TestSetCodeTxCopy(t *testing.T) {
@@ -140,12 +161,22 @@ func TestSetCodeTxCopy(t *testing.T) {
 			S:       []byte{0x03},
 		}
 
+		origChainID := sdkmath.NewInt(31611)
+		origGasTipCap := sdkmath.NewInt(2)
+		origGasFeeCap := sdkmath.NewInt(5)
+		origAmount := sdkmath.NewInt(123)
+
 		tx := &evmtypes.SetCodeTx{
-			Data:     []byte{0xde, 0xad},
-			V:        []byte{0x10},
-			R:        []byte{0x20},
-			S:        []byte{0x30},
-			AuthList: evmtypes.AuthorizationList{auth},
+			ChainID:   &origChainID,
+			Nonce:     7,
+			GasTipCap: &origGasTipCap,
+			GasFeeCap: &origGasFeeCap,
+			Amount:    &origAmount,
+			Data:      []byte{0xde, 0xad},
+			V:         []byte{0x10},
+			R:         []byte{0x20},
+			S:         []byte{0x30},
+			AuthList:  evmtypes.AuthorizationList{auth},
 		}
 
 		cp := tx.Copy().(*evmtypes.SetCodeTx)
@@ -158,6 +189,24 @@ func TestSetCodeTxCopy(t *testing.T) {
 		tx.AuthList[0].R[0] = 0
 		tx.AuthList[0].S[0] = 0
 
+		// Field-replacement mutations on the original: Copy() does NOT
+		// deep-clone scalar value-types or sdkmath.Int pointers — it
+		// shares them — so cross-mutation via field reassignment on tx
+		// must not propagate to cp. Pins that Copy()'s result is a
+		// separate struct value (not e.g. `return tx`), and that the
+		// shared pointers are not stomped by subsequent reassignment of
+		// the original. Also covers sdkmath.Int pointer fields which the
+		// pre-existing assertions ignored entirely.
+		newChainID := sdkmath.NewInt(99999)
+		tx.ChainID = &newChainID
+		tx.Nonce = 999_999
+		newTipCap := sdkmath.NewInt(99)
+		tx.GasTipCap = &newTipCap
+		newFeeCap := sdkmath.NewInt(199)
+		tx.GasFeeCap = &newFeeCap
+		newAmount := sdkmath.NewInt(299)
+		tx.Amount = &newAmount
+
 		require.Equal(t, byte(0xde), cp.Data[0])
 		require.Equal(t, byte(0x10), cp.V[0])
 		require.Equal(t, byte(0x20), cp.R[0])
@@ -165,6 +214,17 @@ func TestSetCodeTxCopy(t *testing.T) {
 		require.Equal(t, byte(0x01), cp.AuthList[0].V[0])
 		require.Equal(t, byte(0x02), cp.AuthList[0].R[0])
 		require.Equal(t, byte(0x03), cp.AuthList[0].S[0])
+
+		require.True(t, origChainID.Equal(*cp.ChainID),
+			"cp.ChainID must retain the original value when tx.ChainID is reassigned")
+		require.Equal(t, uint64(7), cp.Nonce,
+			"cp.Nonce must retain the original value when tx.Nonce is reassigned")
+		require.True(t, origGasTipCap.Equal(*cp.GasTipCap),
+			"cp.GasTipCap must retain the original value when tx.GasTipCap is reassigned")
+		require.True(t, origGasFeeCap.Equal(*cp.GasFeeCap),
+			"cp.GasFeeCap must retain the original value when tx.GasFeeCap is reassigned")
+		require.True(t, origAmount.Equal(*cp.Amount),
+			"cp.Amount must retain the original value when tx.Amount is reassigned")
 	})
 }
 
