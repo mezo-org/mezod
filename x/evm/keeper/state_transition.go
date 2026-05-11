@@ -506,12 +506,18 @@ func (k *Keeper) applyMessageWithConfig(
 		gasUsed uint64
 	)
 
-	// EIP-7702 forbids combining a non-empty auth list with contract creation.
-	// SetCodeTx.Validate and the ante reject this on the consensus path, but
-	// simulate / RPC ingress can construct a core.Message that bypasses both
-	// — enforce the invariant directly so the create branch is unreachable.
-	if len(msg.SetCodeAuthorizations) > 0 && msg.To == nil {
-		return nil, nil, errorsmod.Wrap(core.ErrSetCodeTxCreate, "apply message")
+	// EIP-7702 forbids combining an auth list with contract creation and
+	// rejects a non-nil but empty auth list. SetCodeTx.Validate and the ante
+	// cover the consensus path, but simulate / RPC ingress can construct a
+	// core.Message that bypasses both — mirror go-ethereum's apply-time check
+	// so the geth sentinels surface for callers that probe EIP-7702 directly.
+	if msg.SetCodeAuthorizations != nil {
+		if msg.To == nil {
+			return nil, nil, errorsmod.Wrap(core.ErrSetCodeTxCreate, "apply message")
+		}
+		if len(msg.SetCodeAuthorizations) == 0 {
+			return nil, nil, errorsmod.Wrap(core.ErrEmptyAuthList, "apply message")
+		}
 	}
 
 	// return error if contract creation or call are disabled through governance
