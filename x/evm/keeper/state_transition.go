@@ -508,9 +508,11 @@ func (k *Keeper) applyMessageWithConfig(
 
 	rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
 
-	// Re-assert geth's EIP-7702 preCheck invariants. SetCodeTx.Validate
-	// and the consensus-path ante cover them on chain; simulate /
-	// eth_call paths build a core.Message directly and bypass both.
+	// Re-assert geth's EIP-7702 invariants. On the consensus
+	// path these are enforced by SetCodeTx.Validate and the ante handler.
+	// Non-consensus paths (e.g. simulate, eth_call) build a core.Message
+	// directly, so neither check runs and the invariants must be
+	// re-asserted here.
 	if msg.SetCodeAuthorizations != nil {
 		if !rules.IsPrague {
 			return nil, nil, errorsmod.Wrap(ethtypes.ErrTxTypeNotSupported, "set code tx not supported")
@@ -600,14 +602,19 @@ func (k *Keeper) applyMessageWithConfig(
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, value)
 		stateDB.SetNonce(sender, msg.Nonce+1, tracing.NonceChangeUnspecified)
 	} else {
+		// Apply set-code authorizations before calling evm.Call.
+		//
 		// Sender nonce was bumped before reaching here — by
 		// EthIncrementSenderSequenceDecorator on consensus paths, and by an
-		// explicit bump at each keeper-internal entry point. Self-sponsored
-		// auths therefore see the post-bump nonce.
+		// explicit bump at each non-consensus path (e.g. simulate, eth_call).
+		// Self-sponsored auths therefore see the post-bump nonce.
 		//
-		// No Prague gate needed: pre-Prague the prologue rejects auth lists
-		// and no delegation marker can yet exist at msg.To, so
-		// applySetCodeAuthorizations is a no-op.
+		// applySetCodeAuthorizations is EIP-7702 logic but needs no
+		// IsPrague gate here. Pre-Prague both of its inputs are absent:
+		// msg.SetCodeAuthorizations is rejected by the check at the
+		// top of applyMessageWithConfig, and msg.To cannot carry a
+		// delegation marker because none could have been installed yet.
+		// The call is a no-op in that case.
 		precompiles := evm.Precompiles()
 		isPrecompile := func(addr common.Address) bool {
 			_, ok := precompiles[addr]
