@@ -517,7 +517,7 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 
 		rsp, _, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, ethTx), tracer, true, cfg, txConfig)
 		if err != nil {
-			continue
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 		txConfig.LogIndex += uint(len(rsp.Logs))
 	}
@@ -589,18 +589,15 @@ func (k Keeper) TraceBlock(c context.Context, req *types.QueryTraceBlockRequest)
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 	for i, tx := range req.Txs {
-		result := types.TxTraceResult{}
 		ethTx := tx.AsTransaction()
 		txConfig.TxHash = ethTx.Hash()
 		txConfig.TxIndex = uint(i) //nolint:gosec
 		traceResult, logIndex, err := k.traceTx(ctx, cfg, txConfig, signer, ethTx, req.TraceConfig, true, nil)
 		if err != nil {
-			result.Error = err.Error()
-		} else {
-			txConfig.LogIndex = logIndex
-			result.Result = traceResult
+			return nil, err
 		}
-		results = append(results, &result)
+		txConfig.LogIndex = logIndex
+		results = append(results, &types.TxTraceResult{Result: traceResult})
 	}
 
 	resultData, err := json.Marshal(results)
