@@ -121,12 +121,23 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 		to = args.To.Hex()
 	}
 
-	var data TxData
+	usedType := ethtypes.LegacyTxType
 	switch {
-	// GasPrice + AuthorizationList: drop the auth list and fall through to
-	// LegacyTx. Otherwise the 1559 fee caps stay nil and AsTransaction().Hash()
-	// panics on a nil GasTipCap.
-	case args.AuthorizationList != nil && args.GasPrice == nil:
+	case args.AuthorizationList != nil:
+		usedType = ethtypes.SetCodeTxType
+	case args.MaxFeePerGas != nil:
+		usedType = ethtypes.DynamicFeeTxType
+	case args.AccessList != nil:
+		usedType = ethtypes.AccessListTxType
+	}
+	// Make it possible to default to newer tx, but use legacy if gasprice is provided
+	if args.GasPrice != nil {
+		usedType = ethtypes.LegacyTxType
+	}
+
+	var data TxData
+	switch usedType {
+	case ethtypes.SetCodeTxType:
 		al := AccessList{}
 		if args.AccessList != nil {
 			al = NewAccessList(args.AccessList)
@@ -144,7 +155,7 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 			Accesses:  al,
 			AuthList:  NewAuthorizationList(args.AuthorizationList),
 		}
-	case args.MaxFeePerGas != nil:
+	case ethtypes.DynamicFeeTxType:
 		al := AccessList{}
 		if args.AccessList != nil {
 			al = NewAccessList(args.AccessList)
@@ -161,7 +172,7 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 			Data:      args.GetData(),
 			Accesses:  al,
 		}
-	case args.AccessList != nil:
+	case ethtypes.AccessListTxType:
 		data = &AccessListTx{
 			To:       to,
 			ChainID:  &chainID,
