@@ -26,6 +26,17 @@
   `EthAccountVerificationDecorator` while genuine contract code is
   still rejected.
   PR: [#681](https://github.com/mezo-org/mezod/pull/681).
+- **Phase 5.** JSON-RPC surface: `TransactionArgs` gains
+  `authorizationList`, the formatting layer (`NewRPCTransaction`,
+  `RPCTransaction`) emits the field and the type-`0x04` envelope on
+  subscriptions and historical lookups, receipts surface
+  `effectiveGasPrice` for SetCodeTx via the existing
+  `TxData.EffectiveGasPrice` interface, and the keeper's
+  `applyMessageWithConfig` gates `applySetCodeAuthorizations` on
+  `rules.IsPrague` so simulate / `eth_call` / `eth_estimateGas` match
+  consensus on a pre-Prague chain. End-to-end coverage via a Hardhat
+  `Eip7702SendRawTx` system test.
+  PR: [#683](https://github.com/mezo-org/mezod/pull/683).
 
 ## Status of prerequisites
 
