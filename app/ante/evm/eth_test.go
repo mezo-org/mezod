@@ -27,6 +27,8 @@ func (suite *AnteTestSuite) TestNewEthAccountVerificationDecorator() {
 	)
 
 	addr := testutiltx.GenerateAddress()
+	delegatedAddr := testutiltx.GenerateAddress()
+	target := testutiltx.GenerateAddress()
 
 	ethContractCreationTxParams := &evmtypes.EvmTxArgs{
 		ChainID:  suite.app.EvmKeeper.ChainID(),
@@ -38,6 +40,9 @@ func (suite *AnteTestSuite) TestNewEthAccountVerificationDecorator() {
 
 	tx := evmtypes.NewTx(ethContractCreationTxParams)
 	tx.From = addr.Hex()
+
+	delegatedTx := evmtypes.NewTx(ethContractCreationTxParams)
+	delegatedTx.From = delegatedAddr.Hex()
 
 	var vmdb *statedb.StateDB
 
@@ -94,6 +99,24 @@ func (suite *AnteTestSuite) TestNewEthAccountVerificationDecorator() {
 				suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
 				vmdb.AddBalance(addr, uint256.NewInt(1000000), tracing.BalanceChangeUnspecified)
+			},
+			true,
+			true,
+		},
+		{
+			"delegated sender then balance shortfall",
+			delegatedTx,
+			func() {
+				vmdb.SetCode(delegatedAddr, ethtypes.AddressToDelegation(target), tracing.CodeChangeUnspecified)
+			},
+			true,
+			false,
+		},
+		{
+			"delegated sender accepted",
+			delegatedTx,
+			func() {
+				vmdb.AddBalance(delegatedAddr, uint256.NewInt(1000000), tracing.BalanceChangeUnspecified)
 			},
 			true,
 			true,

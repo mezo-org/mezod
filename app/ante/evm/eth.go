@@ -93,8 +93,11 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 			avd.ak.SetAccount(ctx, acc)
 			acct = statedb.NewEmptyAccount()
 		} else if acct.IsContract() {
-			return ctx, errorsmod.Wrapf(errortypes.ErrInvalidType,
-				"the sender is not EOA: address %s, codeHash <%s>", fromAddr, acct.CodeHash)
+			code := avd.evmKeeper.GetCode(ctx, common.BytesToHash(acct.CodeHash))
+			if _, isDelegated := ethtypes.ParseDelegation(code); !isDelegated {
+				return ctx, errorsmod.Wrapf(errortypes.ErrInvalidType,
+					"the sender is not EOA: address %s, codeHash <%s>", fromAddr, acct.CodeHash)
+			}
 		}
 
 		if err := keeper.CheckSenderBalance(sdkmath.NewIntFromBigInt(acct.Balance.ToBig()), txData); err != nil {
