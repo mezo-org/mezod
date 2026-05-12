@@ -43,11 +43,13 @@ const STOCK_PRECOMPILE = "0x0000000000000000000000000000000000000001"
 // precompile's surface in the authority's storage. Mezo rejects all of
 // them at validate time.
 //
-// KEEP THIS LIST IN SYNC WITH precompile/version_map.go (and
-// x/evm/types/precompile.go). TestBed (0x7b7c1…) is excluded because
-// it's gated by --enable-testbed-precompile and not present in default
-// localnode builds. A cheap interim fix per panel review — a runtime
-// introspection RPC would be the long-term solution.
+// KEEP THIS LIST IN SYNC WITH x/evm/types/precompile.go. TestBed
+// (0x7b7c1…) is intentionally excluded: its registration is
+// environment-dependent (gated on chainID == "mezo_31611-10" AND the
+// --enable-testbed-precompile flag in app/app.go), so it's loaded in
+// localnode but not in localnet / testnet / mainnet builds — asserting
+// rejection of a tuple targeting it would couple this test to the
+// localnode-only test scaffolding.
 const MEZO_CUSTOM_PRECOMPILES = [
   "0x7b7c000000000000000000000000000000000000", // BTCToken
   "0x7b7c000000000000000000000000000000000001", // MEZOToken
