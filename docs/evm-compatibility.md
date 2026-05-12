@@ -168,6 +168,38 @@ See EIP-7569 for the full Dencun EIP list.
 
 Reference list: Dencun meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7569
 
+#### Prague
+
+Prague is Ethereum's next execution-layer upgrade after Cancun. Mezo
+currently ships EIP-7702 from the Prague set. Other Prague EIPs
+(EIP-2537, 2935, 6110, 7002, 7251, 7549, 7623, 7685, 7691) are not yet
+in scope and are not documented here.
+
+- EIP-7702 (Set Code Transactions)
+    - Description: adds transaction type `0x04` ("set code"), which lets
+      an externally owned account (EOA) sign one or more authorization
+      tuples that install a per-account delegation designator pointing at
+      a contract address. Calls to the delegated EOA execute the target
+      contract's code in the EOA's storage and balance context, with the
+      EOA's address as `CALLER`. The designator is a 23-byte code value
+      `0xef0100 || target_address` written to the authority's code field;
+      the authority rotates or clears it by signing a fresh
+      authorization (clearing is `target = 0x0`).
+    - Mezo implementation: type-`0x04` transactions are accepted once
+      Prague is active. The keeper applies authorization tuples to mezod's
+      `statedb.StateDB` (delegation install, rotation via re-signing,
+      clearing via `target = 0x0`); `EthAccountVerificationDecorator` gains
+      a delegation-aware EIP-3607 exemption so a delegated EOA can still
+      send transactions; `EXTCODESIZE`/`EXTCODECOPY`/`EXTCODEHASH` return
+      the raw 23-byte designator so on-chain contracts can detect a
+      delegation; authorizations whose target is in `evm.Precompiles()`
+      (the union of stock and Mezo custom precompiles) are rejected per
+      the EIP's per-tuple rule. See
+      [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md) for
+      the canonical mezod behavior, configuration, and Mezo-specific
+      divergences from upstream geth.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7702
+
 ## EVM JSON-RPC API reference
 
 The `mezod` node exposes the following JSON-RPC API. The reference is split into specific namespaces.
@@ -363,12 +395,20 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByNu
 
 #### eth_getCode
 
-- **Description**: Returns the code (compiled bytecode of a smart contract) at a given address.
+- **Description**: Returns the code stored at a given address. For a contract
+account this is the deployed bytecode; for a plain externally owned account
+(EOA) this is empty (`0x`). On a Prague-active chain a third case applies:
+an EOA that has signed an EIP-7702 authorization returns its 23-byte
+delegation designator `0xef0100 || target_address` rather than empty bytes.
+Callers that key behavior off "code present means contract" must account for
+the designator case. See [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md)
+and the [Prague](#prague) section for details.
 - **Parameters**:
     - `String` - Address to get code from.
     - `String` - Block number.
-- **Returns**: `String` - The code from the given address. If the response is empty ("0x"),
-it indicates the address is likely an externally owned account rather than a contract account.
+- **Returns**: `String` - The code at the given address: deployed bytecode for
+a contract, `0x` for a plain EOA, or a 23-byte EIP-7702 delegation designator
+for a delegated EOA.
 
 ```bash
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
@@ -402,6 +442,11 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sign","params":["0x0504d82ef
       signature and encoded parameters.
     - `nonce`: QUANTITY - (optional) Integer of a nonce. This allows to overwrite
       your own pending transactions that use the same nonce.
+    - `authorizationList`: Array of objects - (optional) EIP-7702 authorization
+      tuples (`chainId`, `address`, `nonce`, `v`, `r`, `s`) applied before
+      the transaction executes. Submitting a non-empty list produces a
+      type-`0x04` transaction; each entry adds an intrinsic gas charge. See
+      [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md).
 - **Returns**: `String` - The transaction hash.
 
 ```bash
@@ -410,7 +455,10 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{
 
 #### eth_sendRawTransaction
 
-- **Description**: Creates new message call transaction or a contract creation for signed transactions.
+- **Description**: Creates new message call transaction or a contract creation
+for signed transactions. On a Prague-active chain, signed type-`0x04`
+(EIP-7702 set-code) transactions are accepted alongside legacy, access-list
+and dynamic-fee types.
 - **Parameters**:
     - `String` - The signed transaction data.
 - **Returns**: `String` - The transaction hash.
@@ -436,6 +484,10 @@ functions.
         - input: DATA - (optional) Hash of the method signature and encoded parameters.
           For details see Ethereum Contract ABI in the Solidity documentation(opens in
           a new tab).
+        - authorizationList: Array of objects - (optional) EIP-7702 authorization
+          tuples (`chainId`, `address`, `nonce`, `v`, `r`, `s`) applied before
+          the call executes. See
+          [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md).
     - `String` (optional) - Block number.
     - `Object` (optional) - State override set. A mapping of addresses to
       override objects. Each override object may contain:
@@ -477,6 +529,11 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_simulateV1","params":[{"bloc
         - gasPrice: QUANTITY - (optional) Integer of the gasPrice used for each paid gas
         - value: QUANTITY - (optional) Integer of the value sent with this transaction
         - input: DATA - (optional) Hash of the method signature and encoded parameters.
+        - authorizationList: Array of objects - (optional) EIP-7702 authorization
+          tuples (`chainId`, `address`, `nonce`, `v`, `r`, `s`) included in the
+          estimated transaction. Each entry adds an intrinsic gas charge to the
+          returned estimate. See
+          [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md).
     - `String` (optional) - Block number.
     - `Object` (optional) - State override set. A mapping of addresses to
       override objects. Each override object may contain:
