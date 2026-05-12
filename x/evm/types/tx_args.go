@@ -54,7 +54,7 @@ type TransactionArgs struct {
 	ChainID    *hexutil.Big         `json:"chainId,omitempty"`
 
 	// Introduced by SetCodeTxType transaction (EIP-7702).
-	AuthorizationList []ethtypes.SetCodeAuthorization `json:"authorizationList,omitempty"`
+	AuthorizationList []ethtypes.SetCodeAuthorization `json:"authorizationList"`
 }
 
 // String return the struct in a string format
