@@ -131,7 +131,7 @@ project ships are wired in as the seed corpus.
 
 ## Mezo-specific divergences
 
-Each divergence has a tripwire in `Eip7702MezoDivergence.test.ts` so any
+Each divergence has a tripwire in `Eip7702_MezoDivergence.test.ts` so any
 accidental flip surfaces loudly in CI.
 
 1. **No mempool-level authority reservation or single-slot delegation
@@ -272,4 +272,4 @@ authority will read them.
 
 For the full envelope shapes, error codes, and edge cases, see the
 EIP-7702 specification text and the system suite under
-`tests/system/test/Eip7702*.test.ts`.
+`tests/system/test/Eip7702_*.test.ts`.
