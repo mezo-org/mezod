@@ -747,4 +747,69 @@ describe("Eip7702_SpecCompliance", function () {
     const gasTwoAuths = await runWithAuths(2)
     expect(gasTwoAuths - gasOneAuth).to.equal(CALL_NEW_ACCOUNT_GAS)
   })
+
+  it("CALL into a delegated EOA pays cold access on first call, warm on second (EIP-2929)", async function () {
+    // First install A -> targetV1 in a stand-alone tx. Then, in a second
+    // tx, have a contract issue two sequential CALLs to A and emit the
+    // gasleft() delta around each. Access lists are tx-scoped, so the
+    // first call sees A and the delegate T as cold (each adding 2 500
+    // gas via COLD_ACCOUNT_ACCESS_COST minus the warm baseline of 100);
+    // the second call sees both as warm. Predicted delta:
+    //   first  ≈ CALL_BASE + COLD_EXTRA(A) + COLD_EXTRA(T) + body
+    //   second ≈ CALL_BASE                                  + body
+    // → delta = 2 × 2 500 = 5 000.
+    //
+    // tick() is used as the call body precisely because it touches no
+    // storage and returns no data: the body's gas cancels exactly across
+    // the two calls so the only surviving signal is the cold-vs-warm
+    // access-list cost.
+    const sponsor = await freshSponsor()
+    const authority = await freshAuthority({ funded: true })
+
+    const installAuth = await signAuthorization(authority, {
+      chainId,
+      address: targetAddr,
+      nonce: 0n,
+    })
+    const installRes = await sendSetCodeTx(sponsor, {
+      to: authority.address,
+      authorizationList: [installAuth],
+    })
+    expect(installRes.receipt.status).to.equal("0x1")
+
+    const caller = await ethers.getContractAt("Eip7702Caller", callerAddr)
+    const target = await ethers.getContractAt("Eip7702TargetV1", targetAddr)
+    const tickData = target.interface.encodeFunctionData("tick", [])
+
+    const txResp = await caller.callTwiceMeasured(authority.address, tickData)
+    const receipt = await pollForReceipt(txResp.hash)
+    expect(receipt, "receipt for callTwiceMeasured tx").to.not.be.null
+    expect(receipt.status).to.equal("0x1")
+
+    const callGasEvent = caller.interface.getEvent("CallGas")
+    const log = receipt.logs.find(
+      (l: any) =>
+        getAddress(l.address) === callerAddr &&
+        l.topics[0] === callGasEvent.topicHash,
+    )
+    expect(log, "CallGas event in receipt").to.not.be.undefined
+    const decoded = caller.interface.decodeEventLog(
+      callGasEvent,
+      log.data,
+      log.topics,
+    )
+    const gasFirst: bigint = decoded.gasFirst
+    const gasSecond: bigint = decoded.gasSecond
+
+    expect(gasSecond).to.be.lessThan(gasFirst)
+    const delta = gasFirst - gasSecond
+    // EIP-2929 cold-vs-warm spread is 2 500 per address (COLD 2 600 minus
+    // WARM 100). Two cold addresses on the first call (A + delegate T)
+    // turn warm by the second, giving a 5 000 spread. Tolerance ±200
+    // absorbs any nondeterminism in the surrounding call frame
+    // bookkeeping (memory-expansion rounding, returndata copy) — none of
+    // which legitimately fluctuate for tick() in practice.
+    expect(delta).to.be.greaterThanOrEqual(4800n)
+    expect(delta).to.be.lessThanOrEqual(5200n)
+  })
 })
