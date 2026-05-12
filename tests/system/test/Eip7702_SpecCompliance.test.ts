@@ -693,4 +693,58 @@ describe("Eip7702_SpecCompliance", function () {
       keccak256(targetCode).toLowerCase(),
     )
   })
+
+  it("charges CallNewAccountGas (25000) intrinsic per fresh authorization tuple", async function () {
+    // Companion to the refund test above: the refund case pins
+    // (CallNewAccountGas - TxAuthTupleGas) as the per-existing-authority
+    // refund. This case isolates the COMPLEMENTARY signal: the absolute
+    // intrinsic charge per fresh authority, with no refund path engaged.
+    // Two type-0x04 txs with identical call bodies but a different
+    // number of fresh-authority auth tuples (1 vs 2); the gasUsed delta
+    // MUST equal exactly CallNewAccountGas = 25 000, i.e. the per-auth
+    // contribution to intrinsic gas that geth's core.IntrinsicGas folds
+    // in via SetCodeAuthorizations.
+    //
+    // Workload sizing follows the refund test: 32 fresh SSTOREs to clear
+    // mezod's MinGasMultiplier floor so per-tuple intrinsic gas is
+    // observable in the receipt's gasUsed.
+
+    const target = await ethers.getContractAt("Eip7702TargetV1", targetAddr)
+    const callData = target.interface.encodeFunctionData("setSlotN", [
+      0n,
+      1n,
+      32n,
+    ])
+    const gasLimit = 800_000n
+    const CALL_NEW_ACCOUNT_GAS = 25_000n
+
+    async function runWithAuths(n: number): Promise<bigint> {
+      const sponsor = await freshSponsor()
+      const authorities: Awaited<ReturnType<typeof freshAuthority>>[] = []
+      const auths = []
+      for (let i = 0; i < n; i++) {
+        const authority = await freshAuthority({ funded: false })
+        authorities.push(authority)
+        auths.push(
+          await signAuthorization(authority, {
+            chainId,
+            address: targetAddr,
+            nonce: 0n,
+          }),
+        )
+      }
+      const { receipt } = await sendSetCodeTx(sponsor, {
+        to: authorities[0].address,
+        data: callData,
+        authorizationList: auths,
+        gasLimit,
+      })
+      expect(receipt.status).to.equal("0x1")
+      return BigInt(receipt.gasUsed)
+    }
+
+    const gasOneAuth = await runWithAuths(1)
+    const gasTwoAuths = await runWithAuths(2)
+    expect(gasTwoAuths - gasOneAuth).to.equal(CALL_NEW_ACCOUNT_GAS)
+  })
 })
