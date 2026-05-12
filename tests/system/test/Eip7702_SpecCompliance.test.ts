@@ -787,6 +787,13 @@ describe("Eip7702_SpecCompliance", function () {
       authorizationList: [installAuth],
     })
     expect(installRes.receipt.status).to.equal("0x1")
+    // Envelope status alone isn't a delegation proof — silently-skipped
+    // authorizations also yield 0x1. Pin the install via eth_getCode so
+    // the gas-spread assertion downstream isn't the sole load-bearing
+    // check that delegation actually landed.
+    expect(
+      await ethers.provider.send("eth_getCode", [authority.address, "latest"]),
+    ).to.equal(expectedDelegationCode(targetAddr))
 
     const caller = await ethers.getContractAt("Eip7702Caller", callerAddr)
     const target = await ethers.getContractAt("Eip7702TargetV1", targetAddr)
