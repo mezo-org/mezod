@@ -98,6 +98,14 @@ var (
 		},
 		[]string{"token", "chain_id"},
 	)
+
+	bridgeValAttestationCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "bridge_val_attestation_count",
+			Help: "the cumulative number of bridge-out attestations submitted by a bridge validator",
+		},
+		[]string{"address", "chain_id"},
+	)
 )
 
 func startPrometheus(port uint) {
