@@ -34,8 +34,10 @@
   `TxData.EffectiveGasPrice` interface, and the keeper's
   `applyMessageWithConfig` gates `applySetCodeAuthorizations` on
   `rules.IsPrague` so simulate / `eth_call` / `eth_estimateGas` match
-  consensus on a pre-Prague chain. End-to-end coverage via a Hardhat
-  `Eip7702SendRawTx` system test.
+  consensus on a pre-Prague chain. End-to-end coverage shipped as the
+  `Eip7702SendRawTx` Hardhat smoketest; the KV-indexer SetCodeTx test
+  is backfilled in Phase 6, and the smoketest itself is superseded by
+  Phase 6's consolidated `Eip7702_SpecCompliance` suite.
   PR: [#683](https://github.com/mezo-org/mezod/pull/683).
 
 ## Status of prerequisites
@@ -270,25 +272,39 @@ where some endpoints accept the type and others don't.
 and ensure regressions are visible.
 
 **Scope.**
-- New suite `tests/system/test/Eip7702Delegation.test.ts`:
-  install delegation, call delegated EOA, observe storage change in
-  EOA's slot, rotate delegation, clear delegation.
-- New suite `tests/system/test/Eip7702Gas.test.ts`: per-auth
-  intrinsic gas (new account vs. existing), refund accounting, gas
-  cost of CALL into a delegated EOA (cold vs. warm).
-- New suite `tests/system/test/Eip7702Security.test.ts`: replay
-  protection, cross-chain id rejection (non-zero, non-current),
-  invalid-signature silent skip, EIP-3607 exemption for delegated
-  senders, EXTCODECOPY/EXTCODESIZE/EXTCODEHASH return raw 23-byte
-  designator.
-- New suite `tests/system/test/Eip7702MezoDivergence.test.ts`:
+- New consolidated suite `tests/system/test/Eip7702_SpecCompliance.test.ts`
+  pins every EIP-conformant behavior end-to-end: delegation install /
+  rotate / clear, storage observation through the delegated EOA, per-auth
+  intrinsic gas (new account vs. existing) and refund accounting,
+  cold/warm CALL gas cost into a delegated EOA, replay protection,
+  cross-chain id rejection, invalid-signature silent skip, EIP-3607
+  exemption for delegated senders, and `EXTCODECOPY` / `EXTCODESIZE` /
+  `EXTCODEHASH` returning the raw 23-byte designator. (The original
+  Delegation/Gas/Security split from the early roadmap was collapsed
+  into one file so reviewers see the EIP surface as a single artifact
+  alongside `Eip7702_MezoDivergence`; the spec's `Eip7702_*.test.ts`
+  glob remains the canonical reference.)
+- New suite `tests/system/test/Eip7702_MezoDivergence.test.ts`:
   pin every spec divergence (no mempool authority reservation;
   reimplemented validate/apply path in keeper; no Mezo-specific
-  signer adapter).
-- Keeper-level fuzz target on the `SetCodeTx` proto unmarshaler.
-- Add a Prague section to `docs/evm-compatibility.md` following the
-  Cancun template, listing EIP-7702 as supported with a back-link to
-  `spec.md`.
+  signer adapter; precompile-target authorization rejection).
+- Shared `tests/system/test/helpers/eip7702.ts` (fund wallet, sign
+  authorization, send type-`0x04`, decode delegation designator) and
+  the matching Hardhat fixtures (`Eip7702TargetV{1,2}.sol`,
+  `Eip7702Caller.sol`, `Eip7702ExtCodeReader.sol`) plus their deploy
+  script. The shared `ethers` dep bumps to `^6.16` for native
+  `Wallet.authorize` support.
+- KV-indexer test backfill: `TestKVIndexerSetCodeTx` in
+  `indexer/kv_indexer_test.go` pins that the custom indexer round-trips
+  SetCodeTx the same as any other tx type — the Phase 5 scope bullet
+  the previous PR shipped without test coverage.
+- Keeper-level fuzz target on the `SetCodeTx` proto unmarshaler
+  (`x/evm/types/set_code_tx_fuzz_test.go`).
+
+**Deferred.** The Prague section in `docs/evm-compatibility.md` (Cancun
+template, EIP-7702 as supported, back-link to `spec.md`) moves to a
+small follow-up PR so reviewers see implementation versus prose-edit
+review surfaces separately.
 
 **Out of scope.** Production activation and any change to live chain
 config.
