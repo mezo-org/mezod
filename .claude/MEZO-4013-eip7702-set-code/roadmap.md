@@ -15,6 +15,17 @@
   plus the Cosmos `TxData` implementation, with stateless validation
   and a pre-Prague ante gate.
   PR: [#674](https://github.com/mezo-org/mezod/pull/674).
+- **Phase 3.** Authorization processing in the EVM state transition:
+  intrinsic-gas wiring for `SetCodeAuthorizations`, reimplemented
+  `validateAuthorization`/`applyAuthorization` mirroring geth
+  `v1.16.9`, and exposure of the auth list on the `TxData` interface.
+  PR: [#680](https://github.com/mezo-org/mezod/pull/680).
+- **Phase 4.** Ante handler EIP-3607 exemption: delegated EOAs
+  (accounts whose code parses as a valid `0xef0100‖target` designator)
+  bypass the contract-coded-sender reject in
+  `EthAccountVerificationDecorator` while genuine contract code is
+  still rejected.
+  PR: [#681](https://github.com/mezo-org/mezod/pull/681).
 
 ## Status of prerequisites
 
@@ -172,17 +183,23 @@ deployment. Reviewing it in isolation is the safest path. Run
 rejecting delegated EOAs.
 
 **Scope.**
-- Add an `IsDelegated()` helper on `statedb.Account` that returns true
-  when the account's code is exactly 23 bytes and starts with the
-  `0xef0100` delegation prefix. Compute once at account load.
 - In `app/ante/evm/eth.go`, replace the unconditional
   `acct.IsContract()` reject with: reject only if the account has code
-  AND the code is not a delegation designator.
+  AND the code is not a delegation designator. The check is inlined
+  inside `EthAccountVerificationDecorator.AnteHandle` using
+  `evmKeeper.GetCode` + `ethtypes.ParseDelegation`; no helper is added
+  to `statedb.Account` because the exemption is purely an ante-layer
+  concern. A shared helper can be extracted in Phase 5 if RPC
+  formatting needs the same detection.
 - Audit the rest of `app/ante/` and the cosmos-side decorators for
-  other assumptions about EOA-vs-contract on the sender. Document any
-  gaps; fix or carve out follow-ups.
-- Unit tests for the new branch (delegated sender accepted; contract
-  sender still rejected; uncoded sender unchanged).
+  other assumptions about EOA-vs-contract on the sender. Outcome:
+  the only sender EOA/contract assumption in the ante chain is the
+  decorator we're modifying; no other carve-outs needed.
+- Unit tests for the new branch (delegated sender accepted; balance
+  shortfall on a delegated sender to pin that the exemption only
+  bypasses the EOA check). Contract-sender rejection and uncoded
+  sender behavior are already covered by the existing
+  `TestNewEthAccountVerificationDecorator` cases.
 
 **Out of scope.** Delegated-account behavior beyond the sender check;
 RPC.

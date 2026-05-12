@@ -6,8 +6,10 @@ import (
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	ethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/x/evm/keeper"
@@ -543,4 +545,149 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 		})
 	}
 	suite.enableFeemarket = false // reset flag
+}
+
+// TestVerifyFeeSetCodeAuthList confirms the VerifyFee path threads
+// txData.GetAuthorizationList() into core.IntrinsicGas — three tuples
+// add 3 * params.CallNewAccountGas to intrinsic gas. We pin the boundary:
+// gas one tuple short must reject, exact threshold must accept, and any
+// surplus must also accept.
+func (suite *KeeperTestSuite) TestVerifyFeeSetCodeAuthList() {
+	suite.SetupTest()
+	suite.ctx = suite.ctx.WithIsCheckTx(true)
+
+	chainID := suite.app.EvmKeeper.ChainID()
+	target := common.HexToAddress("0x0000000000000000000000000000000000005678")
+
+	priv, err := crypto.GenerateKey()
+	suite.Require().NoError(err)
+	auth, err := ethtypes.SignSetCode(priv, ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.MustFromBig(chainID),
+		Address: target,
+		Nonce:   0,
+	})
+	suite.Require().NoError(err)
+
+	authList := []ethtypes.SetCodeAuthorization{auth, auth, auth}
+
+	testCases := []struct {
+		name    string
+		gas     uint64
+		wantErr bool
+	}{
+		{
+			// One CallNewAccountGas short of the 3-tuple threshold —
+			// CheckTx must reject as "intrinsic gas too low".
+			name:    "below threshold",
+			gas:     ethparams.TxGas + 2*ethparams.CallNewAccountGas,
+			wantErr: true,
+		},
+		{
+			// Exact intrinsic gas: TxGas + 3 * CallNewAccountGas. Must
+			// accept; a regression that miscounted tuples would fail here.
+			name:    "exact threshold",
+			gas:     ethparams.TxGas + 3*ethparams.CallNewAccountGas,
+			wantErr: false,
+		},
+		{
+			// Surplus over threshold must also accept.
+			name:    "above threshold",
+			gas:     ethparams.TxGas + 4*ethparams.CallNewAccountGas,
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			tx := ethtypes.NewTx(&ethtypes.SetCodeTx{
+				ChainID:   uint256.MustFromBig(chainID),
+				Nonce:     1,
+				GasTipCap: uint256.NewInt(1),
+				GasFeeCap: uint256.NewInt(1),
+				Gas:       tc.gas,
+				To:        target,
+				Value:     uint256.NewInt(0),
+				Data:      nil,
+				AuthList:  authList,
+			})
+			txData, err := evmtypes.NewSetCodeTx(tx)
+			suite.Require().NoError(err)
+
+			// Non-nil baseFee so EffectiveFee — reached only on the
+			// accept paths after the intrinsic-gas check passes — does
+			// not nil-deref inside EffectiveGasPrice.
+			_, err = keeper.VerifyFee(txData, evmtypes.DefaultEVMDenom, big.NewInt(0), false, false, false, suite.ctx.IsCheckTx())
+			if tc.wantErr {
+				suite.Require().Error(err, "must reject when gas limit < intrinsic gas")
+			} else {
+				suite.Require().NoError(err, "must accept when gas limit >= intrinsic gas")
+			}
+		})
+	}
+}
+
+// TestSetCodeTx_AuthListRoundTripCount pins the invariant that VerifyFee's
+// txData.GetAuthorizationList() (Cosmos-encoded path) and the apply loop's
+// core.Message.SetCodeAuthorizations (geth path) report the same number of
+// tuples for the same SetCodeTx. A future filter on either route that
+// silently dropped tuples would diverge intrinsic-gas accounting from
+// authorization processing — N=0 catches regressions that always emit one
+// tuple, N=3 catches off-by-one truncation.
+func (suite *KeeperTestSuite) TestSetCodeTx_AuthListRoundTripCount() {
+	suite.SetupTest()
+
+	chainID := suite.app.EvmKeeper.ChainID()
+	target := common.HexToAddress("0x000000000000000000000000000000000000abcd")
+
+	priv, err := crypto.GenerateKey()
+	suite.Require().NoError(err)
+	auth, err := ethtypes.SignSetCode(priv, ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.MustFromBig(chainID),
+		Address: target,
+		Nonce:   0,
+	})
+	suite.Require().NoError(err)
+
+	testCases := []struct {
+		name string
+		n    int
+	}{
+		{"empty auth list", 0},
+		{"three tuples", 3},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			authList := make([]ethtypes.SetCodeAuthorization, tc.n)
+			for i := range authList {
+				authList[i] = auth
+			}
+
+			signer := ethtypes.LatestSignerForChainID(chainID)
+			tx, err := ethtypes.SignNewTx(priv, signer, &ethtypes.SetCodeTx{
+				ChainID:   uint256.MustFromBig(chainID),
+				Nonce:     1,
+				GasTipCap: uint256.NewInt(1),
+				GasFeeCap: uint256.NewInt(1),
+				Gas:       ethparams.TxGas + uint64(tc.n)*ethparams.CallNewAccountGas, //nolint:gosec
+				To:        target,
+				Value:     uint256.NewInt(0),
+				AuthList:  authList,
+			})
+			suite.Require().NoError(err)
+
+			txData, err := evmtypes.NewSetCodeTx(tx)
+			suite.Require().NoError(err)
+
+			coreMsg, err := core.TransactionToMessage(tx, signer, nil)
+			suite.Require().NoError(err)
+
+			suite.Require().Equal(
+				len(txData.GetAuthorizationList()),
+				len(coreMsg.SetCodeAuthorizations),
+				"round-trip auth count must agree",
+			)
+			suite.Require().Equal(tc.n, len(txData.GetAuthorizationList()))
+		})
+	}
 }

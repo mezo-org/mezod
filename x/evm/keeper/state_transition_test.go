@@ -20,7 +20,9 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/holiman/uint256"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/keeper"
@@ -292,8 +294,10 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 				suite.signer,
 				signer,
 				ethtypes.AccessListTxType,
+				common.Address{},
 				tc.data,
 				tc.accessList,
+				nil,
 				big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
 			)
 			suite.Require().NoError(err)
@@ -306,6 +310,71 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			}
 
 			suite.Require().Equal(tc.expGas, gas)
+		})
+	}
+}
+
+// TestGetEthIntrinsicGasSetCodeTx covers EIP-7702: each tuple in the auth
+// list adds params.CallNewAccountGas (25000) on top of the base call cost.
+// We pin both boundaries (N=0, N=1) and a representative N=3. N=0 catches
+// a regression where the formula would unconditionally add one tuple's
+// worth of gas.
+func (suite *KeeperTestSuite) TestGetEthIntrinsicGasSetCodeTx() {
+	suite.SetupTest()
+
+	keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+	ethCfg := keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID())
+	signer := ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
+
+	priv, err := crypto.GenerateKey()
+	suite.Require().NoError(err)
+	chainID := suite.app.EvmKeeper.ChainID()
+	target := common.HexToAddress("0x0000000000000000000000000000000000001234")
+	auth, err := ethtypes.SignSetCode(priv, ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.MustFromBig(chainID),
+		Address: target,
+		Nonce:   0,
+	})
+	suite.Require().NoError(err)
+
+	testCases := []struct {
+		name string
+		n    uint64
+	}{
+		{"empty auth list", 0},
+		{"single tuple", 1},
+		{"three tuples", 3},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			authList := make([]ethtypes.SetCodeAuthorization, tc.n)
+			for i := range authList {
+				authList[i] = auth
+			}
+
+			m, err := newNativeMessage(
+				suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
+				suite.ctx.BlockHeight(),
+				suite.address,
+				ethCfg,
+				suite.signer,
+				signer,
+				ethtypes.SetCodeTxType,
+				target,
+				nil,
+				nil,
+				authList,
+				big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
+			)
+			suite.Require().NoError(err)
+
+			gas, err := suite.app.EvmKeeper.GetEthIntrinsicGas(suite.ctx, m, ethCfg, false)
+			suite.Require().NoError(err)
+			suite.Require().Equal(
+				params.TxGas+tc.n*params.CallNewAccountGas,
+				gas,
+			)
 		})
 	}
 }
@@ -450,6 +519,8 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 				suite.signer,
 				signer,
 				ethtypes.AccessListTxType,
+				common.Address{},
+				nil,
 				nil,
 				nil,
 				big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
@@ -573,6 +644,8 @@ func (suite *KeeperTestSuite) TestNewEVM_BlobBaseFee() {
 		suite.signer,
 		signer,
 		ethtypes.AccessListTxType,
+		common.Address{},
+		nil,
 		nil,
 		nil,
 		big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
@@ -637,6 +710,8 @@ func (suite *KeeperTestSuite) TestNewEVM_PREVRANDAO() {
 				suite.signer,
 				signer,
 				ethtypes.AccessListTxType,
+				common.Address{},
+				nil,
 				nil,
 				nil,
 				big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
@@ -672,6 +747,8 @@ func (suite *KeeperTestSuite) TestNewEVMWithOverrides() {
 		suite.signer,
 		signer,
 		ethtypes.AccessListTxType,
+		common.Address{},
+		nil,
 		nil,
 		nil,
 		big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
@@ -785,6 +862,8 @@ func (suite *KeeperTestSuite) TestApplyMessage() {
 		suite.signer,
 		signer,
 		ethtypes.AccessListTxType,
+		common.Address{},
+		nil,
 		nil,
 		nil,
 		big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
@@ -827,6 +906,8 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 					suite.signer,
 					signer,
 					ethtypes.AccessListTxType,
+					common.Address{},
+					nil,
 					nil,
 					nil,
 					big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
@@ -847,6 +928,8 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfig() {
 					suite.signer,
 					signer,
 					ethtypes.AccessListTxType,
+					common.Address{},
+					nil,
 					nil,
 					nil,
 					big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
@@ -933,6 +1016,8 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfigInvalidSupply() {
 		suite.signer,
 		signer,
 		ethtypes.AccessListTxType,
+		common.Address{},
+		nil,
 		nil,
 		nil,
 		big.NewInt(suite.ctx.BlockTime().Unix()).Uint64(),
