@@ -54,21 +54,29 @@ type TransactionArgs struct {
 	ChainID    *hexutil.Big         `json:"chainId,omitempty"`
 
 	// Introduced by SetCodeTxType transaction (EIP-7702).
-	AuthorizationList []ethtypes.SetCodeAuthorization `json:"authorizationList,omitempty"`
+	AuthorizationList []ethtypes.SetCodeAuthorization `json:"authorizationList"`
 }
 
 // String return the struct in a string format
 func (args *TransactionArgs) String() string {
+	authSummaries := make([]string, 0, len(args.AuthorizationList))
+	for _, auth := range args.AuthorizationList {
+		authSummaries = append(authSummaries, fmt.Sprintf(
+			"(chainId=%s address=%s nonce=%d)",
+			auth.ChainID.String(), auth.Address.Hex(), auth.Nonce,
+		))
+	}
 	// Todo: There is currently a bug with hexutil.Big when the value its nil, printing would trigger an exception
 	return fmt.Sprintf("TransactionArgs{From:%v, To:%v, Gas:%v,"+
-		" Nonce:%v, Data:%v, Input:%v, AccessList:%v}",
+		" Nonce:%v, Data:%v, Input:%v, AccessList:%v, AuthorizationList:%v}",
 		args.From,
 		args.To,
 		args.Gas,
 		args.Nonce,
 		args.Data,
 		args.Input,
-		args.AccessList)
+		args.AccessList,
+		authSummaries)
 }
 
 // ToTransaction converts the arguments to an ethereum transaction.
@@ -113,9 +121,41 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 		to = args.To.Hex()
 	}
 
-	var data TxData
+	usedType := ethtypes.LegacyTxType
 	switch {
+	case args.AuthorizationList != nil:
+		usedType = ethtypes.SetCodeTxType
 	case args.MaxFeePerGas != nil:
+		usedType = ethtypes.DynamicFeeTxType
+	case args.AccessList != nil:
+		usedType = ethtypes.AccessListTxType
+	}
+	// Make it possible to default to newer tx, but use legacy if gasprice is provided
+	if args.GasPrice != nil {
+		usedType = ethtypes.LegacyTxType
+	}
+
+	var data TxData
+	switch usedType {
+	case ethtypes.SetCodeTxType:
+		al := AccessList{}
+		if args.AccessList != nil {
+			al = NewAccessList(args.AccessList)
+		}
+
+		data = &SetCodeTx{
+			To:        to,
+			ChainID:   &chainID,
+			Nonce:     nonce,
+			GasLimit:  gas,
+			GasFeeCap: &maxFeePerGas,
+			GasTipCap: &maxPriorityFeePerGas,
+			Amount:    &value,
+			Data:      args.GetData(),
+			Accesses:  al,
+			AuthList:  NewAuthorizationList(args.AuthorizationList),
+		}
+	case ethtypes.DynamicFeeTxType:
 		al := AccessList{}
 		if args.AccessList != nil {
 			al = NewAccessList(args.AccessList)
@@ -132,7 +172,7 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 			Data:      args.GetData(),
 			Accesses:  al,
 		}
-	case args.AccessList != nil:
+	case ethtypes.AccessListTxType:
 		data = &AccessListTx{
 			To:       to,
 			ChainID:  &chainID,

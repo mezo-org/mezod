@@ -220,21 +220,44 @@ func NewRPCTransaction(
 		al := tx.AccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.ChainId())
-		result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
-		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
-		// if the transaction has been mined, compute the effective gas price
-		if baseFee != nil && blockHash != (common.Hash{}) {
-			// price = min(tip, gasFeeCap - baseFee) + baseFee
-			price := new(big.Int).Add(tx.GasTipCap(), baseFee)
-			if price.Cmp(tx.GasFeeCap()) > 0 {
-				price = tx.GasFeeCap()
-			}
-			result.GasPrice = (*hexutil.Big)(price)
-		} else {
-			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
-		}
+		result = setEffectiveGasPrice(result, tx, baseFee, blockHash)
+	case ethtypes.SetCodeTxType:
+		al := tx.AccessList()
+		result.Accesses = &al
+		result.ChainID = (*hexutil.Big)(tx.ChainId())
+		// Shared with the geth Transaction; treat as read-only downstream.
+		result.AuthorizationList = tx.SetCodeAuthorizations()
+		result = setEffectiveGasPrice(result, tx, baseFee, blockHash)
 	}
 	return result, nil
+}
+
+// setEffectiveGasPrice populates the 1559 fee-cap fields and computes the
+// effective gas price on result, returning it for explicit reassignment at
+// the call site. For mined transactions the price is min(tip+baseFee,
+// gasFeeCap); otherwise it falls back to gasFeeCap.
+func setEffectiveGasPrice(
+	result *RPCTransaction,
+	tx *ethtypes.Transaction,
+	baseFee *big.Int,
+	blockHash common.Hash,
+) *RPCTransaction {
+	result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
+	result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
+
+	// if the transaction has been mined, compute the effective gas price
+	if baseFee != nil && blockHash != (common.Hash{}) {
+		// price = min(tip, gasFeeCap - baseFee) + baseFee
+		price := new(big.Int).Add(tx.GasTipCap(), baseFee)
+		if price.Cmp(tx.GasFeeCap()) > 0 {
+			price = tx.GasFeeCap()
+		}
+		result.GasPrice = (*hexutil.Big)(price)
+	} else {
+		result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
+	}
+
+	return result
 }
 
 // BaseFeeFromEvents parses the feemarket basefee from cosmos events

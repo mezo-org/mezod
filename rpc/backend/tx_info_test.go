@@ -16,11 +16,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/holiman/uint256"
 	apptypes "github.com/mezo-org/mezod/app/abci/types"
 	"github.com/mezo-org/mezod/indexer"
 	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
 	rpctypes "github.com/mezo-org/mezod/rpc/types"
+	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	mezotypes "github.com/mezo-org/mezod/types"
 	bridgeabcitypes "github.com/mezo-org/mezod/x/bridge/abci/types"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
@@ -982,4 +985,108 @@ func buildPseudoTxTrace(
 		"output":  "0x0000000000000000000000000000000000000000000000000000000000000001",
 		"failed":  false,
 	}, nil
+}
+
+func (suite *BackendTestSuite) TestGetTransactionReceiptSetCodeTxEffectiveGasPrice() {
+	suite.SetupTest()
+
+	priv, err := crypto.GenerateKey()
+	suite.Require().NoError(err)
+	from := crypto.PubkeyToAddress(priv.PublicKey)
+
+	to := utiltx.GenerateAddress()
+	chainIDBig := suite.backend.chainID
+	signer := ethtypes.NewPragueSigner(chainIDBig)
+
+	auth, err := ethtypes.SignSetCode(priv, ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.MustFromBig(chainIDBig),
+		Address: to,
+		Nonce:   1,
+	})
+	suite.Require().NoError(err)
+
+	gasFeeCap := uint256.NewInt(10)
+	gasTipCap := uint256.NewInt(2)
+	inner := &ethtypes.SetCodeTx{
+		ChainID:   uint256.MustFromBig(chainIDBig),
+		Nonce:     0,
+		GasTipCap: gasTipCap,
+		GasFeeCap: gasFeeCap,
+		Gas:       100_000,
+		To:        to,
+		Value:     uint256.NewInt(0),
+		AuthList:  []ethtypes.SetCodeAuthorization{auth},
+	}
+	ethTx := ethtypes.MustSignNewTx(priv, signer, inner)
+
+	msgEthTx := &evmtypes.MsgEthereumTx{}
+	suite.Require().NoError(msgEthTx.FromEthereumTx(ethTx))
+	cosmosTx, err := msgEthTx.BuildTx(
+		suite.backend.clientCtx.TxConfig.NewTxBuilder(),
+		evmtypes.DefaultEVMDenom,
+	)
+	suite.Require().NoError(err)
+	txBz, err := suite.backend.clientCtx.TxConfig.TxEncoder()(cosmosTx)
+	suite.Require().NoError(err)
+
+	const height int64 = 1
+	const txGasUsed = uint64(50_000)
+	ethTxHash := ethTx.Hash()
+
+	client := suite.backend.clientCtx.Client.(*mocks.Client)
+	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+	var header metadata.MD
+	RegisterParams(queryClient, &header, height)
+	RegisterParamsWithoutHeader(queryClient, height)
+	_, err = RegisterBlock(client, height, txBz)
+	suite.Require().NoError(err)
+
+	// EthereumTx event so the indexer treats this as a regular eth tx,
+	// not a pseudo-tx.
+	txResult := &abci.ExecTxResult{
+		Code:    0,
+		GasUsed: int64(txGasUsed), //nolint:gosec
+		Events: []abci.Event{
+			{Type: evmtypes.EventTypeEthereumTx, Attributes: []abci.EventAttribute{
+				{Key: "ethereumTxHash", Value: ethTxHash.Hex()},
+				{Key: "txIndex", Value: "0"},
+				{Key: "amount", Value: "0"},
+				{Key: "txGasUsed", Value: fmt.Sprintf("%d", txGasUsed)},
+				{Key: "txHash", Value: ""},
+				{Key: "recipient", Value: to.Hex()},
+			}},
+		},
+	}
+	_, err = RegisterBlockResultsWithTxResults(client, height, []*abci.ExecTxResult{txResult})
+	suite.Require().NoError(err)
+
+	baseFee := sdkmath.NewInt(1)
+	RegisterBaseFee(queryClient, baseFee)
+
+	db := dbm.NewMemDB()
+	suite.backend.indexer = indexer.NewKVIndexer(db, log.NewNopLogger(), suite.backend.clientCtx)
+	block := &types.Block{
+		Header: types.Header{Height: height, ChainID: ChainID},
+		Data:   types.Data{Txs: []types.Tx{txBz}},
+	}
+	suite.Require().NoError(
+		suite.backend.indexer.IndexBlock(block, []*abci.ExecTxResult{txResult}),
+	)
+
+	receipt, err := suite.backend.GetTransactionReceipt(ethTxHash)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(receipt)
+
+	got, ok := receipt["effectiveGasPrice"]
+	suite.Require().True(ok, "effectiveGasPrice missing from SetCodeTx receipt")
+
+	txData, err := evmtypes.UnpackTxData(msgEthTx.Data)
+	suite.Require().NoError(err)
+	setCodeTxData, ok := txData.(*evmtypes.SetCodeTx)
+	suite.Require().True(ok, "unpacked tx data is not *evmtypes.SetCodeTx")
+	wantEffective := setCodeTxData.EffectiveGasPrice(baseFee.BigInt())
+
+	suite.Require().Equal(hexutil.Big(*wantEffective), got)
+	suite.Require().Equal(hexutil.Uint(ethtypes.SetCodeTxType), receipt["type"])
+	suite.Require().Equal(from, receipt["from"])
 }

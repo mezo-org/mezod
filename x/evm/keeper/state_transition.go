@@ -506,12 +506,17 @@ func (k *Keeper) applyMessageWithConfig(
 		gasUsed uint64
 	)
 
-	// EIP-7702 forbids combining an auth list with contract creation and
-	// rejects a non-nil but empty auth list. SetCodeTx.Validate and the ante
-	// cover the consensus path, but simulate / RPC ingress can construct a
-	// core.Message that bypasses both — mirror go-ethereum's apply-time check
-	// so the geth sentinels surface for callers that probe EIP-7702 directly.
+	rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())) //nolint:gosec
+
+	// Re-assert geth's EIP-7702 invariants. On the consensus
+	// path these are enforced by SetCodeTx.Validate and the ante handler.
+	// Non-consensus paths (e.g. simulate, eth_call) build a core.Message
+	// directly, so neither check runs and the invariants must be
+	// re-asserted here.
 	if msg.SetCodeAuthorizations != nil {
+		if !rules.IsPrague {
+			return nil, nil, errorsmod.Wrap(ethtypes.ErrTxTypeNotSupported, "set code tx not supported")
+		}
 		if msg.To == nil {
 			return nil, nil, errorsmod.Wrap(core.ErrSetCodeTxCreate, "apply message")
 		}
@@ -583,7 +588,7 @@ func (k *Keeper) applyMessageWithConfig(
 
 	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
 	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
-	if rules := cfg.Rules(ctx.BlockHeight(), uint64(ctx.BlockTime().Unix())); rules.IsBerlin { //nolint:gosec
+	if rules.IsBerlin {
 		stateDB.Prepare(rules, msg.From, evm.Context.Coinbase, msg.To, maps.Keys(evm.Precompiles()), msg.AccessList)
 	}
 
@@ -599,12 +604,17 @@ func (k *Keeper) applyMessageWithConfig(
 	} else {
 		// Apply set-code authorizations before calling evm.Call.
 		//
-		// Sender nonce is bumped before this point — by
-		// EthIncrementSenderSequenceDecorator ante handler on consensus paths
-		// (CheckTx/DeliverTx) and by per-entry-point explicit bump on
-		// keeper-internal paths (EthCall, EstimateGas, TraceTx, traceTx,
-		// SimulateV1). Self-sponsored auths therefore see the post-bump
-		// value here regardless of path.
+		// Sender nonce was bumped before reaching here — by
+		// EthIncrementSenderSequenceDecorator on consensus paths, and by an
+		// explicit bump at each non-consensus path (e.g. simulate, eth_call).
+		// Self-sponsored auths therefore see the post-bump nonce.
+		//
+		// applySetCodeAuthorizations is EIP-7702 logic but needs no
+		// IsPrague gate here. Pre-Prague both of its inputs are absent:
+		// msg.SetCodeAuthorizations is rejected by the check at the
+		// top of applyMessageWithConfig, and msg.To cannot carry a
+		// delegation marker because none could have been installed yet.
+		// The call is a no-op in that case.
 		precompiles := evm.Precompiles()
 		isPrecompile := func(addr common.Address) bool {
 			_, ok := precompiles[addr]
