@@ -42,8 +42,8 @@ const REFUND_PER_EXISTING_AUTHORITY = 12500n
  * | installs delegation + type-4 envelope + routes calls into target    | fresh sponsor; fresh authority                                            | sponsor sends type-4 tx to authority: authorization for T1, setSlot(42,7) calldata | receipt 0x1; rpcTx.type=0x04 with authorizationList[0]=(T1, chainId); code(authority)=designator(T1); authority.slot42=7; T1.slot42=0; Touched.self=authority |
  * | rotates delegation T1->T2, preserves storage                        | authority delegated to T1; authority.slot42=7                             | sponsor sends second type-4 tx with authorization for T2 (nonce=1)                 | code(authority)=designator(T2); authority.slot42 still 7; V2-only tickV2() on authority decodes to 2                                                          |
  * | clears with 0x0, then re-delegates                                  | authority delegated to T1; authority.slot42=7                             | sponsor sends authorization for 0x0 (nonce=1), then authorization for T1 (nonce=2) | code(authority) empty after clear; code(authority)=designator(T1) after re-delegate; authority.slot42 still 7                                                 |
- * | self-sponsored authorization (authority == sender)                  | authority == sender (funded); authorization nonce = current+1 (post-bump) | authority self-sends type-4 tx with authorization for T1 + tick() calldata         | receipt 0x1; rpcTx.from=authority; code(authority)=designator(T1)                                                                                             |
- * | self-sponsored pre-bump nonce silently skipped                      | authority == sender (funded); authorization nonce = current (pre-bump)    | authority self-sends type-4 tx with that authorization + tick() calldata           | receipt 0x1; code(authority) empty; authority.nonce=current+1 (sender bump only, authorization skipped)                                                       |
+ * | self-sponsored authorization (authority == sender)                  | authority == sender (funded); authorization nonce = current+1 (post-bump) | authority self-sends type-4 tx with authorization for T1                           | receipt 0x1; rpcTx.from=authority; code(authority)=designator(T1)                                                                                             |
+ * | self-sponsored pre-bump nonce silently skipped                      | authority == sender (funded); authorization nonce = current (pre-bump)    | authority self-sends type-4 tx with that authorization                             | receipt 0x1; code(authority) empty; authority.nonce=current+1 (sender bump only, authorization skipped)                                                       |
  * | self-delegation does not loop                                       | authorization target = authority's own address                            | sponsor sends type-4 tx with self-pointing authorization                           | receipt 0x1; code(authority)=designator(authority)                                                                                                            |
  * | A->B->T resolves exactly one hop                                    | authority B already delegated to T1                                       | authority A signs authorization for B (not T1); sponsorA installs A->B             | code(A)=designator(B); code(B)=designator(T1); code(A) != designator(T1)                                                                                      |
  * | refunds (CallNewAccountGas - TxAuthTupleGas) per existing authority | 32-SSTORE body sized to clear floor + EIP-3529 cap                        | type-4 txs with 1 or 2 authorizations; fresh vs pre-funded authorities             | gasUsed(fresh) - gasUsed(existing) = 12500 (1 authorization), 25000 (2 authorizations)                                                                        |
@@ -233,8 +233,6 @@ describe("Eip7702_SpecCompliance", function () {
     // type-0x04 tx and the auth-tuple intrinsic charge.
     const authority = await freshSponsor()
 
-    const target = await ethers.getContractAt("Eip7702TargetV1", targetAddr)
-
     // Self-sponsored: auth.nonce is the authority's nonce *after* the
     // sender-sequence bump, so current+1.
     const current = BigInt(
@@ -248,10 +246,6 @@ describe("Eip7702_SpecCompliance", function () {
 
     const { receipt, rpcTx } = await sendSetCodeTx(authority, {
       to: targetAddr,
-      // Use `tick()` so the executed body returns successfully; an
-      // empty calldata would hit Solidity's automatic revert on
-      // unmatched selector.
-      data: target.interface.encodeFunctionData("tick"),
       authorizationList: [auth],
     })
 
@@ -273,7 +267,6 @@ describe("Eip7702_SpecCompliance", function () {
     // but the authority's code stays empty and its own nonce does NOT
     // bump.
     const authority = await freshSponsor()
-    const target = await ethers.getContractAt("Eip7702TargetV1", targetAddr)
 
     const current = BigInt(
       await ethers.provider.getTransactionCount(authority.address),
@@ -286,7 +279,6 @@ describe("Eip7702_SpecCompliance", function () {
 
     const { receipt } = await sendSetCodeTx(authority, {
       to: targetAddr,
-      data: target.interface.encodeFunctionData("tick"),
       authorizationList: [wrongAuth],
     })
 
@@ -310,8 +302,6 @@ describe("Eip7702_SpecCompliance", function () {
     const sponsor = await freshSponsor()
     const authority = await freshAuthority()
 
-    const target = await ethers.getContractAt("Eip7702TargetV1", targetAddr)
-
     const auth = await signAuthorization(authority, {
       chainId,
       address: authority.address,
@@ -320,7 +310,6 @@ describe("Eip7702_SpecCompliance", function () {
 
     const { receipt } = await sendSetCodeTx(sponsor, {
       to: targetAddr,
-      data: target.interface.encodeFunctionData("tick"),
       authorizationList: [auth],
     })
 
