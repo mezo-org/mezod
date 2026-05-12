@@ -40,7 +40,7 @@ const REFUND_PER_EXISTING_AUTHORITY = 12500n
  * | Scenario                                                            | Given                                                                     | When                                                                               | Then                                                                                                                                                          |
  * |---------------------------------------------------------------------|---------------------------------------------------------------------------|------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
  * | installs delegation + type-4 envelope + routes calls into target    | fresh sponsor; fresh authority                                            | sponsor sends type-4 tx to authority: authorization for T1, setSlot(42,7) calldata | receipt 0x1; rpcTx.type=0x04 with authorizationList[0]=(T1, chainId); code(authority)=designator(T1); authority.slot42=7; T1.slot42=0; Touched.self=authority |
- * | rotates delegation T1->T2, preserves storage                        | authority delegated to T1; authority.slot42=7                             | sponsor sends second type-4 tx with authorization for T2 (nonce=1)                 | code(authority)=designator(T2); authority.slot42 still 7; V2-only tickV2() on authority succeeds                                                              |
+ * | rotates delegation T1->T2, preserves storage                        | authority delegated to T1; authority.slot42=7                             | sponsor sends second type-4 tx with authorization for T2 (nonce=1)                 | code(authority)=designator(T2); authority.slot42 still 7; V2-only tickV2() on authority decodes to 2                                                          |
  * | clears with 0x0, then re-delegates                                  | authority delegated to T1; authority.slot42=7                             | sponsor sends authorization for 0x0 (nonce=1), then authorization for T1 (nonce=2) | code(authority) empty after clear; code(authority)=designator(T1) after re-delegate; authority.slot42 still 7                                                 |
  * | self-sponsored authorization (authority == sender)                  | authority == sender (funded); authorization nonce = current+1 (post-bump) | authority self-sends type-4 tx with authorization for T1 + tick() calldata         | receipt 0x1; rpcTx.from=authority; code(authority)=designator(T1)                                                                                             |
  * | self-sponsored pre-bump nonce silently skipped                      | authority == sender (funded); authorization nonce = current (pre-bump)    | authority self-sends type-4 tx with that authorization + tick() calldata           | receipt 0x1; code(authority) empty; authority.nonce=current+1 (sender bump only, authorization skipped)                                                       |
@@ -165,12 +165,12 @@ describe("Eip7702_SpecCompliance", function () {
     const eoaAsT2 = target2.attach(authority.address) as typeof target2
     expect(await eoaAsT2.readSlot(42n)).to.equal(7n)
 
-    // V2-only function `tickV2` is callable from the EOA. V1 doesn't
-    // expose this selector, so a successful send proves the delegated
-    // code actually swapped (not just the designator address).
-    const tickV2Tx = await eoaAsT2.tickV2()
-    const tickV2Receipt = await pollForReceipt(tickV2Tx.hash)
-    expect(tickV2Receipt.status).to.equal("0x1")
+    // V2-only `tickV2` returns 2. V1 has a no-op `fallback`, which
+    // would swallow the unknown selector and return 0 bytes — so a
+    // send-and-status check proves nothing. Asserting the decoded
+    // return value proves the delegated code actually swapped to V2,
+    // not just that the designator address changed.
+    expect(await eoaAsT2.tickV2.staticCall()).to.equal(2n)
   })
 
   it("clears delegation with address=0x0 and re-delegates later", async function () {
