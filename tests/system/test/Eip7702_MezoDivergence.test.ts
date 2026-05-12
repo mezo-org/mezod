@@ -22,6 +22,15 @@ import {
  * Conventions: each it() builds its own fresh sponsor and authorities
  * so cases are independent and order-agnostic. Receipts are polled
  * (HardhatEthersProvider doesn't implement waitForTransaction).
+ *
+ * Test scenarios:
+ *
+ * | Scenario                                             | Given                                     | When                                                | Then                                                                             |
+ * |------------------------------------------------------|-------------------------------------------|-----------------------------------------------------|----------------------------------------------------------------------------------|
+ * | two sequential txs from same authority accepted      | no mempool authority reservation in mezod | two type-0x04 txs from same authority, back-to-back | both included; final delegation is the second target's; authority nonce = 2      |
+ * | two auths from same authority in one tx accepted     | both tuples target different addresses    | single sendSetCodeTx with [auth(T1), auth(T2)]      | receipt 0x1; final delegation is the second target's; authority nonce = 2        |
+ * | precompile-targeted tuples rejected                  | stock 0x01 + every Mezo custom 0x7b7c...  | mixed tx with precompile tuples plus one real tuple | precompile tuples silently skipped (no code, no nonce bump); real tuple installs |
+ * | sender + auth recovery via PragueSigner (no adapter) | no Mezo-specific signer wrapper           | sendSetCodeTx and read rpcTx fields                 | rpcTx.from = sponsor; auth.address round-trips; code = designator(T1)            |
  */
 
 // Stock geth precompile 0x01 (ecRecover). Holds no stored bytecode on

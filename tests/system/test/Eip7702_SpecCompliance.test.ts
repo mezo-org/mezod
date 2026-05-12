@@ -34,6 +34,28 @@ const REFUND_PER_EXISTING_AUTHORITY = 12500n
  * waitForTransaction). Coarse gas tolerances only — absolute gasUsed
  * couples to mezod's MinGasMultiplier floor and the EIP-3529 refund cap,
  * so assertions target deltas and code/storage shape.
+ *
+ * Test scenarios:
+ *
+ * | Scenario                                               | Given                                       | When                                                | Then                                                                              |
+ * |--------------------------------------------------------|---------------------------------------------|-----------------------------------------------------|-----------------------------------------------------------------------------------|
+ * | install delegation + type-4 envelope                   | fresh sponsor + fresh authority             | sendSetCodeTx with one auth + setSlot body          | receipt 0x1; rpcTx.type=0x04; code = designator(T1); slot written in EOA          |
+ * | rotate delegation T1 -> T2, storage preserved          | authority delegated to T1, slot 42=7        | second set-code tx with auth to T2                  | code = designator(T2); slot 42 still 7; V2-only tickV2() succeeds                 |
+ * | clear with 0x0 then re-delegate                        | authority delegated to T1, slot 42=7        | tuple to 0x0, then tuple back to T1                 | code empty after clear; code = designator(T1) after; slot 42 still 7              |
+ * | self-sponsored authorization                           | sender == authority, auth.nonce = current+1 | sendSetCodeTx signed by the authority itself        | receipt 0x1; rpcTx.from = authority; code = designator(T1)                        |
+ * | self-sponsored pre-bump nonce silently skipped         | sender == authority, auth.nonce = current   | sendSetCodeTx with that wrong-nonce tuple           | envelope OK; code empty; authority nonce += 1 (sender bump only)                  |
+ * | self-delegation does not loop                          | tuple's address = authority's own address   | sendSetCodeTx with that self-pointing tuple         | code = designator(authority); auth processing does not recurse                    |
+ * | A->B->T resolves exactly one hop                       | B already delegated to T                    | A signs tuple pointing to B (not T)                 | code(A)=designator(B); code(B)=designator(T); code(A)!=designator(T)              |
+ * | refund CallNewAccountGas - TxAuthTupleGas              | 32-SSTORE body; fresh vs existing authority | one-tuple and two-tuple variants                    | gasUsed(fresh) - gasUsed(existing) = 12500 per existing authority                 |
+ * | duplicated tuple silently skipped                      | one authority, same tuple twice             | sendSetCodeTx with [a, a]                           | receipt 0x1; code = designator(T1); authority nonce = 1                           |
+ * | wrong chain id silently skipped                        | tuple signed for chainId+1                  | sendSetCodeTx with that tuple                       | code empty; authority nonce unchanged                                             |
+ * | chainId = 0 (any-chain) accepted                       | tuple signed with chainId = 0               | sendSetCodeTx with that tuple                       | code = designator(T1)                                                             |
+ * | corrupted-signature tuple silently skipped             | tuple's r field corrupted                   | sendSetCodeTx with that tuple                       | code empty; authority nonce unchanged                                             |
+ * | delegated EOA sends a type-2 tx (EIP-3607 exempt)      | authority delegated to T1, funded           | authority sends type-2 setSlot(99, 123)             | receipt 0x1; from = authority; nonce = 2; slot 99 = 123                           |
+ * | one-level resolve via CALL / STATICCALL / DELEGATECALL | authority delegated to T1, Eip7702Caller    | callInto / staticCallInto / delegateCallInto        | CALL writes to authority; STATIC reads it; DELEGATECALL writes to caller storage  |
+ * | EXTCODE* observe 23-byte delegation designator         | authority delegated to T1                   | Eip7702ExtCodeReader.size / copy / hash             | size=23; copy=designator(T1); hash=keccak256(designator) != keccak256(targetCode) |
+ * | intrinsic CallNewAccountGas (25000) per fresh tuple    | 32-SSTORE body; 1-tuple vs 2-tuple tx       | sendSetCodeTx with 1 vs 2 fresh authorities         | gasUsed(2 tuples) - gasUsed(1 tuple) = exactly 25000                              |
+ * | EIP-2929 cold->warm CALL into delegated EOA            | authority delegated to T1                   | contract issues two CALLs to authority, tick() body | gasFirst - gasSecond ~= 5000 (+/- 200): cold A + cold T = 2 x 2500                |
  */
 describe("Eip7702_SpecCompliance", function () {
   const { deployments } = hre
