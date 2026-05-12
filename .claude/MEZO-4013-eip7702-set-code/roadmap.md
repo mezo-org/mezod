@@ -39,6 +39,21 @@
   is backfilled in Phase 6, and the smoketest itself is superseded by
   Phase 6's consolidated `Eip7702_SpecCompliance` suite.
   PR: [#683](https://github.com/mezo-org/mezod/pull/683).
+- **Phase 6.** System tests and divergence tripwires plus keeper-level
+  fuzz target on the `SetCodeTx` proto unmarshaler. Ships the
+  consolidated `Eip7702_SpecCompliance` suite (delegation install /
+  rotate / clear, self-sponsored authorizations, one-level resolution,
+  intrinsic-gas refund and absolute-charge accounting, silent-skip
+  variants, EIP-3607 sender exemption, contract-frame
+  `CALL` / `STATICCALL` / `DELEGATECALL` resolution, `EXTCODE*`
+  designator opacity, and EIP-2929 cold-vs-warm CALL gas into a
+  delegated EOA), the `Eip7702_MezoDivergence` tripwires (no mempool
+  authority reservation, precompile-target rejection, PragueSigner
+  inheritance), the shared Hardhat helpers and fixtures with an
+  `ethers` 6.16 bump for `Wallet.authorize`, the KV-indexer SetCodeTx
+  test backfill, and `FuzzSetCodeTxUnmarshal` against the
+  `validateSentinels` set.
+  PR: [#685](https://github.com/mezo-org/mezod/pull/685).
 
 ## Status of prerequisites
 
