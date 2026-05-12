@@ -1,6 +1,7 @@
 package types_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -448,6 +449,51 @@ func (suite *TxDataTestSuite) TestGetFrom() {
 	for _, tc := range testCases {
 		retrievedAddress := tc.txArgs.GetFrom()
 		suite.Require().Equal(retrievedAddress, tc.expAddress)
+	}
+}
+
+func (suite *TxDataTestSuite) TestAuthorizationListJSONRoundTrip() {
+	testCases := []struct {
+		name     string
+		input    string
+		expected []ethtypes.SetCodeAuthorization
+		isNil    bool
+	}{
+		{
+			"empty list must survive marshal/unmarshal",
+			`{"authorizationList":[]}`,
+			[]ethtypes.SetCodeAuthorization{},
+			false,
+		},
+		{
+			"absent field stays nil",
+			`{}`,
+			nil,
+			true,
+		},
+	}
+	for _, tc := range testCases {
+		var args types.TransactionArgs
+		err := json.Unmarshal([]byte(tc.input), &args)
+		suite.Require().NoError(err, tc.name)
+		if tc.isNil {
+			suite.Require().Nil(args.AuthorizationList, tc.name)
+		} else {
+			suite.Require().NotNil(args.AuthorizationList, tc.name)
+			suite.Require().Equal(tc.expected, args.AuthorizationList, tc.name)
+		}
+
+		bz, err := json.Marshal(&args)
+		suite.Require().NoError(err, tc.name)
+
+		var round types.TransactionArgs
+		suite.Require().NoError(json.Unmarshal(bz, &round), tc.name)
+		if tc.isNil {
+			suite.Require().Nil(round.AuthorizationList, tc.name)
+		} else {
+			suite.Require().NotNil(round.AuthorizationList, tc.name)
+			suite.Require().Equal(tc.expected, round.AuthorizationList, tc.name)
+		}
 	}
 }
 
