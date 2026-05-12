@@ -35,11 +35,6 @@ func CreateUpgradeHandler(
 	}
 }
 
-// setPragueTime writes the upgrade block's unix timestamp into
-// ChainConfig.PragueTime. The block's timestamp is strictly greater
-// than any past block's, so historical replay stays pre-Prague —
-// writing zero instead would retroactively activate Prague for every
-// historical block and diverge consensus replay.
 func setPragueTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
 	params := evmKeeper.GetParams(ctx)
 
