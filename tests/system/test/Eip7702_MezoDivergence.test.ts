@@ -25,12 +25,12 @@ import {
  *
  * Test scenarios:
  *
- * | Scenario                                             | Given                                     | When                                                | Then                                                                             |
- * |------------------------------------------------------|-------------------------------------------|-----------------------------------------------------|----------------------------------------------------------------------------------|
- * | two sequential txs from same authority accepted      | no mempool authority reservation in mezod | two type-0x04 txs from same authority, back-to-back | both included; final delegation is the second target's; authority nonce = 2      |
- * | two auths from same authority in one tx accepted     | both tuples target different addresses    | single sendSetCodeTx with [auth(T1), auth(T2)]      | receipt 0x1; final delegation is the second target's; authority nonce = 2        |
- * | precompile-targeted tuples rejected                  | stock 0x01 + every Mezo custom 0x7b7c...  | mixed tx with precompile tuples plus one real tuple | precompile tuples silently skipped (no code, no nonce bump); real tuple installs |
- * | sender + auth recovery via PragueSigner (no adapter) | no Mezo-specific signer wrapper           | sendSetCodeTx and read rpcTx fields                 | rpcTx.from = sponsor; auth.address round-trips; code = designator(T1)            |
+ * | Scenario                                                                          | Given                                            | When                                                                               | Then                                                                                                     |
+ * |-----------------------------------------------------------------------------------|--------------------------------------------------|------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+ * | two sequential type-4 txs from same authority accepted (no mempool reservation)   | fresh sponsor; fresh authority                   | two back-to-back type-4 txs: authorization for T1 (nonce=0), then for T2 (nonce=1) | both receipts 0x1; code(authority)=designator(T2); authority.nonce=2                                     |
+ * | two authorizations from same authority in one tx accepted                         | fresh sponsor; fresh authority                   | one type-4 tx with two authorizations: for T1 (nonce=0) and for T2 (nonce=1)       | receipt 0x1; code(authority)=designator(T2); authority.nonce=2                                           |
+ * | precompile-targeted authorizations (stock and every Mezo custom) silently skipped | fresh sponsor; fresh authority per authorization | type-4 tx with authorizations for stock 0x01, every Mezo custom, and T1            | receipt 0x1; precompile authorities: code empty + nonce=0; real authority: code=designator(T1) + nonce=1 |
+ * | sender + authority recovery via PragueSigner (no Mezo adapter)                    | fresh sponsor; fresh authority                   | sponsor sends type-4 tx with authorization for T1; read rpcTx                      | receipt 0x1; rpcTx.from=sponsor; rpcTx.authorizationList[0].address=T1; code(authority)=designator(T1)   |
  */
 
 // Stock geth precompile 0x01 (ecRecover). Holds no stored bytecode on
