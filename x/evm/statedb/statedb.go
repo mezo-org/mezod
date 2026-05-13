@@ -356,9 +356,15 @@ func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 		return uint256.Int{}
 	}
 	var (
-		prev = new(uint256.Int).Set(stateObject.Balance())
-		n    = new(uint256.Int)
+		prev         = new(uint256.Int).Set(stateObject.Balance())
+		n            = new(uint256.Int)
+		prevCode     []byte
+		prevCodeHash common.Hash
 	)
+	if s.tracingHooks != nil && (s.tracingHooks.OnCodeChangeV2 != nil || s.tracingHooks.OnCodeChange != nil) {
+		prevCode = append([]byte(nil), stateObject.Code()...)
+		prevCodeHash = crypto.Keccak256Hash(prevCode)
+	}
 	s.journal.append(selfDestructChange{
 		account:     &addr,
 		prev:        stateObject.selfDestructed,
@@ -369,6 +375,13 @@ func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 	}
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
+	if len(prevCode) > 0 {
+		if s.tracingHooks.OnCodeChangeV2 != nil {
+			s.tracingHooks.OnCodeChangeV2(addr, prevCodeHash, prevCode, ethtypes.EmptyCodeHash, nil, tracing.CodeChangeSelfDestruct)
+		} else if s.tracingHooks.OnCodeChange != nil {
+			s.tracingHooks.OnCodeChange(addr, prevCodeHash, prevCode, ethtypes.EmptyCodeHash, nil)
+		}
+	}
 	return *prev
 }
 

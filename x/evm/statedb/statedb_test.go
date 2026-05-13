@@ -1027,11 +1027,13 @@ func (suite *StateDBTestSuite) TestTracingHooks() {
 	db.SetNonce(address, 7, tracing.NonceChangeAuthorization)
 	db.SetCode(address, []byte("code"), tracing.CodeChangeAuthorization)
 	db.SetState(address, key, value)
+	db.SelfDestruct(address)
 
 	suite.Require().Equal(
 		[]balanceChange{
 			{prev: "0", new: "10", reason: tracing.BalanceChangeTransfer},
 			{prev: "10", new: "7", reason: tracing.BalanceDecreaseGasBuy},
+			{prev: "7", new: "0", reason: tracing.BalanceDecreaseSelfdestruct},
 		},
 		balanceChanges,
 	)
@@ -1040,7 +1042,10 @@ func (suite *StateDBTestSuite) TestTracingHooks() {
 		nonceChanges,
 	)
 	suite.Require().Equal(
-		[]codeChange{{prev: nil, new: []byte("code"), reason: tracing.CodeChangeAuthorization}},
+		[]codeChange{
+			{prev: nil, new: []byte("code"), reason: tracing.CodeChangeAuthorization},
+			{prev: []byte("code"), new: nil, reason: tracing.CodeChangeSelfDestruct},
+		},
 		codeChanges,
 	)
 	suite.Require().Equal(
