@@ -1,9 +1,3 @@
-> **Note:** This file is the source of truth for the EIP-7702 (Set Code
-> Transactions) implementation in mezod while the work is in flight. Once
-> the feature ships, this file moves to `docs/spec/eip7702-set-code.md`.
-> Until then, the roadmap (`roadmap.md` next to this file) refers back to
-> this document for canonical behavior.
-
 # EIP-7702 Set Code Transactions
 
 ## Overview
@@ -35,9 +29,11 @@ post-Prague chain — works against mezod without external relayers.
 - **Transaction type.** `SetCodeTx` (type `0x04`) is added as a first-class
   Cosmos-encoded `TxData` alongside `LegacyTx`, `AccessListTx`, and
   `DynamicFeeTx`. A new `SetCodeAuthorization` message carries the
-  per-tuple `(chain_id, address, nonce, v, r, s)` payload. Strict
-  validation rejects type-`0x04` transactions whose `to` is nil or whose
-  `auth_list` is empty before they reach the keeper.
+  per-tuple `(chain_id, address, nonce, v, r, s)` payload. The proto
+  field is named `auth_list`; it surfaces over JSON-RPC as
+  `authorizationList`. Strict validation rejects type-`0x04`
+  transactions whose `to` is nil or whose `auth_list` is empty before
+  they reach the keeper.
 - **Authorization processing.** The keeper's state-transition driver
   reimplements geth 1.16.x's `validateAuthorization` and
   `applyAuthorization` semantics on top of mezod's `statedb.StateDB`,
@@ -230,22 +226,43 @@ accidental flip surfaces loudly in CI.
 
 ## Usage examples
 
-Install a delegation. The EOA at `0xc100…01` signs an authorization
-delegating its code to a contract at `0xc200…01`, then submits a
-type-`0x04` transaction (`to` is the EOA itself in this self-sponsored
-flow, but it can be any address):
+Install a delegation. The EOA at `0xc100…01` self-sponsors a type-`0x04`
+transaction that delegates its own code to the contract at `0xc200…01`.
+The `to` field is the EOA itself; `authorizationList` carries a single
+tuple naming the delegation target, and the tuple's nonce is the EOA's
+post-bump sender nonce because the authority equals the sender. The
+`r` / `s` fields are placeholders here — the caller produces them
+off-chain by signing the `(chainId, address, nonce)` payload per
+EIP-7702 §1 before submitting the request.
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "eth_sendRawTransaction",
-  "params": ["0x04..."]
+  "method": "eth_sendTransaction",
+  "params": [
+    {
+      "from": "0xc100000000000000000000000000000000000001",
+      "to":   "0xc100000000000000000000000000000000000001",
+      "gas":  "0x186a0",
+      "authorizationList": [
+        {
+          "chainId": "0x7b8b",
+          "address": "0xc200000000000000000000000000000000000001",
+          "nonce":   "0x1",
+          "v":       "0x0",
+          "r":       "0x...",
+          "s":       "0x..."
+        }
+      ]
+    }
+  ]
 }
 ```
 
-After inclusion, calling the EOA's address from any contract executes
-the delegate's code:
+Call the delegated EOA. After the install example above is included,
+calling the EOA's address from any contract executes the delegate's
+code in the EOA's storage and balance context:
 
 ```json
 {
@@ -259,17 +276,27 @@ the delegate's code:
 }
 ```
 
-`eth_getCode` on the EOA returns the 23-byte delegation designator
-(`0xef0100` followed by the target address). On-chain contracts that
-need to detect a delegation inspect this prefix via `EXTCODECOPY`.
+Read the delegation designator. `eth_getCode` on the EOA returns the
+23-byte designator `0xef0100 || target_address` — for the install
+example above, the bytes are `0xef0100` followed by
+`0xc200…01`. On-chain contracts detect a delegation by reading this
+prefix via `EXTCODECOPY`. To clear a delegation, the EOA signs a fresh
+authorization with `address = 0x0000000000000000000000000000000000000000`;
+after inclusion `eth_getCode` returns `0x` and subsequent calls execute
+as plain value-only transfers. Storage is not cleared on clear:
+slots written by the previous delegate persist, and a later
+re-delegation of the same authority will read them.
 
-Clear a delegation. The EOA signs an authorization with
-`address = 0x0000000000000000000000000000000000000000`. After inclusion,
-`eth_getCode` returns `0x` and subsequent calls execute as plain
-value-only transfers. Storage is not cleared: slots written by the
-previous delegate persist, and a later re-delegation of the same
-authority will read them.
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "eth_getCode",
+  "params": ["0xc100000000000000000000000000000000000001", "latest"]
+}
+```
 
-For the full envelope shapes, error codes, and edge cases, see the
-EIP-7702 specification text and the system suite under
-`tests/system/test/Eip7702_*.test.ts`.
+For end-to-end examples that actually construct and submit `0x04`
+transactions against a localnode, see the system suite under
+`tests/system/test/Eip7702_*.test.ts` and the shared helpers in
+`tests/system/test/helpers/eip7702.ts`.
