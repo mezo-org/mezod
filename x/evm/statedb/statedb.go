@@ -645,22 +645,30 @@ func (s *StateDB) setStateObject(object *stateObject) {
  */
 
 // AddBalance adds amount to the account associated with addr.
-func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) uint256.Int {
+func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.AddBalance(amount)
+		if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && !amount.IsZero() {
+			newBalance := new(uint256.Int).Add(prev, amount)
+			s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), newBalance.ToBig(), reason)
+		}
 		return *prev
 	}
 	return *uint256.NewInt(0)
 }
 
 // SubBalance subtracts amount from the account associated with addr.
-func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) uint256.Int {
+func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.SubBalance(amount)
+		if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && !amount.IsZero() {
+			newBalance := new(uint256.Int).Sub(prev, amount)
+			s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), newBalance.ToBig(), reason)
+		}
 		return *prev
 	}
 	return *uint256.NewInt(0)
@@ -716,19 +724,36 @@ func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxChec
 }
 
 // SetNonce sets the nonce of account.
-func (s *StateDB) SetNonce(addr common.Address, nonce uint64, _ tracing.NonceChangeReason) {
+func (s *StateDB) SetNonce(addr common.Address, nonce uint64, reason tracing.NonceChangeReason) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := stateObject.Nonce()
 		stateObject.SetNonce(nonce)
+		if s.tracingHooks != nil {
+			if s.tracingHooks.OnNonceChangeV2 != nil {
+				s.tracingHooks.OnNonceChangeV2(addr, prev, nonce, reason)
+			} else if s.tracingHooks.OnNonceChange != nil {
+				s.tracingHooks.OnNonceChange(addr, prev, nonce)
+			}
+		}
 	}
 }
 
 // SetCode sets the code of account.
-func (s *StateDB) SetCode(addr common.Address, code []byte, _ tracing.CodeChangeReason) []byte {
+func (s *StateDB) SetCode(addr common.Address, code []byte, reason tracing.CodeChangeReason) []byte {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		prev := append([]byte(nil), stateObject.Code()...)
+		prevHash := crypto.Keccak256Hash(prev)
+		codeHash := crypto.Keccak256Hash(code)
 		stateObject.SetCode(crypto.Keccak256Hash(code), code)
+		if prevHash != codeHash && s.tracingHooks != nil {
+			if s.tracingHooks.OnCodeChangeV2 != nil {
+				s.tracingHooks.OnCodeChangeV2(addr, prevHash, prev, codeHash, code, reason)
+			} else if s.tracingHooks.OnCodeChange != nil {
+				s.tracingHooks.OnCodeChange(addr, prevHash, prev, codeHash, code)
+			}
+		}
 		return prev
 	}
 	return nil
@@ -740,6 +765,9 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) common.H
 	if stateObject != nil {
 		prev := stateObject.GetState(key)
 		stateObject.SetState(key, value)
+		if s.tracingHooks != nil && s.tracingHooks.OnStorageChange != nil && prev != value {
+			s.tracingHooks.OnStorageChange(addr, key, prev, value)
+		}
 		return prev
 	}
 	return common.Hash{}
