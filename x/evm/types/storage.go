@@ -39,6 +39,13 @@ type StorageRootStrategy uint32
 const (
 	// StorageRootStrategyDummyHash returns a dummy hash as the storage root if
 	// the account has a storage and an empty hash otherwise.
+	//
+	// Deprecated: this strategy is unreachable in practice. It was abandoned
+	// in the v0.4.0 fork because the dummy hash broke Mezo Passport CREATE2
+	// reuse (see https://github.com/mezo-org/mezod/issues/368) and the default
+	// has been [StorageRootStrategyEmptyHash] ever since. The enum value is
+	// kept only because it is persisted as the `storage_root_strategy` chain
+	// param; removing it requires a param migration in a future upgrade.
 	StorageRootStrategyDummyHash StorageRootStrategy = iota
 	// StorageRootStrategyEmptyHash always returns an empty hash as the storage
 	// root, regardless of the actual storage.
