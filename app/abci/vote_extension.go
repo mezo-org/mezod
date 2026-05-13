@@ -40,6 +40,14 @@ func (vep VoteExtensionPart) String() string {
 	}
 }
 
+// maxVoteExtensionSize bounds the size of raw vote extension bytes
+// accepted by VerifyVoteExtensionHandler. Realistic legitimate VEs
+// (bridge AssetsLockedEventsLimit events + a handful of Connect oracle
+// pairs + wrapper) are ~2.65 KiB; 32 KiB gives generous headroom for
+// future growth while preventing storage-bloat attacks via unknown-field
+// padding, which gogoproto.Unmarshal silently skips.
+const maxVoteExtensionSize = 32 * 1024
+
 // IVoteExtensionHandler is an interface representing a vote extension handler.
 type IVoteExtensionHandler interface {
 	// ExtendVoteHandler returns the handler for the ExtendVote ABCI request.
@@ -238,12 +246,13 @@ func (veh *VoteExtensionHandler) ExtendVoteHandler() sdk.ExtendVoteHandler {
 //
 // Invariants summary:
 //  1. Accepts empty app-level vote extension.
-//  2. Rejects app-level vote extension that cannot be unmarshaled.
-//  3. Rejects app-level vote extension with incorrect height.
-//  4. Rejects app-level vote extension with no parts.
-//  5. Accepts app-level vote extension only if each part corresponds to
+//  2. Rejects app-level vote extension exceeding maxVoteExtensionSize.
+//  3. Rejects app-level vote extension that cannot be unmarshaled.
+//  4. Rejects app-level vote extension with incorrect height.
+//  5. Rejects app-level vote extension with no parts.
+//  6. Accepts app-level vote extension only if each part corresponds to
 //     a known sub-handler.
-//  6. Accepts app-level vote extension only if each part is accepted by the
+//  7. Accepts app-level vote extension only if each part is accepted by the
 //     corresponding sub-handler.
 //
 // TODO: Currently, this function either ACCEPT the vote extension or return
@@ -288,6 +297,14 @@ func (veh *VoteExtensionHandler) VerifyVoteExtensionHandler() sdk.VerifyVoteExte
 			return &cmtabci.ResponseVerifyVoteExtension{
 				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
 			}, nil
+		}
+
+		if len(req.VoteExtension) > maxVoteExtensionSize {
+			return nil, fmt.Errorf(
+				"vote extension size %d exceeds limit %d",
+				len(req.VoteExtension),
+				maxVoteExtensionSize,
+			)
 		}
 
 		// Unmarshal the vote extension.
