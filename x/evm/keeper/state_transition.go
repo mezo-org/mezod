@@ -533,6 +533,10 @@ func (k *Keeper) applyMessageWithConfig(
 	}
 
 	evm := k.NewEVMWithOverrides(ctx, msg, cfg, tracer, stateDB, evmOverrides)
+	if evm.Config.Tracer != nil {
+		stateDB.SetTracingHooks(evm.Config.Tracer)
+		defer stateDB.SetTracingHooks(nil)
+	}
 
 	leftoverGas := msg.GasLimit
 
