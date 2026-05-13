@@ -996,6 +996,58 @@ func (suite *KeeperTestSuite) TestTraceTx() {
 	suite.enableFeemarket = false // reset flag
 }
 
+func (suite *KeeperTestSuite) TestTraceTxNativeTracers() {
+	suite.SetupTest()
+
+	contractAddr := suite.DeployTestContract(
+		suite.T(),
+		suite.address,
+		sdkmath.NewIntWithDecimal(1000, 18).BigInt(),
+	)
+	suite.Commit()
+
+	recipient := common.HexToAddress("0x378c50D9264C63F3F92B806d4ee56E9D86FfB3Ec")
+	txMsg := suite.TransferERC20Token(
+		suite.T(),
+		contractAddr,
+		suite.address,
+		recipient,
+		sdkmath.NewIntWithDecimal(1, 18).BigInt(),
+	)
+	suite.Commit()
+
+	callTrace, err := suite.queryClient.TraceTx(suite.ctx, &types.QueryTraceTxRequest{
+		Msg: txMsg,
+		TraceConfig: &types.TraceConfig{
+			Tracer:           "callTracer",
+			TracerJsonConfig: `{"withLog":true}`,
+		},
+	})
+	suite.Require().NoError(err)
+	suite.Require().Contains(string(callTrace.Data), `"logs":[`)
+	suite.Require().Contains(string(callTrace.Data), "ddf252ad")
+
+	fourByteTrace, err := suite.queryClient.TraceTx(suite.ctx, &types.QueryTraceTxRequest{
+		Msg: txMsg,
+		TraceConfig: &types.TraceConfig{
+			Tracer: "4byteTracer",
+		},
+	})
+	suite.Require().NoError(err)
+	suite.Require().Contains(string(fourByteTrace.Data), "0xa9059cbb-64")
+
+	prestateTrace, err := suite.queryClient.TraceTx(suite.ctx, &types.QueryTraceTxRequest{
+		Msg: txMsg,
+		TraceConfig: &types.TraceConfig{
+			Tracer: "prestateTracer",
+		},
+	})
+	suite.Require().NoError(err)
+	prestateData := strings.ToLower(string(prestateTrace.Data))
+	suite.Require().Contains(prestateData, strings.ToLower(suite.address.Hex()))
+	suite.Require().Contains(prestateData, strings.ToLower(contractAddr.Hex()))
+}
+
 func (suite *KeeperTestSuite) TestTraceBlock() {
 	var (
 		txs         []*types.MsgEthereumTx
