@@ -235,8 +235,7 @@ func (s *StateDB) GetNonce(addr common.Address) uint64 {
 // does not track storage roots.
 func (s *StateDB) GetStorageRoot(addr common.Address) common.Hash {
 	switch s.storageRootStrategy {
-	//lint:ignore SA1019 kept for backward-compat with persisted chain params
-	case types.StorageRootStrategyDummyHash:
+	case types.StorageRootStrategyDummyHash: //nolint:staticcheck // kept for backward-compat with persisted chain params
 		return getStorageRootDummyHash(s, addr)
 	case types.StorageRootStrategyEmptyHash:
 		return getStorageRootEmptyHash(s, addr)
