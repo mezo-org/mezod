@@ -265,7 +265,7 @@ func getStorageRootEmptyHash(_ *StateDB, _ common.Address) common.Hash {
 	// !!! WARNING !!!
 	//
 	// Mezo does not support tracking the storage roots and it is not possible
-	// to return it from here. With the v1.14.8 go-ethereum dependency, this is
+	// to return it from here. With the v1.16.9 go-ethereum dependency, this is
 	// acceptable, because:
 	// * Our Keeper's DeleteAccount() function for StateDB removes both the code
 	//   and storage in one shot. This way,  deploying a new contract under
