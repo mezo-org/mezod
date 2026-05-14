@@ -1070,10 +1070,11 @@ var recipientGuardForwarderRuntime = []byte{
 	0x00,
 }
 
-// fee_collector is a stable module account in BlockedAddrs.
+// poa is a stable module account in BlockedAddrs with no minter/burner perms
+// and no fee-routing involvement, so it stays at zero balance across the test.
 func recipientGuardBlockedAddr() common.Address {
 	return common.BytesToAddress(
-		authtypes.NewModuleAddress(authtypes.FeeCollectorName).Bytes(),
+		authtypes.NewModuleAddress(poatypes.ModuleName).Bytes(),
 	)
 }
 

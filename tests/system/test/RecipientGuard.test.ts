@@ -13,8 +13,10 @@ describe("RecipientGuard", function () {
   const { deployments } = hre;
   let forwarder: any;
   let sender: any;
-  // fee_collector is a stable module account in BankKeeper.BlockedAddrs.
-  const blockedRecipient = blockedModuleAddress("fee_collector");
+  // poa is a stable module account in BankKeeper.BlockedAddrs — fee_collector
+  // would also be blocked but receives gas fees via SendCoinsFromAccountToModule,
+  // so its balance grows during normal block processing.
+  const blockedRecipient = blockedModuleAddress("poa");
 
   const fixture = (async function () {
     await deployments.fixture(["RecipientGuard"]);
