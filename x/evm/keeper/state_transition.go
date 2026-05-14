@@ -68,6 +68,19 @@ type EVMOverrides struct {
 	OnEVMConstructed func(*vm.EVM)
 }
 
+func hasStateDBHooks(hooks *tracing.Hooks) bool {
+	if hooks == nil {
+		return false
+	}
+	return hooks.OnBalanceChange != nil ||
+		hooks.OnNonceChange != nil ||
+		hooks.OnNonceChangeV2 != nil ||
+		hooks.OnCodeChange != nil ||
+		hooks.OnCodeChangeV2 != nil ||
+		hooks.OnStorageChange != nil ||
+		hooks.OnLog != nil
+}
+
 // NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
 // (ChainConfig and module Params). It additionally sets the validator operator address as the
 // coinbase address to make it available for the COINBASE opcode, even though there is no
@@ -533,7 +546,7 @@ func (k *Keeper) applyMessageWithConfig(
 	}
 
 	evm := k.NewEVMWithOverrides(ctx, msg, cfg, tracer, stateDB, evmOverrides)
-	if evm.Config.Tracer != nil {
+	if hasStateDBHooks(evm.Config.Tracer) {
 		stateDB.SetTracingHooks(evm.Config.Tracer)
 		defer stateDB.SetTracingHooks(nil)
 	}
