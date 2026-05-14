@@ -97,19 +97,26 @@ describe("RecipientGuard", function () {
 
   describe("EOA direct value send to blocked recipient", function () {
     let amount: bigint;
+
+    let initialSenderBalance: bigint;
+    let initialSenderNonce: number;
     let initialBlockedBalance: bigint;
+
+    let tx: any;
+    let txHash: string | undefined;
+    let receipt: any;
+    let gasCost: any;
 
     before(async function () {
       await fixture();
       amount = ethers.parseEther("0.0001");
-      initialBlockedBalance = await ethers.provider.getBalance(blockedRecipient);
-    });
 
-    it("should be rejected at the EVM frame with a queryable failed tx", async function () {
-      let receipt: any;
-      let txHash: string | undefined;
+      initialSenderBalance = await ethers.provider.getBalance(sender.address);
+      initialSenderNonce = await ethers.provider.getTransactionCount(sender.address);
+      initialBlockedBalance = await ethers.provider.getBalance(blockedRecipient);
+
       try {
-        const tx = await sender.sendTransaction({
+        tx = await sender.sendTransaction({
           to: blockedRecipient,
           value: amount,
           gasLimit: 100000,
@@ -121,12 +128,40 @@ describe("RecipientGuard", function () {
         txHash = txHash ?? e.transactionHash ?? e.transaction?.hash;
       }
 
-      expect(txHash, "tx hash must be present so RPC clients can query the outcome").to.be.a("string");
-      const fetched = await ethers.provider.getTransaction(txHash!);
-      expect(fetched, "eth_getTransactionByHash must return the tx, not null").to.not.be.null;
+      gasCost = receipt.gasUsed * receipt.gasPrice;
+    });
 
-      const finalBlockedBalance = await ethers.provider.getBalance(blockedRecipient);
-      expect(finalBlockedBalance).to.equal(initialBlockedBalance);
+    it("should produce a real receipt for the rejected tx", async function () {
+      expect(receipt).to.not.be.null;
+      expect(receipt.gasUsed).to.be.a("bigint");
+      expect(receipt.gasUsed > 0n).to.equal(true);
+    });
+
+    it("should mark the receipt status as failed", async function () {
+      expect(receipt.status).to.equal(0);
+    });
+
+    it("should make the failed tx visible to eth_getTransactionByHash", async function () {
+      expect(txHash).to.be.a("string");
+      const fetched = await ethers.provider.getTransaction(txHash!);
+      expect(fetched).to.not.be.null;
+      expect(fetched!.hash).to.equal(txHash);
+      expect(fetched!.value).to.equal(amount);
+    });
+
+    it("should leave the blocked recipient's balance unchanged", async function () {
+      const current = await ethers.provider.getBalance(blockedRecipient);
+      expect(current).to.equal(initialBlockedBalance);
+    });
+
+    it("should debit the sender by gas cost only (value not transferred)", async function () {
+      const current = await ethers.provider.getBalance(sender.address);
+      expect(current).to.equal(initialSenderBalance - gasCost);
+    });
+
+    it("should increment the sender's nonce", async function () {
+      const current = await ethers.provider.getTransactionCount(sender.address);
+      expect(current).to.equal(initialSenderNonce + 1);
     });
   });
 
