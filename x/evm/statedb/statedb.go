@@ -757,10 +757,13 @@ func (s *StateDB) SetCode(addr common.Address, code []byte, reason tracing.CodeC
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		prev := append([]byte(nil), stateObject.Code()...)
-		prevHash := crypto.Keccak256Hash(prev)
 		codeHash := crypto.Keccak256Hash(code)
-		stateObject.SetCode(crypto.Keccak256Hash(code), code)
-		if prevHash != codeHash && s.tracingHooks != nil {
+		stateObject.SetCode(codeHash, code)
+		if s.tracingHooks != nil {
+			prevHash := crypto.Keccak256Hash(prev)
+			if prevHash == codeHash {
+				return prev
+			}
 			if s.tracingHooks.OnCodeChangeV2 != nil {
 				s.tracingHooks.OnCodeChangeV2(addr, prevHash, prev, codeHash, code, reason)
 			} else if s.tracingHooks.OnCodeChange != nil {
