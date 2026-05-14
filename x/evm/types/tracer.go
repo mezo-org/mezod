@@ -51,19 +51,25 @@ type NoOpTracer struct{}
 
 // NewTracer creates a new Logger tracer to collect execution traces from an
 // EVM transaction.
-func NewTracer(tracer string, msg core.Message, cfg *params.ChainConfig, height int64, timestamp uint64) *tracers.Tracer {
+func NewTracer(
+	tracer string,
+	msg core.Message,
+	cfg *params.ChainConfig,
+	height int64,
+	timestamp uint64,
+	customPrecompiles ...common.Address,
+) *tracers.Tracer {
 	logCfg := &logger.Config{}
 
 	switch tracer {
 	case TracerAccessList:
-		preCompiles := vm.ActivePrecompiles(cfg.Rules(big.NewInt(height), cfg.MergeNetsplitBlock != nil, timestamp))
-		addressesToExclude := map[common.Address]struct{}{msg.From: {}}
-		if msg.To != nil {
-			addressesToExclude[*msg.To] = struct{}{}
-		}
-		for _, addr := range preCompiles {
-			addressesToExclude[addr] = struct{}{}
-		}
+		addressesToExclude := accessListTracerExclusions(
+			msg,
+			cfg,
+			height,
+			timestamp,
+			customPrecompiles,
+		)
 		lgr := logger.NewAccessListTracer(msg.AccessList, addressesToExclude)
 		tracer := &tracers.Tracer{
 			Hooks: lgr.Hooks(),
@@ -92,6 +98,29 @@ func NewTracer(tracer string, msg core.Message, cfg *params.ChainConfig, height 
 		tracer, _ := NewNoopTracer()
 		return tracer
 	}
+}
+
+func accessListTracerExclusions(
+	msg core.Message,
+	cfg *params.ChainConfig,
+	height int64,
+	timestamp uint64,
+	customPrecompiles []common.Address,
+) map[common.Address]struct{} {
+	precompiles := vm.ActivePrecompiles(
+		cfg.Rules(big.NewInt(height), cfg.MergeNetsplitBlock != nil, timestamp),
+	)
+	addressesToExclude := map[common.Address]struct{}{msg.From: {}}
+	if msg.To != nil {
+		addressesToExclude[*msg.To] = struct{}{}
+	}
+	for _, addr := range precompiles {
+		addressesToExclude[addr] = struct{}{}
+	}
+	for _, addr := range customPrecompiles {
+		addressesToExclude[addr] = struct{}{}
+	}
+	return addressesToExclude
 }
 
 // newNoopTracer returns a new noop tracer.
