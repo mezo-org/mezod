@@ -163,6 +163,77 @@ func (s *StateDB) SetTracingHooks(hooks *tracing.Hooks) {
 	s.tracingHooks = hooks
 }
 
+func (s *StateDB) traceLog(log *ethtypes.Log) {
+	if s.tracingHooks != nil && s.tracingHooks.OnLog != nil {
+		s.tracingHooks.OnLog(log)
+	}
+}
+
+func (s *StateDB) traceBalanceChange(
+	addr common.Address,
+	prev *uint256.Int,
+	next *uint256.Int,
+	reason tracing.BalanceChangeReason,
+) {
+	if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && prev.Cmp(next) != 0 {
+		s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), next.ToBig(), reason)
+	}
+}
+
+func (s *StateDB) traceNonceChange(
+	addr common.Address,
+	prev uint64,
+	next uint64,
+	reason tracing.NonceChangeReason,
+) {
+	if s.tracingHooks == nil {
+		return
+	}
+	if s.tracingHooks.OnNonceChangeV2 != nil {
+		s.tracingHooks.OnNonceChangeV2(addr, prev, next, reason)
+	} else if s.tracingHooks.OnNonceChange != nil {
+		s.tracingHooks.OnNonceChange(addr, prev, next)
+	}
+}
+
+func (s *StateDB) traceCodeChange(
+	addr common.Address,
+	prev []byte,
+	code []byte,
+	codeHash common.Hash,
+	reason tracing.CodeChangeReason,
+) {
+	if s.tracingHooks == nil {
+		return
+	}
+	prevHash := crypto.Keccak256Hash(prev)
+	if prevHash == codeHash {
+		return
+	}
+	if s.tracingHooks.OnCodeChangeV2 != nil {
+		s.tracingHooks.OnCodeChangeV2(addr, prevHash, prev, codeHash, code, reason)
+	} else if s.tracingHooks.OnCodeChange != nil {
+		s.tracingHooks.OnCodeChange(addr, prevHash, prev, codeHash, code)
+	}
+}
+
+func (s *StateDB) traceSelfDestructCodeChange(addr common.Address, prev []byte, prevHash common.Hash) {
+	if len(prev) == 0 || s.tracingHooks == nil {
+		return
+	}
+	if s.tracingHooks.OnCodeChangeV2 != nil {
+		s.tracingHooks.OnCodeChangeV2(addr, prevHash, prev, ethtypes.EmptyCodeHash, nil, tracing.CodeChangeSelfDestruct)
+	} else if s.tracingHooks.OnCodeChange != nil {
+		s.tracingHooks.OnCodeChange(addr, prevHash, prev, ethtypes.EmptyCodeHash, nil)
+	}
+}
+
+func (s *StateDB) traceStorageChange(addr common.Address, key common.Hash, prev common.Hash, next common.Hash) {
+	if s.tracingHooks != nil && s.tracingHooks.OnStorageChange != nil && prev != next {
+		s.tracingHooks.OnStorageChange(addr, key, prev, next)
+	}
+}
+
 // AddLog adds a log, called by evm.
 func (s *StateDB) AddLog(log *ethtypes.Log) {
 	s.journal.append(addLogChange{})
@@ -172,10 +243,7 @@ func (s *StateDB) AddLog(log *ethtypes.Log) {
 	log.TxIndex = s.txConfig.TxIndex
 	log.Index = s.txConfig.LogIndex + uint(len(s.logs))
 	s.logs = append(s.logs, log)
-
-	if s.tracingHooks != nil && s.tracingHooks.OnLog != nil {
-		s.tracingHooks.OnLog(log)
-	}
+	s.traceLog(log)
 }
 
 // Logs returns the logs of current transaction.
@@ -370,18 +438,10 @@ func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 		prev:        stateObject.selfDestructed,
 		prevbalance: prev,
 	})
-	if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && prev.Sign() > 0 {
-		s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), n.ToBig(), tracing.BalanceDecreaseSelfdestruct)
-	}
+	s.traceBalanceChange(addr, prev, n, tracing.BalanceDecreaseSelfdestruct)
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
-	if len(prevCode) > 0 {
-		if s.tracingHooks.OnCodeChangeV2 != nil {
-			s.tracingHooks.OnCodeChangeV2(addr, prevCodeHash, prevCode, ethtypes.EmptyCodeHash, nil, tracing.CodeChangeSelfDestruct)
-		} else if s.tracingHooks.OnCodeChange != nil {
-			s.tracingHooks.OnCodeChange(addr, prevCodeHash, prevCode, ethtypes.EmptyCodeHash, nil)
-		}
-	}
+	s.traceSelfDestructCodeChange(addr, prevCode, prevCodeHash)
 	return *prev
 }
 
@@ -663,10 +723,7 @@ func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, reason tr
 	if stateObject != nil {
 		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.AddBalance(amount)
-		if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && !amount.IsZero() {
-			newBalance := new(uint256.Int).Add(prev, amount)
-			s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), newBalance.ToBig(), reason)
-		}
+		s.traceBalanceChange(addr, prev, stateObject.Balance(), reason)
 		return *prev
 	}
 	return *uint256.NewInt(0)
@@ -678,10 +735,7 @@ func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, reason tr
 	if stateObject != nil {
 		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.SubBalance(amount)
-		if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && !amount.IsZero() {
-			newBalance := new(uint256.Int).Sub(prev, amount)
-			s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), newBalance.ToBig(), reason)
-		}
+		s.traceBalanceChange(addr, prev, stateObject.Balance(), reason)
 		return *prev
 	}
 	return *uint256.NewInt(0)
@@ -742,13 +796,7 @@ func (s *StateDB) SetNonce(addr common.Address, nonce uint64, reason tracing.Non
 	if stateObject != nil {
 		prev := stateObject.Nonce()
 		stateObject.SetNonce(nonce)
-		if s.tracingHooks != nil {
-			if s.tracingHooks.OnNonceChangeV2 != nil {
-				s.tracingHooks.OnNonceChangeV2(addr, prev, nonce, reason)
-			} else if s.tracingHooks.OnNonceChange != nil {
-				s.tracingHooks.OnNonceChange(addr, prev, nonce)
-			}
-		}
+		s.traceNonceChange(addr, prev, nonce, reason)
 	}
 }
 
@@ -759,17 +807,7 @@ func (s *StateDB) SetCode(addr common.Address, code []byte, reason tracing.CodeC
 		prev := append([]byte(nil), stateObject.Code()...)
 		codeHash := crypto.Keccak256Hash(code)
 		stateObject.SetCode(codeHash, code)
-		if s.tracingHooks != nil {
-			prevHash := crypto.Keccak256Hash(prev)
-			if prevHash == codeHash {
-				return prev
-			}
-			if s.tracingHooks.OnCodeChangeV2 != nil {
-				s.tracingHooks.OnCodeChangeV2(addr, prevHash, prev, codeHash, code, reason)
-			} else if s.tracingHooks.OnCodeChange != nil {
-				s.tracingHooks.OnCodeChange(addr, prevHash, prev, codeHash, code)
-			}
-		}
+		s.traceCodeChange(addr, prev, code, codeHash, reason)
 		return prev
 	}
 	return nil
@@ -781,9 +819,7 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) common.H
 	if stateObject != nil {
 		prev := stateObject.GetState(key)
 		stateObject.SetState(key, value)
-		if s.tracingHooks != nil && s.tracingHooks.OnStorageChange != nil && prev != value {
-			s.tracingHooks.OnStorageChange(addr, key, prev, value)
-		}
+		s.traceStorageChange(addr, key, prev, value)
 		return prev
 	}
 	return common.Hash{}
