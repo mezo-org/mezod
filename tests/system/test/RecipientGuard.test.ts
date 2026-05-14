@@ -33,6 +33,7 @@ describe("RecipientGuard", function () {
     let initialForwarderBalance: bigint;
     let initialBlockedBalance: bigint;
 
+    let staticOk: boolean;
     let tx: any;
     let receipt: any;
     let gasCost: any;
@@ -47,12 +48,24 @@ describe("RecipientGuard", function () {
       initialForwarderBalance = await ethers.provider.getBalance(forwarderAddress);
       initialBlockedBalance = await ethers.provider.getBalance(blockedRecipient);
 
+      // Probe the inner CALL via staticCall before the live tx so we can
+      // pin that the inner frame is the failing site (ok=false) without
+      // perturbing on-chain state.
+      staticOk = await forwarder.connect(sender).run.staticCall(blockedRecipient, {
+        value: amount,
+        gasLimit: 200000,
+      });
+
       tx = await forwarder.connect(sender).run(blockedRecipient, {
         value: amount,
         gasLimit: 200000,
       });
       receipt = await tx.wait();
       gasCost = receipt.gasUsed * receipt.gasPrice;
+    });
+
+    it("should report ok=false from the inner CALL via staticCall", async function () {
+      expect(staticOk).to.equal(false);
     });
 
     it("should mine the outer tx with a normal receipt", async function () {
