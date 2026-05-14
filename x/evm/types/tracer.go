@@ -57,7 +57,7 @@ func NewTracer(
 	cfg *params.ChainConfig,
 	height int64,
 	timestamp uint64,
-	customPrecompiles ...common.Address,
+	customPrecompiles func() []common.Address,
 ) *tracers.Tracer {
 	logCfg := &logger.Config{}
 
@@ -68,7 +68,7 @@ func NewTracer(
 			cfg,
 			height,
 			timestamp,
-			customPrecompiles,
+			customPrecompiles(),
 		)
 		lgr := logger.NewAccessListTracer(msg.AccessList, addressesToExclude)
 		tracer := &tracers.Tracer{
