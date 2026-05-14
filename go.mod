@@ -291,7 +291,8 @@ replace (
 	github.com/checksum0/go-electrum => github.com/keep-network/go-electrum v0.0.0-20240206170935-6038cb594daa
 
 	// use mezo geth fork
-	github.com/ethereum/go-ethereum => github.com/mezo-org/go-ethereum v1.16.9-mezo0
+	// TODO(MEZO-4351): swap back to a published tag once v1.16.9-mezo1 is cut.
+	github.com/ethereum/go-ethereum => ../go-ethereum/.claude/worktrees/mezo-4351-recipient-guard
 	// Security Advisory https://github.com/advisories/GHSA-h395-qcrw-5vmq
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.7
 	// use mezo-org fork of keep-common
