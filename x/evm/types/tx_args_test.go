@@ -414,6 +414,27 @@ func (suite *TxDataTestSuite) TestToMessageEVM() {
 			suite.bigInt,
 			false,
 		},
+		{
+			// SetCodeTx (EIP-7702) forbids contract creation: a nil `To`
+			// combined with a non-nil AuthorizationList must fail at
+			// ToMessage so eth_simulateV1 / eth_call / eth_estimateGas
+			// surface the rejection before any state work runs.
+			"SetCodeTx with nil To is rejected",
+			types.TransactionArgs{
+				From:                 &suite.addr,
+				To:                   nil,
+				Gas:                  &suite.hexUint64,
+				MaxFeePerGas:         &suite.hexBigInt,
+				MaxPriorityFeePerGas: &suite.hexBigInt,
+				Value:                &suite.hexBigInt,
+				Nonce:                &suite.hexUint64,
+				ChainID:              &suite.hexBigInt,
+				AuthorizationList:    []ethtypes.SetCodeAuthorization{{Address: suite.addr, Nonce: 1}},
+			},
+			uint64(1),
+			suite.bigInt,
+			true,
+		},
 	}
 	for _, tc := range testCases {
 		res, err := tc.txArgs.ToMessage(tc.globalGasCap, tc.baseFee)

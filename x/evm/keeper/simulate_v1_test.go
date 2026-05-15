@@ -847,9 +847,9 @@ func TestValidateSimCall_DoesNotMutateMessage(t *testing.T) {
 
 // TestBuildSimTx_SetCodeType pins the EIP-7702 selection rule in
 // buildSimTx: an explicit AuthorizationList (or defaultType = SetCodeTx)
-// produces a type-4 envelope, GasPrice still forces a legacy fallback,
-// and a type-4 envelope without `to` is rejected as -32602 because
-// SetCodeTx forbids contract creation.
+// produces a type-4 envelope, and GasPrice still forces a legacy
+// fallback. The nil-`To`+auth-list rejection lives one layer up at
+// args.ToMessage and is pinned in x/evm/types/tx_args_test.go.
 func TestBuildSimTx_SetCodeType(t *testing.T) {
 	chainID := big.NewInt(31611)
 	to := common.HexToAddress("0x2222222222222222222222222222222222222222")
@@ -864,8 +864,6 @@ func TestBuildSimTx_SetCodeType(t *testing.T) {
 		args        types.TransactionArgs
 		defaultType uint8
 		wantType    uint8
-		wantErr     bool
-		wantErrCode int
 	}{
 		{
 			name: "AuthorizationList non-nil promotes to type-4",
@@ -898,29 +896,11 @@ func TestBuildSimTx_SetCodeType(t *testing.T) {
 			defaultType: ethtypes.DynamicFeeTxType,
 			wantType:    ethtypes.LegacyTxType,
 		},
-		{
-			name: "type-4 with nil `to` is rejected (SetCodeTx forbids contract creation)",
-			args: types.TransactionArgs{
-				MaxFeePerGas:         hbig(1_000_000_000),
-				MaxPriorityFeePerGas: hbig(1),
-				AuthorizationList:    []ethtypes.SetCodeAuthorization{auth},
-			},
-			defaultType: ethtypes.DynamicFeeTxType,
-			wantErr:     true,
-			wantErrCode: types.SimErrCodeInvalidParams,
-		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tx, err := buildSimTx(&tc.args, chainID, tc.defaultType)
-			if tc.wantErr {
-				require.Nil(t, tx)
-				require.NotNil(t, err)
-				require.Equal(t, tc.wantErrCode, err.ErrorCode())
-				return
-			}
-			require.Nil(t, err)
+			tx := buildSimTx(&tc.args, chainID, tc.defaultType)
 			require.NotNil(t, tx)
 			require.Equal(t, tc.wantType, tx.Type())
 			if tc.wantType == ethtypes.SetCodeTxType {

@@ -560,10 +560,7 @@ func (k *Keeper) processSimBlock(
 		// DynamicFeeTxType matches go-ethereum v1.16's eth_simulateV1
 		// driver (`internal/ethapi/simulate.go`), so when Mezo upgrades
 		// off v1.14 the wire-shape of the response stays stable.
-		simTx, simTxErr := buildSimTx(&args, cfg.ChainConfig.ChainID, ethtypes.DynamicFeeTxType)
-		if simTxErr != nil {
-			return nil, nil, simTxErr
-		}
+		simTx := buildSimTx(&args, cfg.ChainConfig.ChainID, ethtypes.DynamicFeeTxType)
 		callTxHash := simTx.Hash()
 		callIdx := len(txs)
 		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(callIdx), 0) //nolint:gosec
@@ -878,12 +875,11 @@ func sameForks(a, b params.Rules) bool {
 // expected to be resolved by the caller before this function runs;
 // other args are tolerant of nil pointers (treated as zero).
 //
-// SetCodeTx forbids contract creation (the consensus path rejects this
-// with core.ErrSetCodeTxCreate). When the caller asks for a type-4
-// envelope with a nil `To`, buildSimTx returns -32602 so the request
-// fails at the same boundary as a contract-creation auth-list call on
-// the consensus path.
-func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8) (*ethtypes.Transaction, *types.SimError) {
+// SetCodeTx forbids contract creation. That invariant is enforced at
+// the `args.ToMessage` boundary (one layer up the simulate call stack),
+// so by the time control reaches this function args.To is guaranteed
+// non-nil whenever the auth-list arm fires.
+func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8) *ethtypes.Transaction {
 	nonce := uint64(0)
 	if args.Nonce != nil {
 		nonce = uint64(*args.Nonce)
@@ -910,11 +906,6 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 
 	switch usedType {
 	case ethtypes.SetCodeTxType:
-		if args.To == nil {
-			return nil, types.NewSimInvalidParams(
-				"simulate: SetCodeTx (EIP-7702) forbids contract creation: `to` must be set",
-			)
-		}
 		al := ethtypes.AccessList{}
 		if args.AccessList != nil {
 			al = *args.AccessList
@@ -934,7 +925,7 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 			Data:       data,
 			AccessList: al,
 			AuthList:   authList,
-		}), nil
+		})
 	case ethtypes.DynamicFeeTxType:
 		al := ethtypes.AccessList{}
 		if args.AccessList != nil {
@@ -950,7 +941,7 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 			Value:      value,
 			Data:       data,
 			AccessList: al,
-		}), nil
+		})
 	case ethtypes.AccessListTxType:
 		return ethtypes.NewTx(&ethtypes.AccessListTx{
 			ChainID:    chainID,
@@ -961,7 +952,7 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 			Value:      value,
 			Data:       data,
 			AccessList: *args.AccessList,
-		}), nil
+		})
 	default:
 		return ethtypes.NewTx(&ethtypes.LegacyTx{
 			Nonce:    nonce,
@@ -970,7 +961,7 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 			To:       args.To,
 			Value:    value,
 			Data:     data,
-		}), nil
+		})
 	}
 }
 
