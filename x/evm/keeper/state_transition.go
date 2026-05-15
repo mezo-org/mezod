@@ -571,9 +571,20 @@ func (k *Keeper) applyMessageWithConfig(
 	}
 
 	evm := k.NewEVMWithOverrides(ctx, msg, cfg, tracer, stateDB, evmOverrides)
+
+	// Check if the EVM's tracer has any hook functions.
 	if hasTracingHooks(evm.Config.Tracer) {
-		stateDB.SetTracingHooks(evm.Config.Tracer)
-		defer stateDB.SetTracingHooks(nil)
+		// Check currently installed hooks. They may be nil.
+		currentHooks := stateDB.TracingHooks()
+
+		// If the same hooks are already installed, do nothing. Another caller
+		// owns their cleanup.
+		if currentHooks != evm.Config.Tracer {
+			// If different hooks are already installed, SetTracingHooks panics.
+			// Otherwise, install these hooks and clear them after this call.
+			stateDB.SetTracingHooks(evm.Config.Tracer)
+			defer stateDB.SetTracingHooks(nil)
+		}
 	}
 
 	leftoverGas := msg.GasLimit

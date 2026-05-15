@@ -157,9 +157,17 @@ func (s *StateDB) GetContext() sdk.Context {
 	return s.ctx
 }
 
+// TracingHooks returns the tracing hooks currently installed on the StateDB.
+func (s *StateDB) TracingHooks() *tracing.Hooks {
+	return s.tracingHooks
+}
+
 // SetTracingHooks installs tracing hooks on the StateDB. A nil pointer
-// disables tracing.
+// disables tracing. Replacing active hooks is not allowed.
 func (s *StateDB) SetTracingHooks(hooks *tracing.Hooks) {
+	if hooks != nil && s.tracingHooks != nil && s.tracingHooks != hooks {
+		panic("statedb tracing hooks already set")
+	}
 	s.tracingHooks = hooks
 }
 

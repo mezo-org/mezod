@@ -1054,6 +1054,21 @@ func (suite *StateDBTestSuite) TestTracingHooks() {
 	)
 }
 
+func (suite *StateDBTestSuite) TestSetTracingHooksRejectsReplacement() {
+	db := statedb.New(suite.ctx, statedb.NewMockKeeper(), emptyTxConfig)
+	hooks := &tracing.Hooks{}
+
+	db.SetTracingHooks(hooks)
+	suite.Require().Same(hooks, db.TracingHooks())
+	suite.Require().NotPanics(func() { db.SetTracingHooks(hooks) })
+	suite.Require().PanicsWithValue(
+		"statedb tracing hooks already set",
+		func() { db.SetTracingHooks(&tracing.Hooks{}) },
+	)
+	db.SetTracingHooks(nil)
+	suite.Require().Nil(db.TracingHooks())
+}
+
 func CollectContractStorage(db *statedb.StateDB) statedb.Storage {
 	storage := make(statedb.Storage)
 	err := db.ForEachStorage(address, func(k, v common.Hash) bool {
