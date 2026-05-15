@@ -217,10 +217,15 @@ func (s *StateDB) traceCodeChange(
 	}
 }
 
-func (s *StateDB) traceSelfDestructCodeChange(addr common.Address, prev []byte, prevHash common.Hash) {
-	if len(prev) == 0 || s.tracingHooks == nil {
+func (s *StateDB) traceSelfDestructCodeChange(addr common.Address, stateObject *stateObject) {
+	if s.tracingHooks == nil {
 		return
 	}
+	prev := append([]byte(nil), stateObject.Code()...)
+	if len(prev) == 0 {
+		return
+	}
+	prevHash := crypto.Keccak256Hash(prev)
 	if s.tracingHooks.OnCodeChangeV2 != nil {
 		s.tracingHooks.OnCodeChangeV2(addr, prevHash, prev, ethtypes.EmptyCodeHash, nil, tracing.CodeChangeSelfDestruct)
 	} else if s.tracingHooks.OnCodeChange != nil {
@@ -424,24 +429,18 @@ func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 		return uint256.Int{}
 	}
 	var (
-		prev         = new(uint256.Int).Set(stateObject.Balance())
-		n            = new(uint256.Int)
-		prevCode     []byte
-		prevCodeHash common.Hash
+		prev = new(uint256.Int).Set(stateObject.Balance())
+		n    = new(uint256.Int)
 	)
-	if s.tracingHooks != nil && (s.tracingHooks.OnCodeChangeV2 != nil || s.tracingHooks.OnCodeChange != nil) {
-		prevCode = append([]byte(nil), stateObject.Code()...)
-		prevCodeHash = crypto.Keccak256Hash(prevCode)
-	}
 	s.journal.append(selfDestructChange{
 		account:     &addr,
 		prev:        stateObject.selfDestructed,
 		prevbalance: prev,
 	})
 	s.traceBalanceChange(addr, prev, n, tracing.BalanceDecreaseSelfdestruct)
+	s.traceSelfDestructCodeChange(addr, stateObject)
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
-	s.traceSelfDestructCodeChange(addr, prevCode, prevCodeHash)
 	return *prev
 }
 
