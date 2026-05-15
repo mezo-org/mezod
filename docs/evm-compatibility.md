@@ -168,12 +168,119 @@ See EIP-7569 for the full Dencun EIP list.
 
 Reference list: Dencun meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7569
 
-#### Prague
+#### Prague (Pectra - execution part)
 
-Prague is Ethereum's next execution-layer upgrade after Cancun. Mezo
-currently ships EIP-7702 from the Prague set. Other Prague EIPs
-(EIP-2537, 2935, 6110, 7002, 7251, 7549, 7623, 7685, 7691) are not yet
-in scope and are not documented here.
+Prague is the execution-layer part of Pectra on Ethereum. It adds new
+precompiles, a new transaction type, block-header fields tied to a
+beacon-chain side that Mezo does not have, and several gas-accounting
+adjustments. The full Pectra upgrade also includes consensus-layer EIPs
+(EIP-7251, EIP-7549, EIP-7691); since Mezo runs on CometBFT, those CL
+EIPs are out of scope and not covered below. See EIP-7600 for the full
+Pectra EIP list.
+
+Prague is activated on live Mezo chains via the v11.0 upgrade handler
+(see [`docs/upgrades.md`](./upgrades.md) and
+`app/upgrades/v11_0/upgrades.go`), and is active from genesis on fresh
+chains.
+
+- EIP-2537 (BLS12-381 precompiles)
+    - Description: adds seven precompiled contracts at addresses `0x0b`
+      through `0x11` implementing BLS12-381 curve operations (G1Add,
+      G1MSM, G2Add, G2MSM, PairingCheck, MapFpToG1, MapFp2ToG2).
+    - Mezo implementation: supported via the vendored
+      `mezo-org/go-ethereum` fork once Prague is active. Mezo's vendored
+      geth was migrated from the pre-finalization 9-precompile draft
+      layout (which placed standalone `G1Mul`/`G2Mul` at `0x0b`–`0x13`)
+      to the finalized 7-precompile layout (`0x0b`–`0x11`). The
+      `0x0b`–`0x11` slot range does not overlap with Mezo's custom
+      precompile address space at `0x7b7c…`, so there is no clash. The
+      live precompile surface is pinned by the
+      `tests/system/test/Bls12381Check.test.ts` system test, which
+      asserts presence, output sizes, and the empty-account state at
+      the obsolete draft slots `0x12`/`0x13`.
+    - Ref: https://eips.ethereum.org/EIPS/eip-2537
+
+- EIP-2935 (Historical block hashes from state) — **IN PROGRESS**
+    - Description: deploys a "history storage" system contract at
+      `0x0000F90827F1C53a10cb7A02335B175320002935` that stores the last
+      8192 block hashes in its storage slots. The contract is meant to
+      be deployed at fork activation. Upstream geth's payload processor
+      calls `core.ProcessParentBlockHash` at the start of each block
+      to update the ring buffer, and contracts may read it directly to
+      access historical hashes beyond `BLOCKHASH`'s 256-block window.
+    - Mezo implementation: the system contract is **not** deployed and
+      `core.ProcessParentBlockHash` is **not** called from Mezo's block
+      processing path (see `app/upgrades/v11_0/upgrades.go` and
+      `x/evm/keeper/state_transition.go`). The `BLOCKHASH` opcode still
+      works for historical heights via Mezo's own resolver
+      `Keeper.GetHashFn` (`x/evm/keeper/state_transition.go:209`),
+      which reads CometBFT headers from `x/poa`'s historical info store
+      independent of the system contract. The divergence is that
+      contracts which read the history storage address directly will
+      find an empty account and observe no historical hashes, which is
+      out of spec for a Prague-active chain. No central decision has
+      been recorded for deploying the contract or processing the system
+      call.
+    - Ref: https://eips.ethereum.org/EIPS/eip-2935
+
+- EIP-6110 (Validator deposits via EL system contract)
+    - Description: replaces beacon-chain deposit tree processing with
+      an execution-layer deposit system contract at
+      `0x00000000219ab540356cBB839Cbe05303d7705Fa` whose `DepositEvent`
+      logs are gathered by the EL into the block-level requests list.
+    - Mezo implementation: not applicable. Mezo runs on CometBFT and
+      has no beacon chain consuming deposits; the deposit system
+      contract is not deployed. Mezo's transaction execution path
+      (`x/evm/keeper/state_transition.go:ApplyTransaction`) does not
+      invoke upstream geth's `StateProcessor.Process`, so no
+      deposit-log parsing or requests collection is performed during
+      block production and the missing contract cannot fail the block.
+    - Ref: https://eips.ethereum.org/EIPS/eip-6110
+
+- EIP-7002 (Execution-layer triggerable withdrawals)
+    - Description: adds a withdrawal-request system contract at
+      `0x00000961Ef480Eb55e80D19ad83579A64c007002` so a validator's
+      withdrawal credential holder (an EL account) can trigger a
+      partial or full exit by sending value to the contract; the
+      contract emits requests gathered into the block-level requests
+      list for the beacon chain.
+    - Mezo implementation: not applicable. Same reason as EIP-6110 —
+      no beacon chain, the withdrawal-request system contract is not
+      deployed, and Mezo's block-processing path does not collect
+      requests.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7002
+
+- EIP-7623 (Calldata gas cost floor)
+    - Description: adds an additive intrinsic-gas floor charged per
+      transaction based on its calldata token weight (10 gas per zero
+      byte, 40 gas per non-zero byte), in addition to the existing
+      per-byte cost. The floor only changes a transaction's gas
+      consumption (except edge cases where a tx runs out of gas).
+    - Mezo implementation: supported via the underlying VM when Prague
+      is active. Mezo's intrinsic-gas calculation goes through
+      `Keeper.GetEthIntrinsicGas` (`x/evm/keeper/gas.go`), which
+      delegates to upstream `core.IntrinsicGas`; the floor is therefore
+      applied during transaction execution and ante-handler gas
+      validation.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7623
+
+- EIP-7685 (General-purpose execution-layer requests) — **IN PROGRESS**
+    - Description: introduces a `requests` block-level list and a
+      `requestsHash` header field that commits to all requests
+      produced during block execution (EIP-6110 deposits, EIP-7002
+      withdrawals, EIP-7251 consolidations). Engine-API consumers and
+      the beacon chain rely on `requestsHash` to verify EL-CL
+      communication.
+    - Mezo implementation: Mezo has no EL→CL messaging (no beacon
+      chain) and produces no requests, so there is nothing to commit.
+      `rpc/types/utils.go:FormatBlock` does not emit a `requestsHash`
+      field on JSON-RPC block responses, and `eth_simulateV1` leaves
+      the geth-side `RequestsHash` nil
+      (`x/evm/keeper/simulate_v1.go:165`). No central decision is
+      recorded yet on whether Mezo's block responses should expose the
+      empty-list requests hash for tooling compatibility, or continue
+      to omit the field entirely.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7685
 
 - EIP-7702 (Set Code Transactions)
     - Description: adds transaction type `0x04` ("set code"), which lets
@@ -199,6 +306,173 @@ in scope and are not documented here.
       the canonical mezod behavior, configuration, and Mezo-specific
       divergences from upstream geth.
     - Ref: https://eips.ethereum.org/EIPS/eip-7702
+
+- EIP-7840 (Blob schedule configuration)
+    - Description: makes the per-fork blob target/maximum/base-fee
+      update fraction part of `ChainConfig` rather than client-hardcoded
+      constants, so chains can carry different schedules without
+      forking client code.
+    - Mezo implementation: Mezo's `ChainConfig.EthereumConfig()` wires
+      `params.DefaultBlobSchedule` (see
+      `x/evm/types/chain_config.go:64`) so the geth side sees a valid
+      schedule covering Cancun, Prague, and Osaka — required to pass
+      `CheckConfigForkOrder`. The schedule is dormant: Mezo rejects
+      EIP-4844 blob transactions entirely, so no blob fee market
+      operates against the schedule values.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7840
+
+- EIP-7642 (eth/69 wire-protocol cleanup)
+    - Description: drops the legacy `td` field from devp2p `eth/68`
+      messages and bumps the protocol version to `eth/69`. It is a
+      peer-to-peer wire-protocol cleanup with no contract-visible
+      effect.
+    - Mezo implementation: not applicable. Mezo's peer-to-peer layer is
+      CometBFT, not devp2p; there is no `eth/68`/`eth/69` handler.
+      `eth_protocolVersion` returns a static value
+      (`types.ProtocolVersion = eth65`,
+      `rpc/namespaces/ethereum/eth/api.go:312`) and is not a real
+      negotiated wire version.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7642
+
+Reference list: Pectra meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7600
+
+#### Osaka (Fusaka - execution part)
+
+Osaka is the execution-layer part of Fusaka on Ethereum. It tightens
+gas accounting around MODEXP, caps per-transaction gas, adds a new
+opcode and precompile, and exposes chain-config metadata via JSON-RPC.
+The full Fusaka upgrade also includes consensus-layer EIPs (EIP-7594
+PeerDAS, EIP-7917 proposer lookahead); since Mezo runs on CometBFT,
+those CL EIPs are out of scope and not covered below. See EIP-7607 for
+the full Fusaka EIP list.
+
+Osaka is **not yet active on Mezo**. `OsakaTime` is intentionally
+left nil in `x/evm/types/chain_config.go` (see the comment at
+lines 89-103) pending audit of the keeper, ante handler, and RPC
+surface for Osaka's behavior changes. Activation will be done
+explicitly via a planned upgrade handler. EIPs marked "rides Geth"
+below are present in the vendored `mezo-org/go-ethereum v1.16.9-mezo1`
+fork and will take effect on Mezo when `OsakaTime` is set; they are
+flagged **IN PROGRESS** to reflect that no Mezo chain currently
+exercises them.
+
+- EIP-7823 (MODEXP input upper bound) — **IN PROGRESS**
+    - Description: rejects MODEXP precompile calls whose base, exponent,
+      or modulus length exceeds 8192 bits, capping inputs that would
+      otherwise dominate block validation cost.
+    - Mezo implementation: rides the vendored geth fork once Osaka is
+      active. Mezo applies no additional MODEXP overrides. Currently
+      inactive because `OsakaTime` is nil
+      (`x/evm/types/chain_config.go:95-103`).
+    - Ref: https://eips.ethereum.org/EIPS/eip-7823
+
+- EIP-7825 (Transaction gas limit cap) — **IN PROGRESS**
+    - Description: caps the maximum gas a single transaction can
+      declare to `2^24 = 16_777_216` gas (≈16.78M), independent of
+      block gas limit, to bound worst-case transaction validation.
+    - Mezo implementation: rides the vendored geth fork once Osaka is
+      active. Mezo's ante-handler gas validation
+      (`app/ante/evm/eth.go:EthGasConsumeDecorator`) compares per-tx
+      gas against `maxGasWanted` and the block gas limit, not against a
+      hardcoded Ethereum cap, so it does not conflict with the
+      upstream 16.78M cap that will apply inside the EVM when Osaka is
+      active. Currently inactive because `OsakaTime` is nil.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7825
+
+- EIP-7883 (MODEXP gas cost increase) — **IN PROGRESS**
+    - Description: bumps MODEXP's gas cost: the minimum charge rises
+      from 200 to 500 gas, and the per-iteration cost for large
+      operands doubles. Targets the same DoS-shape that EIP-7823
+      addresses by input bound.
+    - Mezo implementation: rides the vendored geth fork once Osaka is
+      active. Mezo applies no additional MODEXP overrides. Currently
+      inactive because `OsakaTime` is nil
+      (`x/evm/types/chain_config.go:89-93`).
+    - Ref: https://eips.ethereum.org/EIPS/eip-7883
+
+- EIP-7934 (RLP block-size limit)
+    - Description: caps the RLP-encoded size of a block at 10 MiB to
+      bound network-propagation and storage costs.
+    - Mezo implementation: not applicable. Mezo blocks are
+      CometBFT-encoded; an RLP block representation only exists at the
+      JSON-RPC boundary in `rpc/types/utils.go:FormatBlock`. Block
+      size limits on Mezo come from CometBFT consensus parameters
+      (`cmd/mezod/init.go:118` sets `MaxGas`), not the Ethereum RLP
+      cap.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7934
+
+- EIP-7935 (Default gas limit raise to 60M)
+    - Description: raises Ethereum's default block gas limit target
+      from 30M to 60M.
+    - Mezo implementation: not applicable. Mezo's block gas limit is
+      governed by `x/feemarket` (see `app.init()` in `app/app.go`
+      wiring `MainnetMinGasPrices` and `MainnetMinGasMultiplier`) and
+      the CometBFT consensus parameter `Block.MaxGas`, not Ethereum's
+      default.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7935
+
+- EIP-7939 (`CLZ` opcode) — **IN PROGRESS**
+    - Description: adds opcode `0x1e` `CLZ` (count leading zeros) on
+      a 256-bit stack word, returning the number of leading zero bits.
+      Mirrors `BIT.popcnt`-style helpers used by gas-tight algorithms.
+    - Mezo implementation: rides the vendored geth fork once Osaka is
+      active. Currently inactive because `OsakaTime` is nil.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7939
+
+- EIP-7951 (secp256r1 `P256VERIFY` precompile) — **IN PROGRESS**
+    - Description: adds a precompile at
+      `0x0000000000000000000000000000000000000100` that verifies an
+      ECDSA signature on the secp256r1 (NIST P-256) curve.
+    - Mezo implementation: rides the vendored geth fork once Osaka is
+      active. The `0x0100` address sits in the standard Ethereum
+      precompile range and does not overlap Mezo's custom precompile
+      space at `0x7b7c…` (see `x/evm/types/precompile.go:4-57`), so
+      there is no address clash. Currently inactive because
+      `OsakaTime` is nil.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7951
+
+- EIP-7892 (Blob-parameter-only forks)
+    - Description: introduces "BPO" forks whose only effect is to swap
+      the active blob schedule entry, without invoking a full
+      execution-layer fork.
+    - Mezo implementation: not applicable. `BPO1Time..BPO5Time` fields
+      exist on Mezo's `ChainConfig` purely to satisfy
+      `params.CheckConfigForkOrder` against the upstream struct
+      (`x/evm/types/chain_config.go:54-58`) and are intentionally
+      left nil (see the comment at lines 95-103). Mezo rejects blob
+      transactions, so a BPO schedule swap would have no
+      contract-visible effect even if activated.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7892
+
+- EIP-7918 (Blob base fee floor)
+    - Description: changes the blob fee market so the base fee per
+      blob gas cannot fall below an execution-block-related floor,
+      preventing pathological zero-fee blob inclusion.
+    - Mezo implementation: not applicable. Mezo rejects EIP-4844 blob
+      transactions entirely; `BLOBBASEFEE` returns `0` and there is no
+      blob fee market on which to apply a floor.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7918
+
+- EIP-7642 (eth/69 wire-protocol cleanup)
+    - Description: see the Prague section above. EIP-7642 is referenced
+      by both Pectra and Fusaka meta-EIPs.
+    - Mezo implementation: not applicable for the same reason — Mezo
+      has no devp2p layer.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7642
+
+- EIP-7910 (`eth_config` JSON-RPC method) — **IN PROGRESS**
+    - Description: adds the `eth_config` JSON-RPC method, which
+      returns the active chain configuration (fork activation times,
+      blob schedule, chain ID, precompile list) so clients and tracers
+      can discover post-Fusaka behavior without out-of-band metadata.
+    - Mezo implementation: not yet implemented. The `EthereumAPI`
+      interface in `rpc/namespaces/ethereum/eth/api.go` does not
+      declare an `EthConfig`/`Config` method, and the `PublicAPI`
+      struct does not register one. Toolchains that lean on
+      `eth_config` will receive a method-not-found error.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7910
+
+Reference list: Fusaka meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7607
 
 ## EVM JSON-RPC API reference
 
