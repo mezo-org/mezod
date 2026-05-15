@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/holiman/uint256"
 
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -559,7 +560,10 @@ func (k *Keeper) processSimBlock(
 		// DynamicFeeTxType matches go-ethereum v1.16's eth_simulateV1
 		// driver (`internal/ethapi/simulate.go`), so when Mezo upgrades
 		// off v1.14 the wire-shape of the response stays stable.
-		simTx := buildSimTx(&args, cfg.ChainConfig.ChainID, ethtypes.DynamicFeeTxType)
+		simTx, simTxErr := buildSimTx(&args, cfg.ChainConfig.ChainID, ethtypes.DynamicFeeTxType)
+		if simTxErr != nil {
+			return nil, nil, simTxErr
+		}
 		callTxHash := simTx.Hash()
 		callIdx := len(txs)
 		callCfg := statedb.NewTxConfig(common.Hash{}, callTxHash, uint(callIdx), 0) //nolint:gosec
@@ -850,12 +854,15 @@ func sameForks(a, b params.Rules) bool {
 // Mezo's wire shape stays consistent across the pinned v1.14 baseline
 // and the v1.16 upgrade target. The selection rule, in order:
 //
-//  1. `MaxFeePerGas` set, or `defaultType == DynamicFeeTxType` →
+//  1. `AuthorizationList` set, or `defaultType == SetCodeTxType` →
+//     SetCodeTx (EIP-7702). The auth-list arm must lead so an explicit
+//     authorizationList wins over a default-type request.
+//  2. `MaxFeePerGas` set, or `defaultType == DynamicFeeTxType` →
 //     DynamicFeeTx (accessList is nested if provided).
-//  2. `AccessList` set, or `defaultType == AccessListTxType` →
+//  3. `AccessList` set, or `defaultType == AccessListTxType` →
 //     AccessListTx.
-//  3. Otherwise LegacyTx.
-//  4. As a final override, if the caller provided `gasPrice`, force
+//  4. Otherwise LegacyTx.
+//  5. As a final override, if the caller provided `gasPrice`, force
 //     LegacyTx — geth uses this to fall back to a legacy envelope
 //     whenever the legacy fee field is present, even when defaultType
 //     would otherwise pick a typed one.
@@ -864,14 +871,19 @@ func sameForks(a, b params.Rules) bool {
 // distinct per request — sufficient for the assembled block's
 // per-call identifiers, transactionsRoot, and the typed JSON-RPC
 // representation returned to the caller. Mezo rejects blob (type 3)
-// and set-code (type 4) txs upstream, so this switch covers types 0/1/2
-// only.
+// txs upstream, so this switch covers types 0/1/2/4 only.
 //
-// chainID flows in from the chain config so type-1/2 hashes match the
+// chainID flows in from the chain config so type-1/2/4 hashes match the
 // network the simulator runs against. args.Nonce and args.Gas are
 // expected to be resolved by the caller before this function runs;
 // other args are tolerant of nil pointers (treated as zero).
-func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8) *ethtypes.Transaction {
+//
+// SetCodeTx forbids contract creation (the consensus path rejects this
+// with core.ErrSetCodeTxCreate). When the caller asks for a type-4
+// envelope with a nil `To`, buildSimTx returns -32602 so the request
+// fails at the same boundary as a contract-creation auth-list call on
+// the consensus path.
+func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8) (*ethtypes.Transaction, *types.SimError) {
 	nonce := uint64(0)
 	if args.Nonce != nil {
 		nonce = uint64(*args.Nonce)
@@ -885,6 +897,8 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 
 	usedType := uint8(ethtypes.LegacyTxType)
 	switch {
+	case args.AuthorizationList != nil || defaultType == ethtypes.SetCodeTxType:
+		usedType = ethtypes.SetCodeTxType
 	case args.MaxFeePerGas != nil || defaultType == ethtypes.DynamicFeeTxType:
 		usedType = ethtypes.DynamicFeeTxType
 	case args.AccessList != nil || defaultType == ethtypes.AccessListTxType:
@@ -895,6 +909,32 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 	}
 
 	switch usedType {
+	case ethtypes.SetCodeTxType:
+		if args.To == nil {
+			return nil, types.NewSimInvalidParams(
+				"simulate: SetCodeTx (EIP-7702) forbids contract creation: `to` must be set",
+			)
+		}
+		al := ethtypes.AccessList{}
+		if args.AccessList != nil {
+			al = *args.AccessList
+		}
+		authList := []ethtypes.SetCodeAuthorization{}
+		if args.AuthorizationList != nil {
+			authList = args.AuthorizationList
+		}
+		return ethtypes.NewTx(&ethtypes.SetCodeTx{
+			ChainID:    uint256.MustFromBig(chainID),
+			Nonce:      nonce,
+			GasTipCap:  uint256.MustFromBig(bigOrZero(args.MaxPriorityFeePerGas)),
+			GasFeeCap:  uint256.MustFromBig(bigOrZero(args.MaxFeePerGas)),
+			Gas:        gas,
+			To:         *args.To,
+			Value:      uint256.MustFromBig(value),
+			Data:       data,
+			AccessList: al,
+			AuthList:   authList,
+		}), nil
 	case ethtypes.DynamicFeeTxType:
 		al := ethtypes.AccessList{}
 		if args.AccessList != nil {
@@ -910,7 +950,7 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 			Value:      value,
 			Data:       data,
 			AccessList: al,
-		})
+		}), nil
 	case ethtypes.AccessListTxType:
 		return ethtypes.NewTx(&ethtypes.AccessListTx{
 			ChainID:    chainID,
@@ -921,7 +961,7 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 			Value:      value,
 			Data:       data,
 			AccessList: *args.AccessList,
-		})
+		}), nil
 	default:
 		return ethtypes.NewTx(&ethtypes.LegacyTx{
 			Nonce:    nonce,
@@ -930,7 +970,7 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 			To:       args.To,
 			Value:    value,
 			Data:     data,
-		})
+		}), nil
 	}
 }
 

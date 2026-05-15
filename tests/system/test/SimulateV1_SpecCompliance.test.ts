@@ -7,6 +7,7 @@ import {
   extractCode,
   extractMessage,
 } from "./helpers/rpc-error"
+import { SET_CODE_TX_TYPE, signAuthorization } from "./helpers/eip7702"
 
 /**
  * SimulateV1_SpecCompliance pins every behavior where mezod's eth_simulateV1
@@ -92,6 +93,7 @@ import {
  * | block hash determinism                    | identical opts                         | rerun                                  | block.hash unchanged                                       |
  * | log.blockNumber/blockHash match envelope  | one ERC-20 transfer                    | eth_simulateV1                         | every log's blockNumber/blockHash match the simulated block|
  * | gap-fill empty envelope                   | base+1 then base+3                     | eth_simulateV1                         | gap block has empty roots and zero bloom                   |
+ * | SetCode (type-4) full-tx envelope         | self-sponsored EIP-7702 auth tuple     | returnFullTransactions=true            | tx.type=0x4; authorizationList non-empty; from=authorizer  |
  */
 describe("SimulateV1_SpecCompliance", function () {
   const { deployments } = hre
@@ -2456,6 +2458,97 @@ describe("SimulateV1_SpecCompliance", function () {
 
     it("logsBloom is the zero bloom", function () {
       expect(gap.logsBloom.toLowerCase()).to.equal(ZERO_BLOOM)
+    })
+  })
+
+  // =================================================================
+  // === SetCode (EIP-7702 / type-4) full-tx envelope                ==
+  // =================================================================
+
+  context("FullTx: SetCode (type-4) envelope", function () {
+    let block: any
+    let authorityAddr: string
+
+    before(async function () {
+      const chainId = (await ethers.provider.getNetwork()).chainId
+
+      // Self-sponsored: the authority signs both the auth tuple and
+      // the tx. The simulator bumps the sender nonce to N before
+      // running applySetCodeAuthorizations, which validates auth.Nonce
+      // against the post-bump value — so the auth must carry N+1.
+      // Fresh authority starts at nonce 0, so the auth nonce is 1.
+      const authority = ethers.Wallet.createRandom()
+      authorityAddr = authority.address
+      const auth = await signAuthorization(authority, {
+        chainId,
+        address: DETACHED_RECIPIENT,
+        nonce: 1n,
+      })
+
+      // ethers' AuthorizationLike carries bigint fields (chainId,
+      // nonce, signature.v); the JSON-RPC request payload goes through
+      // raw JSON.stringify, which doesn't know how to serialize bigint.
+      // Hand-convert to the hex-string wire shape geth expects on the
+      // simulateV1 envelope.
+      const sig = (auth as any).signature
+      const authWire = {
+        chainId: ethers.toQuantity(auth.chainId),
+        address: auth.address,
+        nonce: ethers.toQuantity(auth.nonce),
+        yParity: ethers.toQuantity(BigInt(sig.yParity)),
+        r: sig.r,
+        s: sig.s,
+      }
+
+      const blocks: any[] = await ethers.provider.send("eth_simulateV1", [
+        {
+          blockStateCalls: [
+            {
+              stateOverrides: {
+                [authorityAddr]: { balance: FUNDED_BALANCE },
+              },
+              calls: [
+                {
+                  from: authorityAddr,
+                  to: authorityAddr,
+                  value: "0x0",
+                  maxFeePerGas: HIGH_FEE,
+                  maxPriorityFeePerGas: "0x1",
+                  authorizationList: [authWire],
+                },
+              ],
+            },
+          ],
+          validation: true,
+          returnFullTransactions: true,
+        },
+        "latest",
+      ])
+      block = blocks[0]
+    })
+
+    it("transactions[0].type is 0x4", function () {
+      expect(block.transactions).to.be.an("array").with.lengthOf(1)
+      expect(block.transactions[0].type).to.equal(
+        ethers.toQuantity(SET_CODE_TX_TYPE),
+      )
+    })
+
+    it("transactions[0].authorizationList carries the auth tuple", function () {
+      const tx = block.transactions[0]
+      expect(tx.authorizationList).to.be.an("array").with.lengthOf(1)
+    })
+
+    it("transactions[0].from is patched to the authorizer", function () {
+      expect(block.transactions[0].from.toLowerCase()).to.equal(
+        authorityAddr.toLowerCase(),
+      )
+    })
+
+    it("per-call status is 0x1 (applySetCodeAuthorizations install succeeded)", function () {
+      expect(block.calls).to.be.an("array").with.lengthOf(1)
+      expect(block.calls[0].status).to.equal("0x1")
+      expect(block.calls[0].error).to.be.undefined
     })
   })
 })
