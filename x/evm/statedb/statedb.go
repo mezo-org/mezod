@@ -71,7 +71,7 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionID int
 
-	tracingHooks *tracing.Hooks
+	tracingHooks []*tracing.Hooks
 
 	stateObjects map[common.Address]*stateObject
 
@@ -157,23 +157,32 @@ func (s *StateDB) GetContext() sdk.Context {
 	return s.ctx
 }
 
-// TracingHooks returns the tracing hooks currently installed on the StateDB.
-func (s *StateDB) TracingHooks() *tracing.Hooks {
-	return s.tracingHooks
-}
-
-// SetTracingHooks installs tracing hooks on the StateDB. A nil pointer
-// disables tracing. Replacing active hooks is not allowed.
-func (s *StateDB) SetTracingHooks(hooks *tracing.Hooks) {
-	if hooks != nil && s.tracingHooks != nil && s.tracingHooks != hooks {
-		panic("statedb tracing hooks already set")
+// AddTracingHooks installs tracing hooks and returns a cleanup function.
+func (s *StateDB) AddTracingHooks(hooks *tracing.Hooks) func() {
+	if hooks == nil {
+		return func() {}
 	}
-	s.tracingHooks = hooks
+	for _, existing := range s.tracingHooks {
+		if existing == hooks {
+			return func() {}
+		}
+	}
+	s.tracingHooks = append(s.tracingHooks, hooks)
+	return func() {
+		for i, existing := range s.tracingHooks {
+			if existing == hooks {
+				s.tracingHooks = append(s.tracingHooks[:i], s.tracingHooks[i+1:]...)
+				return
+			}
+		}
+	}
 }
 
 func (s *StateDB) traceLog(log *ethtypes.Log) {
-	if s.tracingHooks != nil && s.tracingHooks.OnLog != nil {
-		s.tracingHooks.OnLog(log)
+	for _, hooks := range s.tracingHooks {
+		if hooks.OnLog != nil {
+			hooks.OnLog(log)
+		}
 	}
 }
 
@@ -183,8 +192,15 @@ func (s *StateDB) traceBalanceChange(
 	next *uint256.Int,
 	reason tracing.BalanceChangeReason,
 ) {
-	if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && prev.Cmp(next) != 0 {
-		s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), next.ToBig(), reason)
+	if prev.Cmp(next) == 0 {
+		return
+	}
+	prevBig := prev.ToBig()
+	nextBig := next.ToBig()
+	for _, hooks := range s.tracingHooks {
+		if hooks.OnBalanceChange != nil {
+			hooks.OnBalanceChange(addr, prevBig, nextBig, reason)
+		}
 	}
 }
 
@@ -194,13 +210,12 @@ func (s *StateDB) traceNonceChange(
 	next uint64,
 	reason tracing.NonceChangeReason,
 ) {
-	if s.tracingHooks == nil {
-		return
-	}
-	if s.tracingHooks.OnNonceChangeV2 != nil {
-		s.tracingHooks.OnNonceChangeV2(addr, prev, next, reason)
-	} else if s.tracingHooks.OnNonceChange != nil {
-		s.tracingHooks.OnNonceChange(addr, prev, next)
+	for _, hooks := range s.tracingHooks {
+		if hooks.OnNonceChangeV2 != nil {
+			hooks.OnNonceChangeV2(addr, prev, next, reason)
+		} else if hooks.OnNonceChange != nil {
+			hooks.OnNonceChange(addr, prev, next)
+		}
 	}
 }
 
@@ -211,22 +226,21 @@ func (s *StateDB) traceCodeChange(
 	codeHash common.Hash,
 	reason tracing.CodeChangeReason,
 ) {
-	if s.tracingHooks == nil {
-		return
-	}
 	prevHash := crypto.Keccak256Hash(prev)
 	if prevHash == codeHash {
 		return
 	}
-	if s.tracingHooks.OnCodeChangeV2 != nil {
-		s.tracingHooks.OnCodeChangeV2(addr, prevHash, prev, codeHash, code, reason)
-	} else if s.tracingHooks.OnCodeChange != nil {
-		s.tracingHooks.OnCodeChange(addr, prevHash, prev, codeHash, code)
+	for _, hooks := range s.tracingHooks {
+		if hooks.OnCodeChangeV2 != nil {
+			hooks.OnCodeChangeV2(addr, prevHash, prev, codeHash, code, reason)
+		} else if hooks.OnCodeChange != nil {
+			hooks.OnCodeChange(addr, prevHash, prev, codeHash, code)
+		}
 	}
 }
 
 func (s *StateDB) traceSelfDestructCodeChange(addr common.Address, stateObject *stateObject) {
-	if s.tracingHooks == nil {
+	if len(s.tracingHooks) == 0 {
 		return
 	}
 	prev := append([]byte(nil), stateObject.Code()...)
@@ -234,16 +248,23 @@ func (s *StateDB) traceSelfDestructCodeChange(addr common.Address, stateObject *
 		return
 	}
 	prevHash := crypto.Keccak256Hash(prev)
-	if s.tracingHooks.OnCodeChangeV2 != nil {
-		s.tracingHooks.OnCodeChangeV2(addr, prevHash, prev, ethtypes.EmptyCodeHash, nil, tracing.CodeChangeSelfDestruct)
-	} else if s.tracingHooks.OnCodeChange != nil {
-		s.tracingHooks.OnCodeChange(addr, prevHash, prev, ethtypes.EmptyCodeHash, nil)
+	for _, hooks := range s.tracingHooks {
+		if hooks.OnCodeChangeV2 != nil {
+			hooks.OnCodeChangeV2(addr, prevHash, prev, ethtypes.EmptyCodeHash, nil, tracing.CodeChangeSelfDestruct)
+		} else if hooks.OnCodeChange != nil {
+			hooks.OnCodeChange(addr, prevHash, prev, ethtypes.EmptyCodeHash, nil)
+		}
 	}
 }
 
 func (s *StateDB) traceStorageChange(addr common.Address, key common.Hash, prev common.Hash, next common.Hash) {
-	if s.tracingHooks != nil && s.tracingHooks.OnStorageChange != nil && prev != next {
-		s.tracingHooks.OnStorageChange(addr, key, prev, next)
+	if prev == next {
+		return
+	}
+	for _, hooks := range s.tracingHooks {
+		if hooks.OnStorageChange != nil {
+			hooks.OnStorageChange(addr, key, prev, next)
+		}
 	}
 }
 
