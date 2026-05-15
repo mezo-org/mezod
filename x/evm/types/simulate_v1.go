@@ -428,27 +428,28 @@ func newRPCTransaction(
 		al := tx.AccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.ChainId())
-		setEffectiveGasPrice(result, tx, baseFee, blockHash)
+		result = setEffectiveGasPrice(result, tx, baseFee, blockHash)
 	case ethtypes.SetCodeTxType:
 		al := tx.AccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.ChainId())
 		result.AuthorizationList = tx.SetCodeAuthorizations()
-		setEffectiveGasPrice(result, tx, baseFee, blockHash)
+		result = setEffectiveGasPrice(result, tx, baseFee, blockHash)
 	}
 	return result
 }
 
 // setEffectiveGasPrice fills the 1559 fee-cap fields and the effective
-// `gasPrice` on a rpcTransaction. Mirrors the helper at
-// `rpc/types/utils.go`. For mined txs the effective price is
-// min(tip+baseFee, gasFeeCap); otherwise it falls back to gasFeeCap.
+// `gasPrice` on a rpcTransaction, returning it for explicit reassignment
+// at the call site. Mirrors the helper at `rpc/types/utils.go`. For mined
+// txs the effective price is min(tip+baseFee, gasFeeCap); otherwise it
+// falls back to gasFeeCap.
 func setEffectiveGasPrice(
 	result *rpcTransaction,
 	tx *ethtypes.Transaction,
 	baseFee *big.Int,
 	blockHash common.Hash,
-) {
+) *rpcTransaction {
 	result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
 	result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
 	if baseFee != nil && blockHash != (common.Hash{}) {
@@ -460,4 +461,5 @@ func setEffectiveGasPrice(
 	} else {
 		result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
 	}
+	return result
 }
