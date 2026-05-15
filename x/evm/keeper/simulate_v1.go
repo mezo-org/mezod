@@ -71,7 +71,7 @@ func (b *simGasBudget) consume(amount uint64) error {
 // via the plain error channel.
 //
 // Design mirrors go-ethereum's internal/ethapi/simulate.go::sanitizeChain
-// (v1.15.4 source). Divergences: we never propagate a nil slice input
+// (v1.16.9 source). Divergences: we never propagate a nil slice input
 // (caller has already enforced len > 0 at the RPC boundary), and the
 // span check against types.MaxSimulateBlocks is performed BEFORE gap-fill
 // allocation so a pathological `[{Number: base+1}, {Number:
@@ -557,9 +557,9 @@ func (k *Keeper) processSimBlock(
 		// `(*state.StateDB).SetTxContext(thash, ti)` — it only updates
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
-		// DynamicFeeTxType matches go-ethereum v1.16's eth_simulateV1
-		// driver (`internal/ethapi/simulate.go`), so when Mezo upgrades
-		// off v1.14 the wire-shape of the response stays stable.
+		// DynamicFeeTxType matches the default chosen by go-ethereum's
+		// eth_simulateV1 driver (`internal/ethapi/simulate.go`),
+		// keeping the wire shape aligned with upstream.
 		simTx := buildSimTx(&args, cfg.ChainConfig.ChainID, ethtypes.DynamicFeeTxType)
 		callTxHash := simTx.Hash()
 		callIdx := len(txs)
@@ -846,10 +846,10 @@ func sameForks(a, b params.Rules) bool {
 // lets the driver pass the same value into NewBlock to derive
 // transactionsRoot and into the Senders map without rebuilding it.
 //
-// The envelope shape mirrors go-ethereum v1.16's
-// `internal/ethapi.TransactionArgs.ToTransaction(defaultType)` so that
-// Mezo's wire shape stays consistent across the pinned v1.14 baseline
-// and the v1.16 upgrade target. The selection rule, in order:
+// The envelope shape mirrors go-ethereum's
+// `internal/ethapi.TransactionArgs.ToTransaction(defaultType)`
+// (v1.16.9 source), keeping Mezo's wire shape aligned with upstream.
+// The selection rule, in order:
 //
 //  1. `MaxFeePerGas` set, or `defaultType == DynamicFeeTxType` →
 //     DynamicFeeTx (accessList is nested if provided).

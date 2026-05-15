@@ -143,8 +143,7 @@ func (s *StateDB) Keeper() Keeper {
 // Safe to call between calls; the txConfig is read-only from AddLog's
 // perspective and never participates in the journal.
 //
-// TODO (geth-upgrade): once go-ethereum v1.16.9 lands, decide whether
-// the simulate driver should call geth's native
+// TODO: decide whether the simulate driver should call geth's native
 // `(*state.StateDB).SetTxContext` directly — and whether this wrapper
 // can be dropped in favor of it.
 func (s *StateDB) SetTxContext(thash common.Hash, ti int) {
