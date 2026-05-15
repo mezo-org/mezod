@@ -433,8 +433,9 @@ func (k *Keeper) processSimBlock(
 	}
 
 	blockCtx := vm.BlockContext{
-		CanTransfer: core.CanTransfer,
-		Transfer:    core.Transfer,
+		CanTransfer:        core.CanTransfer,
+		CanReceiveTransfer: k.CanReceiveTransfer,
+		Transfer:           core.Transfer,
 		// Simulate-aware GetHashFn: canonical-range delegated to
 		// k.GetHashFn, simulated-sibling range scanned from already-
 		// finalized past siblings. Canonical-range hashes are therefore
