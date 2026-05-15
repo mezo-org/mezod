@@ -68,6 +68,12 @@ type EVMOverrides struct {
 	OnEVMConstructed func(*vm.EVM)
 }
 
+// CanReceiveTransfer rejects credits to addresses the bank keeper blocks,
+// mirroring the predicate that gates SendCoinsFromModuleToAccount.
+func (k *Keeper) CanReceiveTransfer(_ vm.StateDB, recipient common.Address, _ *uint256.Int) bool {
+	return !k.bankKeeper.BlockedAddr(sdk.AccAddress(recipient.Bytes()))
+}
+
 // NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
 // (ChainConfig and module Params). It additionally sets the validator operator address as the
 // coinbase address to make it available for the COINBASE opcode, even though there is no
@@ -110,17 +116,18 @@ func (k *Keeper) NewEVMWithOverrides(
 	}
 
 	blockCtx := vm.BlockContext{
-		CanTransfer: core.CanTransfer,
-		Transfer:    core.Transfer,
-		GetHash:     k.GetHashFn(ctx),
-		Coinbase:    cfg.CoinBase,
-		GasLimit:    mezotypes.BlockGasLimit(ctx),
-		BlockNumber: big.NewInt(ctx.BlockHeight()),
-		Time:        uint64(ctx.BlockHeader().Time.Unix()), //nolint:gosec
-		Difficulty:  big.NewInt(0),                         // unused. Only required in PoW context
-		BaseFee:     cfg.BaseFee,
-		BlobBaseFee: big.NewInt(0), // EIP-4844: blob txs are rejected
-		Random:      random,
+		CanTransfer:        core.CanTransfer,
+		CanReceiveTransfer: k.CanReceiveTransfer,
+		Transfer:           core.Transfer,
+		GetHash:            k.GetHashFn(ctx),
+		Coinbase:           cfg.CoinBase,
+		GasLimit:           mezotypes.BlockGasLimit(ctx),
+		BlockNumber:        big.NewInt(ctx.BlockHeight()),
+		Time:               uint64(ctx.BlockHeader().Time.Unix()), //nolint:gosec
+		Difficulty:         big.NewInt(0),                         // unused. Only required in PoW context
+		BaseFee:            cfg.BaseFee,
+		BlobBaseFee:        big.NewInt(0), // EIP-4844: blob txs are rejected
+		Random:             random,
 	}
 	if evmOverrides != nil && evmOverrides.BlockContext != nil {
 		blockCtx = *evmOverrides.BlockContext

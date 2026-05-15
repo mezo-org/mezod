@@ -42,6 +42,8 @@ import btcabi from "../../../precompile/btctoken/abi.json"
  * | stateRoot is the zero hash          | sender holds non-zero SimpleToken    | eth_simulateV1 runs an ERC-20 transfer            | block.stateRoot equals the 32-byte zero hash                            |
  * | gasUsed honors MinGasMultiplier     | default MinGasMultiplier=0.5         | value transfer with gas=100k (raw cost 21k)       | call.gasUsed = 50000 (gasLimit*MinGasMultiplier), not raw 21000         |
  * | insufficient-funds is per-call      | sender balance=0, validation omitted | eth_simulateV1 dispatches the value-transfer call | top-level success; per-call status=0x0; per-call error.code=-32015      |
+ * | recipient guard inner CALL          | Forwarder deployed; recipient = poa  | eth_simulateV1 dispatches Forwarder.run(blocked)  | top-level success; outer call status=0x1; decoded (bool ok)=false       |
+ * | recipient guard top-level send      | funded sender; validation omitted    | eth_simulateV1 dispatches {to: blocked, value:1}  | top-level success; per-call status=0x0; per-call error.code=-32015      |
  */
 describe("SimulateV1_MezoDivergence", function () {
   const { deployments } = hre
@@ -65,18 +67,40 @@ describe("SimulateV1_MezoDivergence", function () {
   const ZERO_BALANCE_SENDER = "0xc100000000000000000000000000000000000001"
   const VALUE_RECIPIENT = "0xc200000000000000000000000000000000000002"
 
+  // Detached EOA used by the recipient-guard validation=false case.
+  // Kept off the dev keys so the simulate request never collides with
+  // real on-chain state. Funded via stateOverrides at request time so
+  // CanTransfer clears and only CanReceiveTransfer rejects.
+  const FUNDED_SENDER = "0xc100000000000000000000000000000000000003"
+
   // Per-call code emitted when the EVM's CanTransfer guard rejects a
   // value transfer with validation=false. NewSimVMError emits -32015
   // (SimErrCodeVMError) for non-revert VM errors; CanTransfer surfaces
   // as a non-revert VM failure rather than as the ExecutionReverted
   // path, so the per-call code is -32015, NOT the spec-reserved
-  // request-level -38014.
+  // request-level -38014. The mezod recipient guard
+  // (CanReceiveTransfer) surfaces through the same NewSimVMError
+  // routing in BuildSimCallResult, so it reuses this constant.
   const SIM_VM_ERROR = -32015
+
+  // EVM-format address of a Cosmos module account: sha256(name)[:20].
+  function blockedModuleAddress(name: string): string {
+    const digest = ethers.sha256(ethers.toUtf8Bytes(name))
+    return ethers.getAddress("0x" + digest.slice(2, 42))
+  }
+
+  // poa is a stable module account in BankKeeper.BlockedAddrs.
+  // fee_collector is also blocked but receives gas fees via
+  // SendCoinsFromAccountToModule, so its balance grows during normal
+  // block processing — pinning to poa keeps the assertion deterministic.
+  const blockedRecipient = blockedModuleAddress("poa")
 
   let simpleToken: SimpleToken
   let tokenAddr: string
   let senderAddr: string
   let recipientAddr: string
+  let forwarder: any
+  let forwarderAddress: string
 
   async function simulateWithBlockOverrides(
     overrides: any,
@@ -97,9 +121,11 @@ describe("SimulateV1_MezoDivergence", function () {
   }
 
   before(async function () {
-    await deployments.fixture(["BridgeOutDelegate"])
+    await deployments.fixture(["BridgeOutDelegate", "RecipientGuard"])
     simpleToken = await getDeployedContract<SimpleToken>("SimpleToken")
     tokenAddr = await simpleToken.getAddress()
+    forwarder = await getDeployedContract("Forwarder")
+    forwarderAddress = await forwarder.getAddress()
 
     const [deployer] = await ethers.getSigners()
     senderAddr = deployer.address
@@ -449,6 +475,130 @@ describe("SimulateV1_MezoDivergence", function () {
     })
 
     it("surfaces the failure as a per-call status 0x0 with the VM-error code", function () {
+      const blocks = captured.result!
+      expect(blocks).to.have.lengthOf(1)
+      expect(blocks[0].calls).to.have.lengthOf(1)
+      const call = blocks[0].calls[0]
+      expect(call.status).to.equal("0x0")
+      expect(call.error).to.exist
+      expect(call.error.code).to.equal(SIM_VM_ERROR)
+    })
+  })
+
+  context("recipient guard inner CALL via Forwarder is simulated successfully but ok=false", function () {
+    // Forwarder.run(to) performs `(ok, ) = to.call{value: msg.value}("")`
+    // and returns ok. With a blocked recipient the inner CALL fails
+    // (CanReceiveTransfer rejects), but the outer frame still returns
+    // cleanly with ok=false. Decoding returnData as (bool ok) is the
+    // unambiguous pin that the inner CALL was the failing site — outer
+    // status alone wouldn't distinguish a successful forward from a
+    // forward whose inner CALL failed.
+    let result: any[]
+
+    before(async function () {
+      const runData = forwarder.interface.encodeFunctionData("run", [
+        blockedRecipient,
+      ])
+
+      result = await ethers.provider.send("eth_simulateV1", [
+        {
+          blockStateCalls: [
+            {
+              calls: [
+                {
+                  from: senderAddr,
+                  to: forwarderAddress,
+                  data: runData,
+                  value: "0x1",
+                  gas: "0x30d40", // 200_000
+                },
+              ],
+            },
+          ],
+        },
+        "latest",
+      ])
+    })
+
+    it("returns blocks without a top-level error", function () {
+      expect(result).to.have.lengthOf(1)
+      expect(result[0].calls).to.have.lengthOf(1)
+    })
+
+    it("reports the outer call as status 0x1", function () {
+      expect(result[0].calls[0].status).to.equal(
+        "0x1",
+        "Forwarder.run outer frame must return cleanly",
+      )
+    })
+
+    it("decodes returnData as (bool ok) = false to pin the inner CALL as the failing site", function () {
+      const [ok] = ethers.AbiCoder.defaultAbiCoder().decode(
+        ["bool"],
+        result[0].calls[0].returnData,
+      )
+      expect(ok).to.equal(
+        false,
+        "inner CALL to blocked recipient must surface as ok=false",
+      )
+    })
+  })
+
+  context("recipient guard top-level value transfer to blocked recipient is per-call when validation is omitted", function () {
+    // validation=false skips the request-level base-fee / balance gates
+    // but CanReceiveTransfer stays live (it's wired into the simulated
+    // BlockContext in x/evm/keeper/simulate_v1.go). The request itself
+    // must not abort; the rejection lands on the per-call result with
+    // status=0x0 and the VM-error code (-32015) — the same shape as the
+    // CanTransfer divergence pinned above.
+    let captured: { error: CapturedError; result: any[] | undefined }
+
+    before(async function () {
+      try {
+        const result: any[] = await ethers.provider.send("eth_simulateV1", [
+          {
+            blockStateCalls: [
+              {
+                stateOverrides: {
+                  [FUNDED_SENDER]: {
+                    balance: ethers.toQuantity(ethers.parseEther("1")),
+                  },
+                },
+                calls: [
+                  {
+                    from: FUNDED_SENDER,
+                    to: blockedRecipient,
+                    value: "0x1",
+                  },
+                ],
+              },
+            ],
+            // validation omitted (defaults to false)
+          },
+          "latest",
+        ])
+        captured = {
+          error: { thrown: false, code: undefined, message: "" },
+          result,
+        }
+      } catch (err: any) {
+        captured = {
+          error: {
+            thrown: true,
+            code: extractCode(err),
+            message: extractMessage(err),
+          },
+          result: undefined,
+        }
+      }
+    })
+
+    it("does NOT abort the request with a top-level fatal", function () {
+      expect(captured.error.thrown).to.equal(false)
+      expect(captured.result).to.exist
+    })
+
+    it("surfaces the rejection as a per-call status 0x0 with the VM-error code", function () {
       const blocks = captured.result!
       expect(blocks).to.have.lengthOf(1)
       expect(blocks[0].calls).to.have.lengthOf(1)

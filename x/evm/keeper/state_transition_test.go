@@ -16,13 +16,16 @@ import (
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	tmtypes "github.com/cometbft/cometbft/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
+	"github.com/mezo-org/mezod/testutil"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/keeper"
@@ -1039,6 +1042,161 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfigInvalidSupply() {
 	)
 
 	suite.Require().ErrorIs(err, types.ErrInvalidSupply)
+}
+
+// Runtime of a minimal value-forwarder: CALLs calldata[0:32] (the
+// recipient, right-aligned) with msg.value and empty inner calldata.
+//
+//	PUSH1 0       ; retLen
+//	PUSH1 0       ; retOff
+//	PUSH1 0       ; argsLen
+//	PUSH1 0       ; argsOff
+//	CALLVALUE     ; value
+//	PUSH1 0       ; calldata offset
+//	CALLDATALOAD  ; recipient
+//	GAS           ; forwarded gas
+//	CALL
+//	STOP
+var recipientGuardForwarderRuntime = []byte{
+	0x60, 0x00,
+	0x60, 0x00,
+	0x60, 0x00,
+	0x60, 0x00,
+	0x34,
+	0x60, 0x00,
+	0x35,
+	0x5a,
+	0xf1,
+	0x00,
+}
+
+// poa is a stable module account in BlockedAddrs with no minter/burner perms
+// and no fee-routing involvement, so it stays at zero balance across the test.
+func recipientGuardBlockedAddr() common.Address {
+	return common.BytesToAddress(
+		authtypes.NewModuleAddress(poatypes.ModuleName).Bytes(),
+	)
+}
+
+// applyValueMsg runs a value-bearing message through ApplyMessageWithConfig
+// with the usual test-side skip flags and zero gas pricing.
+func (suite *KeeperTestSuite) applyValueMsg(
+	to common.Address,
+	value *big.Int,
+	data []byte,
+) *types.MsgEthereumTxResponse {
+	suite.T().Helper()
+
+	chainID := suite.app.EvmKeeper.ChainID()
+	proposer := suite.ctx.BlockHeader().ProposerAddress
+	cfg, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposer, chainID)
+	suite.Require().NoError(err)
+
+	toAddr := to
+	msg := core.Message{
+		From:                  suite.address,
+		To:                    &toAddr,
+		Nonce:                 suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
+		Value:                 value,
+		GasLimit:              200_000,
+		GasPrice:              big.NewInt(0),
+		GasFeeCap:             big.NewInt(0),
+		GasTipCap:             big.NewInt(0),
+		Data:                  data,
+		AccessList:            ethtypes.AccessList{},
+		SkipNonceChecks:       true,
+		SkipTransactionChecks: true,
+	}
+
+	txCfg := suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{})
+	res, _, err := suite.app.EvmKeeper.ApplyMessageWithConfig(
+		suite.ctx,
+		keeper.WrapMessage(msg),
+		nil,
+		true,
+		cfg,
+		txCfg,
+	)
+	suite.Require().NoError(err)
+	return res
+}
+
+func (suite *KeeperTestSuite) balanceOf(addr common.Address) *big.Int {
+	return suite.app.BankKeeper.GetBalance(
+		suite.ctx,
+		sdk.AccAddress(addr.Bytes()),
+		mezotypes.AttoBtc,
+	).Amount.BigInt()
+}
+
+// fundSender uses testutil.FundAccount so the bridge BTC-supply invariant
+// holds — bare BankKeeper.MintCoins would fail verifyBTCSupply at commit time.
+func (suite *KeeperTestSuite) fundSender() {
+	suite.T().Helper()
+	suite.Require().NoError(
+		testutil.FundAccount(
+			suite.ctx,
+			suite.app.BankKeeper,
+			suite.app.BridgeKeeper,
+			suite.address.Bytes(),
+			sdk.Coins{mezotypes.NewMezoCoinInt64(1000)},
+		),
+	)
+}
+
+func (suite *KeeperTestSuite) TestRecipientGuard_DirectSend() {
+	suite.SetupTest()
+	suite.fundSender()
+
+	blocked := recipientGuardBlockedAddr()
+	before := suite.balanceOf(blocked)
+
+	res := suite.applyValueMsg(blocked, big.NewInt(100), nil)
+
+	suite.Require().True(res.Failed())
+	suite.Require().Equal(vm.ErrTransferNotAllowed.Error(), res.VmError)
+	suite.Require().Equal(before.String(), suite.balanceOf(blocked).String())
+}
+
+func (suite *KeeperTestSuite) TestRecipientGuard_InnerCallForwarder() {
+	suite.SetupTest()
+	suite.fundSender()
+
+	forwarder := common.HexToAddress("0x000000000000000000000000000000000000fA01")
+	vmdb := suite.StateDB()
+	vmdb.SetCode(forwarder, recipientGuardForwarderRuntime, tracing.CodeChangeUnspecified)
+	suite.Require().NoError(vmdb.Commit())
+
+	blocked := recipientGuardBlockedAddr()
+	beforeBlocked := suite.balanceOf(blocked)
+	value := big.NewInt(100)
+
+	res := suite.applyValueMsg(forwarder, value, common.LeftPadBytes(blocked.Bytes(), 32))
+
+	suite.Require().False(res.Failed())
+	suite.Require().Empty(res.VmError)
+	suite.Require().Equal(beforeBlocked.String(), suite.balanceOf(blocked).String())
+	// Value stops at the forwarder: outer CALL credited it, inner CALL
+	// reverted before forwarding.
+	suite.Require().Equal(value.String(), suite.balanceOf(forwarder).String())
+}
+
+func (suite *KeeperTestSuite) TestRecipientGuard_AllowedRecipient() {
+	suite.SetupTest()
+	suite.fundSender()
+
+	recipient := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	before := suite.balanceOf(recipient)
+	value := big.NewInt(100)
+
+	res := suite.applyValueMsg(recipient, value, nil)
+
+	suite.Require().False(res.Failed())
+	suite.Require().Empty(res.VmError)
+	suite.Require().Equal(
+		new(big.Int).Add(before, value).String(),
+		suite.balanceOf(recipient).String(),
+	)
 }
 
 func (suite *KeeperTestSuite) createContractGethMsg(nonce uint64, signer ethtypes.Signer, cfg *params.ChainConfig, gasPrice, blockTime *big.Int) (core.Message, error) {
