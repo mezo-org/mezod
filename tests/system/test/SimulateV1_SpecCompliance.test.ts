@@ -76,7 +76,7 @@ import { SET_CODE_TX_TYPE, signAuthorization } from "./helpers/eip7702"
  * | block-override reflected                  | block.number override                  | NUMBER opcode probe                    | NUMBER returns the override                                |
  * | fee-recipient receives funds              | feeRecipient override                  | tx with non-zero value                 | request succeeds, status 0x1                               |
  * | logs: eth send no logs by default         | EOA->EOA value, no flag                | eth_simulateV1                         | logs == []                                                 |
- * | logs: forward then revert                 | forwarder -> reverter via traceTransfers| top-level call                        | status 0x0, code 3, logs == []                             |
+ * | logs: forward then revert                 | forwarder->reverter via traceTransfers | top-level call                         | status 0x0, code 3, logs == []                             |
  * | logs: selfdestruct synthetic log          | self-destruct contract                 | traceTransfers=true                    | (best-effort) one synthetic log on selfdest                |
  * | delegate-call to EOA logs once            | wallet contract via delegate-call      | traceTransfers=true                    | one synthetic log only                                     |
  * | comprehensive: simple two transfers       | sender funded                          | two value transfers in one block       | both per-call status 0x1                                   |
@@ -93,7 +93,7 @@ import { SET_CODE_TX_TYPE, signAuthorization } from "./helpers/eip7702"
  * | block hash determinism                    | identical opts                         | rerun                                  | block.hash unchanged                                       |
  * | log.blockNumber/blockHash match envelope  | one ERC-20 transfer                    | eth_simulateV1                         | every log's blockNumber/blockHash match the simulated block|
  * | gap-fill empty envelope                   | base+1 then base+3                     | eth_simulateV1                         | gap block has empty roots and zero bloom                   |
- * | SetCode (type-4) installs and routes call | self-sponsored auth for TargetV1, then setSlot+readSlot calls in same block | returnFullTransactions=true | tx.type=0x4; authorizationList=(target,chainId); from=authorizer; Touched.self=authority; authority.slot=VALUE; target.slot=0 |
+ * | SetCode (type-4) installs and routes call | self-sponsored auth for TargetV1       | eth_simulateV1                         | type=0x4; from=authorizer; delegation routes call → target |
  */
 describe("SimulateV1_SpecCompliance", function () {
   const { deployments } = hre
