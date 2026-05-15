@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -753,4 +754,96 @@ func TestSimBlockResult_UnmarshalJSON_BackCompatPreserved(t *testing.T) {
 	require.Equal(t, "0x5", r.Block["number"])
 	require.Equal(t, "0xabcd", r.Block["hash"])
 	require.Equal(t, "preserved", r.Block["extraField"])
+}
+
+// TestNewRPCTransaction_SetCodeType_RoundTrip builds a SetCodeTx,
+// runs it through the rpc-marshaling path that NewSimBlockResult uses
+// (typed *ethtypes.Block + senders patching), and asserts the resulting
+// JSON envelope carries the type-4 fields: `type=0x4`, a non-empty
+// `authorizationList`, `accessList`, `chainId`, `maxFeePerGas`,
+// `maxPriorityFeePerGas`, plus `from` patched from senders.
+func TestNewRPCTransaction_SetCodeType_RoundTrip(t *testing.T) {
+	chainID := big.NewInt(31611)
+	from := common.HexToAddress("0xa1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa11")
+	to := common.HexToAddress("0x2222222222222222222222222222222222222222")
+	delegate := common.HexToAddress("0x3333333333333333333333333333333333333333")
+
+	auth := ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.MustFromBig(chainID),
+		Address: delegate,
+		Nonce:   1,
+	}
+	accessList := ethtypes.AccessList{
+		{Address: to, StorageKeys: []common.Hash{common.HexToHash("0x01")}},
+	}
+
+	setCodeTx := ethtypes.NewTx(&ethtypes.SetCodeTx{
+		ChainID:    uint256.MustFromBig(chainID),
+		Nonce:      7,
+		GasTipCap:  uint256.NewInt(1),
+		GasFeeCap:  uint256.NewInt(1_000_000_000),
+		Gas:        100_000,
+		To:         to,
+		Value:      uint256.NewInt(0),
+		Data:       nil,
+		AccessList: accessList,
+		AuthList:   []ethtypes.SetCodeAuthorization{auth},
+	})
+
+	receipt := &ethtypes.Receipt{
+		Type:              ethtypes.SetCodeTxType,
+		Status:            ethtypes.ReceiptStatusSuccessful,
+		CumulativeGasUsed: 100_000,
+		GasUsed:           100_000,
+		TxHash:            setCodeTx.Hash(),
+		Logs:              []*ethtypes.Log{},
+		BlockNumber:       big.NewInt(11),
+	}
+	receipt.Bloom = ethtypes.CreateBloom(receipt)
+
+	header := &ethtypes.Header{
+		ParentHash:  common.HexToHash("0xaaa1"),
+		UncleHash:   ethtypes.EmptyUncleHash,
+		Number:      big.NewInt(11),
+		GasLimit:    30_000_000,
+		GasUsed:     100_000,
+		Difficulty:  new(big.Int),
+		BaseFee:     big.NewInt(1_000_000_000),
+		TxHash:      ethtypes.EmptyTxsHash,
+		ReceiptHash: ethtypes.EmptyReceiptsHash,
+	}
+	block := ethtypes.NewBlock(
+		header,
+		&ethtypes.Body{Transactions: []*ethtypes.Transaction{setCodeTx}},
+		[]*ethtypes.Receipt{receipt},
+		trie.NewStackTrie(nil),
+	)
+
+	cfg := envelopeChainConfig()
+	cfg.ChainID = chainID
+
+	r := types.NewSimBlockResult(block, []common.Address{from}, true, cfg, nil)
+	data, err := json.Marshal(r)
+	require.NoError(t, err)
+
+	var decoded struct {
+		Transactions []map[string]interface{} `json:"transactions"`
+	}
+	require.NoError(t, json.Unmarshal(data, &decoded))
+	require.Len(t, decoded.Transactions, 1)
+	tx := decoded.Transactions[0]
+
+	require.Equal(t, "0x4", tx["type"], "SetCodeTxType must serialize as 0x4")
+	require.Equal(t, from.Hex(),
+		common.HexToAddress(tx["from"].(string)).Hex(),
+		"FullTx=true must patch `from` from senders")
+
+	authList, ok := tx["authorizationList"].([]interface{})
+	require.True(t, ok, "authorizationList must be an array")
+	require.Len(t, authList, 1)
+
+	require.Contains(t, tx, "accessList")
+	require.Contains(t, tx, "chainId")
+	require.Contains(t, tx, "maxFeePerGas")
+	require.Contains(t, tx, "maxPriorityFeePerGas")
 }
