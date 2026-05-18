@@ -1105,10 +1105,35 @@ func floorDataGasOf(data []byte) uint64 {
 // setPragueTime swaps the active chain config's PragueTime in-place.
 // Used to gate the floor logic on/off per subtest without resetting
 // the entire suite.
+//
+// Any post-Prague fork timestamp already set on the active config
+// (Osaka, BPO1..BPO5, Amsterdam, Verkle) is bumped to at least t so
+// CheckConfigForkOrder still accepts the ladder when Prague is pushed
+// into the future. Forks left nil stay nil — pushing Prague to the
+// future doesn't enable a later fork that wasn't enabled before.
 func (suite *KeeperTestSuite) setPragueTime(t *sdkmath.Int) {
 	suite.T().Helper()
 	p := suite.app.EvmKeeper.GetParams(suite.ctx)
 	p.ChainConfig.PragueTime = t
+	bumpIfBelow := func(later **sdkmath.Int) {
+		if *later == nil {
+			return
+		}
+		if t == nil {
+			return
+		}
+		if (*later).LT(*t) {
+			*later = t
+		}
+	}
+	bumpIfBelow(&p.ChainConfig.OsakaTime)
+	bumpIfBelow(&p.ChainConfig.BPO1Time)
+	bumpIfBelow(&p.ChainConfig.BPO2Time)
+	bumpIfBelow(&p.ChainConfig.BPO3Time)
+	bumpIfBelow(&p.ChainConfig.BPO4Time)
+	bumpIfBelow(&p.ChainConfig.BPO5Time)
+	bumpIfBelow(&p.ChainConfig.AmsterdamTime)
+	bumpIfBelow(&p.ChainConfig.VerkleTime)
 	suite.Require().NoError(suite.app.EvmKeeper.SetParams(suite.ctx, p))
 }
 
