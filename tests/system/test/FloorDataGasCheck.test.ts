@@ -71,4 +71,24 @@ describe("FloorDataGasCheck", function () {
     // floor + headroom < 2 * floor to keep the floor the dominant clamp.
     expect(receipt?.gasUsed).to.equal(floor)
   })
+
+  it("eth_estimateGas returns the floor for heavy-calldata EOA call", async function () {
+    // Without the EIP-7623 wiring in x/evm/keeper/grpc_query.go (the
+    // floor-aware pre-seed plus treating core.ErrFloorDataGas as a
+    // "raise gas and retry" signal in the binary search), the first
+    // sub-floor probe (lo = TxGas - 1) would bail the entire
+    // estimation for any calldata-heavy transaction — the exact class
+    // EIP-7623 targets.
+    //
+    // For an EOA target the raw EVM cost (intrinsic = 21000 + 4096*4
+    // = 37384) sits below the floor (21000 + 4096*10 = 61960), so the
+    // floor is the binding lower bound and the estimate must collapse
+    // onto it exactly.
+    const estimate = await ethers.provider.estimateGas({
+      from: senderSigner.address,
+      to: recipient.address,
+      data: calldata,
+    })
+    expect(estimate).to.equal(floor)
+  })
 })
