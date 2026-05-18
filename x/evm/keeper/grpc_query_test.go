@@ -3753,6 +3753,68 @@ func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_FeeCapBelowBaseFeeSucc
 	suite.Require().Equal("0x1", c["status"])
 }
 
+// TestSimulateV1_NoValidation_FloorBelow_PromotesToTopLevelError pins the
+// EIP-7623 floor surfaces as a top-level SimError on the validation=false
+// path. The per-call loop's runErr catch is the only translator from
+// apply-time ErrFloorDataGas into a structured SimError here; without it,
+// the error would fall through to a generic gRPC Internal.
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_FloorBelow_PromotesToTopLevelError() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	const dataLen = 4096
+	floor := ethparams.TxGas + dataLen*ethparams.TxCostFloorPerToken
+	subFloor := hexutil.Uint64(floor - 1)
+	data := hexutil.Bytes(bytes.Repeat([]byte{0}, dataLen))
+
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender,
+		To:   &recipient,
+		Data: &data,
+		Gas:  &subFloor,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error,
+		"sub-floor calldata must surface as a top-level SimError")
+	suite.Require().Equal(int32(types.SimErrCodeIntrinsicGas), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_FloorBelow_TopLevelError pins the validation=true
+// floor branch in validateSimCall: heavy calldata with gasLimit < floor
+// surfaces as -38013 before execution.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_FloorBelow_TopLevelError() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	const dataLen = 4096
+	floor := ethparams.TxGas + dataLen*ethparams.TxCostFloorPerToken
+	subFloor := hexutil.Uint64(floor - 1)
+	data := hexutil.Bytes(bytes.Repeat([]byte{0}, dataLen))
+
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Data:         &data,
+		Gas:          &subFloor,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeIntrinsicGas), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
 // TestSimulateV1_NoValidation_InitCodeOverLimitSucceeds — CREATE with
 // init-code 1 byte over MaxInitCodeSize MUST NOT trip the request-level
 // -38025 fatal under validation=false. The per-call result is whatever

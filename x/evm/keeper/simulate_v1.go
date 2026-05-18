@@ -615,11 +615,15 @@ func (k *Keeper) processSimBlock(
 		if runErr != nil {
 			// Per the geth execution spec (ethereum/execution-apis
 			// `execute.yaml`), CallResultFailure permits only codes 3
-			// and -32015, so ErrIntrinsicGas must surface at the request
-			// level. Capture args.Gas here while it is still in scope so
-			// the SimError carries the actual provided value rather than
-			// a (0, 0) reconstruction at the gRPC handler.
-			if errors.Is(runErr, core.ErrIntrinsicGas) {
+			// and -32015, so ErrIntrinsicGas and ErrFloorDataGas must
+			// surface at the request level. Capture args.Gas here while
+			// it is still in scope so the SimError carries the actual
+			// provided value rather than a (0, 0) reconstruction at the
+			// gRPC handler. On the default validation=false path,
+			// validateSimCall is skipped and this catch is the only
+			// translator from apply-time floor errors into a structured
+			// SimError.
+			if errors.Is(runErr, core.ErrIntrinsicGas) || errors.Is(runErr, core.ErrFloorDataGas) {
 				var provided uint64
 				if args.Gas != nil {
 					provided = uint64(*args.Gas)
@@ -1022,6 +1026,21 @@ func (k *Keeper) validateSimCall(
 	}
 	if msg.GasLimit < intrinsic {
 		return types.NewSimIntrinsicGas(msg.GasLimit, intrinsic)
+	}
+
+	// EIP-7623 calldata floor — gated on IsPrague so the helper is not
+	// invoked pre-Prague (pathological-calldata overflow would otherwise
+	// surface as ErrGasUintOverflow under a fork that does not yet
+	// enforce the floor). NewSimIntrinsicGas reuses the -38013 mapping
+	// for the same RPC error-code family geth uses for ErrFloorDataGas.
+	if rules.IsPrague {
+		floor, err := k.GetEthFloorDataGas(ctx, *msg, chainCfg)
+		if err != nil {
+			return types.NewSimIntrinsicGas(msg.GasLimit, math.MaxUint64)
+		}
+		if msg.GasLimit < floor {
+			return types.NewSimIntrinsicGas(msg.GasLimit, floor)
+		}
 	}
 
 	return nil
