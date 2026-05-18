@@ -68,6 +68,37 @@ type EVMOverrides struct {
 	OnEVMConstructed func(*vm.EVM)
 }
 
+// IMPORTANT: Extend this check when new hooks are added.
+func hasTracingHooks(hooks *tracing.Hooks) bool {
+	if hooks == nil {
+		return false
+	}
+	return hooks.OnTxStart != nil ||
+		hooks.OnTxEnd != nil ||
+		hooks.OnEnter != nil ||
+		hooks.OnExit != nil ||
+		hooks.OnOpcode != nil ||
+		hooks.OnFault != nil ||
+		hooks.OnGasChange != nil ||
+		hooks.OnBlockchainInit != nil ||
+		hooks.OnClose != nil ||
+		hooks.OnBlockStart != nil ||
+		hooks.OnBlockEnd != nil ||
+		hooks.OnSkippedBlock != nil ||
+		hooks.OnGenesisBlock != nil ||
+		hooks.OnSystemCallStart != nil ||
+		hooks.OnSystemCallStartV2 != nil ||
+		hooks.OnSystemCallEnd != nil ||
+		hooks.OnBalanceChange != nil ||
+		hooks.OnNonceChange != nil ||
+		hooks.OnNonceChangeV2 != nil ||
+		hooks.OnCodeChange != nil ||
+		hooks.OnCodeChangeV2 != nil ||
+		hooks.OnStorageChange != nil ||
+		hooks.OnLog != nil ||
+		hooks.OnBlockHashRead != nil
+}
+
 // CanReceiveTransfer rejects credits to addresses the bank keeper blocks,
 // mirroring the predicate that gates SendCoinsFromModuleToAccount.
 func (k *Keeper) CanReceiveTransfer(_ vm.StateDB, recipient common.Address, _ *uint256.Int) bool {
@@ -540,6 +571,10 @@ func (k *Keeper) applyMessageWithConfig(
 	}
 
 	evm := k.NewEVMWithOverrides(ctx, msg, cfg, tracer, stateDB, evmOverrides)
+	if hasTracingHooks(evm.Config.Tracer) {
+		removeTracingHooks := stateDB.AddTracingHooks(evm.Config.Tracer)
+		defer removeTracingHooks()
+	}
 
 	leftoverGas := msg.GasLimit
 
