@@ -89,12 +89,18 @@ func VerifyFee(
 
 	gasLimit := txData.GetGas()
 
+	// txData.GetData() returns common.CopyBytes(tx.Data), so each call
+	// allocates a fresh copy. Hoist once so the intrinsic and floor
+	// computations share the same slice instead of paying the copy twice
+	// on every gossiped CheckTx.
+	data := txData.GetData()
+
 	var accessList ethtypes.AccessList
 	if txData.GetAccessList() != nil {
 		accessList = txData.GetAccessList()
 	}
 
-	intrinsicGas, err := core.IntrinsicGas(txData.GetData(), accessList, txData.GetAuthorizationList(), isContractCreation, homestead, istanbul, isShanghai)
+	intrinsicGas, err := core.IntrinsicGas(data, accessList, txData.GetAuthorizationList(), isContractCreation, homestead, istanbul, isShanghai)
 	if err != nil {
 		return nil, errorsmod.Wrapf(
 			err,
@@ -119,7 +125,7 @@ func VerifyFee(
 	// surface in consensus, preserving the apply-time core.ErrFloorDataGas
 	// identity that the rest of the stack expects.
 	if isPrague && isCheckTx {
-		floorDataGas, err := core.FloorDataGas(txData.GetData())
+		floorDataGas, err := core.FloorDataGas(data)
 		if err != nil {
 			return nil, errorsmod.Wrap(err, "failed to retrieve floor data gas")
 		}
