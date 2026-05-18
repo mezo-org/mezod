@@ -41,6 +41,19 @@ func (k *Keeper) GetEthIntrinsicGas(ctx sdk.Context, msg core.Message, cfg *para
 	return core.IntrinsicGas(msg.Data, msg.AccessList, msg.SetCodeAuthorizations, isContractCreation, homestead, istanbul, isShanghai)
 }
 
+// GetEthFloorDataGas returns the EIP-7623 calldata gas floor for the
+// transaction. The floor is a minimum on the transaction's final gasUsed
+// (not a pre-deduction from leftoverGas — do not subtract it before
+// execution). Returns (0, nil) pre-Prague.
+func (k *Keeper) GetEthFloorDataGas(ctx sdk.Context, msg core.Message, cfg *params.ChainConfig) (uint64, error) {
+	height := big.NewInt(ctx.BlockHeight())
+	time := ctx.BlockTime().Unix()
+	if !cfg.IsPrague(height, uint64(time)) { //nolint:gosec
+		return 0, nil
+	}
+	return core.FloorDataGas(msg.Data)
+}
+
 // RefundGas transfers the leftover gas to the sender of the message, caped to half of the total gas
 // consumed in the transaction. Additionally, the function sets the total gas consumed to the value
 // returned by the EVM execution, thus ignoring the previous intrinsic gas consumed during in the

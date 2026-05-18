@@ -382,6 +382,49 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGasSetCodeTx() {
 	}
 }
 
+func (suite *KeeperTestSuite) TestGetEthFloorDataGas() {
+	suite.SetupTest()
+
+	keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+	ethCfg := keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID())
+
+	testCases := []struct {
+		name   string
+		data   []byte
+		expGas uint64
+	}{
+		{"empty data", nil, params.TxGas},
+		{"one zero byte", []byte{0}, params.TxGas + 1*params.TxCostFloorPerToken},
+		{"one non-zero byte", []byte{1}, params.TxGas + params.TxTokenPerNonZeroByte*params.TxCostFloorPerToken},
+		{
+			"mixed n_zero=2, n_nonzero=3",
+			[]byte{0, 0, 1, 2, 3},
+			params.TxGas + (2+3*params.TxTokenPerNonZeroByte)*params.TxCostFloorPerToken,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(fmt.Sprintf("post-Prague: %s", tc.name), func() {
+			msg := core.Message{Data: tc.data}
+			gas, err := suite.app.EvmKeeper.GetEthFloorDataGas(suite.ctx, msg, ethCfg)
+			suite.Require().NoError(err)
+			suite.Require().Equal(tc.expGas, gas)
+		})
+	}
+
+	suite.Run("pre-Prague returns 0", func() {
+		// Clone ethCfg with PragueTime in the far future so IsPrague is false.
+		preCfg := *ethCfg
+		farFuture := uint64(math.MaxInt64)
+		preCfg.PragueTime = &farFuture
+
+		msg := core.Message{Data: []byte{0, 0, 1, 2, 3}}
+		gas, err := suite.app.EvmKeeper.GetEthFloorDataGas(suite.ctx, msg, &preCfg)
+		suite.Require().NoError(err)
+		suite.Require().Equal(uint64(0), gas)
+	})
+}
+
 func (suite *KeeperTestSuite) TestGasToRefund() {
 	testCases := []struct {
 		name           string
