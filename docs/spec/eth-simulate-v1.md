@@ -105,6 +105,19 @@ spec-conformant flip surfaces loudly.
    regardless of validation, surfacing the failure as per-call `status=0x0`
    with error code `-32015`. Pinned by
    `tests/system/test/SimulateV1_MezoDivergence.test.ts`.
+6. **EIP-7623 calldata floor surfaces as `-38013` on both validation
+   paths.** Geth's `execute.yaml` distinguishes intrinsic-gas-too-low from
+   floor-data-gas-too-low; mezod folds both into the single
+   `SimErrCodeIntrinsicGas` (`-38013`) family. The floor is enforced
+   Prague-gated through `GetEthFloorDataGas`: on the `validation=true`
+   path, `validateSimCall` rejects `msg.GasLimit < floor` request-level
+   before execution; on the default `validation=false` path, the apply-time
+   `core.ErrFloorDataGas` returned by `applyMessageWithConfig` is caught in
+   `processSimBlock`'s `runErr` branch and promoted to a top-level
+   `*SimError` via `NewSimIntrinsicGas`. This is the one place mezod's
+   apply path emits a non-spec error that is remapped to a structured spec
+   error rather than surfacing per-call. Floor enforcement itself is
+   pinned by `tests/system/test/FloorDataGasCheck.test.ts`.
 
 ## Key decisions
 
