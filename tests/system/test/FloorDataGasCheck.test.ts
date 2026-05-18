@@ -1,5 +1,6 @@
 import { expect } from "chai"
 import hre, { ethers } from "hardhat"
+import { extractMessage } from "./helpers/rpc-error"
 
 // EIP-7623 calldata gas floor:
 //   floor = 21000 + (zeroBytes + nonZeroBytes * 4) * 10
@@ -21,13 +22,24 @@ describe("FloorDataGasCheck", function () {
   })
 
   it("rejects a tx with gasLimit one below the floor", async function () {
-    await expect(
-      senderSigner.sendTransaction({
+    let captured: any
+    try {
+      await senderSigner.sendTransaction({
         to: recipient.address,
         data: calldata,
         gasLimit: floor - 1n,
-      }),
-    ).to.be.rejected
+      })
+    } catch (err: any) {
+      captured = err
+    }
+    // Pin the rejection to the EIP-7623 floor branch in
+    // x/evm/keeper/fees.go::VerifyFee — anything else (insufficient
+    // funds, intrinsic gas, nonce gap) would be a different code path
+    // and must not satisfy this assertion.
+    expect(captured, "sendTransaction should have been rejected").to.exist
+    expect(extractMessage(captured).toLowerCase()).to.include(
+      "gas limit below eip-7623 floor",
+    )
   })
 
   it("includes a tx with gasLimit equal to the floor", async function () {
