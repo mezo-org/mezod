@@ -114,12 +114,16 @@ func VerifyFee(
 	// EIP-7623 calldata gas floor verification during CheckTx. Consensus
 	// enforcement still happens at apply-time via applyMessageWithConfig;
 	// this only fences the mempool, mirroring the intrinsic-gas check.
-	if isPrague {
+	// Gating on isCheckTx as well as isPrague keeps DeliverTx free of the
+	// core.FloorDataGas call so its ErrGasUintOverflow path can never
+	// surface in consensus, preserving the apply-time core.ErrFloorDataGas
+	// identity that the rest of the stack expects.
+	if isPrague && isCheckTx {
 		floorDataGas, err := core.FloorDataGas(txData.GetData())
 		if err != nil {
 			return nil, errorsmod.Wrap(err, "failed to retrieve floor data gas")
 		}
-		if isCheckTx && gasLimit < floorDataGas {
+		if gasLimit < floorDataGas {
 			return nil, errorsmod.Wrapf(
 				errortypes.ErrOutOfGas,
 				"gas limit below EIP-7623 floor: %d (gas limit) < %d (floor data gas)", gasLimit, floorDataGas,
