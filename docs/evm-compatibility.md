@@ -188,8 +188,8 @@ chains.
       through `0x11` implementing BLS12-381 curve operations (G1Add,
       G1MSM, G2Add, G2MSM, PairingCheck, MapFpToG1, MapFp2ToG2).
     - Mezo implementation: supported via the forked
-      `mezo-org/go-ethereum` once Prague is active. Mezo's fork of geth
-      was migrated from the pre-finalization 9-precompile draft
+      `mezo-org/go-ethereum`. Mezo's fork of geth was migrated from
+      the pre-finalization 9-precompile draft
       layout (which placed standalone `G1Mul`/`G2Mul` at `0x0b`–`0x13`)
       to the finalized 7-precompile layout (`0x0b`–`0x11`). The
       `0x0b`–`0x11` slot range does not overlap with Mezo's custom
@@ -303,8 +303,8 @@ chains.
       `0xef0100 || target_address` written to the authority's code field;
       the authority rotates or clears it by signing a fresh
       authorization (clearing is `target = 0x0`).
-    - Mezo implementation: type-`0x04` transactions are accepted once
-      Prague is active. The keeper applies authorization tuples to mezod's
+    - Mezo implementation: type-`0x04` transactions are accepted.
+      The keeper applies authorization tuples to mezod's
       `statedb.StateDB` (delegation install, rotation via re-signing,
       clearing via `target = 0x0`); `EthAccountVerificationDecorator` gains
       a delegation-aware EIP-3607 exemption so a delegated EOA can still
@@ -373,10 +373,10 @@ gas-schedule changes, which now fire through Mezo's EVM under
     - Description: rejects MODEXP precompile calls whose base, exponent,
       or modulus length exceeds 8192 bits, capping inputs that would
       otherwise dominate block validation cost.
-    - Mezo implementation: supported via the forked geth when
-      Osaka is active. Mezo applies no additional MODEXP overrides;
-      the Osaka modexp precompile entry handles the input-bound check
-      internally. Live precompile behavior is covered by
+    - Mezo implementation: supported via the forked geth. Mezo
+      applies no additional MODEXP overrides; the Osaka modexp
+      precompile entry handles the input-bound check internally. Live
+      precompile behavior is covered by
       `tests/system/test/ModexpCheck.test.ts`.
     - Ref: https://eips.ethereum.org/EIPS/eip-7823
 
@@ -397,10 +397,9 @@ gas-schedule changes, which now fire through Mezo's EVM under
       EIP-7825 cap explicitly would never reject a transaction the
       block-gas-limit check does not already reject. Note that
       `Keeper.applyMessageWithConfig` bypasses upstream's `preCheck`,
-      so the upstream Osaka cap does not fire on Mezo even though
-      Osaka is active; if Mezo ever raises its block gas limit above
-      16.78M, an explicit cap check will become necessary in the
-      keeper or ante handler.
+      so the upstream Osaka cap does not fire on Mezo; if Mezo ever
+      raises its block gas limit above 16.78M, an explicit cap check
+      will become necessary in the keeper or ante handler.
     - Ref: https://eips.ethereum.org/EIPS/eip-7825
 
 - EIP-7883 (MODEXP gas cost increase)
@@ -408,12 +407,12 @@ gas-schedule changes, which now fire through Mezo's EVM under
       from 200 to 500 gas, and the per-iteration cost for large
       operands doubles. Targets the same DoS-shape that EIP-7823
       addresses by input bound.
-    - Mezo implementation: supported via the forked geth when
-      Osaka is active. Mezo applies no additional MODEXP overrides;
-      the Osaka modexp precompile entry carries both `eip7823` and
-      `eip7883` flags, so the new minimum and the doubled
-      per-iteration cost apply uniformly. Gas-schedule behavior is
-      covered by `tests/system/test/ModexpCheck.test.ts`.
+    - Mezo implementation: supported via the forked geth. Mezo
+      applies no additional MODEXP overrides; the Osaka modexp
+      precompile entry carries both `eip7823` and `eip7883` flags, so
+      the new minimum and the doubled per-iteration cost apply
+      uniformly. Gas-schedule behavior is covered by
+      `tests/system/test/ModexpCheck.test.ts`.
     - Ref: https://eips.ethereum.org/EIPS/eip-7883
 
 - EIP-7934 (RLP block-size limit)
@@ -441,22 +440,20 @@ gas-schedule changes, which now fire through Mezo's EVM under
     - Description: adds opcode `0x1e` `CLZ` (count leading zeros) on
       a 256-bit stack word, returning the number of leading zero bits.
       Mirrors `BIT.popcnt`-style helpers used by gas-tight algorithms.
-    - Mezo implementation: supported via the forked geth when
-      Osaka is active; the Osaka instruction set wires `0x1e` to the
-      `CLZ` handler. Opcode behavior is covered by
-      `tests/system/test/ClzCheck.test.ts`.
+    - Mezo implementation: supported via the forked geth; the Osaka
+      instruction set wires `0x1e` to the `CLZ` handler. Opcode
+      behavior is covered by `tests/system/test/ClzCheck.test.ts`.
     - Ref: https://eips.ethereum.org/EIPS/eip-7939
 
 - EIP-7951 (secp256r1 `P256VERIFY` precompile)
     - Description: adds a precompile at
       `0x0000000000000000000000000000000000000100` that verifies an
       ECDSA signature on the secp256r1 (NIST P-256) curve.
-    - Mezo implementation: supported via the forked geth when
-      Osaka is active. The `0x0100` address sits in the standard
-      Ethereum precompile range and does not overlap Mezo's custom
-      precompile space at `0x7b7c…` (see
-      `x/evm/types/precompile.go:4-57`), so there is no address
-      clash. Precompile behavior is covered by
+    - Mezo implementation: supported via the forked geth. The
+      `0x0100` address sits in the standard Ethereum precompile range
+      and does not overlap Mezo's custom precompile space at
+      `0x7b7c…` (see `x/evm/types/precompile.go:4-57`), so there is
+      no address clash. Precompile behavior is covered by
       `tests/system/test/P256VerifyCheck.test.ts`.
     - Ref: https://eips.ethereum.org/EIPS/eip-7951
 
