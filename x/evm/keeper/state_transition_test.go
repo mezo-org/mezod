@@ -1214,6 +1214,91 @@ func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_ComposesWithMinGasMu
 	})
 }
 
+// TestApplyMessage_FloorDataGas_ContractCreation pins floor enforcement on
+// CREATE transactions (msg.To == nil). The CALL-target tests cover the EOA
+// case; CREATE differs because its intrinsic includes TxGasContractCreation
+// plus EIP-3860 initcode-word gas, and the geth floor formula has no CREATE
+// term — for non-zero-byte-heavy initcode the floor (40/byte) still outpaces
+// intrinsic and binds.
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_ContractCreation() {
+	// Pick a non-zero-byte initcode size where the floor strictly exceeds
+	// intrinsic. At 4096 non-zero bytes the floor is 21000 + 4*4096*10 =
+	// 184_840 and intrinsic is 53000 + 4096*16 + ceil(4096/32)*2 = 119_304,
+	// leaving a ~65k gap. Compute the floor with the same helper as the
+	// CALL tests so a future floor-formula change in geth doesn't silently
+	// drift the test.
+	const initcodeLen = 4096
+	// Minimal valid initcode: PUSH1 0; PUSH1 0; RETURN — returns empty
+	// deployed code. Padded with 0xFF bytes so the data is non-zero-heavy
+	// and lands in the floor-binding regime. The trailing pad bytes are
+	// past the RETURN, so the EVM never executes them.
+	initcode := make([]byte, initcodeLen)
+	initcode[0] = 0x60 // PUSH1
+	initcode[1] = 0x00
+	initcode[2] = 0x60 // PUSH1
+	initcode[3] = 0x00
+	initcode[4] = 0xF3 // RETURN
+	for i := 5; i < initcodeLen; i++ {
+		initcode[i] = 0xFF
+	}
+	floor := floorDataGasOf(initcode)
+
+	// CREATE message helper inlined to avoid widening applyMsg's signature.
+	// All other fields mirror applyMsg so behavior matches the CALL tests.
+	applyCreate := func(gasLimit uint64) (*types.MsgEthereumTxResponse, error) {
+		suite.T().Helper()
+		chainID := suite.app.EvmKeeper.ChainID()
+		proposer := suite.ctx.BlockHeader().ProposerAddress
+		cfg, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposer, chainID)
+		suite.Require().NoError(err)
+		msg := core.Message{
+			From:                  suite.address,
+			To:                    nil,
+			Nonce:                 suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
+			Value:                 big.NewInt(0),
+			GasLimit:              gasLimit,
+			GasPrice:              big.NewInt(0),
+			GasFeeCap:             big.NewInt(0),
+			GasTipCap:             big.NewInt(0),
+			Data:                  initcode,
+			AccessList:            ethtypes.AccessList{},
+			SkipNonceChecks:       true,
+			SkipTransactionChecks: true,
+		}
+		txCfg := suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{})
+		res, _, applyErr := suite.app.EvmKeeper.ApplyMessageWithConfig(
+			suite.ctx,
+			keeper.WrapMessage(msg),
+			nil,
+			true,
+			cfg,
+			txCfg,
+		)
+		return res, applyErr
+	}
+
+	suite.Run("gasLimit = floor-1 rejected pre-execution", func() {
+		suite.SetupTest()
+		_, err := applyCreate(floor - 1)
+		suite.Require().Error(err)
+		suite.Require().True(
+			errors.Is(err, core.ErrFloorDataGas),
+			"expected ErrFloorDataGas, got %v", err,
+		)
+	})
+
+	suite.Run("gasLimit = floor + headroom clamps gasUsed to floor", func() {
+		suite.SetupTest()
+		// Headroom large enough for intrinsic + initcode execution while
+		// keeping minimumGasUsed (0.5*gasLimit) below floor so the floor
+		// clamp dominates the post-execution result.
+		gasLimit := floor + 50_000
+		res, err := applyCreate(gasLimit)
+		suite.Require().NoError(err)
+		suite.Require().Equal(floor, res.GasUsed)
+	})
+}
+
 func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_RefundCappedByFloor() {
 	suite.SetupTest()
 
