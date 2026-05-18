@@ -27,40 +27,59 @@ func CreateUpgradeHandler(
 
 		sdkCtx.Logger().Info("running v11.0.0 upgrade handler")
 
-		if err := setPragueAndOsakaTimes(sdkCtx, keepers.EvmKeeper); err != nil {
-			return nil, fmt.Errorf("failed to set Prague/Osaka times: %w", err)
+		if err := setPragueTime(sdkCtx, keepers.EvmKeeper); err != nil {
+			return nil, fmt.Errorf("failed to set Prague time: %w", err)
+		}
+
+		if err := setOsakaTime(sdkCtx, keepers.EvmKeeper); err != nil {
+			return nil, fmt.Errorf("failed to set Osaka time: %w", err)
 		}
 
 		return mm.RunMigrations(ctx, configurator, fromVM)
 	}
 }
 
-// setPragueAndOsakaTimes activates the Prague and Osaka EVM forks at the
-// upgrade block's timestamp. Both are flipped in the same handler because
-// Mezo skipped the Cancun→Prague rollout and collapses Pectra and Fusaka
-// into a single chain halt.
-func setPragueAndOsakaTimes(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
+func setPragueTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
 	params := evmKeeper.GetParams(ctx)
 
 	ctx.Logger().Info(
-		"begin Prague/Osaka time update",
+		"begin Prague time update",
 		"pragueTime", params.ChainConfig.PragueTime,
-		"osakaTime", params.ChainConfig.OsakaTime,
 	)
 
-	forkTime := sdkmath.NewIntFromUint64(uint64(ctx.BlockTime().Unix())) //nolint:gosec
-	params.ChainConfig.PragueTime = &forkTime
-	params.ChainConfig.OsakaTime = &forkTime
+	pragueTime := sdkmath.NewIntFromUint64(uint64(ctx.BlockTime().Unix())) //nolint:gosec
+	params.ChainConfig.PragueTime = &pragueTime
 
 	if err := evmKeeper.SetParams(ctx, params); err != nil {
 		return err
 	}
 
-	updated := evmKeeper.GetParams(ctx).ChainConfig
 	ctx.Logger().Info(
-		"Prague/Osaka times updated",
-		"pragueTime", updated.PragueTime,
-		"osakaTime", updated.OsakaTime,
+		"Prague time updated",
+		"pragueTime", evmKeeper.GetParams(ctx).ChainConfig.PragueTime,
+	)
+
+	return nil
+}
+
+func setOsakaTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
+	params := evmKeeper.GetParams(ctx)
+
+	ctx.Logger().Info(
+		"begin Osaka time update",
+		"osakaTime", params.ChainConfig.OsakaTime,
+	)
+
+	osakaTime := sdkmath.NewIntFromUint64(uint64(ctx.BlockTime().Unix())) //nolint:gosec
+	params.ChainConfig.OsakaTime = &osakaTime
+
+	if err := evmKeeper.SetParams(ctx, params); err != nil {
+		return err
+	}
+
+	ctx.Logger().Info(
+		"Osaka time updated",
+		"osakaTime", evmKeeper.GetParams(ctx).ChainConfig.OsakaTime,
 	)
 
 	return nil
