@@ -250,7 +250,7 @@ chains.
       requests.
     - Ref: https://eips.ethereum.org/EIPS/eip-7002
 
-- EIP-7623 (Calldata gas cost floor) — **IN PROGRESS**
+- EIP-7623 (Calldata gas cost floor)
     - Description: adds an additive intrinsic-gas floor charged per
       transaction based on its calldata token weight (10 gas per zero
       byte, 40 gas per non-zero byte), in addition to the existing
@@ -259,19 +259,24 @@ chains.
       Upstream geth enforces the floor inside `StateTransition.execute`
       by calling a separate `FloorDataGas` helper — `IntrinsicGas` on
       its own does not include the floor.
-    - Mezo implementation: not yet applied. Mezo's transaction
-      execution path bypasses upstream `StateTransition.execute` in
-      favor of `Keeper.applyMessageWithConfig`
-      (`x/evm/keeper/state_transition.go:498`), which calls
-      `core.IntrinsicGas` via `Keeper.GetEthIntrinsicGas`
-      (`x/evm/keeper/gas.go:34`) but never invokes
-      `core.FloorDataGas`. As a result, data-heavy transactions on
-      Mezo are charged the legacy intrinsic cost without the EIP-7623
-      Prague floor. Bringing this in requires adding a Prague-gated
-      `FloorDataGas` check to the keeper (and the matching ante-handler
-      gas validation) so data-heavy transactions pay at least the floor
-      amount and refunds are clipped against it the way upstream does
-      it at `state_transition.go:532`.
+    - Mezo implementation: supported. Because mezod's transaction
+      execution path bypasses upstream `StateTransition.execute`, the
+      floor is enforced explicitly at every site that resolves
+      transaction gas. A `Keeper.GetEthFloorDataGas` helper
+      (`x/evm/keeper/gas.go`) sits beside `Keeper.GetEthIntrinsicGas`
+      and short-circuits to zero pre-Prague; post-Prague it delegates
+      to `core.FloorDataGas`. `Keeper.applyMessageWithConfig` then
+      enforces the floor twice — a pre-execution check on
+      `msg.GasLimit` before the intrinsic deduction, and a
+      post-execution clamp that keeps `gasUsed >= floor` even after
+      refunds. CheckTx admission applies the same floor through
+      `Keeper.VerifyFee` (`x/evm/keeper/fees.go`) so sub-floor
+      transactions are rejected before they enter the mempool. The
+      `eth_estimateGas` binary search treats `core.ErrFloorDataGas`
+      the same way it treats `core.ErrIntrinsicGas` (raise gas and
+      retry), and `eth_simulateV1` maps the floor failure to a
+      structured `-38013` `SimError`. Live behavior is covered by
+      `tests/system/test/FloorDataGasCheck.test.ts`.
     - Ref: https://eips.ethereum.org/EIPS/eip-7623
 
 - EIP-7685 (General-purpose execution-layer requests)
