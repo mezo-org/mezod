@@ -1,9 +1,11 @@
 package keeper_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -774,6 +776,66 @@ func (suite *KeeperTestSuite) TestEstimateGas() {
 		})
 	}
 	suite.enableFeemarket = false // reset flag
+}
+
+// TestEstimateGas_FloorDataGas_HeavyCalldata is the regression test for the
+// EIP-7623 floor-aware BinSearch fix: without the floor in `executable`'s
+// non-fatal set, the binary search bails on its first sub-floor probe.
+func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_HeavyCalldata() {
+	suite.SetupTest()
+
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	expectedFloor := ethparams.TxGas +
+		uint64(len(data))*ethparams.TxCostFloorPerToken //nolint:gosec
+
+	argsJSON, err := json.Marshal(types.TransactionArgs{
+		To:   &target,
+		From: &suite.address,
+		Data: (*hexutil.Bytes)(&data),
+	})
+	suite.Require().NoError(err)
+
+	rsp, err := suite.queryClient.EstimateGas(suite.ctx, &types.EthCallRequest{
+		Args:            argsJSON,
+		GasCap:          25_000_000,
+		ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+	})
+	suite.Require().NoError(err)
+	suite.Require().GreaterOrEqual(rsp.Gas, expectedFloor)
+	suite.Require().Equal(expectedFloor, rsp.Gas)
+}
+
+// TestEstimateGas_FloorDataGas_PrePrague pins that pre-Prague EstimateGas
+// returns the intrinsic-gas estimate, not the floor.
+func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_PrePrague() {
+	suite.SetupTest()
+
+	// Push PragueTime into the far future so IsPrague is false.
+	p := suite.app.EvmKeeper.GetParams(suite.ctx)
+	farFuture := sdkmath.NewInt(math.MaxInt64)
+	p.ChainConfig.PragueTime = &farFuture
+	suite.Require().NoError(suite.app.EvmKeeper.SetParams(suite.ctx, p))
+
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	expectedIntrinsic := ethparams.TxGas +
+		uint64(len(data))*ethparams.TxDataZeroGas //nolint:gosec
+
+	argsJSON, err := json.Marshal(types.TransactionArgs{
+		To:   &target,
+		From: &suite.address,
+		Data: (*hexutil.Bytes)(&data),
+	})
+	suite.Require().NoError(err)
+
+	rsp, err := suite.queryClient.EstimateGas(suite.ctx, &types.EthCallRequest{
+		Args:            argsJSON,
+		GasCap:          25_000_000,
+		ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+	})
+	suite.Require().NoError(err)
+	suite.Require().Equal(expectedIntrinsic, rsp.Gas)
 }
 
 func (suite *KeeperTestSuite) TestTraceTx() {

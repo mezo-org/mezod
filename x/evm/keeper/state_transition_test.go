@@ -1,12 +1,14 @@
 package keeper_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"math"
 	"math/big"
 
+	sdkmath "cosmossdk.io/math"
 	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -1085,6 +1087,177 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfigInvalidSupply() {
 	)
 
 	suite.Require().ErrorIs(err, types.ErrInvalidSupply)
+}
+
+// floorDataGasOf computes the EIP-7623 floor for the given calldata
+// using the same formula as core.FloorDataGas.
+func floorDataGasOf(data []byte) uint64 {
+	var zeros, nonZeros uint64
+	for _, b := range data {
+		if b == 0 {
+			zeros++
+		} else {
+			nonZeros++
+		}
+	}
+	return params.TxGas + (zeros+nonZeros*params.TxTokenPerNonZeroByte)*params.TxCostFloorPerToken
+}
+
+// applyHeavyCalldataMsg runs a message through ApplyMessageWithConfig
+// with custom gasLimit, data, and target. Skip flags + zero gas pricing
+// follow applyValueMsg.
+func (suite *KeeperTestSuite) applyHeavyCalldataMsg(
+	to common.Address,
+	gasLimit uint64,
+	data []byte,
+) (*types.MsgEthereumTxResponse, error) {
+	suite.T().Helper()
+
+	chainID := suite.app.EvmKeeper.ChainID()
+	proposer := suite.ctx.BlockHeader().ProposerAddress
+	cfg, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposer, chainID)
+	suite.Require().NoError(err)
+
+	toAddr := to
+	msg := core.Message{
+		From:                  suite.address,
+		To:                    &toAddr,
+		Nonce:                 suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
+		Value:                 big.NewInt(0),
+		GasLimit:              gasLimit,
+		GasPrice:              big.NewInt(0),
+		GasFeeCap:             big.NewInt(0),
+		GasTipCap:             big.NewInt(0),
+		Data:                  data,
+		AccessList:            ethtypes.AccessList{},
+		SkipNonceChecks:       true,
+		SkipTransactionChecks: true,
+	}
+
+	txCfg := suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{})
+	res, _, err := suite.app.EvmKeeper.ApplyMessageWithConfig(
+		suite.ctx,
+		keeper.WrapMessage(msg),
+		nil,
+		true,
+		cfg,
+		txCfg,
+	)
+	return res, err
+}
+
+// setPragueTime swaps the active chain config's PragueTime in-place.
+// Used to gate the floor logic on/off per subtest without resetting
+// the entire suite.
+func (suite *KeeperTestSuite) setPragueTime(t *sdkmath.Int) {
+	suite.T().Helper()
+	p := suite.app.EvmKeeper.GetParams(suite.ctx)
+	p.ChainConfig.PragueTime = t
+	suite.Require().NoError(suite.app.EvmKeeper.SetParams(suite.ctx, p))
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PreExecutionRejection() {
+	suite.SetupTest()
+
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := floorDataGasOf(data)
+
+	_, err := suite.applyHeavyCalldataMsg(target, floor-1, data)
+	suite.Require().Error(err)
+	suite.Require().True(
+		errors.Is(err, core.ErrFloorDataGas),
+		"expected ErrFloorDataGas, got %v", err,
+	)
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PostExecutionFloor() {
+	suite.SetupTest()
+
+	// EOA target — no code, evm.Call returns immediately with no execution gas.
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := floorDataGasOf(data)
+
+	// GasLimit chosen so minimumGasUsed (= 0.5 * GasLimit) stays below floor,
+	// making the floor the dominant clamp.
+	gasLimit := floor + 50_000
+	res, err := suite.applyHeavyCalldataMsg(target, gasLimit, data)
+	suite.Require().NoError(err)
+	suite.Require().GreaterOrEqual(res.GasUsed, floor)
+	suite.Require().Equal(floor, res.GasUsed)
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PreservedPrePrague() {
+	suite.SetupTest()
+
+	// Push PragueTime far into the future so the floor stays inactive.
+	farFuture := sdkmath.NewInt(math.MaxInt64)
+	suite.setPragueTime(&farFuture)
+
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := floorDataGasOf(data)
+
+	gasLimit := floor + 50_000
+	res, err := suite.applyHeavyCalldataMsg(target, gasLimit, data)
+	suite.Require().NoError(err)
+	// Pre-Prague: floor must NOT apply. GasUsed is max(minimumGasUsed,
+	// intrinsic+execution). For an EOA target with heavy zero calldata,
+	// minimumGasUsed (0.5*gasLimit) dominates the result here.
+	suite.Require().Less(res.GasUsed, floor)
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_ComposesWithMinGasMultiplier() {
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := floorDataGasOf(data)
+
+	suite.Run("minimumGasUsed > floor wins", func() {
+		suite.SetupTest()
+		// GasLimit large enough so minimumGasUsed = 0.5 * gasLimit > floor.
+		gasLimit := floor * 4
+		res, err := suite.applyHeavyCalldataMsg(target, gasLimit, data)
+		suite.Require().NoError(err)
+		suite.Require().Equal(gasLimit/2, res.GasUsed)
+		suite.Require().Greater(res.GasUsed, floor)
+	})
+
+	suite.Run("minimumGasUsed < floor: floor wins", func() {
+		suite.SetupTest()
+		// GasLimit just above floor so minimumGasUsed = 0.5 * gasLimit < floor.
+		gasLimit := floor + 1000
+		res, err := suite.applyHeavyCalldataMsg(target, gasLimit, data)
+		suite.Require().NoError(err)
+		suite.Require().Equal(floor, res.GasUsed)
+	})
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_RefundCappedByFloor() {
+	suite.SetupTest()
+
+	// Runtime: SSTORE 0 → slot 1 (clears a non-zero slot), then STOP.
+	//   PUSH1 0 ; PUSH1 1 ; SSTORE ; STOP
+	contractRuntime := []byte{0x60, 0x00, 0x60, 0x01, 0x55, 0x00}
+	contract := common.HexToAddress("0x000000000000000000000000000000000000Cafe")
+
+	vmdb := suite.StateDB()
+	vmdb.SetCode(contract, contractRuntime, tracing.CodeChangeUnspecified)
+	// Pre-populate the slot with a non-zero value so SSTORE 0 triggers the
+	// EIP-3529 storage-clear refund.
+	vmdb.SetState(contract, common.HexToHash("0x01"), common.HexToHash("0xAABB"))
+	suite.Require().NoError(vmdb.Commit())
+
+	// Light calldata so refund could realistically push gasUsed under floor.
+	data := bytes.Repeat([]byte{0}, 1000)
+	floor := floorDataGasOf(data) // 21000 + 1000*10 = 31000
+
+	// GasLimit chosen so minimumGasUsed (= 0.5 * GasLimit) stays below floor,
+	// isolating the floor clamp as the dominant rule.
+	gasLimit := uint64(50_000)
+	res, err := suite.applyHeavyCalldataMsg(contract, gasLimit, data)
+	suite.Require().NoError(err)
+	suite.Require().GreaterOrEqual(res.GasUsed, floor)
 }
 
 // Runtime of a minimal value-forwarder: CALLs calldata[0:32] (the

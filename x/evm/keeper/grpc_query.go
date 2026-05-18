@@ -406,12 +406,28 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 
 		rsp, err = k.SimulateMessage(tmpCtx, WrapMessage(msg), nil, cfg, txConfig, overrides)
 		if err != nil {
-			if errors.Is(err, core.ErrIntrinsicGas) {
+			if errors.Is(err, core.ErrIntrinsicGas) || errors.Is(err, core.ErrFloorDataGas) {
 				return true, nil, nil // Special case, raise gas limit
 			}
 			return true, nil, err // Bail out
 		}
 		return len(rsp.VmError) > 0, rsp, nil
+	}
+
+	// Pre-seed lo above the EIP-7623 floor so BinSearch doesn't waste
+	// iterations climbing from TxGas toward the floor on calldata-heavy
+	// txs. Pre-Prague the helper returns 0 and this is a no-op. The
+	// `floor-1 < hi` guard handles the caller-supplied `args.Gas < floor`
+	// edge case: without it, `lo` could land at `floor-1 >= hi`, BinSearch
+	// would exit immediately and return an unverified `hi`. With the
+	// guard, the final-allowance check below re-runs `executable(hi)` and
+	// surfaces the failure.
+	floor, err := k.GetEthFloorDataGas(ctx, msg, cfg.ChainConfig)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if floor > 0 && floor-1 < hi && floor-1 > lo {
+		lo = floor - 1
 	}
 
 	// Execute the binary search and hone in on an executable gas limit
@@ -813,7 +829,7 @@ func simulateV1ErrResponse(err error) (*types.SimulateV1Response, error) {
 	if errors.As(err, &simErr) {
 		return &types.SimulateV1Response{Error: simErr}, nil
 	}
-	if errors.Is(err, core.ErrIntrinsicGas) {
+	if errors.Is(err, core.ErrIntrinsicGas) || errors.Is(err, core.ErrFloorDataGas) {
 		return &types.SimulateV1Response{Error: types.NewSimIntrinsicGas(0, 0)}, nil
 	}
 	return nil, status.Error(codes.Internal, err.Error())

@@ -601,10 +601,20 @@ func (k *Keeper) applyMessageWithConfig(
 		return nil, nil, errorsmod.Wrap(err, "intrinsic gas failed")
 	}
 
+	// EIP-7623 floor. Pre-Prague the helper returns (0, nil), so the
+	// downstream checks are no-ops without an explicit fork gate.
+	floorDataGas, err := k.GetEthFloorDataGas(ctx, msg, cfg.ChainConfig)
+	if err != nil {
+		return nil, nil, errorsmod.Wrap(err, "floor data gas failed")
+	}
+
 	// Should check again even if it is checked on Ante Handler, because eth_call don't go through Ante Handler.
 	if leftoverGas < intrinsicGas {
 		// eth_estimateGas will check for this exact error
 		return nil, nil, errorsmod.Wrap(core.ErrIntrinsicGas, "apply message")
+	}
+	if rules.IsPrague && msg.GasLimit < floorDataGas {
+		return nil, nil, errorsmod.Wrapf(core.ErrFloorDataGas, "apply message: have %d, want %d", msg.GasLimit, floorDataGas)
 	}
 	leftoverGas -= intrinsicGas
 
@@ -714,6 +724,19 @@ func (k *Keeper) applyMessageWithConfig(
 				"changesCount", len(committedChanges),
 				"txHash", txConfig.TxHash.Hex(),
 			)
+		}
+	}
+
+	// EIP-7623: clamp temporaryGasUsed up to the floor. The subtraction is
+	// safe because the pre-check guarantees msg.GasLimit >= floorDataGas.
+	// The subsequent LegacyMaxDec(minimumGasUsed, temporaryGasUsed) composes
+	// both floors automatically — whichever is larger wins.
+	if rules.IsPrague && temporaryGasUsed < floorDataGas {
+		prevLeftover := leftoverGas
+		temporaryGasUsed = floorDataGas
+		leftoverGas = msg.GasLimit - temporaryGasUsed
+		if t := vmCfg.Tracer; t != nil && t.OnGasChange != nil {
+			t.OnGasChange(prevLeftover, leftoverGas, tracing.GasChangeTxDataFloor)
 		}
 	}
 
