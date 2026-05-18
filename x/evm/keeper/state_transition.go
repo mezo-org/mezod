@@ -586,7 +586,7 @@ func (k *Keeper) applyMessageWithConfig(
 			// leftoverGas during function execution represents the gas at the end of the transaction.
 
 			// TODO: we can trace this more granularly by providing the specific reason for entire
-			// transaction: intrinsic, call, create, and refund
+			// transaction: intrinsic, call, create, refund, and EIP-7623 data floor
 			t.OnGasChange(startLeftoverGas, leftoverGas, tracing.GasChangeUnspecified)
 		}()
 	}
@@ -732,13 +732,13 @@ func (k *Keeper) applyMessageWithConfig(
 	// The subsequent LegacyMaxDec(minimumGasUsed, temporaryGasUsed) composes
 	// both floors automatically — whichever is larger wins. Pre-Prague the
 	// helper returns 0, so the comparison is inert without an explicit gate.
+	// Tracer attribution stays coarse with intrinsic / refund / call (see
+	// the deferred GasChangeUnspecified above); per-segment OnGasChange
+	// events are tracked under that TODO and emitted together when the
+	// time comes.
 	if temporaryGasUsed < floorDataGas {
-		prevLeftover := leftoverGas
 		temporaryGasUsed = floorDataGas
 		leftoverGas = msg.GasLimit - temporaryGasUsed
-		if t := vmCfg.Tracer; t != nil && t.OnGasChange != nil {
-			t.OnGasChange(prevLeftover, leftoverGas, tracing.GasChangeTxDataFloor)
-		}
 	}
 
 	// calculate a minimum amount of gas to be charged to sender if GasLimit
