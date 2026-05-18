@@ -72,6 +72,23 @@ describe("FloorDataGasCheck", function () {
     expect(receipt?.gasUsed).to.equal(floor)
   })
 
+  it("eth_estimateGas returns the intrinsic for a plain ETH transfer", async function () {
+    // Complement to the heavy-calldata case below: a value transfer
+    // with no calldata sits in the regime where the floor is inert
+    // (floor = 21000 + 0 = 21000, equal to the intrinsic). The
+    // pre-seed guard `floor-1 > lo` is `20999 > 20999`, so `lo` is
+    // not lifted and BinSearch runs the standard path. The estimate
+    // must come back as the canonical 21000 — the floor wiring in
+    // x/evm/keeper/grpc_query.go::EstimateGas must not perturb
+    // ordinary transactions.
+    const estimate = await ethers.provider.estimateGas({
+      from: senderSigner.address,
+      to: recipient.address,
+      value: 1n,
+    })
+    expect(estimate).to.equal(21000n)
+  })
+
   it("eth_estimateGas returns the floor for heavy-calldata EOA call", async function () {
     // Without the EIP-7623 wiring in x/evm/keeper/grpc_query.go (the
     // floor-aware pre-seed plus treating core.ErrFloorDataGas as a
