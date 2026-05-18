@@ -377,17 +377,27 @@ exercises them.
       (`x/evm/types/chain_config.go:95-103`).
     - Ref: https://eips.ethereum.org/EIPS/eip-7823
 
-- EIP-7825 (Transaction gas limit cap) — **IN PROGRESS**
+- EIP-7825 (Transaction gas limit cap)
     - Description: caps the maximum gas a single transaction can
       declare to `2^24 = 16_777_216` gas (≈16.78M), independent of
       block gas limit, to bound worst-case transaction validation.
-    - Mezo implementation: rides the vendored geth fork once Osaka is
-      active. Mezo's ante-handler gas validation
-      (`app/ante/evm/eth.go:EthGasConsumeDecorator`) compares per-tx
-      gas against `maxGasWanted` and the block gas limit, not against a
-      hardcoded Ethereum cap, so it does not conflict with the
-      upstream 16.78M cap that will apply inside the EVM when Osaka is
-      active. Currently inactive because `OsakaTime` is nil.
+      Upstream geth enforces the cap inside `StateTransition.preCheck`
+      under `isOsaka`.
+    - Mezo implementation: no explicit EIP-7825 enforcement, and none
+      is required as long as Mezo's block gas limit stays below the
+      16.78M cap. Mezo's block gas limit is set to 10_000_000 in
+      genesis (`cmd/mezod/init.go:118` sets
+      `appGenesis.Consensus.Params.Block.MaxGas = 10_000_000`); every
+      transaction is already bounded below the EIP-7825 cap by the
+      existing ante-handler check against the block gas limit
+      (`app/ante/evm/eth.go:EthGasConsumeDecorator`). Adding the
+      EIP-7825 cap explicitly would never reject a transaction the
+      block-gas-limit check does not already reject. If Mezo ever
+      raises its block gas limit above 16.78M, an explicit
+      Osaka-gated cap check will become necessary because Mezo's
+      `Keeper.applyMessageWithConfig` bypasses upstream's `preCheck`
+      and the upstream check therefore does not fire on Mezo even
+      when Osaka activates.
     - Ref: https://eips.ethereum.org/EIPS/eip-7825
 
 - EIP-7883 (MODEXP gas cost increase) — **IN PROGRESS**
