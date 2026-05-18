@@ -197,14 +197,15 @@ v11.0 upgrade on living chains (see
       `0x0000F90827F1C53a10cb7A02335B175320002935` that stores the last
       8192 block hashes in its storage slots, populated by the
       execution client at the start of each block. The `BLOCKHASH`
-      opcode falls through to the contract for heights older than 256
-      blocks.
-    - Mezo implementation: the system contract is not deployed.
-      `BLOCKHASH` continues to work for historical heights — Mezo
-      serves up to 10000 past block hashes through CometBFT historical
-      state, which exceeds the 8192-block EIP-2935 window. The only
-      observable divergence is that contracts `SLOAD`ing the history
-      storage address directly will find an empty account.
+      opcode is unchanged and still covers only the last 256 blocks;
+      callers that need older hashes are expected to `SLOAD` them from
+      the history storage contract directly.
+    - Mezo implementation: the system contract is not deployed. The
+      `BLOCKHASH` opcode behaves as in standard go-ethereum, returning
+      hashes only for the last 256 blocks. The observable divergence
+      is that contracts `SLOAD`ing the history storage address — to
+      reach block hashes beyond the 256-block `BLOCKHASH` window —
+      find an empty account.
     - Ref: https://eips.ethereum.org/EIPS/eip-2935
 
 - EIP-6110 (Validator deposits via EL system contract)
