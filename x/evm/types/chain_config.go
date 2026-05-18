@@ -85,22 +85,8 @@ func DefaultChainConfig() ChainConfig {
 	shanghaiTime := sdkmath.ZeroInt()
 	cancunTime := sdkmath.ZeroInt()
 	pragueTime := sdkmath.ZeroInt()
+	osakaTime := sdkmath.ZeroInt()
 
-	// TODO (geth-upgrade): once the keeper, ante handler and RPC surface
-	// are audited for the Osaka fork's behavior changes (e.g. the
-	// EIP-7883 MODEXP gas schedule), default OsakaTime to zero here so
-	// new chains activate Osaka at genesis, and add a planned upgrade
-	// handler that sets the same OsakaTime on living chains.
-	//
-	// OsakaTime, BPO1Time..BPO5Time, AmsterdamTime and VerkleTime are
-	// intentionally left nil: the geth side ships these forks but the
-	// keeper, ante handler and RPC surface have no support for them yet.
-	// Defaulting them to zero would silently flip on geth-side behavior
-	// changes on a fresh genesis. Activation will be done explicitly
-	// via a planned upgrade handler. Note: enabling any fork beyond Osaka
-	// additionally requires extending params.DefaultBlobSchedule,
-	// which currently covers Cancun, Prague and Osaka only — otherwise
-	// CheckConfigForkOrder rejects the config.
 	return ChainConfig{
 		HomesteadBlock:      &homesteadBlock,
 		DAOForkBlock:        &daoForkBlock,
@@ -122,6 +108,7 @@ func DefaultChainConfig() ChainConfig {
 		ShanghaiTime:        &shanghaiTime,
 		CancunTime:          &cancunTime,
 		PragueTime:          &pragueTime,
+		OsakaTime:           &osakaTime,
 	}
 }
 

@@ -7,6 +7,7 @@ import {
   extractCode,
   extractMessage,
 } from "./helpers/rpc-error"
+import { SET_CODE_TX_TYPE, signAuthorization } from "./helpers/eip7702"
 
 /**
  * SimulateV1_SpecCompliance pins every behavior where mezod's eth_simulateV1
@@ -75,7 +76,7 @@ import {
  * | block-override reflected                  | block.number override                  | NUMBER opcode probe                    | NUMBER returns the override                                |
  * | fee-recipient receives funds              | feeRecipient override                  | tx with non-zero value                 | request succeeds, status 0x1                               |
  * | logs: eth send no logs by default         | EOA->EOA value, no flag                | eth_simulateV1                         | logs == []                                                 |
- * | logs: forward then revert                 | forwarder -> reverter via traceTransfers| top-level call                        | status 0x0, code 3, logs == []                             |
+ * | logs: forward then revert                 | forwarder->reverter via traceTransfers | top-level call                         | status 0x0, code 3, logs == []                             |
  * | logs: selfdestruct synthetic log          | self-destruct contract                 | traceTransfers=true                    | (best-effort) one synthetic log on selfdest                |
  * | delegate-call to EOA logs once            | wallet contract via delegate-call      | traceTransfers=true                    | one synthetic log only                                     |
  * | comprehensive: simple two transfers       | sender funded                          | two value transfers in one block       | both per-call status 0x1                                   |
@@ -92,6 +93,7 @@ import {
  * | block hash determinism                    | identical opts                         | rerun                                  | block.hash unchanged                                       |
  * | log.blockNumber/blockHash match envelope  | one ERC-20 transfer                    | eth_simulateV1                         | every log's blockNumber/blockHash match the simulated block|
  * | gap-fill empty envelope                   | base+1 then base+3                     | eth_simulateV1                         | gap block has empty roots and zero bloom                   |
+ * | SetCode (type-4) installs and routes call | self-sponsored auth for TargetV1       | eth_simulateV1                         | type=0x4; from=authorizer; delegation routes call → target |
  */
 describe("SimulateV1_SpecCompliance", function () {
   const { deployments } = hre
@@ -256,7 +258,7 @@ describe("SimulateV1_SpecCompliance", function () {
   const AMOUNT = ethers.parseUnits("1", 18)
 
   before(async function () {
-    await deployments.fixture(["BridgeOutDelegate"])
+    await deployments.fixture(["BridgeOutDelegate", "eip7702-fixtures"])
     simpleToken = await getDeployedContract<SimpleToken>("SimpleToken")
     tokenAddr = await simpleToken.getAddress()
 
@@ -2456,6 +2458,195 @@ describe("SimulateV1_SpecCompliance", function () {
 
     it("logsBloom is the zero bloom", function () {
       expect(gap.logsBloom.toLowerCase()).to.equal(ZERO_BLOOM)
+    })
+  })
+
+  // =================================================================
+  // === SetCode (EIP-7702 / type-4) full-tx envelope                ==
+  // =================================================================
+
+  context("FullTx: SetCode (type-4) envelope", function () {
+    let block: any
+    let authorityAddr: string
+    let targetV1Addr: string
+    let touchedTopic: string
+    let chainId: bigint
+    // Slot kept off the values used elsewhere in the EIP-7702 suites
+    // so any committed state on TargetV1 from prior runs doesn't bleed
+    // into the target.readSlot(SLOT) == 0 assertion below.
+    const SLOT = 0xc0de5170n
+    const VALUE = 0xbeefn
+
+    before(async function () {
+      chainId = (await ethers.provider.getNetwork()).chainId
+
+      const target = await ethers.getContractAt(
+        "Eip7702TargetV1",
+        (await deployments.get("Eip7702TargetV1")).address,
+      )
+      targetV1Addr = await target.getAddress()
+      touchedTopic = target.interface.getEvent("Touched")!.topicHash
+      const setSlotData = target.interface.encodeFunctionData("setSlot", [
+        SLOT,
+        VALUE,
+      ])
+      const readSlotData = target.interface.encodeFunctionData("readSlot", [
+        SLOT,
+      ])
+
+      // Self-sponsored: the authority signs both the auth tuple and
+      // the tx. The simulator bumps the sender nonce to N before
+      // running applySetCodeAuthorizations, which validates auth.Nonce
+      // against the post-bump value — so the auth must carry N+1.
+      // Fresh authority starts at nonce 0, so the auth nonce is 1.
+      const authority = ethers.Wallet.createRandom()
+      authorityAddr = authority.address
+      const auth = await signAuthorization(authority, {
+        chainId,
+        address: targetV1Addr,
+        nonce: 1n,
+      })
+
+      // ethers' AuthorizationLike carries bigint fields (chainId,
+      // nonce, signature.v); the JSON-RPC request payload goes through
+      // raw JSON.stringify, which doesn't know how to serialize bigint.
+      // Hand-convert to the hex-string wire shape geth expects on the
+      // simulateV1 envelope. r/s come back from ethers as 32-byte
+      // left-padded hex (the BYTES shape); geth parses them as
+      // *uint256.Int which rejects leading-zero hex digits, so funnel
+      // through toQuantity to canonicalize the encoding.
+      const sig = (auth as any).signature
+      const authWire = {
+        chainId: ethers.toQuantity(auth.chainId),
+        address: auth.address,
+        nonce: ethers.toQuantity(auth.nonce),
+        yParity: ethers.toQuantity(BigInt(sig.yParity)),
+        r: ethers.toQuantity(sig.r),
+        s: ethers.toQuantity(sig.s),
+      }
+
+      const blocks: any[] = await ethers.provider.send("eth_simulateV1", [
+        {
+          blockStateCalls: [
+            {
+              stateOverrides: {
+                [authorityAddr]: { balance: FUNDED_BALANCE },
+                [DETACHED_SENDER]: { balance: FUNDED_BALANCE },
+              },
+              calls: [
+                // Call 0: self-sponsored type-4 tx installs the
+                // delegation authority -> Eip7702TargetV1.
+                {
+                  from: authorityAddr,
+                  to: authorityAddr,
+                  value: "0x0",
+                  maxFeePerGas: HIGH_FEE,
+                  maxPriorityFeePerGas: "0x1",
+                  authorizationList: [authWire],
+                },
+                // Call 1: a plain type-2 call from a separate sender
+                // hits the authority address and gets routed through
+                // the delegation designator into TargetV1.setSlot.
+                // Per EIP-7702 the SSTORE lands in the authority's
+                // account and the Touched event's `self`
+                // (== address(this)) is the authority, not the target.
+                {
+                  from: DETACHED_SENDER,
+                  to: authorityAddr,
+                  data: setSlotData,
+                  maxFeePerGas: HIGH_FEE,
+                  maxPriorityFeePerGas: "0x1",
+                },
+                // Call 2: readSlot on the authority returns the value
+                // just stored — the slot lives on the EOA's account.
+                {
+                  from: DETACHED_SENDER,
+                  to: authorityAddr,
+                  data: readSlotData,
+                  maxFeePerGas: HIGH_FEE,
+                  maxPriorityFeePerGas: "0x1",
+                },
+                // Call 3: same slot read on the target returns zero,
+                // confirming the SSTORE didn't touch the target's
+                // storage.
+                {
+                  from: DETACHED_SENDER,
+                  to: targetV1Addr,
+                  data: readSlotData,
+                  maxFeePerGas: HIGH_FEE,
+                  maxPriorityFeePerGas: "0x1",
+                },
+              ],
+            },
+          ],
+          validation: true,
+          returnFullTransactions: true,
+        },
+        "latest",
+      ])
+      block = blocks[0]
+    })
+
+    it("transactions[0].type is 0x4", function () {
+      // Four calls in the block: one type-4 install, then three
+      // type-2 follow-ups that exercise the delegation.
+      expect(block.transactions).to.be.an("array").with.lengthOf(4)
+      expect(block.transactions[0].type).to.equal(
+        ethers.toQuantity(SET_CODE_TX_TYPE),
+      )
+    })
+
+    it("transactions[0].authorizationList carries the auth tuple", function () {
+      const tx = block.transactions[0]
+      expect(tx.authorizationList).to.be.an("array").with.lengthOf(1)
+      expect(ethers.getAddress(tx.authorizationList[0].address)).to.equal(
+        ethers.getAddress(targetV1Addr),
+      )
+      expect(BigInt(tx.authorizationList[0].chainId)).to.equal(chainId)
+    })
+
+    it("transactions[0].from is patched to the authorizer", function () {
+      expect(block.transactions[0].from.toLowerCase()).to.equal(
+        authorityAddr.toLowerCase(),
+      )
+    })
+
+    it("install call status is 0x1 (applySetCodeAuthorizations succeeded)", function () {
+      expect(block.calls).to.be.an("array").with.lengthOf(4)
+      expect(block.calls[0].status).to.equal("0x1")
+      expect(block.calls[0].error).to.be.undefined
+    })
+
+    it("follow-up CALL to the authority is routed into delegated code", function () {
+      // Status 0x1 alone is necessary but not sufficient: a CALL into
+      // an undelegated EOA also returns 0x1 with no logs. The Touched
+      // event is only emitted by Eip7702TargetV1.setSlot, so its
+      // presence proves the delegation designator routed the call.
+      expect(block.calls[1].status).to.equal("0x1")
+      expect(block.calls[1].error).to.be.undefined
+      const logs = block.calls[1].logs ?? []
+      const touched = logs.find(
+        (l: any) =>
+          l.topics?.[0]?.toLowerCase() === touchedTopic.toLowerCase(),
+      )
+      expect(touched, "Touched log").to.exist
+      // topics[2] is the `self` indexed parameter (address(this) inside
+      // the delegated body). Per EIP-7702 address(this) is the EOA,
+      // so the low 20 bytes equal the authority address.
+      const selfFromLog = "0x" + touched.topics[2].slice(-40)
+      expect(ethers.getAddress(selfFromLog)).to.equal(
+        ethers.getAddress(authorityAddr),
+      )
+    })
+
+    it("SSTORE landed on the authority, not the target", function () {
+      // readSlot returns a uint256 ABI-encoded as 32 bytes. Reading
+      // SLOT on the authority sees the just-written VALUE; reading
+      // SLOT on the target sees zero, pinning the storage scope.
+      expect(block.calls[2].status).to.equal("0x1")
+      expect(block.calls[3].status).to.equal("0x1")
+      expect(BigInt(block.calls[2].returnData)).to.equal(VALUE)
+      expect(BigInt(block.calls[3].returnData)).to.equal(0n)
     })
   })
 })

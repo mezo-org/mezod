@@ -71,7 +71,7 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionID int
 
-	tracingHooks *tracing.Hooks
+	tracingHooks []*tracing.Hooks
 
 	stateObjects map[common.Address]*stateObject
 
@@ -142,11 +142,6 @@ func (s *StateDB) Keeper() Keeper {
 //
 // Safe to call between calls; the txConfig is read-only from AddLog's
 // perspective and never participates in the journal.
-//
-// TODO (geth-upgrade): once go-ethereum v1.16.9 lands, decide whether
-// the simulate driver should call geth's native
-// `(*state.StateDB).SetTxContext` directly — and whether this wrapper
-// can be dropped in favor of it.
 func (s *StateDB) SetTxContext(thash common.Hash, ti int) {
 	s.txConfig.TxHash = thash
 	s.txConfig.TxIndex = uint(ti) //nolint:gosec
@@ -155,12 +150,6 @@ func (s *StateDB) SetTxContext(thash common.Hash, ti int) {
 // GetContext returns the transaction Context.
 func (s *StateDB) GetContext() sdk.Context {
 	return s.ctx
-}
-
-// SetTracingHooks installs tracing hooks on the StateDB. A nil pointer
-// disables tracing.
-func (s *StateDB) SetTracingHooks(hooks *tracing.Hooks) {
-	s.tracingHooks = hooks
 }
 
 // AddLog adds a log, called by evm.
@@ -172,10 +161,7 @@ func (s *StateDB) AddLog(log *ethtypes.Log) {
 	log.TxIndex = s.txConfig.TxIndex
 	log.Index = s.txConfig.LogIndex + uint(len(s.logs))
 	s.logs = append(s.logs, log)
-
-	if s.tracingHooks != nil && s.tracingHooks.OnLog != nil {
-		s.tracingHooks.OnLog(log)
-	}
+	s.traceLog(log)
 }
 
 // Logs returns the logs of current transaction.
@@ -364,9 +350,9 @@ func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 		prev:        stateObject.selfDestructed,
 		prevbalance: prev,
 	})
-	if s.tracingHooks != nil && s.tracingHooks.OnBalanceChange != nil && prev.Sign() > 0 {
-		s.tracingHooks.OnBalanceChange(addr, prev.ToBig(), n.ToBig(), tracing.BalanceDecreaseSelfdestruct)
-	}
+	prevCode := append([]byte(nil), stateObject.Code()...)
+	s.traceBalanceChange(addr, prev, n, tracing.BalanceDecreaseSelfdestruct)
+	s.traceSelfDestructCodeChange(addr, prevCode)
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
 	return *prev
@@ -645,22 +631,24 @@ func (s *StateDB) setStateObject(object *stateObject) {
  */
 
 // AddBalance adds amount to the account associated with addr.
-func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) uint256.Int {
+func (s *StateDB) AddBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.AddBalance(amount)
+		s.traceBalanceChange(addr, prev, stateObject.Balance(), reason)
 		return *prev
 	}
 	return *uint256.NewInt(0)
 }
 
 // SubBalance subtracts amount from the account associated with addr.
-func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, _ tracing.BalanceChangeReason) uint256.Int {
+func (s *StateDB) SubBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		prev := new(uint256.Int).Set(stateObject.Balance())
 		stateObject.SubBalance(amount)
+		s.traceBalanceChange(addr, prev, stateObject.Balance(), reason)
 		return *prev
 	}
 	return *uint256.NewInt(0)
@@ -716,19 +704,23 @@ func (s *StateDB) RegisterCachedCtxCheckpoint(addr common.Address, cachedCtxChec
 }
 
 // SetNonce sets the nonce of account.
-func (s *StateDB) SetNonce(addr common.Address, nonce uint64, _ tracing.NonceChangeReason) {
+func (s *StateDB) SetNonce(addr common.Address, nonce uint64, reason tracing.NonceChangeReason) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
+		prev := stateObject.Nonce()
 		stateObject.SetNonce(nonce)
+		s.traceNonceChange(addr, prev, nonce, reason)
 	}
 }
 
 // SetCode sets the code of account.
-func (s *StateDB) SetCode(addr common.Address, code []byte, _ tracing.CodeChangeReason) []byte {
+func (s *StateDB) SetCode(addr common.Address, code []byte, reason tracing.CodeChangeReason) []byte {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		prev := append([]byte(nil), stateObject.Code()...)
-		stateObject.SetCode(crypto.Keccak256Hash(code), code)
+		codeHash := crypto.Keccak256Hash(code)
+		stateObject.SetCode(codeHash, code)
+		s.traceCodeChange(addr, prev, code, codeHash, reason)
 		return prev
 	}
 	return nil
@@ -740,6 +732,7 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) common.H
 	if stateObject != nil {
 		prev := stateObject.GetState(key)
 		stateObject.SetState(key, value)
+		s.traceStorageChange(addr, key, prev, value)
 		return prev
 	}
 	return common.Hash{}

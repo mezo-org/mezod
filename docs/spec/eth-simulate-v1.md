@@ -81,10 +81,7 @@ spec-conformant flip surfaces loudly.
    queue. Overrides for `BlockOverrides.BeaconRoot` (EIP-4788),
    `BlockOverrides.Withdrawals` (EIP-4895), and the blob gas fields
    `BlobBaseFee` (EIP-4844) are rejected at parse time as
-   `-32602 invalid params`. EIP-2935 (parent-hash storage contract) and
-   EIP-7685 (general EL requests) are Prague-era surfaces that this Cancun-
-   era build does not yet support; their post-upgrade status is tracked in
-   [`.claude/MEZO-4336-eth-simulate-v1-geth116/plan.md`](../../.claude/MEZO-4336-eth-simulate-v1-geth116/plan.md).
+   `-32602 invalid params`.
 2. **Custom mezo precompiles immovable.** `MovePrecompileTo` works for the
    standard precompiles at `0x01..0x0a`, but is rejected for any of the
    mezo custom precompiles enumerated in `x/evm/types/precompile.go`

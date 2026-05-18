@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/holiman/uint256"
 
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -71,7 +72,7 @@ func (b *simGasBudget) consume(amount uint64) error {
 // via the plain error channel.
 //
 // Design mirrors go-ethereum's internal/ethapi/simulate.go::sanitizeChain
-// (v1.15.4 source). Divergences: we never propagate a nil slice input
+// (v1.16.9 source). Divergences: we never propagate a nil slice input
 // (caller has already enforced len > 0 at the RPC boundary), and the
 // span check against types.MaxSimulateBlocks is performed BEFORE gap-fill
 // allocation so a pathological `[{Number: base+1}, {Number:
@@ -490,8 +491,8 @@ func (k *Keeper) processSimBlock(
 		tt = newSimTracer(opts.TraceTransfers, header.Number.Uint64(), common.Hash{})
 		hooks := tt.Hooks()
 		perCallTracer = &tracers.Tracer{Hooks: hooks}
-		sdb.SetTracingHooks(hooks)
-		defer sdb.SetTracingHooks(nil)
+		removeTracingHooks := sdb.AddTracingHooks(hooks)
+		defer removeTracingHooks()
 	}
 
 	calls := make([]types.SimCallResult, 0, len(block.Calls))
@@ -557,9 +558,9 @@ func (k *Keeper) processSimBlock(
 		// `(*state.StateDB).SetTxContext(thash, ti)` — it only updates
 		// the StateDB's per-call TxHash / TxIndex while leaving the
 		// pre-set BlockHash and LogIndex alone.
-		// DynamicFeeTxType matches go-ethereum v1.16's eth_simulateV1
-		// driver (`internal/ethapi/simulate.go`), so when Mezo upgrades
-		// off v1.14 the wire-shape of the response stays stable.
+		// DynamicFeeTxType matches the default chosen by go-ethereum's
+		// eth_simulateV1 driver (`internal/ethapi/simulate.go`),
+		// keeping the wire shape aligned with upstream.
 		simTx := buildSimTx(&args, cfg.ChainConfig.ChainID, ethtypes.DynamicFeeTxType)
 		callTxHash := simTx.Hash()
 		callIdx := len(txs)
@@ -846,17 +847,20 @@ func sameForks(a, b params.Rules) bool {
 // lets the driver pass the same value into NewBlock to derive
 // transactionsRoot and into the Senders map without rebuilding it.
 //
-// The envelope shape mirrors go-ethereum v1.16's
-// `internal/ethapi.TransactionArgs.ToTransaction(defaultType)` so that
-// Mezo's wire shape stays consistent across the pinned v1.14 baseline
-// and the v1.16 upgrade target. The selection rule, in order:
+// The envelope shape mirrors go-ethereum's
+// `internal/ethapi.TransactionArgs.ToTransaction(defaultType)`
+// (v1.16.9 source), keeping Mezo's wire shape aligned with upstream.
+// The selection rule, in order:
 //
-//  1. `MaxFeePerGas` set, or `defaultType == DynamicFeeTxType` →
+//  1. `AuthorizationList` set, or `defaultType == SetCodeTxType` →
+//     SetCodeTx (EIP-7702). The auth-list arm must lead so an explicit
+//     authorizationList wins over a default-type request.
+//  2. `MaxFeePerGas` set, or `defaultType == DynamicFeeTxType` →
 //     DynamicFeeTx (accessList is nested if provided).
-//  2. `AccessList` set, or `defaultType == AccessListTxType` →
+//  3. `AccessList` set, or `defaultType == AccessListTxType` →
 //     AccessListTx.
-//  3. Otherwise LegacyTx.
-//  4. As a final override, if the caller provided `gasPrice`, force
+//  4. Otherwise LegacyTx.
+//  5. As a final override, if the caller provided `gasPrice`, force
 //     LegacyTx — geth uses this to fall back to a legacy envelope
 //     whenever the legacy fee field is present, even when defaultType
 //     would otherwise pick a typed one.
@@ -865,13 +869,17 @@ func sameForks(a, b params.Rules) bool {
 // distinct per request — sufficient for the assembled block's
 // per-call identifiers, transactionsRoot, and the typed JSON-RPC
 // representation returned to the caller. Mezo rejects blob (type 3)
-// and set-code (type 4) txs upstream, so this switch covers types 0/1/2
-// only.
+// txs upstream, so this switch covers types 0/1/2/4 only.
 //
-// chainID flows in from the chain config so type-1/2 hashes match the
+// chainID flows in from the chain config so type-1/2/4 hashes match the
 // network the simulator runs against. args.Nonce and args.Gas are
 // expected to be resolved by the caller before this function runs;
 // other args are tolerant of nil pointers (treated as zero).
+//
+// SetCodeTx forbids contract creation. That invariant is enforced at
+// the `args.ToMessage` boundary (one layer up the simulate call stack),
+// so by the time control reaches this function args.To is guaranteed
+// non-nil whenever the auth-list arm fires.
 func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8) *ethtypes.Transaction {
 	nonce := uint64(0)
 	if args.Nonce != nil {
@@ -886,6 +894,8 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 
 	usedType := uint8(ethtypes.LegacyTxType)
 	switch {
+	case args.AuthorizationList != nil || defaultType == ethtypes.SetCodeTxType:
+		usedType = ethtypes.SetCodeTxType
 	case args.MaxFeePerGas != nil || defaultType == ethtypes.DynamicFeeTxType:
 		usedType = ethtypes.DynamicFeeTxType
 	case args.AccessList != nil || defaultType == ethtypes.AccessListTxType:
@@ -896,6 +906,27 @@ func buildSimTx(args *types.TransactionArgs, chainID *big.Int, defaultType uint8
 	}
 
 	switch usedType {
+	case ethtypes.SetCodeTxType:
+		al := ethtypes.AccessList{}
+		if args.AccessList != nil {
+			al = *args.AccessList
+		}
+		authList := []ethtypes.SetCodeAuthorization{}
+		if args.AuthorizationList != nil {
+			authList = args.AuthorizationList
+		}
+		return ethtypes.NewTx(&ethtypes.SetCodeTx{
+			ChainID:    uint256.MustFromBig(chainID),
+			Nonce:      nonce,
+			GasTipCap:  uint256.MustFromBig(bigOrZero(args.MaxPriorityFeePerGas)),
+			GasFeeCap:  uint256.MustFromBig(bigOrZero(args.MaxFeePerGas)),
+			Gas:        gas,
+			To:         *args.To,
+			Value:      uint256.MustFromBig(value),
+			Data:       data,
+			AccessList: al,
+			AuthList:   authList,
+		})
 	case ethtypes.DynamicFeeTxType:
 		al := ethtypes.AccessList{}
 		if args.AccessList != nil {
