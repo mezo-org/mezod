@@ -226,6 +226,9 @@ func (s *StateDB) traceCodeChange(
 	codeHash common.Hash,
 	reason tracing.CodeChangeReason,
 ) {
+	if len(s.tracingHooks) == 0 {
+		return
+	}
 	prevHash := crypto.Keccak256Hash(prev)
 	if prevHash == codeHash {
 		return
