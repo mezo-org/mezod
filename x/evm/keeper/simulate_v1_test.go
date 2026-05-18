@@ -679,7 +679,7 @@ func TestValidateSimCall_FloorDataGas_BelowFloorFails_38013(t *testing.T) {
 	msg := f.baselineMsg()
 	msg.Data = data
 	msg.GasLimit = floor - 1 // > intrinsic, < floor
-	require.Greater(t, msg.GasLimit, uint64(intrinsic))
+	require.Greater(t, msg.GasLimit, intrinsic)
 
 	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, rules, f.cfg)
 	require.NotNil(t, simErr)
