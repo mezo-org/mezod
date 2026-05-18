@@ -835,6 +835,66 @@ func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_PrePrague() {
 	suite.Require().Equal(expectedIntrinsic, rsp.Gas)
 }
 
+// TestEstimateGas_FloorDataGas_CallerSubFloorAllowance pins behavior when
+// the caller supplies args.Gas at or below the EIP-7623 floor. The
+// floor-1-pre-seed guard in EstimateGasInternal skips itself when
+// args.Gas < floor (so hi <= floor-1), leaving the BinSearch to consume
+// the search range against ErrFloorDataGas probes and the final-allowance
+// check to surface the "gas required exceeds allowance" error. The floor
+// case must succeed and return at most floor.
+func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_CallerSubFloorAllowance() {
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := ethparams.TxGas +
+		uint64(len(data))*ethparams.TxCostFloorPerToken //nolint:gosec
+
+	testCases := []struct {
+		name    string
+		argsGas uint64
+		wantErr string // empty string means success
+	}{
+		{
+			name:    "args.Gas = floor-1 rejected as exceeds allowance",
+			argsGas: floor - 1,
+			wantErr: fmt.Sprintf("gas required exceeds allowance (%d)", floor-1),
+		},
+		{
+			name:    "args.Gas = floor accepted",
+			argsGas: floor,
+			wantErr: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+
+			gas := hexutil.Uint64(tc.argsGas)
+			argsJSON, err := json.Marshal(types.TransactionArgs{
+				To:   &target,
+				From: &suite.address,
+				Data: (*hexutil.Bytes)(&data),
+				Gas:  &gas,
+			})
+			suite.Require().NoError(err)
+
+			rsp, err := suite.queryClient.EstimateGas(suite.ctx, &types.EthCallRequest{
+				Args:            argsJSON,
+				GasCap:          25_000_000,
+				ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+			})
+			if tc.wantErr != "" {
+				suite.Require().Error(err)
+				suite.Require().Contains(err.Error(), tc.wantErr)
+			} else {
+				suite.Require().NoError(err)
+				suite.Require().LessOrEqual(rsp.Gas, floor)
+				suite.Require().Equal(floor, rsp.Gas)
+			}
+		})
+	}
+}
+
 func (suite *KeeperTestSuite) TestTraceTx() {
 	// TODO deploy contract that triggers internal transactions
 	var (
