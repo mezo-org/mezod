@@ -83,7 +83,7 @@ func VerifyFee(
 	txData types.TxData,
 	denom string,
 	baseFee *big.Int,
-	homestead, istanbul, isShanghai, isCheckTx bool,
+	homestead, istanbul, isShanghai, isPrague, isCheckTx bool,
 ) (sdk.Coins, error) {
 	isContractCreation := txData.GetTo() == nil
 
@@ -109,6 +109,22 @@ func VerifyFee(
 			errortypes.ErrOutOfGas,
 			"gas limit too low: %d (gas limit) < %d (intrinsic gas)", gasLimit, intrinsicGas,
 		)
+	}
+
+	// EIP-7623 calldata gas floor verification during CheckTx. Consensus
+	// enforcement still happens at apply-time via applyMessageWithConfig;
+	// this only fences the mempool, mirroring the intrinsic-gas check.
+	if isPrague {
+		floorDataGas, err := core.FloorDataGas(txData.GetData())
+		if err != nil {
+			return nil, errorsmod.Wrap(err, "failed to retrieve floor data gas")
+		}
+		if isCheckTx && gasLimit < floorDataGas {
+			return nil, errorsmod.Wrapf(
+				errortypes.ErrOutOfGas,
+				"gas limit below EIP-7623 floor: %d (gas limit) < %d (floor data gas)", gasLimit, floorDataGas,
+			)
+		}
 	}
 
 	if baseFee != nil && txData.GetGasFeeCap().Cmp(baseFee) < 0 {

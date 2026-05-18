@@ -1,6 +1,7 @@
 package keeper_test
 
 import (
+	"bytes"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
@@ -509,7 +510,7 @@ func (suite *KeeperTestSuite) TestVerifyFeeAndDeductTxCostsFromUserBalance() {
 			baseFee := suite.app.EvmKeeper.GetBaseFee(suite.ctx, ethCfg)
 			priority := evmtypes.GetTxPriority(txData, baseFee)
 
-			fees, err := keeper.VerifyFee(txData, evmtypes.DefaultEVMDenom, baseFee, false, false, false, suite.ctx.IsCheckTx())
+			fees, err := keeper.VerifyFee(txData, evmtypes.DefaultEVMDenom, baseFee, false, false, false, false, suite.ctx.IsCheckTx())
 			if tc.expectPassVerify {
 				suite.Require().NoError(err, "valid test %d failed - '%s'", i, tc.name)
 				if tc.enableFeemarket {
@@ -616,11 +617,99 @@ func (suite *KeeperTestSuite) TestVerifyFeeSetCodeAuthList() {
 			// Non-nil baseFee so EffectiveFee — reached only on the
 			// accept paths after the intrinsic-gas check passes — does
 			// not nil-deref inside EffectiveGasPrice.
-			_, err = keeper.VerifyFee(txData, evmtypes.DefaultEVMDenom, big.NewInt(0), false, false, false, suite.ctx.IsCheckTx())
+			_, err = keeper.VerifyFee(txData, evmtypes.DefaultEVMDenom, big.NewInt(0), false, false, false, false, suite.ctx.IsCheckTx())
 			if tc.wantErr {
 				suite.Require().Error(err, "must reject when gas limit < intrinsic gas")
 			} else {
 				suite.Require().NoError(err, "must accept when gas limit >= intrinsic gas")
+			}
+		})
+	}
+}
+
+// TestVerifyFeeFloorDataGas pins the EIP-7623 floor admission gate.
+// Heavy zero-byte calldata sits in the gap where intrinsic gas alone
+// is well below the floor, so the floor check is the only rejection
+// path for the under-floor cases.
+func (suite *KeeperTestSuite) TestVerifyFeeFloorDataGas() {
+	const dataLen = 4096
+	data := bytes.Repeat([]byte{0}, dataLen)
+	intrinsic := ethparams.TxGas + dataLen*ethparams.TxDataZeroGas
+	floor := ethparams.TxGas + dataLen*ethparams.TxCostFloorPerToken
+
+	testCases := []struct {
+		name      string
+		gas       uint64
+		isPrague  bool
+		isCheckTx bool
+		wantErr   bool
+	}{
+		{
+			name:      "pre-Prague: gasLimit = intrinsic accepted",
+			gas:       intrinsic,
+			isPrague:  false,
+			isCheckTx: true,
+			wantErr:   false,
+		},
+		{
+			name:      "Prague CheckTx: gasLimit = intrinsic (< floor) rejected",
+			gas:       intrinsic,
+			isPrague:  true,
+			isCheckTx: true,
+			wantErr:   true,
+		},
+		{
+			name:      "Prague CheckTx: gasLimit = floor accepted",
+			gas:       floor,
+			isPrague:  true,
+			isCheckTx: true,
+			wantErr:   false,
+		},
+		{
+			name:      "Prague CheckTx: gasLimit = floor-1 rejected",
+			gas:       floor - 1,
+			isPrague:  true,
+			isCheckTx: true,
+			wantErr:   true,
+		},
+		{
+			name:      "Prague DeliverTx: gasLimit < floor accepted (deferred to apply-message)",
+			gas:       intrinsic,
+			isPrague:  true,
+			isCheckTx: false,
+			wantErr:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+			tx := ethtypes.NewTx(&ethtypes.DynamicFeeTx{
+				Nonce:     1,
+				GasTipCap: big.NewInt(1),
+				GasFeeCap: big.NewInt(1),
+				Gas:       tc.gas,
+				To:        &common.Address{},
+				Value:     big.NewInt(0),
+				Data:      data,
+			})
+			txData, err := evmtypes.NewDynamicFeeTx(tx)
+			suite.Require().NoError(err)
+
+			// Non-zero baseFee would fail the later gasFeeCap < baseFee
+			// check on the accept paths; mirror TestVerifyFeeSetCodeAuthList.
+			_, err = keeper.VerifyFee(
+				txData,
+				evmtypes.DefaultEVMDenom,
+				big.NewInt(0),
+				false, false, false,
+				tc.isPrague,
+				tc.isCheckTx,
+			)
+			if tc.wantErr {
+				suite.Require().Error(err)
+			} else {
+				suite.Require().NoError(err)
 			}
 		})
 	}
