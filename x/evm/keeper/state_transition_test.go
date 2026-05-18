@@ -1209,11 +1209,13 @@ func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_RefundCappedByFloor(
 	floor := floorDataGasOf(data) // 21000 + 1000*10 = 31000
 
 	// GasLimit chosen so minimumGasUsed (= 0.5 * GasLimit) stays below floor,
-	// isolating the floor clamp as the dominant rule.
+	// isolating the floor clamp as the dominant rule. Post-refund
+	// temporaryGasUsed lands at ~25_200 < floor (31_000), so the clamp
+	// must lift gasUsed up to floor exactly.
 	gasLimit := uint64(50_000)
 	res, err := suite.applyMsg(contract, big.NewInt(0), gasLimit, data)
 	suite.Require().NoError(err)
-	suite.Require().GreaterOrEqual(res.GasUsed, floor)
+	suite.Require().Equal(floor, res.GasUsed)
 }
 
 // Runtime of a minimal value-forwarder: CALLs calldata[0:32] (the
