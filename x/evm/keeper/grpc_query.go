@@ -414,9 +414,8 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		return len(rsp.VmError) > 0, rsp, nil
 	}
 
-	// Pre-seed lo above the EIP-7623 floor so BinSearch doesn't waste
-	// iterations climbing from TxGas toward the floor on calldata-heavy
-	// txs. Pre-Prague the helper returns 0 and this is a no-op. The
+	// Pre-seed lo above the EIP-7623 floor so BinSearch skips the
+	// iterations between TxGas and the floor on calldata-heavy txs. The
 	// `floor-1 < hi` guard handles the caller-supplied `args.Gas < floor`
 	// edge case: without it, `lo` could land at `floor-1 >= hi`, BinSearch
 	// would exit immediately and return an unverified `hi`. With the

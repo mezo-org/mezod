@@ -811,11 +811,8 @@ func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_HeavyCalldata() {
 func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_PrePrague() {
 	suite.SetupTest()
 
-	// Push PragueTime into the far future so IsPrague is false.
-	p := suite.app.EvmKeeper.GetParams(suite.ctx)
 	farFuture := sdkmath.NewInt(math.MaxInt64)
-	p.ChainConfig.PragueTime = &farFuture
-	suite.Require().NoError(suite.app.EvmKeeper.SetParams(suite.ctx, p))
+	suite.setPragueTime(&farFuture)
 
 	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
 	data := bytes.Repeat([]byte{0}, 4096)

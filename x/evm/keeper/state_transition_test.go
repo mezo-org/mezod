@@ -1089,8 +1089,7 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfigInvalidSupply() {
 	suite.Require().ErrorIs(err, types.ErrInvalidSupply)
 }
 
-// floorDataGasOf computes the EIP-7623 floor for the given calldata
-// using the same formula as core.FloorDataGas.
+// floorDataGasOf computes the EIP-7623 floor for the given calldata.
 func floorDataGasOf(data []byte) uint64 {
 	var zeros, nonZeros uint64
 	for _, b := range data {
@@ -1101,49 +1100,6 @@ func floorDataGasOf(data []byte) uint64 {
 		}
 	}
 	return params.TxGas + (zeros+nonZeros*params.TxTokenPerNonZeroByte)*params.TxCostFloorPerToken
-}
-
-// applyHeavyCalldataMsg runs a message through ApplyMessageWithConfig
-// with custom gasLimit, data, and target. Skip flags + zero gas pricing
-// follow applyValueMsg.
-func (suite *KeeperTestSuite) applyHeavyCalldataMsg(
-	to common.Address,
-	gasLimit uint64,
-	data []byte,
-) (*types.MsgEthereumTxResponse, error) {
-	suite.T().Helper()
-
-	chainID := suite.app.EvmKeeper.ChainID()
-	proposer := suite.ctx.BlockHeader().ProposerAddress
-	cfg, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposer, chainID)
-	suite.Require().NoError(err)
-
-	toAddr := to
-	msg := core.Message{
-		From:                  suite.address,
-		To:                    &toAddr,
-		Nonce:                 suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
-		Value:                 big.NewInt(0),
-		GasLimit:              gasLimit,
-		GasPrice:              big.NewInt(0),
-		GasFeeCap:             big.NewInt(0),
-		GasTipCap:             big.NewInt(0),
-		Data:                  data,
-		AccessList:            ethtypes.AccessList{},
-		SkipNonceChecks:       true,
-		SkipTransactionChecks: true,
-	}
-
-	txCfg := suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{})
-	res, _, err := suite.app.EvmKeeper.ApplyMessageWithConfig(
-		suite.ctx,
-		keeper.WrapMessage(msg),
-		nil,
-		true,
-		cfg,
-		txCfg,
-	)
-	return res, err
 }
 
 // setPragueTime swaps the active chain config's PragueTime in-place.
@@ -1163,7 +1119,7 @@ func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PreExecutionRejectio
 	data := bytes.Repeat([]byte{0}, 4096)
 	floor := floorDataGasOf(data)
 
-	_, err := suite.applyHeavyCalldataMsg(target, floor-1, data)
+	_, err := suite.applyMsg(target, big.NewInt(0), floor-1, data)
 	suite.Require().Error(err)
 	suite.Require().True(
 		errors.Is(err, core.ErrFloorDataGas),
@@ -1182,7 +1138,7 @@ func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PostExecutionFloor()
 	// GasLimit chosen so minimumGasUsed (= 0.5 * GasLimit) stays below floor,
 	// making the floor the dominant clamp.
 	gasLimit := floor + 50_000
-	res, err := suite.applyHeavyCalldataMsg(target, gasLimit, data)
+	res, err := suite.applyMsg(target, big.NewInt(0), gasLimit, data)
 	suite.Require().NoError(err)
 	suite.Require().GreaterOrEqual(res.GasUsed, floor)
 	suite.Require().Equal(floor, res.GasUsed)
@@ -1200,7 +1156,7 @@ func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PreservedPrePrague()
 	floor := floorDataGasOf(data)
 
 	gasLimit := floor + 50_000
-	res, err := suite.applyHeavyCalldataMsg(target, gasLimit, data)
+	res, err := suite.applyMsg(target, big.NewInt(0), gasLimit, data)
 	suite.Require().NoError(err)
 	// Pre-Prague: floor must NOT apply. GasUsed is max(minimumGasUsed,
 	// intrinsic+execution). For an EOA target with heavy zero calldata,
@@ -1217,7 +1173,7 @@ func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_ComposesWithMinGasMu
 		suite.SetupTest()
 		// GasLimit large enough so minimumGasUsed = 0.5 * gasLimit > floor.
 		gasLimit := floor * 4
-		res, err := suite.applyHeavyCalldataMsg(target, gasLimit, data)
+		res, err := suite.applyMsg(target, big.NewInt(0), gasLimit, data)
 		suite.Require().NoError(err)
 		suite.Require().Equal(gasLimit/2, res.GasUsed)
 		suite.Require().Greater(res.GasUsed, floor)
@@ -1227,7 +1183,7 @@ func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_ComposesWithMinGasMu
 		suite.SetupTest()
 		// GasLimit just above floor so minimumGasUsed = 0.5 * gasLimit < floor.
 		gasLimit := floor + 1000
-		res, err := suite.applyHeavyCalldataMsg(target, gasLimit, data)
+		res, err := suite.applyMsg(target, big.NewInt(0), gasLimit, data)
 		suite.Require().NoError(err)
 		suite.Require().Equal(floor, res.GasUsed)
 	})
@@ -1255,7 +1211,7 @@ func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_RefundCappedByFloor(
 	// GasLimit chosen so minimumGasUsed (= 0.5 * GasLimit) stays below floor,
 	// isolating the floor clamp as the dominant rule.
 	gasLimit := uint64(50_000)
-	res, err := suite.applyHeavyCalldataMsg(contract, gasLimit, data)
+	res, err := suite.applyMsg(contract, big.NewInt(0), gasLimit, data)
 	suite.Require().NoError(err)
 	suite.Require().GreaterOrEqual(res.GasUsed, floor)
 }
@@ -1294,13 +1250,16 @@ func recipientGuardBlockedAddr() common.Address {
 	)
 }
 
-// applyValueMsg runs a value-bearing message through ApplyMessageWithConfig
-// with the usual test-side skip flags and zero gas pricing.
-func (suite *KeeperTestSuite) applyValueMsg(
+// applyMsg runs a message through ApplyMessageWithConfig with the
+// usual test-side skip flags and zero gas pricing, returning the raw
+// response/error pair. Tests that expect success should prefer
+// applyValueMsg, which asserts err == nil internally.
+func (suite *KeeperTestSuite) applyMsg(
 	to common.Address,
 	value *big.Int,
+	gasLimit uint64,
 	data []byte,
-) *types.MsgEthereumTxResponse {
+) (*types.MsgEthereumTxResponse, error) {
 	suite.T().Helper()
 
 	chainID := suite.app.EvmKeeper.ChainID()
@@ -1314,7 +1273,7 @@ func (suite *KeeperTestSuite) applyValueMsg(
 		To:                    &toAddr,
 		Nonce:                 suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
 		Value:                 value,
-		GasLimit:              200_000,
+		GasLimit:              gasLimit,
 		GasPrice:              big.NewInt(0),
 		GasFeeCap:             big.NewInt(0),
 		GasTipCap:             big.NewInt(0),
@@ -1333,6 +1292,18 @@ func (suite *KeeperTestSuite) applyValueMsg(
 		cfg,
 		txCfg,
 	)
+	return res, err
+}
+
+// applyValueMsg is the success-only convenience for the RecipientGuard
+// suite: 200k gasLimit, zero gas price, value-bearing.
+func (suite *KeeperTestSuite) applyValueMsg(
+	to common.Address,
+	value *big.Int,
+	data []byte,
+) *types.MsgEthereumTxResponse {
+	suite.T().Helper()
+	res, err := suite.applyMsg(to, value, 200_000, data)
 	suite.Require().NoError(err)
 	return res
 }
