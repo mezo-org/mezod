@@ -27,32 +27,40 @@ func CreateUpgradeHandler(
 
 		sdkCtx.Logger().Info("running v11.0.0 upgrade handler")
 
-		if err := setPragueTime(sdkCtx, keepers.EvmKeeper); err != nil {
-			return nil, fmt.Errorf("failed to set Prague time: %w", err)
+		if err := setPragueAndOsakaTimes(sdkCtx, keepers.EvmKeeper); err != nil {
+			return nil, fmt.Errorf("failed to set Prague/Osaka times: %w", err)
 		}
 
 		return mm.RunMigrations(ctx, configurator, fromVM)
 	}
 }
 
-func setPragueTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
+// setPragueAndOsakaTimes activates the Prague and Osaka EVM forks at the
+// upgrade block's timestamp. Both are flipped in the same handler because
+// Mezo skipped the Cancun→Prague rollout and collapses Pectra and Fusaka
+// into a single chain halt.
+func setPragueAndOsakaTimes(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
 	params := evmKeeper.GetParams(ctx)
 
 	ctx.Logger().Info(
-		"begin Prague time update",
+		"begin Prague/Osaka time update",
 		"pragueTime", params.ChainConfig.PragueTime,
+		"osakaTime", params.ChainConfig.OsakaTime,
 	)
 
-	pragueTime := sdkmath.NewIntFromUint64(uint64(ctx.BlockTime().Unix())) //nolint:gosec
-	params.ChainConfig.PragueTime = &pragueTime
+	forkTime := sdkmath.NewIntFromUint64(uint64(ctx.BlockTime().Unix())) //nolint:gosec
+	params.ChainConfig.PragueTime = &forkTime
+	params.ChainConfig.OsakaTime = &forkTime
 
 	if err := evmKeeper.SetParams(ctx, params); err != nil {
 		return err
 	}
 
+	updated := evmKeeper.GetParams(ctx).ChainConfig
 	ctx.Logger().Info(
-		"Prague time updated",
-		"pragueTime", evmKeeper.GetParams(ctx).ChainConfig.PragueTime,
+		"Prague/Osaka times updated",
+		"pragueTime", updated.PragueTime,
+		"osakaTime", updated.OsakaTime,
 	)
 
 	return nil
