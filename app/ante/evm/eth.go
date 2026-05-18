@@ -169,6 +169,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 	homestead := ethCfg.IsHomestead(blockHeight)
 	istanbul := ethCfg.IsIstanbul(blockHeight)
 	isShanghai := ethCfg.IsShanghai(blockHeight, uint64(ctx.BlockTime().Unix())) //nolint:gosec
+	isPrague := ethCfg.IsPrague(blockHeight, uint64(ctx.BlockTime().Unix()))     //nolint:gosec
 	var events sdk.Events
 
 	// Use the lowest priority of all the messages as the final one.
@@ -197,7 +198,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 			gasWanted += txData.GetGas()
 		}
 
-		fees, err := keeper.VerifyFee(txData, evmDenom, baseFee, homestead, istanbul, isShanghai, ctx.IsCheckTx())
+		fees, err := keeper.VerifyFee(txData, evmDenom, baseFee, homestead, istanbul, isShanghai, isPrague, ctx.IsCheckTx())
 		if err != nil {
 			return ctx, errorsmod.Wrapf(err, "failed to verify the fees")
 		}

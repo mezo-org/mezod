@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"bytes"
 	"errors"
 	"math"
 	"math/big"
@@ -657,6 +658,68 @@ func TestValidateSimCall_IntrinsicGas_OneBelowFails_38013(t *testing.T) {
 	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg)
 	require.NotNil(t, simErr)
 	require.Equal(t, types.SimErrCodeIntrinsicGas, simErr.ErrorCode())
+}
+
+// TestValidateSimCall_FloorDataGas_BelowFloorFails_38013 pins the EIP-7623
+// floor branch: heavy zero-byte calldata makes the intrinsic check
+// trivially pass, so any rejection must come from the floor branch.
+func TestValidateSimCall_FloorDataGas_BelowFloorFails_38013(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	pragueTime := uint64(0)
+	f.cfg.PragueTime = &pragueTime
+	// f.header.Time = 1 in the fixture, so Prague is now active.
+	rules := f.cfg.Rules(f.header.Number, true, f.header.Time)
+	require.True(t, rules.IsPrague, "fixture must activate Prague for the floor gate")
+
+	const dataLen = 4096
+	data := bytes.Repeat([]byte{0}, dataLen)
+	intrinsic := params.TxGas + dataLen*params.TxDataZeroGas
+	floor := params.TxGas + dataLen*params.TxCostFloorPerToken
+
+	msg := f.baselineMsg()
+	msg.Data = data
+	msg.GasLimit = floor - 1 // > intrinsic, < floor
+	require.Greater(t, msg.GasLimit, intrinsic)
+
+	simErr := f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, rules, f.cfg)
+	require.NotNil(t, simErr)
+	require.Equal(t, types.SimErrCodeIntrinsicGas, simErr.ErrorCode())
+}
+
+// TestValidateSimCall_FloorDataGas_BoundaryEqual: gasLimit == floor passes.
+func TestValidateSimCall_FloorDataGas_BoundaryEqual(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	pragueTime := uint64(0)
+	f.cfg.PragueTime = &pragueTime
+	rules := f.cfg.Rules(f.header.Number, true, f.header.Time)
+	require.True(t, rules.IsPrague)
+
+	const dataLen = 4096
+	data := bytes.Repeat([]byte{0}, dataLen)
+	floor := params.TxGas + dataLen*params.TxCostFloorPerToken
+
+	msg := f.baselineMsg()
+	msg.Data = data
+	msg.GasLimit = floor
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, rules, f.cfg))
+}
+
+// TestValidateSimCall_FloorDataGas_PrePrague_NoCheck: the floor gate must
+// not fire when IsPrague is false even if gasLimit < floor.
+func TestValidateSimCall_FloorDataGas_PrePrague_NoCheck(t *testing.T) {
+	f := newValidateSimCallFixture(t)
+	// Default fixture leaves PragueTime unset -> IsPrague=false.
+	require.False(t, f.rules.IsPrague)
+
+	const dataLen = 4096
+	data := bytes.Repeat([]byte{0}, dataLen)
+	intrinsic := params.TxGas + dataLen*params.TxDataZeroGas
+
+	msg := f.baselineMsg()
+	msg.Data = data
+	// Sit between intrinsic and floor: would fail floor, must pass without it.
+	msg.GasLimit = intrinsic
+	require.Nil(t, f.k.validateSimCall(f.ctx, f.sdb, msg, f.header, f.rules, f.cfg))
 }
 
 func TestValidateSimCall_FeeCap_BoundaryEqual(t *testing.T) {

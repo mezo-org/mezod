@@ -586,7 +586,7 @@ func (k *Keeper) applyMessageWithConfig(
 			// leftoverGas during function execution represents the gas at the end of the transaction.
 
 			// TODO: we can trace this more granularly by providing the specific reason for entire
-			// transaction: intrinsic, call, create, and refund
+			// transaction: intrinsic, call, create, refund, and EIP-7623 data floor
 			t.OnGasChange(startLeftoverGas, leftoverGas, tracing.GasChangeUnspecified)
 		}()
 	}
@@ -601,10 +601,20 @@ func (k *Keeper) applyMessageWithConfig(
 		return nil, nil, errorsmod.Wrap(err, "intrinsic gas failed")
 	}
 
+	// EIP-7623 floor. Pre-Prague the helper returns (0, nil), so the
+	// downstream checks are no-ops without an explicit fork gate.
+	floorDataGas, err := k.GetEthFloorDataGas(ctx, msg, cfg.ChainConfig)
+	if err != nil {
+		return nil, nil, errorsmod.Wrap(err, "floor data gas failed")
+	}
+
 	// Should check again even if it is checked on Ante Handler, because eth_call don't go through Ante Handler.
 	if leftoverGas < intrinsicGas {
 		// eth_estimateGas will check for this exact error
 		return nil, nil, errorsmod.Wrap(core.ErrIntrinsicGas, "apply message")
+	}
+	if msg.GasLimit < floorDataGas {
+		return nil, nil, errorsmod.Wrapf(core.ErrFloorDataGas, "apply message: have %d, want %d", msg.GasLimit, floorDataGas)
 	}
 	leftoverGas -= intrinsicGas
 
@@ -715,6 +725,20 @@ func (k *Keeper) applyMessageWithConfig(
 				"txHash", txConfig.TxHash.Hex(),
 			)
 		}
+	}
+
+	// EIP-7623: clamp temporaryGasUsed up to the floor. The subtraction is
+	// safe because the pre-check guarantees msg.GasLimit >= floorDataGas.
+	// The subsequent LegacyMaxDec(minimumGasUsed, temporaryGasUsed) composes
+	// both floors automatically — whichever is larger wins. Pre-Prague the
+	// helper returns 0, so the comparison is inert without an explicit gate.
+	// Tracer attribution stays coarse with intrinsic / refund / call (see
+	// the deferred GasChangeUnspecified above); per-segment OnGasChange
+	// events are tracked under that TODO and emitted together when the
+	// time comes.
+	if temporaryGasUsed < floorDataGas {
+		temporaryGasUsed = floorDataGas
+		leftoverGas = msg.GasLimit - temporaryGasUsed
 	}
 
 	// calculate a minimum amount of gas to be charged to sender if GasLimit

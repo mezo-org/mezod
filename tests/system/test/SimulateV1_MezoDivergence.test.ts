@@ -44,6 +44,7 @@ import btcabi from "../../../precompile/btctoken/abi.json"
  * | insufficient-funds is per-call      | sender balance=0, validation omitted | eth_simulateV1 dispatches the value-transfer call | top-level success; per-call status=0x0; per-call error.code=-32015      |
  * | recipient guard inner CALL          | Forwarder deployed; recipient = poa  | eth_simulateV1 dispatches Forwarder.run(blocked)  | top-level success; outer call status=0x1; decoded (bool ok)=false       |
  * | recipient guard top-level send      | funded sender; validation omitted    | eth_simulateV1 dispatches {to: blocked, value:1}  | top-level success; per-call status=0x0; per-call error.code=-32015      |
+ * | EIP-7623 floor surfaces as -38013   | heavy 0-byte calldata; gas<floor     | eth_simulateV1 dispatches the heavy-calldata call | request aborts top-level with -38013; geth would return -32603          |
  */
 describe("SimulateV1_MezoDivergence", function () {
   const { deployments } = hre
@@ -67,10 +68,12 @@ describe("SimulateV1_MezoDivergence", function () {
   const ZERO_BALANCE_SENDER = "0xc100000000000000000000000000000000000001"
   const VALUE_RECIPIENT = "0xc200000000000000000000000000000000000002"
 
-  // Detached EOA used by the recipient-guard validation=false case.
-  // Kept off the dev keys so the simulate request never collides with
-  // real on-chain state. Funded via stateOverrides at request time so
-  // CanTransfer clears and only CanReceiveTransfer rejects.
+  // Detached EOA used by validation=false cases that need a sender with
+  // headroom to clear CanTransfer. Kept off the dev keys so the simulate
+  // request never collides with real on-chain state. Funded via
+  // stateOverrides at request time. Reused by:
+  //   - recipient guard top-level send (only CanReceiveTransfer must reject)
+  //   - EIP-7623 floor (rejection must come from the floor branch, not balance)
   const FUNDED_SENDER = "0xc100000000000000000000000000000000000003"
 
   // Per-call code emitted when the EVM's CanTransfer guard rejects a
@@ -606,6 +609,64 @@ describe("SimulateV1_MezoDivergence", function () {
       expect(call.status).to.equal("0x0")
       expect(call.error).to.exist
       expect(call.error.code).to.equal(SIM_VM_ERROR)
+    })
+  })
+
+  context("EIP-7623 calldata floor surfaces as top-level -38013", function () {
+    // Neither execute.yaml nor geth reserve a distinct simulate-v1 code
+    // for ErrFloorDataGas — geth's txValidationError doesn't match it,
+    // so a floor failure would fall through to -32603 (internal error).
+    // Mezod folds it into the SimErrCodeIntrinsicGas family (-38013)
+    // because it is the same gas-too-low signal. The pattern mirrors the
+    // keeper-side fixture TestValidateSimCall_FloorDataGas_BelowFloorFails_38013:
+    // dataLen=4096 zero bytes makes the intrinsic check trivially pass
+    // (21000 + 4096*4 = 37384), so any rejection must come from the
+    // floor branch (21000 + 4096*10 = 61960). gas=50000 sits between
+    // the two; validation is omitted so the rejection rides the
+    // apply-time runErr catch in processSimBlock, not validateSimCall.
+    const SIM_INTRINSIC_GAS = -38013
+    let captured: CapturedError
+
+    before(async function () {
+      const heavyCalldata = "0x" + "00".repeat(4096)
+      try {
+        await ethers.provider.send("eth_simulateV1", [
+          {
+            blockStateCalls: [
+              {
+                stateOverrides: {
+                  [FUNDED_SENDER]: {
+                    balance: ethers.toQuantity(ethers.parseEther("1")),
+                  },
+                },
+                calls: [
+                  {
+                    from: FUNDED_SENDER,
+                    to: VALUE_RECIPIENT,
+                    data: heavyCalldata,
+                    gas: "0xc350", // 50_000
+                  },
+                ],
+              },
+            ],
+            // validation omitted (defaults to false)
+          },
+          "latest",
+        ])
+        captured = { thrown: false, code: undefined, message: "" }
+      } catch (err: any) {
+        captured = {
+          thrown: true,
+          code: extractCode(err),
+          message: extractMessage(err),
+        }
+      }
+    })
+
+    it("aborts the request top-level with the intrinsic-gas family code", function () {
+      expect(captured.thrown).to.equal(true)
+      expect(captured.code).to.equal(SIM_INTRINSIC_GAS)
+      expect(captured.message.toLowerCase()).to.include("intrinsic gas too low")
     })
   })
 })

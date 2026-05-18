@@ -105,6 +105,15 @@ spec-conformant flip surfaces loudly.
    regardless of validation, surfacing the failure as per-call `status=0x0`
    with error code `-32015`. Pinned by
    `tests/system/test/SimulateV1_MezoDivergence.test.ts`.
+6. **EIP-7623 calldata floor surfaces as `-38013`.** Neither the spec
+   (`execute.yaml`) nor geth reserve a distinct simulate-v1 code for
+   `ErrFloorDataGas` — geth's `txValidationError` doesn't match it, so a
+   floor failure falls through to `-32603` (internal error). Mezod folds
+   it into the `SimErrCodeIntrinsicGas` (`-38013`) family because the
+   failure is semantically the same gas-too-low signal. The Prague-gated
+   check fires both in `validateSimCall` (`validation=true`, request-level)
+   and in `processSimBlock`'s apply-time `runErr` catch (`validation=false`).
+   Pinned by `tests/system/test/SimulateV1_MezoDivergence.test.ts`.
 
 ## Key decisions
 

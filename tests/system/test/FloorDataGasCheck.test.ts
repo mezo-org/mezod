@@ -1,0 +1,111 @@
+import { expect } from "chai"
+import hre, { ethers } from "hardhat"
+import { extractMessage } from "./helpers/rpc-error"
+
+// EIP-7623 calldata gas floor:
+//   floor = 21000 + (zeroBytes + nonZeroBytes * 4) * 10
+//
+// 4096 zero-byte calldata bytes give an intrinsic of 21000 + 4096*4 = 37384
+// and a floor of 21000 + 4096*10 = 61960 — well separated so the floor is
+// observably distinct from the intrinsic gate.
+describe("FloorDataGasCheck", function () {
+  const dataLen = 4096
+  const calldata = "0x" + "00".repeat(dataLen)
+  const floor = 21000n + BigInt(dataLen) * 10n
+  let senderSigner: any
+  let recipient: any
+
+  before(async function () {
+    const signers = await ethers.getSigners()
+    senderSigner = signers[1]
+    recipient = signers[2]
+  })
+
+  it("rejects a tx with gasLimit one below the floor", async function () {
+    let captured: any
+    try {
+      await senderSigner.sendTransaction({
+        to: recipient.address,
+        data: calldata,
+        gasLimit: floor - 1n,
+      })
+    } catch (err: any) {
+      captured = err
+    }
+    // Pin the rejection to the EIP-7623 floor branch in
+    // x/evm/keeper/fees.go::VerifyFee — anything else (insufficient
+    // funds, intrinsic gas, nonce gap) would be a different code path
+    // and must not satisfy this assertion.
+    expect(captured, "sendTransaction should have been rejected").to.exist
+    expect(extractMessage(captured).toLowerCase()).to.include(
+      "gas limit below eip-7623 floor",
+    )
+  })
+
+  it("includes a tx with gasLimit equal to the floor", async function () {
+    const tx = await senderSigner.sendTransaction({
+      to: recipient.address,
+      data: calldata,
+      gasLimit: floor,
+    })
+    const receipt = await tx.wait()
+    expect(receipt?.status).to.equal(1)
+    expect(receipt?.gasUsed).to.be.gte(floor)
+  })
+
+  it("charges exactly the floor when calling an EOA", async function () {
+    const headroom = 50_000n
+    const tx = await senderSigner.sendTransaction({
+      to: recipient.address,
+      data: calldata,
+      gasLimit: floor + headroom,
+    })
+    const receipt = await tx.wait()
+    expect(receipt?.status).to.equal(1)
+    // An EOA target executes no code; intrinsic-plus-execution gas stays
+    // below the floor, so the EIP-7623 clamp is the binding rule and
+    // gasUsed must land on the floor exactly.
+    //
+    // Mezo's MinGasMultiplier (0.5) can lift gasUsed above the floor when
+    // 0.5 * gasLimit > floor. Pick `headroom` small enough that
+    // floor + headroom < 2 * floor to keep the floor the dominant clamp.
+    expect(receipt?.gasUsed).to.equal(floor)
+  })
+
+  it("eth_estimateGas returns the intrinsic for a plain ETH transfer", async function () {
+    // Complement to the heavy-calldata case below: a value transfer
+    // with no calldata sits in the regime where the floor is inert
+    // (floor = 21000 + 0 = 21000, equal to the intrinsic). The
+    // pre-seed guard `floor-1 > lo` is `20999 > 20999`, so `lo` is
+    // not lifted and BinSearch runs the standard path. The estimate
+    // must come back as the canonical 21000 — the floor wiring in
+    // x/evm/keeper/grpc_query.go::EstimateGas must not perturb
+    // ordinary transactions.
+    const estimate = await ethers.provider.estimateGas({
+      from: senderSigner.address,
+      to: recipient.address,
+      value: 1n,
+    })
+    expect(estimate).to.equal(21000n)
+  })
+
+  it("eth_estimateGas returns the floor for heavy-calldata EOA call", async function () {
+    // Without the EIP-7623 wiring in x/evm/keeper/grpc_query.go (the
+    // floor-aware pre-seed plus treating core.ErrFloorDataGas as a
+    // "raise gas and retry" signal in the binary search), the first
+    // sub-floor probe (lo = TxGas - 1) would bail the entire
+    // estimation for any calldata-heavy transaction — the exact class
+    // EIP-7623 targets.
+    //
+    // For an EOA target the raw EVM cost (intrinsic = 21000 + 4096*4
+    // = 37384) sits below the floor (21000 + 4096*10 = 61960), so the
+    // floor is the binding lower bound and the estimate must collapse
+    // onto it exactly.
+    const estimate = await ethers.provider.estimateGas({
+      from: senderSigner.address,
+      to: recipient.address,
+      data: calldata,
+    })
+    expect(estimate).to.equal(floor)
+  })
+})

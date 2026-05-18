@@ -28,7 +28,15 @@ staking (PoA validators + delegated staking) model.
 - Single test: `go test -run TestName ./path/to/package` or `go test -run TestName -race ./x/bridge/keeper/...`.
 - System/E2E tests (Hardhat, TypeScript) live in `tests/system/`. Run via
   `./tests/system/system-tests.sh [SuiteName...]`. They require a running localnode (`make localnode-bin-start`)
-  or testnet access (`NETWORK=testnet PRIVATE_KEYS=...`).
+  or testnet access (`NETWORK=testnet PRIVATE_KEYS=...`). **When a change ships a system test, run it.** Starting
+  localnode is a few minutes of build + boot, not "too much work" — never skip the system test as a shortcut
+  or treat it as out of scope because the localnode is not already up. If a stale localnode is already
+  listening on `:26657` / `:8545`, ask before killing it (it may be the user's dev instance); otherwise run
+  `make localnode-bin-start` from the change's worktree so the rebuild picks up the diff under test. The
+  script prompts `[y/n]` on an existing `./.localnode` folder, so run it under a pty
+  (`script -q /dev/null make localnode-bin-start`) or pre-remove `./.localnode` before launching in the
+  background. Wait for JSON-RPC readiness with `curl http://127.0.0.1:8545 -d '{...eth_blockNumber...}'`
+  before invoking `./tests/system/system-tests.sh <SuiteName>`.
 
 ### Lint and format
 

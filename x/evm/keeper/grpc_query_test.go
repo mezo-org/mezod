@@ -1,9 +1,11 @@
 package keeper_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -774,6 +776,123 @@ func (suite *KeeperTestSuite) TestEstimateGas() {
 		})
 	}
 	suite.enableFeemarket = false // reset flag
+}
+
+// TestEstimateGas_FloorDataGas_HeavyCalldata is the regression test for the
+// EIP-7623 floor-aware BinSearch fix: without the floor in `executable`'s
+// non-fatal set, the binary search bails on its first sub-floor probe.
+func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_HeavyCalldata() {
+	suite.SetupTest()
+
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	expectedFloor := ethparams.TxGas +
+		uint64(len(data))*ethparams.TxCostFloorPerToken //nolint:gosec
+
+	argsJSON, err := json.Marshal(types.TransactionArgs{
+		To:   &target,
+		From: &suite.address,
+		Data: (*hexutil.Bytes)(&data),
+	})
+	suite.Require().NoError(err)
+
+	rsp, err := suite.queryClient.EstimateGas(suite.ctx, &types.EthCallRequest{
+		Args:            argsJSON,
+		GasCap:          25_000_000,
+		ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+	})
+	suite.Require().NoError(err)
+	suite.Require().GreaterOrEqual(rsp.Gas, expectedFloor)
+	suite.Require().Equal(expectedFloor, rsp.Gas)
+}
+
+// TestEstimateGas_FloorDataGas_PrePrague pins that pre-Prague EstimateGas
+// returns the intrinsic-gas estimate, not the floor.
+func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_PrePrague() {
+	suite.SetupTest()
+
+	farFuture := sdkmath.NewInt(math.MaxInt64)
+	suite.setPragueTime(&farFuture)
+
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	expectedIntrinsic := ethparams.TxGas +
+		uint64(len(data))*ethparams.TxDataZeroGas //nolint:gosec
+
+	argsJSON, err := json.Marshal(types.TransactionArgs{
+		To:   &target,
+		From: &suite.address,
+		Data: (*hexutil.Bytes)(&data),
+	})
+	suite.Require().NoError(err)
+
+	rsp, err := suite.queryClient.EstimateGas(suite.ctx, &types.EthCallRequest{
+		Args:            argsJSON,
+		GasCap:          25_000_000,
+		ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+	})
+	suite.Require().NoError(err)
+	suite.Require().Equal(expectedIntrinsic, rsp.Gas)
+}
+
+// TestEstimateGas_FloorDataGas_CallerSubFloorAllowance pins behavior when
+// the caller supplies args.Gas at or below the EIP-7623 floor. The
+// floor-1-pre-seed guard in EstimateGasInternal skips itself when
+// args.Gas < floor (so hi <= floor-1), leaving the BinSearch to consume
+// the search range against ErrFloorDataGas probes and the final-allowance
+// check to surface the "gas required exceeds allowance" error. The floor
+// case must succeed and return at most floor.
+func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_CallerSubFloorAllowance() {
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := ethparams.TxGas +
+		uint64(len(data))*ethparams.TxCostFloorPerToken //nolint:gosec
+
+	testCases := []struct {
+		name    string
+		argsGas uint64
+		wantErr string // empty string means success
+	}{
+		{
+			name:    "args.Gas = floor-1 rejected as exceeds allowance",
+			argsGas: floor - 1,
+			wantErr: fmt.Sprintf("gas required exceeds allowance (%d)", floor-1),
+		},
+		{
+			name:    "args.Gas = floor accepted",
+			argsGas: floor,
+			wantErr: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+
+			gas := hexutil.Uint64(tc.argsGas)
+			argsJSON, err := json.Marshal(types.TransactionArgs{
+				To:   &target,
+				From: &suite.address,
+				Data: (*hexutil.Bytes)(&data),
+				Gas:  &gas,
+			})
+			suite.Require().NoError(err)
+
+			rsp, err := suite.queryClient.EstimateGas(suite.ctx, &types.EthCallRequest{
+				Args:            argsJSON,
+				GasCap:          25_000_000,
+				ProposerAddress: suite.ctx.BlockHeader().ProposerAddress,
+			})
+			if tc.wantErr != "" {
+				suite.Require().Error(err)
+				suite.Require().Contains(err.Error(), tc.wantErr)
+			} else {
+				suite.Require().NoError(err)
+				suite.Require().LessOrEqual(rsp.Gas, floor)
+				suite.Require().Equal(floor, rsp.Gas)
+			}
+		})
+	}
 }
 
 func (suite *KeeperTestSuite) TestTraceTx() {
@@ -3689,6 +3808,68 @@ func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_FeeCapBelowBaseFeeSucc
 	results := suite.simulateV1BlockResults(resp)
 	c := results[0]["calls"].([]interface{})[0].(map[string]interface{})
 	suite.Require().Equal("0x1", c["status"])
+}
+
+// TestSimulateV1_NoValidation_FloorBelow_PromotesToTopLevelError pins the
+// EIP-7623 floor surfaces as a top-level SimError on the validation=false
+// path. The per-call loop's runErr catch is the only translator from
+// apply-time ErrFloorDataGas into a structured SimError here; without it,
+// the error would fall through to a generic gRPC Internal.
+func (suite *KeeperTestSuite) TestSimulateV1_NoValidation_FloorBelow_PromotesToTopLevelError() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	const dataLen = 4096
+	floor := ethparams.TxGas + dataLen*ethparams.TxCostFloorPerToken
+	subFloor := hexutil.Uint64(floor - 1)
+	data := hexutil.Bytes(bytes.Repeat([]byte{0}, dataLen))
+
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From: &sender,
+		To:   &recipient,
+		Data: &data,
+		Gas:  &subFloor,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, false)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error,
+		"sub-floor calldata must surface as a top-level SimError")
+	suite.Require().Equal(int32(types.SimErrCodeIntrinsicGas), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
+}
+
+// TestSimulateV1_Validation_FloorBelow_TopLevelError pins the validation=true
+// floor branch in validateSimCall: heavy calldata with gasLimit < floor
+// surfaces as -38013 before execution.
+func (suite *KeeperTestSuite) TestSimulateV1_Validation_FloorBelow_TopLevelError() {
+	suite.SetupTest()
+
+	sender := suite.address
+	recipient := common.HexToAddress("0x1111111111111111111111111111111111111111")
+	const dataLen = 4096
+	floor := ethparams.TxGas + dataLen*ethparams.TxCostFloorPerToken
+	subFloor := hexutil.Uint64(floor - 1)
+	data := hexutil.Bytes(bytes.Repeat([]byte{0}, dataLen))
+
+	state := map[common.Address]map[string]interface{}{
+		sender: {"balance": validationFundedBalance},
+	}
+	calls := []types.TransactionArgs{{
+		From:         &sender,
+		To:           &recipient,
+		Data:         &data,
+		Gas:          &subFloor,
+		MaxFeePerGas: validationMaxFeePerGas,
+	}}
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(suite.validatedSimulateRequest(state, calls, true)))
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeIntrinsicGas), resp.Error.Code)
+	suite.Require().Empty(resp.Result)
 }
 
 // TestSimulateV1_NoValidation_InitCodeOverLimitSucceeds — CREATE with

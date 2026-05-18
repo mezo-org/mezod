@@ -1,12 +1,14 @@
 package keeper_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"math"
 	"math/big"
 
+	sdkmath "cosmossdk.io/math"
 	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -380,6 +382,49 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGasSetCodeTx() {
 			)
 		})
 	}
+}
+
+func (suite *KeeperTestSuite) TestGetEthFloorDataGas() {
+	suite.SetupTest()
+
+	keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
+	ethCfg := keeperParams.ChainConfig.EthereumConfig(suite.app.EvmKeeper.ChainID())
+
+	testCases := []struct {
+		name   string
+		data   []byte
+		expGas uint64
+	}{
+		{"empty data", nil, params.TxGas},
+		{"one zero byte", []byte{0}, params.TxGas + 1*params.TxCostFloorPerToken},
+		{"one non-zero byte", []byte{1}, params.TxGas + params.TxTokenPerNonZeroByte*params.TxCostFloorPerToken},
+		{
+			"mixed n_zero=2, n_nonzero=3",
+			[]byte{0, 0, 1, 2, 3},
+			params.TxGas + (2+3*params.TxTokenPerNonZeroByte)*params.TxCostFloorPerToken,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(fmt.Sprintf("post-Prague: %s", tc.name), func() {
+			msg := core.Message{Data: tc.data}
+			gas, err := suite.app.EvmKeeper.GetEthFloorDataGas(suite.ctx, msg, ethCfg)
+			suite.Require().NoError(err)
+			suite.Require().Equal(tc.expGas, gas)
+		})
+	}
+
+	suite.Run("pre-Prague returns 0", func() {
+		// Clone ethCfg with PragueTime in the far future so IsPrague is false.
+		preCfg := *ethCfg
+		farFuture := uint64(math.MaxInt64)
+		preCfg.PragueTime = &farFuture
+
+		msg := core.Message{Data: []byte{0, 0, 1, 2, 3}}
+		gas, err := suite.app.EvmKeeper.GetEthFloorDataGas(suite.ctx, msg, &preCfg)
+		suite.Require().NoError(err)
+		suite.Require().Equal(uint64(0), gas)
+	})
 }
 
 func (suite *KeeperTestSuite) TestGasToRefund() {
@@ -1044,6 +1089,245 @@ func (suite *KeeperTestSuite) TestApplyMessageWithConfigInvalidSupply() {
 	suite.Require().ErrorIs(err, types.ErrInvalidSupply)
 }
 
+// floorDataGasOf computes the EIP-7623 floor for the given calldata.
+func floorDataGasOf(data []byte) uint64 {
+	var zeros, nonZeros uint64
+	for _, b := range data {
+		if b == 0 {
+			zeros++
+		} else {
+			nonZeros++
+		}
+	}
+	return params.TxGas + (zeros+nonZeros*params.TxTokenPerNonZeroByte)*params.TxCostFloorPerToken
+}
+
+// setPragueTime swaps the active chain config's PragueTime in-place.
+// Used to gate the floor logic on/off per subtest without resetting
+// the entire suite.
+//
+// Any post-Prague fork timestamp already set on the active config
+// (Osaka, BPO1..BPO5, Amsterdam, Verkle) is bumped to at least t so
+// CheckConfigForkOrder still accepts the ladder when Prague is pushed
+// into the future. Forks left nil stay nil — pushing Prague to the
+// future doesn't enable a later fork that wasn't enabled before.
+func (suite *KeeperTestSuite) setPragueTime(t *sdkmath.Int) {
+	suite.T().Helper()
+	p := suite.app.EvmKeeper.GetParams(suite.ctx)
+	p.ChainConfig.PragueTime = t
+	bumpIfBelow := func(later **sdkmath.Int) {
+		if *later == nil {
+			return
+		}
+		if t == nil {
+			return
+		}
+		if (*later).LT(*t) {
+			*later = t
+		}
+	}
+	bumpIfBelow(&p.ChainConfig.OsakaTime)
+	bumpIfBelow(&p.ChainConfig.BPO1Time)
+	bumpIfBelow(&p.ChainConfig.BPO2Time)
+	bumpIfBelow(&p.ChainConfig.BPO3Time)
+	bumpIfBelow(&p.ChainConfig.BPO4Time)
+	bumpIfBelow(&p.ChainConfig.BPO5Time)
+	bumpIfBelow(&p.ChainConfig.AmsterdamTime)
+	bumpIfBelow(&p.ChainConfig.VerkleTime)
+	suite.Require().NoError(suite.app.EvmKeeper.SetParams(suite.ctx, p))
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PreExecutionRejection() {
+	suite.SetupTest()
+
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := floorDataGasOf(data)
+
+	_, err := suite.applyMsg(target, big.NewInt(0), floor-1, data)
+	suite.Require().Error(err)
+	suite.Require().True(
+		errors.Is(err, core.ErrFloorDataGas),
+		"expected ErrFloorDataGas, got %v", err,
+	)
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PostExecutionFloor() {
+	suite.SetupTest()
+
+	// EOA target — no code, evm.Call returns immediately with no execution gas.
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := floorDataGasOf(data)
+
+	// GasLimit chosen so minimumGasUsed (= 0.5 * GasLimit) stays below floor,
+	// making the floor the dominant clamp.
+	gasLimit := floor + 50_000
+	res, err := suite.applyMsg(target, big.NewInt(0), gasLimit, data)
+	suite.Require().NoError(err)
+	suite.Require().GreaterOrEqual(res.GasUsed, floor)
+	suite.Require().Equal(floor, res.GasUsed)
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_PreservedPrePrague() {
+	suite.SetupTest()
+
+	// Push PragueTime far into the future so the floor stays inactive.
+	farFuture := sdkmath.NewInt(math.MaxInt64)
+	suite.setPragueTime(&farFuture)
+
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := floorDataGasOf(data)
+
+	gasLimit := floor + 50_000
+	res, err := suite.applyMsg(target, big.NewInt(0), gasLimit, data)
+	suite.Require().NoError(err)
+	// Pre-Prague: floor must NOT apply. GasUsed is max(minimumGasUsed,
+	// intrinsic+execution). For an EOA target with heavy zero calldata,
+	// minimumGasUsed (0.5*gasLimit) dominates the result here.
+	suite.Require().Less(res.GasUsed, floor)
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_ComposesWithMinGasMultiplier() {
+	target := common.HexToAddress("0x000000000000000000000000000000000000C0FE")
+	data := bytes.Repeat([]byte{0}, 4096)
+	floor := floorDataGasOf(data)
+
+	suite.Run("minimumGasUsed > floor wins", func() {
+		suite.SetupTest()
+		// GasLimit large enough so minimumGasUsed = 0.5 * gasLimit > floor.
+		gasLimit := floor * 4
+		res, err := suite.applyMsg(target, big.NewInt(0), gasLimit, data)
+		suite.Require().NoError(err)
+		suite.Require().Equal(gasLimit/2, res.GasUsed)
+		suite.Require().Greater(res.GasUsed, floor)
+	})
+
+	suite.Run("minimumGasUsed < floor: floor wins", func() {
+		suite.SetupTest()
+		// GasLimit just above floor so minimumGasUsed = 0.5 * gasLimit < floor.
+		gasLimit := floor + 1000
+		res, err := suite.applyMsg(target, big.NewInt(0), gasLimit, data)
+		suite.Require().NoError(err)
+		suite.Require().Equal(floor, res.GasUsed)
+	})
+}
+
+// TestApplyMessage_FloorDataGas_ContractCreation pins floor enforcement on
+// CREATE transactions (msg.To == nil). The CALL-target tests cover the EOA
+// case; CREATE differs because its intrinsic includes TxGasContractCreation
+// plus EIP-3860 initcode-word gas, and the geth floor formula has no CREATE
+// term — for non-zero-byte-heavy initcode the floor (40/byte) still outpaces
+// intrinsic and binds.
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_ContractCreation() {
+	// Pick a non-zero-byte initcode size where the floor strictly exceeds
+	// intrinsic. At 4096 non-zero bytes the floor is 21000 + 4*4096*10 =
+	// 184_840 and intrinsic is 53000 + 4096*16 + ceil(4096/32)*2 = 119_304,
+	// leaving a ~65k gap. Compute the floor with the same helper as the
+	// CALL tests so a future floor-formula change in geth doesn't silently
+	// drift the test.
+	const initcodeLen = 4096
+	// Minimal valid initcode: PUSH1 0; PUSH1 0; RETURN — returns empty
+	// deployed code. Padded with 0xFF bytes so the data is non-zero-heavy
+	// and lands in the floor-binding regime. The trailing pad bytes are
+	// past the RETURN, so the EVM never executes them.
+	initcode := make([]byte, initcodeLen)
+	initcode[0] = 0x60 // PUSH1
+	initcode[1] = 0x00
+	initcode[2] = 0x60 // PUSH1
+	initcode[3] = 0x00
+	initcode[4] = 0xF3 // RETURN
+	for i := 5; i < initcodeLen; i++ {
+		initcode[i] = 0xFF
+	}
+	floor := floorDataGasOf(initcode)
+
+	// CREATE message helper inlined to avoid widening applyMsg's signature.
+	// All other fields mirror applyMsg so behavior matches the CALL tests.
+	applyCreate := func(gasLimit uint64) (*types.MsgEthereumTxResponse, error) {
+		suite.T().Helper()
+		chainID := suite.app.EvmKeeper.ChainID()
+		proposer := suite.ctx.BlockHeader().ProposerAddress
+		cfg, err := suite.app.EvmKeeper.EVMConfig(suite.ctx, proposer, chainID)
+		suite.Require().NoError(err)
+		msg := core.Message{
+			From:                  suite.address,
+			To:                    nil,
+			Nonce:                 suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
+			Value:                 big.NewInt(0),
+			GasLimit:              gasLimit,
+			GasPrice:              big.NewInt(0),
+			GasFeeCap:             big.NewInt(0),
+			GasTipCap:             big.NewInt(0),
+			Data:                  initcode,
+			AccessList:            ethtypes.AccessList{},
+			SkipNonceChecks:       true,
+			SkipTransactionChecks: true,
+		}
+		txCfg := suite.app.EvmKeeper.TxConfig(suite.ctx, common.Hash{})
+		res, _, applyErr := suite.app.EvmKeeper.ApplyMessageWithConfig(
+			suite.ctx,
+			keeper.WrapMessage(msg),
+			nil,
+			true,
+			cfg,
+			txCfg,
+		)
+		return res, applyErr
+	}
+
+	suite.Run("gasLimit = floor-1 rejected pre-execution", func() {
+		suite.SetupTest()
+		_, err := applyCreate(floor - 1)
+		suite.Require().Error(err)
+		suite.Require().True(
+			errors.Is(err, core.ErrFloorDataGas),
+			"expected ErrFloorDataGas, got %v", err,
+		)
+	})
+
+	suite.Run("gasLimit = floor + headroom clamps gasUsed to floor", func() {
+		suite.SetupTest()
+		// Headroom large enough for intrinsic + initcode execution while
+		// keeping minimumGasUsed (0.5*gasLimit) below floor so the floor
+		// clamp dominates the post-execution result.
+		gasLimit := floor + 50_000
+		res, err := applyCreate(gasLimit)
+		suite.Require().NoError(err)
+		suite.Require().Equal(floor, res.GasUsed)
+	})
+}
+
+func (suite *KeeperTestSuite) TestApplyMessage_FloorDataGas_RefundCappedByFloor() {
+	suite.SetupTest()
+
+	// Runtime: SSTORE 0 → slot 1 (clears a non-zero slot), then STOP.
+	//   PUSH1 0 ; PUSH1 1 ; SSTORE ; STOP
+	contractRuntime := []byte{0x60, 0x00, 0x60, 0x01, 0x55, 0x00}
+	contract := common.HexToAddress("0x000000000000000000000000000000000000Cafe")
+
+	vmdb := suite.StateDB()
+	vmdb.SetCode(contract, contractRuntime, tracing.CodeChangeUnspecified)
+	// Pre-populate the slot with a non-zero value so SSTORE 0 triggers the
+	// EIP-3529 storage-clear refund.
+	vmdb.SetState(contract, common.HexToHash("0x01"), common.HexToHash("0xAABB"))
+	suite.Require().NoError(vmdb.Commit())
+
+	// Light calldata so refund could realistically push gasUsed under floor.
+	data := bytes.Repeat([]byte{0}, 1000)
+	floor := floorDataGasOf(data) // 21000 + 1000*10 = 31000
+
+	// GasLimit chosen so minimumGasUsed (= 0.5 * GasLimit) stays below floor,
+	// isolating the floor clamp as the dominant rule. Post-refund
+	// temporaryGasUsed lands at ~25_200 < floor (31_000), so the clamp
+	// must lift gasUsed up to floor exactly.
+	gasLimit := uint64(50_000)
+	res, err := suite.applyMsg(contract, big.NewInt(0), gasLimit, data)
+	suite.Require().NoError(err)
+	suite.Require().Equal(floor, res.GasUsed)
+}
+
 // Runtime of a minimal value-forwarder: CALLs calldata[0:32] (the
 // recipient, right-aligned) with msg.value and empty inner calldata.
 //
@@ -1078,13 +1362,16 @@ func recipientGuardBlockedAddr() common.Address {
 	)
 }
 
-// applyValueMsg runs a value-bearing message through ApplyMessageWithConfig
-// with the usual test-side skip flags and zero gas pricing.
-func (suite *KeeperTestSuite) applyValueMsg(
+// applyMsg runs a message through ApplyMessageWithConfig with the
+// usual test-side skip flags and zero gas pricing, returning the raw
+// response/error pair. Tests that expect success should prefer
+// applyValueMsg, which asserts err == nil internally.
+func (suite *KeeperTestSuite) applyMsg(
 	to common.Address,
 	value *big.Int,
+	gasLimit uint64,
 	data []byte,
-) *types.MsgEthereumTxResponse {
+) (*types.MsgEthereumTxResponse, error) {
 	suite.T().Helper()
 
 	chainID := suite.app.EvmKeeper.ChainID()
@@ -1098,7 +1385,7 @@ func (suite *KeeperTestSuite) applyValueMsg(
 		To:                    &toAddr,
 		Nonce:                 suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address),
 		Value:                 value,
-		GasLimit:              200_000,
+		GasLimit:              gasLimit,
 		GasPrice:              big.NewInt(0),
 		GasFeeCap:             big.NewInt(0),
 		GasTipCap:             big.NewInt(0),
@@ -1117,6 +1404,18 @@ func (suite *KeeperTestSuite) applyValueMsg(
 		cfg,
 		txCfg,
 	)
+	return res, err
+}
+
+// applyValueMsg is the success-only convenience for the RecipientGuard
+// suite: 200k gasLimit, zero gas price, value-bearing.
+func (suite *KeeperTestSuite) applyValueMsg(
+	to common.Address,
+	value *big.Int,
+	data []byte,
+) *types.MsgEthereumTxResponse {
+	suite.T().Helper()
+	res, err := suite.applyMsg(to, value, 200_000, data)
 	suite.Require().NoError(err)
 	return res
 }
