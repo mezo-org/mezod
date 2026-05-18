@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	ethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/holiman/uint256"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -4334,6 +4335,91 @@ func (suite *KeeperTestSuite) TestSimulateV1_BlockEnvelope_DynamicFeeShapeWithAc
 	suite.Require().Equal(txObj["hash"].(string), wantTx.Hash().Hex(),
 		"reconstructed dynamic-fee tx must match the published hash")
 	suite.Require().Equal(recomputeTxRoot(wantTx).Hex(), results[0]["transactionsRoot"].(string))
+}
+
+// TestSimulateV1_SetCode_ReturnFullTransactions — invokes SimulateV1
+// with a Type-4 call (single self-sponsored EIP-7702 authorization,
+// validation=true, returnFullTransactions=true) and asserts the
+// envelope's transactions[0] surfaces type=0x4 with a non-empty
+// authorizationList and patched-from sender. The per-call status=0x1
+// confirms the execution path (applySetCodeAuthorizations) still runs
+// through simulate without regressing the consensus-path behavior.
+func (suite *KeeperTestSuite) TestSimulateV1_SetCode_ReturnFullTransactions() {
+	suite.SetupTest()
+
+	authorityKey, err := crypto.GenerateKey()
+	suite.Require().NoError(err)
+	authority := crypto.PubkeyToAddress(authorityKey.PublicKey)
+
+	delegate := common.HexToAddress("0xdEAD000000000000000000000000000000000001")
+	chainID := suite.app.EvmKeeper.ChainID()
+
+	// Self-sponsored: authority signs and sends. The signer's nonce is
+	// bumped to N before applySetCodeAuthorizations validates auth.Nonce
+	// against the authority's post-bump nonce, so the auth must carry
+	// N+1 to land. authority.nonce starts at 0; sender bump → 1; auth
+	// nonce must be 1.
+	auth, err := ethtypes.SignSetCode(authorityKey, ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.MustFromBig(chainID),
+		Address: delegate,
+		Nonce:   1,
+	})
+	suite.Require().NoError(err)
+
+	balance := (*hexutil.Big)(new(big.Int).SetUint64(1_000_000_000_000_000_000))
+	maxFee := (*hexutil.Big)(big.NewInt(1_000_000_000))
+	maxPrio := (*hexutil.Big)(big.NewInt(1))
+	value := (*hexutil.Big)(big.NewInt(0))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				authority: {"balance": balance},
+			},
+			"calls": []types.TransactionArgs{{
+				From:                 &authority,
+				To:                   &authority,
+				Value:                value,
+				MaxFeePerGas:         maxFee,
+				MaxPriorityFeePerGas: maxPrio,
+				AuthorizationList:    []ethtypes.SetCodeAuthorization{auth},
+			}},
+		}},
+		"validation":             true,
+		"returnFullTransactions": true,
+	})
+	suite.Require().NoError(err)
+
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, suite.simulateV1Request(optsJSON))
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+
+	results := suite.simulateV1BlockResults(resp)
+	suite.Require().Len(results, 1)
+
+	txs, ok := results[0]["transactions"].([]interface{})
+	suite.Require().True(ok)
+	suite.Require().Len(txs, 1)
+	txObj := txs[0].(map[string]interface{})
+
+	suite.Require().Equal("0x4", txObj["type"].(string),
+		"SetCodeTx must serialize as type 0x4")
+
+	authList, ok := txObj["authorizationList"].([]interface{})
+	suite.Require().True(ok, "authorizationList must be present and an array")
+	suite.Require().Len(authList, 1)
+
+	suite.Require().Equal(authority.Hex(),
+		common.HexToAddress(txObj["from"].(string)).Hex(),
+		"FullTx=true must patch `from` from senders (the authorizer)")
+
+	calls, ok := results[0]["calls"].([]interface{})
+	suite.Require().True(ok)
+	suite.Require().Len(calls, 1)
+	call := calls[0].(map[string]interface{})
+	suite.Require().Nil(call["error"], "self-sponsored auth must succeed")
+	suite.Require().Equal("0x1", call["status"],
+		"per-call status must be 1 (applySetCodeAuthorizations install succeeded)")
 }
 
 // mustHexUint64 parses an `0x`-prefixed hex string into a uint64.

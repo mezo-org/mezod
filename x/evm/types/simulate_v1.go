@@ -354,25 +354,26 @@ func marshalEthBlock(block *ethtypes.Block, inclTx bool, fullTx bool, config *pa
 // JSON shape. Lives here rather than rpc/types because rpc/types
 // already depends on x/evm/types.
 type rpcTransaction struct {
-	BlockHash        *common.Hash         `json:"blockHash"`
-	BlockNumber      *hexutil.Big         `json:"blockNumber"`
-	From             common.Address       `json:"from"`
-	Gas              hexutil.Uint64       `json:"gas"`
-	GasPrice         *hexutil.Big         `json:"gasPrice"`
-	GasFeeCap        *hexutil.Big         `json:"maxFeePerGas,omitempty"`
-	GasTipCap        *hexutil.Big         `json:"maxPriorityFeePerGas,omitempty"`
-	Hash             common.Hash          `json:"hash"`
-	Input            hexutil.Bytes        `json:"input"`
-	Nonce            hexutil.Uint64       `json:"nonce"`
-	To               *common.Address      `json:"to"`
-	TransactionIndex *hexutil.Uint64      `json:"transactionIndex"`
-	Value            *hexutil.Big         `json:"value"`
-	Type             hexutil.Uint64       `json:"type"`
-	Accesses         *ethtypes.AccessList `json:"accessList,omitempty"`
-	ChainID          *hexutil.Big         `json:"chainId,omitempty"`
-	V                *hexutil.Big         `json:"v"`
-	R                *hexutil.Big         `json:"r"`
-	S                *hexutil.Big         `json:"s"`
+	BlockHash         *common.Hash                    `json:"blockHash"`
+	BlockNumber       *hexutil.Big                    `json:"blockNumber"`
+	From              common.Address                  `json:"from"`
+	Gas               hexutil.Uint64                  `json:"gas"`
+	GasPrice          *hexutil.Big                    `json:"gasPrice"`
+	GasFeeCap         *hexutil.Big                    `json:"maxFeePerGas,omitempty"`
+	GasTipCap         *hexutil.Big                    `json:"maxPriorityFeePerGas,omitempty"`
+	Hash              common.Hash                     `json:"hash"`
+	Input             hexutil.Bytes                   `json:"input"`
+	Nonce             hexutil.Uint64                  `json:"nonce"`
+	To                *common.Address                 `json:"to"`
+	TransactionIndex  *hexutil.Uint64                 `json:"transactionIndex"`
+	Value             *hexutil.Big                    `json:"value"`
+	Type              hexutil.Uint64                  `json:"type"`
+	Accesses          *ethtypes.AccessList            `json:"accessList,omitempty"`
+	ChainID           *hexutil.Big                    `json:"chainId,omitempty"`
+	AuthorizationList []ethtypes.SetCodeAuthorization `json:"authorizationList,omitempty"`
+	V                 *hexutil.Big                    `json:"v"`
+	R                 *hexutil.Big                    `json:"r"`
+	S                 *hexutil.Big                    `json:"s"`
 }
 
 // newRPCTransactionFromBlockIndex returns a transaction that will
@@ -427,20 +428,38 @@ func newRPCTransaction(
 		al := tx.AccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.ChainId())
-		result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
-		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
-		if baseFee != nil && blockHash != (common.Hash{}) {
-			price := new(big.Int).Add(tx.GasTipCap(), baseFee)
-			if feeCap := tx.GasFeeCap(); feeCap.Cmp(price) < 0 {
-				price = feeCap
-			}
-			result.GasPrice = (*hexutil.Big)(price)
-		} else {
-			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
-		}
+		result = setEffectiveGasPrice(result, tx, baseFee, blockHash)
 	case ethtypes.SetCodeTxType:
-		// TODO (geth-upgrade): full SetCodeTx support is covered by .claude/MEZO-4336-eth-simulate-v1-geth116/plan.md
-		panic(fmt.Sprintf("newRPCTransaction: SetCodeTxType (0x%x) is not supported", ethtypes.SetCodeTxType))
+		al := tx.AccessList()
+		result.Accesses = &al
+		result.ChainID = (*hexutil.Big)(tx.ChainId())
+		result.AuthorizationList = tx.SetCodeAuthorizations()
+		result = setEffectiveGasPrice(result, tx, baseFee, blockHash)
+	}
+	return result
+}
+
+// setEffectiveGasPrice fills the 1559 fee-cap fields and the effective
+// `gasPrice` on a rpcTransaction, returning it for explicit reassignment
+// at the call site. Mirrors the helper at `rpc/types/utils.go`. For mined
+// txs the effective price is min(tip+baseFee, gasFeeCap); otherwise it
+// falls back to gasFeeCap.
+func setEffectiveGasPrice(
+	result *rpcTransaction,
+	tx *ethtypes.Transaction,
+	baseFee *big.Int,
+	blockHash common.Hash,
+) *rpcTransaction {
+	result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
+	result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
+	if baseFee != nil && blockHash != (common.Hash{}) {
+		price := new(big.Int).Add(tx.GasTipCap(), baseFee)
+		if feeCap := tx.GasFeeCap(); feeCap.Cmp(price) < 0 {
+			price = feeCap
+		}
+		result.GasPrice = (*hexutil.Big)(price)
+	} else {
+		result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
 	}
 	return result
 }

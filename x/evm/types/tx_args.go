@@ -219,6 +219,17 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 		return core.Message{}, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
 	}
 
+	// Type-4 (EIP-7702) forbids contract creation; the consensus path
+	// rejects this with core.ErrSetCodeTxCreate. Catch it here so the
+	// downstream typed-envelope construction can dereference `args.To`
+	// without a nil-check, and so the failure surfaces as a structured
+	// "invalid params" error across every ToMessage caller
+	// (eth_simulateV1, eth_call, eth_estimateGas) rather than as a
+	// downstream internal error.
+	if args.AuthorizationList != nil && args.To == nil {
+		return core.Message{}, errors.New(`SetCodeTx (EIP-7702) forbids contract creation: "to" must be set`)
+	}
+
 	// Set sender address or use zero address if none specified.
 	addr := args.GetFrom()
 
