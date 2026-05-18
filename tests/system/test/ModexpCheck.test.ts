@@ -52,10 +52,10 @@ describe("ModexpCheck (Osaka)", function () {
   })
 
   describe("baseline (pre-EIP-7823 sanity)", function () {
-    it("computes 2^10 mod 7 = 4", async function () {
+    it("computes 3^4 mod 7 = 4", async function () {
       const payload = buildModexpInput(
-        new Uint8Array([0x02]),
-        new Uint8Array([0x0a]),
+        new Uint8Array([0x03]),
+        new Uint8Array([0x04]),
         new Uint8Array([0x07]),
       )
       const [ok, out] = await modexp.staticCall.staticCall(MODEXP, payload)
