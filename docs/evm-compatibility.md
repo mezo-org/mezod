@@ -187,9 +187,9 @@ chains.
     - Description: adds seven precompiled contracts at addresses `0x0b`
       through `0x11` implementing BLS12-381 curve operations (G1Add,
       G1MSM, G2Add, G2MSM, PairingCheck, MapFpToG1, MapFp2ToG2).
-    - Mezo implementation: supported via the vendored
-      `mezo-org/go-ethereum` fork once Prague is active. Mezo's vendored
-      geth was migrated from the pre-finalization 9-precompile draft
+    - Mezo implementation: supported via the forked
+      `mezo-org/go-ethereum` once Prague is active. Mezo's fork of geth
+      was migrated from the pre-finalization 9-precompile draft
       layout (which placed standalone `G1Mul`/`G2Mul` at `0x0b`–`0x13`)
       to the finalized 7-precompile layout (`0x0b`–`0x11`). The
       `0x0b`–`0x11` slot range does not overlap with Mezo's custom
@@ -364,16 +364,16 @@ to the upgrade block's timestamp by the v11.0 upgrade handler
 (`app/upgrades/v11_0/upgrades.go`), which sets `PragueTime` and
 `OsakaTime` to the same value at the same block. Mezo collapses the
 Cancun → Prague → Osaka transitions into a single chain halt; Cancun →
-Prague was never rolled out separately. The vendored
-`mezo-org/go-ethereum v1.16.9-mezo1` fork carries the Osaka opcode,
-precompile, and gas-schedule changes, which now fire through Mezo's
-EVM under `IsOsaka == true`.
+Prague was never rolled out separately. The forked
+`mezo-org/go-ethereum` carries the Osaka opcode, precompile, and
+gas-schedule changes, which now fire through Mezo's EVM under
+`IsOsaka == true`.
 
 - EIP-7823 (MODEXP input upper bound)
     - Description: rejects MODEXP precompile calls whose base, exponent,
       or modulus length exceeds 8192 bits, capping inputs that would
       otherwise dominate block validation cost.
-    - Mezo implementation: supported via the vendored geth fork when
+    - Mezo implementation: supported via the forked geth when
       Osaka is active. Mezo applies no additional MODEXP overrides;
       the Osaka modexp precompile entry handles the input-bound check
       internally. Live precompile behavior is covered by
@@ -408,7 +408,7 @@ EVM under `IsOsaka == true`.
       from 200 to 500 gas, and the per-iteration cost for large
       operands doubles. Targets the same DoS-shape that EIP-7823
       addresses by input bound.
-    - Mezo implementation: supported via the vendored geth fork when
+    - Mezo implementation: supported via the forked geth when
       Osaka is active. Mezo applies no additional MODEXP overrides;
       the Osaka modexp precompile entry carries both `eip7823` and
       `eip7883` flags, so the new minimum and the doubled
@@ -441,7 +441,7 @@ EVM under `IsOsaka == true`.
     - Description: adds opcode `0x1e` `CLZ` (count leading zeros) on
       a 256-bit stack word, returning the number of leading zero bits.
       Mirrors `BIT.popcnt`-style helpers used by gas-tight algorithms.
-    - Mezo implementation: supported via the vendored geth fork when
+    - Mezo implementation: supported via the forked geth when
       Osaka is active; the Osaka instruction set wires `0x1e` to the
       `CLZ` handler. Opcode behavior is covered by
       `tests/system/test/ClzCheck.test.ts`.
@@ -451,7 +451,7 @@ EVM under `IsOsaka == true`.
     - Description: adds a precompile at
       `0x0000000000000000000000000000000000000100` that verifies an
       ECDSA signature on the secp256r1 (NIST P-256) curve.
-    - Mezo implementation: supported via the vendored geth fork when
+    - Mezo implementation: supported via the forked geth when
       Osaka is active. The `0x0100` address sits in the standard
       Ethereum precompile range and does not overlap Mezo's custom
       precompile space at `0x7b7c…` (see
