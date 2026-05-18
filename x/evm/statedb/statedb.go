@@ -239,11 +239,10 @@ func (s *StateDB) traceCodeChange(
 	}
 }
 
-func (s *StateDB) traceSelfDestructCodeChange(addr common.Address, stateObject *stateObject) {
+func (s *StateDB) traceSelfDestructCodeChange(addr common.Address, prev []byte) {
 	if len(s.tracingHooks) == 0 {
 		return
 	}
-	prev := append([]byte(nil), stateObject.Code()...)
 	if len(prev) == 0 {
 		return
 	}
@@ -466,8 +465,9 @@ func (s *StateDB) SelfDestruct(addr common.Address) uint256.Int {
 		prev:        stateObject.selfDestructed,
 		prevbalance: prev,
 	})
+	prevCode := append([]byte(nil), stateObject.Code()...)
 	s.traceBalanceChange(addr, prev, n, tracing.BalanceDecreaseSelfdestruct)
-	s.traceSelfDestructCodeChange(addr, stateObject)
+	s.traceSelfDestructCodeChange(addr, prevCode)
 	stateObject.markSelfdestructed()
 	stateObject.account.Balance = n
 	return *prev
