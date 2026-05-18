@@ -43,6 +43,7 @@ import (
 	"github.com/ethereum/go-ethereum/eth/tracers"
 
 	"github.com/holiman/uint256"
+	"golang.org/x/exp/maps"
 )
 
 // Keeper grants access to the EVM module state and implements the go-ethereum StateDB interface.
@@ -295,7 +296,16 @@ func (k *Keeper) PostTxProcessing(ctx sdk.Context, msg core.Message, receipt *et
 
 // Tracer return a default vm.Tracer based on current keeper state
 func (k Keeper) Tracer(ctx sdk.Context, msg core.Message, ethCfg *params.ChainConfig) *tracers.Tracer {
-	return types.NewTracer(k.tracer, msg, ethCfg, ctx.BlockHeight())
+	return types.NewTracer(
+		k.tracer,
+		msg,
+		ethCfg,
+		ctx.BlockHeight(),
+		uint64(ctx.BlockTime().Unix()), //nolint:gosec
+		func() []common.Address {
+			return maps.Keys(k.resolveCustomPrecompiles(ctx))
+		},
+	)
 }
 
 // GetAccountWithoutBalance load nonce and codehash without balance,
