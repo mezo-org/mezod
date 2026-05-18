@@ -318,9 +318,10 @@ those CL EIPs are out of scope and not covered below. See EIP-7607 for
 the full Fusaka EIP list.
 
 Osaka is active on Mezo. The v11.0 upgrade activates Prague and Osaka
-together on living chains; on fresh chains both activate at genesis.
-Mezo collapses Cancun → Prague → Osaka into a single chain halt
-(Cancun → Prague was never rolled out separately).
+together on living chains (see
+[`docs/upgrades.md`](./upgrades.md)); on fresh chains both activate at
+genesis. Mezo collapses Cancun → Prague → Osaka into a single chain
+halt (Cancun → Prague was never rolled out separately).
 
 - EIP-7823 (MODEXP input upper bound)
     - Description: rejects MODEXP precompile calls whose base, exponent,
