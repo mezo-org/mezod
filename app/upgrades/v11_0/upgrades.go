@@ -27,11 +27,13 @@ func CreateUpgradeHandler(
 
 		sdkCtx.Logger().Info("running v11.0.0 upgrade handler")
 
-		if err := setPragueTime(sdkCtx, keepers.EvmKeeper); err != nil {
+		forkTime := sdkmath.NewIntFromUint64(uint64(sdkCtx.BlockTime().Unix())) //nolint:gosec
+
+		if err := setPragueTime(sdkCtx, keepers.EvmKeeper, forkTime); err != nil {
 			return nil, fmt.Errorf("failed to set Prague time: %w", err)
 		}
 
-		if err := setOsakaTime(sdkCtx, keepers.EvmKeeper); err != nil {
+		if err := setOsakaTime(sdkCtx, keepers.EvmKeeper, forkTime); err != nil {
 			return nil, fmt.Errorf("failed to set Osaka time: %w", err)
 		}
 
@@ -39,7 +41,7 @@ func CreateUpgradeHandler(
 	}
 }
 
-func setPragueTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
+func setPragueTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper, pragueTime sdkmath.Int) error {
 	params := evmKeeper.GetParams(ctx)
 
 	ctx.Logger().Info(
@@ -47,7 +49,6 @@ func setPragueTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
 		"pragueTime", params.ChainConfig.PragueTime,
 	)
 
-	pragueTime := sdkmath.NewIntFromUint64(uint64(ctx.BlockTime().Unix())) //nolint:gosec
 	params.ChainConfig.PragueTime = &pragueTime
 
 	if err := evmKeeper.SetParams(ctx, params); err != nil {
@@ -62,7 +63,7 @@ func setPragueTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
 	return nil
 }
 
-func setOsakaTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
+func setOsakaTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper, osakaTime sdkmath.Int) error {
 	params := evmKeeper.GetParams(ctx)
 
 	ctx.Logger().Info(
@@ -70,7 +71,6 @@ func setOsakaTime(ctx sdk.Context, evmKeeper *evmkeeper.Keeper) error {
 		"osakaTime", params.ChainConfig.OsakaTime,
 	)
 
-	osakaTime := sdkmath.NewIntFromUint64(uint64(ctx.BlockTime().Unix())) //nolint:gosec
 	params.ChainConfig.OsakaTime = &osakaTime
 
 	if err := evmKeeper.SetParams(ctx, params); err != nil {
