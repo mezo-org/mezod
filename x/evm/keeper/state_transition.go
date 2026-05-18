@@ -613,7 +613,7 @@ func (k *Keeper) applyMessageWithConfig(
 		// eth_estimateGas will check for this exact error
 		return nil, nil, errorsmod.Wrap(core.ErrIntrinsicGas, "apply message")
 	}
-	if rules.IsPrague && msg.GasLimit < floorDataGas {
+	if msg.GasLimit < floorDataGas {
 		return nil, nil, errorsmod.Wrapf(core.ErrFloorDataGas, "apply message: have %d, want %d", msg.GasLimit, floorDataGas)
 	}
 	leftoverGas -= intrinsicGas
@@ -730,8 +730,9 @@ func (k *Keeper) applyMessageWithConfig(
 	// EIP-7623: clamp temporaryGasUsed up to the floor. The subtraction is
 	// safe because the pre-check guarantees msg.GasLimit >= floorDataGas.
 	// The subsequent LegacyMaxDec(minimumGasUsed, temporaryGasUsed) composes
-	// both floors automatically — whichever is larger wins.
-	if rules.IsPrague && temporaryGasUsed < floorDataGas {
+	// both floors automatically — whichever is larger wins. Pre-Prague the
+	// helper returns 0, so the comparison is inert without an explicit gate.
+	if temporaryGasUsed < floorDataGas {
 		prevLeftover := leftoverGas
 		temporaryGasUsed = floorDataGas
 		leftoverGas = msg.GasLimit - temporaryGasUsed

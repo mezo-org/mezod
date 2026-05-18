@@ -1028,19 +1028,18 @@ func (k *Keeper) validateSimCall(
 		return types.NewSimIntrinsicGas(msg.GasLimit, intrinsic)
 	}
 
-	// EIP-7623 calldata floor — gated on IsPrague so the helper is not
-	// invoked pre-Prague (pathological-calldata overflow would otherwise
-	// surface as ErrGasUintOverflow under a fork that does not yet
-	// enforce the floor). NewSimIntrinsicGas reuses the -38013 mapping
-	// for the same RPC error-code family geth uses for ErrFloorDataGas.
-	if rules.IsPrague {
-		floor, err := k.GetEthFloorDataGas(ctx, *msg, chainCfg)
-		if err != nil {
-			return types.NewSimIntrinsicGas(msg.GasLimit, math.MaxUint64)
-		}
-		if msg.GasLimit < floor {
-			return types.NewSimIntrinsicGas(msg.GasLimit, floor)
-		}
+	// EIP-7623 calldata floor. The helper short-circuits to 0 pre-Prague,
+	// so the gasLimit comparison is inert before the fork activates and
+	// core.FloorDataGas (with its ErrGasUintOverflow shape on pathological
+	// calldata) is never invoked. NewSimIntrinsicGas reuses the -38013
+	// mapping for the same RPC error-code family geth uses for
+	// ErrFloorDataGas.
+	floor, err := k.GetEthFloorDataGas(ctx, *msg, chainCfg)
+	if err != nil {
+		return types.NewSimIntrinsicGas(msg.GasLimit, math.MaxUint64)
+	}
+	if msg.GasLimit < floor {
+		return types.NewSimIntrinsicGas(msg.GasLimit, floor)
 	}
 
 	return nil
