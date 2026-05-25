@@ -87,6 +87,7 @@ BTC for gas.
 | `McopyCheck` | `McopyCheck.test.ts` | EVM MCOPY opcode support |
 | `TransientStorageCheck` | `TransientStorageCheck.test.ts` | EIP-1153 transient storage |
 | `Selfdestruct6780Check` | `Selfdestruct6780Check.test.ts` | EIP-6780 SELFDESTRUCT behavior |
+| `SelfdestructSupplyInvariant` | `SelfdestructSupplyInvariant.test.ts` | BTC supply invariant after SELFDESTRUCT during contract creation |
 | `InitcodeLimitCheck` | `InitcodeLimitCheck.test.ts` | EIP-3860 initcode size limit |
 
 ## Environment variables
