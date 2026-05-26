@@ -408,6 +408,23 @@ func (suite *StateDBTestSuite) TestNestedSnapshot() {
 	suite.Require().Equal(common.Hash{}, db.GetState(address, key))
 }
 
+func (suite *StateDBTestSuite) TestRevertSnapshotTransientStorage() {
+	key := common.BigToHash(big.NewInt(1))
+	value1 := common.BigToHash(big.NewInt(1))
+	value2 := common.BigToHash(big.NewInt(2))
+
+	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
+	db.Prepare(params.Rules{IsBerlin: true}, address, address, nil, nil, nil)
+
+	db.SetTransientState(address, key, value1)
+	rev := db.Snapshot()
+	db.SetTransientState(address, key, value2)
+	suite.Require().Equal(value2, db.GetTransientState(address, key))
+
+	db.RevertToSnapshot(rev)
+	suite.Require().Equal(value1, db.GetTransientState(address, key))
+}
+
 func (suite *StateDBTestSuite) TestInvalidSnapshotId() {
 	db := statedb.New(sdk.Context{}, statedb.NewMockKeeper(), emptyTxConfig)
 	suite.Require().Panics(func() {
