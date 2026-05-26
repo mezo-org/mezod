@@ -74,22 +74,6 @@ On the testnet all three keys must be supplied via `PRIVATE_KEYS`, the
 first key must correspond to the PoA owner, and every account must hold
 BTC for gas.
 
-## Available test suites
-
-| Suite | File | Description |
-|-------|------|-------------|
-| `AssetsBridge` | `AssetsBridge.test.ts` | Native bridge in/out operations |
-| `BTCTransfers` | `BTCTransfers.test.ts` | BTC transfer mechanics |
-| `MEZOTransfers` | `MEZOTransfers.test.ts` | MEZO token transfers |
-| `TripartyBridge` | `TripartyBridge.test.ts` | Triparty BTC minting path |
-| `Push0Check` | `Push0Check.test.ts` | EVM PUSH0 opcode support |
-| `RandaoCheck` | `RandaoCheck.test.ts` | RANDAO/PREVRANDAO opcode |
-| `McopyCheck` | `McopyCheck.test.ts` | EVM MCOPY opcode support |
-| `TransientStorageCheck` | `TransientStorageCheck.test.ts` | EIP-1153 transient storage |
-| `Selfdestruct6780Check` | `Selfdestruct6780Check.test.ts` | EIP-6780 SELFDESTRUCT behavior |
-| `SelfdestructSupplyInvariant` | `SelfdestructSupplyInvariant.test.ts` | BTC supply invariant after SELFDESTRUCT during contract creation |
-| `InitcodeLimitCheck` | `InitcodeLimitCheck.test.ts` | EIP-3860 initcode size limit |
-
 ## Environment variables
 
 | Variable | Networks | Description |
