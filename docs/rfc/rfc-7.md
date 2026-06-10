@@ -507,7 +507,8 @@ protocol, or that the Order is a "borrow". It follows ERC-7683 mechanically:
    self-identifying.
 5. **Submit Step 0.** The Solver constructs the call described by Step 0
    with the variable filled in. In this example that resolves to
-   `EthBorrowResolver.fill(payload)`. The Solver does not need to know what
+   `EthBorrowResolver.fill(payload, payoutAddress)`, where `payoutAddress` is
+   the Variable the Solver just assigned. The Solver does not need to know what
    `fill` does - only that the attached `Payment` fires when the Step
    succeeds.
 6. **Collect Payment.** The `Payment.ERC20` attached to Step 0 transfers
@@ -578,12 +579,17 @@ contract EthBorrowResolver is IAssetsUnlockedHook, IResolver {
         // variable. The only Variable is the Solver's chosen payout address.
         bytes memory varRecipient = abi.encodeWithSignature("PaymentRecipient()");
 
-        // Step 0: Call this.fill(payload).
-        bytes[] memory args = new bytes[](1);
-        args[0] = abi.encode("", payload);           // constant: payload
+        // Step 0: Call this.fill(payload, <Variable 0 — the Solver's payout
+        // address>). The payload is a constant arg; the payout address is the
+        // one Variable, so it goes in the variable-arg slot and the Solver
+        // fills it in before broadcasting.
+        bytes[] memory constArgs = new bytes[](1);
+        constArgs[0] = abi.encode("", payload);      // constant: payload
+        bytes[] memory varArgs = new bytes[](1);
+        varArgs[0] = abi.encode(uint256(0));         // variable 0: PaymentRecipient
         bytes memory step = abi.encodeWithSignature(
             "Call(bytes,bytes4,bytes[],bytes[])",
-            selfAddr, this.fill.selector, args, new bytes[](0)
+            selfAddr, this.fill.selector, constArgs, varArgs
         );
 
         // Payment 0: solverFee USDC from Resolver to varRecipient, paid
@@ -615,7 +621,7 @@ contract EthBorrowResolver is IAssetsUnlockedHook, IResolver {
     // executor: fill does the Aave supply, borrow, and return bridge in
     // one tx. In a more elaborate design fill could just release funds
     // against a verified output produced by other Step calls.
-    function fill(bytes calldata payload) external {
+    function fill(bytes calldata payload, address solverPayoutAddress) external {
         bytes32 payloadHash = keccak256(payload);
         AssetsUnlocked memory e = entries[payloadHash];
         require(e.amount > 0, "unknown");        // unset, or already filled
@@ -631,7 +637,7 @@ contract EthBorrowResolver is IAssetsUnlockedHook, IResolver {
         IPool(AAVE_POOL).supply(TBTC, e.amount, address(this), 0);
         IPool(AAVE_POOL).borrow(USDC, p.usdcToBorrow, 2, 0, address(this));
 
-        IERC20(USDC).transfer(msg.sender, p.solverFee);
+        IERC20(USDC).transfer(solverPayoutAddress, p.solverFee);
 
         // Return the rest to the user on Mezo via the non-payload bridge path
         // (no payload, no second hook).
@@ -645,7 +651,7 @@ contract EthBorrowResolver is IAssetsUnlockedHook, IResolver {
 #### Why this is safe against arbitrary Solvers
 
 - **The payload hash is the source of truth.** `entries` is keyed by
-  `keccak256(payload)`. `fill(payload)` recomputes that hash, looks up
+  `keccak256(payload)`. `fill` recomputes that hash from `payload`, looks up
   `entries[payloadHash]`, and operates on that one entry only. Distinct
   payloads land on distinct keys, so no Order's funds can be spent under
   another's parameters.
