@@ -199,7 +199,7 @@ This keeps the on-chain data and the consensus pipeline bounded to a fixed
 Both origin-chain contracts emit the same direction-agnostic event:
 
 ```solidity
-event PayloadRecorded(bytes32 indexed payloadHash, bytes payload);
+event PayloadRecorded(uint256 indexed sequence, bytes32 indexed payloadHash, bytes payload);
 ```
 
 It is emitted in the same transaction as the main bridge event.
@@ -213,15 +213,16 @@ happened. A Solver therefore:
 
 1. Detects a bridge-with-payload finalization on the destination chain (the
    Order is ready to fill).
-2. Looks up the matching `PayloadRecorded(payloadHash, payload)` on the
-   origin chain to get the plain payload bytes.
+2. Looks up the matching `PayloadRecorded` on the origin chain by `sequence`
+   (the unique key it already has from step 1) to get the plain payload bytes.
 
 `payloadHash` is **not** guaranteed unique across pending entries by the
-bridge - two users can submit the same payload, and the companion event is
-keyed on `payloadHash` for indexed lookup only. The bridge's monotonically
+bridge - two users can submit the same payload. The bridge's monotonically
 assigned `sequence` number is therefore the only *bridge-guaranteed* unique
-key. A Resolver that prefers to address Orders by `payloadHash` instead must
-enforce payload uniqueness itself and push that responsibility onto the user.
+key, so the companion event indexes it alongside `payloadHash` and Solvers
+correlate by `sequence`. A Resolver that prefers to address Orders by
+`payloadHash` instead must enforce payload uniqueness itself and push that
+responsibility onto the user.
 
 #### Bridge entry schema
 
@@ -487,10 +488,12 @@ protocol, or that the Order is a "borrow". It follows ERC-7683 mechanically:
 1. **Discover an Order.** The Solver watches bridge events. When
    `MezoBridge.AssetsUnlockWithPayloadConfirmed(…, payloadHash)` fires with a
    non-zero `payloadHash`, an Order exists. The Solver fetches the plain
-   `payload` from the matching `PayloadRecorded(payloadHash, payload)` event
-   emitted on Mezo by the `AssetsBridge` precompile (where the user originally
-   called `bridgeOutWithPayload`) and verifies
-   `keccak256(payload) == payloadHash`. That hash is the Order's key.
+   `payload` from the matching `PayloadRecorded` event emitted on Mezo by the
+   `AssetsBridge` precompile (where the user originally called
+   `bridgeOutWithPayload`) and verifies `keccak256(payload) == payloadHash`.
+   That hash is the Order's key *here* because this Resolver enforces payload
+   uniqueness; the generic discovery path keys by the unique `sequence`
+   instead.
 2. **Resolve.** The Solver calls `Resolver.resolve(payload)` via `eth_call`.
    It receives a `ResolvedOrder` describing Steps (calls to make), Variables
    (placeholders — here just the Solver's own payout address), Payments (what
