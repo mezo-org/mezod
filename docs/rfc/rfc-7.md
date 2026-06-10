@@ -153,7 +153,13 @@ the usual bridge arguments plus an extra `bytes calldata payload`:
   existing internal TBTC helper) or `_bridgeERC20` (a new internal helper
   factored out of `bridgeERC20`, mirroring how `bridgeTBTC` already delegates
   to `_bridgeTBTC`). One call thus serves both token kinds.
-- On Mezo (`AssetsBridge` precompile): `bridgeOutWithPayload`.
+- On Mezo (`AssetsBridge` precompile): `bridgeOutWithPayload`, taking the
+  same `(token, amount, chain, recipient, payload)` shape as `bridgeOut` plus
+  the payload. The recipient must be a Resolver contract, so the only valid
+  `chain` is Ethereum; the method reverts if any other target (e.g. Bitcoin)
+  is passed. The `chain` argument is kept rather than dropped so
+  `bridgeOutWithPayload` stays a drop-in parallel of `bridgeOut` and leaves
+  room for a future EVM-style destination.
 
 The existing non-payload bridge paths (`bridgeTBTC`, `bridgeERC20`,
 `bridgeOut`) keep working unchanged. A user who does not need an intent calls
