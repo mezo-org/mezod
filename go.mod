@@ -120,7 +120,14 @@ require (
 	github.com/cometbft/cometbft-db v0.14.1 // indirect
 	github.com/consensys/gnark-crypto v0.18.0 // indirect
 	github.com/cosmos/gogogateway v1.2.0 // indirect
-	github.com/cosmos/iavl v1.2.0 // indirect
+	// Pinned ahead of the version required transitively through our
+	// cosmossdk.io/store fork so the node picks up recent upstream bugfixes
+	// from the iavl 1.2.x line. Do not downgrade below v1.2.8. Do not raise
+	// this to a higher major/minor line (e.g. v1.3.x) without first bumping
+	// the cosmossdk.io/store fork to that line and re-tagging it: this
+	// override is only meant to advance the patch level within the line the
+	// fork is built against.
+	github.com/cosmos/iavl v1.2.8 // indirect
 	github.com/cosmos/ibc-go/modules/capability v1.0.1 // indirect
 	github.com/cosmos/ibc-go/v8 v8.5.1 // indirect
 	github.com/cosmos/ics23/go v0.11.0 // indirect
