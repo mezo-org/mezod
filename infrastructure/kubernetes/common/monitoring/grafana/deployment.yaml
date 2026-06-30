@@ -20,7 +20,8 @@ spec:
         runAsNonRoot: true
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana:13.1.0
+          imagePullPolicy: IfNotPresent
           ports:
             - name: grafana
               containerPort: 3000
@@ -65,10 +66,10 @@ spec:
           resources:
             limits:
               cpu: 300m
-              memory: 512Mi
+              memory: 2Gi
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 512Mi
           volumeMounts:
             - name: grafana-grafana-ini
               mountPath: /etc/grafana/grafana.ini
