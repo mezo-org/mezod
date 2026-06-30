@@ -51,6 +51,7 @@ import (
 	tmtypes "github.com/cometbft/cometbft/types"
 	dbm "github.com/cosmos/cosmos-db"
 
+	ethmetrics "github.com/ethereum/go-ethereum/metrics"
 	ethmetricsexp "github.com/ethereum/go-ethereum/metrics/exp"
 
 	errorsmod "cosmossdk.io/errors"
@@ -442,6 +443,14 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 	// Enable metrics if JSONRPC is enabled and --metrics is passed
 	// Flag not added in config to avoid user enabling in config without passing in CLI
 	if config.JSONRPC.Enable && ctx.Viper.GetBool(srvflags.JSONRPCEnableMetrics) {
+		// Turn on the go-ethereum metrics subsystem before serving them.
+		// Until go-ethereum v1.14.8 the metrics package auto-enabled itself
+		// when it spotted the "metrics" CLI flag in os.Args, so starting the
+		// node with --metrics was enough. v1.16.9 dropped that auto-detection,
+		// so without an explicit Enable() every recording call is a no-op and
+		// the exported metrics (e.g. the rpc_duration_* family) stay flat at
+		// zero. Enabling is gated on the same flag that starts the exporter.
+		ethmetrics.Enable()
 		ethmetricsexp.Setup(config.JSONRPC.MetricsAddress)
 	}
 
