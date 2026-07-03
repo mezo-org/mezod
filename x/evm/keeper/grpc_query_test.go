@@ -1166,6 +1166,20 @@ func (suite *KeeperTestSuite) TestTraceTxNativeTracers() {
 	prestateData := strings.ToLower(string(prestateTrace.Data))
 	suite.Require().Contains(prestateData, strings.ToLower(suite.address.Hex()))
 	suite.Require().Contains(prestateData, strings.ToLower(contractAddr.Hex()))
+
+	// keccak256PreimageTracer leaves the tracer's Stop callback nil. Paired
+	// with a zero timeout, the deadline is already expired, so the trace
+	// timeout goroutine fires immediately; without a nil guard it would call
+	// the nil Stop and crash the process on an unrecoverable goroutine panic.
+	keccakTrace, err := suite.queryClient.TraceTx(suite.ctx, &types.QueryTraceTxRequest{
+		Msg: txMsg,
+		TraceConfig: &types.TraceConfig{
+			Tracer:  "keccak256PreimageTracer",
+			Timeout: "0s",
+		},
+	})
+	suite.Require().NoError(err)
+	suite.Require().NotNil(keccakTrace)
 }
 
 func (suite *KeeperTestSuite) TestTraceBlock() {

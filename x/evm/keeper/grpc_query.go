@@ -707,7 +707,11 @@ func (k *Keeper) traceTx(
 
 	go func() {
 		<-deadlineCtx.Done()
-		if errors.Is(deadlineCtx.Err(), context.DeadlineExceeded) {
+		// Guard against tracers that leave Stop unset (e.g. the native
+		// keccak256PreimageTracer). Calling a nil Stop here panics on this
+		// spawned goroutine, which request-level recovery cannot catch, so
+		// an unset Stop would crash the whole process.
+		if errors.Is(deadlineCtx.Err(), context.DeadlineExceeded) && tracer.Stop != nil {
 			tracer.Stop(errors.New("execution timeout"))
 		}
 	}()
