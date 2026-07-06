@@ -835,6 +835,73 @@ func (suite *KeeperTestSuite) TestEstimateGas_FloorDataGas_PrePrague() {
 	suite.Require().Equal(expectedIntrinsic, rsp.Gas)
 }
 
+// TestEstimateGas_ClampsGasCap pins that an oversized caller gas cap is
+// clamped to the server-side limit, so the binary-search ceiling cannot be
+// driven past it: a ~28.8M-gas call is reported as exceeding the clamped 25M
+// allowance rather than being estimated against the caller's 1e9 cap.
+func (suite *KeeperTestSuite) TestEstimateGas_ClampsGasCap() {
+	suite.SetupTest()
+	suite.app.EvmKeeper.SetEthCallGasCap(config.DefaultGasCap)
+
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000401")
+	overrideBytes, err := json.Marshal(map[common.Address]map[string]interface{}{
+		contract: {"code": "0x600063003b00005200"},
+	})
+	suite.Require().NoError(err)
+
+	gas := hexutil.Uint64(1_000_000_000)
+	args, err := json.Marshal(&types.TransactionArgs{
+		From: &suite.address,
+		To:   &contract,
+		Gas:  &gas,
+	})
+	suite.Require().NoError(err)
+
+	_, err = suite.queryClient.EstimateGas(suite.ctx, &types.EthCallRequest{
+		Args:          args,
+		GasCap:        1_000_000_000,
+		StateOverride: overrideBytes,
+	})
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), "25000000")
+}
+
+// TestEstimateGas_NoDeadlineUsesServerTimeout pins that a direct query with no
+// request deadline is still bounded by the keeper-side timeout. GasCap clamp is
+// disabled so the timeout is the only bound; the tight loop must be interrupted.
+func (suite *KeeperTestSuite) TestEstimateGas_NoDeadlineUsesServerTimeout() {
+	suite.SetupTest()
+	suite.app.EvmKeeper.SetEthCallGasCap(0)
+	suite.app.EvmKeeper.SetEthCallTimeout(200 * time.Millisecond)
+
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000402")
+	overrideBytes, err := json.Marshal(map[common.Address]map[string]interface{}{
+		contract: {"code": infiniteJumpBytecode},
+	})
+	suite.Require().NoError(err)
+
+	gas := hexutil.Uint64(10_000_000_000)
+	args, err := json.Marshal(&types.TransactionArgs{
+		From: &suite.address,
+		To:   &contract,
+		Gas:  &gas,
+	})
+	suite.Require().NoError(err)
+
+	start := time.Now()
+	res, err := suite.app.EvmKeeper.EstimateGas(suite.ctx, &types.EthCallRequest{
+		Args:          args,
+		GasCap:        uint64(gas),
+		StateOverride: overrideBytes,
+	})
+	elapsed := time.Since(start)
+
+	suite.Require().Error(err)
+	suite.Require().Nil(res)
+	suite.Require().Equal(codes.DeadlineExceeded, status.Code(err))
+	suite.Require().Less(elapsed, 2*time.Second)
+}
+
 // TestEstimateGas_FloorDataGas_CallerSubFloorAllowance pins behavior when
 // the caller supplies args.Gas at or below the EIP-7623 floor. The
 // floor-1-pre-seed guard in EstimateGasInternal skips itself when
@@ -1557,6 +1624,127 @@ func (suite *KeeperTestSuite) TestEthCall() {
 			}
 		})
 	}
+}
+
+func (suite *KeeperTestSuite) TestEthCall_UsesDefaultGasCapLimit() {
+	testCases := []struct {
+		name   string
+		gasCap uint64
+	}{
+		{
+			name:   "zero gas cap",
+			gasCap: 0,
+		},
+		{
+			name:   "oversized gas cap",
+			gasCap: 30_000_000,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+			suite.app.EvmKeeper.SetEthCallGasCap(config.DefaultGasCap)
+
+			sender := suite.address
+			contract := common.HexToAddress("0xaaaa000000000000000000000000000000000301")
+			gas := hexutil.Uint64(30_000_000)
+
+			args, err := json.Marshal(&types.TransactionArgs{
+				From: &sender,
+				To:   &contract,
+				Gas:  &gas,
+			})
+			suite.Require().NoError(err)
+
+			overrideBytes, err := json.Marshal(map[common.Address]map[string]interface{}{
+				contract: {"code": "0x600063003b00005200"},
+			})
+			suite.Require().NoError(err)
+
+			res, err := suite.queryClient.EthCall(suite.ctx, &types.EthCallRequest{
+				Args:          args,
+				GasCap:        tc.gasCap,
+				StateOverride: overrideBytes,
+			})
+			suite.Require().NoError(err)
+			suite.Require().Equal(vm.ErrOutOfGas.Error(), res.VmError)
+		})
+	}
+}
+
+func (suite *KeeperTestSuite) TestEthCall_CanceledContextStopsEVM() {
+	suite.SetupTest()
+
+	sender := suite.address
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000302")
+	gas := hexutil.Uint64(10_000_000_000)
+
+	args, err := json.Marshal(&types.TransactionArgs{
+		From: &sender,
+		To:   &contract,
+		Gas:  &gas,
+	})
+	suite.Require().NoError(err)
+
+	overrideBytes, err := json.Marshal(map[common.Address]map[string]interface{}{
+		contract: {"code": infiniteJumpBytecode},
+	})
+	suite.Require().NoError(err)
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	sdkCtx := suite.ctx.WithContext(timeoutCtx)
+
+	start := time.Now()
+	res, err := suite.app.EvmKeeper.EthCall(sdkCtx, &types.EthCallRequest{
+		Args:          args,
+		GasCap:        uint64(gas),
+		StateOverride: overrideBytes,
+	})
+	elapsed := time.Since(start)
+
+	suite.Require().Error(err)
+	suite.Require().Nil(res)
+	suite.Require().Equal(codes.DeadlineExceeded, status.Code(err))
+	suite.Require().Less(elapsed, 2*time.Second)
+}
+
+func (suite *KeeperTestSuite) TestEthCall_NoDeadlineUsesServerTimeout() {
+	suite.SetupTest()
+	// Direct queries carry no request deadline; the keeper-side timeout must
+	// still bound execution. Shrink it so the test does not wait the full
+	// default. GasCap stays 0 (no cap) so the timeout is the only bound.
+	suite.app.EvmKeeper.SetEthCallTimeout(200 * time.Millisecond)
+
+	sender := suite.address
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000303")
+	gas := hexutil.Uint64(10_000_000_000)
+
+	args, err := json.Marshal(&types.TransactionArgs{
+		From: &sender,
+		To:   &contract,
+		Gas:  &gas,
+	})
+	suite.Require().NoError(err)
+
+	overrideBytes, err := json.Marshal(map[common.Address]map[string]interface{}{
+		contract: {"code": infiniteJumpBytecode},
+	})
+	suite.Require().NoError(err)
+
+	start := time.Now()
+	res, err := suite.app.EvmKeeper.EthCall(suite.ctx, &types.EthCallRequest{
+		Args:          args,
+		GasCap:        uint64(gas),
+		StateOverride: overrideBytes,
+	})
+	elapsed := time.Since(start)
+
+	suite.Require().Error(err)
+	suite.Require().Nil(res)
+	suite.Require().Equal(codes.DeadlineExceeded, status.Code(err))
+	suite.Require().Less(elapsed, 2*time.Second)
 }
 
 func (suite *KeeperTestSuite) TestEmptyRequest() {
@@ -3045,6 +3233,95 @@ func (suite *KeeperTestSuite) TestSimulateV1_Timeout_MidCall() {
 	// running the bytecode to gas exhaustion.
 	suite.Require().Less(elapsed, 2*time.Second,
 		"timeout did not fire mid-call; elapsed=%s", elapsed)
+}
+
+// TestSimulateV1_ServerGasCapClamps pins that a direct caller passing
+// gas_cap=0 (wire "unlimited") is clamped to the server-side cap, so an
+// infinite loop with an oversized blockOverrides.gasLimit is bounded by the
+// budget and out-of-gases quickly instead of running unbounded. No timeout is
+// set, so the gas clamp is the only bound.
+func (suite *KeeperTestSuite) TestSimulateV1_ServerGasCapClamps() {
+	suite.SetupTest()
+	suite.app.EvmKeeper.SetEthCallGasCap(1_000_000)
+	suite.app.EvmKeeper.SetEthCallTimeout(0)
+
+	sender := suite.address
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000600")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{
+				"gasLimit": hexutil.Uint64(10_000_000_000),
+			},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:   {"balance": balance},
+				contract: {"code": infiniteJumpBytecode},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &contract}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	req := suite.simulateV1Request(optsJSON)
+	req.GasCap = 0
+	req.TimeoutMs = 0
+
+	start := time.Now()
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, req)
+	elapsed := time.Since(start)
+
+	suite.Require().NoError(err)
+	suite.Require().Nil(resp.Error)
+	results := suite.simulateV1BlockResults(resp)
+	calls := results[0]["calls"].([]interface{})
+	call := calls[0].(map[string]interface{})
+	suite.Require().Equal("0x0", call["status"], "loop must fail (out of gas) under the clamped budget")
+	gasUsed, err := hexutil.DecodeUint64(call["gasUsed"].(string))
+	suite.Require().NoError(err)
+	suite.Require().LessOrEqual(gasUsed, uint64(1_000_000), "gasUsed must respect the clamped server cap")
+	suite.Require().Less(elapsed, 2*time.Second)
+}
+
+// TestSimulateV1_ServerTimeoutCeiling pins that the node's evm-timeout is a
+// hard ceiling: an oversized caller timeout_ms is clamped down to it. Gas cap
+// is disabled so the timeout is the only bound; the tight loop must be
+// interrupted at the server timeout, not run for the caller's 1000s.
+func (suite *KeeperTestSuite) TestSimulateV1_ServerTimeoutCeiling() {
+	suite.SetupTest()
+	suite.app.EvmKeeper.SetEthCallGasCap(0)
+	suite.app.EvmKeeper.SetEthCallTimeout(200 * time.Millisecond)
+
+	sender := suite.address
+	contract := common.HexToAddress("0xaaaa000000000000000000000000000000000601")
+	balance := (*hexutil.Big)(big.NewInt(1_000_000_000_000_000_000))
+
+	optsJSON, err := json.Marshal(map[string]interface{}{
+		"blockStateCalls": []map[string]interface{}{{
+			"blockOverrides": map[string]interface{}{
+				"gasLimit": hexutil.Uint64(10_000_000_000),
+			},
+			"stateOverrides": map[common.Address]map[string]interface{}{
+				sender:   {"balance": balance},
+				contract: {"code": infiniteJumpBytecode},
+			},
+			"calls": []types.TransactionArgs{{From: &sender, To: &contract}},
+		}},
+	})
+	suite.Require().NoError(err)
+
+	req := suite.simulateV1Request(optsJSON)
+	req.GasCap = 0
+	req.TimeoutMs = 1_000_000 // 1000s; must be clamped to the 200ms server ceiling
+
+	start := time.Now()
+	resp, err := suite.app.EvmKeeper.SimulateV1(suite.ctx, req)
+	elapsed := time.Since(start)
+
+	suite.Require().NoError(err)
+	suite.Require().NotNil(resp.Error)
+	suite.Require().Equal(int32(types.SimErrCodeTimeout), resp.Error.Code)
+	suite.Require().Less(elapsed, 2*time.Second, "server timeout ceiling did not clamp the caller's 1000s; elapsed=%s", elapsed)
 }
 
 // -----------------------------------------------------------------------------

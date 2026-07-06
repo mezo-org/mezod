@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
@@ -230,6 +231,17 @@ func (k Keeper) Params(c context.Context, _ *types.QueryParamsRequest) (*types.Q
 	}, nil
 }
 
+// statusFromCtxErr maps a context cancellation/deadline error to the
+// matching gRPC status. It is only meaningful for a non-nil context error
+// (context.Canceled or context.DeadlineExceeded).
+func statusFromCtxErr(err error) error {
+	code := codes.Canceled
+	if errors.Is(err, context.DeadlineExceeded) {
+		code = codes.DeadlineExceeded
+	}
+	return status.Error(code, err.Error())
+}
+
 // EthCall implements eth_call rpc api.
 func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.MsgEthereumTxResponse, error) {
 	if req == nil {
@@ -256,7 +268,12 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	nonce := k.GetNonce(ctx, args.GetFrom())
 	args.Nonce = (*hexutil.Uint64)(&nonce)
 
-	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
+	gasCap := req.GasCap
+	if k.ethCallGasCap != 0 && (gasCap == 0 || gasCap > k.ethCallGasCap) {
+		gasCap = k.ethCallGasCap
+	}
+
+	msg, err := args.ToMessage(gasCap, cfg.BaseFee)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -274,9 +291,53 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	res, err := k.SimulateMessage(ctx, WrapMessage(msg), nil, cfg, txConfig, overrides)
+	// Derive a single call context used for the rest of EthCall. The node's
+	// json-rpc.evm-timeout is a hard ceiling on execution time: WithTimeout
+	// keeps any shorter caller-supplied deadline, so a caller can only tighten
+	// it, never exceed it or run uncancelled. A zero server timeout disables
+	// the ceiling ("0=infinite"). The watcher and the post-call check below
+	// read only callCtx, never c.
+	var (
+		callCtx       context.Context
+		cancelCallCtx context.CancelFunc
+	)
+	if k.ethCallTimeout > 0 {
+		callCtx, cancelCallCtx = context.WithTimeout(c, k.ethCallTimeout)
+	} else {
+		callCtx, cancelCallCtx = context.WithCancel(c)
+	}
+	defer cancelCallCtx()
+
+	// One watcher goroutine per EthCall. OnEVMConstructed publishes the
+	// per-call *vm.EVM into liveEVM before execution starts, so request
+	// cancellation can interrupt the running EVM call.
+	var liveEVM atomic.Pointer[vm.EVM]
+	go func() {
+		<-callCtx.Done()
+		if e := liveEVM.Load(); e != nil {
+			e.Cancel()
+		}
+	}()
+
+	res, err := k.SimulateMessage(
+		ctx,
+		WrapMessage(msg),
+		nil,
+		cfg,
+		txConfig,
+		overrides,
+		func(evm *vm.EVM) {
+			liveEVM.Store(evm)
+			if callCtx.Err() != nil {
+				evm.Cancel()
+			}
+		},
+	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if ctxErr := callCtx.Err(); ctxErr != nil {
+		return nil, statusFromCtxErr(ctxErr)
 	}
 
 	return res, nil
@@ -305,6 +366,14 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 
 	if req.GasCap < ethparams.TxGas {
 		return nil, status.Errorf(codes.InvalidArgument, "gas cap cannot be lower than %d", ethparams.TxGas)
+	}
+
+	// Clamp the caller-supplied gas cap to the server-side limit so a query
+	// cannot request an unbounded gas budget; hi (the binary-search ceiling)
+	// is recapped to req.GasCap below. A zero limit disables the clamp
+	// ("0=infinite").
+	if k.ethCallGasCap != 0 && req.GasCap > k.ethCallGasCap {
+		req.GasCap = k.ethCallGasCap
 	}
 
 	var args types.TransactionArgs
@@ -370,11 +439,40 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		}
 	}
 
+	// Derive a single call context for the binary search. The node's
+	// json-rpc.evm-timeout is a hard ceiling on execution time: WithTimeout
+	// keeps any shorter caller-supplied deadline, so a caller can only tighten
+	// it, never exceed it or run uncancelled. A zero server timeout disables
+	// the ceiling ("0=infinite"). The watcher cancels whichever EVM call is
+	// currently running (one per binary-search iteration).
+	var (
+		callCtx       context.Context
+		cancelCallCtx context.CancelFunc
+	)
+	if k.ethCallTimeout > 0 {
+		callCtx, cancelCallCtx = context.WithTimeout(c, k.ethCallTimeout)
+	} else {
+		callCtx, cancelCallCtx = context.WithCancel(c)
+	}
+	defer cancelCallCtx()
+
+	var liveEVM atomic.Pointer[vm.EVM]
+	go func() {
+		<-callCtx.Done()
+		if e := liveEVM.Load(); e != nil {
+			e.Cancel()
+		}
+	}()
+
 	// NOTE: the errors from the executable below should be consistent with go-ethereum,
 	// so we don't wrap them with the gRPC status code
 
 	// Create a helper to check if a gas allowance results in an executable transaction
 	executable := func(gas uint64) (vmError bool, rsp *types.MsgEthereumTxResponse, err error) {
+		// Stop the search promptly once the request context is done.
+		if err := callCtx.Err(); err != nil {
+			return true, nil, err
+		}
 		// update the message with the new gas value
 		msg = core.Message{
 			From:                  msg.From,
@@ -404,7 +502,14 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 				WithTransientKVGasConfig(storetypes.GasConfig{})
 		}
 
-		rsp, err = k.SimulateMessage(tmpCtx, WrapMessage(msg), nil, cfg, txConfig, overrides)
+		rsp, err = k.SimulateMessage(tmpCtx, WrapMessage(msg), nil, cfg, txConfig, overrides,
+			func(evm *vm.EVM) {
+				liveEVM.Store(evm)
+				if callCtx.Err() != nil {
+					evm.Cancel()
+				}
+			},
+		)
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) || errors.Is(err, core.ErrFloorDataGas) {
 				return true, nil, nil // Special case, raise gas limit
@@ -432,6 +537,9 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	// Execute the binary search and hone in on an executable gas limit
 	hi, err = types.BinSearch(lo, hi, executable)
 	if err != nil {
+		if ctxErr := callCtx.Err(); ctxErr != nil {
+			return nil, statusFromCtxErr(ctxErr)
+		}
 		return nil, err
 	}
 
@@ -439,6 +547,9 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	if hi == gasCap {
 		failed, result, err := executable(hi)
 		if err != nil {
+			if ctxErr := callCtx.Err(); ctxErr != nil {
+				return nil, statusFromCtxErr(ctxErr)
+			}
 			return nil, err
 		}
 
@@ -793,20 +904,30 @@ func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*ty
 		baseHash = common.BytesToHash(req.BaseBlockHash)
 	}
 
+	// The node's json-rpc.evm-timeout is a hard ceiling on execution time: the
+	// caller may only request a shorter deadline, never a longer one (or none).
+	// A zero server timeout disables the ceiling ("0=infinite"). WithTimeout
+	// further keeps any shorter deadline already on c; the watcher in
+	// processSimBlock keys off this ctx.
 	timeout := time.Duration(req.TimeoutMs) * time.Millisecond
-	// timeout <= 0 means no keeper-side deadline. The RPC backend
-	// injects b.RPCEVMTimeout() via req.TimeoutMs, so the JSON-RPC path
-	// always gets a bound. A direct gRPC peer passing 0 disables the
-	// deadline — by design, since operator config is not visible at
-	// this layer. The timestamp watcher in processSimBlock keys off
-	// this ctx.
+	if k.ethCallTimeout > 0 && (timeout <= 0 || timeout > k.ethCallTimeout) {
+		timeout = k.ethCallTimeout
+	}
 	if timeout > 0 {
 		var cancel context.CancelFunc
 		c, cancel = context.WithTimeout(c, timeout)
 		defer cancel()
 	}
 
-	results, err := k.simulateV1(c, ctx, cfg, baseHeaderFromContext(ctx, cfg, baseGasLimit), baseHash, opts, req.GasCap, timeout)
+	// Clamp the caller-supplied gas cap to the server-side limit so a query
+	// cannot request an unbounded gas budget (newSimGasBudget treats 0 as
+	// unlimited). A zero limit disables the clamp ("0=infinite").
+	gasCap := req.GasCap
+	if k.ethCallGasCap != 0 && (gasCap == 0 || gasCap > k.ethCallGasCap) {
+		gasCap = k.ethCallGasCap
+	}
+
+	results, err := k.simulateV1(c, ctx, cfg, baseHeaderFromContext(ctx, cfg, baseGasLimit), baseHash, opts, gasCap, timeout)
 	if err != nil {
 		return simulateV1ErrResponse(err)
 	}
