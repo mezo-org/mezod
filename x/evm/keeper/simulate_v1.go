@@ -480,6 +480,12 @@ func (k *Keeper) processSimBlock(
 		NoBaseFee:       &noBaseFee,
 		OnEVMConstructed: func(evm *vm.EVM) {
 			liveEVM.Store(evm)
+			// Cancel synchronously if ctx is already done: the watcher
+			// samples liveEVM only once, so a ctx that fired before this
+			// publish could otherwise leave the fresh EVM running.
+			if ctx.Err() != nil {
+				evm.Cancel()
+			}
 		},
 	}
 
