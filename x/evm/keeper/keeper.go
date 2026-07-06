@@ -20,6 +20,7 @@ import (
 	"math/big"
 	"slices"
 	"strings"
+	"time"
 
 	sdkmath "cosmossdk.io/math"
 
@@ -80,6 +81,10 @@ type Keeper struct {
 
 	// Tracer used to collect execution traces from the EVM transaction execution
 	tracer string
+	// Gas cap used by direct EthCall queries.
+	ethCallGasCap uint64
+	// Execution timeout used by direct EthCall queries.
+	ethCallTimeout time.Duration
 
 	// EVM Hooks for tx post-processing
 	hooks types.EvmHooks
@@ -101,6 +106,8 @@ func NewKeeper(
 	fmk types.FeeMarketKeeper,
 	ck types.ConsensusKeeper,
 	tracer string,
+	ethCallGasCap uint64,
+	ethCallTimeout time.Duration,
 	ss paramstypes.Subspace,
 ) *Keeper {
 	// ensure evm module account is set
@@ -125,9 +132,22 @@ func NewKeeper(
 		storeKey:          storeKey,
 		transientKey:      transientKey,
 		tracer:            tracer,
+		ethCallGasCap:     ethCallGasCap,
+		ethCallTimeout:    ethCallTimeout,
 		ss:                ss,
 		customPrecompiles: make(map[common.Address]*precompile.VersionMap),
 	}
+}
+
+// SetEthCallGasCap sets the direct EthCall gas cap. A zero cap means no cap.
+func (k *Keeper) SetEthCallGasCap(gasCap uint64) {
+	k.ethCallGasCap = gasCap
+}
+
+// SetEthCallTimeout sets the direct EthCall execution timeout. A zero
+// timeout means no timeout.
+func (k *Keeper) SetEthCallTimeout(timeout time.Duration) {
+	k.ethCallTimeout = timeout
 }
 
 // SetVerifyBTCSupply registers the post-commit invariant check. Wired

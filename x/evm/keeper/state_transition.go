@@ -491,6 +491,10 @@ func (k *Keeper) ApplyMessageWithConfig(
 // committing changes. It optionally applies pre-parsed state overrides to the
 // StateDB before execution, including MovePrecompileTo relocations. This
 // method is intended for read-only simulation (eth_call, eth_estimateGas).
+//
+// onEVMConstructed, when non-nil, is forwarded to EVMOverrides so a caller can
+// publish the live *vm.EVM to a cancellation watcher; pass nil when no
+// interruption is needed.
 func (k *Keeper) SimulateMessage(
 	ctx sdk.Context,
 	wrapper MessageWrapper,
@@ -498,6 +502,7 @@ func (k *Keeper) SimulateMessage(
 	cfg *statedb.EVMConfig,
 	txConfig statedb.TxConfig,
 	overrides types.StateOverride,
+	onEVMConstructed func(*vm.EVM),
 ) (*types.MsgEthereumTxResponse, error) {
 	stateDB := statedb.New(ctx, k, txConfig)
 
@@ -512,8 +517,11 @@ func (k *Keeper) SimulateMessage(
 	}
 
 	var evmOverrides *EVMOverrides
-	if len(moves) > 0 {
-		evmOverrides = &EVMOverrides{PrecompileMoves: moves}
+	if len(moves) > 0 || onEVMConstructed != nil {
+		evmOverrides = &EVMOverrides{
+			PrecompileMoves:  moves,
+			OnEVMConstructed: onEVMConstructed,
+		}
 	}
 
 	res, _, err := k.applyMessageWithConfig(
