@@ -12,7 +12,6 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/mezo-org/mezod/app"
 	"github.com/mezo-org/mezod/encoding"
-	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/precompile/erc20"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 )
@@ -301,13 +300,11 @@ func (s *TestSuite) TestApprove() {
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(s.account2.EvmAddr, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function approve(address spender, uint256 value)'
 			vmContract.Input = append([]byte{0x09, 0x5e, 0xa7, 0xb3}, methodInputArgs...)
-			vmContract.CallerAddress = s.account2.EvmAddr
-
 			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			s.Require().NoError(err, "expected no error")
 

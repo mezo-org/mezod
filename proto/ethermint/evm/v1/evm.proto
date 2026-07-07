@@ -170,6 +170,56 @@ message ChainConfig {
     (gogoproto.customtype) = "cosmossdk.io/math.Int",
     (gogoproto.moretags) = "yaml:\"cancun_time\""
   ];
+  // prague_time switch block (nil = no fork, 0 = already on prague)
+  string prague_time = 24 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"prague_time\""
+  ];
+  // osaka_time switch block (nil = no fork, 0 = already on osaka)
+  string osaka_time = 25 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"osaka_time\""
+  ];
+  // bpo1_time switch block (nil = no fork, 0 = already on bpo1)
+  string bpo1_time = 26 [
+    (gogoproto.customname) = "BPO1Time",
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"bpo1_time\""
+  ];
+  // bpo2_time switch block (nil = no fork, 0 = already on bpo2)
+  string bpo2_time = 27 [
+    (gogoproto.customname) = "BPO2Time",
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"bpo2_time\""
+  ];
+  // bpo3_time switch block (nil = no fork, 0 = already on bpo3)
+  string bpo3_time = 28 [
+    (gogoproto.customname) = "BPO3Time",
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"bpo3_time\""
+  ];
+  // bpo4_time switch block (nil = no fork, 0 = already on bpo4)
+  string bpo4_time = 29 [
+    (gogoproto.customname) = "BPO4Time",
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"bpo4_time\""
+  ];
+  // bpo5_time switch block (nil = no fork, 0 = already on bpo5)
+  string bpo5_time = 30 [
+    (gogoproto.customname) = "BPO5Time",
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"bpo5_time\""
+  ];
+  // amsterdam_time switch block (nil = no fork, 0 = already on amsterdam)
+  string amsterdam_time = 31 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"amsterdam_time\""
+  ];
+  // verkle_time switch block (nil = no fork, 0 = already on verkle)
+  string verkle_time = 32 [
+    (gogoproto.customtype) = "cosmossdk.io/math.Int",
+    (gogoproto.moretags) = "yaml:\"verkle_time\""
+  ];
 }
 
 // State represents a single Storage key value pair item.

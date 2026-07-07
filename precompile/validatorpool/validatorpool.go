@@ -120,6 +120,7 @@ func NewPrecompile(
 		contractAbi,
 		common.HexToAddress(EvmAddress),
 		EvmByteCode,
+		"validator-pool",
 	)
 
 	methods := newPrecompileMethods(pk, submitApplicationLegacyGas)

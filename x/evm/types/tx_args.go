@@ -18,13 +18,13 @@ package types
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 
 	sdkmath "cosmossdk.io/math"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -52,20 +52,31 @@ type TransactionArgs struct {
 	// Introduced by AccessListTxType transaction.
 	AccessList *ethtypes.AccessList `json:"accessList,omitempty"`
 	ChainID    *hexutil.Big         `json:"chainId,omitempty"`
+
+	// Introduced by SetCodeTxType transaction (EIP-7702).
+	AuthorizationList []ethtypes.SetCodeAuthorization `json:"authorizationList"`
 }
 
 // String return the struct in a string format
 func (args *TransactionArgs) String() string {
+	authSummaries := make([]string, 0, len(args.AuthorizationList))
+	for _, auth := range args.AuthorizationList {
+		authSummaries = append(authSummaries, fmt.Sprintf(
+			"(chainId=%s address=%s nonce=%d)",
+			auth.ChainID.String(), auth.Address.Hex(), auth.Nonce,
+		))
+	}
 	// Todo: There is currently a bug with hexutil.Big when the value its nil, printing would trigger an exception
 	return fmt.Sprintf("TransactionArgs{From:%v, To:%v, Gas:%v,"+
-		" Nonce:%v, Data:%v, Input:%v, AccessList:%v}",
+		" Nonce:%v, Data:%v, Input:%v, AccessList:%v, AuthorizationList:%v}",
 		args.From,
 		args.To,
 		args.Gas,
 		args.Nonce,
 		args.Data,
 		args.Input,
-		args.AccessList)
+		args.AccessList,
+		authSummaries)
 }
 
 // ToTransaction converts the arguments to an ethereum transaction.
@@ -110,9 +121,41 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 		to = args.To.Hex()
 	}
 
-	var data TxData
+	usedType := ethtypes.LegacyTxType
 	switch {
+	case args.AuthorizationList != nil:
+		usedType = ethtypes.SetCodeTxType
 	case args.MaxFeePerGas != nil:
+		usedType = ethtypes.DynamicFeeTxType
+	case args.AccessList != nil:
+		usedType = ethtypes.AccessListTxType
+	}
+	// Make it possible to default to newer tx, but use legacy if gasprice is provided
+	if args.GasPrice != nil {
+		usedType = ethtypes.LegacyTxType
+	}
+
+	var data TxData
+	switch usedType {
+	case ethtypes.SetCodeTxType:
+		al := AccessList{}
+		if args.AccessList != nil {
+			al = NewAccessList(args.AccessList)
+		}
+
+		data = &SetCodeTx{
+			To:        to,
+			ChainID:   &chainID,
+			Nonce:     nonce,
+			GasLimit:  gas,
+			GasFeeCap: &maxFeePerGas,
+			GasTipCap: &maxPriorityFeePerGas,
+			Amount:    &value,
+			Data:      args.GetData(),
+			Accesses:  al,
+			AuthList:  NewAuthorizationList(args.AuthorizationList),
+		}
+	case ethtypes.DynamicFeeTxType:
 		al := AccessList{}
 		if args.AccessList != nil {
 			al = NewAccessList(args.AccessList)
@@ -129,7 +172,7 @@ func (args *TransactionArgs) ToTransaction() *MsgEthereumTx {
 			Data:      args.GetData(),
 			Accesses:  al,
 		}
-	case args.AccessList != nil:
+	case ethtypes.AccessListTxType:
 		data = &AccessListTx{
 			To:       to,
 			ChainID:  &chainID,
@@ -176,13 +219,24 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 		return core.Message{}, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
 	}
 
+	// Type-4 (EIP-7702) forbids contract creation; the consensus path
+	// rejects this with core.ErrSetCodeTxCreate. Catch it here so the
+	// downstream typed-envelope construction can dereference `args.To`
+	// without a nil-check, and so the failure surfaces as a structured
+	// "invalid params" error across every ToMessage caller
+	// (eth_simulateV1, eth_call, eth_estimateGas) rather than as a
+	// downstream internal error.
+	if args.AuthorizationList != nil && args.To == nil {
+		return core.Message{}, errors.New(`SetCodeTx (EIP-7702) forbids contract creation: "to" must be set`)
+	}
+
 	// Set sender address or use zero address if none specified.
 	addr := args.GetFrom()
 
 	// Set default gas & gas price if none were set
 	gas := globalGasCap
 	if gas == 0 {
-		gas = uint64(math.MaxUint64 / 2)
+		gas = math.MaxUint64 / 2
 	}
 	if args.Gas != nil {
 		gas = uint64(*args.Gas)
@@ -221,7 +275,10 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 			// Backfill the legacy gasPrice for EVM execution, unless we're all zeroes
 			gasPrice = new(big.Int)
 			if gasFeeCap.BitLen() > 0 || gasTipCap.BitLen() > 0 {
-				gasPrice = math.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
+				gasPrice = new(big.Int).Add(gasTipCap, baseFee)
+				if gasPrice.Cmp(gasFeeCap) > 0 {
+					gasPrice = gasFeeCap
+				}
 			}
 		}
 	}
@@ -241,16 +298,17 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (c
 	}
 
 	msg := core.Message{
-		From:       addr,
-		To:         args.To,
-		Nonce:      nonce,
-		Value:      value,
-		GasLimit:   gas,
-		GasPrice:   gasPrice,
-		GasFeeCap:  gasFeeCap,
-		GasTipCap:  gasTipCap,
-		Data:       data,
-		AccessList: accessList,
+		From:                  addr,
+		To:                    args.To,
+		Nonce:                 nonce,
+		Value:                 value,
+		GasLimit:              gas,
+		GasPrice:              gasPrice,
+		GasFeeCap:             gasFeeCap,
+		GasTipCap:             gasTipCap,
+		Data:                  data,
+		AccessList:            accessList,
+		SetCodeAuthorizations: args.AuthorizationList,
 	}
 	return msg, nil
 }

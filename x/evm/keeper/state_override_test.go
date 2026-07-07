@@ -1,14 +1,19 @@
 package keeper
 
 import (
+	"errors"
 	"math/big"
+	"strings"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/x/evm/statedb"
+	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,6 +22,9 @@ var (
 	testTxConfig  = statedb.NewEmptyTxConfig(testBlockHash)
 	testAddr1     = common.BigToAddress(big.NewInt(201))
 	testAddr2     = common.BigToAddress(big.NewInt(202))
+	// testRules enables stdlib precompiles 0x01..0x09 (Istanbul+). Sufficient
+	// for every MovePrecompileTo test that names sha256 (0x02) or ripemd (0x03).
+	testRules = params.Rules{IsIstanbul: true, IsBerlin: true}
 )
 
 func newTestDB() (*statedb.StateDB, *statedb.MockKeeper) {
@@ -43,14 +51,15 @@ func ptrBytes(v []byte) *hexutil.Bytes {
 func TestApplyStateOverrides_Nonce(t *testing.T) {
 	db, _ := newTestDB()
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			Nonce: ptrUint64(42),
 		},
 	}
 
-	err := applyStateOverrides(db, overrides)
+	moves, err := applyStateOverrides(db, overrides, testRules)
 	require.NoError(t, err)
+	require.Nil(t, moves)
 	require.Equal(t, uint64(42), db.GetNonce(testAddr1))
 }
 
@@ -58,28 +67,30 @@ func TestApplyStateOverrides_Code(t *testing.T) {
 	db, _ := newTestDB()
 	code := []byte("contract code")
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			Code: ptrBytes(code),
 		},
 	}
 
-	err := applyStateOverrides(db, overrides)
+	moves, err := applyStateOverrides(db, overrides, testRules)
 	require.NoError(t, err)
+	require.Nil(t, moves)
 	require.Equal(t, code, db.GetCode(testAddr1))
 }
 
 func TestApplyStateOverrides_Balance(t *testing.T) {
 	db, _ := newTestDB()
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			Balance: ptrBig(big.NewInt(1000)),
 		},
 	}
 
-	err := applyStateOverrides(db, overrides)
+	moves, err := applyStateOverrides(db, overrides, testRules)
 	require.NoError(t, err)
+	require.Nil(t, moves)
 	require.Equal(t, uint256.NewInt(1000), db.GetBalance(testAddr1))
 }
 
@@ -88,16 +99,17 @@ func TestApplyStateOverrides_State(t *testing.T) {
 	newKey := common.BigToHash(big.NewInt(2))
 	newVal := common.BigToHash(big.NewInt(20))
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			State: map[common.Hash]common.Hash{
 				newKey: newVal,
 			},
 		},
 	}
 
-	err := applyStateOverrides(db, overrides)
+	moves, err := applyStateOverrides(db, overrides, testRules)
 	require.NoError(t, err)
+	require.Nil(t, moves)
 
 	require.Equal(t, newVal, db.GetState(testAddr1, newKey))
 }
@@ -119,16 +131,17 @@ func TestApplyStateOverrides_StateDiff(t *testing.T) {
 	db2 := statedb.New(sdk.Context{}, keeper, testTxConfig)
 	newVal1 := common.BigToHash(big.NewInt(99))
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			StateDiff: map[common.Hash]common.Hash{
 				key1: newVal1,
 			},
 		},
 	}
 
-	err := applyStateOverrides(db2, overrides)
+	moves, err := applyStateOverrides(db2, overrides, testRules)
 	require.NoError(t, err)
+	require.Nil(t, moves)
 
 	// key1 changed
 	require.Equal(t, newVal1, db2.GetState(testAddr1, key1))
@@ -139,8 +152,8 @@ func TestApplyStateOverrides_StateDiff(t *testing.T) {
 func TestApplyStateOverrides_StateAndStateDiffError(t *testing.T) {
 	db, _ := newTestDB()
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			State: map[common.Hash]common.Hash{
 				common.BigToHash(big.NewInt(1)): common.BigToHash(big.NewInt(10)),
 			},
@@ -150,17 +163,29 @@ func TestApplyStateOverrides_StateAndStateDiffError(t *testing.T) {
 		},
 	}
 
-	err := applyStateOverrides(db, overrides)
+	_, err := applyStateOverrides(db, overrides, testRules)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "has both state and stateDiff overrides")
+	requireSimErrorCode(t, err, evmtypes.SimErrCodeInvalidParams)
+	require.Contains(t, err.Error(), testAddr1.Hex())
+	require.Contains(t, err.Error(), "state and stateDiff")
+}
+
+// requireSimErrorCode asserts err unwraps to a *evmtypes.SimError with
+// the expected code. Kept alongside the override-path tests so each
+// assertion also pins the user-visible code.
+func requireSimErrorCode(t *testing.T, err error, wantCode int) {
+	t.Helper()
+	var simErr *evmtypes.SimError
+	require.True(t, errors.As(err, &simErr), "expected *evmtypes.SimError, got %T: %v", err, err)
+	require.Equal(t, wantCode, simErr.ErrorCode())
 }
 
 func TestApplyStateOverrides_Combined(t *testing.T) {
 	db, _ := newTestDB()
 	code := []byte("new code")
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			Nonce:   ptrUint64(10),
 			Code:    ptrBytes(code),
 			Balance: ptrBig(big.NewInt(5000)),
@@ -170,8 +195,9 @@ func TestApplyStateOverrides_Combined(t *testing.T) {
 		},
 	}
 
-	err := applyStateOverrides(db, overrides)
+	moves, err := applyStateOverrides(db, overrides, testRules)
 	require.NoError(t, err)
+	require.Nil(t, moves)
 
 	require.Equal(t, uint64(10), db.GetNonce(testAddr1))
 	require.Equal(t, code, db.GetCode(testAddr1))
@@ -182,19 +208,20 @@ func TestApplyStateOverrides_Combined(t *testing.T) {
 func TestApplyStateOverrides_MultipleAccounts(t *testing.T) {
 	db, _ := newTestDB()
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			Nonce:   ptrUint64(1),
 			Balance: ptrBig(big.NewInt(100)),
 		},
-		testAddr2: overrideAccount{
+		testAddr2: evmtypes.OverrideAccount{
 			Nonce:   ptrUint64(2),
 			Balance: ptrBig(big.NewInt(200)),
 		},
 	}
 
-	err := applyStateOverrides(db, overrides)
+	moves, err := applyStateOverrides(db, overrides, testRules)
 	require.NoError(t, err)
+	require.Nil(t, moves)
 
 	require.Equal(t, uint64(1), db.GetNonce(testAddr1))
 	require.Equal(t, uint256.NewInt(100), db.GetBalance(testAddr1))
@@ -206,17 +233,190 @@ func TestApplyStateOverrides_NilFieldsSkipped(t *testing.T) {
 	db, _ := newTestDB()
 
 	// Set initial state
-	db.SetNonce(testAddr1, 5)
+	db.SetNonce(testAddr1, 5, tracing.NonceChangeUnspecified)
 
-	overrides := stateOverride{
-		testAddr1: overrideAccount{
+	overrides := evmtypes.StateOverride{
+		testAddr1: evmtypes.OverrideAccount{
 			// All fields nil. Nothing should change
 		},
 	}
 
-	err := applyStateOverrides(db, overrides)
+	moves, err := applyStateOverrides(db, overrides, testRules)
 	require.NoError(t, err)
+	require.Nil(t, moves)
 
 	// Nonce should be unchanged
 	require.Equal(t, uint64(5), db.GetNonce(testAddr1))
+}
+
+func ptrAddr(a common.Address) *common.Address { return &a }
+
+func TestApplyStateOverrides_MovePrecompileTo_CollectsMove(t *testing.T) {
+	db, _ := newTestDB()
+
+	sha256Addr := common.BytesToAddress([]byte{0x02})
+	dest := common.BigToAddress(big.NewInt(0x1234))
+
+	overrides := evmtypes.StateOverride{
+		sha256Addr: evmtypes.OverrideAccount{
+			MovePrecompileTo: ptrAddr(dest),
+		},
+	}
+
+	moves, err := applyStateOverrides(db, overrides, testRules)
+	require.NoError(t, err)
+
+	require.Len(t, moves, 1)
+	require.Equal(t, dest, moves[sha256Addr])
+}
+
+func TestApplyStateOverrides_MovePrecompileTo_SourceNotPrecompile(t *testing.T) {
+	db, _ := newTestDB()
+
+	nonPrecompile := common.BigToAddress(big.NewInt(500))
+	dest := common.BigToAddress(big.NewInt(600))
+
+	overrides := evmtypes.StateOverride{
+		nonPrecompile: evmtypes.OverrideAccount{
+			MovePrecompileTo: ptrAddr(dest),
+		},
+	}
+
+	_, err := applyStateOverrides(db, overrides, testRules)
+	require.Error(t, err)
+	requireSimErrorCode(t, err, evmtypes.SimErrCodeInvalidParams)
+	require.Contains(t, err.Error(), nonPrecompile.Hex())
+	require.Contains(t, err.Error(), "not a precompile")
+}
+
+func TestApplyStateOverrides_MovePrecompileTo_SelfReference(t *testing.T) {
+	db, _ := newTestDB()
+
+	sha256Addr := common.BytesToAddress([]byte{0x02})
+
+	overrides := evmtypes.StateOverride{
+		sha256Addr: evmtypes.OverrideAccount{
+			MovePrecompileTo: ptrAddr(sha256Addr),
+		},
+	}
+
+	_, err := applyStateOverrides(db, overrides, testRules)
+	require.Error(t, err)
+	requireSimErrorCode(t, err, evmtypes.SimErrCodeMovePrecompileSelfReference)
+	require.Contains(t, err.Error(), sha256Addr.Hex())
+}
+
+func TestApplyStateOverrides_MovePrecompileTo_DuplicateDestination(t *testing.T) {
+	db, _ := newTestDB()
+
+	sha256Addr := common.BytesToAddress([]byte{0x02})
+	ripemdAddr := common.BytesToAddress([]byte{0x03})
+	dest := common.BigToAddress(big.NewInt(0x1234))
+
+	overrides := evmtypes.StateOverride{
+		sha256Addr: evmtypes.OverrideAccount{
+			MovePrecompileTo: ptrAddr(dest),
+		},
+		ripemdAddr: evmtypes.OverrideAccount{
+			MovePrecompileTo: ptrAddr(dest),
+		},
+	}
+
+	_, err := applyStateOverrides(db, overrides, testRules)
+	require.Error(t, err)
+	requireSimErrorCode(t, err, evmtypes.SimErrCodeMovePrecompileDuplicateDest)
+	require.Contains(t, err.Error(), dest.Hex())
+}
+
+func TestApplyStateOverrides_MovePrecompileTo_MezoCustomBlocked(t *testing.T) {
+	dest := common.BigToAddress(big.NewInt(0xabc))
+
+	for _, pv := range evmtypes.DefaultPrecompilesVersions {
+		t.Run(pv.PrecompileAddress, func(t *testing.T) {
+			db, _ := newTestDB()
+
+			customAddr := common.HexToAddress(pv.PrecompileAddress)
+
+			overrides := evmtypes.StateOverride{
+				customAddr: evmtypes.OverrideAccount{
+					MovePrecompileTo: ptrAddr(dest),
+				},
+			}
+
+			_, err := applyStateOverrides(db, overrides, testRules)
+			require.Error(t, err)
+			requireSimErrorCode(t, err, evmtypes.SimErrCodeInvalidParams)
+			require.Contains(t, err.Error(), customAddr.Hex())
+			require.Contains(t, err.Error(), "mezo custom precompile")
+		})
+	}
+}
+
+func TestApplyStateOverrides_MovePrecompileTo_DestAlreadyOverridden(t *testing.T) {
+	db, _ := newTestDB()
+
+	sha256Addr := common.BytesToAddress([]byte{0x02})
+	dest := common.BigToAddress(big.NewInt(0x1234))
+
+	overrides := evmtypes.StateOverride{
+		sha256Addr: evmtypes.OverrideAccount{MovePrecompileTo: ptrAddr(dest)},
+		dest:       evmtypes.OverrideAccount{Code: ptrBytes([]byte("conflicting"))},
+	}
+
+	_, err := applyStateOverrides(db, overrides, testRules)
+	require.Error(t, err)
+	requireSimErrorCode(t, err, evmtypes.SimErrCodeInvalidParams)
+	require.Contains(t, err.Error(), dest.Hex())
+	require.Contains(t, err.Error(), "destination account is already overridden")
+}
+
+func TestApplyStateOverrides_MovePrecompileTo_ChainedMoveRejected(t *testing.T) {
+	db, _ := newTestDB()
+
+	sha256Addr := common.BytesToAddress([]byte{0x02})
+	ripemdAddr := common.BytesToAddress([]byte{0x03})
+	thirdAddr := common.BigToAddress(big.NewInt(0xabcd))
+
+	overrides := evmtypes.StateOverride{
+		sha256Addr: evmtypes.OverrideAccount{MovePrecompileTo: ptrAddr(ripemdAddr)},
+		ripemdAddr: evmtypes.OverrideAccount{MovePrecompileTo: ptrAddr(thirdAddr)},
+	}
+
+	_, err := applyStateOverrides(db, overrides, testRules)
+	require.Error(t, err)
+	// Either guard may fire depending on map iteration order; both map
+	// to the generic invalid-params code (-32602). One of them always does.
+	requireSimErrorCode(t, err, evmtypes.SimErrCodeInvalidParams)
+	msg := err.Error()
+	require.True(t,
+		strings.Contains(msg, "already been overridden by a precompile") ||
+			strings.Contains(msg, "destination account is already overridden"),
+		"unexpected rejection error: %v", err,
+	)
+}
+
+func TestApplyStateOverrides_MovePrecompileTo_WithSourceCodeOverwrite(t *testing.T) {
+	db, _ := newTestDB()
+
+	sha256Addr := common.BytesToAddress([]byte{0x02})
+	dest := common.BigToAddress(big.NewInt(0x1234))
+	newCode := []byte("overwriting source code")
+
+	overrides := evmtypes.StateOverride{
+		sha256Addr: evmtypes.OverrideAccount{
+			MovePrecompileTo: ptrAddr(dest),
+			Code:             ptrBytes(newCode),
+			Nonce:            ptrUint64(7),
+		},
+	}
+
+	moves, err := applyStateOverrides(db, overrides, testRules)
+	require.NoError(t, err)
+
+	require.Len(t, moves, 1)
+	require.Equal(t, dest, moves[sha256Addr])
+
+	// Regular account overrides on the source address still land on the stateDB.
+	require.Equal(t, newCode, db.GetCode(sha256Addr))
+	require.Equal(t, uint64(7), db.GetNonce(sha256Addr))
 }

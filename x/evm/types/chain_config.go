@@ -49,9 +49,19 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		MergeNetsplitBlock:      getBlockValue(cc.MergeNetsplitBlock),
 		ShanghaiTime:            getTimeValue(cc.ShanghaiTime),
 		CancunTime:              getTimeValue(cc.CancunTime),
+		PragueTime:              getTimeValue(cc.PragueTime),
+		OsakaTime:               getTimeValue(cc.OsakaTime),
+		BPO1Time:                getTimeValue(cc.BPO1Time),
+		BPO2Time:                getTimeValue(cc.BPO2Time),
+		BPO3Time:                getTimeValue(cc.BPO3Time),
+		BPO4Time:                getTimeValue(cc.BPO4Time),
+		BPO5Time:                getTimeValue(cc.BPO5Time),
+		AmsterdamTime:           getTimeValue(cc.AmsterdamTime),
+		VerkleTime:              getTimeValue(cc.VerkleTime),
 		TerminalTotalDifficulty: nil,
 		Ethash:                  nil,
 		Clique:                  nil,
+		BlobScheduleConfig:      params.DefaultBlobSchedule,
 	}
 }
 
@@ -74,6 +84,8 @@ func DefaultChainConfig() ChainConfig {
 	mergeNetsplitBlock := sdkmath.ZeroInt()
 	shanghaiTime := sdkmath.ZeroInt()
 	cancunTime := sdkmath.ZeroInt()
+	pragueTime := sdkmath.ZeroInt()
+	osakaTime := sdkmath.ZeroInt()
 
 	return ChainConfig{
 		HomesteadBlock:      &homesteadBlock,
@@ -95,6 +107,8 @@ func DefaultChainConfig() ChainConfig {
 		MergeNetsplitBlock:  &mergeNetsplitBlock,
 		ShanghaiTime:        &shanghaiTime,
 		CancunTime:          &cancunTime,
+		PragueTime:          &pragueTime,
+		OsakaTime:           &osakaTime,
 	}
 }
 
@@ -166,11 +180,38 @@ func (cc ChainConfig) Validate() error {
 	if err := validateBlock(cc.MergeNetsplitBlock); err != nil {
 		return errorsmod.Wrap(err, "MergeNetsplitBlock")
 	}
-	if err := validateBlock(cc.ShanghaiTime); err != nil {
+	if err := validateTime(cc.ShanghaiTime); err != nil {
 		return errorsmod.Wrap(err, "ShanghaiTime")
 	}
-	if err := validateBlock(cc.CancunTime); err != nil {
+	if err := validateTime(cc.CancunTime); err != nil {
 		return errorsmod.Wrap(err, "CancunTime")
+	}
+	if err := validateTime(cc.PragueTime); err != nil {
+		return errorsmod.Wrap(err, "PragueTime")
+	}
+	if err := validateTime(cc.OsakaTime); err != nil {
+		return errorsmod.Wrap(err, "OsakaTime")
+	}
+	if err := validateTime(cc.BPO1Time); err != nil {
+		return errorsmod.Wrap(err, "BPO1Time")
+	}
+	if err := validateTime(cc.BPO2Time); err != nil {
+		return errorsmod.Wrap(err, "BPO2Time")
+	}
+	if err := validateTime(cc.BPO3Time); err != nil {
+		return errorsmod.Wrap(err, "BPO3Time")
+	}
+	if err := validateTime(cc.BPO4Time); err != nil {
+		return errorsmod.Wrap(err, "BPO4Time")
+	}
+	if err := validateTime(cc.BPO5Time); err != nil {
+		return errorsmod.Wrap(err, "BPO5Time")
+	}
+	if err := validateTime(cc.AmsterdamTime); err != nil {
+		return errorsmod.Wrap(err, "AmsterdamTime")
+	}
+	if err := validateTime(cc.VerkleTime); err != nil {
+		return errorsmod.Wrap(err, "VerkleTime")
 	}
 	// NOTE: chain ID is not needed to check config order
 	if err := cc.EthereumConfig(nil).CheckConfigForkOrder(); err != nil {
@@ -196,6 +237,21 @@ func validateBlock(block *sdkmath.Int) error {
 	if block.IsNegative() {
 		return errorsmod.Wrapf(
 			ErrInvalidChainConfig, "block value cannot be negative: %s", block,
+		)
+	}
+
+	return nil
+}
+
+func validateTime(time *sdkmath.Int) error {
+	// nil value means that the fork has not yet been applied
+	if time == nil {
+		return nil
+	}
+
+	if time.IsNegative() {
+		return errorsmod.Wrapf(
+			ErrInvalidChainConfig, "time value cannot be negative: %s", time,
 		)
 	}
 

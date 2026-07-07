@@ -137,6 +137,33 @@ func (k *Keeper) SetBalance(ctx sdk.Context, addr common.Address, amount *big.In
 	return nil
 }
 
+// bumpAccNonce increments the account-keeper sequence at addr by one,
+// mirroring the consensus-path bump that
+// EthIncrementSenderSequenceDecorator performs in ante. Query-only
+// entry points (eth_call, eth_estimateGas, debug_trace*,
+// eth_simulateV1) bypass ante and would otherwise read a pre-bump
+// sender nonce while consensus reads the post-bump one, so
+// applyMessageWithConfig stays a single geth-pure path regardless of
+// caller.
+//
+// One concrete consequence is EIP-7702: a self-sponsored authorization
+// signs its tuple against state_nonce + 1, and applyMessageWithConfig
+// validates against the post-bump value — without this bump every
+// self-sponsored auth on a query path is silently nonce-mismatched.
+//
+// Mutations land on the supplied ctx; callers that need a stable
+// baseline across iterations must pass a CacheContext.
+func (k *Keeper) bumpAccNonce(ctx sdk.Context, addr common.Address) error {
+	acct := k.GetAccount(ctx, addr)
+	if acct == nil {
+		acc := k.accountKeeper.NewAccountWithAddress(ctx, addr[:])
+		k.accountKeeper.SetAccount(ctx, acc)
+		acct = statedb.NewEmptyAccount()
+	}
+	acct.Nonce = k.GetNonce(ctx, addr) + 1
+	return k.SetAccount(ctx, addr, *acct)
+}
+
 // SetAccount updates nonce/balance/codeHash together.
 func (k *Keeper) SetAccount(ctx sdk.Context, addr common.Address, account statedb.Account) error {
 	// update account

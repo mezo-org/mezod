@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
@@ -42,6 +43,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	ethparams "github.com/ethereum/go-ethereum/params"
 
+	rpctypes "github.com/mezo-org/mezod/rpc/types"
 	mezotypes "github.com/mezo-org/mezod/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	"github.com/mezo-org/mezod/x/evm/types"
@@ -229,6 +231,17 @@ func (k Keeper) Params(c context.Context, _ *types.QueryParamsRequest) (*types.Q
 	}, nil
 }
 
+// statusFromCtxErr maps a context cancellation/deadline error to the
+// matching gRPC status. It is only meaningful for a non-nil context error
+// (context.Canceled or context.DeadlineExceeded).
+func statusFromCtxErr(err error) error {
+	code := codes.Canceled
+	if errors.Is(err, context.DeadlineExceeded) {
+		code = codes.DeadlineExceeded
+	}
+	return status.Error(code, err.Error())
+}
+
 // EthCall implements eth_call rpc api.
 func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.MsgEthereumTxResponse, error) {
 	if req == nil {
@@ -255,23 +268,76 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	nonce := k.GetNonce(ctx, args.GetFrom())
 	args.Nonce = (*hexutil.Uint64)(&nonce)
 
-	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
+	gasCap := req.GasCap
+	if k.ethCallGasCap != 0 && (gasCap == 0 || gasCap > k.ethCallGasCap) {
+		gasCap = k.ethCallGasCap
+	}
+
+	msg, err := args.ToMessage(gasCap, cfg.BaseFee)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
-	var overrides stateOverride
+	var overrides types.StateOverride
 	if len(req.StateOverride) > 0 {
 		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
 		}
 	}
 
-	res, err := k.SimulateMessage(ctx, WrapMessage(msg), nil, cfg, txConfig, overrides)
+	if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Derive a single call context used for the rest of EthCall. The node's
+	// json-rpc.evm-timeout is a hard ceiling on execution time: WithTimeout
+	// keeps any shorter caller-supplied deadline, so a caller can only tighten
+	// it, never exceed it or run uncancelled. A zero server timeout disables
+	// the ceiling ("0=infinite"). The watcher and the post-call check below
+	// read only callCtx, never c.
+	var (
+		callCtx       context.Context
+		cancelCallCtx context.CancelFunc
+	)
+	if k.ethCallTimeout > 0 {
+		callCtx, cancelCallCtx = context.WithTimeout(c, k.ethCallTimeout)
+	} else {
+		callCtx, cancelCallCtx = context.WithCancel(c)
+	}
+	defer cancelCallCtx()
+
+	// One watcher goroutine per EthCall. OnEVMConstructed publishes the
+	// per-call *vm.EVM into liveEVM before execution starts, so request
+	// cancellation can interrupt the running EVM call.
+	var liveEVM atomic.Pointer[vm.EVM]
+	go func() {
+		<-callCtx.Done()
+		if e := liveEVM.Load(); e != nil {
+			e.Cancel()
+		}
+	}()
+
+	res, err := k.SimulateMessage(
+		ctx,
+		WrapMessage(msg),
+		nil,
+		cfg,
+		txConfig,
+		overrides,
+		func(evm *vm.EVM) {
+			liveEVM.Store(evm)
+			if callCtx.Err() != nil {
+				evm.Cancel()
+			}
+		},
+	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if ctxErr := callCtx.Err(); ctxErr != nil {
+		return nil, statusFromCtxErr(ctxErr)
 	}
 
 	return res, nil
@@ -300,6 +366,14 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 
 	if req.GasCap < ethparams.TxGas {
 		return nil, status.Errorf(codes.InvalidArgument, "gas cap cannot be lower than %d", ethparams.TxGas)
+	}
+
+	// Clamp the caller-supplied gas cap to the server-side limit so a query
+	// cannot request an unbounded gas budget; hi (the binary-search ceiling)
+	// is recapped to req.GasCap below. A zero limit disables the clamp
+	// ("0=infinite").
+	if k.ethCallGasCap != 0 && req.GasCap > k.ethCallGasCap {
+		req.GasCap = k.ethCallGasCap
 	}
 
 	var args types.TransactionArgs
@@ -358,48 +432,67 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	}
 
 	// Deserialize state overrides once, before the binary search loop.
-	var overrides stateOverride
+	var overrides types.StateOverride
 	if len(req.StateOverride) > 0 {
 		if err := json.Unmarshal(req.StateOverride, &overrides); err != nil {
 			return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid state override: %v", err))
 		}
 	}
 
+	// Derive a single call context for the binary search. The node's
+	// json-rpc.evm-timeout is a hard ceiling on execution time: WithTimeout
+	// keeps any shorter caller-supplied deadline, so a caller can only tighten
+	// it, never exceed it or run uncancelled. A zero server timeout disables
+	// the ceiling ("0=infinite"). The watcher cancels whichever EVM call is
+	// currently running (one per binary-search iteration).
+	var (
+		callCtx       context.Context
+		cancelCallCtx context.CancelFunc
+	)
+	if k.ethCallTimeout > 0 {
+		callCtx, cancelCallCtx = context.WithTimeout(c, k.ethCallTimeout)
+	} else {
+		callCtx, cancelCallCtx = context.WithCancel(c)
+	}
+	defer cancelCallCtx()
+
+	var liveEVM atomic.Pointer[vm.EVM]
+	go func() {
+		<-callCtx.Done()
+		if e := liveEVM.Load(); e != nil {
+			e.Cancel()
+		}
+	}()
+
 	// NOTE: the errors from the executable below should be consistent with go-ethereum,
 	// so we don't wrap them with the gRPC status code
 
 	// Create a helper to check if a gas allowance results in an executable transaction
 	executable := func(gas uint64) (vmError bool, rsp *types.MsgEthereumTxResponse, err error) {
+		// Stop the search promptly once the request context is done.
+		if err := callCtx.Err(); err != nil {
+			return true, nil, err
+		}
 		// update the message with the new gas value
 		msg = core.Message{
-			From:       msg.From,
-			To:         msg.To,
-			Nonce:      msg.Nonce,
-			Value:      msg.Value,
-			GasLimit:   gas,
-			GasPrice:   msg.GasPrice,
-			GasFeeCap:  msg.GasFeeCap,
-			GasTipCap:  msg.GasTipCap,
-			Data:       msg.Data,
-			AccessList: msg.AccessList,
+			From:                  msg.From,
+			To:                    msg.To,
+			Nonce:                 msg.Nonce,
+			Value:                 msg.Value,
+			GasLimit:              gas,
+			GasPrice:              msg.GasPrice,
+			GasFeeCap:             msg.GasFeeCap,
+			GasTipCap:             msg.GasTipCap,
+			Data:                  msg.Data,
+			AccessList:            msg.AccessList,
+			SetCodeAuthorizations: msg.SetCodeAuthorizations,
 		}
 
 		tmpCtx := ctx
 		if fromType == types.RPC {
 			tmpCtx, _ = ctx.CacheContext()
 
-			acct := k.GetAccount(tmpCtx, msg.From)
-
-			from := msg.From
-			if acct == nil {
-				acc := k.accountKeeper.NewAccountWithAddress(tmpCtx, from[:])
-				k.accountKeeper.SetAccount(tmpCtx, acc)
-				acct = statedb.NewEmptyAccount()
-			}
-			// When submitting a transaction, the `EthIncrementSenderSequence` ante handler increases the account nonce
-			acct.Nonce = nonce + 1
-			err = k.SetAccount(tmpCtx, from, *acct)
-			if err != nil {
+			if err := k.bumpAccNonce(tmpCtx, msg.From); err != nil {
 				return true, nil, err
 			}
 			// Resetting the gasMeter after increasing the sequence to have an accurate gas estimation on transactions against EVM precompiles.
@@ -409,9 +502,16 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 				WithTransientKVGasConfig(storetypes.GasConfig{})
 		}
 
-		rsp, err = k.SimulateMessage(tmpCtx, WrapMessage(msg), nil, cfg, txConfig, overrides)
+		rsp, err = k.SimulateMessage(tmpCtx, WrapMessage(msg), nil, cfg, txConfig, overrides,
+			func(evm *vm.EVM) {
+				liveEVM.Store(evm)
+				if callCtx.Err() != nil {
+					evm.Cancel()
+				}
+			},
+		)
 		if err != nil {
-			if errors.Is(err, core.ErrIntrinsicGas) {
+			if errors.Is(err, core.ErrIntrinsicGas) || errors.Is(err, core.ErrFloorDataGas) {
 				return true, nil, nil // Special case, raise gas limit
 			}
 			return true, nil, err // Bail out
@@ -419,9 +519,27 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		return len(rsp.VmError) > 0, rsp, nil
 	}
 
+	// Pre-seed lo above the EIP-7623 floor so BinSearch skips the
+	// iterations between TxGas and the floor on calldata-heavy txs. The
+	// `floor-1 < hi` guard handles the caller-supplied `args.Gas < floor`
+	// edge case: without it, `lo` could land at `floor-1 >= hi`, BinSearch
+	// would exit immediately and return an unverified `hi`. With the
+	// guard, the final-allowance check below re-runs `executable(hi)` and
+	// surfaces the failure.
+	floor, err := k.GetEthFloorDataGas(ctx, msg, cfg.ChainConfig)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if floor > 0 && floor-1 < hi && floor-1 > lo {
+		lo = floor - 1
+	}
+
 	// Execute the binary search and hone in on an executable gas limit
 	hi, err = types.BinSearch(lo, hi, executable)
 	if err != nil {
+		if ctxErr := callCtx.Err(); ctxErr != nil {
+			return nil, statusFromCtxErr(ctxErr)
+		}
 		return nil, err
 	}
 
@@ -429,6 +547,9 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	if hi == gasCap {
 		failed, result, err := executable(hi)
 		if err != nil {
+			if ctxErr := callCtx.Err(); ctxErr != nil {
+				return nil, statusFromCtxErr(ctxErr)
+			}
 			return nil, err
 		}
 
@@ -515,9 +636,14 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
+		if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
 		rsp, _, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, ethTx), tracer, true, cfg, txConfig)
 		if err != nil {
-			continue
+			return nil, status.Error(codes.Internal, err.Error())
 		}
 		txConfig.LogIndex += uint(len(rsp.Logs))
 	}
@@ -589,18 +715,15 @@ func (k Keeper) TraceBlock(c context.Context, req *types.QueryTraceBlockRequest)
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 	for i, tx := range req.Txs {
-		result := types.TxTraceResult{}
 		ethTx := tx.AsTransaction()
 		txConfig.TxHash = ethTx.Hash()
 		txConfig.TxIndex = uint(i) //nolint:gosec
 		traceResult, logIndex, err := k.traceTx(ctx, cfg, txConfig, signer, ethTx, req.TraceConfig, true, nil)
 		if err != nil {
-			result.Error = err.Error()
-		} else {
-			txConfig.LogIndex = logIndex
-			result.Result = traceResult
+			return nil, err
 		}
-		results = append(results, &result)
+		txConfig.LogIndex = logIndex
+		results = append(results, &types.TxTraceResult{Result: traceResult})
 	}
 
 	resultData, err := json.Marshal(results)
@@ -660,7 +783,6 @@ func (k *Keeper) traceTx(
 		DisableStack:     traceConfig.DisableStack,
 		DisableStorage:   traceConfig.DisableStorage,
 		EnableReturnData: traceConfig.EnableReturnData,
-		Debug:            traceConfig.Debug,
 		Limit:            int(traceConfig.Limit),
 		Overrides:        overrides,
 	})
@@ -677,7 +799,7 @@ func (k *Keeper) traceTx(
 	}
 
 	if len(traceConfig.Tracer) != 0 {
-		tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig)
+		tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig, cfg.ChainConfig)
 		if err != nil {
 			return nil, 0, status.Error(codes.Internal, err.Error())
 		}
@@ -696,10 +818,18 @@ func (k *Keeper) traceTx(
 
 	go func() {
 		<-deadlineCtx.Done()
-		if errors.Is(deadlineCtx.Err(), context.DeadlineExceeded) {
+		// Guard against tracers that leave Stop unset (e.g. the native
+		// keccak256PreimageTracer). Calling a nil Stop here panics on this
+		// spawned goroutine, which request-level recovery cannot catch, so
+		// an unset Stop would crash the whole process.
+		if errors.Is(deadlineCtx.Err(), context.DeadlineExceeded) && tracer.Stop != nil {
 			tracer.Stop(errors.New("execution timeout"))
 		}
 	}()
+
+	if err := k.bumpAccNonce(ctx, msg.From); err != nil {
+		return nil, 0, status.Error(codes.Internal, err.Error())
+	}
 
 	res, _, err := k.ApplyMessageWithConfig(ctx, WrapMessageWithSource(*msg, tx), tracer, commitMessage, cfg, txConfig)
 	if err != nil {
@@ -713,6 +843,120 @@ func (k *Keeper) traceTx(
 	}
 
 	return &result, txConfig.LogIndex + uint(len(res.Logs)), nil
+}
+
+// SimulateV1 implements the eth_simulateV1 gRPC backend.
+//
+// The `simulate-disabled` operator kill switch is enforced at the
+// JSON-RPC namespace handler (PublicAPI.SimulateV1) — not here. Direct
+// gRPC peers bypass it; operators who need to suppress simulate
+// entirely must additionally restrict the SDK gRPC port (default 9090).
+// Same applies to the operator-derived RPCGasCap and RPCEVMTimeout
+// defaults, which the RPC backend injects via req.GasCap and
+// req.TimeoutMs. The keeper only sees the wire values and treats 0 as
+// "no bound" — see newSimGasBudget and the WithTimeout block below.
+func (k Keeper) SimulateV1(c context.Context, req *types.SimulateV1Request) (*types.SimulateV1Response, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+
+	ctx := sdk.UnwrapSDKContext(c)
+
+	// Defense-in-depth for callers reaching the keeper gRPC directly
+	// (bypassing rpc/backend, which ordinarily anchors ctx at the
+	// resolved base height via rpctypes.ContextWithHeight).
+	// rpc/backend.Backend.SimulateV1 (rpc/backend/simulate_v1.go)
+	// always populates BlockNumberOrHash, defaulting to "latest" when
+	// the caller omits it; an empty field at this point means we're on
+	// a direct-gRPC path and the ctx is authoritative.
+	if err := validateSimulateV1Anchor(ctx, req.BlockNumberOrHash); err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	chainID, err := getChainID(ctx, req.ChainId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	cfg, err := k.EVMConfig(ctx, GetProposerAddress(ctx, req.ProposerAddress), chainID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	opts, err := types.UnmarshalSimOpts(req.Opts)
+	if err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	// Reject oversized envelopes before sanitizeSimChain clones the
+	// input slice. sanitizeSimChain only gap-fills with empty Calls, so
+	// the post-sanitize call total always equals the pre-sanitize one;
+	// catching it here is sufficient.
+	if n := len(opts.BlockStateCalls); n > types.MaxSimulateBlocks {
+		return simulateV1ErrResponse(types.NewSimBlockCountExceeded(n, types.MaxSimulateBlocks))
+	}
+	if n := types.CountSimCalls(opts.BlockStateCalls); n > types.MaxSimulateCalls {
+		return simulateV1ErrResponse(types.NewSimCallLimitExceeded(n, types.MaxSimulateCalls))
+	}
+
+	baseGasLimit, err := k.simulateBaseGasLimit(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get consensus params")
+	}
+
+	var baseHash common.Hash
+	if len(req.BaseBlockHash) > 0 {
+		baseHash = common.BytesToHash(req.BaseBlockHash)
+	}
+
+	// The node's json-rpc.evm-timeout is a hard ceiling on execution time: the
+	// caller may only request a shorter deadline, never a longer one (or none).
+	// A zero server timeout disables the ceiling ("0=infinite"). WithTimeout
+	// further keeps any shorter deadline already on c; the watcher in
+	// processSimBlock keys off this ctx.
+	timeout := time.Duration(req.TimeoutMs) * time.Millisecond
+	if k.ethCallTimeout > 0 && (timeout <= 0 || timeout > k.ethCallTimeout) {
+		timeout = k.ethCallTimeout
+	}
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		c, cancel = context.WithTimeout(c, timeout)
+		defer cancel()
+	}
+
+	// Clamp the caller-supplied gas cap to the server-side limit so a query
+	// cannot request an unbounded gas budget (newSimGasBudget treats 0 as
+	// unlimited). A zero limit disables the clamp ("0=infinite").
+	gasCap := req.GasCap
+	if k.ethCallGasCap != 0 && (gasCap == 0 || gasCap > k.ethCallGasCap) {
+		gasCap = k.ethCallGasCap
+	}
+
+	results, err := k.simulateV1(c, ctx, cfg, baseHeaderFromContext(ctx, cfg, baseGasLimit), baseHash, opts, gasCap, timeout)
+	if err != nil {
+		return simulateV1ErrResponse(err)
+	}
+
+	payload, err := json.Marshal(results)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &types.SimulateV1Response{Result: payload}, nil
+}
+
+// simulateV1ErrResponse routes a driver-layer error onto the response's
+// structured SimError field for spec-coded failures, or onto a gRPC
+// Internal status for everything else. core.ErrIntrinsicGas is mapped
+// to a structured -38013 SimError; CallResultFailure does not permit
+// -38013 on a per-call entry so it must surface at the request level.
+func simulateV1ErrResponse(err error) (*types.SimulateV1Response, error) {
+	var simErr *types.SimError
+	if errors.As(err, &simErr) {
+		return &types.SimulateV1Response{Error: simErr}, nil
+	}
+	if errors.Is(err, core.ErrIntrinsicGas) || errors.Is(err, core.ErrFloorDataGas) {
+		return &types.SimulateV1Response{Error: types.NewSimIntrinsicGas(0, 0)}, nil
+	}
+	return nil, status.Error(codes.Internal, err.Error())
 }
 
 // BaseFee implements the Query/BaseFee gRPC method
@@ -738,4 +982,91 @@ func getChainID(ctx sdk.Context, chainID int64) (*big.Int, error) {
 		return mezotypes.ParseChainID(ctx.ChainID())
 	}
 	return big.NewInt(chainID), nil
+}
+
+// validateSimulateV1Anchor performs a minimal consistency check between
+// the request's BlockNumberOrHash field and the SDK context's block
+// height. The backend (rpc/backend/simulate_v1.go) already resolves the
+// field into a concrete height and anchors ctx via
+// rpctypes.ContextWithHeight, so for the normal call path this is a
+// no-op. Direct gRPC callers that desynchronize the two surfaces hit
+// a spec-conformant -32602 instead of silently simulating against the
+// wrong base.
+//
+// Sentinel BlockNumber values (Latest / Earliest / Pending / Finalized
+// / Safe) and hash-only addressing skip the numeric comparison — the
+// backend's resolution is trusted for those cases.
+func validateSimulateV1Anchor(ctx sdk.Context, bnhBz []byte) error {
+	if len(bnhBz) == 0 {
+		return nil
+	}
+	var bnh rpctypes.BlockNumberOrHash
+	if err := json.Unmarshal(bnhBz, &bnh); err != nil {
+		return types.NewSimInvalidParams(fmt.Sprintf(
+			"simulate: malformed blockNumberOrHash: %s", err.Error(),
+		))
+	}
+	if bnh.BlockNumber == nil {
+		return nil
+	}
+	requested := bnh.BlockNumber.Int64()
+	if requested < 0 {
+		// Sentinel values (latest, earliest, pending, finalized, safe)
+		// are resolved in the backend; the ctx height is authoritative.
+		return nil
+	}
+	if requested != ctx.BlockHeight() {
+		return types.NewSimInvalidParams(fmt.Sprintf(
+			"simulate: blockNumberOrHash (%d) does not match anchored context height (%d)",
+			requested, ctx.BlockHeight(),
+		))
+	}
+	return nil
+}
+
+// simulateBaseGasLimit reads the consensus block gas limit via the
+// consensus keeper. baseapp.CreateQueryContext does not populate
+// ctx.ConsensusParams or attach a BlockGasMeter for query-side calls,
+// so the keeper-attached ConsensusParamsKeeper is the only path that
+// returns the chain's configured limit here.
+func (k Keeper) simulateBaseGasLimit(ctx sdk.Context) (uint64, error) {
+	consensusParamsResp, err := k.consensusKeeper.Params(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	switch maxGas := consensusParamsResp.GetParams().GetBlock().GetMaxGas(); {
+	case maxGas == -1:
+		// Consensus "unlimited" sentinel: surface max uint32 instead
+		// of a full uint64 so JS dev tooling does not choke on a value
+		// past 2^53.
+		return uint64(^uint32(0)), nil
+	case maxGas > 0:
+		return uint64(maxGas), nil //nolint:gosec
+	default:
+		return 0, nil
+	}
+}
+
+// baseHeaderFromContext synthesizes the execution-api base header from
+// the SDK context that the gRPC call was anchored at. The returned
+// header only populates the fields the simulate driver consumes
+// (Number, Time, GasLimit, BaseFee, Difficulty, Coinbase). The ctx has
+// already been anchored at the requested base height by the rpc/backend
+// layer (via rpctypes.ContextWithHeight); newSimGetHashFn delegates
+// canonical-range BLOCKHASH resolution to k.GetHashFn which reads the
+// same ctx, so all three sources (ctx, base header fields, BLOCKHASH
+// for base.Number) stay consistent.
+func baseHeaderFromContext(ctx sdk.Context, cfg *statedb.EVMConfig, gasLimit uint64) *ethtypes.Header {
+	return &ethtypes.Header{
+		Number:     big.NewInt(ctx.BlockHeight()),
+		Time:       uint64(ctx.BlockTime().Unix()), //nolint:gosec
+		GasLimit:   gasLimit,
+		BaseFee:    cfg.BaseFee,
+		Difficulty: new(big.Int),
+		// Match the non-simulate path so COINBASE returns the validator
+		// operator address rather than zero for simulated blocks that
+		// don't override FeeRecipient.
+		Coinbase: cfg.CoinBase,
+	}
 }

@@ -38,6 +38,7 @@ func MezoBridgeAddress(network ethconfig.Network) string {
 type (
 	MezoBridge                      = ethereumcontract.MezoBridge
 	MezoBridgeAssetsLocked          = ethereumabi.MezoBridgeAssetsLocked
+	MezoBridgeAssetsUnlockAttested  = ethereumabi.MezoBridgeAssetsUnlockAttested
 	MezoBridgeAssetsUnlockConfirmed = ethereumabi.MezoBridgeAssetsUnlockConfirmed
 	MezoBridgeAssetsUnlocked        = ethereumabi.MezoBridgeAssetsUnlocked
 	BitcoinTxUTXO                   = ethereumabi.BitcoinTxUTXO

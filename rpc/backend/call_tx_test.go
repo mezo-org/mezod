@@ -9,6 +9,9 @@ import (
 	sdkmath "cosmossdk.io/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/holiman/uint256"
+
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/mezo-org/mezod/rpc/backend/mocks"
@@ -701,4 +704,168 @@ func RegisterGetPriceError(oracleClient *mocks.OracleQueryClient, currencyPair s
 	oracleClient.On("GetPrice", rpctypes.ContextWithHeight(1), &oracletypes.GetPriceRequest{
 		CurrencyPair: currencyPair,
 	}, mock.Anything).Return(nil, fmt.Errorf("failed to get price"))
+}
+
+func (suite *BackendTestSuite) TestSetTxDefaultsPropagatesAuthorizationList() {
+	suite.SetupTest()
+
+	from := utiltx.GenerateAddress()
+	to := utiltx.GenerateAddress()
+	chainID := (*hexutil.Big)(suite.backend.chainID)
+	gasPrice := new(hexutil.Big)
+
+	auth := ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.MustFromBig(suite.backend.chainID),
+		Address: to,
+		Nonce:   1,
+	}
+
+	nonce := (hexutil.Uint64)(1)
+	args := evmtypes.TransactionArgs{
+		From:                 &from,
+		To:                   &to,
+		Gas:                  nil,
+		Nonce:                &nonce,
+		MaxFeePerGas:         gasPrice,
+		MaxPriorityFeePerGas: gasPrice,
+		Value:                gasPrice,
+		ChainID:              chainID,
+		AuthorizationList:    []ethtypes.SetCodeAuthorization{auth},
+	}
+
+	var header metadata.MD
+	client := suite.backend.clientCtx.Client.(*mocks.Client)
+	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+	RegisterParams(queryClient, &header, 1)
+	_, err := RegisterBlock(client, 1, nil)
+	suite.Require().NoError(err)
+	_, err = RegisterBlockResults(client, 1)
+	suite.Require().NoError(err)
+	RegisterBaseFee(queryClient, sdkmath.NewInt(1))
+
+	var captured evmtypes.TransactionArgs
+	queryClient.On(
+		"EstimateGas",
+		rpctypes.ContextWithHeight(1),
+		mock.MatchedBy(func(req *evmtypes.EthCallRequest) bool {
+			if req == nil {
+				return false
+			}
+			return json.Unmarshal(req.Args, &captured) == nil
+		}),
+	).Return(&evmtypes.EstimateGasResponse{Gas: 100_000}, nil)
+
+	_, err = suite.backend.SetTxDefaults(args)
+	suite.Require().NoError(err)
+	suite.Require().Len(captured.AuthorizationList, 1)
+	suite.Require().Equal(auth, captured.AuthorizationList[0])
+}
+
+func (suite *BackendTestSuite) TestSendRawTransactionSetCodeTx() {
+	suite.SetupTest()
+
+	priv, err := crypto.GenerateKey()
+	suite.Require().NoError(err)
+
+	to := utiltx.GenerateAddress()
+
+	chainIDBig := suite.backend.chainID
+	signer := ethtypes.NewPragueSigner(chainIDBig)
+
+	auth, err := ethtypes.SignSetCode(priv, ethtypes.SetCodeAuthorization{
+		ChainID: *uint256.MustFromBig(chainIDBig),
+		Address: to,
+		Nonce:   1,
+	})
+	suite.Require().NoError(err)
+
+	inner := &ethtypes.SetCodeTx{
+		ChainID:   uint256.MustFromBig(chainIDBig),
+		Nonce:     0,
+		GasTipCap: uint256.NewInt(1),
+		GasFeeCap: uint256.NewInt(10),
+		Gas:       100_000,
+		To:        to,
+		Value:     uint256.NewInt(0),
+		AuthList:  []ethtypes.SetCodeAuthorization{auth},
+	}
+	ethTx := ethtypes.MustSignNewTx(priv, signer, inner)
+
+	rawTx, err := ethTx.MarshalBinary()
+	suite.Require().NoError(err)
+
+	msgEthTx := &evmtypes.MsgEthereumTx{}
+	suite.Require().NoError(msgEthTx.FromEthereumTx(ethTx))
+	cosmosTx, err := msgEthTx.BuildTx(suite.backend.clientCtx.TxConfig.NewTxBuilder(), evmtypes.DefaultEVMDenom)
+	suite.Require().NoError(err)
+	txBytes, err := suite.backend.clientCtx.TxConfig.TxEncoder()(cosmosTx)
+	suite.Require().NoError(err)
+
+	client := suite.backend.clientCtx.Client.(*mocks.Client)
+	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+	suite.backend.allowUnprotectedTxs = true
+	RegisterParamsWithoutHeader(queryClient, 1)
+	RegisterBroadcastTx(client, txBytes)
+
+	hash, err := suite.backend.SendRawTransaction(rawTx)
+	suite.Require().NoError(err)
+	suite.Require().Equal(ethTx.Hash(), hash)
+
+	expectedSender := crypto.PubkeyToAddress(priv.PublicKey)
+	recoveredSender, err := ethtypes.Sender(signer, ethTx)
+	suite.Require().NoError(err)
+	suite.Require().Equal(expectedSender, recoveredSender)
+
+	suite.Require().Len(ethTx.SetCodeAuthorizations(), 1)
+	recoveredAuthority, err := ethTx.SetCodeAuthorizations()[0].Authority()
+	suite.Require().NoError(err)
+	suite.Require().Equal(expectedSender, recoveredAuthority)
+}
+
+func (suite *BackendTestSuite) TestSetTxDefaultsLeavesNilAuthorizationList() {
+	suite.SetupTest()
+
+	from := utiltx.GenerateAddress()
+	to := utiltx.GenerateAddress()
+	chainID := (*hexutil.Big)(suite.backend.chainID)
+	gasPrice := new(hexutil.Big)
+
+	nonce := (hexutil.Uint64)(1)
+	args := evmtypes.TransactionArgs{
+		From:                 &from,
+		To:                   &to,
+		Gas:                  nil,
+		Nonce:                &nonce,
+		MaxFeePerGas:         gasPrice,
+		MaxPriorityFeePerGas: gasPrice,
+		Value:                gasPrice,
+		ChainID:              chainID,
+		AuthorizationList:    nil,
+	}
+
+	var header metadata.MD
+	client := suite.backend.clientCtx.Client.(*mocks.Client)
+	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+	RegisterParams(queryClient, &header, 1)
+	_, err := RegisterBlock(client, 1, nil)
+	suite.Require().NoError(err)
+	_, err = RegisterBlockResults(client, 1)
+	suite.Require().NoError(err)
+	RegisterBaseFee(queryClient, sdkmath.NewInt(1))
+
+	var captured evmtypes.TransactionArgs
+	queryClient.On(
+		"EstimateGas",
+		rpctypes.ContextWithHeight(1),
+		mock.MatchedBy(func(req *evmtypes.EthCallRequest) bool {
+			if req == nil {
+				return false
+			}
+			return json.Unmarshal(req.Args, &captured) == nil
+		}),
+	).Return(&evmtypes.EstimateGasResponse{Gas: 100_000}, nil)
+
+	_, err = suite.backend.SetTxDefaults(args)
+	suite.Require().NoError(err)
+	suite.Require().Nil(captured.AuthorizationList)
 }

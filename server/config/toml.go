@@ -40,6 +40,14 @@ max-tx-gas-wanted = {{ .EVM.MaxTxGasWanted }}
 # Enable defines if the gRPC server should be enabled.
 enable = {{ .JSONRPC.Enable }}
 
+# SimulateDisabled hides the eth_simulateV1 method on the JSON-RPC API
+# when true. The method returns -32601 (method not found) so callers
+# cannot distinguish "disabled" from "not implemented". This flag does
+# not affect the SDK gRPC port (default 9090): direct gRPC peers can
+# still invoke the simulate keeper handler. To suppress simulate at the
+# gRPC layer, restrict access to that port at the network level.
+simulate-disabled = {{ .JSONRPC.SimulateDisabled }}
+
 # Address defines the EVM RPC HTTP server address to bind to.
 address = "{{ .JSONRPC.Address }}"
 

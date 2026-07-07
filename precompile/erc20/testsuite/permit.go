@@ -7,7 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/vm"
 
-	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/x/evm/statedb"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
@@ -325,13 +324,11 @@ func (s *TestSuite) TestPermit() {
 					return
 				}
 
-				vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+				vmContract := vm.NewPrecompile(s.account2.EvmAddr, common.Address{}, nil, 0)
 				// These first 4 bytes correspond to the method ID (first 4 bytes of the
 				// Keccak-256 hash of the function signature).
 				// In this case a function signature is 'function permit(address owner, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)'
 				vmContract.Input = append([]byte{0xd5, 0x05, 0xac, 0xcf}, methodInputArgs...)
-				vmContract.CallerAddress = s.account2.EvmAddr
-
 				output, err := s.erc20Precompile.Run(evm, vmContract, false)
 				if err != nil && tc.errContains != "" {
 					s.Require().ErrorContains(err, tc.errContains, "expected different error message")
@@ -480,13 +477,11 @@ func (s *TestSuite) TestNonce() {
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(s.account1.EvmAddr, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function nonce(address account)'
 			vmContract.Input = append([]byte{0x70, 0xae, 0x92, 0xd2}, methodInputArgs...)
-			vmContract.CallerAddress = s.account1.EvmAddr
-
 			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
@@ -572,13 +567,11 @@ func (s *TestSuite) TestNonces() {
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(s.account1.EvmAddr, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function nonces(address account)'
 			vmContract.Input = append([]byte{0x7e, 0xce, 0xbe, 0x00}, methodInputArgs...)
-			vmContract.CallerAddress = s.account1.EvmAddr
-
 			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
@@ -648,13 +641,11 @@ func (s *TestSuite) TestDomainSeparator() {
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(s.account1.EvmAddr, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function DOMAIN_SEPARATOR()'
 			vmContract.Input = append([]byte{0x36, 0x44, 0xe5, 0x15}, methodInputArgs...)
-			vmContract.CallerAddress = s.account1.EvmAddr
-
 			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
@@ -726,13 +717,11 @@ func (s *TestSuite) TestPermitTypehash() {
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(s.account1.EvmAddr, common.Address{}, nil, 0)
 			// These first 4 bytes correspond to the method ID (first 4 bytes of the
 			// Keccak-256 hash of the function signature).
 			// In this case a function signature is 'function PERMIT_TYPEHASH()'
 			vmContract.Input = append([]byte{0x30, 0xad, 0xf8, 0x1f}, methodInputArgs...)
-			vmContract.CallerAddress = s.account1.EvmAddr
-
 			output, err := s.erc20Precompile.Run(evm, vmContract, false)
 			if err != nil && tc.errContains != "" {
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")

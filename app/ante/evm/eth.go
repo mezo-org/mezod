@@ -93,8 +93,11 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 			avd.ak.SetAccount(ctx, acc)
 			acct = statedb.NewEmptyAccount()
 		} else if acct.IsContract() {
-			return ctx, errorsmod.Wrapf(errortypes.ErrInvalidType,
-				"the sender is not EOA: address %s, codeHash <%s>", fromAddr, acct.CodeHash)
+			code := avd.evmKeeper.GetCode(ctx, common.BytesToHash(acct.CodeHash))
+			if _, isDelegated := ethtypes.ParseDelegation(code); !isDelegated {
+				return ctx, errorsmod.Wrapf(errortypes.ErrInvalidType,
+					"the sender is not EOA: address %s, codeHash <%s>", fromAddr, acct.CodeHash)
+			}
 		}
 
 		if err := keeper.CheckSenderBalance(sdkmath.NewIntFromBigInt(acct.Balance.ToBig()), txData); err != nil {
@@ -166,6 +169,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 	homestead := ethCfg.IsHomestead(blockHeight)
 	istanbul := ethCfg.IsIstanbul(blockHeight)
 	isShanghai := ethCfg.IsShanghai(blockHeight, uint64(ctx.BlockTime().Unix())) //nolint:gosec
+	isPrague := ethCfg.IsPrague(blockHeight, uint64(ctx.BlockTime().Unix()))     //nolint:gosec
 	var events sdk.Events
 
 	// Use the lowest priority of all the messages as the final one.
@@ -194,7 +198,7 @@ func (egcd EthGasConsumeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simula
 			gasWanted += txData.GetGas()
 		}
 
-		fees, err := keeper.VerifyFee(txData, evmDenom, baseFee, homestead, istanbul, isShanghai, ctx.IsCheckTx())
+		fees, err := keeper.VerifyFee(txData, evmDenom, baseFee, homestead, istanbul, isShanghai, isPrague, ctx.IsCheckTx())
 		if err != nil {
 			return ctx, errorsmod.Wrapf(err, "failed to verify the fees")
 		}

@@ -30,6 +30,9 @@ const (
 	// of the attestation process on Ethereum. Missing those events could result
 	// in false positives in the pending_assets_unlocked metric.
 	ethereumAssetsUnlockedConfirmedLookBackBlocks = uint64(100800) // ~14 days (assuming 1 block per 12s)
+	// Look-back period for AssetsUnlockAttested events used to initialize
+	// per-validator attestation counts on first poll.
+	ethereumAssetsUnlockAttestedLookBackBlocks = uint64(50400) // ~7 days (assuming 1 block per 12s)
 )
 
 var pendingAssetsUnlockedCache = map[string]bool{} // unlock seqno -> bool
@@ -40,6 +43,7 @@ type ethereumChain struct {
 	tbtcBankAddress common.Address
 
 	assetsUnlockedConfirmedCheckpointHeight uint64
+	assetsUnlockAttestedCheckpointHeight    uint64
 }
 
 type mezoChain struct {
@@ -284,6 +288,15 @@ func pollBridgeData(
 	err = outflowLimitSaturation(
 		mezoChainID,
 		mezo,
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	err = bridgeValAttestationCounts(
+		ctx,
+		mezoChainID,
+		ethereum,
 	)
 	if err != nil {
 		errs = append(errs, err)
@@ -697,4 +710,98 @@ func outflowLimitSaturation(
 	}
 
 	return nil
+}
+
+func bridgeValAttestationCounts(
+	ctx context.Context,
+	mezoChainID string,
+	ethereum *ethereumChain,
+) error {
+	currentHeight, err := ethereum.client.LatestBlock(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get current Ethereum height: [%w]", err)
+	}
+
+	startHeight := ethereum.assetsUnlockAttestedCheckpointHeight
+	endHeight := currentHeight.Uint64()
+
+	if startHeight == 0 {
+		if endHeight > ethereumAssetsUnlockAttestedLookBackBlocks {
+			startHeight = endHeight - ethereumAssetsUnlockAttestedLookBackBlocks
+		}
+	}
+
+	log.Printf(
+		"getting AssetsUnlockAttested events from [%d] to [%d] on Ethereum chain",
+		startHeight,
+		endHeight,
+	)
+
+	events, err := withBatchFetch(
+		ethereum.assetsUnlockAttestedEvents,
+		startHeight,
+		endHeight,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to get AssetsUnlockAttested events on Ethereum chain: [%w]",
+			err,
+		)
+	}
+
+	ethereum.assetsUnlockAttestedCheckpointHeight = endHeight + 1
+
+	counts := make(map[common.Address]int)
+	for _, event := range events {
+		counts[event.Validator]++
+	}
+
+	// Get all registered bridge validators so we emit a 0 for validators
+	// that haven't attested at all.
+	validatorsCount, err := ethereum.mezoBridge.BridgeValidatorsCount()
+	if err != nil {
+		return fmt.Errorf("failed to get bridge validators count: [%w]", err)
+	}
+
+	for i := uint64(0); i < validatorsCount.Uint64(); i++ {
+		//nolint:gosec
+		validator, err := ethereum.mezoBridge.BridgeValidators(big.NewInt(int64(i)))
+		if err != nil {
+			return fmt.Errorf(
+				"failed to get bridge validator [%d] address: [%w]",
+				i,
+				err,
+			)
+		}
+
+		if _, ok := counts[validator]; !ok {
+			counts[validator] = 0
+		}
+	}
+
+	for validator, count := range counts {
+		bridgeValAttestationCounter.WithLabelValues(
+			validator.Hex(),
+			mezoChainID,
+		).Add(float64(count))
+	}
+
+	log.Printf(
+		"fetched [%d] AssetsUnlockAttested events for [%d] validators",
+		len(events),
+		len(counts),
+	)
+
+	return nil
+}
+
+func (ec *ethereumChain) assetsUnlockAttestedEvents(
+	startHeight, endHeight uint64,
+) ([]*portal.MezoBridgeAssetsUnlockAttested, error) {
+	return ec.mezoBridge.PastAssetsUnlockAttestedEvents(
+		startHeight,
+		&endHeight,
+		nil,
+		nil,
+	)
 }

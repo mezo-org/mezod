@@ -1,6 +1,7 @@
 package abci
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 	"time"
@@ -572,6 +573,82 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 		return ve.Parts[uint32(part)]
 	}
 
+	// veBytesOfSize returns a valid marshaled VoteExtension whose total
+	// byte length is exactly `size`. It works by sizing the value of
+	// Parts[1] and iterating to compensate for varint length growth at
+	// the 127/16383 thresholds.
+	veBytesOfSize := func(size int) []byte {
+		base := types.VoteExtension{
+			Height: s.requestHeight,
+			Parts:  map[uint32][]byte{1: nil},
+		}
+		baseBytes, err := base.Marshal()
+		s.Require().NoError(err)
+		pad := size - len(baseBytes)
+		s.Require().GreaterOrEqual(pad, 0)
+		base.Parts[1] = make([]byte, pad)
+		out, err := base.Marshal()
+		s.Require().NoError(err)
+		for len(out) > size {
+			base.Parts[1] = base.Parts[1][:len(base.Parts[1])-1]
+			out, err = base.Marshal()
+			s.Require().NoError(err)
+		}
+		for len(out) < size {
+			base.Parts[1] = append(base.Parts[1], 0x00)
+			out, err = base.Marshal()
+			s.Require().NoError(err)
+		}
+		return out
+	}
+
+	encodeVarint := func(n int) []byte {
+		var out []byte
+		for n >= 0x80 {
+			out = append(out, byte(n)|0x80)
+			n >>= 7
+		}
+		return append(out, byte(n))
+	}
+
+	// veBytesWithUnknownFieldPadding builds a small valid VoteExtension
+	// and appends raw bytes for a synthetic unknown protobuf field
+	// (field 99, wire type 2 length-delimited). gogoproto.Unmarshal
+	// silently skips unknown fields, so without the size check this
+	// padded extension would unmarshal cleanly and pass sub-handler
+	// validation. The returned bytes are guaranteed to be larger than
+	// maxVoteExtensionSize.
+	veBytesWithUnknownFieldPadding := func() []byte {
+		veBytes := marshalVE(types.VoteExtension{
+			Height: s.requestHeight,
+			Parts:  map[uint32][]byte{1: []byte("part1")},
+		})
+		tag := encodeVarint((99 << 3) | 2)
+		payloadLen := maxVoteExtensionSize - len(veBytes)
+		lenVarint := encodeVarint(payloadLen)
+		out := append([]byte{}, veBytes...)
+		out = append(out, tag...)
+		out = append(out, lenVarint...)
+		out = append(out, bytes.Repeat([]byte{0xAB}, payloadLen)...)
+		return out
+	}
+
+	acceptingPart1SubHandler := func() map[VoteExtensionPart]IVoteExtensionHandler {
+		subHandler := newMockVoteExtensionHandler()
+		subHandler.verifyVoteExtensionHandler.On(
+			"call",
+			mock.Anything,
+			mock.Anything,
+		).Return(
+			&cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			}, nil,
+		)
+		return map[VoteExtensionPart]IVoteExtensionHandler{
+			VoteExtensionPart(1): subHandler,
+		}
+	}
+
 	tests := []struct {
 		name              string
 		subHandlersFn     func() map[VoteExtensionPart]IVoteExtensionHandler
@@ -607,6 +684,52 @@ func (s *VoteExtensionHandlerTestSuite) TestVerifyVoteExtension() {
 			expectedRes:       nil,
 			subHandlersCalled: nil,
 			errContains:       "failed to unmarshal vote extension",
+		},
+		{
+			name:          "vote extension just under size limit",
+			subHandlersFn: acceptingPart1SubHandler,
+			voteExtensionFn: func() []byte {
+				return veBytesOfSize(maxVoteExtensionSize - 1)
+			},
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			},
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				VoteExtensionPart(1): true,
+			},
+			errContains: "",
+		},
+		{
+			name:          "vote extension at size limit",
+			subHandlersFn: acceptingPart1SubHandler,
+			voteExtensionFn: func() []byte {
+				return veBytesOfSize(maxVoteExtensionSize)
+			},
+			expectedRes: &cmtabci.ResponseVerifyVoteExtension{
+				Status: cmtabci.ResponseVerifyVoteExtension_ACCEPT,
+			},
+			subHandlersCalled: map[VoteExtensionPart]bool{
+				VoteExtensionPart(1): true,
+			},
+			errContains: "",
+		},
+		{
+			name:          "vote extension exceeds size limit",
+			subHandlersFn: func() map[VoteExtensionPart]IVoteExtensionHandler { return nil },
+			voteExtensionFn: func() []byte {
+				return veBytesOfSize(maxVoteExtensionSize + 1)
+			},
+			expectedRes:       nil,
+			subHandlersCalled: nil,
+			errContains:       "vote extension size",
+		},
+		{
+			name:              "vote extension with unknown-field padding exceeds size limit",
+			subHandlersFn:     func() map[VoteExtensionPart]IVoteExtensionHandler { return nil },
+			voteExtensionFn:   veBytesWithUnknownFieldPadding,
+			expectedRes:       nil,
+			subHandlersCalled: nil,
+			errContains:       "vote extension size",
 		},
 		{
 			name:          "wrong-height vote extension",

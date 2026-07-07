@@ -377,6 +377,8 @@ func NewMezo(
 	)
 
 	tracer := cast.ToString(appOpts.Get(srvflags.EVMTracer))
+	ethCallGasCap := cast.ToUint64(appOpts.Get(srvflags.JSONRPCGasCap))
+	ethCallTimeout := cast.ToDuration(appOpts.Get(srvflags.JSONRPCEVMTimeout))
 
 	app.FeeMarketKeeper = feemarketkeeper.NewKeeper(
 		appCodec, authority,
@@ -408,6 +410,8 @@ func NewMezo(
 		app.FeeMarketKeeper,
 		&app.ConsensusParamsKeeper,
 		tracer,
+		ethCallGasCap,
+		ethCallTimeout,
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
@@ -418,6 +422,11 @@ func NewMezo(
 		app.EvmKeeper,
 		app.BlockedAddrs(),
 	)
+
+	// Inject the bridge BTC supply invariant check into the EVM keeper.
+	// Wired here (after both keepers exist) to keep x/evm free of any
+	// x/bridge import.
+	app.EvmKeeper.SetVerifyBTCSupply(app.BridgeKeeper.VerifyBTCSupply)
 
 	precompiles, err := customEvmPrecompiles(
 		logger,

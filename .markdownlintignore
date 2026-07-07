@@ -5,3 +5,5 @@ docs/node_modules
 #TODO: Temporarily ignored. Fix this by addressing all warnings raised by markdownlint.
 docs/development.md
 infrastructure
+
+.claude

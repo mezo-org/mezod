@@ -84,6 +84,8 @@ func (suite *AnteTestSuite) SetupTest() {
 			evmGenesis.Params.ChainConfig.MergeNetsplitBlock = &maxInt
 			evmGenesis.Params.ChainConfig.ShanghaiTime = &maxInt
 			evmGenesis.Params.ChainConfig.CancunTime = &maxInt
+			evmGenesis.Params.ChainConfig.PragueTime = &maxInt
+			evmGenesis.Params.ChainConfig.OsakaTime = &maxInt
 		}
 		if suite.evmParamsOption != nil {
 			suite.evmParamsOption(&evmGenesis.Params)

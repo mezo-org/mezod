@@ -27,6 +27,7 @@ var (
 	_ TxData = &LegacyTx{}
 	_ TxData = &AccessListTx{}
 	_ TxData = &DynamicFeeTx{}
+	_ TxData = &SetCodeTx{}
 )
 
 // TxData implements the Ethereum transaction tx structure. It is used
@@ -38,6 +39,7 @@ type TxData interface {
 	Copy() TxData
 	GetChainID() *big.Int
 	GetAccessList() ethtypes.AccessList
+	GetAuthorizationList() []ethtypes.SetCodeAuthorization
 	GetData() []byte
 	GetNonce() uint64
 	GetGas() uint64
@@ -75,6 +77,8 @@ func NewTxDataFromTx(tx *ethtypes.Transaction) (TxData, error) {
 		txData, err = newAccessListTx(tx)
 	case ethtypes.DynamicFeeTxType:
 		txData, err = NewDynamicFeeTx(tx)
+	case ethtypes.SetCodeTxType:
+		txData, err = NewSetCodeTx(tx)
 	default:
 		return nil, errorsmod.Wrapf(
 			ErrTxTypeNotSupported,

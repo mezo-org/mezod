@@ -21,6 +21,7 @@ var _ vm.PrecompiledContract = &Contract{}
 // Contract represents a precompiled contract that can be executed by the EVM.
 type Contract struct {
 	Abi      abi.ABI
+	name     string
 	address  common.Address
 	bytecode string
 	methods  map[string]Method
@@ -70,9 +71,10 @@ func (c *StateDBJournal) SubBalance(
 }
 
 // NewContract creates a new precompiled contract with the given ABI and address.
-func NewContract(abi abi.ABI, address common.Address, bytecode string) *Contract {
+func NewContract(abi abi.ABI, address common.Address, bytecode string, name string) *Contract {
 	return &Contract{
 		Abi:      abi,
+		name:     name,
 		address:  address,
 		bytecode: bytecode,
 		methods:  make(map[string]Method),
@@ -94,6 +96,11 @@ func (c *Contract) RegisterMethods(methods ...Method) *Contract {
 // Address returns the EVM address of the contract.
 func (c *Contract) Address() common.Address {
 	return c.address
+}
+
+// Name returns a stable identifier of the precompile.
+func (c *Contract) Name() string {
+	return c.name
 }
 
 // RequiredGas returns the amount of gas required to execute the contract call

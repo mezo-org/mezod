@@ -83,18 +83,24 @@ func VerifyFee(
 	txData types.TxData,
 	denom string,
 	baseFee *big.Int,
-	homestead, istanbul, isShanghai, isCheckTx bool,
+	homestead, istanbul, isShanghai, isPrague, isCheckTx bool,
 ) (sdk.Coins, error) {
 	isContractCreation := txData.GetTo() == nil
 
 	gasLimit := txData.GetGas()
+
+	// txData.GetData() returns common.CopyBytes(tx.Data), so each call
+	// allocates a fresh copy. Hoist once so the intrinsic and floor
+	// computations share the same slice instead of paying the copy twice
+	// on every gossiped CheckTx.
+	data := txData.GetData()
 
 	var accessList ethtypes.AccessList
 	if txData.GetAccessList() != nil {
 		accessList = txData.GetAccessList()
 	}
 
-	intrinsicGas, err := core.IntrinsicGas(txData.GetData(), accessList, isContractCreation, homestead, istanbul, isShanghai)
+	intrinsicGas, err := core.IntrinsicGas(data, accessList, txData.GetAuthorizationList(), isContractCreation, homestead, istanbul, isShanghai)
 	if err != nil {
 		return nil, errorsmod.Wrapf(
 			err,
@@ -109,6 +115,26 @@ func VerifyFee(
 			errortypes.ErrOutOfGas,
 			"gas limit too low: %d (gas limit) < %d (intrinsic gas)", gasLimit, intrinsicGas,
 		)
+	}
+
+	// EIP-7623 calldata gas floor verification during CheckTx. Consensus
+	// enforcement still happens at apply-time via applyMessageWithConfig;
+	// this only fences the mempool, mirroring the intrinsic-gas check.
+	// Gating on isCheckTx as well as isPrague keeps DeliverTx free of the
+	// core.FloorDataGas call so its ErrGasUintOverflow path can never
+	// surface in consensus, preserving the apply-time core.ErrFloorDataGas
+	// identity that the rest of the stack expects.
+	if isPrague && isCheckTx {
+		floorDataGas, err := core.FloorDataGas(data)
+		if err != nil {
+			return nil, errorsmod.Wrap(err, "failed to retrieve floor data gas")
+		}
+		if gasLimit < floorDataGas {
+			return nil, errorsmod.Wrapf(
+				errortypes.ErrOutOfGas,
+				"gas limit below EIP-7623 floor: %d (gas limit) < %d (floor data gas)", gasLimit, floorDataGas,
+			)
+		}
 	}
 
 	if baseFee != nil && txData.GetGasFeeCap().Cmp(baseFee) < 0 {

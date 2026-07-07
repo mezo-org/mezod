@@ -324,7 +324,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		// Consensus fields: These fields are defined by the Yellow Paper
 		"status":            status,
 		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
-		"logsBloom":         ethtypes.BytesToBloom(ethtypes.LogsBloom(logs)),
+		"logsBloom":         ethtypes.CreateBloom(&ethtypes.Receipt{Logs: logs}),
 		"logs":              logs,
 
 		// Implementation fields: These fields are added by geth when processing a transaction.
@@ -354,13 +354,13 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 		receipt["contractAddress"] = crypto.CreateAddress(from, txData.GetNonce())
 	}
 
-	if dynamicTx, ok := txData.(*evmtypes.DynamicFeeTx); ok {
+	if txData.TxType() >= ethtypes.DynamicFeeTxType {
 		baseFee, err := b.BaseFee(blockRes)
 		if err != nil {
 			// tolerate the error for pruned node.
 			b.logger.Error("fetch basefee failed, node is pruned?", "height", res.Height, "error", err)
 		} else {
-			receipt["effectiveGasPrice"] = hexutil.Big(*dynamicTx.EffectiveGasPrice(baseFee))
+			receipt["effectiveGasPrice"] = hexutil.Big(*txData.EffectiveGasPrice(baseFee))
 		}
 	}
 

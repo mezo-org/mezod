@@ -28,7 +28,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/core/tracing"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/tracers"
 )
 
@@ -51,16 +50,26 @@ type NoOpTracer struct{}
 
 // NewTracer creates a new Logger tracer to collect execution traces from an
 // EVM transaction.
-func NewTracer(tracer string, msg core.Message, cfg *params.ChainConfig, height int64) *tracers.Tracer {
-	// TODO: enable additional log configuration
-	logCfg := &logger.Config{
-		Debug: true,
-	}
+func NewTracer(
+	tracer string,
+	msg core.Message,
+	cfg *params.ChainConfig,
+	height int64,
+	timestamp uint64,
+	customPrecompiles func() []common.Address,
+) *tracers.Tracer {
+	logCfg := &logger.Config{}
 
 	switch tracer {
 	case TracerAccessList:
-		preCompiles := vm.DefaultActivePrecompiles(cfg.Rules(big.NewInt(height), cfg.MergeNetsplitBlock != nil, 0))
-		lgr := logger.NewAccessListTracer(msg.AccessList, msg.From, *msg.To, preCompiles)
+		addressesToExclude := accessListTracerExclusions(
+			msg,
+			cfg,
+			height,
+			timestamp,
+			customPrecompiles(),
+		)
+		lgr := logger.NewAccessListTracer(msg.AccessList, addressesToExclude)
 		tracer := &tracers.Tracer{
 			Hooks: lgr.Hooks(),
 		}
@@ -90,59 +99,38 @@ func NewTracer(tracer string, msg core.Message, cfg *params.ChainConfig, height 
 	}
 }
 
+func accessListTracerExclusions(
+	msg core.Message,
+	cfg *params.ChainConfig,
+	height int64,
+	timestamp uint64,
+	customPrecompiles []common.Address,
+) map[common.Address]struct{} {
+	precompiles := vm.ActivePrecompiles(
+		cfg.Rules(big.NewInt(height), cfg.MergeNetsplitBlock != nil, timestamp),
+	)
+	addressesToExclude := map[common.Address]struct{}{msg.From: {}}
+	if msg.To != nil {
+		addressesToExclude[*msg.To] = struct{}{}
+	}
+	for _, addr := range precompiles {
+		addressesToExclude[addr] = struct{}{}
+	}
+	for _, addr := range customPrecompiles {
+		addressesToExclude[addr] = struct{}{}
+	}
+	return addressesToExclude
+}
+
 // newNoopTracer returns a new noop tracer.
 func NewNoopTracer() (*tracers.Tracer, error) {
 	t := &NoOpTracer{}
 	return &tracers.Tracer{
-		Hooks: &tracing.Hooks{
-			OnTxStart:       t.OnTxStart,
-			OnTxEnd:         t.OnTxEnd,
-			OnEnter:         t.OnEnter,
-			OnExit:          t.OnExit,
-			OnOpcode:        t.OnOpcode,
-			OnFault:         t.OnFault,
-			OnGasChange:     t.OnGasChange,
-			OnBalanceChange: t.OnBalanceChange,
-			OnNonceChange:   t.OnNonceChange,
-			OnCodeChange:    t.OnCodeChange,
-			OnStorageChange: t.OnStorageChange,
-			OnLog:           t.OnLog,
-		},
+		Hooks:     &tracing.Hooks{},
 		GetResult: t.GetResult,
 		Stop:      t.Stop,
 	}, nil
 }
-
-func (t *NoOpTracer) OnOpcode(_ uint64, _ byte, _, _ uint64, _ tracing.OpContext, _ []byte, _ int, _ error) {
-}
-
-func (t *NoOpTracer) OnFault(_ uint64, _ byte, _, _ uint64, _ tracing.OpContext, _ int, _ error) {
-}
-
-func (t *NoOpTracer) OnGasChange(_, _ uint64, _ tracing.GasChangeReason) {}
-
-func (t *NoOpTracer) OnEnter(_ int, _ byte, _ common.Address, _ common.Address, _ []byte, _ uint64, _ *big.Int) {
-}
-
-func (t *NoOpTracer) OnExit(_ int, _ []byte, _ uint64, _ error, _ bool) {
-}
-
-func (*NoOpTracer) OnTxStart(_ *tracing.VMContext, _ *types.Transaction, _ common.Address) {
-}
-
-func (*NoOpTracer) OnTxEnd(_ *types.Receipt, _ error) {}
-
-func (*NoOpTracer) OnBalanceChange(_ common.Address, _, _ *big.Int, _ tracing.BalanceChangeReason) {
-}
-
-func (*NoOpTracer) OnNonceChange(_ common.Address, _, _ uint64) {}
-
-func (*NoOpTracer) OnCodeChange(_ common.Address, _ common.Hash, _ []byte, _ common.Hash, _ []byte) {
-}
-
-func (*NoOpTracer) OnStorageChange(_ common.Address, _, _, _ common.Hash) {}
-
-func (*NoOpTracer) OnLog(_ *types.Log) {}
 
 // GetResult returns an empty json object.
 func (t *NoOpTracer) GetResult() (json.RawMessage, error) {

@@ -168,6 +168,258 @@ See EIP-7569 for the full Dencun EIP list.
 
 Reference list: Dencun meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7569
 
+#### Prague (Pectra - execution part)
+
+Prague is the execution-layer part of Pectra on Ethereum. It adds new
+precompiles, a new transaction type, block-header fields tied to a
+beacon-chain side that Mezo does not have, and several gas-accounting
+adjustments. The full Pectra upgrade also includes consensus-layer EIPs
+(EIP-7251, EIP-7549, EIP-7691); since Mezo runs on CometBFT, those CL
+EIPs are out of scope and not covered below. See EIP-7600 for the full
+Pectra EIP list.
+
+Prague is active on Mezo: at genesis on fresh chains, and via the
+v11.0 upgrade on living chains (see
+[`docs/upgrades.md`](./upgrades.md)).
+
+- EIP-2537 (BLS12-381 precompiles)
+    - Description: adds seven precompiled contracts at addresses `0x0b`
+      through `0x11` implementing BLS12-381 curve operations (G1Add,
+      G1MSM, G2Add, G2MSM, PairingCheck, MapFpToG1, MapFp2ToG2).
+    - Mezo implementation: supported at the standard addresses
+      `0x0b`–`0x11`. Slots `0x12` and `0x13` — where the
+      pre-finalization 9-precompile draft placed `G1Mul`/`G2Mul` —
+      resolve to empty accounts.
+    - Ref: https://eips.ethereum.org/EIPS/eip-2537
+
+- EIP-2935 (Historical block hashes from state)
+    - Description: deploys a "history storage" system contract at
+      `0x0000F90827F1C53a10cb7A02335B175320002935` that stores the last
+      8192 block hashes in its storage slots, populated by the
+      execution client at the start of each block. The `BLOCKHASH`
+      opcode is unchanged and still covers only the last 256 blocks;
+      callers that need older hashes are expected to `SLOAD` them from
+      the history storage contract directly.
+    - Mezo implementation: the system contract is not deployed. The
+      `BLOCKHASH` opcode behaves as in standard go-ethereum, returning
+      hashes only for the last 256 blocks. The observable divergence
+      is that contracts `SLOAD`ing the history storage address — to
+      reach block hashes beyond the 256-block `BLOCKHASH` window —
+      find an empty account.
+    - Ref: https://eips.ethereum.org/EIPS/eip-2935
+
+- EIP-6110 (Validator deposits via EL system contract)
+    - Description: replaces beacon-chain deposit tree processing with
+      an execution-layer deposit system contract at
+      `0x00000000219ab540356cBB839Cbe05303d7705Fa` whose `DepositEvent`
+      logs are gathered by the EL into the block-level requests list.
+    - Mezo implementation: not applicable. Mezo runs on CometBFT and
+      has no beacon chain consuming deposits; the deposit system
+      contract is not deployed.
+    - Ref: https://eips.ethereum.org/EIPS/eip-6110
+
+- EIP-7002 (Execution-layer triggerable withdrawals)
+    - Description: adds a withdrawal-request system contract at
+      `0x00000961Ef480Eb55e80D19ad83579A64c007002` so a validator's
+      withdrawal credential holder (an EL account) can trigger a
+      partial or full exit by sending value to the contract; the
+      contract emits requests gathered into the block-level requests
+      list for the beacon chain.
+    - Mezo implementation: not applicable. Same reason as EIP-6110 —
+      no beacon chain, and the withdrawal-request system contract is
+      not deployed.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7002
+
+- EIP-7623 (Calldata gas cost floor)
+    - Description: adds an additive intrinsic-gas floor charged per
+      transaction based on its calldata token weight (10 gas per zero
+      byte, 40 gas per non-zero byte), in addition to the existing
+      per-byte cost. The floor only changes a transaction's gas
+      consumption (except edge cases where a tx runs out of gas).
+    - Mezo implementation: supported. Transactions whose declared
+      `gasLimit` is below the calldata floor are rejected at
+      submission; transactions that execute below the floor are
+      charged at least the floor amount regardless of refunds.
+      `eth_estimateGas` returns at least the floor for calldata-heavy
+      transactions, and `eth_simulateV1` surfaces a floor violation as
+      a structured `-38013` JSON-RPC error.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7623
+
+- EIP-7685 (General-purpose execution-layer requests)
+    - Description: introduces a `requests` block-level list and a
+      `requestsHash` header field that commits to all requests
+      produced during block execution (EIP-6110 deposits, EIP-7002
+      withdrawals, EIP-7251 consolidations). Engine-API consumers and
+      the beacon chain rely on `requestsHash` to verify EL-CL
+      communication.
+    - Mezo implementation: not supported. Mezo has no EL→CL messaging
+      and produces no requests. JSON-RPC block responses omit the
+      `requestsHash` field entirely (not emitted as `null`). Tooling
+      that hard-requires `requestsHash` on a Prague-active chain will
+      need to treat its absence as the Mezo-specific shape.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7685
+
+- EIP-7702 (Set Code Transactions)
+    - Description: adds transaction type `0x04` ("set code"), which lets
+      an externally owned account (EOA) sign one or more authorization
+      tuples that install a per-account delegation designator pointing at
+      a contract address. Calls to the delegated EOA execute the target
+      contract's code in the EOA's storage and balance context, with the
+      EOA's address as `CALLER`. The designator is a 23-byte code value
+      `0xef0100 || target_address` written to the authority's code field;
+      the authority rotates or clears it by signing a fresh
+      authorization (clearing is `target = 0x0`).
+    - Mezo implementation: type-`0x04` transactions are accepted.
+      The keeper applies authorization tuples to mezod's
+      `statedb.StateDB` (delegation install, rotation via re-signing,
+      clearing via `target = 0x0`); `EthAccountVerificationDecorator` gains
+      a delegation-aware EIP-3607 exemption so a delegated EOA can still
+      send transactions; `EXTCODESIZE`/`EXTCODECOPY`/`EXTCODEHASH` return
+      the raw 23-byte designator so on-chain contracts can detect a
+      delegation; authorizations whose target is in `evm.Precompiles()`
+      (the union of stock and Mezo custom precompiles) are rejected per
+      the EIP's per-tuple rule. See
+      [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md) for
+      the canonical mezod behavior, configuration, and Mezo-specific
+      divergences from upstream geth.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7702
+
+- EIP-7840 (Blob schedule configuration)
+    - Description: makes the per-fork blob target/maximum/base-fee
+      update fraction part of `ChainConfig` rather than client-hardcoded
+      constants, so chains can carry different schedules without
+      forking client code.
+    - Mezo implementation: not applicable in practice. Mezo carries an
+      upstream-default blob schedule for chain-config validity but
+      rejects EIP-4844 blob transactions entirely, so no blob fee
+      market operates against the schedule values.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7840
+
+- EIP-7642 (eth/69 wire-protocol cleanup)
+    - Description: drops the legacy `td` field from devp2p `eth/68`
+      messages and bumps the protocol version to `eth/69`. It is a
+      peer-to-peer wire-protocol cleanup with no contract-visible
+      effect.
+    - Mezo implementation: not applicable. Mezo's peer-to-peer layer
+      is CometBFT, not devp2p; there is no `eth/68`/`eth/69` handler.
+      `eth_protocolVersion` returns a static value and is not a real
+      negotiated wire version.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7642
+
+Reference list: Pectra meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7600
+
+#### Osaka (Fusaka - execution part)
+
+Osaka is the execution-layer part of Fusaka on Ethereum. It tightens
+gas accounting around MODEXP, caps per-transaction gas, adds a new
+opcode and precompile, and exposes chain-config metadata via JSON-RPC.
+The full Fusaka upgrade also includes consensus-layer EIPs (EIP-7594
+PeerDAS, EIP-7917 proposer lookahead); since Mezo runs on CometBFT,
+those CL EIPs are out of scope and not covered below. See EIP-7607 for
+the full Fusaka EIP list.
+
+Osaka is active on Mezo. The v11.0 upgrade activates Prague and Osaka
+together on living chains (see
+[`docs/upgrades.md`](./upgrades.md)); on fresh chains both activate at
+genesis. Mezo collapses Cancun → Prague → Osaka into a single chain
+upgrade (Cancun → Prague was never rolled out separately).
+
+- EIP-7823 (MODEXP input upper bound)
+    - Description: rejects MODEXP precompile calls whose base, exponent,
+      or modulus length exceeds 8192 bits, capping inputs that would
+      otherwise dominate block validation cost.
+    - Mezo implementation: supported.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7823
+
+- EIP-7825 (Transaction gas limit cap)
+    - Description: caps the maximum gas a single transaction can
+      declare to `2^24 = 16_777_216` gas (≈16.78M), independent of
+      block gas limit, to bound worst-case transaction validation.
+    - Mezo implementation: moot under current chain parameters. Mezo's
+      block gas limit is 10,000,000, which already bounds
+      per-transaction gas below the EIP-7825 cap; transactions
+      declaring more than the block gas limit are rejected before the
+      cap could apply. If the block gas limit is ever raised above
+      16.78M, the cap would need to be enforced explicitly.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7825
+
+- EIP-7883 (MODEXP gas cost increase)
+    - Description: bumps MODEXP's gas cost: the minimum charge rises
+      from 200 to 500 gas, and the per-iteration cost for large
+      operands doubles. Targets the same DoS-shape that EIP-7823
+      addresses by input bound.
+    - Mezo implementation: supported.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7883
+
+- EIP-7934 (RLP block-size limit)
+    - Description: caps the RLP-encoded size of a block at 10 MiB to
+      bound network-propagation and storage costs.
+    - Mezo implementation: not applicable. Mezo blocks are
+      CometBFT-encoded; an RLP block representation only exists at the
+      JSON-RPC boundary. Block size limits on Mezo come from CometBFT
+      consensus parameters, not the Ethereum RLP cap.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7934
+
+- EIP-7935 (Default gas limit raise to 60M)
+    - Description: raises Ethereum's default block gas limit target
+      from 30M to 60M.
+    - Mezo implementation: not applicable. Mezo's block gas limit is
+      governed by its own fee-market parameters and CometBFT consensus
+      parameters, not Ethereum's default.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7935
+
+- EIP-7939 (`CLZ` opcode)
+    - Description: adds opcode `0x1e` `CLZ` (count leading zeros) on
+      a 256-bit stack word, returning the number of leading zero bits.
+      Mirrors `BIT.popcnt`-style helpers used by gas-tight algorithms.
+    - Mezo implementation: supported.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7939
+
+- EIP-7951 (secp256r1 `P256VERIFY` precompile)
+    - Description: adds a precompile at
+      `0x0000000000000000000000000000000000000100` that verifies an
+      ECDSA signature on the secp256r1 (NIST P-256) curve.
+    - Mezo implementation: supported at the standard address `0x0100`.
+      Mezo's custom precompiles live in a separate address range
+      (`0x7b7c…`), so there is no address clash.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7951
+
+- EIP-7892 (Blob-parameter-only forks)
+    - Description: introduces "BPO" forks whose only effect is to swap
+      the active blob schedule entry, without invoking a full
+      execution-layer fork.
+    - Mezo implementation: not applicable. Mezo rejects blob
+      transactions, so a BPO schedule swap would have no
+      contract-visible effect.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7892
+
+- EIP-7918 (Blob base fee floor)
+    - Description: changes the blob fee market so the base fee per
+      blob gas cannot fall below an execution-block-related floor,
+      preventing pathological zero-fee blob inclusion.
+    - Mezo implementation: not applicable. Mezo rejects EIP-4844 blob
+      transactions entirely; `BLOBBASEFEE` returns `0` and there is no
+      blob fee market on which to apply a floor.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7918
+
+- EIP-7642 (eth/69 wire-protocol cleanup)
+    - Description: see the Prague section above. EIP-7642 is referenced
+      by both Pectra and Fusaka meta-EIPs.
+    - Mezo implementation: not applicable for the same reason — Mezo
+      has no devp2p layer.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7642
+
+- EIP-7910 (`eth_config` JSON-RPC method)
+    - Description: adds the `eth_config` JSON-RPC method, which
+      returns the active chain configuration (fork activation times,
+      blob schedule, chain ID, precompile list) so clients and tracers
+      can discover post-Fusaka behavior without out-of-band metadata.
+    - Mezo implementation: out of scope for now. Callers receive a
+      method-not-found error. Support may be added in a later release.
+    - Ref: https://eips.ethereum.org/EIPS/eip-7910
+
+Reference list: Fusaka meta EIP (execution + consensus): https://eips.ethereum.org/EIPS/eip-7607
+
 ## EVM JSON-RPC API reference
 
 The `mezod` node exposes the following JSON-RPC API. The reference is split into specific namespaces.
@@ -363,12 +615,20 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByNu
 
 #### eth_getCode
 
-- **Description**: Returns the code (compiled bytecode of a smart contract) at a given address.
+- **Description**: Returns the code stored at a given address. For a contract
+account this is the deployed bytecode; for a plain externally owned account
+(EOA) this is empty (`0x`). On a Prague-active chain a third case applies:
+an EOA that has signed an EIP-7702 authorization returns its 23-byte
+delegation designator `0xef0100 || target_address` rather than empty bytes.
+Callers that key behavior off "code present means contract" must account for
+the designator case. See [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md)
+and the [Prague](#prague) section for details.
 - **Parameters**:
     - `String` - Address to get code from.
     - `String` - Block number.
-- **Returns**: `String` - The code from the given address. If the response is empty ("0x"),
-it indicates the address is likely an externally owned account rather than a contract account.
+- **Returns**: `String` - The code at the given address: deployed bytecode for
+a contract, `0x` for a plain EOA, or a 23-byte EIP-7702 delegation designator
+for a delegated EOA.
 
 ```bash
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x0504d82efb7db7a8c05e8df8cea575d8c9f48bb2","latest"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
@@ -402,6 +662,11 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sign","params":["0x0504d82ef
       signature and encoded parameters.
     - `nonce`: QUANTITY - (optional) Integer of a nonce. This allows to overwrite
       your own pending transactions that use the same nonce.
+    - `authorizationList`: Array of objects - (optional) EIP-7702 authorization
+      tuples (`chainId`, `address`, `nonce`, `v`, `r`, `s`) applied before
+      the transaction executes. Submitting a non-empty list produces a
+      type-`0x04` transaction; each entry adds an intrinsic gas charge. See
+      [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md).
 - **Returns**: `String` - The transaction hash.
 
 ```bash
@@ -410,7 +675,10 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{
 
 #### eth_sendRawTransaction
 
-- **Description**: Creates new message call transaction or a contract creation for signed transactions.
+- **Description**: Creates new message call transaction or a contract creation
+for signed transactions. On a Prague-active chain, signed type-`0x04`
+(EIP-7702 set-code) transactions are accepted alongside legacy, access-list
+and dynamic-fee types.
 - **Parameters**:
     - `String` - The signed transaction data.
 - **Returns**: `String` - The transaction hash.
@@ -436,6 +704,10 @@ functions.
         - input: DATA - (optional) Hash of the method signature and encoded parameters.
           For details see Ethereum Contract ABI in the Solidity documentation(opens in
           a new tab).
+        - authorizationList: Array of objects - (optional) EIP-7702 authorization
+          tuples (`chainId`, `address`, `nonce`, `v`, `r`, `s`) applied before
+          the call executes. See
+          [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md).
     - `String` (optional) - Block number.
     - `Object` (optional) - State override set. A mapping of addresses to
       override objects. Each override object may contain:
@@ -454,6 +726,16 @@ functions.
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
+#### eth_simulateV1
+
+- **Description**: Simulates a chain of transactions across one or more
+synthetic blocks, with state and block overrides. See
+[`docs/spec/eth-simulate-v1.md`](./spec/eth-simulate-v1.md) for the full spec.
+
+```bash
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_simulateV1","params":[{"blockStateCalls":[{"stateOverrides":{"0xc100000000000000000000000000000000000001":{"balance":"0x56bc75e2d63100000"}},"calls":[{"from":"0xc100000000000000000000000000000000000001","to":"0xc100000000000000000000000000000000000002","value":"0x1"}]}]},"latest"],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
+```
+
 #### eth_estimateGas
 
 - **Description**: Estimates the gas necessary to execute a transaction.
@@ -467,6 +749,11 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}]
         - gasPrice: QUANTITY - (optional) Integer of the gasPrice used for each paid gas
         - value: QUANTITY - (optional) Integer of the value sent with this transaction
         - input: DATA - (optional) Hash of the method signature and encoded parameters.
+        - authorizationList: Array of objects - (optional) EIP-7702 authorization
+          tuples (`chainId`, `address`, `nonce`, `v`, `r`, `s`) included in the
+          estimated transaction. Each entry adds an intrinsic gas charge to the
+          returned estimate. See
+          [`docs/spec/eip7702-set-code.md`](./spec/eip7702-set-code.md).
     - `String` (optional) - Block number.
     - `Object` (optional) - State override set. A mapping of addresses to
       override objects. Each override object may contain:

@@ -15,7 +15,6 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -786,10 +785,9 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 				return
 			}
 
-			vmContract := vm.NewContract(&precompile.Contract{}, nil, nil, 0)
+			vmContract := vm.NewPrecompile(tc.as, common.Address{}, nil, 0)
 			vmContract.Input = append(vmContract.Input, method.ID...)
 			vmContract.Input = append(vmContract.Input, methodInputArgs...)
-			vmContract.CallerAddress = tc.as
 
 			output, err := s.assetsBridgePrecompile.Run(evm, vmContract, false)
 
