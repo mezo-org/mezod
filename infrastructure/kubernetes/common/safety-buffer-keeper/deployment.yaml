@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: safety-buffer-keeper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: safety-buffer-keeper
+  template:
+    metadata:
+      labels:
+        app: safety-buffer-keeper
+    spec:
+      containers:
+        - name: safety-buffer-keeper
+          image: mezo/safety-buffer-keeper:latest
+          imagePullPolicy: Always
+          env:
+            - name: SAFETY_BUFFER_KEEPER_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: safety-buffer-keeper
+                  key: private-key
+            - name: MEZO_BOAR_HTTPS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: safety-buffer-keeper
+                  key: rpc-url
