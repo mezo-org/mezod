@@ -30,9 +30,10 @@ Two separate chains of events led to such kills during this incident:
 - **Mainnet:** operators restarted their nodes to apply the [v11.0.1] release. Every
   previous major upgrade was a coordinated chain-halt upgrade where `mezod` stops on its
   own and closes its databases cleanly. This was the first large wave of *hot restarts*
-  of live, actively writing nodes, and the default stop timeouts (10 seconds for Docker
-  Compose, 30 seconds for Kubernetes) turned out to be too short: when the timeout
-  expires, the node is killed mid-write. Several operators hit the corruption. Their
+  of live, actively writing nodes, and the default stop timeouts (such as those of
+  [validator-kit] deployments before version 12.1.0) turned out to be too short: when
+  the timeout expires, the node is killed mid-write. Several operators hit the
+  corruption. Their
   nodes were regular (non-archive) nodes, so they could be restored by re-syncing
   (recovery option 2 below).
 
@@ -143,8 +144,12 @@ height and has no historical state; the archive history would be lost.
 If the node holds data that exists nowhere else (as with our testnet archive node) and
 there is no backup, the corrupted database can be repaired offline. **This is
 experimental and dangerous: it operates directly on the database files and can destroy
-data that a more careful attempt would have saved.** Only proceed on a copy, keep the
-snapshot from before you started, and reach out to the Mezo team before attempting it.
+data that a more careful attempt would have saved.** Only proceed on a copy, and keep the
+snapshot from before you started.
+
+All commands below use the rebuild tool from the
+[appendix](#appendix-offline-rebuild-tool); build it first. Run everything with the node
+stopped, on a machine (or helper container) that has the data directory mounted.
 
 Step by step:
 
@@ -152,46 +157,14 @@ Step by step:
    `MANIFEST-XXXXXXX` file lives inside the affected database directory). Check all six
    databases listed in the [Symptoms](#symptoms) section, because several can be
    corrupted at once; repairing one and starting the node reveals the next.
-2. Rebuild the `MANIFEST` with goleveldb's built-in recovery. goleveldb is the Go
-   implementation of LevelDB that `mezod` uses; its `leveldb.RecoverFile` function scans
-   the data files and writes a fresh `MANIFEST`. Use the exact goleveldb version pinned
-   in `mezod`'s `go.mod` (see the `replace` directive for `github.com/syndtr/goleveldb`).
-   A minimal program:
+2. Rebuild the `MANIFEST` of each corrupted database:
 
-   ```go
-   package main
-
-   import (
-       "fmt"
-       "os"
-
-       "github.com/syndtr/goleveldb/leveldb"
-   )
-
-   func main() {
-       db, err := leveldb.RecoverFile(os.Args[1], nil)
-       if err != nil {
-           fmt.Fprintln(os.Stderr, "recover failed:", err)
-           os.Exit(1)
-       }
-       defer db.Close()
-
-       it := db.NewIterator(nil, nil)
-       defer it.Release()
-       n := 0
-       for it.Next() && n < 10 {
-           n++
-       }
-       if err := it.Error(); err != nil {
-           fmt.Fprintln(os.Stderr, "iterator error:", err)
-           os.Exit(1)
-       }
-       fmt.Println("recovery OK, sample keys readable:", n)
-   }
+   ```bash
+   ldb-recover recover <mezod-home>/data/application.db
    ```
 
-   Run it against each corrupted database directory, for example
-   `go run . <mezod-home>/data/application.db`.
+   This runs goleveldb's built-in `leveldb.RecoverFile`, which scans the data files and
+   writes a fresh `MANIFEST`, then checks that the database opens and is readable.
 3. Start the node and verify it applies new blocks. The network cross-checks every block
    (app hashes must match), so if the node syncs, the recovered data is consistent with
    the chain.
@@ -202,28 +175,48 @@ Step by step:
    so it kept falling behind, and letting LevelDB compact itself back into shape in
    place measured out to about 4 days in one non-resumable operation.
 5. The way out of step 4 is to rebuild the database offline into a fresh, properly
-   organized copy. This requires custom Go tooling built against the same goleveldb
-   version; the Mezo team has a tested tool and can assist. The procedure, which needs
-   free disk space of roughly twice the database size:
-    1. Merge-sort the table files into intermediate databases ("runs"). Open the `.ldb`
-       files of the recovered database directly with goleveldb's `table.NewReader`, in
-       groups of about 250 files, and write each group through a merged iterator into
-       its own intermediate database. Order entries by LevelDB's internal key: user key
-       ascending, then sequence number descending, so the newest version of each key
-       comes first. For our 60,272 table files this produced 236 runs in about one hour.
-    2. Reopen each run once with a small write buffer and close it. This flushes the
-       run's journal into table files; without it, the final merge holds every journal
-       in memory and runs out of it.
-    3. Merge all runs through a single merged iterator into the fresh final database.
-       For each user key, keep only the first (newest) version and drop the key entirely
-       if that version is a deletion marker. For our database this wrote 1.27 billion
-       entries in about two hours.
+   organized copy. Stop the node again and make sure you have free disk space of
+   roughly twice the database size, then:
+    1. Merge-sort the table files into intermediate sorted databases ("runs"):
+
+       ```bash
+       ldb-recover stage1 <mezod-home>/data/application.db <scratch-dir>/runs
+       ```
+
+       This reads the `.ldb` files directly, in groups of 256, and writes each group
+       through a merged iterator into its own run. For our 60,272 table files it
+       produced 236 runs in about one hour. Interrupted? Just rerun; finished runs are
+       skipped.
+    2. Flush the runs:
+
+       ```bash
+       ldb-recover flushruns <scratch-dir>/runs
+       ```
+
+       This reopens each run once so its journal is flushed into table files. Without
+       it, the final merge holds every journal in memory and runs out of it.
+    3. Merge all runs into the fresh final database:
+
+       ```bash
+       ldb-recover stage2 <scratch-dir>/runs <mezod-home>/data/application.db.new
+       ```
+
+       For each key, this keeps only the newest version and drops deleted keys. For our
+       database it wrote 1.27 billion entries in about two hours.
     4. Swap the fresh database in place of the corrupted one, keeping the old one until
-       the node is verified.
+       the node is verified:
+
+       ```bash
+       cd <mezod-home>/data
+       mv application.db application.db.old
+       mv application.db.new application.db
+       ```
+
 6. Start the node and verify as in step 3, then let it re-sync the blocks produced since
    the corruption. On an archive node, additionally verify that history survived: query
    historical state at old heights (for example `eth_call` or `eth_getBalance` at old
-   block numbers) and confirm you get values instead of errors.
+   block numbers) and confirm you get values instead of errors. Once verified, delete
+   `application.db.old`.
 
 ## Prevention
 
@@ -255,6 +248,340 @@ Node operators should do all of the following:
 Neither chain halted. The testnet archive node was out of service for six days, and its
 recovery cost several days of engineering work. On mainnet, the corrupted validator nodes
 were individually offline until re-synced. No test or real funds were at risk.
+
+## Appendix: offline rebuild tool
+
+The single-file Go program below implements recovery option 3. It is the tool that was
+used to repair the testnet archive node, trimmed to the four needed modes:
+
+- `recover <db>`: rebuild the `MANIFEST` of a corrupted database in place and check that
+  it opens and is readable.
+- `stage1 <db> <runs-dir>`: merge-sort the database's table files into intermediate
+  sorted databases ("runs").
+- `flushruns <runs-dir>`: flush the runs' journals into table files.
+- `stage2 <runs-dir> <new-db>`: merge all runs into a fresh database, keeping only the
+  newest version of each key and dropping deleted keys.
+
+Build it with the **exact goleveldb version `mezod` uses**, taken from the `replace`
+directive for `github.com/syndtr/goleveldb` in `mezod`'s `go.mod`:
+
+```bash
+mkdir ldb-recover && cd ldb-recover
+go mod init ldb-recover
+go get github.com/syndtr/goleveldb@<version-from-mezod-go.mod>
+# save the program below as main.go, then:
+go build -o ldb-recover .
+```
+
+The tool runs in bounded memory (we ran it with a 12 GiB limit next to a 90 GiB
+database). Entries in stage 1 and 2 are ordered by LevelDB's *internal* key: user key
+ascending, then sequence number descending, so the newest version of every key comes
+first; that ordering is what lets stage 2 deduplicate versions and drop deletion markers
+in a single pass.
+
+```go
+package main
+
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/iterator"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/table"
+	"github.com/syndtr/goleveldb/leveldb/util"
+)
+
+func main() {
+	switch {
+	case len(os.Args) == 3 && os.Args[1] == "recover":
+		recoverMain(os.Args[2])
+	case len(os.Args) == 4 && os.Args[1] == "stage1":
+		stage1Main(os.Args[2], os.Args[3])
+	case len(os.Args) == 3 && os.Args[1] == "flushruns":
+		flushrunsMain(os.Args[2])
+	case len(os.Args) == 4 && os.Args[1] == "stage2":
+		stage2Main(os.Args[2], os.Args[3])
+	default:
+		fmt.Fprintln(os.Stderr, "usage: ldb-recover recover <db> | stage1 <db> <runs-dir> |",
+			"flushruns <runs-dir> | stage2 <runs-dir> <new-db>")
+		os.Exit(1)
+	}
+}
+
+func fatalIf(err error, msg string) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %v\n", msg, err)
+		os.Exit(1)
+	}
+}
+
+// recoverMain rebuilds the MANIFEST of a corrupted database in place and
+// checks that the result opens and is readable.
+func recoverMain(path string) {
+	fmt.Println("recovering", path)
+	db, err := leveldb.RecoverFile(path, nil)
+	fatalIf(err, "recover failed")
+
+	it := db.NewIterator(nil, nil)
+	n := 0
+	for it.Next() && n < 10 {
+		n++
+	}
+	it.Release()
+	fatalIf(it.Error(), "iterator error after recovery")
+	fatalIf(db.Close(), "close failed")
+	fmt.Println("recovery OK, sample keys readable:", n)
+}
+
+// icmp orders goleveldb internal keys: user key ascending, then
+// (sequence<<8|kind) descending, so the newest version of a key comes first.
+type icmp struct{}
+
+func (icmp) Name() string { return "rebuild.icmp" }
+
+func (icmp) Compare(a, b []byte) int {
+	ua, ub := a[:len(a)-8], b[:len(b)-8]
+	if r := bytes.Compare(ua, ub); r != 0 {
+		return r
+	}
+	na := binary.LittleEndian.Uint64(a[len(a)-8:])
+	nb := binary.LittleEndian.Uint64(b[len(b)-8:])
+	switch {
+	case na > nb:
+		return -1
+	case na < nb:
+		return 1
+	}
+	return 0
+}
+
+func (icmp) Separator(dst, a, b []byte) []byte { return nil }
+func (icmp) Successor(dst, b []byte) []byte    { return nil }
+
+func listTables(src string) []string {
+	entries, err := os.ReadDir(src)
+	fatalIf(err, "readdir failed")
+	var files []string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".ldb") || strings.HasSuffix(e.Name(), ".sst") {
+			files = append(files, filepath.Join(src, e.Name()))
+		}
+	}
+	sort.Strings(files)
+	return files
+}
+
+func fileNum(path string) int64 {
+	base := strings.TrimSuffix(strings.TrimSuffix(filepath.Base(path), ".ldb"), ".sst")
+	n, _ := strconv.ParseInt(base, 10, 64)
+	return n
+}
+
+const groupSize = 256
+
+// stage1Main reads the source database's table files directly and
+// merge-sorts them, in groups, into intermediate run databases. Finished
+// runs are skipped on rerun, so an interrupted stage 1 can be resumed.
+func stage1Main(src, runsDir string) {
+	files := listTables(src)
+	fmt.Printf("stage1: %d tables in %s\n", len(files), src)
+	fatalIf(os.MkdirAll(runsDir, 0o755), "mkdir runs")
+
+	bpool := util.NewBufferPool(opt.DefaultBlockSize + 5)
+	start := time.Now()
+	totalEntries := 0
+
+	for gi := 0; gi*groupSize < len(files); gi++ {
+		runPath := filepath.Join(runsDir, fmt.Sprintf("run-%05d", gi))
+		if _, err := os.Stat(filepath.Join(runPath, "CURRENT")); err == nil {
+			fmt.Printf("stage1: run %d exists, skipping\n", gi)
+			continue
+		}
+		group := files[gi*groupSize : min((gi+1)*groupSize, len(files))]
+
+		var (
+			iters   []iterator.Iterator
+			readers []*table.Reader
+			fhs     []*os.File
+		)
+		for _, f := range group {
+			fh, err := os.Open(f)
+			fatalIf(err, "open table "+f)
+			st, err := fh.Stat()
+			fatalIf(err, "stat table "+f)
+			tr, err := table.NewReader(
+				fh, st.Size(),
+				storage.FileDesc{Type: storage.TypeTable, Num: fileNum(f)},
+				nil, bpool, &opt.Options{},
+			)
+			fatalIf(err, "table reader "+f)
+			iters = append(iters, tr.NewIterator(nil, nil))
+			readers = append(readers, tr)
+			fhs = append(fhs, fh)
+		}
+
+		mi := iterator.NewMergedIterator(iters, icmp{}, true)
+		rdb, err := leveldb.OpenFile(runPath, &opt.Options{
+			Comparer:            icmp{},
+			WriteBuffer:         128 * opt.MiB,
+			CompactionTableSize: 32 * opt.MiB,
+		})
+		fatalIf(err, "open run db")
+
+		batch := new(leveldb.Batch)
+		entries := 0
+		for mi.Next() {
+			batch.Put(mi.Key(), mi.Value())
+			entries++
+			if batch.Len() >= 10000 {
+				fatalIf(rdb.Write(batch, nil), "write batch")
+				batch.Reset()
+			}
+		}
+		fatalIf(mi.Error(), "merged iterator")
+		if batch.Len() > 0 {
+			fatalIf(rdb.Write(batch, nil), "write final batch")
+		}
+		mi.Release()
+		for i := range readers {
+			readers[i].Release()
+			fhs[i].Close()
+		}
+		fatalIf(rdb.Close(), "close run db")
+		totalEntries += entries
+		fmt.Printf("stage1: run %d/%d done, %d entries, elapsed %s\n",
+			gi+1, (len(files)+groupSize-1)/groupSize, entries, time.Since(start).Round(time.Second))
+	}
+	fmt.Printf("stage1 OK: %d entries in %s\n", totalEntries, time.Since(start).Round(time.Second))
+}
+
+// flushrunsMain reopens each run read-write with a tiny write buffer so
+// journal replay flushes pending writes into table files. Without this,
+// stage2's read-only opens must hold every run's journal tail in memory.
+func flushrunsMain(runsDir string) {
+	entries, err := os.ReadDir(runsDir)
+	fatalIf(err, "readdir runs")
+	n := 0
+	for _, e := range entries {
+		if !e.IsDir() || !strings.HasPrefix(e.Name(), "run-") {
+			continue
+		}
+		rp := filepath.Join(runsDir, e.Name())
+		rdb, err := leveldb.OpenFile(rp, &opt.Options{
+			Comparer:    icmp{},
+			WriteBuffer: 64 * opt.KiB,
+		})
+		fatalIf(err, "flush open "+rp)
+		fatalIf(rdb.Close(), "flush close "+rp)
+		n++
+	}
+	fmt.Printf("flushruns OK: %d runs flushed\n", n)
+}
+
+// stage2Main merges all runs into a fresh database. Thanks to the icmp
+// ordering, the first occurrence of a user key is its newest version:
+// older versions are skipped and keys whose newest version is a deletion
+// marker are dropped entirely.
+func stage2Main(runsDir, dst string) {
+	entries, err := os.ReadDir(runsDir)
+	fatalIf(err, "readdir runs")
+	var runPaths []string
+	for _, e := range entries {
+		if e.IsDir() && strings.HasPrefix(e.Name(), "run-") {
+			runPaths = append(runPaths, filepath.Join(runsDir, e.Name()))
+		}
+	}
+	sort.Strings(runPaths)
+	fmt.Printf("stage2: merging %d runs into %s\n", len(runPaths), dst)
+
+	var (
+		iters []iterator.Iterator
+		rdbs  []*leveldb.DB
+	)
+	for _, rp := range runPaths {
+		rdb, err := leveldb.OpenFile(rp, &opt.Options{
+			Comparer:               icmp{},
+			ReadOnly:               true,
+			ErrorIfMissing:         true,
+			OpenFilesCacheCapacity: 64,
+			BlockCacheCapacity:     4 * opt.MiB,
+		})
+		fatalIf(err, "open run "+rp)
+		iters = append(iters, rdb.NewIterator(nil, nil))
+		rdbs = append(rdbs, rdb)
+	}
+	mi := iterator.NewMergedIterator(iters, icmp{}, true)
+
+	out, err := leveldb.OpenFile(dst, &opt.Options{
+		WriteBuffer:         128 * opt.MiB,
+		CompactionTableSize: 8 * opt.MiB,
+	})
+	fatalIf(err, "open dst db")
+
+	start := time.Now()
+	batch := new(leveldb.Batch)
+	var lastUkey []byte
+	have := false
+	kept, skippedOld, skippedDel := 0, 0, 0
+
+	for mi.Next() {
+		k := mi.Key()
+		uk := k[:len(k)-8]
+		num := binary.LittleEndian.Uint64(k[len(k)-8:])
+		kind := num & 0xff
+
+		if have && bytes.Equal(uk, lastUkey) {
+			skippedOld++
+			continue
+		}
+		lastUkey = append(lastUkey[:0], uk...)
+		have = true
+
+		if kind == 0 { // newest version is a deletion marker
+			skippedDel++
+			continue
+		}
+		batch.Put(uk, mi.Value())
+		kept++
+		if batch.Len() >= 10000 {
+			fatalIf(out.Write(batch, nil), "write batch")
+			batch.Reset()
+		}
+		if kept%5000000 == 0 {
+			fmt.Printf("stage2: kept %dM entries, elapsed %s\n",
+				kept/1000000, time.Since(start).Round(time.Second))
+		}
+	}
+	fatalIf(mi.Error(), "merged iterator")
+	if batch.Len() > 0 {
+		fatalIf(out.Write(batch, nil), "write final batch")
+	}
+	mi.Release()
+	for _, rdb := range rdbs {
+		rdb.Close()
+	}
+	fatalIf(out.Close(), "close dst db")
+	fmt.Printf("stage2 OK: kept=%d oldVersions=%d tombstones=%d in %s\n",
+		kept, skippedOld, skippedDel, time.Since(start).Round(time.Second))
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+```
 
 [v11.0.1]: https://github.com/mezo-org/mezod/releases/tag/v11.0.1
 [validator-kit]: https://github.com/mezo-org/validator-kit
