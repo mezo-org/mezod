@@ -53,9 +53,11 @@ error like:
 panic: ... leveldb: manifest corrupted (field 'comparer'): missing [file=MANIFEST-3772245]
 ```
 
-The file name and the field vary. Any of the six databases in the data directory can be
-affected: `application.db`, `blockstore.db`, `state.db`, `tx_index.db`, `evidence.db` and
-`snapshots/metadata.db`. **Corruption can hit several of them at once**, so after fixing
+The file name and the field vary. Any of the LevelDB databases in the data directory can
+be affected: `application.db`, `blockstore.db`, `state.db`, `tx_index.db`, `evidence.db`,
+`snapshots/metadata.db` and, on nodes running with the EVM indexer enabled
+(`enable-indexer = true` in `app.toml`), `evmindexer.db`.
+**Corruption can hit several of them at once**, so after fixing
 the first one, the node may crash again pointing at another. During this incident the
 archive node had both `application.db` and `snapshots/metadata.db` corrupted.
 
@@ -165,7 +167,7 @@ stopped, on a machine (or helper container) that has the data directory mounted.
 Step by step:
 
 1. Identify the corrupted databases. The startup panic names the first one (the
-   `MANIFEST-XXXXXXX` file lives inside the affected database directory). Check all six
+   `MANIFEST-XXXXXXX` file lives inside the affected database directory). Check all
    databases listed in the [Symptoms](#symptoms) section, because several can be
    corrupted at once; repairing one and starting the node reveals the next.
 2. Rebuild the `MANIFEST` of each corrupted database:
