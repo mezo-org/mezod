@@ -96,6 +96,17 @@ fastest.
 3. Start `mezod`. It block-syncs the gap between the backup and the chain tip; watch the
    logs for steadily increasing block heights.
 
+If you have no backup of your own, you can restore from someone else's: third-party
+snapshot services publish downloadable archives of the data directories of their own
+nodes. Restoring works the same way, except you replace your `data/` directory with the
+content of the archive, and you are trusting a stranger's copy of the chain data. Known
+services for Mezo mainnet are
+[Nodes Hub](https://services.nodeshub.online/mainnet/mezo/snapshot) and
+[Imperator](https://www.imperator.co/services/chain-services/mainnets/mezo).
+**These services are not vetted or endorsed by the Mezo development team; use them at
+your own risk.** As with your own backup, put your saved `priv_validator_state.json`
+back after unpacking the archive.
+
 ### 2. Re-sync using state sync
 
 If you have no backup and your node is **not** an archive node, wipe the local state and
@@ -124,17 +135,17 @@ documents the procedure in full; the steps are:
 5. Start `mezod`. It downloads the state snapshot from the network and then syncs the
    remaining blocks. Once the node is synced, you can set `enable = false` again.
 
-Where to get snapshots from:
+State sync downloads the state snapshot automatically from other nodes over the
+peer-to-peer network and verifies it against the trusted block, so it needs peers that
+serve state sync snapshots and expose their CometBFT RPC:
 
-- **Testnet:** the Mezo team provides state sync snapshots on its testnet nodes; see the
+- **Testnet:** the Mezo team serves state sync snapshots from its testnet nodes; see the
   [validator-kit README](https://github.com/mezo-org/validator-kit#state-sync-from-snapshot)
   for a ready-made configuration.
-- **Mainnet:** the Mezo team does **not** provide mainnet snapshots; you need to reach
-  out to other node operators. Known third-party snapshot services for Mezo mainnet are
-  [Nodes Hub](https://services.nodeshub.online/mainnet/mezo/snapshot) and
-  [Imperator](https://www.imperator.co/services/chain-services/mainnets/mezo). These
-  services are not vetted or endorsed by the Mezo development team; use them at your own
-  risk.
+- **Mainnet:** the Mezo team does **not** run public state sync sources; reach out to
+  other node operators for nodes that serve state sync snapshots. If you cannot find
+  any, restoring a third-party archive of the data directory (see option 1) is the
+  alternative.
 
 **Do not use state sync on an archive node.** A state-synced node starts from a recent
 height and has no historical state; the archive history would be lost.
@@ -250,6 +261,9 @@ recovery cost several days of engineering work. On mainnet, the corrupted valida
 were individually offline until re-synced. No test or real funds were at risk.
 
 ## Appendix: offline rebuild tool
+
+<details>
+<summary>The complete rebuild tool used in recovery option 3 (click to expand)</summary>
 
 The single-file Go program below implements recovery option 3. It is the tool that was
 used to repair the testnet archive node, trimmed to the four needed modes:
@@ -582,6 +596,8 @@ func min(a, b int) int {
 	return b
 }
 ```
+
+</details>
 
 [v11.0.1]: https://github.com/mezo-org/mezod/releases/tag/v11.0.1
 [validator-kit]: https://github.com/mezo-org/validator-kit
