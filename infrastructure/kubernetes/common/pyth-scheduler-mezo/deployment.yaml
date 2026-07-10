@@ -32,6 +32,8 @@ spec:
             - "$(PRICE_SERVICE_ENDPOINT)"
             - "--price-config-file"
             - "/etc/pyth-scheduler/config/price-config.yaml"
+            - "--pushing-frequency"
+            - "30"
           env:
             - name: MEZO_RPC_ENDPOINT
               valueFrom:
