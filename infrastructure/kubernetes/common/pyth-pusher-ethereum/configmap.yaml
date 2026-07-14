@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pyth-pusher-ethereum-price-config
+  labels:
+    app: pyth-pusher-ethereum
+data:
+  price-config.yaml: |
+    - alias: MUSD/USD
+      id: "0x0617a9b725011a126a2b9fd53563f4236501f32cf76d877644b943394606c6de"
+      time_difference: 21600
+      price_deviation: 0.5
+      confidence_ratio: 100
+
+

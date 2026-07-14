@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyth-pusher-mezo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyth-pusher-mezo
+  template:
+    metadata:
+      labels:
+        app: pyth-pusher-mezo
+    spec:
+      containers:
+        - name: pyth-pusher-mezo
+          image: public.ecr.aws/pyth-network/xc-price-pusher:v10.5.0
+          imagePullPolicy: Always
+          command:
+            - "npm"
+            - "run"
+            - "start"
+            - "--"
+            - "evm"
+            - "--endpoint"
+            - "$(MEZO_RPC_ENDPOINT)"
+            - "--mnemonic-file"
+            - "$(MNEMONIC_FILE)"
+            - "--pyth-contract-address"
+            - "$(PYTH_CONTRACT_ADDRESS)"
+            - "--price-service-endpoint"
+            - "$(PRICE_SERVICE_ENDPOINT)"
+            - "--price-config-file"
+            - "/etc/pyth-pusher-mezo/config/price-config.yaml"
+            - "--hermes-access-token"
+            - "$(HERMES_ACCESS_TOKEN)"
+          env:
+            - name: MEZO_RPC_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-pusher-mezo-config
+                  key: endpoint
+            - name: MNEMONIC_FILE
+              value: /etc/pyth-pusher-mezo/secrets/mnemonic
+            - name: PYTH_CONTRACT_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-pusher-mezo-config
+                  key: pyth-contract-address
+            - name: PRICE_SERVICE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-pusher-mezo-config
+                  key: price-service-endpoint
+            - name: HERMES_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-pusher-mezo-config
+                  key: hermes-access-token
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: pyth-pusher-mezo-config
+              mountPath: /etc/pyth-pusher-mezo/secrets
+            - name: price-config
+              mountPath: /etc/pyth-pusher-mezo/config
+      volumes:
+        - name: pyth-pusher-mezo-config
+          secret:
+            secretName: pyth-pusher-mezo-config
+            items:
+              - key: mnemonic
+                path: mnemonic
+        - name: price-config
+          configMap:
+            name: pyth-pusher-mezo-price-config
+            items:
+              - key: price-config.yaml
+                path: price-config.yaml
