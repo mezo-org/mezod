@@ -12,7 +12,7 @@ It monitors price feeds and submits updates based on time and price deviation th
 The deployment requires a secret named `pyth-pusher-mezo-config` with the following keys:
 
 - `endpoint`: RPC endpoint for Mezo network (e.g., "https://rpc.test.mezo.org")
-- `pyth-contract-address`: Address of the Pyth contract on the EVM network (e.g., "0x2880aB155794e7179c9eE2e38200202908C17B43")
+- `pyth-contract-address`: Address of the Pyth contract on the EVM network (e.g., "0x5D289Ad1CE59fCC25b6892e7A303dfFf3a9f7167")
 - `price-service-endpoint`: Hermes price service endpoint (e.g., "https://hermes.pyth.network")
 - `hermes-access-token`: Access token for the Hermes price service
 - `mnemonic`: Mnemonic phrase for the wallet used to submit transactions

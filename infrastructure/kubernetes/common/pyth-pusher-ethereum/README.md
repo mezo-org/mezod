@@ -12,7 +12,7 @@ It monitors price feeds and submits updates based on time and price deviation th
 The deployment requires a secret named `pyth-pusher-ethereum-config` with the following keys:
 
 - `endpoint`: RPC endpoint for Ethereum network (e.g., "https://ethereum-rpc.publicnode.com")
-- `pyth-contract-address`: Address of the Pyth contract on the EVM network (e.g., "0x4305FB66699C3B2702D4d05CF36551390A4c69C6")
+- `pyth-contract-address`: Address of the Pyth contract on the EVM network (e.g., "0x14b9932cc9AC8Ee03301665a8644A753f46D8552")
 - `price-service-endpoint`: Hermes price service endpoint (e.g., "https://hermes.pyth.network")
 - `hermes-access-token`: Access token for the Hermes price service
 - `mnemonic`: Mnemonic phrase for the wallet used to submit transactions
