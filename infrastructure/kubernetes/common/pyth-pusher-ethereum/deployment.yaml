@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyth-pusher-ethereum
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyth-pusher-ethereum
+  template:
+    metadata:
+      labels:
+        app: pyth-pusher-ethereum
+    spec:
+      containers:
+        - name: pyth-pusher-ethereum
+          image: public.ecr.aws/pyth-network/xc-price-pusher:v10.5.0
+          imagePullPolicy: Always
+          command:
+            - "npm"
+            - "run"
+            - "start"
+            - "--"
+            - "evm"
+            - "--endpoint"
+            - "$(ETHEREUM_RPC_ENDPOINT)"
+            - "--mnemonic-file"
+            - "$(MNEMONIC_FILE)"
+            - "--pyth-contract-address"
+            - "$(PYTH_CONTRACT_ADDRESS)"
+            - "--price-service-endpoint"
+            - "$(PRICE_SERVICE_ENDPOINT)"
+            - "--price-config-file"
+            - "/etc/pyth-pusher-ethereum/config/price-config.yaml"
+            - "--hermes-access-token"
+            - "$(HERMES_ACCESS_TOKEN)"
+          env:
+            - name: ETHEREUM_RPC_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-pusher-ethereum-config
+                  key: endpoint
+            - name: MNEMONIC_FILE
+              value: /etc/pyth-pusher-ethereum/secrets/mnemonic
+            - name: PYTH_CONTRACT_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-pusher-ethereum-config
+                  key: pyth-contract-address
+            - name: PRICE_SERVICE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-pusher-ethereum-config
+                  key: price-service-endpoint
+            - name: HERMES_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pyth-pusher-ethereum-config
+                  key: hermes-access-token
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: pyth-pusher-ethereum-config
+              mountPath: /etc/pyth-pusher-ethereum/secrets
+            - name: price-config
+              mountPath: /etc/pyth-pusher-ethereum/config
+      volumes:
+        - name: pyth-pusher-ethereum-config
+          secret:
+            secretName: pyth-pusher-ethereum-config
+            items:
+              - key: mnemonic
+                path: mnemonic
+        - name: price-config
+          configMap:
+            name: pyth-pusher-ethereum-price-config
+            items:
+              - key: price-config.yaml
+                path: price-config.yaml
