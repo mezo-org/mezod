@@ -16,9 +16,11 @@
 package backend
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -52,8 +54,29 @@ func (b *Backend) GetCode(address common.Address, blockNrOrHash rpctypes.BlockNu
 	return res.Code, nil
 }
 
-// GetProof returns an account object with proof and any storage proofs
+// GetProof returns an account object with proof and any storage proofs.
+//
+// The node's GetProofStorageKeysCap setting limits the storage keys as given,
+// which bounds the size of a single request and can be checked before any store
+// is touched. Keys are decoded next, so a malformed key is reported instead of
+// being coerced into the zero key. Repeated keys are then resolved once, so the
+// number of store queries is at most the number of distinct keys.
 func (b *Backend) GetProof(address common.Address, storageKeys []string, blockNrOrHash rpctypes.BlockNumberOrHash) (*rpctypes.AccountResult, error) {
+	if c := b.RPCGetProofStorageKeysCap(); c > 0 && len(storageKeys) > int(c) {
+		return nil, fmt.Errorf("max number of storage keys exceeded (max allowed %v)", c)
+	}
+
+	keys := make([]common.Hash, len(storageKeys))
+
+	for i, storageKey := range storageKeys {
+		key, err := decodeStorageKey(storageKey)
+		if err != nil {
+			return nil, fmt.Errorf("invalid storage key at index %d: %w", i, err)
+		}
+
+		keys[i] = key
+	}
+
 	blockNum, err := b.BlockNumberFromTendermint(blockNrOrHash)
 	if err != nil {
 		return nil, err
@@ -87,17 +110,35 @@ func (b *Backend) GetProof(address common.Address, storageKeys []string, blockNr
 	// query storage proofs
 	storageProofs := make([]rpctypes.StorageResult, len(storageKeys))
 
-	for i, key := range storageKeys {
-		hexKey := common.HexToHash(key)
-		valueBz, proof, err := b.queryClient.GetProof(clientCtx, evmtypes.StoreKey, evmtypes.StateKey(address, hexKey.Bytes()))
-		if err != nil {
-			return nil, err
+	// A proof is a pure function of the store, the decoded key and the height,
+	// all fixed here, so the same key repeated in one request is queried once.
+	// Each entry gets its own value. The proof slice is shared; nothing
+	// downstream writes to it, it is only serialized into the response.
+	type storageProof struct {
+		valueBz []byte
+		proof   []string
+	}
+	queried := make(map[common.Hash]storageProof, len(keys))
+
+	for i, key := range keys {
+		resolved, ok := queried[key]
+		if !ok {
+			valueBz, proof, err := b.queryClient.GetProof(clientCtx, evmtypes.StoreKey, evmtypes.StateKey(address, key.Bytes()))
+			if err != nil {
+				return nil, err
+			}
+
+			resolved = storageProof{
+				valueBz: valueBz,
+				proof:   GetHexProofs(proof),
+			}
+			queried[key] = resolved
 		}
 
 		storageProofs[i] = rpctypes.StorageResult{
-			Key:   key,
-			Value: (*hexutil.Big)(new(big.Int).SetBytes(valueBz)),
-			Proof: GetHexProofs(proof),
+			Key:   storageKeys[i],
+			Value: (*hexutil.Big)(new(big.Int).SetBytes(resolved.valueBz)),
+			Proof: resolved.proof,
 		}
 	}
 
@@ -133,6 +174,34 @@ func (b *Backend) GetProof(address common.Address, storageKeys []string, blockNr
 		StorageHash:  common.Hash{}, // NOTE: Mezo doesn't have a storage hash. TODO: implement?
 		StorageProof: storageProofs,
 	}, nil
+}
+
+// decodeStorageKey parses an `eth_getProof` storage key into the key it denotes.
+// A key shorter than 32 bytes is left-padded with zeros; an odd number of hex
+// digits is left-padded with one zero digit. Input that is not hex, or longer
+// than 32 bytes, is rejected.
+//
+// The accepted input follows decodeHash from go-ethereum's internal/ethapi
+// package, which cannot be imported.
+func decodeStorageKey(s string) (common.Hash, error) {
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		s = s[2:]
+	}
+
+	if (len(s) & 1) > 0 {
+		s = "0" + s
+	}
+
+	if len(s) > 64 {
+		return common.Hash{}, errors.New("hex string too long, want at most 32 bytes")
+	}
+
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return common.Hash{}, errors.New("hex string invalid")
+	}
+
+	return common.BytesToHash(b), nil
 }
 
 // GetStorageAt returns the contract storage at the given address, block number, and key.

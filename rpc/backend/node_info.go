@@ -360,3 +360,9 @@ func (b *Backend) SimulateDisabled() bool {
 func (b *Backend) RPCLogsFilterAddrCap() int32 {
 	return b.cfg.JSONRPC.LogsFilterAddrCap
 }
+
+// RPCGetProofStorageKeysCap returns the maximum number of storage keys accepted in a
+// single `eth_getProof` query.
+func (b *Backend) RPCGetProofStorageKeysCap() int32 {
+	return b.cfg.JSONRPC.GetProofStorageKeysCap
+}

@@ -107,6 +107,10 @@ fix-revert-gas-refund-height = {{ .JSONRPC.FixRevertGasRefundHeight }}
 # logs calls ('eth_getLogs' and 'eth_subscribe' with 'logs' parameter). Value 0 means no cap.
 logs-filter-addr-cap = {{ .JSONRPC.LogsFilterAddrCap }}
 
+# GetProofStorageKeysCap defines the maximum number of storage keys accepted in a single
+# 'eth_getProof' query. Value 0 means no cap.
+get-proof-storage-keys-cap = {{ .JSONRPC.GetProofStorageKeysCap }}
+
 ###############################################################################
 ###                             TLS Configuration                           ###
 ###############################################################################
