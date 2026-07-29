@@ -118,6 +118,12 @@ const (
 	// DefaultLogsFilterAddrCap is the default maximum number of contract addresses in the
 	// filter query for logs calls (`eth_getLogs` and `eth_subscribe` with `logs` parameter).
 	DefaultLogsFilterAddrCap = 30
+
+	// DefaultGetProofStorageKeysCap is the default maximum number of storage keys
+	// accepted in a single `eth_getProof` query. A proof is computed per distinct
+	// key, so the cap keeps the work of one call bounded. The value is well above
+	// what regular proof consumers ask for in one call.
+	DefaultGetProofStorageKeysCap int32 = 1000
 )
 
 var evmTracers = []string{"json", "markdown", "struct", "access_list"}
@@ -191,6 +197,9 @@ type JSONRPCConfig struct {
 	// LogsFilterAddrCap returns the maximum number of contract addresses in the filter query for
 	// logs calls (`eth_getLogs` and `eth_subscribe` with `logs` parameter).
 	LogsFilterAddrCap int32 `mapstructure:"logs-filter-addr-cap"`
+	// GetProofStorageKeysCap defines the maximum number of storage keys accepted in a
+	// single `eth_getProof` query.
+	GetProofStorageKeysCap int32 `mapstructure:"get-proof-storage-keys-cap"`
 }
 
 // TLSConfig defines the certificate and matching private key for the server.
@@ -318,6 +327,7 @@ func DefaultJSONRPCConfig() *JSONRPCConfig {
 		MetricsAddress:           DefaultJSONRPCMetricsAddress,
 		FixRevertGasRefundHeight: DefaultFixRevertGasRefundHeight,
 		LogsFilterAddrCap:        DefaultLogsFilterAddrCap,
+		GetProofStorageKeysCap:   DefaultGetProofStorageKeysCap,
 		SimulateDisabled:         false,
 	}
 }
@@ -362,6 +372,10 @@ func (c JSONRPCConfig) Validate() error {
 
 	if c.LogsFilterAddrCap < 0 {
 		return errors.New("JSON-RPC logs filter address cap cannot be negative")
+	}
+
+	if c.GetProofStorageKeysCap < 0 {
+		return errors.New("JSON-RPC get proof storage keys cap cannot be negative")
 	}
 
 	// check for duplicates
@@ -470,6 +484,7 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			FixRevertGasRefundHeight: v.GetInt64("json-rpc.fix-revert-gas-refund-height"),
 			AllowUnprotectedTxs:      v.GetBool("json-rpc.allow-unprotected-txs"),
 			LogsFilterAddrCap:        v.GetInt32("json-rpc.logs-filter-addr-cap"),
+			GetProofStorageKeysCap:   v.GetInt32("json-rpc.get-proof-storage-keys-cap"),
 			SimulateDisabled:         v.GetBool("json-rpc.simulate-disabled"),
 		},
 		TLS: TLSConfig{
