@@ -124,6 +124,12 @@ const (
 	// key, so the cap keeps the work of one call bounded. The value is well above
 	// what regular proof consumers ask for in one call.
 	DefaultGetProofStorageKeysCap int32 = 1000
+
+	// DefaultEnableJSTracers is the default setting for custom JavaScript tracers
+	// in trace queries. Disabled because such a tracer runs caller-supplied code
+	// that cannot be interrupted, so it can exhaust node resources. Enable it for
+	// debugging only, and only temporarily.
+	DefaultEnableJSTracers = false
 )
 
 var evmTracers = []string{"json", "markdown", "struct", "access_list"}
@@ -200,6 +206,9 @@ type JSONRPCConfig struct {
 	// GetProofStorageKeysCap defines the maximum number of storage keys accepted in a
 	// single `eth_getProof` query.
 	GetProofStorageKeysCap int32 `mapstructure:"get-proof-storage-keys-cap"`
+	// EnableJSTracers lets trace queries run custom JavaScript tracers. While
+	// false, only the native tracers are accepted.
+	EnableJSTracers bool `mapstructure:"enable-js-tracers"`
 }
 
 // TLSConfig defines the certificate and matching private key for the server.
@@ -329,6 +338,7 @@ func DefaultJSONRPCConfig() *JSONRPCConfig {
 		LogsFilterAddrCap:        DefaultLogsFilterAddrCap,
 		GetProofStorageKeysCap:   DefaultGetProofStorageKeysCap,
 		SimulateDisabled:         false,
+		EnableJSTracers:          DefaultEnableJSTracers,
 	}
 }
 
@@ -486,6 +496,7 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			LogsFilterAddrCap:        v.GetInt32("json-rpc.logs-filter-addr-cap"),
 			GetProofStorageKeysCap:   v.GetInt32("json-rpc.get-proof-storage-keys-cap"),
 			SimulateDisabled:         v.GetBool("json-rpc.simulate-disabled"),
+			EnableJSTracers:          v.GetBool("json-rpc.enable-js-tracers"),
 		},
 		TLS: TLSConfig{
 			CertificatePath: v.GetString("tls.certificate-path"),

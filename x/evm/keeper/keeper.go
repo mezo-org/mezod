@@ -85,6 +85,8 @@ type Keeper struct {
 	ethCallGasCap uint64
 	// Execution timeout used by direct EthCall queries.
 	ethCallTimeout time.Duration
+	// Whether trace queries accept custom JavaScript tracers.
+	enableJSTracers bool
 
 	// EVM Hooks for tx post-processing
 	hooks types.EvmHooks
@@ -108,6 +110,7 @@ func NewKeeper(
 	tracer string,
 	ethCallGasCap uint64,
 	ethCallTimeout time.Duration,
+	enableJSTracers bool,
 	ss paramstypes.Subspace,
 ) *Keeper {
 	// ensure evm module account is set
@@ -134,6 +137,7 @@ func NewKeeper(
 		tracer:            tracer,
 		ethCallGasCap:     ethCallGasCap,
 		ethCallTimeout:    ethCallTimeout,
+		enableJSTracers:   enableJSTracers,
 		ss:                ss,
 		customPrecompiles: make(map[common.Address]*precompile.VersionMap),
 	}
@@ -148,6 +152,12 @@ func (k *Keeper) SetEthCallGasCap(gasCap uint64) {
 // timeout means no timeout.
 func (k *Keeper) SetEthCallTimeout(timeout time.Duration) {
 	k.ethCallTimeout = timeout
+}
+
+// SetEnableJSTracers sets whether trace queries accept custom JavaScript
+// tracers.
+func (k *Keeper) SetEnableJSTracers(enabled bool) {
+	k.enableJSTracers = enabled
 }
 
 // SetVerifyBTCSupply registers the post-commit invariant check. Wired

@@ -48,6 +48,14 @@ enable = {{ .JSONRPC.Enable }}
 # gRPC layer, restrict access to that port at the network level.
 simulate-disabled = {{ .JSONRPC.SimulateDisabled }}
 
+# EnableJSTracers lets trace queries run custom JavaScript tracers. Such a
+# tracer runs caller-supplied code that cannot be interrupted and can exhaust
+# node resources, so it is disabled by default and only the native tracers
+# (callTracer, prestateTracer, ...) are accepted. Enable it for debugging only,
+# and only temporarily. The setting is enforced in the keeper, so it covers the
+# SDK gRPC port (default 9090) and the REST gateway as well.
+enable-js-tracers = {{ .JSONRPC.EnableJSTracers }}
+
 # Address defines the EVM RPC HTTP server address to bind to.
 address = "{{ .JSONRPC.Address }}"
 

@@ -73,6 +73,7 @@ const (
 	JSONRPCFixRevertGasRefundHeight = "json-rpc.fix-revert-gas-refund-height"
 	JSONRPCLogsFilterAddrCap        = "json-rpc.logs-filter-addr-cap"
 	JSONRPCGetProofStorageKeysCap   = "json-rpc.get-proof-storage-keys-cap"
+	JSONRPCEnableJSTracers          = "json-rpc.enable-js-tracers"
 )
 
 // EVM flags

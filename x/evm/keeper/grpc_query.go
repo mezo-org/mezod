@@ -799,6 +799,17 @@ func (k *Keeper) traceTx(
 	}
 
 	if len(traceConfig.Tracer) != 0 {
+		// An unknown tracer name is evaluated as JavaScript. Such a tracer runs
+		// caller-supplied code during construction, before the timeout below is
+		// in place, and cannot be interrupted once it starts. Accept it only
+		// when the operator opted in.
+		if !k.enableJSTracers && tracers.DefaultDirectory.IsJS(traceConfig.Tracer) {
+			return nil, 0, status.Error(
+				codes.InvalidArgument,
+				"custom JavaScript tracers are disabled, only native tracers are accepted",
+			)
+		}
+
 		tracer, err = tracers.DefaultDirectory.New(traceConfig.Tracer, tCtx, tracerJSONConfig, cfg.ChainConfig)
 		if err != nil {
 			return nil, 0, status.Error(codes.Internal, err.Error())
@@ -810,6 +821,12 @@ func (k *Keeper) traceTx(
 		if timeout, err = time.ParseDuration(traceConfig.Timeout); err != nil {
 			return nil, 0, status.Errorf(codes.InvalidArgument, "timeout value: %s", err.Error())
 		}
+	}
+
+	// Cap the caller-supplied timeout at the node's json-rpc.evm-timeout.
+	// A zero server timeout disables the cap ("0=infinite").
+	if k.ethCallTimeout > 0 && timeout > k.ethCallTimeout {
+		timeout = k.ethCallTimeout
 	}
 
 	// Handle timeouts and RPC cancellations

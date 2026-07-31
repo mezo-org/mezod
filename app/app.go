@@ -379,6 +379,7 @@ func NewMezo(
 	tracer := cast.ToString(appOpts.Get(srvflags.EVMTracer))
 	ethCallGasCap := cast.ToUint64(appOpts.Get(srvflags.JSONRPCGasCap))
 	ethCallTimeout := cast.ToDuration(appOpts.Get(srvflags.JSONRPCEVMTimeout))
+	enableJSTracers := cast.ToBool(appOpts.Get(srvflags.JSONRPCEnableJSTracers))
 
 	app.FeeMarketKeeper = feemarketkeeper.NewKeeper(
 		appCodec, authority,
@@ -412,6 +413,7 @@ func NewMezo(
 		tracer,
 		ethCallGasCap,
 		ethCallTimeout,
+		enableJSTracers,
 		app.GetSubspace(evmtypes.ModuleName),
 	)
 
