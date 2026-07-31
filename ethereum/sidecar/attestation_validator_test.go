@@ -124,6 +124,24 @@ func TestAttestationValidation(t *testing.T) {
 					Times(1)
 			},
 		},
+		{
+			name:        "Validation succeeded with validator ID above int64 boundary",
+			attestation: defaultAttestation(),
+			pre: func(tav *testAttestationValidator) {
+				tav.mockBridgeContract.EXPECT().
+					ConfirmedUnlocks(gomock.Any()).
+					Return(false, nil).
+					Times(1)
+				tav.mockBridgeContract.EXPECT().
+					Attestations(gomock.Any()).
+					Return(new(big.Int).SetBit(big.NewInt(0), 64, 1), nil).
+					Times(1)
+				tav.mockBridgeContract.EXPECT().
+					ValidatorIDs(gomock.Any()).
+					Return(uint8(64), nil).
+					Times(1)
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
