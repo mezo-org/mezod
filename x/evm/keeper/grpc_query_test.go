@@ -1004,6 +1004,7 @@ func (suite *KeeperTestSuite) TestTraceTx() {
 		{
 			msg: "javascript tracer",
 			malleate: func() {
+				suite.app.EvmKeeper.SetEnableJSTracers(true)
 				traceConfig = &types.TraceConfig{
 					Tracer: "{data: [], fault: function(log) {}, step: function(log) { if(log.op.toString() == \"CALL\") this.data.push(log.stack.peek(0)); }, result: function() { return this.data; }}",
 				}
@@ -1029,6 +1030,7 @@ func (suite *KeeperTestSuite) TestTraceTx() {
 		{
 			msg: "javascript tracer with enableFeemarket",
 			malleate: func() {
+				suite.app.EvmKeeper.SetEnableJSTracers(true)
 				traceConfig = &types.TraceConfig{
 					Tracer: "{data: [], fault: function(log) {}, step: function(log) { if(log.op.toString() == \"CALL\") this.data.push(log.stack.peek(0)); }, result: function() { return this.data; }}",
 				}
@@ -1249,6 +1251,118 @@ func (suite *KeeperTestSuite) TestTraceTxNativeTracers() {
 	suite.Require().NotNil(keccakTrace)
 }
 
+// TestTraceJSTracersDisabled checks that trace queries reject a custom
+// JavaScript tracer while the operator has not enabled them. The payload runs
+// an endless loop as soon as it is constructed, so a regression here hangs the
+// query instead of failing it, and the test times out rather than reporting a
+// wrong result.
+func (suite *KeeperTestSuite) TestTraceJSTracersDisabled() {
+	suite.SetupTest()
+
+	contractAddr := suite.DeployTestContract(
+		suite.T(),
+		suite.address,
+		sdkmath.NewIntWithDecimal(1000, 18).BigInt(),
+	)
+	suite.Commit()
+
+	recipient := common.HexToAddress("0x378c50D9264C63F3F92B806d4ee56E9D86FfB3Ec")
+	txMsg := suite.TransferERC20Token(
+		suite.T(),
+		contractAddr,
+		suite.address,
+		recipient,
+		sdkmath.NewIntWithDecimal(1, 18).BigInt(),
+	)
+	suite.Commit()
+
+	endlessLoopTracer := &types.TraceConfig{Tracer: "function(){for(;;){}}()"}
+
+	_, err := suite.queryClient.TraceTx(suite.ctx, &types.QueryTraceTxRequest{
+		Msg:         txMsg,
+		TraceConfig: endlessLoopTracer,
+	})
+	suite.Require().Equal(codes.InvalidArgument, status.Code(err))
+	suite.Require().ErrorContains(err, "custom JavaScript tracers are disabled")
+
+	_, err = suite.queryClient.TraceBlock(suite.ctx, &types.QueryTraceBlockRequest{
+		Txs:         []*types.MsgEthereumTx{txMsg},
+		TraceConfig: endlessLoopTracer,
+	})
+	suite.Require().Equal(codes.InvalidArgument, status.Code(err))
+	suite.Require().ErrorContains(err, "custom JavaScript tracers are disabled")
+}
+
+// TestTraceJSTracersEnabled checks that the operator opt-in actually lets a
+// custom JavaScript tracer run.
+func (suite *KeeperTestSuite) TestTraceJSTracersEnabled() {
+	suite.SetupTest()
+	suite.app.EvmKeeper.SetEnableJSTracers(true)
+
+	contractAddr := suite.DeployTestContract(
+		suite.T(),
+		suite.address,
+		sdkmath.NewIntWithDecimal(1000, 18).BigInt(),
+	)
+	suite.Commit()
+
+	recipient := common.HexToAddress("0x378c50D9264C63F3F92B806d4ee56E9D86FfB3Ec")
+	txMsg := suite.TransferERC20Token(
+		suite.T(),
+		contractAddr,
+		suite.address,
+		recipient,
+		sdkmath.NewIntWithDecimal(1, 18).BigInt(),
+	)
+	suite.Commit()
+
+	opcodeCounter := "{counts: {}, fault: function(log) {}, step: function(log) { var op = log.op.toString(); this.counts[op] = (this.counts[op] || 0) + 1; }, result: function() { return this.counts; }}"
+
+	trace, err := suite.queryClient.TraceTx(suite.ctx, &types.QueryTraceTxRequest{
+		Msg:         txMsg,
+		TraceConfig: &types.TraceConfig{Tracer: opcodeCounter},
+	})
+	suite.Require().NoError(err)
+	suite.Require().Contains(string(trace.Data), "SSTORE")
+}
+
+// TestTraceTimeoutCappedAtEthCallTimeout checks that a caller-supplied trace
+// timeout is capped at the node's json-rpc.evm-timeout. The tracer loops inside
+// step(), so it only stops when the deadline watcher interrupts it. With a huge
+// caller timeout, the query returns only because the cap shrinks the deadline
+// to the node ceiling; without the cap the deadline would be an hour and the
+// test would hang.
+func (suite *KeeperTestSuite) TestTraceTimeoutCappedAtEthCallTimeout() {
+	suite.SetupTest()
+	suite.app.EvmKeeper.SetEnableJSTracers(true)
+	suite.app.EvmKeeper.SetEthCallTimeout(200 * time.Millisecond)
+
+	contractAddr := suite.DeployTestContract(
+		suite.T(),
+		suite.address,
+		sdkmath.NewIntWithDecimal(1000, 18).BigInt(),
+	)
+	suite.Commit()
+
+	recipient := common.HexToAddress("0x378c50D9264C63F3F92B806d4ee56E9D86FfB3Ec")
+	txMsg := suite.TransferERC20Token(
+		suite.T(),
+		contractAddr,
+		suite.address,
+		recipient,
+		sdkmath.NewIntWithDecimal(1, 18).BigInt(),
+	)
+	suite.Commit()
+
+	stepLoopTracer := "{fault:function(){}, step:function(){for(;;){}}, result:function(){return {}}}"
+
+	_, err := suite.queryClient.TraceTx(suite.ctx, &types.QueryTraceTxRequest{
+		Msg:         txMsg,
+		TraceConfig: &types.TraceConfig{Tracer: stepLoopTracer, Timeout: "1h"},
+	})
+	suite.Require().Error(err)
+}
+
 func (suite *KeeperTestSuite) TestTraceBlock() {
 	var (
 		txs         []*types.MsgEthereumTx
@@ -1286,6 +1400,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 		{
 			msg: "javascript tracer",
 			malleate: func() {
+				suite.app.EvmKeeper.SetEnableJSTracers(true)
 				traceConfig = &types.TraceConfig{
 					Tracer: "{data: [], fault: function(log) {}, step: function(log) { if(log.op.toString() == \"CALL\") this.data.push(log.stack.peek(0)); }, result: function() { return this.data; }}",
 				}
@@ -1309,6 +1424,7 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 		{
 			msg: "javascript tracer with enableFeemarket",
 			malleate: func() {
+				suite.app.EvmKeeper.SetEnableJSTracers(true)
 				traceConfig = &types.TraceConfig{
 					Tracer: "{data: [], fault: function(log) {}, step: function(log) { if(log.op.toString() == \"CALL\") this.data.push(log.stack.peek(0)); }, result: function() { return this.data; }}",
 				}
