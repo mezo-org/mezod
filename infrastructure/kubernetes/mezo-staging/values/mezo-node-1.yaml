@@ -6,7 +6,8 @@ env:
 
 customConfigs:
   enabled: true
-  appTomlTxt: ""
+  appTomlTxt: |
+    json-rpc.logs-filter-addr-cap=100
   clientTomlTxt: ""
   configTomlTxt: |
     statesync.enable=true

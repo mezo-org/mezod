@@ -4,6 +4,13 @@ env:
   PUBLIC_IP: "34.170.77.124" # mezo-staging-node-3-external-ip
   MEZOD_MONIKER: "mezo-node-3"
 
+customConfigs:
+  enabled: true
+  appTomlTxt: |
+    json-rpc.logs-filter-addr-cap=100
+  clientTomlTxt: ""
+  configTomlTxt: ""
+
 secrets:
   credentials: "mezo-node-3" # created manually
 

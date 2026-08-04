@@ -64,9 +64,7 @@ func (av *attestationValidator) checkOwnAttestation(
 		return false, fmt.Errorf("couldn't get validator ID: %w", err)
 	}
 
-	mask := new(big.Int).Lsh(big.NewInt(1), uint(validatorID))
-
-	if new(big.Int).And(bitmap, mask).Int64() == 0 {
+	if bitmap.Bit(int(validatorID)) == 0 {
 		return false, nil
 	}
 

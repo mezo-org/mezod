@@ -496,6 +496,8 @@ func (suite *KeeperTestSuite) TestSuicide() {
 }
 
 func (suite *KeeperTestSuite) TestExist() {
+	bankOnly := utiltx.GenerateAddress()
+
 	testCases := []struct {
 		name     string
 		address  common.Address
@@ -507,6 +509,9 @@ func (suite *KeeperTestSuite) TestExist() {
 			vmdb.SelfDestruct(suite.address)
 		}, true},
 		{"success, account doesn't exist", utiltx.GenerateAddress(), func(vm.StateDB) {}, false},
+		{"success, balance without auth account", bankOnly, func(vm.StateDB) {
+			suite.fundWithoutAuthAccount(bankOnly, 100)
+		}, true},
 	}
 
 	for _, tc := range testCases {
@@ -520,6 +525,8 @@ func (suite *KeeperTestSuite) TestExist() {
 }
 
 func (suite *KeeperTestSuite) TestEmpty() {
+	bankOnly := utiltx.GenerateAddress()
+
 	testCases := []struct {
 		name     string
 		address  common.Address
@@ -536,6 +543,14 @@ func (suite *KeeperTestSuite) TestEmpty() {
 			false,
 		},
 		{"empty, account doesn't exist", utiltx.GenerateAddress(), func(vm.StateDB) {}, true},
+		{
+			"not empty, balance without auth account",
+			bankOnly,
+			func(vm.StateDB) {
+				suite.fundWithoutAuthAccount(bankOnly, 100)
+			},
+			false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -988,4 +1003,39 @@ func (suite *KeeperTestSuite) TestDeleteAccount() {
 			}
 		})
 	}
+}
+
+func (suite *KeeperTestSuite) fundWithoutAuthAccount(addr common.Address, amount int64) {
+	coins := sdk.NewCoins(sdk.NewInt64Coin(types.DefaultEVMDenom, amount))
+	suite.Require().NoError(suite.app.BankKeeper.MintCoins(suite.ctx, types.ModuleName, coins))
+	suite.Require().NoError(suite.app.BankKeeper.SendCoinsFromModuleToAccount(
+		suite.ctx, types.ModuleName, sdk.AccAddress(addr.Bytes()), coins,
+	))
+
+	acct := suite.app.AccountKeeper.GetAccount(suite.ctx, sdk.AccAddress(addr.Bytes()))
+	suite.Require().NotNil(acct)
+	suite.app.AccountKeeper.RemoveAccount(suite.ctx, acct)
+}
+
+func (suite *KeeperTestSuite) TestGetAccountBalanceWithoutAuthAccount() {
+	suite.SetupTest()
+
+	withAuthAccount := utiltx.GenerateAddress()
+	coins := sdk.NewCoins(sdk.NewInt64Coin(types.DefaultEVMDenom, 100))
+	suite.Require().NoError(suite.app.BankKeeper.MintCoins(suite.ctx, types.ModuleName, coins))
+	suite.Require().NoError(suite.app.BankKeeper.SendCoinsFromModuleToAccount(
+		suite.ctx, types.ModuleName, sdk.AccAddress(withAuthAccount.Bytes()), coins,
+	))
+	withAuth := suite.app.EvmKeeper.GetAccount(suite.ctx, withAuthAccount)
+	suite.Require().NotNil(withAuth)
+	suite.Require().Equal(big.NewInt(100), withAuth.Balance.ToBig())
+
+	bankOnly := utiltx.GenerateAddress()
+	suite.fundWithoutAuthAccount(bankOnly, 100)
+	bankOnlyAcct := suite.app.EvmKeeper.GetAccount(suite.ctx, bankOnly)
+	suite.Require().NotNil(bankOnlyAcct)
+	suite.Require().Equal(big.NewInt(100), bankOnlyAcct.Balance.ToBig())
+
+	unknown := utiltx.GenerateAddress()
+	suite.Require().Nil(suite.app.EvmKeeper.GetAccount(suite.ctx, unknown))
 }
