@@ -39,14 +39,22 @@ var _ statedb.Keeper = &Keeper{}
 // StateDB Keeper implementation
 // ----------------------------------------------------------------------------
 
-// GetAccount returns nil if account is not exist, returns error if it's not `EthAccountI`
+// GetAccount returns the EVM account at addr, or nil if the address has neither
+// an x/auth record nor a native balance. go-ethereum treats an address with a
+// balance as existing, so GetAccount reports one even when x/auth has no record,
+// keeping Exist and Empty aligned with go-ethereum semantics.
 func (k *Keeper) GetAccount(ctx sdk.Context, addr common.Address) *statedb.Account {
 	acct := k.GetAccountWithoutBalance(ctx, addr)
-	if acct == nil {
-		return nil
-	}
 
 	balance := k.GetBalance(ctx, addr)
+
+	if acct == nil {
+		if balance.Sign() == 0 {
+			return nil
+		}
+
+		acct = statedb.NewEmptyAccount()
+	}
 
 	// Use conversion to bytes rather than uint64 to avoid an overflow error.
 	acct.Balance = new(uint256.Int).SetBytes(balance.Bytes())
