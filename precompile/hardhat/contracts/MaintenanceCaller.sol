@@ -41,4 +41,12 @@ contract MaintenanceCaller is IMaintenance {
     function getMaxPrecompilesCallsPerExecution() external view returns (uint32) {
         return IMaintenance(maintenancePrecompile).getMaxPrecompilesCallsPerExecution();
     }
+
+    function setSelfDestructDisabled(bool disabled) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setSelfDestructDisabled(disabled);
+    }
+
+    function getSelfDestructDisabled() external view returns (bool) {
+        return IMaintenance(maintenancePrecompile).getSelfDestructDisabled();
+    }
 }

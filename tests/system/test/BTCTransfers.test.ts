@@ -4,8 +4,21 @@ import hre from "hardhat";
 import { ethers } from "hardhat"
 import { getDeployedContract } from "./helpers/contract"
 import abi from '../../../precompile/btctoken/abi.json'
+import maintenanceAbi from '../../../precompile/maintenance/abi.json'
 
 const precompileAddress = '0x7b7c000000000000000000000000000000000000';
+const maintenanceAddress = '0x7b7c000000000000000000000000000000000013';
+
+// Some legacy tests enable SELFDESTRUCT to verify its original behavior.
+async function setSelfDestructDisabled(disabled: boolean) {
+  const [owner] = await ethers.getSigners()
+  const maintenance = new ethers.Contract(
+    maintenanceAddress,
+    maintenanceAbi,
+    owner,
+  )
+  await (await maintenance.setSelfDestructDisabled(disabled)).wait()
+}
 
 describe("BTCTransfers", function () {
   const { deployments } = hre;
@@ -92,6 +105,7 @@ describe("BTCTransfers", function () {
 
     before(async function () {
       await fixture();
+      await setSelfDestructDisabled(false)
 
       tokenAmount = ethers.parseEther("8");
       const btcTransfersAddress = await btcTransfers.getAddress();
@@ -106,6 +120,10 @@ describe("BTCTransfers", function () {
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * receipt.gasPrice;
     });
+
+    after(async function () {
+      await setSelfDestructDisabled(true)
+    })
 
     it("should verify initial recipient balance is zero", async function () {
 	expect(initialRecipientBalance).to.equal(0);
@@ -141,6 +159,7 @@ describe("BTCTransfers", function () {
 
     before(async function () {
       await fixture();
+      await setSelfDestructDisabled(false)
 
       tokenAmount = ethers.parseEther("8");
       const btcTransfersAddress = await btcTransfers.getAddress();
@@ -155,6 +174,10 @@ describe("BTCTransfers", function () {
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * receipt.gasPrice;
     });
+
+    after(async function () {
+      await setSelfDestructDisabled(true)
+    })
 
     it("should verify initial recipient balance is zero", async function () {
       expect(initialRecipientBalance).to.equal(0);
@@ -190,6 +213,7 @@ describe("BTCTransfers", function () {
 
     before(async function () {
       await fixture();
+      await setSelfDestructDisabled(false)
 
       tokenAmount = ethers.parseEther("8");
       const btcTransfersAddress = await btcTransfers.getAddress();
@@ -205,6 +229,10 @@ describe("BTCTransfers", function () {
       const receipt = await tx.wait();
       gasCost = receipt.gasUsed * receipt.gasPrice;
     });
+
+    after(async function () {
+      await setSelfDestructDisabled(true)
+    })
 
     it("should verify initial recipient balance is zero", async function () {
       expect(initialRecipientBalance).to.equal(0);

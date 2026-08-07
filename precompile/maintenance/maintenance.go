@@ -87,6 +87,19 @@ func NewPrecompileVersionMap(
 		return nil, err
 	}
 
+	// v6 adds the SELFDESTRUCT toggle.
+	contractV6, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+		EVM:                 true,
+		Precompiles:         true,
+		ChainFeeSplitter:    true,
+		GasPrice:            true,
+		MaxPrecompilesCalls: true,
+		SelfDestruct:        true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
@@ -94,7 +107,8 @@ func NewPrecompileVersionMap(
 			2: contractV2,
 			3: contractV3,
 			4: contractV4,
-			evmtypes.MaintenancePrecompileLatestVersion: contractV5,
+			5: contractV5,
+			evmtypes.MaintenancePrecompileLatestVersion: contractV6,
 		},
 	), nil
 }
@@ -105,6 +119,7 @@ type Settings struct {
 	ChainFeeSplitter    bool // enable methods related to the chain fee splitter
 	GasPrice            bool // enable methods related to the gas price
 	MaxPrecompilesCalls bool // enable methods related to max precompiles calls per execution
+	SelfDestruct        bool // enable methods for the SELFDESTRUCT toggle
 }
 
 // NewPrecompile creates a new maintenance precompile.
@@ -164,6 +179,11 @@ func newPrecompileMethods(
 	if settings.MaxPrecompilesCalls {
 		methods = append(methods, newSetMaxPrecompilesCallsPerExecutionMethod(poaKeeper, evmKeeper))
 		methods = append(methods, newGetMaxPrecompilesCallsPerExecutionMethod(evmKeeper))
+	}
+
+	if settings.SelfDestruct {
+		methods = append(methods, newSetSelfDestructDisabledMethod(poaKeeper, evmKeeper))
+		methods = append(methods, newGetSelfDestructDisabledMethod(evmKeeper))
 	}
 
 	return methods

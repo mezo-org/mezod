@@ -1,9 +1,25 @@
 import { expect } from "chai"
 import hre, { ethers } from "hardhat"
 import btcabi from "../../../precompile/btctoken/abi.json"
+import maintenanceAbi from "../../../precompile/maintenance/abi.json"
 
 const btcTokenPrecompileAddress =
   "0x7b7c000000000000000000000000000000000000"
+
+// SELFDESTRUCT is disabled by default; the PoA owner (accounts[0]) toggles it via
+// the maintenance precompile so this regression can exercise the opcode.
+const maintenanceAddress = "0x7b7c000000000000000000000000000000000013"
+
+async function setSelfDestructDisabled(disabled: boolean) {
+  const accounts = (hre.network.config as any).accounts
+  const owner = new ethers.Wallet(accounts[0], ethers.provider)
+  const maintenance = new ethers.Contract(
+    maintenanceAddress,
+    maintenanceAbi,
+    owner,
+  )
+  await (await maintenance.setSelfDestructDisabled(disabled)).wait()
+}
 
 describe("SelfdestructSupplyInvariant", function () {
   let btcToken: any
@@ -61,6 +77,14 @@ describe("SelfdestructSupplyInvariant", function () {
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
   }
+
+  before(async function () {
+    await setSelfDestructDisabled(false)
+  })
+
+  after(async function () {
+    await setSelfDestructDisabled(true)
+  })
 
   describe("selfdestruct to self during contract creation", function () {
     before(async function () {
