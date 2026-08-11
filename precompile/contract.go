@@ -264,12 +264,18 @@ func (c *Contract) Run(
 
 	// If nothing failed, we execute the journal entries related to balance changes
 	// against the stateDB.
-	c.syncJournalEntries(runCtx.journal, stateDB)
+	if err := c.syncJournalEntries(runCtx.journal, stateDB); err != nil {
+		return nil, fmt.Errorf("failed to sync precompile balance changes: [%w]", err)
+	}
 
 	return methodOutputArgs, nil
 }
 
-func (c *Contract) syncJournalEntries(journal *StateDBJournal, stateDB *statedb.StateDB) {
+func (c *Contract) syncJournalEntries(journal *StateDBJournal, stateDB *statedb.StateDB) error {
+	if err := c.validateJournalBalances(journal, stateDB); err != nil {
+		return err
+	}
+
 	for _, v := range journal.entries {
 		if v.isSub {
 			stateDB.SubBalance(v.Address, v.Amount, v.TracingReason)
@@ -280,6 +286,53 @@ func (c *Contract) syncJournalEntries(journal *StateDBJournal, stateDB *statedb.
 	}
 
 	journal.entries = nil
+	return nil
+}
+
+func (c *Contract) validateJournalBalances(journal *StateDBJournal, stateDB *statedb.StateDB) error {
+	// Track a running balance per address so entries touching the same address
+	// are checked against the accumulated result, not the starting balance.
+	// This catches an overflow/underflow that only several entries together
+	// would cause.
+	balances := make(map[common.Address]*uint256.Int, len(journal.entries))
+
+	for _, entry := range journal.entries {
+		currentBalance, ok := balances[entry.Address]
+		if !ok {
+			currentBalance = new(uint256.Int).Set(stateDB.GetBalance(entry.Address))
+		}
+
+		if entry.isSub {
+			// Subtraction
+			nextBalance, underflow := new(uint256.Int).SubOverflow(currentBalance, entry.Amount)
+			if underflow {
+				return fmt.Errorf(
+					"balance underflow for address %s: balance %s, delta %s",
+					entry.Address.Hex(),
+					currentBalance.String(),
+					entry.Amount.String(),
+				)
+			}
+
+			balances[entry.Address] = nextBalance
+			continue
+		}
+
+		// Addition
+		nextBalance, overflow := new(uint256.Int).AddOverflow(currentBalance, entry.Amount)
+		if overflow {
+			return fmt.Errorf(
+				"balance overflow for address %s: balance %s, delta %s",
+				entry.Address.Hex(),
+				currentBalance.String(),
+				entry.Amount.String(),
+			)
+		}
+
+		balances[entry.Address] = nextBalance
+	}
+
+	return nil
 }
 
 // parseCallInput extracts the method ID and input arguments from the given
