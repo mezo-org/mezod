@@ -96,8 +96,8 @@ Shanghai is an execution-layer upgrade that changed EVM behavior and gas rules.
     - Description: adds an official warning that `SELFDESTRUCT` is deprecated
       and its behavior may change in future forks. EIP-6049 itself does not
       change EVM execution, so it does not change transaction outcomes.
-    - Mezo implementation: `SELFDESTRUCT` is supported. See EIP-6780 below for
-      the current Cancun fork semantics on Mezo.
+    - Mezo implementation: `SELFDESTRUCT` is disabled on Mezo. See EIP-6780
+      below for details.
     - Ref: https://eips.ethereum.org/EIPS/eip-6049
 
 #### Cancun (Dencun - execution part)
@@ -155,8 +155,8 @@ See EIP-7569 for the full Dencun EIP list.
       storage at the end of the transaction. Since Cancun (EIP-6780), deletion
       only happens if the contract was created in the same transaction;
       otherwise only the balance is transferred.
-    - Mezo implementation: supported in the underlying VM when Cancun is
-      active.
+    - Mezo implementation: `SELFDESTRUCT` is disabled on Mezo. Executing the
+      opcode reverts with an invalid-opcode error.
     - Ref: https://eips.ethereum.org/EIPS/eip-6780
 
 - EIP-7516 (BLOBBASEFEE opcode)

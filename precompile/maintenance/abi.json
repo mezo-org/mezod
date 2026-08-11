@@ -40,6 +40,19 @@
   },
   {
     "inputs": [],
+    "name": "getSelfDestructDisabled",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getSupportNonEIP155Txs",
     "outputs": [
       {
@@ -122,6 +135,25 @@
       }
     ],
     "name": "setPrecompileByteCode",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "disabled",
+        "type": "bool"
+      }
+    ],
+    "name": "setSelfDestructDisabled",
     "outputs": [
       {
         "internalType": "bool",

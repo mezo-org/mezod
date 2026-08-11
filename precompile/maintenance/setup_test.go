@@ -126,6 +126,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 					ChainFeeSplitter:    true,
 					GasPrice:            true,
 					MaxPrecompilesCalls: true,
+					SelfDestruct:        true,
 				},
 			)
 			s.Require().NoError(err)

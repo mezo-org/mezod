@@ -3,6 +3,21 @@ import hre, { ethers } from "hardhat"
 import { getBytes } from "ethers"
 import type { Selfdestruct6780Check } from "../typechain-types"
 import { getDeployedContract } from "./helpers/contract"
+import maintenanceAbi from "../../../precompile/maintenance/abi.json"
+
+// SELFDESTRUCT is disabled by default; the PoA owner (signers[0]) toggles it via
+// the maintenance precompile so these EIP-6780 tests can exercise the opcode.
+const maintenanceAddress = "0x7b7c000000000000000000000000000000000013"
+
+async function setSelfDestructDisabled(disabled: boolean) {
+  const [owner] = await ethers.getSigners()
+  const maintenance = new ethers.Contract(
+    maintenanceAddress,
+    maintenanceAbi,
+    owner,
+  )
+  await (await maintenance.setSelfDestructDisabled(disabled)).wait()
+}
 
 describe("Selfdestruct6780Check", function () {
   const { deployments } = hre
@@ -17,6 +32,14 @@ describe("Selfdestruct6780Check", function () {
     senderSigner = signers[1]
     beneficiary = signers[2]
   }
+
+  before(async function () {
+    await setSelfDestructDisabled(false)
+  })
+
+  after(async function () {
+    await setSelfDestructDisabled(true)
+  })
 
   describe("destroy existing contract in later transaction", function () {
     let destructible: string
