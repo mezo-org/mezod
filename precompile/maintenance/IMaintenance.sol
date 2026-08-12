@@ -63,4 +63,19 @@ interface IMaintenance {
      * @return The current maximum precompile calls per execution.
      */
     function getMaxPrecompilesCallsPerExecution() external view returns (uint32);
+
+    /**
+     * @notice Enables or disables the SELFDESTRUCT opcode.
+     * @param disabled True to disable SELFDESTRUCT, false to enable it.
+     * @dev When disabled, SELFDESTRUCT fails the current call frame with an
+     *      invalid-opcode error.
+     * @dev Must be called by contract owner.
+     */
+    function setSelfDestructDisabled(bool disabled) external returns (bool);
+
+    /**
+     * @notice Checks whether the SELFDESTRUCT opcode is disabled.
+     * @return True if SELFDESTRUCT is disabled. False otherwise.
+     */
+    function getSelfDestructDisabled() external view returns (bool);
 }

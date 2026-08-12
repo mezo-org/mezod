@@ -1,5 +1,6 @@
 import { expect } from "chai"
 import hre, { ethers } from "hardhat"
+import maintenanceAbi from "../../../precompile/maintenance/abi.json"
 import { SimpleToken } from "../typechain-types/SimpleToken"
 import { getDeployedContract } from "./helpers/contract"
 import {
@@ -97,6 +98,18 @@ import { SET_CODE_TX_TYPE, signAuthorization } from "./helpers/eip7702"
  */
 describe("SimulateV1_SpecCompliance", function () {
   const { deployments } = hre
+  const maintenanceAddress = "0x7b7c000000000000000000000000000000000013"
+
+  // Some legacy tests enable SELFDESTRUCT to verify its original behavior.
+  async function setSelfDestructDisabled(disabled: boolean) {
+    const [owner] = await ethers.getSigners()
+    const maintenance = new ethers.Contract(
+      maintenanceAddress,
+      maintenanceAbi,
+      owner,
+    )
+    await (await maintenance.setSelfDestructDisabled(disabled)).wait()
+  }
 
   // Spec-reserved JSON-RPC error codes (geth execution-apis execute.yaml).
   const NONCE_TOO_LOW = -38010
@@ -1922,6 +1935,8 @@ describe("SimulateV1_SpecCompliance", function () {
     let blocks: any[]
 
     before(async function () {
+      await setSelfDestructDisabled(false)
+
       const sd = "0xc200000000000000000000000000000000000000"
       const r = await simulate({
         blockStateCalls: [
@@ -1935,6 +1950,10 @@ describe("SimulateV1_SpecCompliance", function () {
         traceTransfers: true,
       })
       blocks = r.result!
+    })
+
+    after(async function () {
+      await setSelfDestructDisabled(true)
     })
 
     it("status 0x1 and (best-effort) one ERC-7528 Transfer log", function () {

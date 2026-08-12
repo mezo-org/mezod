@@ -16,7 +16,24 @@ task('maintenance:setSupportNonEIP155Txs', 'Enables/disables support for the non
   .setAction(async (taskArguments, hre) => {
     const signer = await hre.ethers.getSigner(taskArguments.signer)
     const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
-    const pending = await maintenance.setSupportNonEIP155Txs(taskArguments.value === "true")
+    const pending = await maintenance.setSupportNonEIP155Txs(taskArguments.value === 'true')
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('maintenance:getSelfDestructDisabled', 'Checks whether the SELFDESTRUCT opcode is disabled', async (taskArguments, hre) => {
+  const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+  const value = await maintenance.getSelfDestructDisabled()
+  console.log(value)
+})
+
+task('maintenance:setSelfDestructDisabled', 'Enables/disables the SELFDESTRUCT opcode')
+  .addParam('signer', 'The owner address (msg.sender)')
+  .addParam('value', 'The new value of the flag')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setSelfDestructDisabled(taskArguments.value === 'true')
     const confirmed = await pending.wait()
     console.log(confirmed.hash)
   })

@@ -49,12 +49,17 @@ var (
 	DefaultMezoMinterAddress = ""
 )
 
-// AvailableExtraEIPs define the list of all EIPs that can be enabled by the
-// EVM interpreter. These EIPs are applied in order and can override the
-// instruction sets from the latest hard fork enabled by the ChainConfig. For
-// more info check:
+// AvailableExtraEIPs lists standard EIPs supported through ExtraEIPs. Values
+// are validated with vm.ValidEip, which also permits registered custom EIPs.
+// EIPs are applied in order and can override the latest hard fork instruction
+// set. For more information, see:
 // https://github.com/ethereum/go-ethereum/blob/master/core/vm/interpreter.go#L97
 var AvailableExtraEIPs = []int64{1344, 1884, 2200, 2929, 3198, 3529}
+
+// SelfdestructDisableEIP is the non-standard EIP (defined in
+// mezo-org/go-ethereum) that disables the SELFDESTRUCT opcode. When present in
+// ExtraEIPs, SELFDESTRUCT is treated as an invalid opcode.
+const SelfdestructDisableEIP int64 = 90000
 
 // NewParams creates a new Params instance
 func NewParams(evmDenom string, allowUnprotectedTxs, enableCreate, enableCall bool, config ChainConfig, extraEIPs []int64) Params {
@@ -69,14 +74,13 @@ func NewParams(evmDenom string, allowUnprotectedTxs, enableCreate, enableCall bo
 }
 
 // DefaultParams returns default evm parameters
-// ExtraEIPs is empty to prevent overriding the latest hard fork instruction set
 func DefaultParams() Params {
 	return Params{
 		EvmDenom:                        DefaultEVMDenom,
 		EnableCreate:                    DefaultEnableCreate,
 		EnableCall:                      DefaultEnableCall,
 		ChainConfig:                     DefaultChainConfig(),
-		ExtraEIPs:                       nil,
+		ExtraEIPs:                       []int64{SelfdestructDisableEIP},
 		AllowUnprotectedTxs:             DefaultAllowUnprotectedTxs,
 		StorageRootStrategy:             uint32(DefaultStorageRootStrategy),
 		PrecompilesVersions:             DefaultPrecompilesVersions,
