@@ -381,6 +381,29 @@ func TestContract_SyncJournalEntries_AdditionOverflow(t *testing.T) {
 	require.Len(journal.entries, 2)
 }
 
+func TestContract_SyncJournalEntries_CumulativeAdditionOverflow(t *testing.T) {
+	require := require.New(t)
+
+	to := common.HexToAddress("0x1")
+	maxBalance := new(uint256.Int).SetAllOne()
+	startingBalance := new(uint256.Int).Sub(maxBalance, uint256.NewInt(10))
+	stateDB := newStateDBWithBalances(map[common.Address]*uint256.Int{
+		to: startingBalance,
+	})
+	journal := &StateDBJournal{}
+	journal.AddBalance(to, uint256.NewInt(6), tracing.BalanceChangeUnspecified)
+	journal.AddBalance(to, uint256.NewInt(5), tracing.BalanceChangeUnspecified)
+
+	err := new(Contract).syncJournalEntries(journal, stateDB)
+
+	require.ErrorContains(err, "balance overflow")
+	require.Equal(
+		new(uint256.Int).Sub(maxBalance, uint256.NewInt(4)),
+		stateDB.GetBalance(to),
+	)
+	require.Len(journal.entries, 2)
+}
+
 func newStateDBWithBalances(balances map[common.Address]*uint256.Int) *statedb.StateDB {
 	stateDB := statedb.New(
 		sdk.Context{},
