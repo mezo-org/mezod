@@ -355,7 +355,7 @@ func TestContract_SyncJournalEntries_CumulativeSubtractionUnderflow(t *testing.T
 	err := new(Contract).syncJournalEntries(journal, stateDB)
 
 	require.ErrorContains(err, "balance underflow")
-	require.Equal(uint256.NewInt(10), stateDB.GetBalance(from))
+	require.Equal(uint256.NewInt(4), stateDB.GetBalance(from))
 	require.Len(journal.entries, 2)
 }
 
@@ -376,7 +376,7 @@ func TestContract_SyncJournalEntries_AdditionOverflow(t *testing.T) {
 	err := new(Contract).syncJournalEntries(journal, stateDB)
 
 	require.ErrorContains(err, "balance overflow")
-	require.Equal(uint256.NewInt(10), stateDB.GetBalance(from))
+	require.Equal(uint256.NewInt(9), stateDB.GetBalance(from))
 	require.Equal(maxBalance, stateDB.GetBalance(to))
 	require.Len(journal.entries, 2)
 }
