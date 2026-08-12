@@ -11,9 +11,11 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/x/evm/statedb"
+	"github.com/stretchr/testify/require"
 )
 
 func TestContract_Address(t *testing.T) {
@@ -296,6 +298,128 @@ func TestContract_Run(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestContract_SyncJournalEntries(t *testing.T) {
+	require := require.New(t)
+
+	from := common.HexToAddress("0x1")
+	to := common.HexToAddress("0x2")
+	stateDB := newStateDBWithBalances(map[common.Address]*uint256.Int{
+		from: uint256.NewInt(10),
+		to:   uint256.NewInt(20),
+	})
+	journal := &StateDBJournal{}
+	journal.SubBalance(from, uint256.NewInt(3), tracing.BalanceChangeUnspecified)
+	journal.AddBalance(to, uint256.NewInt(3), tracing.BalanceChangeUnspecified)
+
+	err := new(Contract).syncJournalEntries(journal, stateDB)
+
+	require.NoError(err)
+	require.Equal(uint256.NewInt(7), stateDB.GetBalance(from))
+	require.Equal(uint256.NewInt(23), stateDB.GetBalance(to))
+	require.Empty(journal.entries)
+}
+
+func TestContract_SyncJournalEntries_SubtractionUnderflow(t *testing.T) {
+	require := require.New(t)
+
+	from := common.HexToAddress("0x1")
+	to := common.HexToAddress("0x2")
+	stateDB := newStateDBWithBalances(map[common.Address]*uint256.Int{
+		to: uint256.NewInt(20),
+	})
+	journal := &StateDBJournal{}
+	journal.SubBalance(from, uint256.NewInt(1), tracing.BalanceChangeUnspecified)
+	journal.AddBalance(to, uint256.NewInt(1), tracing.BalanceChangeUnspecified)
+
+	err := new(Contract).syncJournalEntries(journal, stateDB)
+
+	require.ErrorContains(err, "balance underflow")
+	require.Equal(uint256.NewInt(0), stateDB.GetBalance(from))
+	require.Equal(uint256.NewInt(20), stateDB.GetBalance(to))
+	require.Len(journal.entries, 2)
+}
+
+func TestContract_SyncJournalEntries_CumulativeSubtractionUnderflow(t *testing.T) {
+	require := require.New(t)
+
+	from := common.HexToAddress("0x1")
+	stateDB := newStateDBWithBalances(map[common.Address]*uint256.Int{
+		from: uint256.NewInt(10),
+	})
+	journal := &StateDBJournal{}
+	journal.SubBalance(from, uint256.NewInt(6), tracing.BalanceChangeUnspecified)
+	journal.SubBalance(from, uint256.NewInt(5), tracing.BalanceChangeUnspecified)
+
+	err := new(Contract).syncJournalEntries(journal, stateDB)
+
+	require.ErrorContains(err, "balance underflow")
+	require.Equal(uint256.NewInt(4), stateDB.GetBalance(from))
+	require.Len(journal.entries, 2)
+}
+
+func TestContract_SyncJournalEntries_AdditionOverflow(t *testing.T) {
+	require := require.New(t)
+
+	from := common.HexToAddress("0x1")
+	to := common.HexToAddress("0x2")
+	maxBalance := new(uint256.Int).SetAllOne()
+	stateDB := newStateDBWithBalances(map[common.Address]*uint256.Int{
+		from: uint256.NewInt(10),
+		to:   maxBalance,
+	})
+	journal := &StateDBJournal{}
+	journal.SubBalance(from, uint256.NewInt(1), tracing.BalanceChangeUnspecified)
+	journal.AddBalance(to, uint256.NewInt(1), tracing.BalanceChangeUnspecified)
+
+	err := new(Contract).syncJournalEntries(journal, stateDB)
+
+	require.ErrorContains(err, "balance overflow")
+	require.Equal(uint256.NewInt(9), stateDB.GetBalance(from))
+	require.Equal(maxBalance, stateDB.GetBalance(to))
+	require.Len(journal.entries, 2)
+}
+
+func TestContract_SyncJournalEntries_CumulativeAdditionOverflow(t *testing.T) {
+	require := require.New(t)
+
+	to := common.HexToAddress("0x1")
+	maxBalance := new(uint256.Int).SetAllOne()
+	startingBalance := new(uint256.Int).Sub(maxBalance, uint256.NewInt(10))
+	stateDB := newStateDBWithBalances(map[common.Address]*uint256.Int{
+		to: startingBalance,
+	})
+	journal := &StateDBJournal{}
+	journal.AddBalance(to, uint256.NewInt(6), tracing.BalanceChangeUnspecified)
+	journal.AddBalance(to, uint256.NewInt(5), tracing.BalanceChangeUnspecified)
+
+	err := new(Contract).syncJournalEntries(journal, stateDB)
+
+	require.ErrorContains(err, "balance overflow")
+	require.Equal(
+		new(uint256.Int).Sub(maxBalance, uint256.NewInt(4)),
+		stateDB.GetBalance(to),
+	)
+	require.Len(journal.entries, 2)
+}
+
+func newStateDBWithBalances(balances map[common.Address]*uint256.Int) *statedb.StateDB {
+	stateDB := statedb.New(
+		sdk.Context{},
+		statedb.NewMockKeeper(),
+		statedb.TxConfig{},
+	)
+
+	for address, balance := range balances {
+		stateDB.AddBalance(
+			address,
+			balance,
+			tracing.BalanceChangeUnspecified,
+		)
+	}
+
+	return stateDB
 }
 
 func TestRunContext_MsgSender(t *testing.T) {

@@ -264,22 +264,38 @@ func (c *Contract) Run(
 
 	// If nothing failed, we execute the journal entries related to balance changes
 	// against the stateDB.
-	c.syncJournalEntries(runCtx.journal, stateDB)
+	if err := c.syncJournalEntries(runCtx.journal, stateDB); err != nil {
+		return nil, fmt.Errorf("failed to sync precompile balance changes: [%w]", err)
+	}
 
 	return methodOutputArgs, nil
 }
 
-func (c *Contract) syncJournalEntries(journal *StateDBJournal, stateDB *statedb.StateDB) {
+func (c *Contract) syncJournalEntries(journal *StateDBJournal, stateDB *statedb.StateDB) error {
 	for _, v := range journal.entries {
+		balance := stateDB.GetBalance(v.Address)
 		if v.isSub {
+			if balance.Lt(v.Amount) {
+				return fmt.Errorf(
+					"balance underflow for address %s: balance %s, delta %s",
+					v.Address.Hex(), balance, v.Amount,
+				)
+			}
 			stateDB.SubBalance(v.Address, v.Amount, v.TracingReason)
 			continue
 		}
 
+		if _, overflow := new(uint256.Int).AddOverflow(balance, v.Amount); overflow {
+			return fmt.Errorf(
+				"balance overflow for address %s: balance %s, delta %s",
+				v.Address.Hex(), balance, v.Amount,
+			)
+		}
 		stateDB.AddBalance(v.Address, v.Amount, v.TracingReason)
 	}
 
 	journal.entries = nil
+	return nil
 }
 
 // parseCallInput extracts the method ID and input arguments from the given

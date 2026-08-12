@@ -14,7 +14,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/authz"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/holiman/uint256"
 	"github.com/mezo-org/mezod/precompile/assetsbridge"
 	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	"github.com/mezo-org/mezod/x/evm/statedb"
@@ -749,10 +751,6 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 			// Reset keepers state
 			s.extBridgeKeeper.Reset()
 
-			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
-			}
-
 			assetsBridgePrecompile, err := assetsbridge.NewPrecompile(
 				s.poaKeeper,
 				s.extBridgeKeeper,
@@ -771,6 +769,10 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 			var methodInputs []interface{}
 			if tc.run != nil {
 				methodInputs = tc.run()
+			}
+
+			evm := &vm.EVM{
+				StateDB: s.newStateDBForBridgeOut(tc.as),
 			}
 
 			method := s.assetsBridgePrecompile.Abi.Methods[methodName]
@@ -825,4 +827,12 @@ func (s *BridgeOutTestSuite) RunMethodTestCasesWithKeepers(testcases []TestCase,
 			}
 		})
 	}
+}
+
+func (s *BridgeOutTestSuite) newStateDBForBridgeOut(
+	sender common.Address,
+) *statedb.StateDB {
+	stateDB := statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{})
+	stateDB.AddBalance(sender, uint256.NewInt(1_000_000), tracing.BalanceChangeUnspecified)
+	return stateDB
 }
