@@ -106,16 +106,6 @@ interface IAssetsBridge {
     );
 
     /**
-     * @notice Emitted when triparty bridging is paused or unpaused.
-     * @param isPaused Whether triparty bridging is paused.
-     * @custom:deprecated Retired in version 6. The Maintenance precompile is
-     *                     the single emergency surface. Calls revert.
-     */
-    event TripartyPaused(
-        bool isPaused
-    );
-
-    /**
      * @notice Helper function used to enable bridged assets observability.
      */
     function bridge(AssetsLocked[] memory events) external returns (bool);
@@ -216,37 +206,6 @@ interface IAssetsBridge {
     function getOutflowCapacity(address token) external view returns (uint256 capacity, uint256 resetHeight);
 
     /**
-     * @notice Sets the pauser address for emergency bridge operations.
-     * @param pauser The address that will be able to pause bridge operations.
-     *               Can be 0x0 to remove the pauser.
-     * @dev Requirements:
-     *      - The caller must be the PoA owner.
-     * @return True if the call succeeded, false otherwise.
-     * @custom:deprecated Retired in version 6. The Maintenance precompile is
-     *                     the single emergency surface. Calls revert.
-     */
-    function setPauser(address pauser) external returns (bool);
-
-    /**
-     * @notice Gets the current pauser address.
-     * @return The address of the current pauser.
-     * @custom:deprecated Retired in version 6. The Maintenance precompile is
-     *                     the single emergency surface. Calls revert.
-     */
-    function getPauser() external view returns (address);
-
-    /**
-     * @notice Pauses all bridge out operations by setting outflow limits to 0 for all supported tokens.
-     * @dev Requirements:
-     *      - The caller must be the current pauser.
-     *      - The pauser address must not be 0x0.
-     * @return True if the call succeeded, false otherwise.
-     * @custom:deprecated Retired in version 6. The Maintenance precompile is
-     *                     the single emergency surface. Calls revert.
-     */
-    function pauseBridgeOut() external returns (bool);
-
-    /**
      * @notice Sets the minimum bridge-out amount for the given token.
      * @param mezoToken The address of the token on the Mezo chain.
      * @param minAmount The new minimum amount for the given token.
@@ -329,16 +288,6 @@ interface IAssetsBridge {
     function isAllowedTripartyController(address controller) external view returns (bool);
 
     /**
-     * @notice Pauses or unpauses triparty bridging.
-     * @param isPaused Whether to pause triparty bridging.
-     * @dev Requirements:
-     *      - The caller must be the assets bridge pauser.
-     * @custom:deprecated Retired in version 6. The Maintenance precompile is
-     *                     the single emergency surface. Calls revert.
-     */
-    function pauseTriparty(bool isPaused) external returns (bool);
-
-    /**
      * @notice Emitted when the triparty block delay is updated.
      * @param delay The new block delay value.
      */
@@ -411,14 +360,6 @@ interface IAssetsBridge {
      *         through triparty.
      */
     function getTripartyControllerBTCMinted(address controller) external view returns (uint256 minted);
-
-    /**
-     * @notice Checks if triparty bridging is currently paused.
-     * @return isPaused True if triparty bridging is paused.
-     * @custom:deprecated Retired in version 6. The Maintenance precompile is
-     *                     the single emergency surface. Calls revert.
-     */
-    function isTripartyPaused() external view returns (bool isPaused);
 
     /**
      * @notice Returns the last assigned triparty request sequence number.

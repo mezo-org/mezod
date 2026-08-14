@@ -3,9 +3,7 @@ pragma solidity ^0.8.24;
 
 import { IAssetsBridge, AssetsLocked, ERC20TokenMapping } from "../interfaces/IAssetsBridge.sol";
 
-// The contract does not inherit IAssetsBridge because it deliberately omits the
-// methods retired in version 6 of the precompile.
-contract AssetsBridgeCaller {
+contract AssetsBridgeCaller is IAssetsBridge {
     address private constant precompile = 0x7B7C000000000000000000000000000000000012;
 
     function bridge(AssetsLocked[] memory events) external returns (bool) {

@@ -186,19 +186,6 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "bool",
-        "name": "isPaused",
-        "type": "bool"
-      }
-    ],
-    "name": "TripartyPaused",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
         "internalType": "uint256",
         "name": "delay",
         "type": "uint256"
@@ -537,19 +524,6 @@
   },
   {
     "inputs": [],
-    "name": "getPauser",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "getTripartyLimits",
     "outputs": [
       {
@@ -596,38 +570,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "pauseBridgeOut",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bool",
-        "name": "isPaused",
-        "type": "bool"
-      }
-    ],
-    "name": "pauseTriparty",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -687,25 +629,6 @@
       }
     ],
     "name": "setOutflowLimit",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "pauser",
-        "type": "address"
-      }
-    ],
-    "name": "setPauser",
     "outputs": [
       {
         "internalType": "bool",
@@ -817,19 +740,6 @@
         "internalType": "uint256",
         "name": "minted",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "isTripartyPaused",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "isPaused",
-        "type": "bool"
       }
     ],
     "stateMutability": "view",

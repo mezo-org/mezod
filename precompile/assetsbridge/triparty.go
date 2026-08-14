@@ -7,15 +7,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
 	"github.com/mezo-org/mezod/x/evm/statedb"
-	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
 const (
 	BridgeTripartyMethodName                  = "bridgeTriparty"
 	AllowTripartyControllerMethodName         = "allowTripartyController"
 	IsAllowedTripartyControllerMethodName     = "isAllowedTripartyController"
-	IsTripartyPausedMethodName                = "isTripartyPaused"
-	PauseTripartyMethodName                   = "pauseTriparty"
 	SetTripartyBlockDelayMethodName           = "setTripartyBlockDelay"
 	GetTripartyBlockDelayMethodName           = "getTripartyBlockDelay"
 	SetTripartyLimitsMethodName               = "setTripartyLimits"
@@ -235,69 +232,6 @@ func (m *IsAllowedTripartyControllerMethod) Run(
 	return precompile.MethodOutputs{isAllowed}, nil, nil
 }
 
-// --- pauseTriparty ---
-
-type PauseTripartyMethod struct {
-	bridgeKeeper BridgeKeeper
-}
-
-func newPauseTripartyMethod(bridgeKeeper BridgeKeeper) *PauseTripartyMethod {
-	return &PauseTripartyMethod{bridgeKeeper: bridgeKeeper}
-}
-
-func (m *PauseTripartyMethod) MethodName() string {
-	return PauseTripartyMethodName
-}
-
-func (m *PauseTripartyMethod) MethodType() precompile.MethodType {
-	return precompile.Write
-}
-
-func (m *PauseTripartyMethod) RequiredGas(_ []byte) (uint64, bool) {
-	return 0, false
-}
-
-func (m *PauseTripartyMethod) Payable() bool {
-	return false
-}
-
-func (m *PauseTripartyMethod) Run(
-	context *precompile.RunContext,
-	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, []statedb.StateChange, error) {
-	if err := precompile.ValidateMethodInputsCount(rawInputs, 1); err != nil {
-		return nil, nil, err
-	}
-
-	isPaused, ok := rawInputs[0].(bool)
-	if !ok {
-		return nil, nil, fmt.Errorf("invalid isPaused value: %v", rawInputs[0])
-	}
-
-	sdkCtx := context.SdkCtx()
-
-	pauser := m.bridgeKeeper.GetLegacyPauser(sdkCtx)
-	if evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
-		return nil, nil, fmt.Errorf("no pauser is set")
-	}
-
-	sender := precompile.TypesConverter.Address.ToSDK(context.MsgSender())
-	if !pauser.Equals(sender) {
-		return nil, nil, fmt.Errorf("caller is not the pauser")
-	}
-
-	m.bridgeKeeper.SetLegacyTripartyPaused(sdkCtx, isPaused)
-
-	err := context.EventEmitter().Emit(
-		NewTripartyPausedEvent(isPaused),
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to emit TripartyPaused event: [%w]", err)
-	}
-
-	return precompile.MethodOutputs{true}, nil, nil
-}
-
 // --- setTripartyBlockDelay ---
 
 type SetTripartyBlockDelayMethod struct {
@@ -422,7 +356,6 @@ func (m *GetTripartyBlockDelayMethod) Run(
 const (
 	TripartyBridgeRequestedEventName   = "TripartyBridgeRequested"
 	TripartyControllerAllowedEventName = "TripartyControllerAllowed"
-	TripartyPausedEventName            = "TripartyPaused"
 	TripartyBlockDelaySetEventName     = "TripartyBlockDelaySet"
 	TripartyLimitsSetEventName         = "TripartyLimitsSet"
 )
@@ -486,25 +419,6 @@ func (e *TripartyControllerAllowedEvent) Arguments() []*precompile.EventArgument
 	return []*precompile.EventArgument{
 		{Indexed: true, Value: e.controller},
 		{Indexed: false, Value: e.isAllowed},
-	}
-}
-
-// TripartyPausedEvent is emitted when triparty bridging is paused or unpaused.
-type TripartyPausedEvent struct {
-	isPaused bool
-}
-
-func NewTripartyPausedEvent(isPaused bool) *TripartyPausedEvent {
-	return &TripartyPausedEvent{isPaused: isPaused}
-}
-
-func (e *TripartyPausedEvent) EventName() string {
-	return TripartyPausedEventName
-}
-
-func (e *TripartyPausedEvent) Arguments() []*precompile.EventArgument {
-	return []*precompile.EventArgument{
-		{Indexed: false, Value: e.isPaused},
 	}
 }
 
@@ -828,47 +742,6 @@ func (m *GetTripartyControllerBTCMintedMethod) Run(
 	return precompile.MethodOutputs{
 		precompile.TypesConverter.BigInt.FromSDK(minted),
 	}, nil, nil
-}
-
-// --- isTripartyPaused ---
-
-type IsTripartyPausedMethod struct {
-	bridgeKeeper BridgeKeeper
-}
-
-func newIsTripartyPausedMethod(
-	bridgeKeeper BridgeKeeper,
-) *IsTripartyPausedMethod {
-	return &IsTripartyPausedMethod{bridgeKeeper: bridgeKeeper}
-}
-
-func (m *IsTripartyPausedMethod) MethodName() string {
-	return IsTripartyPausedMethodName
-}
-
-func (m *IsTripartyPausedMethod) MethodType() precompile.MethodType {
-	return precompile.Read
-}
-
-func (m *IsTripartyPausedMethod) RequiredGas(_ []byte) (uint64, bool) {
-	return 0, false
-}
-
-func (m *IsTripartyPausedMethod) Payable() bool {
-	return false
-}
-
-func (m *IsTripartyPausedMethod) Run(
-	context *precompile.RunContext,
-	rawInputs precompile.MethodInputs,
-) (precompile.MethodOutputs, []statedb.StateChange, error) {
-	if err := precompile.ValidateMethodInputsCount(rawInputs, 0); err != nil {
-		return nil, nil, err
-	}
-
-	isPaused := m.bridgeKeeper.IsLegacyTripartyPaused(context.SdkCtx())
-
-	return precompile.MethodOutputs{isPaused}, nil, nil
 }
 
 // --- getTripartyRequestSequenceTip ---

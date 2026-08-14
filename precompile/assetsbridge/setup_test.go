@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"math/big"
 	"slices"
 	"testing"
@@ -28,7 +27,6 @@ import (
 	"github.com/mezo-org/mezod/testutil"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/statedb"
-	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -118,7 +116,7 @@ func (s *PrecompileTestSuite) SetupTest() {
 }
 
 // latestSettings returns the settings of the latest assets bridge precompile
-// version. The retired pause methods are not registered there.
+// version.
 func latestSettings() *assetsbridge.Settings {
 	return &assetsbridge.Settings{
 		Observability:   true,
@@ -127,16 +125,7 @@ func latestSettings() *assetsbridge.Settings {
 		SequenceTipView: true,
 		BridgeOut:       true,
 		Triparty:        true,
-		LegacyPause:     false,
 	}
-}
-
-// v5Settings returns the settings of the assets bridge precompile version 5,
-// the last version registering the retired pause methods.
-func v5Settings() *assetsbridge.Settings {
-	settings := latestSettings()
-	settings.LegacyPause = true
-	return settings
 }
 
 func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodName string) {
@@ -255,11 +244,7 @@ type FakeBridgeKeeper struct {
 	outflowCurrent  map[string]math.Int
 	lastResetHeight uint64
 
-	pauser sdk.AccAddress
-	paused bool
-
 	tripartyControllers             map[string]bool
-	tripartyPaused                  bool
 	tripartyBlockDelay              int64
 	tripartyPerRequestLimit         math.Int
 	tripartyWindowLimit             math.Int
@@ -280,7 +265,6 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		minAmountByToken:            make(map[string]math.Int),
 		minAmountForBitcoinChain:    math.ZeroInt(),
 		tripartyControllers:         make(map[string]bool),
-		tripartyPaused:              false,
 		tripartyBlockDelay:          1,
 		tripartyPerRequestLimit:     math.ZeroInt(),
 		tripartyWindowLimit:         math.ZeroInt(),
@@ -462,33 +446,6 @@ func (k *FakeBridgeKeeper) increaseCurrentOutflow(token []byte, amount math.Int)
 	k.outflowCurrent[key] = current.Add(amount)
 }
 
-func (k *FakeBridgeKeeper) GetLegacyPauser(_ sdk.Context) sdk.AccAddress {
-	return k.pauser
-}
-
-func (k *FakeBridgeKeeper) SetLegacyPauser(_ sdk.Context, pauser sdk.AccAddress) {
-	k.pauser = pauser
-}
-
-func (k *FakeBridgeKeeper) LegacyPauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error {
-	pauser := k.GetLegacyPauser(ctx)
-	if evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
-		return fmt.Errorf("no pauser is set")
-	}
-
-	if !pauser.Equals(caller) {
-		return fmt.Errorf("caller is not the pauser")
-	}
-
-	k.paused = true
-
-	return nil
-}
-
-func (k *FakeBridgeKeeper) isPaused() bool {
-	return k.paused
-}
-
 func (k *FakeBridgeKeeper) IsAllowedTripartyController(_ sdk.Context, controller []byte) bool {
 	return k.tripartyControllers[common.BytesToAddress(controller).Hex()]
 }
@@ -500,10 +457,6 @@ func (k *FakeBridgeKeeper) AllowTripartyController(_ sdk.Context, controller []b
 	} else {
 		delete(k.tripartyControllers, key)
 	}
-}
-
-func (k *FakeBridgeKeeper) SetLegacyTripartyPaused(_ sdk.Context, isPaused bool) {
-	k.tripartyPaused = isPaused
 }
 
 func (k *FakeBridgeKeeper) GetTripartyBlockDelay(_ sdk.Context) int64 {
@@ -572,10 +525,6 @@ func (k *FakeBridgeKeeper) GetTripartyControllerBTCMinted(_ sdk.Context, control
 		return math.ZeroInt()
 	}
 	return amount
-}
-
-func (k *FakeBridgeKeeper) IsLegacyTripartyPaused(_ sdk.Context) bool {
-	return k.tripartyPaused
 }
 
 func (k *FakeBridgeKeeper) GetTripartyRequestSequenceTip(_ sdk.Context) math.Int {

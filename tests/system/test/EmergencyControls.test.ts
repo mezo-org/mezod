@@ -1,6 +1,5 @@
 import { expect } from "chai"
 import { ethers } from "hardhat"
-import assetsbridgeabi from "../../../precompile/assetsbridge/abi.json"
 import maintenanceabi from "../../../precompile/maintenance/abi.json"
 import validatorpoolabi from "../../../precompile/validatorpool/abi.json"
 
@@ -16,7 +15,6 @@ const maintenancePrecompileAddress =
 // Emergency Team drive the bridge lockdown from there.
 describe("EmergencyControls", function () {
   let maintenance: any
-  let assetsBridge: any
   let validatorPool: any
   let poolOwner: any
   let emergencyTeam: any
@@ -53,11 +51,6 @@ describe("EmergencyControls", function () {
     validatorPool = new ethers.Contract(
       validatorPoolPrecompileAddress,
       validatorpoolabi,
-      ethers.provider,
-    )
-    assetsBridge = new ethers.Contract(
-      assetsBridgePrecompileAddress,
-      assetsbridgeabi,
       ethers.provider,
     )
     maintenance = new ethers.Contract(
@@ -226,28 +219,30 @@ describe("EmergencyControls", function () {
   })
 
   describe("retired assets bridge methods", function () {
-    const retiredMethods: Array<[string, unknown[]]> = [
-      ["setPauser", [ethers.ZeroAddress]],
-      ["getPauser", []],
-      ["pauseBridgeOut", []],
-      ["pauseTriparty", [true]],
-      ["isTripartyPaused", []],
+    // The retired methods are removed from the assets bridge ABI, so the test
+    // calls their raw 4-byte selectors.
+    const retiredSelectors: Array<[string, string]> = [
+      ["setPauser(address)", "0x2d88af4a"],
+      ["getPauser()", "0x7008b548"],
+      ["pauseBridgeOut()", "0x2f1d448f"],
+      ["pauseTriparty(bool)", "0x9afc02ff"],
+      ["isTripartyPaused()", "0x5d1b3fc4"],
     ]
 
-    retiredMethods.forEach(([method, args]) => {
-      it(`reverts ${method}`, async function () {
+    retiredSelectors.forEach(([signature, selector]) => {
+      it(`reverts ${signature}`, async function () {
         let errorMessage: string = ""
 
         try {
-          await assetsBridge
-            .connect(poolOwner)
-            .getFunction(method)
-            .staticCall(...args)
+          await ethers.provider.call({
+            to: assetsBridgePrecompileAddress,
+            data: selector,
+          })
         } catch (error: any) {
           errorMessage = error.message
         }
 
-        expect(errorMessage).to.include("method not found in precompile")
+        expect(errorMessage).to.include("method not found in ABI")
       })
     })
   })
