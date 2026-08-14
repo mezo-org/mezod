@@ -4,6 +4,8 @@ import (
 	sdkerrors "cosmossdk.io/errors"
 )
 
+// Code 11 belonged to the removed ErrTripartyPaused. Do not reuse it; clients
+// may still map it to the old message.
 var (
 	ErrInvalidEVMAddress               = sdkerrors.Register(ModuleName, 1, "invalid hex-encoded EVM address")
 	ErrZeroEVMAddress                  = sdkerrors.Register(ModuleName, 2, "zero EVM address")
@@ -15,10 +17,11 @@ var (
 	ErrTripartyWindowLimitExceeded     = sdkerrors.Register(ModuleName, 8, "triparty window limit exceeded")
 	ErrTripartyPerRequestLimitExceeded = sdkerrors.Register(ModuleName, 9, "triparty per-request limit exceeded")
 	ErrTripartyControllerNotAllowed    = sdkerrors.Register(ModuleName, 10, "controller is not an allowed triparty controller")
-	ErrTripartyPaused                  = sdkerrors.Register(ModuleName, 11, "triparty bridging is paused")
 	ErrTripartyCallbackDataTooLarge    = sdkerrors.Register(ModuleName, 12, "triparty callback data exceeds maximum length")
 	ErrTripartyAmountNotPositive       = sdkerrors.Register(ModuleName, 13, "triparty amount must be positive")
 	ErrTripartyAmountBelowMinimum      = sdkerrors.Register(ModuleName, 14, "triparty amount below minimum")
 	ErrTripartyRecipientBlocked        = sdkerrors.Register(ModuleName, 15, "triparty recipient is a blocked address")
 	ErrTripartyRecipientIsPrecompile   = sdkerrors.Register(ModuleName, 16, "triparty recipient is a custom precompile")
+	ErrBridgeOutPaused                 = sdkerrors.Register(ModuleName, 17, "bridge-out is paused")
+	ErrBridgeInPaused                  = sdkerrors.Register(ModuleName, 18, "bridge-in is paused")
 )

@@ -276,7 +276,7 @@ func (m *PauseTripartyMethod) Run(
 
 	sdkCtx := context.SdkCtx()
 
-	pauser := m.bridgeKeeper.GetPauser(sdkCtx)
+	pauser := m.bridgeKeeper.GetLegacyPauser(sdkCtx)
 	if evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
 		return nil, nil, fmt.Errorf("no pauser is set")
 	}
@@ -286,7 +286,7 @@ func (m *PauseTripartyMethod) Run(
 		return nil, nil, fmt.Errorf("caller is not the pauser")
 	}
 
-	m.bridgeKeeper.SetTripartyPaused(sdkCtx, isPaused)
+	m.bridgeKeeper.SetLegacyTripartyPaused(sdkCtx, isPaused)
 
 	err := context.EventEmitter().Emit(
 		NewTripartyPausedEvent(isPaused),
@@ -866,7 +866,7 @@ func (m *IsTripartyPausedMethod) Run(
 		return nil, nil, err
 	}
 
-	isPaused := m.bridgeKeeper.IsTripartyPaused(context.SdkCtx())
+	isPaused := m.bridgeKeeper.IsLegacyTripartyPaused(context.SdkCtx())
 
 	return precompile.MethodOutputs{isPaused}, nil, nil
 }

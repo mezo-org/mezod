@@ -45,6 +45,7 @@ func NewPrecompileVersionMap(
 			ERC20Management: false,
 			SequenceTipView: false,
 			BridgeOut:       false,
+			LegacyPause:     true,
 		},
 	)
 	if err != nil {
@@ -62,6 +63,7 @@ func NewPrecompileVersionMap(
 			ERC20Management: true,
 			SequenceTipView: false,
 			BridgeOut:       false,
+			LegacyPause:     true,
 		},
 	)
 	if err != nil {
@@ -79,6 +81,7 @@ func NewPrecompileVersionMap(
 			ERC20Management: true,
 			SequenceTipView: true,
 			BridgeOut:       false,
+			LegacyPause:     true,
 		},
 	)
 	if err != nil {
@@ -97,6 +100,7 @@ func NewPrecompileVersionMap(
 			ERC20Management: true,
 			SequenceTipView: true,
 			BridgeOut:       true,
+			LegacyPause:     true,
 		},
 	)
 	if err != nil {
@@ -115,6 +119,27 @@ func NewPrecompileVersionMap(
 			SequenceTipView: true,
 			BridgeOut:       true,
 			Triparty:        true,
+			LegacyPause:     true,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// v6 retires the pause methods. The maintenance precompile is the single
+	// emergency surface.
+	contractV6, err := NewPrecompile(
+		poaKeeper,
+		bridgeKeeper,
+		authzKeeper,
+		&Settings{
+			Observability:   true,
+			BTCManagement:   true,
+			ERC20Management: true,
+			SequenceTipView: true,
+			BridgeOut:       true,
+			Triparty:        true,
+			LegacyPause:     false,
 		},
 	)
 	if err != nil {
@@ -128,7 +153,8 @@ func NewPrecompileVersionMap(
 			2: contractV2,
 			3: contractV3,
 			4: contractV4,
-			evmtypes.AssetsBridgePrecompileLatestVersion: contractV5,
+			5: contractV5,
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV6,
 		},
 	), nil
 }
@@ -140,6 +166,7 @@ type Settings struct {
 	SequenceTipView bool // enable the method to expose the sequence tip
 	BridgeOut       bool // enable the bridgeOut method
 	Triparty        bool // enable triparty bridging methods
+	LegacyPause     bool // enable the retired pauser and triparty pause methods
 }
 
 // NewPrecompile creates a new Assets Bridge precompile.
@@ -188,9 +215,6 @@ func NewPrecompile(
 		methods = append(methods, newSetOutflowLimitMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetOutflowLimitMethod(bridgeKeeper))
 		methods = append(methods, newGetOutflowCapacityMethod(bridgeKeeper))
-		methods = append(methods, newSetPauserMethod(poaKeeper, bridgeKeeper))
-		methods = append(methods, newGetPauserMethod(bridgeKeeper))
-		methods = append(methods, newPauseBridgeOutMethod(bridgeKeeper))
 		methods = append(methods, newSetMinBridgeOutAmountMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetMinBridgeOutAmountMethod(bridgeKeeper))
 		methods = append(methods, newSetMinBridgeOutAmountForBitcoinChainMethod(poaKeeper, bridgeKeeper))
@@ -201,7 +225,6 @@ func NewPrecompile(
 		methods = append(methods, newBridgeTripartyMethod(bridgeKeeper))
 		methods = append(methods, newAllowTripartyControllerMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newIsAllowedTripartyControllerMethod(bridgeKeeper))
-		methods = append(methods, newPauseTripartyMethod(bridgeKeeper))
 		methods = append(methods, newSetTripartyBlockDelayMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetTripartyBlockDelayMethod(bridgeKeeper))
 		methods = append(methods, newSetTripartyLimitsMethod(poaKeeper, bridgeKeeper))
@@ -209,9 +232,19 @@ func NewPrecompile(
 		methods = append(methods, newGetTripartyCapacityMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyTotalBTCMintedMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyControllerBTCMintedMethod(bridgeKeeper))
-		methods = append(methods, newIsTripartyPausedMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyRequestSequenceTipMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyProcessedSequenceTipMethod(bridgeKeeper))
+	}
+
+	if settings.BridgeOut && settings.LegacyPause {
+		methods = append(methods, newSetPauserMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetPauserMethod(bridgeKeeper))
+		methods = append(methods, newPauseBridgeOutMethod(bridgeKeeper))
+	}
+
+	if settings.Triparty && settings.LegacyPause {
+		methods = append(methods, newPauseTripartyMethod(bridgeKeeper))
+		methods = append(methods, newIsTripartyPausedMethod(bridgeKeeper))
 	}
 
 	contract.RegisterMethods(methods...)
@@ -281,13 +314,13 @@ type BridgeKeeper interface {
 	SetOutflowLimit(ctx sdk.Context, token []byte, limit math.Int)
 	GetOutflowLimit(ctx sdk.Context, token []byte) math.Int
 	GetOutflowCapacity(ctx sdk.Context, token []byte) (capacity math.Int, resetHeight uint64)
-	SetPauser(ctx sdk.Context, pauser sdk.AccAddress)
-	GetPauser(ctx sdk.Context) sdk.AccAddress
-	PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error
+	SetLegacyPauser(ctx sdk.Context, pauser sdk.AccAddress)
+	GetLegacyPauser(ctx sdk.Context) sdk.AccAddress
+	LegacyPauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error
 	IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool
 	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
-	IsTripartyPaused(ctx sdk.Context) bool
-	SetTripartyPaused(ctx sdk.Context, isPaused bool)
+	IsLegacyTripartyPaused(ctx sdk.Context) bool
+	SetLegacyTripartyPaused(ctx sdk.Context, isPaused bool)
 	GetTripartyBlockDelay(ctx sdk.Context) int64
 	SetTripartyBlockDelay(ctx sdk.Context, delay int64) error
 	SetTripartyPerRequestLimit(ctx sdk.Context, limit math.Int)

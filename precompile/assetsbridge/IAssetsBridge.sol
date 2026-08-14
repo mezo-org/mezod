@@ -108,6 +108,8 @@ interface IAssetsBridge {
     /**
      * @notice Emitted when triparty bridging is paused or unpaused.
      * @param isPaused Whether triparty bridging is paused.
+     * @custom:deprecated Retired in version 6. The Maintenance precompile is
+     *                     the single emergency surface. Calls revert.
      */
     event TripartyPaused(
         bool isPaused
@@ -220,12 +222,16 @@ interface IAssetsBridge {
      * @dev Requirements:
      *      - The caller must be the PoA owner.
      * @return True if the call succeeded, false otherwise.
+     * @custom:deprecated Retired in version 6. The Maintenance precompile is
+     *                     the single emergency surface. Calls revert.
      */
     function setPauser(address pauser) external returns (bool);
 
     /**
      * @notice Gets the current pauser address.
      * @return The address of the current pauser.
+     * @custom:deprecated Retired in version 6. The Maintenance precompile is
+     *                     the single emergency surface. Calls revert.
      */
     function getPauser() external view returns (address);
 
@@ -235,6 +241,8 @@ interface IAssetsBridge {
      *      - The caller must be the current pauser.
      *      - The pauser address must not be 0x0.
      * @return True if the call succeeded, false otherwise.
+     * @custom:deprecated Retired in version 6. The Maintenance precompile is
+     *                     the single emergency surface. Calls revert.
      */
     function pauseBridgeOut() external returns (bool);
 
@@ -325,6 +333,8 @@ interface IAssetsBridge {
      * @param isPaused Whether to pause triparty bridging.
      * @dev Requirements:
      *      - The caller must be the assets bridge pauser.
+     * @custom:deprecated Retired in version 6. The Maintenance precompile is
+     *                     the single emergency surface. Calls revert.
      */
     function pauseTriparty(bool isPaused) external returns (bool);
 
@@ -405,6 +415,8 @@ interface IAssetsBridge {
     /**
      * @notice Checks if triparty bridging is currently paused.
      * @return isPaused True if triparty bridging is paused.
+     * @custom:deprecated Retired in version 6. The Maintenance precompile is
+     *                     the single emergency surface. Calls revert.
      */
     function isTripartyPaused() external view returns (bool isPaused);
 

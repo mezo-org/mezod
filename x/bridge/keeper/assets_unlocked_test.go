@@ -669,6 +669,101 @@ func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
 	})
 }
 
+func TestSaveAssetsUnlockedWhenBridgeOutPaused(t *testing.T) {
+	cfg := sdk.GetConfig()
+	config.SetBech32Prefixes(cfg)
+
+	btcToken := evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress)
+
+	t.Run("rejects the bridge-out when paused", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+		keeper.SetBridgeOutPaused(ctx, true)
+
+		_, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),
+			btcToken,
+			[]byte("sender_address"),
+			math.NewInt(500),
+			1,
+		)
+		require.ErrorIs(t, err, types.ErrBridgeOutPaused)
+
+		// The outflow must not be tracked for a rejected bridge-out.
+		require.True(t, keeper.getCurrentOutflow(ctx, btcToken).IsZero())
+
+		// The sequence tip must not advance for a rejected bridge-out.
+		require.True(t, keeper.GetAssetsUnlockedSequenceTip(ctx).IsZero())
+	})
+
+	t.Run("checks the pause flag before the outflow limit", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		// A zero limit alone fails with ErrOutflowLimitExceeded. The pause
+		// flag takes precedence.
+		keeper.SetOutflowLimit(ctx, btcToken, math.ZeroInt())
+		keeper.SetBridgeOutPaused(ctx, true)
+
+		_, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),
+			btcToken,
+			[]byte("sender_address"),
+			math.NewInt(500),
+			1,
+		)
+		require.ErrorIs(t, err, types.ErrBridgeOutPaused)
+		require.NotErrorIs(t, err, types.ErrOutflowLimitExceeded)
+	})
+
+	t.Run("accepts the bridge-out after unpausing", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+		keeper.SetBridgeOutPaused(ctx, true)
+
+		_, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),
+			btcToken,
+			[]byte("sender_address"),
+			math.NewInt(500),
+			1,
+		)
+		require.ErrorIs(t, err, types.ErrBridgeOutPaused)
+
+		keeper.SetBridgeOutPaused(ctx, false)
+
+		event, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),
+			btcToken,
+			[]byte("sender_address"),
+			math.NewInt(500),
+			1,
+		)
+		require.NoError(t, err)
+		require.NotNil(t, event)
+		require.Equal(t, math.NewInt(500), keeper.getCurrentOutflow(ctx, btcToken))
+	})
+
+	t.Run("ignores the bridge-in flag", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+		keeper.SetBridgeInPaused(ctx, true)
+
+		event, err := keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),
+			btcToken,
+			[]byte("sender_address"),
+			math.NewInt(500),
+			1,
+		)
+		require.NoError(t, err)
+		require.NotNil(t, event)
+	})
+}
+
 func TestGetMinBridgeOutAmount(t *testing.T) {
 	ctx, k := mockContext()
 

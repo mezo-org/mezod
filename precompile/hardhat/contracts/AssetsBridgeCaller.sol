@@ -3,7 +3,9 @@ pragma solidity ^0.8.24;
 
 import { IAssetsBridge, AssetsLocked, ERC20TokenMapping } from "../interfaces/IAssetsBridge.sol";
 
-contract AssetsBridgeCaller is IAssetsBridge {
+// The contract does not inherit IAssetsBridge because it deliberately omits the
+// methods retired in version 6 of the precompile.
+contract AssetsBridgeCaller {
     address private constant precompile = 0x7B7C000000000000000000000000000000000012;
 
     function bridge(AssetsLocked[] memory events) external returns (bool) {
@@ -54,18 +56,6 @@ contract AssetsBridgeCaller is IAssetsBridge {
         return IAssetsBridge(precompile).getOutflowCapacity(token);
     }
 
-    function setPauser(address pauser) external returns (bool) {
-        return IAssetsBridge(precompile).setPauser(pauser);
-    }
-
-    function getPauser() external view returns (address) {
-        return IAssetsBridge(precompile).getPauser();
-    }
-
-    function pauseBridgeOut() external returns (bool) {
-        return IAssetsBridge(precompile).pauseBridgeOut();
-    }
-
     function setMinBridgeOutAmount(address mezoToken, uint256 minAmount) external returns (bool) {
         return IAssetsBridge(precompile).setMinBridgeOutAmount(mezoToken, minAmount);
     }
@@ -94,10 +84,6 @@ contract AssetsBridgeCaller is IAssetsBridge {
         return IAssetsBridge(precompile).isAllowedTripartyController(controller);
     }
 
-    function pauseTriparty(bool isPaused) external returns (bool) {
-        return IAssetsBridge(precompile).pauseTriparty(isPaused);
-    }
-
     function setTripartyBlockDelay(uint256 delay) external returns (bool) {
         return IAssetsBridge(precompile).setTripartyBlockDelay(delay);
     }
@@ -124,10 +110,6 @@ contract AssetsBridgeCaller is IAssetsBridge {
 
     function getTripartyControllerBTCMinted(address controller) external view returns (uint256 minted) {
         return IAssetsBridge(precompile).getTripartyControllerBTCMinted(controller);
-    }
-
-    function isTripartyPaused() external view returns (bool isPaused) {
-        return IAssetsBridge(precompile).isTripartyPaused();
     }
 
     function getTripartyRequestSequenceTip() external view returns (uint256 sequenceTip) {

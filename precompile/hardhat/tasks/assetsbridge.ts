@@ -145,41 +145,6 @@ task(
     console.log('reset height:', result[1].toString())
   })
 
-task('assetsBridge:setPauser', 'Sets the pauser address for emergency bridge operations')
-  .addParam('pauser', 'The address that will be able to pause bridge operations (can be 0x0 to remove the pauser)')
-  .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
-  .setAction(async (taskArguments, hre) => {
-    const signer = await hre.ethers.getSigner(taskArguments.signer)
-    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
-    const pending = await bridge.setPauser(taskArguments.pauser)
-    const confirmed = await pending.wait()
-    console.log(confirmed.hash)
-  })
-
-task(
-  'assetsBridge:getPauser',
-  'Gets the current pauser address',
-  async (_, hre) => {
-    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
-    const result: string = await bridge.getPauser()
-    console.log(result)
-  }
-)
-
-task(
-  'assetsBridge:pauseBridgeOut',
-  'Pauses all bridge out operations by setting outflow limits to 0 for all supported tokens'
-)
-  .addParam('signer', 'The signer address (msg.sender) - must be the current pauser')
-  .setAction(async (taskArguments, hre) => {
-    const signer = await hre.ethers.getSigner(taskArguments.signer)
-    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
-    const pending = await bridge.pauseBridgeOut()
-    const confirmed = await pending.wait()
-    console.log(confirmed.hash)
-
-  })
-
 task(
   'assetsBridge:setMinBridgeOutAmount',
   'Sets the minimum bridge-out amount for a Mezo token'
@@ -276,19 +241,6 @@ task(
     console.log(result)
   })
 
-task('assetsBridge:pauseTriparty', 'Pauses or unpauses triparty bridging')
-  .addParam('isPaused', 'Whether to pause triparty bridging (true/false)')
-  .addParam('signer', 'The signer address (msg.sender) - must be the current pauser')
-  .setAction(async (taskArguments, hre) => {
-    const signer = await hre.ethers.getSigner(taskArguments.signer)
-    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
-    const pending = await bridge.pauseTriparty(
-      taskArguments.isPaused === 'true'
-    )
-    const confirmed = await pending.wait()
-    console.log(confirmed.hash)
-  })
-
 task('assetsBridge:setTripartyBlockDelay', 'Sets the block delay for triparty mint execution')
   .addParam('delay', 'The number of blocks that must pass between mint request and execution')
   .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
@@ -367,16 +319,6 @@ task(
     const result = await bridge.getTripartyControllerBTCMinted(taskArguments.controller)
     console.log(result.toString())
   })
-
-task(
-  'assetsBridge:isTripartyPaused',
-  'Checks if triparty bridging is currently paused',
-  async (_, hre) => {
-    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
-    const result: boolean = await bridge.isTripartyPaused()
-    console.log(result)
-  }
-)
 
 task(
   'assetsBridge:getTripartyRequestSequenceTip',

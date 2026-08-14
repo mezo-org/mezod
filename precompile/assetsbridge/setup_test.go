@@ -117,7 +117,37 @@ func (s *PrecompileTestSuite) SetupTest() {
 	s.ctx = s.app.BaseApp.NewContextLegacy(false, header)
 }
 
+// latestSettings returns the settings of the latest assets bridge precompile
+// version. The retired pause methods are not registered there.
+func latestSettings() *assetsbridge.Settings {
+	return &assetsbridge.Settings{
+		Observability:   true,
+		BTCManagement:   true,
+		ERC20Management: true,
+		SequenceTipView: true,
+		BridgeOut:       true,
+		Triparty:        true,
+		LegacyPause:     false,
+	}
+}
+
+// v5Settings returns the settings of the assets bridge precompile version 5,
+// the last version registering the retired pause methods.
+func v5Settings() *assetsbridge.Settings {
+	settings := latestSettings()
+	settings.LegacyPause = true
+	return settings
+}
+
 func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodName string) {
+	s.RunMethodTestCasesWithSettings(testcases, methodName, latestSettings())
+}
+
+func (s *PrecompileTestSuite) RunMethodTestCasesWithSettings(
+	testcases []TestCase,
+	methodName string,
+	settings *assetsbridge.Settings,
+) {
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
 			evm := &vm.EVM{
@@ -132,14 +162,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 				s.poaKeeper,
 				s.bridgeKeeper,
 				authzKeeper,
-				&assetsbridge.Settings{
-					Observability:   true,
-					BTCManagement:   true,
-					ERC20Management: true,
-					SequenceTipView: true,
-					BridgeOut:       true,
-					Triparty:        true,
-				},
+				settings,
 			)
 			s.Require().NoError(err)
 			s.assetsBridgePrecompile = assetsBridgePrecompile
@@ -439,16 +462,16 @@ func (k *FakeBridgeKeeper) increaseCurrentOutflow(token []byte, amount math.Int)
 	k.outflowCurrent[key] = current.Add(amount)
 }
 
-func (k *FakeBridgeKeeper) GetPauser(_ sdk.Context) sdk.AccAddress {
+func (k *FakeBridgeKeeper) GetLegacyPauser(_ sdk.Context) sdk.AccAddress {
 	return k.pauser
 }
 
-func (k *FakeBridgeKeeper) SetPauser(_ sdk.Context, pauser sdk.AccAddress) {
+func (k *FakeBridgeKeeper) SetLegacyPauser(_ sdk.Context, pauser sdk.AccAddress) {
 	k.pauser = pauser
 }
 
-func (k *FakeBridgeKeeper) PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error {
-	pauser := k.GetPauser(ctx)
+func (k *FakeBridgeKeeper) LegacyPauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error {
+	pauser := k.GetLegacyPauser(ctx)
 	if evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
 		return fmt.Errorf("no pauser is set")
 	}
@@ -479,7 +502,7 @@ func (k *FakeBridgeKeeper) AllowTripartyController(_ sdk.Context, controller []b
 	}
 }
 
-func (k *FakeBridgeKeeper) SetTripartyPaused(_ sdk.Context, isPaused bool) {
+func (k *FakeBridgeKeeper) SetLegacyTripartyPaused(_ sdk.Context, isPaused bool) {
 	k.tripartyPaused = isPaused
 }
 
@@ -551,7 +574,7 @@ func (k *FakeBridgeKeeper) GetTripartyControllerBTCMinted(_ sdk.Context, control
 	return amount
 }
 
-func (k *FakeBridgeKeeper) IsTripartyPaused(_ sdk.Context) bool {
+func (k *FakeBridgeKeeper) IsLegacyTripartyPaused(_ sdk.Context) bool {
 	return k.tripartyPaused
 }
 

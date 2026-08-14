@@ -65,7 +65,7 @@ func (m *SetPauserMethod) Run(
 		return nil, nil, err
 	}
 
-	m.bridgeKeeper.SetPauser(
+	m.bridgeKeeper.SetLegacyPauser(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(pauser),
 	)
@@ -107,7 +107,7 @@ func (m *GetPauserMethod) Run(
 		return nil, nil, err
 	}
 
-	pauser := m.bridgeKeeper.GetPauser(context.SdkCtx())
+	pauser := m.bridgeKeeper.GetLegacyPauser(context.SdkCtx())
 
 	return precompile.MethodOutputs{precompile.TypesConverter.Address.FromSDK(pauser)}, nil, nil
 }
@@ -146,7 +146,7 @@ func (m *PauseBridgeOutMethod) Run(
 		return nil, nil, err
 	}
 
-	err := m.bridgeKeeper.PauseBridgeOut(
+	err := m.bridgeKeeper.LegacyPauseBridgeOut(
 		context.SdkCtx(),
 		precompile.TypesConverter.Address.ToSDK(context.MsgSender()),
 	)

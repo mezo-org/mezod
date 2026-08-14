@@ -44,7 +44,8 @@ func (k Keeper) InitGenesis(
 		}
 	}
 
-	k.SetPauser(ctx, evmtypes.HexAddressToBytes(genState.Pauser))
+	k.SetBridgeOutPaused(ctx, genState.BridgeOutPaused)
+	k.SetBridgeInPaused(ctx, genState.BridgeInPaused)
 	k.setLastOutflowReset(ctx, genState.LastOutflowReset)
 
 	for _, outflowLimit := range genState.CurrentOutflowLimits {
@@ -68,7 +69,6 @@ func (k Keeper) InitGenesis(
 		)
 	}
 
-	k.SetTripartyPaused(ctx, genState.TripartyPaused)
 	err = k.SetTripartyBlockDelay(ctx, genState.TripartyBlockDelay)
 	if err != nil {
 		panic(errorsmod.Wrapf(err, "error setting triparty block delay"))
@@ -116,12 +116,10 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		AssetsUnlockedEvents:           k.GetAllAssetsUnlockedEvents(ctx),
 		BitcoinChainMinBridgeOutAmount: k.GetMinBridgeOutAmountForBitcoinChain(ctx),
 		TokenMinBridgeOutAmounts:       k.GetAllMinBridgeOutAmounts(ctx),
-		Pauser:                         evmtypes.BytesToHexAddress(k.GetPauser(ctx)),
 		LastOutflowReset:               k.getLastOutflowReset(ctx),
 		CurrentOutflowLimits:           k.GetAllCurrentOutflowLimits(ctx),
 		CurrentOutflowAmounts:          k.GetAllCurrentOutflowAmounts(ctx),
 		AllowedTripartyControllers:     k.getAllAllowedTripartyControllers(ctx),
-		TripartyPaused:                 k.IsTripartyPaused(ctx),
 		TripartyBlockDelay:             k.GetTripartyBlockDelay(ctx),
 		TripartyPerRequestLimit:        k.GetTripartyPerRequestLimit(ctx),
 		TripartyWindowLimit:            k.GetTripartyWindowLimit(ctx),
@@ -131,5 +129,7 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		TripartyWindowConsumed:         k.getTripartyWindowConsumed(ctx),
 		TripartyWindowLastReset:        k.getTripartyWindowLastReset(ctx),
 		TripartyControllerBtcMinted:    k.getAllTripartyControllerBTCMinted(ctx),
+		BridgeOutPaused:                k.IsBridgeOutPaused(ctx),
+		BridgeInPaused:                 k.IsBridgeInPaused(ctx),
 	}
 }

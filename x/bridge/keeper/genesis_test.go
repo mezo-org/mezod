@@ -44,7 +44,6 @@ func TestGenesisTripartyState(t *testing.T) {
 		"0x1111111111111111111111111111111111111111",
 		"0x2222222222222222222222222222222222222222",
 	}
-	genesisState.TripartyPaused = true
 	genesisState.TripartyBlockDelay = 10
 	genesisState.TripartyPerRequestLimit = sdkmath.NewInt(123)
 	genesisState.TripartyWindowLimit = sdkmath.NewInt(456)
@@ -95,6 +94,47 @@ func TestGenesisTripartyState(t *testing.T) {
 	require.NotNil(t, got)
 	require.EqualValues(t, genesisState, got)
 	accountKeeper.AssertExpectations(t)
+}
+
+func TestGenesisLockdownFlags(t *testing.T) {
+	tests := map[string]struct {
+		bridgeInPaused  bool
+		bridgeOutPaused bool
+	}{
+		"both flags unset":  {bridgeInPaused: false, bridgeOutPaused: false},
+		"bridge-in paused":  {bridgeInPaused: true, bridgeOutPaused: false},
+		"bridge-out paused": {bridgeInPaused: false, bridgeOutPaused: true},
+		"both flags set":    {bridgeInPaused: true, bridgeOutPaused: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctx, k := mockContext()
+
+			genesisState := types.DefaultGenesis()
+			genesisState.SourceBtcToken = testSourceBTCToken
+			genesisState.BridgeInPaused = test.bridgeInPaused
+			genesisState.BridgeOutPaused = test.bridgeOutPaused
+
+			accountKeeper := newMockAccountKeeper()
+			accountKeeper.On(
+				"GetModuleAccount",
+				ctx,
+				types.ModuleName,
+			).Return(authtypes.NewEmptyModuleAccount(types.ModuleName))
+
+			k.InitGenesis(ctx, *genesisState, accountKeeper)
+
+			require.Equal(t, test.bridgeInPaused, k.IsBridgeInPaused(ctx))
+			require.Equal(t, test.bridgeOutPaused, k.IsBridgeOutPaused(ctx))
+
+			got := k.ExportGenesis(ctx)
+
+			require.NotNil(t, got)
+			require.EqualValues(t, genesisState, got)
+			accountKeeper.AssertExpectations(t)
+		})
+	}
 }
 
 type mockAccountKeeper struct {

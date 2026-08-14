@@ -107,7 +107,7 @@ func (s *PrecompileTestSuite) TestPauseTriparty() {
 		{
 			name: "caller is not the pauser",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
+				s.bridgeKeeper.SetLegacyPauser(s.ctx, testPauserAddr.Bytes())
 				return []interface{}{true}
 			},
 			as:          s.account1.EvmAddr,
@@ -118,7 +118,7 @@ func (s *PrecompileTestSuite) TestPauseTriparty() {
 		{
 			name: "happy path - pause",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
+				s.bridgeKeeper.SetLegacyPauser(s.ctx, testPauserAddr.Bytes())
 				return []interface{}{true}
 			},
 			as:        testPauserAddr,
@@ -131,8 +131,8 @@ func (s *PrecompileTestSuite) TestPauseTriparty() {
 		{
 			name: "happy path - unpause",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
+				s.bridgeKeeper.SetLegacyPauser(s.ctx, testPauserAddr.Bytes())
+				s.bridgeKeeper.SetLegacyTripartyPaused(s.ctx, true)
 				return []interface{}{false}
 			},
 			as:        testPauserAddr,
@@ -144,7 +144,7 @@ func (s *PrecompileTestSuite) TestPauseTriparty() {
 		},
 	}
 
-	s.RunMethodTestCases(testcases, "pauseTriparty")
+	s.RunMethodTestCasesWithSettings(testcases, "pauseTriparty", v5Settings())
 }
 
 func (s *PrecompileTestSuite) TestBridgeTriparty() {
@@ -578,7 +578,7 @@ func (s *PrecompileTestSuite) TestIsTripartyPaused() {
 		{
 			name: "returns true when paused",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
+				s.bridgeKeeper.SetLegacyTripartyPaused(s.ctx, true)
 				return []interface{}{}
 			},
 			as:        s.account1.EvmAddr,
@@ -588,8 +588,8 @@ func (s *PrecompileTestSuite) TestIsTripartyPaused() {
 		{
 			name: "returns false after unpausing",
 			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
+				s.bridgeKeeper.SetLegacyTripartyPaused(s.ctx, true)
+				s.bridgeKeeper.SetLegacyTripartyPaused(s.ctx, false)
 				return []interface{}{}
 			},
 			as:        s.account1.EvmAddr,
@@ -606,7 +606,7 @@ func (s *PrecompileTestSuite) TestIsTripartyPaused() {
 		},
 	}
 
-	s.RunMethodTestCases(testcases, "isTripartyPaused")
+	s.RunMethodTestCasesWithSettings(testcases, "isTripartyPaused", v5Settings())
 }
 
 func (s *PrecompileTestSuite) TestGetTripartyRequestSequenceTip() {

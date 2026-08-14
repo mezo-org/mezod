@@ -149,30 +149,38 @@ func TestCreateTripartyBridgeRequest(t *testing.T) {
 	require.Equal(t, testTripartyController, req2.Controller)
 }
 
-func TestCreateTripartyBridgeRequestPaused(t *testing.T) {
+func TestCreateTripartyBridgeRequestBridgeInPaused(t *testing.T) {
 	ctx, keeper := mockContext()
 
 	keeper.AllowTripartyController(ctx, evmtypes.HexAddressToBytes(testTripartyController), true)
 	keeper.SetTripartyWindowLimit(ctx, to18Dec(100))
-	keeper.SetTripartyPaused(ctx, true)
+	keeper.SetBridgeInPaused(ctx, true)
 
 	// Should be rejected when paused.
 	_, err := keeper.CreateTripartyBridgeRequest(
 		ctx, testTripartyRecipient, math.NewInt(1000), nil, testTripartyController,
 	)
-	require.ErrorIs(t, err, types.ErrTripartyPaused)
+	require.ErrorIs(t, err, types.ErrBridgeInPaused)
 
 	// Sequence tip should not have advanced.
 	require.True(t, keeper.GetTripartyRequestSequenceTip(ctx).IsZero())
 
-	// Unpause and verify create succeeds.
-	keeper.SetTripartyPaused(ctx, false)
+	// The bridge-out flag does not block a bridge-in.
+	keeper.SetBridgeInPaused(ctx, false)
+	keeper.SetBridgeOutPaused(ctx, true)
+
+	reqIDWhenBridgeOutPaused, err := keeper.CreateTripartyBridgeRequest(
+		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
+	)
+	require.NoError(t, err)
+	require.Equal(t, math.NewInt(1), reqIDWhenBridgeOutPaused)
+	keeper.SetBridgeOutPaused(ctx, false)
 
 	reqID, err := keeper.CreateTripartyBridgeRequest(
 		ctx, testTripartyRecipient, MinTripartyAmount, nil, testTripartyController,
 	)
 	require.NoError(t, err)
-	require.Equal(t, math.NewInt(1), reqID)
+	require.Equal(t, math.NewInt(2), reqID)
 }
 
 func TestCreateTripartyBridgeRequestInvalidRecipient(t *testing.T) {
@@ -851,14 +859,14 @@ func TestProcessTripartyBridgeRequests_NoPendingRequests(t *testing.T) {
 	require.True(t, k.GetTripartyProcessedSequenceTip(ctx).IsZero())
 }
 
-func TestProcessTripartyBridgeRequests_Paused(t *testing.T) {
+func TestProcessTripartyBridgeRequests_BridgeInPaused(t *testing.T) {
 	ctx, k, bk, ek := setupTripartyProcessing(t)
 
 	// Create a mature request.
 	createTripartyRequest(t, ctx, k, 1, to18Dec(1), nil)
 
-	// Pause triparty.
-	k.SetTripartyPaused(ctx, true)
+	// Pause the bridge-in.
+	k.SetBridgeInPaused(ctx, true)
 
 	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 100})
 
@@ -872,6 +880,31 @@ func TestProcessTripartyBridgeRequests_Paused(t *testing.T) {
 	// Request should still exist.
 	_, found := k.getTripartyBridgeRequest(ctx, math.NewInt(1))
 	require.True(t, found)
+}
+
+func TestProcessTripartyBridgeRequests_BridgeOutPaused(t *testing.T) {
+	ctx, k, bk, ek := setupTripartyProcessing(t)
+
+	// Create a mature request.
+	createTripartyRequest(t, ctx, k, 1, to18Dec(1), nil)
+
+	// The bridge-out flag must not stop the bridge-in processing.
+	k.SetBridgeOutPaused(ctx, true)
+
+	ctx = ctx.WithBlockHeader(tmproto.Header{Height: 100})
+
+	expectMintBTC(bk, ctx, testTripartyRecipientAddr, to18Dec(1))
+	ek.On("ExecuteContractCall", ctx, mock.Anything).Return(
+		&evmtypes.MsgEthereumTxResponse{}, nil,
+	)
+
+	err := k.ProcessTripartyBridgeRequests(ctx)
+	require.NoError(t, err)
+
+	// Request should have been processed.
+	_, found := k.getTripartyBridgeRequest(ctx, math.NewInt(1))
+	require.False(t, found)
+	require.Equal(t, math.NewInt(1), k.GetTripartyProcessedSequenceTip(ctx))
 }
 
 func TestProcessTripartyBridgeRequests_AllImmature(t *testing.T) {

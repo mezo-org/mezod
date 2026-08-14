@@ -7,6 +7,35 @@ import (
 
 var testPauserAddr = common.HexToAddress("0xAbCdEfAbCdEfAbCdEfAbCdEfAbCdEfAbCdEfAbCdEf")
 
+// retiredPauseMethods are the methods the maintenance precompile takes over.
+// Version 6 of this precompile does not register them anymore.
+var retiredPauseMethods = map[string][]interface{}{
+	"setPauser":        {testPauserAddr},
+	"getPauser":        nil,
+	"pauseBridgeOut":   nil,
+	"pauseTriparty":    {true},
+	"isTripartyPaused": nil,
+}
+
+func (s *PrecompileTestSuite) TestRetiredPauseMethods() {
+	for methodName, inputs := range retiredPauseMethods {
+		testcases := []TestCase{
+			{
+				name: methodName + " is not registered",
+				run: func() []interface{} {
+					return inputs
+				},
+				as:          s.account1.EvmAddr,
+				basicPass:   true,
+				revert:      true,
+				errContains: "method not found in precompile",
+			},
+		}
+
+		s.RunMethodTestCases(testcases, methodName)
+	}
+}
+
 func (s *PrecompileTestSuite) TestSetPauser() {
 	testcases := []TestCase{
 		{
@@ -28,7 +57,7 @@ func (s *PrecompileTestSuite) TestSetPauser() {
 			basicPass: true,
 			output:    []interface{}{true},
 			postCheck: func() {
-				pauser := s.bridgeKeeper.GetPauser(s.ctx)
+				pauser := s.bridgeKeeper.GetLegacyPauser(s.ctx)
 				s.Require().True(precompile.TypesConverter.Address.FromSDK(pauser) == testPauserAddr)
 			},
 		},
@@ -41,13 +70,13 @@ func (s *PrecompileTestSuite) TestSetPauser() {
 			basicPass: true,
 			output:    []interface{}{true},
 			postCheck: func() {
-				pauser := s.bridgeKeeper.GetPauser(s.ctx)
+				pauser := s.bridgeKeeper.GetLegacyPauser(s.ctx)
 				s.Require().True(precompile.TypesConverter.Address.FromSDK(pauser) == common.Address{})
 			},
 		},
 	}
 
-	s.RunMethodTestCases(testcases, "setPauser")
+	s.RunMethodTestCasesWithSettings(testcases, "setPauser", v5Settings())
 }
 
 func (s *PrecompileTestSuite) TestGetPauser() {
@@ -56,7 +85,7 @@ func (s *PrecompileTestSuite) TestGetPauser() {
 			name: "no pauser is set - returns zero address",
 			run: func() []interface{} {
 				// Ensure no pauser is set
-				s.bridgeKeeper.SetPauser(s.ctx, nil)
+				s.bridgeKeeper.SetLegacyPauser(s.ctx, nil)
 				return []interface{}{}
 			},
 			as:        s.account1.EvmAddr, // anyone can call this method
@@ -67,7 +96,7 @@ func (s *PrecompileTestSuite) TestGetPauser() {
 			name: "pauser is set - returns correct address",
 			run: func() []interface{} {
 				// Set a pauser
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
+				s.bridgeKeeper.SetLegacyPauser(s.ctx, testPauserAddr.Bytes())
 				return []interface{}{}
 			},
 			as:        s.account2.EvmAddr, // anyone can call this method
@@ -76,7 +105,7 @@ func (s *PrecompileTestSuite) TestGetPauser() {
 		},
 	}
 
-	s.RunMethodTestCases(testcases, "getPauser")
+	s.RunMethodTestCasesWithSettings(testcases, "getPauser", v5Settings())
 }
 
 func (s *PrecompileTestSuite) TestPauseBridgeOut() {
@@ -95,7 +124,7 @@ func (s *PrecompileTestSuite) TestPauseBridgeOut() {
 			name: "caller is not the pauser",
 			run: func() []interface{} {
 				// First set a pauser
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
+				s.bridgeKeeper.SetLegacyPauser(s.ctx, testPauserAddr.Bytes())
 				return []interface{}{}
 			},
 			as:          s.account1.EvmAddr, // not the pauser
@@ -107,7 +136,7 @@ func (s *PrecompileTestSuite) TestPauseBridgeOut() {
 			name: "happy path - pauser calls pause",
 			run: func() []interface{} {
 				// Set the pauser
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
+				s.bridgeKeeper.SetLegacyPauser(s.ctx, testPauserAddr.Bytes())
 				return []interface{}{}
 			},
 			as:        testPauserAddr, // the pauser calls it
@@ -119,5 +148,5 @@ func (s *PrecompileTestSuite) TestPauseBridgeOut() {
 		},
 	}
 
-	s.RunMethodTestCases(testcases, "pauseBridgeOut")
+	s.RunMethodTestCasesWithSettings(testcases, "pauseBridgeOut", v5Settings())
 }

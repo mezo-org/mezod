@@ -55,8 +55,10 @@ var (
 	// LastOutflowResetKey is a standalone key for tracking when outflow was last reset.
 	LastOutflowResetKey = []byte{0x92}
 
-	// PauserKey is a standalone key for the pauser address.
-	PauserKey = []byte{0x93}
+	// LegacyPauserKey is a standalone key for the pauser address. The pauser
+	// role is replaced by the poa emergency team. The key is kept for the
+	// v13.0.0 migration and the retired precompile methods.
+	LegacyPauserKey = []byte{0x93}
 
 	// MinBridgeOutAmountKeyPrefix is the key prefix for the minimum bridge-out
 	// amount.
@@ -66,14 +68,23 @@ var (
 	// bridge-out amount that applies specifically to the Bitcoin chain.
 	MinBridgeOutAmountForBitcoinChainKey = []byte{0x95}
 
+	// BridgeOutPausedKey is a standalone key for the bridge-out paused flag.
+	// If the key is present in the store, bridging out is paused.
+	BridgeOutPausedKey = []byte{0x96}
+
+	// BridgeInPausedKey is a standalone key for the bridge-in paused flag.
+	// If the key is present in the store, bridging in is paused.
+	BridgeInPausedKey = []byte{0x97}
+
 	// TripartyControllerKeyPrefix is a prefix used to construct a key to a
 	// triparty controller entry. A key is constructed by taking this prefix
 	// and appending the controller address.
 	TripartyControllerKeyPrefix = []byte{0xA0}
 
-	// TripartyPausedKey is a standalone key for the triparty paused flag.
-	// If the key is present in the store, triparty bridging is paused.
-	TripartyPausedKey = []byte{0xA1}
+	// LegacyTripartyPausedKey is a standalone key for the triparty paused flag.
+	// The flag is replaced by BridgeInPausedKey. The key is kept for the
+	// v13.0.0 migration and the retired precompile methods.
+	LegacyTripartyPausedKey = []byte{0xA1}
 
 	// TripartyBlockDelayKey is a standalone key for the triparty block delay.
 	TripartyBlockDelayKey = []byte{0xA2}
