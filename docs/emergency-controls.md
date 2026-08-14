@@ -11,31 +11,29 @@ release retires.
 
 Mezo has two control planes.
 
-| Control plane | Holder         | Mainnet address                              | Threshold |
-|---------------|----------------|----------------------------------------------|-----------|
-| Governance    | PoA owner      | `0x98D8899c3030741925BE630C710A98B57F397C7a` | 5 of 9    |
-| Emergency     | Emergency Team | `0x40C7b9612B394212394Ea860caCd0E176CA4ae5b` | 2 of 4    |
+| Control plane | Holder         | Character                                     |
+|---------------|----------------|-----------------------------------------------|
+| Governance    | PoA owner      | slow, high signature threshold, broad powers  |
+| Emergency     | Emergency Team | fast, low signature threshold, narrow powers  |
 
 The governance plane owns every configuration change: validator management,
 bridge limits and mappings, precompile versions and bytecode, chain parameters,
-and upgrade plans. It is a 5 of 9 Safe, so collecting the signatures takes time.
+and upgrade plans. On mainnet the PoA owner is a governance Safe with a high
+signature threshold, so collecting the signatures takes time.
 
-The emergency plane exists because some incidents cannot wait for 5 of 9. The
-Emergency Team is the quick technical multisig, a 2 of 4 Safe held by the
-engineers on call. Its power set is deliberately small: it enables and disables
-lockdown levels and nothing else. The PoA owner grants the role, rotates or
-revokes it at any time, and can take every emergency action itself.
-
-On testnet the PoA owner is the EOA `0x0504D82eFb7Db7A8C05E8DF8CEa575d8C9F48Bb2`
-and it also holds the Emergency Team role, so the split matters on mainnet only.
+The emergency plane exists because some incidents cannot wait for the
+governance quorum. The Emergency Team is the quick technical multisig held by
+the engineers on call: a Safe with a low signature threshold. Its power set is
+deliberately small: it enables and disables lockdown levels and nothing else.
+The PoA owner grants the role, rotates or revokes it at any time, and can take
+every emergency action itself.
 
 The `Maintenance` precompile is the single emergency surface. The emergency
 methods need `Maintenance` precompile version 6, which the `v13.0.0` upgrade
-activates. The `AssetsBridge` methods `setPauser`, `getPauser`,
-`pauseBridgeOut`, `pauseTriparty`, and `isTripartyPaused` are retired in
-`AssetsBridge` version 6 and revert with `method not found in precompile`. Their
-ABI entries stay, marked `@custom:deprecated`, because all versions of a
-precompile share one `abi.json`.
+activates. The same release removes the `AssetsBridge` methods `setPauser`,
+`getPauser`, `pauseBridgeOut`, `pauseTriparty`, and `isTripartyPaused` from the
+codebase and the ABI; calls to their selectors revert with
+`method not found in ABI`.
 
 ## The Emergency Team role
 
@@ -49,17 +47,25 @@ chain. The grant is a single step, unlike the 2-step PoA ownership transfer,
 because the role must be quick to rotate. The owner corrects a mistake with a
 second call.
 
-### Current holders
+### Checking the current holders
 
-| Network | Emergency Team                                                     |
-|---------|--------------------------------------------------------------------|
-| Mainnet | `0x40C7b9612B394212394Ea860caCd0E176CA4ae5b` (2 of 4 Safe)         |
-| Testnet | `0x0504D82eFb7Db7A8C05E8DF8CEa575d8C9F48Bb2` (EOA, also PoA owner) |
+The chain is the source of truth for both roles. Through the Hardhat toolbox
+(see `precompile/hardhat/README.md` for the setup):
+
+```
+npx hardhat maintenance:getEmergencyTeam
+npx hardhat validatorPool:owner
+```
+
+`getEmergencyTeam` returns the zero address when the role is not granted. When
+a returned address is a Safe, open it on
+[safe.mezo.org](https://safe.mezo.org) to see the signer set and the signature
+threshold.
 
 The `v13.0.0` upgrade handler grants the role to the retired `AssetsBridge`
-pauser. Both addresses above are the pauser of their network before the upgrade,
-so the ability to stop the bridge stays continuous across the upgrade. A zero or
-absent pauser grants nothing.
+pauser. On mainnet the pauser is the quick technical multisig, so the ability
+to stop the bridge stays continuous across the upgrade. A zero or absent pauser
+grants nothing.
 
 ### Grant, rotate, and revoke
 
@@ -82,14 +88,14 @@ returns the zero address when the role is not granted and is callable by anyone.
 Through the Hardhat toolbox (see `precompile/hardhat/README.md` for the setup):
 
 ```
-npx hardhat maintenance:setEmergencyTeam --signer OWNER --team 0x40C7b9612B394212394Ea860caCd0E176CA4ae5b
+npx hardhat maintenance:setEmergencyTeam --signer OWNER --team <TEAM_ADDRESS>
 npx hardhat maintenance:getEmergencyTeam
 npx hardhat maintenance:setEmergencyTeam --signer OWNER --team 0x0000000000000000000000000000000000000000
 ```
 
 On mainnet the PoA owner is a Safe, so the call is a Safe transaction. Use
-[safe.mezo.org](https://safe.mezo.org/home?safe=mezo:0x98D8899c3030741925BE630C710A98B57F397C7a)
-to craft it from the Mezo Governance Safe and fill the fields as follows:
+[safe.mezo.org](https://safe.mezo.org) to craft it from the PoA owner Safe and
+fill the fields as follows:
 
 | Field  | Value                                                 |
 |--------|-------------------------------------------------------|
@@ -214,13 +220,14 @@ Query the whole history of the role with `eth_getLogs`:
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x0","toBlock":"latest","address":"0x7b7c000000000000000000000000000000000013","topics":["0xc22e0a53d80be0ed688451dd96632727b45a62185ad4bcf8c30014ba1bceb04b"]}],"id":1}' -H "Content-Type: application/json" https://rpc.test.mezo.org
 ```
 
-Add a third topic to find only the calls that granted the role to one address:
+Add a third topic to find only the calls that granted the role to one address.
+The topic is the address left-padded with zeros to 32 bytes:
 
 ```
 "topics":[
   "0xc22e0a53d80be0ed688451dd96632727b45a62185ad4bcf8c30014ba1bceb04b",
   null,
-  "0x00000000000000000000000040c7b9612b394212394ea860cacd0e176ca4ae5b"
+  "0x000000000000000000000000<TEAM_ADDRESS_WITHOUT_0x>"
 ]
 ```
 

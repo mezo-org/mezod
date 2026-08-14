@@ -131,11 +131,6 @@ The Assets Bridge precompile enables observability of pseudo-transactions,
 allowing the Mezo blockchain explorer to decipher these transactions. It also
 provides limited asset bridging functionalities, such as ERC-20 token mapping.
 
-Version 6 retires the pause methods (`setPauser`, `getPauser`, `pauseBridgeOut`,
-`pauseTriparty`, and `isTripartyPaused`). Calls to them revert. The Maintenance
-precompile replaces them, see
-[`docs/emergency-controls.md`](./emergency-controls.md).
-
 #### Address
 
 ```

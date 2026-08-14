@@ -6,7 +6,7 @@
 > pause flag with the bridge-in half of the bridge lockdown. Both are driven
 > from the `Maintenance` precompile, through `setBridgeLockdown` and
 > `getBridgeLockdown`. The `AssetsBridge` methods `pauseTriparty` and
-> `isTripartyPaused` are retired in version 6 and revert. See
+> `isTripartyPaused` are removed and calls to them revert. See
 > [`docs/emergency-controls.md`](../emergency-controls.md). The rest of this
 > document still describes the triparty design.
 
