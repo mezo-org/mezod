@@ -48,7 +48,9 @@ func CreateUpgradeHandler(
 func setTripartyDefaults(ctx sdk.Context, bridgeKeeper bridgekeeper.Keeper) error {
 	ctx.Logger().Info("begin setting assets bridge triparty defaults")
 
-	bridgeKeeper.SetLegacyTripartyPaused(ctx, false)
+	// The triparty paused flag this call originally initialized is removed.
+	// Setting the bridge-in flag to false is the same no-op.
+	bridgeKeeper.SetBridgeInPaused(ctx, false)
 
 	if err := bridgeKeeper.SetTripartyBlockDelay(ctx, 1); err != nil {
 		return err

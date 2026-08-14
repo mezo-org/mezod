@@ -39,3 +39,20 @@ func (k Keeper) SetBridgeInPaused(ctx sdk.Context, isPaused bool) {
 func (k Keeper) IsBridgeInPaused(ctx sdk.Context) bool {
 	return ctx.KVStore(k.storeKey).Has(types.BridgeInPausedKey)
 }
+
+// DeleteRetiredPauseState removes the retired pauser (key 0x93) and triparty
+// paused flag (key 0xA1) entries and returns the pauser that was set, or nil.
+// The v13.0.0 upgrade grants the emergency team role to the returned pauser.
+func (k Keeper) DeleteRetiredPauseState(ctx sdk.Context) sdk.AccAddress {
+	store := ctx.KVStore(k.storeKey)
+
+	pauserKey := []byte{0x93}
+	tripartyPausedKey := []byte{0xA1}
+
+	pauser := store.Get(pauserKey)
+
+	store.Delete(pauserKey)
+	store.Delete(tripartyPausedKey)
+
+	return pauser
+}

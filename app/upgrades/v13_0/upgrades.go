@@ -55,10 +55,6 @@ func CreateUpgradeHandler(
 			return nil, fmt.Errorf("failed to migrate emergency team: %w", err)
 		}
 
-		if err := MigrateBridgeInLockdown(sdkCtx, keepers.BridgeKeeper); err != nil {
-			return nil, fmt.Errorf("failed to migrate bridge-in lockdown: %w", err)
-		}
-
 		return mm.RunMigrations(ctx, configurator, fromVM)
 	}
 }
@@ -159,9 +155,10 @@ func UpdateAssetsBridgePrecompileVersion(ctx sdk.Context, evmKeeper *evmkeeper.K
 }
 
 // MigrateEmergencyTeam grants the emergency team role to the bridge pauser and
-// removes the pauser. On mainnet the pauser is the quick technical multisig, so
-// the pause capability stays continuous through the upgrade. A zero or absent
-// pauser grants nothing.
+// deletes the retired pause state. On mainnet the pauser is the quick technical
+// multisig, so the pause capability stays continuous through the upgrade. A
+// zero or absent pauser grants nothing. The retired triparty paused flag is
+// dropped without a replacement; it is unset on all networks.
 func MigrateEmergencyTeam(
 	ctx sdk.Context,
 	poaKeeper poakeeper.Keeper,
@@ -169,38 +166,16 @@ func MigrateEmergencyTeam(
 ) error {
 	ctx.Logger().Info("begin emergency team migration")
 
-	pauser := bridgeKeeper.GetLegacyPauser(ctx)
+	pauser := bridgeKeeper.DeleteRetiredPauseState(ctx)
 
 	if !pauser.Empty() && !evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
 		poaKeeper.SetEmergencyTeamUnchecked(ctx, pauser)
 		ctx.Logger().Info("emergency team granted", "emergencyTeam", pauser.String())
 	} else {
-		ctx.Logger().Info("no pauser is set; the emergency team stays unset")
+		ctx.Logger().Info("no pauser was set; the emergency team stays unset")
 	}
-
-	bridgeKeeper.DeleteLegacyPauser(ctx)
 
 	ctx.Logger().Info("emergency team migration done")
-
-	return nil
-}
-
-// MigrateBridgeInLockdown carries the triparty paused flag over to the bridge-in
-// lockdown flag and removes the old flag. The bridge-out flag is not affected.
-func MigrateBridgeInLockdown(
-	ctx sdk.Context,
-	bridgeKeeper bridgekeeper.Keeper,
-) error {
-	ctx.Logger().Info("begin bridge-in lockdown migration")
-
-	if bridgeKeeper.IsLegacyTripartyPaused(ctx) {
-		bridgeKeeper.SetBridgeInPaused(ctx, true)
-		ctx.Logger().Info("bridge-in lockdown enabled")
-	}
-
-	bridgeKeeper.DeleteLegacyTripartyPaused(ctx)
-
-	ctx.Logger().Info("bridge-in lockdown migration done")
 
 	return nil
 }

@@ -55,10 +55,9 @@ var (
 	// LastOutflowResetKey is a standalone key for tracking when outflow was last reset.
 	LastOutflowResetKey = []byte{0x92}
 
-	// LegacyPauserKey is a standalone key for the pauser address. The pauser
-	// role is replaced by the poa emergency team. The key is kept for the
-	// v13.0.0 migration and the retired precompile methods.
-	LegacyPauserKey = []byte{0x93}
+	// Key 0x93 belonged to the removed pauser address. The v13.0.0 upgrade
+	// deletes the entry. Do not reuse the key before every network runs
+	// v13.0.0.
 
 	// MinBridgeOutAmountKeyPrefix is the key prefix for the minimum bridge-out
 	// amount.
@@ -81,10 +80,9 @@ var (
 	// and appending the controller address.
 	TripartyControllerKeyPrefix = []byte{0xA0}
 
-	// LegacyTripartyPausedKey is a standalone key for the triparty paused flag.
-	// The flag is replaced by BridgeInPausedKey. The key is kept for the
-	// v13.0.0 migration and the retired precompile methods.
-	LegacyTripartyPausedKey = []byte{0xA1}
+	// Key 0xA1 belonged to the removed triparty paused flag. The v13.0.0
+	// upgrade deletes the entry. Do not reuse the key before every network
+	// runs v13.0.0.
 
 	// TripartyBlockDelayKey is a standalone key for the triparty block delay.
 	TripartyBlockDelayKey = []byte{0xA2}

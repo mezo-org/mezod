@@ -22,6 +22,13 @@ var testPauser = sdk.AccAddress(
 	evmtypes.HexAddressToBytes("0x40C7b9612B394212394Ea860caCd0E176CA4ae5b"),
 )
 
+// Raw keys of the retired pause state. The types package no longer declares
+// them; the migration inlines them the same way.
+var (
+	retiredPauserKey         = []byte{0x93}
+	retiredTripartyPausedKey = []byte{0xA1}
+)
+
 func setupApp(t *testing.T) (*app.Mezo, sdk.Context) {
 	t.Helper()
 
@@ -132,7 +139,8 @@ func TestMigrateEmergencyTeam(t *testing.T) {
 	t.Run("pauser is set", func(t *testing.T) {
 		mezoApp, ctx := setupApp(t)
 
-		bridgeStore(mezoApp, ctx).Set(bridgetypes.LegacyPauserKey, testPauser.Bytes())
+		bridgeStore(mezoApp, ctx).Set(retiredPauserKey, testPauser.Bytes())
+		bridgeStore(mezoApp, ctx).Set(retiredTripartyPausedKey, []byte{0x01})
 
 		require.NoError(t, v13_0.MigrateEmergencyTeam(
 			ctx,
@@ -143,13 +151,19 @@ func TestMigrateEmergencyTeam(t *testing.T) {
 		// The pauser becomes the emergency team so the pause capability stays
 		// continuous through the upgrade.
 		require.Equal(t, testPauser, mezoApp.PoaKeeper.GetEmergencyTeam(ctx))
-		require.False(t, bridgeStore(mezoApp, ctx).Has(bridgetypes.LegacyPauserKey))
+		require.False(t, bridgeStore(mezoApp, ctx).Has(retiredPauserKey))
+
+		// The retired triparty paused flag is dropped, not carried over to the
+		// lockdown flags.
+		require.False(t, bridgeStore(mezoApp, ctx).Has(retiredTripartyPausedKey))
+		require.False(t, mezoApp.BridgeKeeper.IsBridgeInPaused(ctx))
+		require.False(t, mezoApp.BridgeKeeper.IsBridgeOutPaused(ctx))
 	})
 
 	t.Run("pauser is the zero address", func(t *testing.T) {
 		mezoApp, ctx := setupApp(t)
 
-		bridgeStore(mezoApp, ctx).Set(bridgetypes.LegacyPauserKey, make([]byte, 20))
+		bridgeStore(mezoApp, ctx).Set(retiredPauserKey, make([]byte, 20))
 
 		require.NoError(t, v13_0.MigrateEmergencyTeam(
 			ctx,
@@ -158,13 +172,13 @@ func TestMigrateEmergencyTeam(t *testing.T) {
 		))
 
 		require.True(t, mezoApp.PoaKeeper.GetEmergencyTeam(ctx).Empty())
-		require.False(t, bridgeStore(mezoApp, ctx).Has(bridgetypes.LegacyPauserKey))
+		require.False(t, bridgeStore(mezoApp, ctx).Has(retiredPauserKey))
 	})
 
 	t.Run("pauser is absent", func(t *testing.T) {
 		mezoApp, ctx := setupApp(t)
 
-		require.False(t, bridgeStore(mezoApp, ctx).Has(bridgetypes.LegacyPauserKey))
+		require.False(t, bridgeStore(mezoApp, ctx).Has(retiredPauserKey))
 
 		require.NoError(t, v13_0.MigrateEmergencyTeam(
 			ctx,
@@ -173,38 +187,5 @@ func TestMigrateEmergencyTeam(t *testing.T) {
 		))
 
 		require.True(t, mezoApp.PoaKeeper.GetEmergencyTeam(ctx).Empty())
-	})
-}
-
-func TestMigrateBridgeInLockdown(t *testing.T) {
-	t.Run("triparty is paused", func(t *testing.T) {
-		mezoApp, ctx := setupApp(t)
-
-		bridgeStore(mezoApp, ctx).Set(bridgetypes.LegacyTripartyPausedKey, []byte{0x01})
-
-		require.NoError(t, v13_0.MigrateBridgeInLockdown(ctx, mezoApp.BridgeKeeper))
-
-		require.True(t, mezoApp.BridgeKeeper.IsBridgeInPaused(ctx))
-		require.False(
-			t,
-			bridgeStore(mezoApp, ctx).Has(bridgetypes.LegacyTripartyPausedKey),
-		)
-
-		// The bridge-out direction is not affected by this migration.
-		require.False(t, mezoApp.BridgeKeeper.IsBridgeOutPaused(ctx))
-	})
-
-	t.Run("triparty is not paused", func(t *testing.T) {
-		mezoApp, ctx := setupApp(t)
-
-		require.False(
-			t,
-			bridgeStore(mezoApp, ctx).Has(bridgetypes.LegacyTripartyPausedKey),
-		)
-
-		require.NoError(t, v13_0.MigrateBridgeInLockdown(ctx, mezoApp.BridgeKeeper))
-
-		require.False(t, mezoApp.BridgeKeeper.IsBridgeInPaused(ctx))
-		require.False(t, mezoApp.BridgeKeeper.IsBridgeOutPaused(ctx))
 	})
 }
