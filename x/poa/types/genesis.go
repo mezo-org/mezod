@@ -38,6 +38,17 @@ func ValidateGenesis(data GenesisState) error {
 		return fmt.Errorf("invalid owner address %s: %w", data.Owner, err)
 	}
 
+	// The emergency team role is optional so an empty address is valid.
+	if data.EmergencyTeam != "" {
+		if _, err := sdk.AccAddressFromBech32(data.EmergencyTeam); err != nil {
+			return fmt.Errorf(
+				"invalid emergency team address %s: %w",
+				data.EmergencyTeam,
+				err,
+			)
+		}
+	}
+
 	if err := validateGenesisStateValidators(data.Validators); err != nil {
 		return fmt.Errorf("failed to validate genesis validators: %w", err)
 	}

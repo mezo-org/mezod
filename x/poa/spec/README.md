@@ -25,6 +25,10 @@ The module's owner can transfer the ownership to another account in a 2-step
 process. The new owner must accept the ownership transfer before the transfer
 is completed. The initial owner must be defined in the genesis file.
 
+The module also stores the Emergency Team, a global role for the lockdown levels
+of the chain. The owner grants and revokes it in a single step. The role is optional
+in the genesis file.
+
 ## Contents
 
 1. **[State](01_state.md)**

@@ -45,6 +45,30 @@ module's ownership transfer.
 The owner's state does not use any custom types. It works with the
 Cosmos SDK `sdk.AccAddress` type.
 
+## Emergency Team
+
+The Emergency Team is a global role held by a single account. It can enable and
+disable the lockdown levels of the chain, and nothing else. The owner grants the
+role, rotates it, and revokes it in a single step, unlike the 2-step ownership
+transfer. Setting the zero or empty address revokes the role. An absent entry
+means the role is not granted. The role is optional in the genesis file, through
+the `emergency_team` field.
+
+Both the owner and the Emergency Team can take every action the role covers.
+See [`docs/emergency-controls.md`](../../../docs/emergency-controls.md) for the
+lockdown levels and the boundary between the two roles.
+
+### Keys
+
+- `EmergencyTeam`: `0x22 | sdk.AccAddress`
+
+`EmergencyTeam` is the primary entry storing the current Emergency Team.
+
+### Types
+
+The Emergency Team's state does not use any custom types. It works with the
+Cosmos SDK `sdk.AccAddress` type.
+
 ## Application
 
 The application pool tracks all the current applications. An operator can only

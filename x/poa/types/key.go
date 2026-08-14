@@ -20,6 +20,7 @@ var (
 
 	OwnerKey          = []byte{0x20} // standalone key for the owner of the validator pool
 	CandidateOwnerKey = []byte{0x21} // standalone key for the candidate owner of the validator pool
+	EmergencyTeamKey  = []byte{0x22} // standalone key for the global emergency team
 
 	ApplicationKeyPrefix           = []byte{0x30} // prefix for each key to a validator application
 	ApplicationByConsAddrKeyPrefix = []byte{0x31} // prefix for each key to a validator application index, by consensus address
