@@ -57,11 +57,27 @@ type PrecompileTestSuite struct {
 	poaKeeper       *FakePoaKeeper
 	evmKeeper       *FakeEvmKeeper
 	feeMarketKeeper *FakeFeeMarketKeeper
+	bridgeKeeper    *FakeBridgeKeeper
 	ctx             sdk.Context
 
-	account1, account2 Key
+	account1, account2, account3 Key
 
 	maintenancePrecompile *precompile.Contract
+	stateDB               *statedb.StateDB
+}
+
+// latestSettings returns the settings of the latest maintenance precompile
+// version.
+func latestSettings() *maintenance.Settings {
+	return &maintenance.Settings{
+		EVM:                 true,
+		Precompiles:         true,
+		ChainFeeSplitter:    true,
+		GasPrice:            true,
+		MaxPrecompilesCalls: true,
+		SelfDestruct:        true,
+		EmergencyControls:   true,
+	}
 }
 
 func NewKey() Key {
@@ -91,6 +107,7 @@ func (s *PrecompileTestSuite) SetupTest() {
 	// accounts
 	s.account1 = NewKey() // owner account
 	s.account2 = NewKey() // non-owner account
+	s.account3 = NewKey() // emergency team account
 
 	// consensus key
 	privCons, err := ethsecp256k1.GenerateKey()
@@ -101,6 +118,7 @@ func (s *PrecompileTestSuite) SetupTest() {
 	s.evmKeeper = NewFakeEvmKeeper()
 	s.poaKeeper = NewFakePoaKeeper(s.account1.SdkAddr)
 	s.feeMarketKeeper = NewFakeFeeMarketKeeper()
+	s.bridgeKeeper = NewFakeBridgeKeeper()
 
 	// init app
 	s.app = app.Setup(false, nil)
@@ -111,23 +129,27 @@ func (s *PrecompileTestSuite) SetupTest() {
 }
 
 func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodName string) {
+	s.RunMethodTestCasesWithSettings(testcases, methodName, latestSettings())
+}
+
+func (s *PrecompileTestSuite) RunMethodTestCasesWithSettings(
+	testcases []TestCase,
+	methodName string,
+	settings *maintenance.Settings,
+) {
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
+			stateDB := statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{})
+			s.stateDB = stateDB
 			evm := &vm.EVM{
-				StateDB: statedb.New(s.ctx, statedb.NewMockKeeper(), statedb.TxConfig{}),
+				StateDB: stateDB,
 			}
 			maintenancePrecompile, err := maintenance.NewPrecompile(
 				s.poaKeeper,
 				s.evmKeeper,
 				s.feeMarketKeeper,
-				&maintenance.Settings{
-					EVM:                 true,
-					Precompiles:         true,
-					ChainFeeSplitter:    true,
-					GasPrice:            true,
-					MaxPrecompilesCalls: true,
-					SelfDestruct:        true,
-				},
+				s.bridgeKeeper,
+				settings,
 			)
 			s.Require().NoError(err)
 			s.maintenancePrecompile = maintenancePrecompile
@@ -157,6 +179,11 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 			if tc.revert {
 				s.Require().Error(err, "expected error")
 				s.Require().ErrorContains(err, tc.errContains, "expected different error message")
+
+				if tc.postCheck != nil {
+					tc.postCheck()
+				}
+
 				return
 			}
 			s.Require().NoError(err, "expected no error")
@@ -174,8 +201,36 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 	}
 }
 
+// requireEmittedEvent asserts that the last precompile call emitted exactly one
+// event with the given name. It returns the indexed argument topics and the
+// unpacked non-indexed arguments.
+func (s *PrecompileTestSuite) requireEmittedEvent(
+	eventName string,
+) ([]common.Hash, []interface{}) {
+	logs := s.stateDB.Logs()
+	s.Require().Len(logs, 1, "expected a single emitted event")
+
+	log := logs[0]
+	s.Require().Equal(common.HexToAddress(maintenance.EvmAddress), log.Address)
+
+	event, ok := s.maintenancePrecompile.Abi.Events[eventName]
+	s.Require().True(ok, "event %s not found in the ABI", eventName)
+	s.Require().Equal(event.ID, log.Topics[0])
+
+	arguments, err := event.Inputs.NonIndexed().Unpack(log.Data)
+	s.Require().NoError(err)
+
+	return log.Topics[1:], arguments
+}
+
+// requireNoEmittedEvent asserts that the last precompile call emitted no events.
+func (s *PrecompileTestSuite) requireNoEmittedEvent() {
+	s.Require().Empty(s.stateDB.Logs())
+}
+
 type FakePoaKeeper struct {
-	owner sdk.AccAddress
+	owner         sdk.AccAddress
+	emergencyTeam sdk.AccAddress
 }
 
 type FakeEvmKeeper struct {
@@ -198,6 +253,85 @@ func (k *FakePoaKeeper) CheckOwner(_ sdk.Context, sender sdk.AccAddress) error {
 		)
 	}
 	return nil
+}
+
+func (k *FakePoaKeeper) CheckOwnerOrEmergencyTeam(
+	ctx sdk.Context,
+	sender sdk.AccAddress,
+) error {
+	if k.CheckOwner(ctx, sender) == nil {
+		return nil
+	}
+
+	if k.emergencyTeam.Empty() {
+		return errorsmod.Wrap(
+			sdkerrors.ErrInvalidAddress,
+			"emergency team address is empty",
+		)
+	}
+
+	if !sender.Equals(k.emergencyTeam) {
+		return errorsmod.Wrap(
+			sdkerrors.ErrUnauthorized,
+			"sender is not the emergency team",
+		)
+	}
+
+	return nil
+}
+
+func (k *FakePoaKeeper) GetEmergencyTeam(_ sdk.Context) sdk.AccAddress {
+	return k.emergencyTeam
+}
+
+func (k *FakePoaKeeper) SetEmergencyTeam(
+	ctx sdk.Context,
+	sender sdk.AccAddress,
+	emergencyTeam sdk.AccAddress,
+) error {
+	if err := k.CheckOwner(ctx, sender); err != nil {
+		return err
+	}
+
+	k.setEmergencyTeam(emergencyTeam)
+
+	return nil
+}
+
+// setEmergencyTeam mirrors the keeper's handling of the zero address: it
+// revokes the role.
+func (k *FakePoaKeeper) setEmergencyTeam(emergencyTeam sdk.AccAddress) {
+	if emergencyTeam.Empty() || emergencyTeam.Equals(sdk.AccAddress(make([]byte, 20))) {
+		k.emergencyTeam = nil
+		return
+	}
+
+	k.emergencyTeam = emergencyTeam
+}
+
+type FakeBridgeKeeper struct {
+	bridgeInPaused  bool
+	bridgeOutPaused bool
+}
+
+func NewFakeBridgeKeeper() *FakeBridgeKeeper {
+	return &FakeBridgeKeeper{}
+}
+
+func (k *FakeBridgeKeeper) IsBridgeInPaused(_ sdk.Context) bool {
+	return k.bridgeInPaused
+}
+
+func (k *FakeBridgeKeeper) SetBridgeInPaused(_ sdk.Context, isPaused bool) {
+	k.bridgeInPaused = isPaused
+}
+
+func (k *FakeBridgeKeeper) IsBridgeOutPaused(_ sdk.Context) bool {
+	return k.bridgeOutPaused
+}
+
+func (k *FakeBridgeKeeper) SetBridgeOutPaused(_ sdk.Context, isPaused bool) {
+	k.bridgeOutPaused = isPaused
 }
 
 func NewFakeEvmKeeper() *FakeEvmKeeper {

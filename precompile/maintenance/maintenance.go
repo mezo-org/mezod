@@ -25,9 +25,10 @@ func NewPrecompileVersionMap(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
 	feeMarketKeeper FeeMarketKeeper,
+	bridgeKeeper BridgeKeeper,
 ) (*precompile.VersionMap, error) {
 	// v1 is just the EVM settings.
-	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         false,
 		ChainFeeSplitter:    false,
@@ -39,7 +40,7 @@ func NewPrecompileVersionMap(
 	}
 
 	// v2 is the EVM settings and the precompiles settings.
-	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    false,
@@ -51,7 +52,7 @@ func NewPrecompileVersionMap(
 	}
 
 	// v3 is the EVM settings, the precompiles settings and the chain fee splitter settings.
-	contractV3, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+	contractV3, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    true,
@@ -64,7 +65,7 @@ func NewPrecompileVersionMap(
 
 	// v4 is the EVM settings, the precompiles settings, the chain fee splitter settings,
 	// and the gas price settings.
-	contractV4, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+	contractV4, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    true,
@@ -76,7 +77,7 @@ func NewPrecompileVersionMap(
 	}
 
 	// v5 adds max precompiles calls per execution settings.
-	contractV5, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+	contractV5, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    true,
@@ -87,14 +88,15 @@ func NewPrecompileVersionMap(
 		return nil, err
 	}
 
-	// v6 adds the SELFDESTRUCT toggle.
-	contractV6, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, &Settings{
+	// v6 adds the SELFDESTRUCT toggle and the emergency controls.
+	contractV6, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    true,
 		GasPrice:            true,
 		MaxPrecompilesCalls: true,
 		SelfDestruct:        true,
+		EmergencyControls:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -120,6 +122,7 @@ type Settings struct {
 	GasPrice            bool // enable methods related to the gas price
 	MaxPrecompilesCalls bool // enable methods related to max precompiles calls per execution
 	SelfDestruct        bool // enable methods for the SELFDESTRUCT toggle
+	EmergencyControls   bool // enable methods for the emergency team and the lockdown
 }
 
 // NewPrecompile creates a new maintenance precompile.
@@ -127,6 +130,7 @@ func NewPrecompile(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
 	feeMarketKeeper FeeMarketKeeper,
+	bridgeKeeper BridgeKeeper,
 	settings *Settings,
 ) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
@@ -141,7 +145,7 @@ func NewPrecompile(
 		"maintenance",
 	)
 
-	methods := newPrecompileMethods(poaKeeper, evmKeeper, feeMarketKeeper, settings)
+	methods := newPrecompileMethods(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, settings)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -153,6 +157,7 @@ func newPrecompileMethods(
 	poaKeeper PoaKeeper,
 	evmKeeper EvmKeeper,
 	feeMarketKeeper FeeMarketKeeper,
+	bridgeKeeper BridgeKeeper,
 	settings *Settings,
 ) []precompile.Method {
 	var methods []precompile.Method
@@ -186,11 +191,28 @@ func newPrecompileMethods(
 		methods = append(methods, newGetSelfDestructDisabledMethod(evmKeeper))
 	}
 
+	if settings.EmergencyControls {
+		methods = append(methods, newSetEmergencyTeamMethod(poaKeeper))
+		methods = append(methods, newGetEmergencyTeamMethod(poaKeeper))
+		methods = append(methods, newSetBridgeLockdownMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetBridgeLockdownMethod(bridgeKeeper))
+	}
+
 	return methods
 }
 
 type PoaKeeper interface {
 	CheckOwner(ctx sdk.Context, sender sdk.AccAddress) error
+	CheckOwnerOrEmergencyTeam(ctx sdk.Context, sender sdk.AccAddress) error
+	GetEmergencyTeam(ctx sdk.Context) sdk.AccAddress
+	SetEmergencyTeam(ctx sdk.Context, sender, emergencyTeam sdk.AccAddress) error
+}
+
+type BridgeKeeper interface {
+	IsBridgeInPaused(ctx sdk.Context) bool
+	SetBridgeInPaused(ctx sdk.Context, isPaused bool)
+	IsBridgeOutPaused(ctx sdk.Context) bool
+	SetBridgeOutPaused(ctx sdk.Context, isPaused bool)
 }
 
 type EvmKeeper interface {
