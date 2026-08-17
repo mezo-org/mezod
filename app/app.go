@@ -586,6 +586,7 @@ func (app *Mezo) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) {
 		BankKeeper:             app.BankKeeper,
 		ExtensionOptionChecker: mezotypes.HasDynamicFeeExtensionOption,
 		EvmKeeper:              app.EvmKeeper,
+		PoaKeeper:              app.PoaKeeper,
 		FeeMarketKeeper:        app.FeeMarketKeeper,
 		SignModeHandler:        txConfig.SignModeHandler(),
 		SigGasConsumer:         ante.SigVerificationGasConsumer,

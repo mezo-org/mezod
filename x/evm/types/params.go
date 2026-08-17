@@ -61,6 +61,11 @@ var AvailableExtraEIPs = []int64{1344, 1884, 2200, 2929, 3198, 3529}
 // ExtraEIPs, SELFDESTRUCT is treated as an invalid opcode.
 const SelfdestructDisableEIP int64 = 90000
 
+// MaxTxLockdownAddresses is the maximum length of a single transaction
+// lockdown allowlist. The parameters are decoded for every transaction, so the
+// cap bounds that cost.
+const MaxTxLockdownAddresses = 256
+
 // NewParams creates a new Params instance
 func NewParams(evmDenom string, allowUnprotectedTxs, enableCreate, enableCall bool, config ChainConfig, extraEIPs []int64) Params {
 	return Params{
@@ -112,6 +117,20 @@ func (p Params) Validate() error {
 		return err
 	}
 
+	if err := validateTxLockdownAddresses(
+		"tx lockdown sender",
+		p.TxLockdownSenders,
+	); err != nil {
+		return err
+	}
+
+	if err := validateTxLockdownAddresses(
+		"tx lockdown target",
+		p.TxLockdownTargets,
+	); err != nil {
+		return err
+	}
+
 	return validateChainConfig(p.ChainConfig)
 }
 
@@ -151,6 +170,46 @@ func validateEIPs(i interface{}) error {
 		if !vm.ValidEip(int(eip)) {
 			return fmt.Errorf("EIP %d is not activateable, valid EIPS are: %s", eip, vm.ActivateableEips())
 		}
+	}
+
+	return nil
+}
+
+// validateTxLockdownAddresses validates a single transaction lockdown
+// allowlist. The name identifies the list in the error messages.
+func validateTxLockdownAddresses(name string, addresses []string) error {
+	if len(addresses) > MaxTxLockdownAddresses {
+		return fmt.Errorf(
+			"%s list holds %d entries, the maximum is %d",
+			name,
+			len(addresses),
+			MaxTxLockdownAddresses,
+		)
+	}
+
+	seen := make(map[string]struct{}, len(addresses))
+	for i, address := range addresses {
+		if len(address) == 0 {
+			return fmt.Errorf("%s %d cannot be empty", name, i)
+		}
+
+		if !IsHexAddress(address) {
+			return fmt.Errorf(
+				"%s %d must be a valid hex-encoded EVM address",
+				name,
+				i,
+			)
+		}
+
+		if IsZeroHexAddress(address) {
+			return fmt.Errorf("%s %d cannot be the zero EVM address", name, i)
+		}
+
+		normalized := BytesToHexAddress(HexAddressToBytes(address))
+		if _, ok := seen[normalized]; ok {
+			return fmt.Errorf("%s %d is a duplicate: %s", name, i, address)
+		}
+		seen[normalized] = struct{}{}
 	}
 
 	return nil

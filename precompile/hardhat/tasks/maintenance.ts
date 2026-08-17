@@ -151,3 +151,49 @@ task('maintenance:getBridgeLockdown', 'Gets the bridge lockdown state, per direc
     console.log('bridgeIn:', lockdown[0])
     console.log('bridgeOut:', lockdown[1])
   })
+
+task('maintenance:setTxLockdown', 'Enables or disables the transaction lockdown')
+  .addParam('signer', 'The Emergency Team or owner address (msg.sender)')
+  .addParam('enabled', 'Whether to stop transactions (true/false)')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setTxLockdown(taskArguments.enabled === 'true')
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('maintenance:getTxLockdown', 'Gets the transaction lockdown state')
+  .setAction(async (taskArguments, hre) => {
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const enabled = await maintenance.getTxLockdown()
+    console.log(enabled)
+  })
+
+// parseAddressList turns a comma-separated list of addresses into an array.
+// An empty string gives an empty array.
+const parseAddressList = (list: string): string[] =>
+  list.split(',').map((address) => address.trim()).filter((address) => address.length > 0)
+
+task('maintenance:setTxLockdownAllowlist', 'Replaces the extra allowlists of the transaction lockdown')
+  .addParam('signer', 'The Emergency Team or owner address (msg.sender)')
+  .addParam('senders', 'The extra allowed senders, comma-separated (empty matches every sender)')
+  .addParam('targets', 'The extra allowed targets, comma-separated (empty matches every target)')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setTxLockdownAllowlist(
+      parseAddressList(taskArguments.senders),
+      parseAddressList(taskArguments.targets)
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('maintenance:getTxLockdownAllowlist', 'Gets the extra allowlists of the transaction lockdown')
+  .setAction(async (taskArguments, hre) => {
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const allowlist = await maintenance.getTxLockdownAllowlist()
+    console.log('senders:', allowlist[0])
+    console.log('targets:', allowlist[1])
+  })

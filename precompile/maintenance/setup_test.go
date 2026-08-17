@@ -375,7 +375,13 @@ func (k *FakeEvmKeeper) GetParams(_ sdk.Context) (params evmtypes.Params) {
 	return k.params
 }
 
+// SetParams mirrors the real keeper and rejects parameters that do not pass
+// validation.
 func (k *FakeEvmKeeper) SetParams(_ sdk.Context, params evmtypes.Params) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
+
 	k.params = params
 	return nil
 }

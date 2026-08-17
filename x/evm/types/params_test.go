@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -51,6 +52,166 @@ func TestParamsValidate(t *testing.T) {
 		} else {
 			require.NoError(t, err, tc.name)
 		}
+	}
+}
+
+func TestParamsValidateTxLockdownAddresses(t *testing.T) {
+	// txLockdownAddresses returns a list of count distinct hex-encoded EVM
+	// addresses. The first address is 0x00...01, so the zero address is never
+	// part of the list.
+	txLockdownAddresses := func(count int) []string {
+		addresses := make([]string, count)
+		for i := range addresses {
+			addresses[i] = fmt.Sprintf("0x%040x", i+1)
+		}
+		return addresses
+	}
+
+	// paramsWithTxLockdown returns the default parameters with the transaction
+	// lockdown allowlists replaced by the given lists.
+	paramsWithTxLockdown := func(senders, targets []string) Params {
+		params := DefaultParams()
+		params.TxLockdownEnabled = true
+		params.TxLockdownSenders = senders
+		params.TxLockdownTargets = targets
+		return params
+	}
+
+	testCases := []struct {
+		name     string
+		params   Params
+		expError bool
+	}{
+		{
+			"empty allowlists",
+			paramsWithTxLockdown(nil, nil),
+			false,
+		},
+		{
+			"valid allowlists",
+			paramsWithTxLockdown(
+				txLockdownAddresses(2),
+				txLockdownAddresses(3),
+			),
+			false,
+		},
+		{
+			"lowercase and checksum forms of distinct addresses",
+			paramsWithTxLockdown(
+				[]string{
+					"0x1111111111111111111111111111111111111111",
+					"0x2222222222222222222222222222222222222222",
+				},
+				nil,
+			),
+			false,
+		},
+		{
+			"empty sender entry",
+			paramsWithTxLockdown([]string{""}, nil),
+			true,
+		},
+		{
+			"empty target entry",
+			paramsWithTxLockdown(nil, []string{""}),
+			true,
+		},
+		{
+			"invalid hex sender",
+			paramsWithTxLockdown([]string{"0xnothexadecimal"}, nil),
+			true,
+		},
+		{
+			"invalid hex target",
+			paramsWithTxLockdown(nil, []string{"0xnothexadecimal"}),
+			true,
+		},
+		{
+			"sender is too short",
+			paramsWithTxLockdown([]string{"0x1111"}, nil),
+			true,
+		},
+		{
+			"zero address sender",
+			paramsWithTxLockdown(
+				[]string{"0x0000000000000000000000000000000000000000"},
+				nil,
+			),
+			true,
+		},
+		{
+			"zero address target",
+			paramsWithTxLockdown(
+				nil,
+				[]string{"0x0000000000000000000000000000000000000000"},
+			),
+			true,
+		},
+		{
+			"duplicate sender",
+			paramsWithTxLockdown(
+				[]string{
+					"0x1111111111111111111111111111111111111111",
+					"0x1111111111111111111111111111111111111111",
+				},
+				nil,
+			),
+			true,
+		},
+		{
+			"duplicate sender in a different case",
+			paramsWithTxLockdown(
+				[]string{
+					"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				},
+				nil,
+			),
+			true,
+		},
+		{
+			"duplicate target in a different case",
+			paramsWithTxLockdown(
+				nil,
+				[]string{
+					"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				},
+			),
+			true,
+		},
+		{
+			"senders at the size cap",
+			paramsWithTxLockdown(txLockdownAddresses(256), nil),
+			false,
+		},
+		{
+			"targets at the size cap",
+			paramsWithTxLockdown(nil, txLockdownAddresses(256)),
+			false,
+		},
+		{
+			"senders above the size cap",
+			paramsWithTxLockdown(txLockdownAddresses(257), nil),
+			true,
+		},
+		{
+			"targets above the size cap",
+			paramsWithTxLockdown(nil, txLockdownAddresses(257)),
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.params.Validate()
+
+			if tc.expError {
+				require.Error(t, err, tc.name)
+			} else {
+				require.NoError(t, err, tc.name)
+			}
+		})
 	}
 }
 

@@ -5,7 +5,7 @@ Team role, the lockdown mode it drives, and the audit trail both leave behind.
 
 The Emergency Team role and the bridge lockdown ship in `v13.0.0`. They replace
 the `AssetsBridge` pauser role and the triparty pause flag, which the same
-release retires.
+release retires. The transaction lockdown ships in the same release.
 
 ## Overview
 
@@ -112,14 +112,14 @@ an upgrade plan. See [Governance](./release-process.md#governance).
 
 Lockdown is the only power of the Emergency Team. It comes in levels, and each
 level stops more activity than the level below it. MEZO-5000 defines the model;
-`v13.0.0` implements level 1.
+`v13.0.0` implements levels 1, 2, and 3.
 
-| Level | Name                    | Method                                        | Disable on chain | Status             |
-|-------|-------------------------|-----------------------------------------------|------------------|--------------------|
-| 1     | Bridge lockdown         | `setBridgeLockdown(bool,bool)`                | yes              | `v13.0.0`          |
-| 2     | Restricted transactions | `setTxLockdown` plus `setTxLockdownAllowlist` | yes              | planned, MEZO-5000 |
-| 3     | No transactions         | `setTxLockdown`                               | yes              | planned, MEZO-5000 |
-| 4     | Chain lockdown          | `setChainLockdown`                            | no               | planned, MEZO-5000 |
+| Level | Name                    | Method                                                                   | Disable on chain | Status             |
+|-------|-------------------------|--------------------------------------------------------------------------|------------------|--------------------|
+| 1     | Bridge lockdown         | `setBridgeLockdown(bool,bool)`                                           | yes              | `v13.0.0`          |
+| 2     | Restricted transactions | `setTxLockdown(bool)` plus `setTxLockdownAllowlist(address[],address[])` | yes              | `v13.0.0`          |
+| 3     | No transactions         | `setTxLockdown(bool)`                                                    | yes              | `v13.0.0`          |
+| 4     | Chain lockdown          | `setChainLockdown`                                                       | no               | planned, MEZO-5000 |
 
 ### The interface contract
 
@@ -129,6 +129,10 @@ Every level follows one shape:
   arguments of that level;
 - one view named `get<Level>Lockdown`, callable by anyone;
 - one event named `<Level>LockdownSet`.
+
+Levels 2 and 3 share one setter and differ only in the allowlist, so they add a
+second pair, `setTxLockdownAllowlist` and `getTxLockdownAllowlist`, plus the
+`TxLockdownAllowlistSet` event.
 
 Level 4 is the exception. `setChainLockdown` takes no arguments, has no view,
 and cannot be disabled on chain.
@@ -204,16 +208,162 @@ processes them in sequence order. No event is lost.
 Confirm the result with `getBridgeLockdown` and with the `BridgeLockdownSet`
 event of the transaction.
 
+### Levels 2 and 3: transaction lockdown
+
+```solidity
+function setTxLockdown(bool enabled) external returns (bool);
+function getTxLockdown() external view returns (bool enabled);
+function setTxLockdownAllowlist(address[] calldata senders, address[] calldata targets) external returns (bool);
+function getTxLockdownAllowlist() external view returns (address[] memory senders, address[] memory targets);
+```
+
+One mechanism serves both levels. `setTxLockdown` switches the lockdown on and
+off, and `setTxLockdownAllowlist` carries the extra addresses that pass while it
+is on. Level 3 is the lockdown with an empty allowlist, and level 2 is the
+lockdown with an allowlist. Both setters are restricted to the Emergency Team
+and the PoA owner. `setTxLockdown` emits `TxLockdownSet` and
+`setTxLockdownAllowlist` emits `TxLockdownAllowlistSet`. Both views are callable
+by anyone.
+
+The check sits in the `EthTxLockdownDecorator` of the EVM ante handler, directly
+after the signature verification and before the transaction consumes gas. Every
+user transaction on Mezo is an Ethereum transaction, so every transaction meets
+the check. A rejected transaction fails at `CheckTx` with
+`transaction from <SENDER> to <TARGET> rejected by the transaction lockdown`. On
+a rejected deployment the target reads `nil (contract creation)`. A rejected
+transaction never enters a block and costs its sender no gas. The check also runs
+in `ReCheckTx`, `DeliverTx`, and in simulation, so `eth_estimateGas` reports the
+rejection too.
+
+#### The rule
+
+While the lockdown is active, a transaction passes if at least one of these
+holds:
+
+- its sender is the PoA owner or the Emergency Team;
+- its target is the PoA owner or the Emergency Team;
+- its sender matches the extra senders and its target matches the extra
+  targets.
+
+The first two conditions are the role clause, and the clause is sacrosanct: no
+allowlist and no lockdown level removes it. The chain reads both roles from the
+`x/poa` module on every transaction. A grant, a rotation, or a revocation
+therefore applies at once, with no further lockdown call. When the Emergency
+Team role is not granted, it matches nothing.
+
+The role clause covers the target and not only the sender, because on mainnet
+both roles are Safes. A Safe transaction reaches the chain as a transaction to
+the Safe address, sent by whichever signer relays it. That relayer is a plain
+account with no role. The target side of the clause is what keeps those Safe
+transactions alive, the call that disables the lockdown included. The rule reads
+the outer transaction only. Calls that the Safe makes from inside are not
+checked, which is the same design: the Safe as a target already carries the
+permission.
+
+The third condition is the extra clause, and it is an AND of two dimensions. Per
+dimension, a non-empty list matches only its members, and an empty list matches
+every address. So `([sender], [target])` passes that one pair only, and
+`([], [target])` lets every sender reach that target. In the same way,
+`([sender], [])` lets that sender reach everything. When both lists are empty,
+the extra clause is inactive and matches nothing, so the role clause is the only
+way through. That special case is level 3.
+
+Contract creation has no target. A non-empty extra targets list never matches
+a contract creation, and an empty one does. The PoA owner and the Emergency
+Team can therefore always create contracts. A sender from the extra senders
+list can create contracts only while the extra targets list is empty. No other
+sender can create contracts while the lockdown is active.
+
+`setTxLockdownAllowlist` replaces both lists on every call, so pass the full
+wanted state. It works whether the lockdown is on or off, so the team can stage
+a list first and enable afterwards. `setTxLockdown(false)` disables the lockdown
+and clears both lists, so the next lockdown starts from a known state.
+
+Each list rejects the zero address and duplicate entries, and holds at most 256
+entries. The chain decodes both lists on every transaction, and the cap bounds
+that cost.
+
+The transaction lockdown installs no default allowlist. The role clause is the
+only built-in permission, and every other address needs an explicit allowlist
+entry. Diagnosis does not need a default target, because queries bypass the
+lockdown.
+
+#### Level 3: no transactions
+
+Level 3 is the lockdown with both lists empty. Read the allowlist first. A
+disable clears both lists, so they are normally already empty, but a staged list
+survives until someone replaces it.
+
+```
+npx hardhat maintenance:getTxLockdownAllowlist
+npx hardhat maintenance:setTxLockdown --signer TEAM --enabled true
+```
+
+Clear a leftover list with two empty arguments:
+
+```
+npx hardhat maintenance:setTxLockdownAllowlist --signer TEAM --senders "" --targets ""
+```
+
+#### Level 2: restricted transactions
+
+Install the allowlist first, then enable the lockdown:
+
+```
+npx hardhat maintenance:setTxLockdownAllowlist --signer TEAM --senders <SENDER_A>,<SENDER_B> --targets <TARGET_C>
+npx hardhat maintenance:setTxLockdown --signer TEAM --enabled true
+```
+
+Either order works, because the role clause lets the team through at all times.
+Install the allowlist first anyway, so no window opens in which the lockdown
+runs at level 3 by accident. The allowlist task takes comma-separated lists, and
+an empty string gives an empty list.
+
+#### What stays observable
+
+Queries bypass the ante handler. `eth_call`, `eth_getLogs`, `eth_getBalance`,
+and every other read stays usable for diagnosis while the lockdown is active.
+Both lockdown views are queries, so `getTxLockdown` and `getTxLockdownAllowlist`
+answer at any time and from any caller.
+
+The levels stay independent. The bridge injects inbound transfers as the
+`AssetsLocked` pseudo-transaction, which never passes through the ante handler,
+so a transaction lockdown does not stop bridge-ins and a bridge lockdown does
+not stop transactions. Enable both levels to stop both.
+
+#### Recovery
+
+Read `getTxLockdown` and `getTxLockdownAllowlist` first, so the next call starts
+from the current state.
+
+To go from level 3 to level 2, install an allowlist with
+`setTxLockdownAllowlist`. The lockdown stays on and the listed pairs start to
+pass. To widen or narrow an existing allowlist, pass the full wanted state,
+because the call replaces both lists.
+
+To release the lockdown, call `setTxLockdown(false)`. Transactions flow again
+immediately and both lists are cleared. Nothing needs a replay, because
+rejected transactions never entered the state. The check runs before the nonce
+increment, so a rejection consumes no nonce. Senders whose transactions the
+lockdown rejected must submit them again.
+
+The PoA owner can always release the lockdown, even when the Emergency Team key
+is lost. The owner passes the role clause both as a sender and as a target.
+Confirm the result with `getTxLockdown` and with the `TxLockdownSet` event of the
+transaction.
+
 ## Audit trail
 
 Every write of the emergency controls emits an event from the `Maintenance`
 precompile at `0x7b7c000000000000000000000000000000000013`. The views emit
 nothing.
 
-| Event               | Signature                           | Topic 0                                                              |
-|---------------------|-------------------------------------|----------------------------------------------------------------------|
-| `EmergencyTeamSet`  | `EmergencyTeamSet(address,address)` | `0xc22e0a53d80be0ed688451dd96632727b45a62185ad4bcf8c30014ba1bceb04b` |
-| `BridgeLockdownSet` | `BridgeLockdownSet(bool,bool)`      | `0x60257cbb964d7216fa05325ba9832a1c24fcf2999621d6cd1ec6f751ff119f9f` |
+| Event                    | Signature                                     | Topic 0                                                              |
+|--------------------------|-----------------------------------------------|----------------------------------------------------------------------|
+| `EmergencyTeamSet`       | `EmergencyTeamSet(address,address)`           | `0xc22e0a53d80be0ed688451dd96632727b45a62185ad4bcf8c30014ba1bceb04b` |
+| `BridgeLockdownSet`      | `BridgeLockdownSet(bool,bool)`                | `0x60257cbb964d7216fa05325ba9832a1c24fcf2999621d6cd1ec6f751ff119f9f` |
+| `TxLockdownSet`          | `TxLockdownSet(bool)`                         | `0xd48ad28283ff81706740f90ff0dc96f8e40e809900c17522ee5c9765e4911fa7` |
+| `TxLockdownAllowlistSet` | `TxLockdownAllowlistSet(address[],address[])` | `0xf86993c03d2e206de6de06ee07222572777f06e560ce60a7d23cd3b226ac8fd4` |
 
 `EmergencyTeamSet(address indexed previous, address indexed current)` records
 every grant, rotation, and revocation. `previous` is the holder before the call
@@ -223,6 +373,15 @@ holder and is the zero address on a revocation. Both arguments are indexed, so
 
 `BridgeLockdownSet(bool bridgeIn, bool bridgeOut)` records the full lockdown
 state after the call. Neither argument is indexed, so both sit in the log data.
+
+`TxLockdownSet(bool enabled)` records the transaction lockdown state after the
+call. A `false` value also means that both extra allowlists are now empty, and
+no `TxLockdownAllowlistSet` event marks that clearing.
+
+`TxLockdownAllowlistSet(address[] senders, address[] targets)` records the full
+allowlist after the call, both dimensions at once, because the call replaces
+both lists. No argument of either event is indexed, so all of them sit in the
+log data. Decode the two arrays with the ABI; the topics carry no address.
 
 Query the whole history of the role with `eth_getLogs`:
 
@@ -249,7 +408,8 @@ Emergency Team Safe or the PoA owner, so the Safe history names the signers.
 | Action                                                                             | Emergency Team | PoA owner |
 |------------------------------------------------------------------------------------|----------------|-----------|
 | Enable / disable bridge lockdown (level 1)                                         | yes            | yes       |
-| Enable / disable future lockdown levels (MEZO-5000; chain lockdown is enable-only) | yes            | yes       |
+| Enable / disable transaction lockdown, set its allowlist (levels 2 and 3)          | yes            | yes       |
+| Enable chain lockdown (level 4, MEZO-5000; enable-only)                            | yes            | yes       |
 | Grant / revoke the Emergency Team role                                             | no             | yes       |
 | Outflow limits, min amounts, ERC20 mappings                                        | no             | yes       |
 | Triparty controllers and limits                                                    | no             | yes       |
@@ -262,17 +422,10 @@ is enabled, nobody disables it on chain.
 
 ## Roadmap
 
-MEZO-5000 continues the level model with three reserved method names. None of
-them exists yet; the names are fixed here so the vocabulary stays stable.
+MEZO-5000 continues the level model with one reserved method name. It does not
+exist yet; the name is fixed here so the vocabulary stays stable.
 
-- `setTxLockdown(bool enabled)`: transaction lockdown. Enabling it installs the
-  defaults. Allowed senders are the Emergency Team and the PoA owner. Allowed
-  targets are the precompiles needed to diagnose and recover the chain.
-- `setTxLockdownAllowlist(address[] senders, address[] targets)`: adds senders
-  and targets beyond the defaults of `setTxLockdown`. Level 2 is
-  `setTxLockdown(true)` plus this allowlist, and level 3 is `setTxLockdown(true)`
-  with the defaults only. There is no separate level 2 method.
-- `setChainLockdown()`: halts consensus through an immediate upgrade. It takes no
-  arguments and is one-way on chain. The only recovery is validators restarting
-  with the next-version binary, so this level has no on-chain disable and no
-  view.
+- `setChainLockdown(string planName)`: halts consensus through an immediate
+  upgrade under the given plan name. It is one-way on chain. The only recovery
+  is validators restarting with a binary that resolves the plan name, so this
+  level has no on-chain disable and no view.
