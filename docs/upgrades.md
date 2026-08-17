@@ -104,24 +104,24 @@ compatible with the latest version.
 
 This procedure is suitable for the recovery from a chain lockdown, which is
 level 4 of the emergency controls. `setChainLockdown` halts the chain with an
-upgrade plan that no handler in the running binary registers. The chain derives
-the plan name at call time: it is the next major version above the last
-completed upgrade that no registered handler claims. See
-[Emergency controls](./emergency-controls.md#the-halt-name).
+upgrade plan under the name the caller passes. The call rejects a name that a
+registered handler claims or that a completed upgrade carries, so the plan
+always halts the chain. See
+[Emergency controls](./emergency-controls.md#the-plan-name).
 
 The recovery is a planned upgrade with one extra requirement: the release must
-register an upgrade handler under EXACTLY the halted name. The `x/upgrade`
+register an upgrade handler under EXACTLY the plan name. The `x/upgrade`
 `PreBlocker` matches the handler by the plan name, so a release named `v14.1.0`
 does not resolve a halt on `v14.0.0`.
 
 The procedure is as follows:
 
-1. Read the halt name from the `ChainLockdownSet` event of the lockdown
+1. Read the plan name from the `ChainLockdownSet` event of the lockdown
    transaction, or from the `UPGRADE "<name>" NEEDED` line in the node log.
-   This example assumes the halt name `v14.0.0`.
+   This example assumes the plan name `v14.0.0`.
 2. Create a package for the new upgrade: `app/upgrades/v14_0`.
 3. Define a new `v14_0.Upgrade` in the `app/upgrades/v14_0/constants.go` file,
-   with `UpgradeName` set to the halt name `v14.0.0`. Define the upgrade handler
+   with `UpgradeName` set to the plan name `v14.0.0`. Define the upgrade handler
    in the `app/upgrades/v14_0/upgrades.go` file. The handler should perform all
    necessary store migrations and the fix for the incident.
 4. Register the `v14_0.Upgrade` in the `app.Upgrades` list, in the

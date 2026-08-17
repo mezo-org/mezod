@@ -120,7 +120,7 @@ level stops more activity than the level below it. MEZO-5000 defines the model;
 | 1     | Bridge lockdown         | `setBridgeLockdown(bool,bool)`                                           | yes              | `v13.0.0` |
 | 2     | Restricted transactions | `setTxLockdown(bool)` plus `setTxLockdownAllowlist(address[],address[])` | yes              | `v13.0.0` |
 | 3     | No transactions         | `setTxLockdown(bool)`                                                    | yes              | `v13.0.0` |
-| 4     | Chain lockdown          | `setChainLockdown()`                                                     | no               | `v13.0.0` |
+| 4     | Chain lockdown          | `setChainLockdown(string)`                                               | no               | `v13.0.0` |
 
 ### The interface contract
 
@@ -135,8 +135,8 @@ Levels 2 and 3 share one setter and differ only in the allowlist, so they add a
 second pair, `setTxLockdownAllowlist` and `getTxLockdownAllowlist`, plus the
 `TxLockdownAllowlistSet` event.
 
-Level 4 is the exception. `setChainLockdown` takes no arguments, has no view,
-and cannot be disabled on chain.
+Level 4 is the exception. `setChainLockdown` takes the upgrade plan name, has
+no view, and cannot be disabled on chain.
 
 Both the Emergency Team and the PoA owner can call every setter.
 
@@ -356,46 +356,41 @@ transaction.
 ### Level 4: chain lockdown
 
 ```solidity
-function setChainLockdown() external returns (bool);
+function setChainLockdown(string calldata planName) external returns (bool);
 ```
 
 `setChainLockdown` is restricted to the Emergency Team and the PoA owner. It
-takes no arguments and has no view. The call emits `ChainLockdownSet`. This is
-the last level, and it is one-way on chain: the chain stops, and no method
-starts it again.
+takes the upgrade plan name and has no view. The call emits `ChainLockdownSet`.
+This is the last level, and it is one-way on chain: the chain stops, and no
+method starts it again.
 
-The call schedules an upgrade plan in the `x/upgrade` module. The plan sits at
-the next block height, and no upgrade handler in the running binary registers
-its name. At that height the `PreBlocker` of `x/upgrade` finds the plan, finds
-no handler, logs `UPGRADE "<name>" NEEDED`, and panics. Every validator runs the
-same code on the same block, so every validator stops at the same height. The
-halt needs no further transaction and no coordination.
+The call schedules an upgrade plan in the `x/upgrade` module, under the given
+plan name and at the next block height. No upgrade handler in the running
+binary registers that name. At that height the `PreBlocker` of `x/upgrade`
+finds the plan, finds no handler, logs `UPGRADE "<name>" NEEDED`, and panics.
+Every validator runs the same code on the same block, so every validator stops
+at the same height. The halt needs no further transaction and no coordination.
 
-#### The halt name
+#### The plan name
 
-The chain derives the plan name at call time. The halt name is the next major
-version that no upgrade handler in the running binary registers.
+The caller picks the plan name, and the recovery release must carry exactly
+that name. On mainnet, name the plan after the next release, for example
+`v13.0.0` when the chain runs `v12.0.0`.
 
-The derivation starts from the last completed upgrade, bumps the major version,
-and resets the rest. It then skips every candidate for which the binary
-registers a handler, because such a plan does not halt the chain: the
-`PreBlocker` runs the handler and the chain continues. A release binary
-registers the historical upgrades only, so the halt name is exactly the next
-version. A chain whose last completed upgrade is `v12.0.0` therefore halts on
-`v13.0.0`.
+The call validates the name and reverts without scheduling anything when the
+name cannot halt the chain:
 
-A development binary can carry handlers above the last completed upgrade of the
-chain, and the derivation skips those names. The halt then lands on the first
-version the binary cannot execute. Do not assume the name; read it from the
-`ChainLockdownSet` event of the transaction. The halt height is the block of
-that transaction plus one.
+- An empty name reverts with `plan name cannot be empty`.
+- A name with a registered upgrade handler reverts with
+  `the binary has an upgrade handler for plan name "<name>"; the chain would
+  not halt`. Such a plan does not halt the chain: the `PreBlocker` runs the
+  handler and the chain continues. Every historical upgrade name has a handler;
+  see [Upgrades](./upgrades.md#historical-upgrades).
+- A name of a completed upgrade reverts with
+  `an upgrade with plan name "<name>" was already completed`.
 
-The last completed upgrade name must match `vX.Y.Z`. Every historical mezod
-upgrade name does; see [Upgrades](./upgrades.md#historical-upgrades). A name
-that does not parse makes the call revert with
-`cannot derive the halt name from the last completed upgrade "<name>"`, and
-nothing is scheduled. The search stops after 100 candidates and reverts too,
-which no real chain reaches.
+The `ChainLockdownSet` event of the transaction records the name. The halt
+height is the block of that transaction plus one.
 
 The call replaces any pending upgrade plan, because `ScheduleUpgrade` keeps one
 plan at a time. A planned upgrade that was scheduled and not yet executed is
@@ -406,7 +401,7 @@ lockdown scheduled instead.
 Through the Hardhat toolbox:
 
 ```
-npx hardhat maintenance:setChainLockdown --signer TEAM
+npx hardhat maintenance:setChainLockdown --signer TEAM --plan-name v13.0.0
 ```
 
 The task prints the transaction hash before it waits for the receipt, because
@@ -434,7 +429,7 @@ Recovery is off chain. No method disables level 4, and the halted chain accepts
 no transactions. Both paths need every validator to restart.
 
 Path 1 is the primary one. Ship a release whose upgrade handler registers
-exactly the halted name. Note the word exactly: a halt on `v14.0.0` needs a
+exactly the plan name. Note the word exactly: a halt on `v14.0.0` needs a
 release named `v14.0.0`, because the `PreBlocker` matches the handler by the
 plan name. A patch release such as `v13.1.0` does not resolve that halt.
 Validators install the new binary and restart. The `PreBlocker` then finds the
