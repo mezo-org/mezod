@@ -112,6 +112,18 @@ func (ph *ProposalHandler) PrepareProposalHandler() sdk.PrepareProposalHandler {
 			"height", req.Height,
 		)
 
+		// While bridge-in is paused, do not inject the AssetsLocked
+		// pseudo-transaction. The sequence tip stays frozen, so the sidecar
+		// re-serves the deferred events after unpause.
+		if ph.keeper.IsBridgeInPaused(ctx) {
+			ph.logger.Info(
+				"bridge-in is paused; skipping AssetsLocked events injection",
+				"height", req.Height,
+			)
+
+			return &cmtabci.ResponsePrepareProposal{Txs: req.Txs}, nil
+		}
+
 		// According to the app-level proposal handler requirements, this
 		// handler must validate signatures of the commit's vote extensions
 		// on their own.
@@ -288,6 +300,15 @@ func (ph *ProposalHandler) ProcessProposalHandler() sdk.ProcessProposalHandler {
 			return &cmtabci.ResponseProcessProposal{
 				Status: cmtabci.ResponseProcessProposal_ACCEPT,
 			}, nil
+		}
+
+		// While bridge-in is paused, a proposal that carries an AssetsLocked
+		// pseudo-transaction is invalid, no matter its content. The pause flag
+		// lives in state, so every validator evaluates it identically.
+		if ph.keeper.IsBridgeInPaused(ctx) {
+			return &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			}, fmt.Errorf("bridge-in is paused; rejecting proposal with injected tx")
 		}
 
 		var injectedTx types.InjectedTx

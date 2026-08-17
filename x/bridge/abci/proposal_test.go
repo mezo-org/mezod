@@ -219,6 +219,11 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 		s.Run(test.name, func() {
 			s.SetupTest()
 
+			s.bridgeKeeper.On(
+				"IsBridgeInPaused",
+				s.ctx,
+			).Return(false)
+
 			valStore := newMockValidatorStore()
 			voteExtensionsValidator := test.voteExtensionsValidator
 
@@ -308,6 +313,94 @@ func (s *ProposalHandlerTestSuite) TestPrepareProposal() {
 	}
 }
 
+func (s *ProposalHandlerTestSuite) TestPrepareProposalBridgeInPaused() {
+	s.bridgeKeeper.On(
+		"IsBridgeInPaused",
+		s.ctx,
+	).Return(true)
+
+	valStore := newMockValidatorStore()
+	voteExtensionsValidator := newMockVoteExtensionsValidator(nil)
+
+	s.handler = NewProposalHandler(
+		s.logger,
+		valStore,
+		s.bridgeKeeper,
+		// No need for the vote extension decomposer in this test.
+		// The decomposer is used to construct the default assetsLockedExtractor
+		// but, we are overriding it with a test one.
+		nil,
+		voteExtensionsValidator.call,
+	)
+
+	// A canonical sequence sticking to the current tip is available. The
+	// pause must take precedence over it.
+	events := []bridgetypes.AssetsLockedEvent{
+		mockEvent(201, recipient1, 100, token),
+		mockEvent(202, recipient2, 200, token),
+		mockEvent(203, recipient3, 300, token),
+	}
+
+	extendedCommitInfo := cmtabci.ExtendedCommitInfo{
+		Round: 1, // Just an arbitrary value.
+		Votes: []cmtabci.ExtendedVoteInfo{
+			mockVoteExtension("val1Bridge", 100, tmproto.BlockIDFlagCommit, events...),
+		},
+	}
+
+	extractor := newMockAssetsLockedExtractor()
+	// The pause short-circuits before the extraction so this call is optional.
+	extractor.On(
+		"CanonicalEvents",
+		s.ctx,
+		extendedCommitInfo,
+		s.requestHeight,
+	).Return(events, nil).Maybe()
+
+	// Override the default assetsLockedExtractor with a test one.
+	s.handler.assetsLockedExtractor = extractor
+
+	req := &cmtabci.RequestPrepareProposal{
+		// Fill only the fields that are relevant for the test.
+		Height:          s.requestHeight,
+		Txs:             txsVector("tx1", "tx2"),
+		LocalLastCommit: extendedCommitInfo,
+	}
+
+	res, err := s.handler.PrepareProposalHandler()(s.ctx, req)
+
+	voteExtensionsValidator.AssertNotCalled(
+		s.T(),
+		"call",
+		s.ctx,
+		valStore,
+		s.requestHeight,
+		s.ctx.ChainID(),
+		extendedCommitInfo,
+	)
+
+	extractor.AssertNotCalled(
+		s.T(),
+		"CanonicalEvents",
+		s.ctx,
+		extendedCommitInfo,
+		s.requestHeight,
+	)
+
+	s.Require().NoError(err, "expected no error")
+
+	s.Require().Nil(
+		extractInjectedTx(req, res),
+		"expected no injected pseudo-tx",
+	)
+
+	s.Require().Equal(
+		txsVector("tx1", "tx2"),
+		res.Txs,
+		"expected different chain transactions",
+	)
+}
+
 func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 	marshalExtCommitInfo := func(extCommitInfo cmtabci.ExtendedCommitInfo) []byte {
 		extCommitInfoBytes, err := extCommitInfo.Marshal()
@@ -317,6 +410,7 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 
 	tests := []struct {
 		name                    string
+		bridgeInPaused          bool
 		voteExtensionsValidator *mockVoteExtensionsValidator
 		assetsLockedExtractorFn func(cmtabci.ExtendedCommitInfo) *mockAssetsLockedExtractor
 		reqTxsFn                func() [][]byte
@@ -659,11 +753,91 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 			},
 			errContains: "",
 		},
+		{
+			name:                    "bridge-in paused, injected tx present",
+			bridgeInPaused:          true,
+			voteExtensionsValidator: newMockVoteExtensionsValidator(nil),
+			assetsLockedExtractorFn: func(extCommitInfo cmtabci.ExtendedCommitInfo) *mockAssetsLockedExtractor {
+				extractor := newMockAssetsLockedExtractor()
+
+				var voteExtension types.VoteExtension
+				err := voteExtension.Unmarshal(extCommitInfo.Votes[0].VoteExtension)
+				s.Require().NoError(err)
+
+				// The pause short-circuits before the re-creation of the
+				// canonical sequence so this call is optional.
+				extractor.On(
+					"CanonicalEvents",
+					s.ctx,
+					extCommitInfo,
+					s.requestHeight,
+				).Return(voteExtension.AssetsLockedEvents, nil).Maybe()
+
+				return extractor
+			},
+			reqTxsFn: func() [][]byte {
+				// The injected tx is valid. The pause alone makes the
+				// proposal invalid.
+				events := []bridgetypes.AssetsLockedEvent{
+					mockEvent(201, recipient1, 100, token),
+					mockEvent(202, recipient2, 200, token),
+					mockEvent(203, recipient3, 300, token),
+				}
+
+				return append(
+					[][]byte{
+						marshalInjectedTx(
+							types.InjectedTx{
+								AssetsLockedEvents: events,
+								ExtendedCommitInfo: marshalExtCommitInfo(
+									cmtabci.ExtendedCommitInfo{
+										Round: 1,
+										Votes: []cmtabci.ExtendedVoteInfo{
+											// The mock extractor returns the canonical sequence based
+											// on the first vote so use a single vote to keep the test simple.
+											mockVoteExtension(
+												"val1Bridge",
+												102,
+												tmproto.BlockIDFlagCommit,
+												events...,
+											),
+										},
+									},
+								),
+							},
+						),
+					},
+					txsVector("tx1", "tx2")...,
+				)
+			},
+			expectedRes: &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_REJECT,
+			},
+			errContains: "bridge-in is paused",
+		},
+		{
+			name:                    "bridge-in paused, empty injected tx",
+			bridgeInPaused:          true,
+			voteExtensionsValidator: newMockVoteExtensionsValidator(nil),
+			assetsLockedExtractorFn: func(_ cmtabci.ExtendedCommitInfo) *mockAssetsLockedExtractor {
+				return newMockAssetsLockedExtractor()
+			},
+			reqTxsFn: func() [][]byte { return txsVector("") },
+			expectedRes: &cmtabci.ResponseProcessProposal{
+				Status: cmtabci.ResponseProcessProposal_ACCEPT,
+			},
+			errContains: "",
+		},
 	}
 
 	for _, test := range tests {
 		s.Run(test.name, func() {
 			s.SetupTest()
+
+			s.bridgeKeeper.On(
+				"IsBridgeInPaused",
+				s.ctx,
+			).Return(test.bridgeInPaused)
 
 			valStore := newMockValidatorStore()
 			voteExtensionsValidator := test.voteExtensionsValidator
@@ -707,17 +881,37 @@ func (s *ProposalHandlerTestSuite) TestProcessProposal() {
 
 			// Make sure VE validation occurred if and only if there was
 			// an unmarshalable injected tx holding unmarshalable extended
-			// commit info.
+			// commit info. A pause rejects the proposal before that point.
 			if extCommitInfoOk {
-				voteExtensionsValidator.AssertCalled(
-					s.T(),
-					"call",
-					s.ctx,
-					valStore,
-					s.requestHeight,
-					s.ctx.ChainID(),
-					extCommitInfo,
-				)
+				if test.bridgeInPaused {
+					voteExtensionsValidator.AssertNotCalled(
+						s.T(),
+						"call",
+						s.ctx,
+						valStore,
+						s.requestHeight,
+						s.ctx.ChainID(),
+						extCommitInfo,
+					)
+
+					extractor.AssertNotCalled(
+						s.T(),
+						"CanonicalEvents",
+						s.ctx,
+						extCommitInfo,
+						s.requestHeight,
+					)
+				} else {
+					voteExtensionsValidator.AssertCalled(
+						s.T(),
+						"call",
+						s.ctx,
+						valStore,
+						s.requestHeight,
+						s.ctx.ChainID(),
+						extCommitInfo,
+					)
+				}
 			}
 
 			extractor.AssertExpectations(s.T())

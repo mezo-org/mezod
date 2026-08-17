@@ -796,3 +796,8 @@ func (mbk *mockBridgeKeeper) ProcessTripartyBridgeRequests(
 	args := mbk.Called(ctx)
 	return args.Error(0)
 }
+
+func (mbk *mockBridgeKeeper) IsBridgeInPaused(ctx sdk.Context) bool {
+	args := mbk.Called(ctx)
+	return args.Bool(0)
+}
