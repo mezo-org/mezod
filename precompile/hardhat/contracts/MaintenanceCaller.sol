@@ -88,4 +88,8 @@ contract MaintenanceCaller is IMaintenance {
     {
         return IMaintenance(maintenancePrecompile).getTxLockdownAllowlist();
     }
+
+    function setChainLockdown() external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setChainLockdown();
+    }
 }
