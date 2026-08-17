@@ -196,6 +196,10 @@ func newPrecompileMethods(
 		methods = append(methods, newGetEmergencyTeamMethod(poaKeeper))
 		methods = append(methods, newSetBridgeLockdownMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetBridgeLockdownMethod(bridgeKeeper))
+		methods = append(methods, newSetTxLockdownMethod(poaKeeper, evmKeeper))
+		methods = append(methods, newGetTxLockdownMethod(evmKeeper))
+		methods = append(methods, newSetTxLockdownAllowlistMethod(poaKeeper, evmKeeper))
+		methods = append(methods, newGetTxLockdownAllowlistMethod(evmKeeper))
 	}
 
 	return methods

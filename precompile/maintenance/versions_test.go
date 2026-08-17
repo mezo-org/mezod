@@ -66,6 +66,13 @@ func (s *PrecompileTestSuite) TestEmergencyControlsVersions() {
 		{"getEmergencyTeam", nil},
 		{"setBridgeLockdown", []interface{}{false, false}},
 		{"getBridgeLockdown", nil},
+		{"setTxLockdown", []interface{}{false}},
+		{"getTxLockdown", nil},
+		{
+			"setTxLockdownAllowlist",
+			[]interface{}{[]common.Address{}, []common.Address{}},
+		},
+		{"getTxLockdownAllowlist", nil},
 	}
 
 	for _, call := range calls {

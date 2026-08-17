@@ -19,6 +19,20 @@ interface IMaintenance {
     event BridgeLockdownSet(bool bridgeIn, bool bridgeOut);
 
     /**
+     * @notice Emitted when the transaction lockdown is enabled or disabled.
+     * @param enabled True if the transaction lockdown is active.
+     */
+    event TxLockdownSet(bool enabled);
+
+    /**
+     * @notice Emitted when the extra allowlists of the transaction lockdown
+     *         are replaced.
+     * @param senders The extra allowed senders.
+     * @param targets The extra allowed targets.
+     */
+    event TxLockdownAllowlistSet(address[] senders, address[] targets);
+
+    /**
      * @notice Enables/disables support for the non-EIP155 txs without replay protection.
      * @param value The new value of the flag.
      * @dev Must be called by contract owner.
@@ -125,4 +139,47 @@ interface IMaintenance {
      * @return bridgeOut True if bridging out is stopped.
      */
     function getBridgeLockdown() external view returns (bool bridgeIn, bool bridgeOut);
+
+    /**
+     * @notice Enables or disables the transaction lockdown.
+     * @param enabled True to stop transactions, false to allow them.
+     * @dev While the lockdown is active, a transaction passes only if its
+     *      sender or its target is the Emergency Team or the contract owner,
+     *      or if it matches both extra allowlists.
+     * @dev Disabling the lockdown also clears both extra allowlists.
+     * @dev Must be called by the Emergency Team or the contract owner.
+     */
+    function setTxLockdown(bool enabled) external returns (bool);
+
+    /**
+     * @notice Gets the transaction lockdown state.
+     * @return enabled True if the transaction lockdown is active.
+     */
+    function getTxLockdown() external view returns (bool enabled);
+
+    /**
+     * @notice Replaces the extra allowlists of the transaction lockdown.
+     * @param senders The extra allowed senders. An empty list matches every
+     *        sender.
+     * @param targets The extra allowed targets. An empty list matches every
+     *        target, including contract creation.
+     * @dev Two empty lists leave the Emergency Team and the contract owner as
+     *      the only addresses that pass the lockdown.
+     * @dev The call replaces both lists, it does not append to them.
+     * @dev Must be called by the Emergency Team or the contract owner.
+     */
+    function setTxLockdownAllowlist(
+        address[] calldata senders,
+        address[] calldata targets
+    ) external returns (bool);
+
+    /**
+     * @notice Gets the extra allowlists of the transaction lockdown.
+     * @return senders The extra allowed senders.
+     * @return targets The extra allowed targets.
+     */
+    function getTxLockdownAllowlist()
+        external
+        view
+        returns (address[] memory senders, address[] memory targets);
 }

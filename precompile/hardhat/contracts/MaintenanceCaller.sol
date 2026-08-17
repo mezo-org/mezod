@@ -65,4 +65,27 @@ contract MaintenanceCaller is IMaintenance {
     function getBridgeLockdown() external view returns (bool bridgeIn, bool bridgeOut) {
         return IMaintenance(maintenancePrecompile).getBridgeLockdown();
     }
+
+    function setTxLockdown(bool enabled) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setTxLockdown(enabled);
+    }
+
+    function getTxLockdown() external view returns (bool enabled) {
+        return IMaintenance(maintenancePrecompile).getTxLockdown();
+    }
+
+    function setTxLockdownAllowlist(
+        address[] calldata senders,
+        address[] calldata targets
+    ) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setTxLockdownAllowlist(senders, targets);
+    }
+
+    function getTxLockdownAllowlist()
+        external
+        view
+        returns (address[] memory senders, address[] memory targets)
+    {
+        return IMaintenance(maintenancePrecompile).getTxLockdownAllowlist();
+    }
 }
