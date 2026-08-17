@@ -41,6 +41,19 @@ message Params {
   // mezo_minter_address defines the hex-encoded EVM address of the MEZO
   // minter.
   string mezo_minter_address = 11;
+  // tx_lockdown_enabled indicates whether the transaction lockdown is active.
+  // While active, only transactions that pass the lockdown rule are accepted.
+  bool tx_lockdown_enabled = 12;
+  // tx_lockdown_senders is the list of extra allowed sender addresses
+  // (as hex-encoded EVM addresses) evaluated while the transaction lockdown
+  // is active. An empty list matches every sender unless tx_lockdown_targets
+  // is empty too.
+  repeated string tx_lockdown_senders = 13;
+  // tx_lockdown_targets is the list of extra allowed target addresses
+  // (as hex-encoded EVM addresses) evaluated while the transaction lockdown
+  // is active. An empty list matches every target unless tx_lockdown_senders
+  // is empty too.
+  repeated string tx_lockdown_targets = 14;
 }
 
 // PrecompileVersionInfo defines the version of a custom EVM precompile.
