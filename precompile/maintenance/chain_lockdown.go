@@ -2,8 +2,6 @@ package maintenance
 
 import (
 	"fmt"
-	"regexp"
-	"strconv"
 
 	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"github.com/mezo-org/mezod/precompile"
@@ -18,9 +16,10 @@ const SetChainLockdownMethodName = "setChainLockdown"
 // matches the name of the event in the contract ABI.
 const ChainLockdownSetEventName = "ChainLockdownSet"
 
-// setChainLockdownMethod halts the chain. It schedules an upgrade plan whose
-// name has no registered handler, at the next block height. The x/upgrade
-// PreBlocker then panics on every validator. The chain cannot recover on chain.
+// setChainLockdownMethod halts the chain. It schedules an upgrade plan under
+// the given name, at the next block height. The name must have no registered
+// handler, so the x/upgrade PreBlocker panics on every validator. The chain
+// cannot recover on chain.
 type setChainLockdownMethod struct {
 	poaKeeper     PoaKeeper
 	upgradeKeeper UpgradeKeeper
@@ -56,8 +55,13 @@ func (m *setChainLockdownMethod) Run(
 	context *precompile.RunContext,
 	inputs precompile.MethodInputs,
 ) (precompile.MethodOutputs, []statedb.StateChange, error) {
-	if err := precompile.ValidateMethodInputsCount(inputs, 0); err != nil {
+	if err := precompile.ValidateMethodInputsCount(inputs, 1); err != nil {
 		return nil, nil, err
+	}
+
+	planName, ok := inputs[0].(string)
+	if !ok {
+		return nil, nil, fmt.Errorf("planName argument must be a string")
 	}
 
 	// This method is restricted to the PoA owner and the emergency team.
@@ -69,20 +73,34 @@ func (m *setChainLockdownMethod) Run(
 		return nil, nil, err
 	}
 
-	lastCompleted, _, err := m.upgradeKeeper.GetLastCompletedUpgrade(context.SdkCtx())
+	if planName == "" {
+		return nil, nil, fmt.Errorf("plan name cannot be empty")
+	}
+
+	// A plan whose name has a registered handler upgrades the chain instead
+	// of halting it.
+	if m.upgradeKeeper.HasHandler(planName) {
+		return nil, nil, fmt.Errorf(
+			"the binary has an upgrade handler for plan name %q; the chain would not halt",
+			planName,
+		)
+	}
+
+	doneHeight, err := m.upgradeKeeper.GetDoneHeight(context.SdkCtx(), planName)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	haltName, err := nextUpgradeName(lastCompleted, m.upgradeKeeper.HasHandler)
-	if err != nil {
-		return nil, nil, err
+	if doneHeight != 0 {
+		return nil, nil, fmt.Errorf(
+			"an upgrade with plan name %q was already completed",
+			planName,
+		)
 	}
 
-	// No handler is registered for the halt name. The x/upgrade PreBlocker
+	// No handler is registered for the plan name. The x/upgrade PreBlocker
 	// panics at this height and every validator stops.
 	plan := upgradetypes.Plan{
-		Name:   haltName,
+		Name:   planName,
 		Height: context.SdkCtx().BlockHeight() + 1,
 	}
 
@@ -92,76 +110,13 @@ func (m *setChainLockdownMethod) Run(
 	}
 
 	err = context.EventEmitter().Emit(
-		NewChainLockdownSetEvent(haltName),
+		NewChainLockdownSetEvent(planName),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to emit ChainLockdownSet event: [%w]", err)
 	}
 
 	return precompile.MethodOutputs{true}, nil, nil
-}
-
-// upgradeNamePattern matches an upgrade name that carries a semantic version.
-// Every historical mezod upgrade name matches it.
-var upgradeNamePattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
-
-// maxHaltNameCandidates caps the search for a name the binary cannot execute.
-// The binary registers a handler for every historical upgrade, so the search
-// skips a few names on a chain that never applied them. It never runs to the
-// cap unless the binary registers a hundred handlers ahead of the chain.
-const maxHaltNameCandidates = 100
-
-// nextUpgradeName derives the halt name from the name of the last completed
-// upgrade. The halt name bumps the major version and resets the rest. An empty
-// last completed name derives from v0.0.0. A name that does not parse is an
-// error.
-//
-// The running binary must not be able to execute the halt name, so the
-// derivation skips every candidate that hasHandler reports as registered. On a
-// release binary no future handler exists and the halt name is the next
-// version. The skip loop has a cap and reaching the cap is an error.
-func nextUpgradeName(
-	lastCompleted string,
-	hasHandler func(string) bool,
-) (string, error) {
-	derivationErr := fmt.Errorf(
-		"cannot derive the halt name from the last completed upgrade %q",
-		lastCompleted,
-	)
-
-	// A fresh chain has no completed upgrade.
-	current := lastCompleted
-	if current == "" {
-		current = "v0.0.0"
-	}
-
-	matches := upgradeNamePattern.FindStringSubmatch(current)
-	if matches == nil {
-		return "", derivationErr
-	}
-
-	major, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return "", derivationErr
-	}
-
-	// A plan whose name has a registered handler upgrades the chain instead of
-	// halting it. Skip every such name.
-	firstCandidate := major + 1
-	lastCandidate := major + maxHaltNameCandidates
-
-	for candidate := firstCandidate; candidate <= lastCandidate; candidate++ {
-		name := fmt.Sprintf("v%d.0.0", candidate)
-		if !hasHandler(name) {
-			return name, nil
-		}
-	}
-
-	return "", fmt.Errorf(
-		"the binary has an upgrade handler for every name from v%d.0.0 to v%d.0.0",
-		firstCandidate,
-		lastCandidate,
-	)
 }
 
 // ChainLockdownSetEvent is emitted when the chain lockdown is set. It carries

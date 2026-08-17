@@ -89,7 +89,7 @@ contract MaintenanceCaller is IMaintenance {
         return IMaintenance(maintenancePrecompile).getTxLockdownAllowlist();
     }
 
-    function setChainLockdown() external returns (bool) {
-        return IMaintenance(maintenancePrecompile).setChainLockdown();
+    function setChainLockdown(string calldata planName) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setChainLockdown(planName);
     }
 }

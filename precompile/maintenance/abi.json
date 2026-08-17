@@ -253,7 +253,13 @@
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "planName",
+        "type": "string"
+      }
+    ],
     "name": "setChainLockdown",
     "outputs": [
       {

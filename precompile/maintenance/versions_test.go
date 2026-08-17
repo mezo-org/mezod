@@ -74,7 +74,7 @@ func (s *PrecompileTestSuite) TestEmergencyControlsVersions() {
 			[]interface{}{[]common.Address{}, []common.Address{}},
 		},
 		{"getTxLockdownAllowlist", nil},
-		{"setChainLockdown", nil},
+		{"setChainLockdown", []interface{}{"v13.0.0"}},
 	}
 
 	for _, call := range calls {

@@ -190,17 +190,17 @@ interface IMaintenance {
         returns (address[] memory senders, address[] memory targets);
 
     /**
-     * @notice Halts the chain. The call schedules an upgrade plan that the
-     *         running binary cannot execute, at the next block height.
+     * @notice Halts the chain. The call schedules an upgrade plan under the
+     *         given name, at the next block height.
+     * @param planName The name of the upgrade plan. It must not be empty, no
+     *        upgrade handler in the running binary may register it, and no
+     *        completed upgrade may carry it. The checks ensure the plan halts
+     *        the chain instead of upgrading it.
      * @dev WARNING: every validator stops at the next block. The chain cannot
      *      recover on chain. Recovery needs every validator to restart, either
      *      with a release named after the plan or with --unsafe-skip-upgrades.
-     * @dev The plan name is the next major version that no upgrade handler in
-     *      the running binary registers. On a release binary that is the next
-     *      major version after the last completed upgrade, so v12.0.0 gives
-     *      v13.0.0.
      * @dev The call replaces any pending upgrade plan.
      * @dev Must be called by the Emergency Team or the contract owner.
      */
-    function setChainLockdown() external returns (bool);
+    function setChainLockdown(string calldata planName) external returns (bool);
 }

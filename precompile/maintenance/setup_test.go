@@ -340,13 +340,14 @@ func (k *FakeBridgeKeeper) SetBridgeOutPaused(_ sdk.Context, isPaused bool) {
 }
 
 type FakeUpgradeKeeper struct {
-	lastCompletedName   string
-	lastCompletedHeight int64
-	lastCompletedErr    error
-	scheduleUpgradeErr  error
+	scheduleUpgradeErr error
+	doneHeightErr      error
 	// handlers holds the upgrade names the binary can execute. It is empty by
 	// default, so no name has a handler.
 	handlers map[string]bool
+	// doneHeights holds the completion heights of applied upgrades by plan
+	// name. It is empty by default, so no plan name was completed.
+	doneHeights map[string]int64
 	// scheduledPlan is the plan passed to the last ScheduleUpgrade call. It is
 	// nil if no call succeeded yet.
 	scheduledPlan *upgradetypes.Plan
@@ -362,14 +363,15 @@ func (k *FakeUpgradeKeeper) reset() {
 	*k = FakeUpgradeKeeper{}
 }
 
-func (k *FakeUpgradeKeeper) GetLastCompletedUpgrade(
+func (k *FakeUpgradeKeeper) GetDoneHeight(
 	_ context.Context,
-) (string, int64, error) {
-	if k.lastCompletedErr != nil {
-		return "", 0, k.lastCompletedErr
+	name string,
+) (int64, error) {
+	if k.doneHeightErr != nil {
+		return 0, k.doneHeightErr
 	}
 
-	return k.lastCompletedName, k.lastCompletedHeight, nil
+	return k.doneHeights[name], nil
 }
 
 func (k *FakeUpgradeKeeper) ScheduleUpgrade(

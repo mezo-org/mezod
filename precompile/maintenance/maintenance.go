@@ -227,7 +227,7 @@ type BridgeKeeper interface {
 
 // UpgradeKeeper is an interface to the x/upgrade module keeper.
 type UpgradeKeeper interface {
-	GetLastCompletedUpgrade(ctx context.Context) (string, int64, error)
+	GetDoneHeight(ctx context.Context, name string) (int64, error)
 	ScheduleUpgrade(ctx context.Context, plan upgradetypes.Plan) error
 	HasHandler(name string) bool
 }
