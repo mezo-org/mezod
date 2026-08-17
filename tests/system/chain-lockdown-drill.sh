@@ -4,20 +4,14 @@
 # # WARNING: THIS SCRIPT KILLS THE LOCALNODE.                                #
 # #                                                                          #
 # # The drill calls setChainLockdown on the maintenance precompile. That     #
-# # schedules an upgrade plan with no registered handler at the next block   #
-# # height. The x/upgrade PreBlocker then panics and the node stops. The     #
-# # chain cannot recover on chain. The localnode stays down until you follow #
-# # one of the recovery paths printed at the end of the drill.               #
+# # schedules an upgrade plan under the given plan name at the next block    #
+# # height. The name has no registered handler, so the x/upgrade PreBlocker  #
+# # panics and the node stops. The chain cannot recover on chain. The        #
+# # localnode stays down until you follow one of the recovery paths printed  #
+# # at the end of the drill.                                                 #
 # #                                                                          #
 # # Never point this script at a shared network. Use a throwaway localnode.  #
 # ############################################################################
-#
-# The halt name is the first major version above the last completed upgrade
-# that has no registered upgrade handler in the running binary. A release
-# binary registers no future handler, so the halt name is the next version. A
-# dev binary registers every historical handler, so the halt name skips past
-# them. Do not assume a fixed name. The drill reads it from the
-# ChainLockdownSet event.
 #
 # The drill is destructive, so it is NOT part of system-tests.sh. Run it by
 # hand:
@@ -27,8 +21,8 @@
 # Steps:
 #   1. Check that a localnode serves JSON-RPC.
 #   2. Grant the Emergency Team role to dev1. The PoA owner dev0 does it.
-#   3. Call setChainLockdown as dev1.
-#   4. Assert the ChainLockdownSet event and capture the derived halt name.
+#   3. Call setChainLockdown with the plan name, as dev1.
+#   4. Assert that the ChainLockdownSet event carries the plan name.
 #   5. Assert that the node halts: the log shows UPGRADE "<name>" NEEDED and
 #      the JSON-RPC height stops advancing.
 #   6. Print both recovery paths.
@@ -44,10 +38,9 @@
 #   HALT_TIMEOUT  - seconds to wait for the halt (default: 90)
 #   STALL_WAIT    - seconds to watch a still-reachable node for new blocks
 #                   (default: 20)
-#   EXPECT_HALT_NAME - the halt name the drill asserts. It is empty by
-#                   default, so the drill accepts any version and uses the
-#                   name from the ChainLockdownSet event. Set it only when you
-#                   know which name the node must derive.
+#   PLAN_NAME     - the plan name the drill passes to setChainLockdown
+#                   (default: chain-lockdown-drill). The name must have no
+#                   registered upgrade handler and no completed upgrade.
 
 set -euo pipefail
 
@@ -58,7 +51,7 @@ RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
 LOCALNODE_DIR="${LOCALNODE_DIR:-$REPO_DIR/.localnode}"
 HALT_TIMEOUT="${HALT_TIMEOUT:-90}"
 STALL_WAIT="${STALL_WAIT:-20}"
-EXPECT_HALT_NAME="${EXPECT_HALT_NAME-}"
+PLAN_NAME="${PLAN_NAME:-chain-lockdown-drill}"
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -113,6 +106,7 @@ const path = require("path")
 const systemTestsDir = process.env.SYSTEM_TESTS_DIR
 const localnodeDir = process.env.LOCALNODE_DIR
 const rpcUrl = process.env.RPC_URL
+const planName = process.env.PLAN_NAME
 
 const { ethers } = require(path.join(systemTestsDir, "node_modules", "ethers"))
 
@@ -121,7 +115,7 @@ const maintenanceAddress = "0x7b7c000000000000000000000000000000000013"
 const maintenanceAbi = [
   "function setEmergencyTeam(address team) external returns (bool)",
   "function getEmergencyTeam() external view returns (address team)",
-  "function setChainLockdown() external returns (bool)",
+  "function setChainLockdown(string planName) external returns (bool)",
   "event ChainLockdownSet(string name)",
 ]
 
@@ -186,8 +180,10 @@ async function main() {
     )
   }
 
-  console.error("[drill] calling setChainLockdown as the Emergency Team")
-  const lockdownTx = await asTeam.setChainLockdown({ gasLimit })
+  console.error(
+    `[drill] calling setChainLockdown("${planName}") as the Emergency Team`
+  )
+  const lockdownTx = await asTeam.setChainLockdown(planName, { gasLimit })
   console.error(`[drill] lockdown transaction ${lockdownTx.hash}`)
 
   const receipt = await waitForReceipt(provider, lockdownTx.hash, 30000)
@@ -217,8 +213,10 @@ async function main() {
   }
 
   const haltName = events[0].args.name
-  if (!/^v\d+\.\d+\.\d+$/.test(haltName)) {
-    throw new Error(`the halt name ${haltName} is not a version`)
+  if (haltName !== planName) {
+    throw new Error(
+      `the event carries the plan name ${haltName}, expected ${planName}`
+    )
   }
 
   // The plan sits one block after the lockdown transaction.
@@ -237,6 +235,7 @@ log "running the lockdown transactions"
 SYSTEM_TESTS_DIR="$SCRIPT_DIR" \
 	LOCALNODE_DIR="$LOCALNODE_DIR" \
 	RPC_URL="$RPC_URL" \
+	PLAN_NAME="$PLAN_NAME" \
 	node "$WORK_DIR/drill.js" >"$WORK_DIR/result.env" ||
 	fail "the lockdown transactions did not go through"
 
@@ -246,11 +245,7 @@ SYSTEM_TESTS_DIR="$SCRIPT_DIR" \
 [ -n "${HALT_NAME:-}" ] || fail "the drill did not report a halt name"
 [ -n "${HALT_HEIGHT:-}" ] || fail "the drill did not report a halt height"
 
-if [ -n "$EXPECT_HALT_NAME" ] && [ "$HALT_NAME" != "$EXPECT_HALT_NAME" ]; then
-	fail "the halt name is $HALT_NAME, expected $EXPECT_HALT_NAME"
-fi
-
-log "the ChainLockdownSet event carries the halt name $HALT_NAME"
+log "the ChainLockdownSet event carries the plan name $HALT_NAME"
 log "the halt is scheduled for height $HALT_HEIGHT"
 
 LOG_MARKER="UPGRADE \"$HALT_NAME\" NEEDED"
