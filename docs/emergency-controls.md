@@ -154,14 +154,18 @@ Ethereum and to Bitcoin. The check sits in `SaveAssetsUnlocked` in the
 with `bridge-out is paused`, the sequence tip does not advance, and no outflow
 is recorded.
 
-`bridgeIn = true` stops the triparty inbound path. `bridgeTriparty` calls fail
-with `bridge-in is paused` and the `PreBlocker` stops processing pending
-triparty requests. Pending requests stay in state.
+`bridgeIn = true` stops both inbound paths: the triparty path and the
+validator-observed path.
 
-**The lockdown does not cover the validator-observed bridge-in path.**
-`AssetsLocked` events observed on Ethereum are still executed while `bridgeIn`
-is true. Today level 1 stops the triparty path only. MEZO-5000 extends the same
-flag to the validator-observed path.
+On the triparty path, `bridgeTriparty` calls fail with `bridge-in is paused`
+and the `PreBlocker` stops processing pending triparty requests. Pending
+requests stay in state.
+
+On the validator-observed path, the check sits in the proposal handlers of the
+`x/bridge` module. `PrepareProposal` skips the injection of the `AssetsLocked`
+pseudo-transaction, and `ProcessProposal` rejects any proposal that carries
+one. No `AssetsLocked` event observed on Ethereum is executed while `bridgeIn`
+is true, and the sequence tip does not advance.
 
 Lockdown never touches the bridge outflow limits. Limits stay a separate PoA
 owner tool, and the lockdown state is readable through `getBridgeLockdown`
@@ -190,6 +194,12 @@ current `bridgeOut`. The `PreBlocker` resumes the pending triparty requests,
 subject to the block delay and the triparty limits. Requests that controllers
 attempted during the lockdown were rejected at submission, so those controllers
 must submit them again.
+
+The validator-observed path needs no manual step. The lockdown defers the
+`AssetsLocked` events; it does not drop them. The sequence tip stays frozen
+while `bridgeIn` is true, so the Ethereum sidecar keeps serving the events from
+the tip. After the release, the next proposal injects them again and the chain
+processes them in sequence order. No event is lost.
 
 Confirm the result with `getBridgeLockdown` and with the `BridgeLockdownSet`
 event of the transaction.
@@ -266,7 +276,3 @@ them exists yet; the names are fixed here so the vocabulary stays stable.
   arguments and is one-way on chain. The only recovery is validators restarting
   with the next-version binary, so this level has no on-chain disable and no
   view.
-
-MEZO-5000 also extends the `bridgeIn` flag of level 1 to the validator-observed
-bridge-in path, which closes the gap described in
-[Level 1: bridge lockdown](#level-1-bridge-lockdown).
