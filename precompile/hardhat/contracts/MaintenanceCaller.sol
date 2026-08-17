@@ -49,4 +49,20 @@ contract MaintenanceCaller is IMaintenance {
     function getSelfDestructDisabled() external view returns (bool) {
         return IMaintenance(maintenancePrecompile).getSelfDestructDisabled();
     }
+
+    function setEmergencyTeam(address team) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setEmergencyTeam(team);
+    }
+
+    function getEmergencyTeam() external view returns (address team) {
+        return IMaintenance(maintenancePrecompile).getEmergencyTeam();
+    }
+
+    function setBridgeLockdown(bool bridgeIn, bool bridgeOut) external returns (bool) {
+        return IMaintenance(maintenancePrecompile).setBridgeLockdown(bridgeIn, bridgeOut);
+    }
+
+    function getBridgeLockdown() external view returns (bool bridgeIn, bool bridgeOut) {
+        return IMaintenance(maintenancePrecompile).getBridgeLockdown();
+    }
 }

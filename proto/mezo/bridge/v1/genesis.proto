@@ -59,9 +59,9 @@ message GenesisState {
   // per token for the Bitcoin chain.
   repeated TokenMinBridgeOutAmount token_min_bridge_out_amounts = 9;
 
-  // pauser is the hex-encoded EVM address that has the authority to pause
-  // bridge operations.
-  string pauser = 10;
+  // Field 10 held the pauser address. The pauser role is replaced by the poa
+  // emergency team.
+  reserved 10;
 
   // last_outflow_reset is the timestamp of the last outflow limit reset.
   uint64 last_outflow_reset = 11;
@@ -76,8 +76,9 @@ message GenesisState {
   // addresses, as hex-encoded EVM addresses.
   repeated string allowed_triparty_controllers = 14;
 
-  // triparty_paused indicates whether triparty bridging is paused.
-  bool triparty_paused = 15;
+  // Field 15 held the triparty paused flag. It is replaced by
+  // bridge_in_paused.
+  reserved 15;
 
   // triparty_block_delay is the number of blocks that must pass between
   // request creation and processing.
@@ -129,6 +130,12 @@ message GenesisState {
   // triparty_controller_btc_minted tracks the BTC minted through the triparty
   // bridge path per controller.
   repeated TripartyControllerBTCMinted triparty_controller_btc_minted = 25;
+
+  // bridge_out_paused indicates whether bridging out is paused.
+  bool bridge_out_paused = 26;
+
+  // bridge_in_paused indicates whether bridging in is paused.
+  bool bridge_in_paused = 27;
 }
 
 // CurrentOutflowAmount tracks the current outflow amount for a specific token.

@@ -121,6 +121,26 @@ func NewPrecompileVersionMap(
 		return nil, err
 	}
 
+	// v6 retires the pause methods. The maintenance precompile is the single
+	// emergency surface. The retired methods are removed from the codebase,
+	// so all versions reject them; only the version literal tells them apart.
+	contractV6, err := NewPrecompile(
+		poaKeeper,
+		bridgeKeeper,
+		authzKeeper,
+		&Settings{
+			Observability:   true,
+			BTCManagement:   true,
+			ERC20Management: true,
+			SequenceTipView: true,
+			BridgeOut:       true,
+			Triparty:        true,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return precompile.NewVersionMap(
 		map[int]*precompile.Contract{
 			0: contractV1, // returning v1 as v0 is legacy to support this precompile before versioning was introduced
@@ -128,7 +148,8 @@ func NewPrecompileVersionMap(
 			2: contractV2,
 			3: contractV3,
 			4: contractV4,
-			evmtypes.AssetsBridgePrecompileLatestVersion: contractV5,
+			5: contractV5,
+			evmtypes.AssetsBridgePrecompileLatestVersion: contractV6,
 		},
 	), nil
 }
@@ -188,9 +209,6 @@ func NewPrecompile(
 		methods = append(methods, newSetOutflowLimitMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetOutflowLimitMethod(bridgeKeeper))
 		methods = append(methods, newGetOutflowCapacityMethod(bridgeKeeper))
-		methods = append(methods, newSetPauserMethod(poaKeeper, bridgeKeeper))
-		methods = append(methods, newGetPauserMethod(bridgeKeeper))
-		methods = append(methods, newPauseBridgeOutMethod(bridgeKeeper))
 		methods = append(methods, newSetMinBridgeOutAmountMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetMinBridgeOutAmountMethod(bridgeKeeper))
 		methods = append(methods, newSetMinBridgeOutAmountForBitcoinChainMethod(poaKeeper, bridgeKeeper))
@@ -201,7 +219,6 @@ func NewPrecompile(
 		methods = append(methods, newBridgeTripartyMethod(bridgeKeeper))
 		methods = append(methods, newAllowTripartyControllerMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newIsAllowedTripartyControllerMethod(bridgeKeeper))
-		methods = append(methods, newPauseTripartyMethod(bridgeKeeper))
 		methods = append(methods, newSetTripartyBlockDelayMethod(poaKeeper, bridgeKeeper))
 		methods = append(methods, newGetTripartyBlockDelayMethod(bridgeKeeper))
 		methods = append(methods, newSetTripartyLimitsMethod(poaKeeper, bridgeKeeper))
@@ -209,7 +226,6 @@ func NewPrecompile(
 		methods = append(methods, newGetTripartyCapacityMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyTotalBTCMintedMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyControllerBTCMintedMethod(bridgeKeeper))
-		methods = append(methods, newIsTripartyPausedMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyRequestSequenceTipMethod(bridgeKeeper))
 		methods = append(methods, newGetTripartyProcessedSequenceTipMethod(bridgeKeeper))
 	}
@@ -281,13 +297,8 @@ type BridgeKeeper interface {
 	SetOutflowLimit(ctx sdk.Context, token []byte, limit math.Int)
 	GetOutflowLimit(ctx sdk.Context, token []byte) math.Int
 	GetOutflowCapacity(ctx sdk.Context, token []byte) (capacity math.Int, resetHeight uint64)
-	SetPauser(ctx sdk.Context, pauser sdk.AccAddress)
-	GetPauser(ctx sdk.Context) sdk.AccAddress
-	PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error
 	IsAllowedTripartyController(ctx sdk.Context, controller []byte) bool
 	AllowTripartyController(ctx sdk.Context, controller []byte, isAllowed bool)
-	IsTripartyPaused(ctx sdk.Context) bool
-	SetTripartyPaused(ctx sdk.Context, isPaused bool)
 	GetTripartyBlockDelay(ctx sdk.Context) int64
 	SetTripartyBlockDelay(ctx sdk.Context, delay int64) error
 	SetTripartyPerRequestLimit(ctx sdk.Context, limit math.Int)

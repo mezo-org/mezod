@@ -26,6 +26,7 @@ var (
 	_ = common.Big1
 	_ = types.BloomLookup
 	_ = event.NewSubscription
+	_ = abi.ConvertType
 )
 
 // AssetsLocked is an auto generated low-level Go binding around an user-defined struct.
@@ -44,7 +45,7 @@ type ERC20TokenMapping struct {
 
 // AssetsBridgeMetaData contains all meta data concerning the AssetsBridge contract.
 var AssetsBridgeMetaData = &bind.MetaData{
-	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"unlockSequenceNumber\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"bytes\",\"name\":\"recipient\",\"type\":\"bytes\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"chain\",\"type\":\"uint8\"}],\"name\":\"AssetsUnlocked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"name\":\"ERC20TokenMappingCreated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"name\":\"ERC20TokenMappingDeleted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"minAmount\",\"type\":\"uint256\"}],\"name\":\"MinBridgeOutAmountSet\",\"type\":\"event\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"sequenceNumber\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"internalType\":\"structAssetsLocked[]\",\"name\":\"events\",\"type\":\"tuple[]\"}],\"name\":\"bridge\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint8\",\"name\":\"chain\",\"type\":\"uint8\"},{\"internalType\":\"bytes\",\"name\":\"recipient\",\"type\":\"bytes\"}],\"name\":\"bridgeOut\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"name\":\"createERC20TokenMapping\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"}],\"name\":\"deleteERC20TokenMapping\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCurrentSequenceTip\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"}],\"name\":\"getERC20TokenMapping\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"internalType\":\"structERC20TokenMapping\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getERC20TokensMappings\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"internalType\":\"structERC20TokenMapping[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMaxERC20TokensMappings\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"name\":\"getMinBridgeOutAmount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"getOutflowCapacity\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"capacity\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resetHeight\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"getOutflowLimit\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getPauser\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getSourceBTCToken\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pauseBridgeOut\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"minAmount\",\"type\":\"uint256\"}],\"name\":\"setMinBridgeOutAmount\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"limit\",\"type\":\"uint256\"}],\"name\":\"setOutflowLimit\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"pauser\",\"type\":\"address\"}],\"name\":\"setPauser\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"unlockSequenceNumber\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"bytes\",\"name\":\"recipient\",\"type\":\"bytes\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"chain\",\"type\":\"uint8\"}],\"name\":\"AssetsUnlocked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"name\":\"ERC20TokenMappingCreated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"name\":\"ERC20TokenMappingDeleted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"minAmount\",\"type\":\"uint256\"}],\"name\":\"MinBridgeOutAmountForBitcoinChainSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"minAmount\",\"type\":\"uint256\"}],\"name\":\"MinBridgeOutAmountSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"requestId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"TripartyBridgeRequested\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isAllowed\",\"type\":\"bool\"}],\"name\":\"TripartyControllerAllowed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"perRequestLimit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"windowLimit\",\"type\":\"uint256\"}],\"name\":\"TripartyLimitsSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"delay\",\"type\":\"uint256\"}],\"name\":\"TripartyBlockDelaySet\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"isAllowed\",\"type\":\"bool\"}],\"name\":\"allowTripartyController\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"sequenceNumber\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"internalType\":\"structAssetsLocked[]\",\"name\":\"events\",\"type\":\"tuple[]\"}],\"name\":\"bridge\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint8\",\"name\":\"chain\",\"type\":\"uint8\"},{\"internalType\":\"bytes\",\"name\":\"recipient\",\"type\":\"bytes\"}],\"name\":\"bridgeOut\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"callbackData\",\"type\":\"bytes\"}],\"name\":\"bridgeTriparty\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"requestId\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"name\":\"createERC20TokenMapping\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"}],\"name\":\"deleteERC20TokenMapping\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCurrentSequenceTip\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"}],\"name\":\"getERC20TokenMapping\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"internalType\":\"structERC20TokenMapping\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getERC20TokensMappings\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sourceToken\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"internalType\":\"structERC20TokenMapping[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMaxERC20TokensMappings\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"}],\"name\":\"getMinBridgeOutAmount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getMinBridgeOutAmountForBitcoinChain\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"getOutflowCapacity\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"capacity\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resetHeight\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"getOutflowLimit\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getTripartyLimits\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"perRequestLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"windowLimit\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getSourceBTCToken\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"isAllowedTripartyController\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"mezoToken\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"minAmount\",\"type\":\"uint256\"}],\"name\":\"setMinBridgeOutAmount\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"minAmount\",\"type\":\"uint256\"}],\"name\":\"setMinBridgeOutAmountForBitcoinChain\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"limit\",\"type\":\"uint256\"}],\"name\":\"setOutflowLimit\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"delay\",\"type\":\"uint256\"}],\"name\":\"setTripartyBlockDelay\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getTripartyBlockDelay\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"delay\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"perRequestLimit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"windowLimit\",\"type\":\"uint256\"}],\"name\":\"setTripartyLimits\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getTripartyCapacity\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"capacity\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"resetHeight\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getTripartyTotalBTCMinted\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"totalMinted\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"getTripartyControllerBTCMinted\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"minted\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getTripartyRequestSequenceTip\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"sequenceTip\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getTripartyProcessedSequenceTip\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"sequenceTip\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
 }
 
 // AssetsBridgeABI is the input ABI used to generate the binding from.
@@ -148,11 +149,11 @@ func NewAssetsBridgeFilterer(address common.Address, filterer bind.ContractFilte
 
 // bindAssetsBridge binds a generic wrapper to an already deployed contract.
 func bindAssetsBridge(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := abi.JSON(strings.NewReader(AssetsBridgeABI))
+	parsed, err := AssetsBridgeMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
+	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -348,6 +349,37 @@ func (_AssetsBridge *AssetsBridgeCallerSession) GetMinBridgeOutAmount(mezoToken 
 	return _AssetsBridge.Contract.GetMinBridgeOutAmount(&_AssetsBridge.CallOpts, mezoToken)
 }
 
+// GetMinBridgeOutAmountForBitcoinChain is a free data retrieval call binding the contract method 0xe0d93f1c.
+//
+// Solidity: function getMinBridgeOutAmountForBitcoinChain() view returns(uint256)
+func (_AssetsBridge *AssetsBridgeCaller) GetMinBridgeOutAmountForBitcoinChain(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "getMinBridgeOutAmountForBitcoinChain")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetMinBridgeOutAmountForBitcoinChain is a free data retrieval call binding the contract method 0xe0d93f1c.
+//
+// Solidity: function getMinBridgeOutAmountForBitcoinChain() view returns(uint256)
+func (_AssetsBridge *AssetsBridgeSession) GetMinBridgeOutAmountForBitcoinChain() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetMinBridgeOutAmountForBitcoinChain(&_AssetsBridge.CallOpts)
+}
+
+// GetMinBridgeOutAmountForBitcoinChain is a free data retrieval call binding the contract method 0xe0d93f1c.
+//
+// Solidity: function getMinBridgeOutAmountForBitcoinChain() view returns(uint256)
+func (_AssetsBridge *AssetsBridgeCallerSession) GetMinBridgeOutAmountForBitcoinChain() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetMinBridgeOutAmountForBitcoinChain(&_AssetsBridge.CallOpts)
+}
+
 // GetOutflowCapacity is a free data retrieval call binding the contract method 0xd7fa1750.
 //
 // Solidity: function getOutflowCapacity(address token) view returns(uint256 capacity, uint256 resetHeight)
@@ -424,37 +456,6 @@ func (_AssetsBridge *AssetsBridgeCallerSession) GetOutflowLimit(token common.Add
 	return _AssetsBridge.Contract.GetOutflowLimit(&_AssetsBridge.CallOpts, token)
 }
 
-// GetPauser is a free data retrieval call binding the contract method 0x7008b548.
-//
-// Solidity: function getPauser() view returns(address)
-func (_AssetsBridge *AssetsBridgeCaller) GetPauser(opts *bind.CallOpts) (common.Address, error) {
-	var out []interface{}
-	err := _AssetsBridge.contract.Call(opts, &out, "getPauser")
-
-	if err != nil {
-		return *new(common.Address), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
-
-	return out0, err
-
-}
-
-// GetPauser is a free data retrieval call binding the contract method 0x7008b548.
-//
-// Solidity: function getPauser() view returns(address)
-func (_AssetsBridge *AssetsBridgeSession) GetPauser() (common.Address, error) {
-	return _AssetsBridge.Contract.GetPauser(&_AssetsBridge.CallOpts)
-}
-
-// GetPauser is a free data retrieval call binding the contract method 0x7008b548.
-//
-// Solidity: function getPauser() view returns(address)
-func (_AssetsBridge *AssetsBridgeCallerSession) GetPauser() (common.Address, error) {
-	return _AssetsBridge.Contract.GetPauser(&_AssetsBridge.CallOpts)
-}
-
 // GetSourceBTCToken is a free data retrieval call binding the contract method 0x3d236363.
 //
 // Solidity: function getSourceBTCToken() view returns(address)
@@ -484,6 +485,303 @@ func (_AssetsBridge *AssetsBridgeSession) GetSourceBTCToken() (common.Address, e
 // Solidity: function getSourceBTCToken() view returns(address)
 func (_AssetsBridge *AssetsBridgeCallerSession) GetSourceBTCToken() (common.Address, error) {
 	return _AssetsBridge.Contract.GetSourceBTCToken(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyBlockDelay is a free data retrieval call binding the contract method 0xaec61e32.
+//
+// Solidity: function getTripartyBlockDelay() view returns(uint256 delay)
+func (_AssetsBridge *AssetsBridgeCaller) GetTripartyBlockDelay(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "getTripartyBlockDelay")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetTripartyBlockDelay is a free data retrieval call binding the contract method 0xaec61e32.
+//
+// Solidity: function getTripartyBlockDelay() view returns(uint256 delay)
+func (_AssetsBridge *AssetsBridgeSession) GetTripartyBlockDelay() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyBlockDelay(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyBlockDelay is a free data retrieval call binding the contract method 0xaec61e32.
+//
+// Solidity: function getTripartyBlockDelay() view returns(uint256 delay)
+func (_AssetsBridge *AssetsBridgeCallerSession) GetTripartyBlockDelay() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyBlockDelay(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyCapacity is a free data retrieval call binding the contract method 0xe316e24b.
+//
+// Solidity: function getTripartyCapacity() view returns(uint256 capacity, uint256 resetHeight)
+func (_AssetsBridge *AssetsBridgeCaller) GetTripartyCapacity(opts *bind.CallOpts) (struct {
+	Capacity    *big.Int
+	ResetHeight *big.Int
+}, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "getTripartyCapacity")
+
+	outstruct := new(struct {
+		Capacity    *big.Int
+		ResetHeight *big.Int
+	})
+	if err != nil {
+		return *outstruct, err
+	}
+
+	outstruct.Capacity = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	outstruct.ResetHeight = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+
+	return *outstruct, err
+
+}
+
+// GetTripartyCapacity is a free data retrieval call binding the contract method 0xe316e24b.
+//
+// Solidity: function getTripartyCapacity() view returns(uint256 capacity, uint256 resetHeight)
+func (_AssetsBridge *AssetsBridgeSession) GetTripartyCapacity() (struct {
+	Capacity    *big.Int
+	ResetHeight *big.Int
+}, error) {
+	return _AssetsBridge.Contract.GetTripartyCapacity(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyCapacity is a free data retrieval call binding the contract method 0xe316e24b.
+//
+// Solidity: function getTripartyCapacity() view returns(uint256 capacity, uint256 resetHeight)
+func (_AssetsBridge *AssetsBridgeCallerSession) GetTripartyCapacity() (struct {
+	Capacity    *big.Int
+	ResetHeight *big.Int
+}, error) {
+	return _AssetsBridge.Contract.GetTripartyCapacity(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyControllerBTCMinted is a free data retrieval call binding the contract method 0xff936ec0.
+//
+// Solidity: function getTripartyControllerBTCMinted(address controller) view returns(uint256 minted)
+func (_AssetsBridge *AssetsBridgeCaller) GetTripartyControllerBTCMinted(opts *bind.CallOpts, controller common.Address) (*big.Int, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "getTripartyControllerBTCMinted", controller)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetTripartyControllerBTCMinted is a free data retrieval call binding the contract method 0xff936ec0.
+//
+// Solidity: function getTripartyControllerBTCMinted(address controller) view returns(uint256 minted)
+func (_AssetsBridge *AssetsBridgeSession) GetTripartyControllerBTCMinted(controller common.Address) (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyControllerBTCMinted(&_AssetsBridge.CallOpts, controller)
+}
+
+// GetTripartyControllerBTCMinted is a free data retrieval call binding the contract method 0xff936ec0.
+//
+// Solidity: function getTripartyControllerBTCMinted(address controller) view returns(uint256 minted)
+func (_AssetsBridge *AssetsBridgeCallerSession) GetTripartyControllerBTCMinted(controller common.Address) (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyControllerBTCMinted(&_AssetsBridge.CallOpts, controller)
+}
+
+// GetTripartyLimits is a free data retrieval call binding the contract method 0x3f774f8c.
+//
+// Solidity: function getTripartyLimits() view returns(uint256 perRequestLimit, uint256 windowLimit)
+func (_AssetsBridge *AssetsBridgeCaller) GetTripartyLimits(opts *bind.CallOpts) (struct {
+	PerRequestLimit *big.Int
+	WindowLimit     *big.Int
+}, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "getTripartyLimits")
+
+	outstruct := new(struct {
+		PerRequestLimit *big.Int
+		WindowLimit     *big.Int
+	})
+	if err != nil {
+		return *outstruct, err
+	}
+
+	outstruct.PerRequestLimit = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	outstruct.WindowLimit = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+
+	return *outstruct, err
+
+}
+
+// GetTripartyLimits is a free data retrieval call binding the contract method 0x3f774f8c.
+//
+// Solidity: function getTripartyLimits() view returns(uint256 perRequestLimit, uint256 windowLimit)
+func (_AssetsBridge *AssetsBridgeSession) GetTripartyLimits() (struct {
+	PerRequestLimit *big.Int
+	WindowLimit     *big.Int
+}, error) {
+	return _AssetsBridge.Contract.GetTripartyLimits(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyLimits is a free data retrieval call binding the contract method 0x3f774f8c.
+//
+// Solidity: function getTripartyLimits() view returns(uint256 perRequestLimit, uint256 windowLimit)
+func (_AssetsBridge *AssetsBridgeCallerSession) GetTripartyLimits() (struct {
+	PerRequestLimit *big.Int
+	WindowLimit     *big.Int
+}, error) {
+	return _AssetsBridge.Contract.GetTripartyLimits(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyProcessedSequenceTip is a free data retrieval call binding the contract method 0x09f59e5a.
+//
+// Solidity: function getTripartyProcessedSequenceTip() view returns(uint256 sequenceTip)
+func (_AssetsBridge *AssetsBridgeCaller) GetTripartyProcessedSequenceTip(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "getTripartyProcessedSequenceTip")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetTripartyProcessedSequenceTip is a free data retrieval call binding the contract method 0x09f59e5a.
+//
+// Solidity: function getTripartyProcessedSequenceTip() view returns(uint256 sequenceTip)
+func (_AssetsBridge *AssetsBridgeSession) GetTripartyProcessedSequenceTip() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyProcessedSequenceTip(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyProcessedSequenceTip is a free data retrieval call binding the contract method 0x09f59e5a.
+//
+// Solidity: function getTripartyProcessedSequenceTip() view returns(uint256 sequenceTip)
+func (_AssetsBridge *AssetsBridgeCallerSession) GetTripartyProcessedSequenceTip() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyProcessedSequenceTip(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyRequestSequenceTip is a free data retrieval call binding the contract method 0xbbc52407.
+//
+// Solidity: function getTripartyRequestSequenceTip() view returns(uint256 sequenceTip)
+func (_AssetsBridge *AssetsBridgeCaller) GetTripartyRequestSequenceTip(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "getTripartyRequestSequenceTip")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetTripartyRequestSequenceTip is a free data retrieval call binding the contract method 0xbbc52407.
+//
+// Solidity: function getTripartyRequestSequenceTip() view returns(uint256 sequenceTip)
+func (_AssetsBridge *AssetsBridgeSession) GetTripartyRequestSequenceTip() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyRequestSequenceTip(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyRequestSequenceTip is a free data retrieval call binding the contract method 0xbbc52407.
+//
+// Solidity: function getTripartyRequestSequenceTip() view returns(uint256 sequenceTip)
+func (_AssetsBridge *AssetsBridgeCallerSession) GetTripartyRequestSequenceTip() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyRequestSequenceTip(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyTotalBTCMinted is a free data retrieval call binding the contract method 0x0fd52c98.
+//
+// Solidity: function getTripartyTotalBTCMinted() view returns(uint256 totalMinted)
+func (_AssetsBridge *AssetsBridgeCaller) GetTripartyTotalBTCMinted(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "getTripartyTotalBTCMinted")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetTripartyTotalBTCMinted is a free data retrieval call binding the contract method 0x0fd52c98.
+//
+// Solidity: function getTripartyTotalBTCMinted() view returns(uint256 totalMinted)
+func (_AssetsBridge *AssetsBridgeSession) GetTripartyTotalBTCMinted() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyTotalBTCMinted(&_AssetsBridge.CallOpts)
+}
+
+// GetTripartyTotalBTCMinted is a free data retrieval call binding the contract method 0x0fd52c98.
+//
+// Solidity: function getTripartyTotalBTCMinted() view returns(uint256 totalMinted)
+func (_AssetsBridge *AssetsBridgeCallerSession) GetTripartyTotalBTCMinted() (*big.Int, error) {
+	return _AssetsBridge.Contract.GetTripartyTotalBTCMinted(&_AssetsBridge.CallOpts)
+}
+
+// IsAllowedTripartyController is a free data retrieval call binding the contract method 0x2417c09d.
+//
+// Solidity: function isAllowedTripartyController(address controller) view returns(bool)
+func (_AssetsBridge *AssetsBridgeCaller) IsAllowedTripartyController(opts *bind.CallOpts, controller common.Address) (bool, error) {
+	var out []interface{}
+	err := _AssetsBridge.contract.Call(opts, &out, "isAllowedTripartyController", controller)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// IsAllowedTripartyController is a free data retrieval call binding the contract method 0x2417c09d.
+//
+// Solidity: function isAllowedTripartyController(address controller) view returns(bool)
+func (_AssetsBridge *AssetsBridgeSession) IsAllowedTripartyController(controller common.Address) (bool, error) {
+	return _AssetsBridge.Contract.IsAllowedTripartyController(&_AssetsBridge.CallOpts, controller)
+}
+
+// IsAllowedTripartyController is a free data retrieval call binding the contract method 0x2417c09d.
+//
+// Solidity: function isAllowedTripartyController(address controller) view returns(bool)
+func (_AssetsBridge *AssetsBridgeCallerSession) IsAllowedTripartyController(controller common.Address) (bool, error) {
+	return _AssetsBridge.Contract.IsAllowedTripartyController(&_AssetsBridge.CallOpts, controller)
+}
+
+// AllowTripartyController is a paid mutator transaction binding the contract method 0x85b44877.
+//
+// Solidity: function allowTripartyController(address controller, bool isAllowed) returns(bool)
+func (_AssetsBridge *AssetsBridgeTransactor) AllowTripartyController(opts *bind.TransactOpts, controller common.Address, isAllowed bool) (*types.Transaction, error) {
+	return _AssetsBridge.contract.Transact(opts, "allowTripartyController", controller, isAllowed)
+}
+
+// AllowTripartyController is a paid mutator transaction binding the contract method 0x85b44877.
+//
+// Solidity: function allowTripartyController(address controller, bool isAllowed) returns(bool)
+func (_AssetsBridge *AssetsBridgeSession) AllowTripartyController(controller common.Address, isAllowed bool) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.AllowTripartyController(&_AssetsBridge.TransactOpts, controller, isAllowed)
+}
+
+// AllowTripartyController is a paid mutator transaction binding the contract method 0x85b44877.
+//
+// Solidity: function allowTripartyController(address controller, bool isAllowed) returns(bool)
+func (_AssetsBridge *AssetsBridgeTransactorSession) AllowTripartyController(controller common.Address, isAllowed bool) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.AllowTripartyController(&_AssetsBridge.TransactOpts, controller, isAllowed)
 }
 
 // Bridge is a paid mutator transaction binding the contract method 0xc0b3cc19.
@@ -528,6 +826,27 @@ func (_AssetsBridge *AssetsBridgeTransactorSession) BridgeOut(token common.Addre
 	return _AssetsBridge.Contract.BridgeOut(&_AssetsBridge.TransactOpts, token, amount, chain, recipient)
 }
 
+// BridgeTriparty is a paid mutator transaction binding the contract method 0x911bf1ca.
+//
+// Solidity: function bridgeTriparty(address recipient, uint256 amount, bytes callbackData) returns(uint256 requestId)
+func (_AssetsBridge *AssetsBridgeTransactor) BridgeTriparty(opts *bind.TransactOpts, recipient common.Address, amount *big.Int, callbackData []byte) (*types.Transaction, error) {
+	return _AssetsBridge.contract.Transact(opts, "bridgeTriparty", recipient, amount, callbackData)
+}
+
+// BridgeTriparty is a paid mutator transaction binding the contract method 0x911bf1ca.
+//
+// Solidity: function bridgeTriparty(address recipient, uint256 amount, bytes callbackData) returns(uint256 requestId)
+func (_AssetsBridge *AssetsBridgeSession) BridgeTriparty(recipient common.Address, amount *big.Int, callbackData []byte) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.BridgeTriparty(&_AssetsBridge.TransactOpts, recipient, amount, callbackData)
+}
+
+// BridgeTriparty is a paid mutator transaction binding the contract method 0x911bf1ca.
+//
+// Solidity: function bridgeTriparty(address recipient, uint256 amount, bytes callbackData) returns(uint256 requestId)
+func (_AssetsBridge *AssetsBridgeTransactorSession) BridgeTriparty(recipient common.Address, amount *big.Int, callbackData []byte) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.BridgeTriparty(&_AssetsBridge.TransactOpts, recipient, amount, callbackData)
+}
+
 // CreateERC20TokenMapping is a paid mutator transaction binding the contract method 0x3b5586eb.
 //
 // Solidity: function createERC20TokenMapping(address sourceToken, address mezoToken) returns(bool)
@@ -570,27 +889,6 @@ func (_AssetsBridge *AssetsBridgeTransactorSession) DeleteERC20TokenMapping(sour
 	return _AssetsBridge.Contract.DeleteERC20TokenMapping(&_AssetsBridge.TransactOpts, sourceToken)
 }
 
-// PauseBridgeOut is a paid mutator transaction binding the contract method 0x2f1d448f.
-//
-// Solidity: function pauseBridgeOut() returns(bool)
-func (_AssetsBridge *AssetsBridgeTransactor) PauseBridgeOut(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _AssetsBridge.contract.Transact(opts, "pauseBridgeOut")
-}
-
-// PauseBridgeOut is a paid mutator transaction binding the contract method 0x2f1d448f.
-//
-// Solidity: function pauseBridgeOut() returns(bool)
-func (_AssetsBridge *AssetsBridgeSession) PauseBridgeOut() (*types.Transaction, error) {
-	return _AssetsBridge.Contract.PauseBridgeOut(&_AssetsBridge.TransactOpts)
-}
-
-// PauseBridgeOut is a paid mutator transaction binding the contract method 0x2f1d448f.
-//
-// Solidity: function pauseBridgeOut() returns(bool)
-func (_AssetsBridge *AssetsBridgeTransactorSession) PauseBridgeOut() (*types.Transaction, error) {
-	return _AssetsBridge.Contract.PauseBridgeOut(&_AssetsBridge.TransactOpts)
-}
-
 // SetMinBridgeOutAmount is a paid mutator transaction binding the contract method 0x9ea147ea.
 //
 // Solidity: function setMinBridgeOutAmount(address mezoToken, uint256 minAmount) returns(bool)
@@ -610,6 +908,27 @@ func (_AssetsBridge *AssetsBridgeSession) SetMinBridgeOutAmount(mezoToken common
 // Solidity: function setMinBridgeOutAmount(address mezoToken, uint256 minAmount) returns(bool)
 func (_AssetsBridge *AssetsBridgeTransactorSession) SetMinBridgeOutAmount(mezoToken common.Address, minAmount *big.Int) (*types.Transaction, error) {
 	return _AssetsBridge.Contract.SetMinBridgeOutAmount(&_AssetsBridge.TransactOpts, mezoToken, minAmount)
+}
+
+// SetMinBridgeOutAmountForBitcoinChain is a paid mutator transaction binding the contract method 0xa1a1ff40.
+//
+// Solidity: function setMinBridgeOutAmountForBitcoinChain(uint256 minAmount) returns(bool)
+func (_AssetsBridge *AssetsBridgeTransactor) SetMinBridgeOutAmountForBitcoinChain(opts *bind.TransactOpts, minAmount *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.contract.Transact(opts, "setMinBridgeOutAmountForBitcoinChain", minAmount)
+}
+
+// SetMinBridgeOutAmountForBitcoinChain is a paid mutator transaction binding the contract method 0xa1a1ff40.
+//
+// Solidity: function setMinBridgeOutAmountForBitcoinChain(uint256 minAmount) returns(bool)
+func (_AssetsBridge *AssetsBridgeSession) SetMinBridgeOutAmountForBitcoinChain(minAmount *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.SetMinBridgeOutAmountForBitcoinChain(&_AssetsBridge.TransactOpts, minAmount)
+}
+
+// SetMinBridgeOutAmountForBitcoinChain is a paid mutator transaction binding the contract method 0xa1a1ff40.
+//
+// Solidity: function setMinBridgeOutAmountForBitcoinChain(uint256 minAmount) returns(bool)
+func (_AssetsBridge *AssetsBridgeTransactorSession) SetMinBridgeOutAmountForBitcoinChain(minAmount *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.SetMinBridgeOutAmountForBitcoinChain(&_AssetsBridge.TransactOpts, minAmount)
 }
 
 // SetOutflowLimit is a paid mutator transaction binding the contract method 0x0f49bc7b.
@@ -633,25 +952,46 @@ func (_AssetsBridge *AssetsBridgeTransactorSession) SetOutflowLimit(token common
 	return _AssetsBridge.Contract.SetOutflowLimit(&_AssetsBridge.TransactOpts, token, limit)
 }
 
-// SetPauser is a paid mutator transaction binding the contract method 0x2d88af4a.
+// SetTripartyBlockDelay is a paid mutator transaction binding the contract method 0xa9693c4f.
 //
-// Solidity: function setPauser(address pauser) returns(bool)
-func (_AssetsBridge *AssetsBridgeTransactor) SetPauser(opts *bind.TransactOpts, pauser common.Address) (*types.Transaction, error) {
-	return _AssetsBridge.contract.Transact(opts, "setPauser", pauser)
+// Solidity: function setTripartyBlockDelay(uint256 delay) returns(bool)
+func (_AssetsBridge *AssetsBridgeTransactor) SetTripartyBlockDelay(opts *bind.TransactOpts, delay *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.contract.Transact(opts, "setTripartyBlockDelay", delay)
 }
 
-// SetPauser is a paid mutator transaction binding the contract method 0x2d88af4a.
+// SetTripartyBlockDelay is a paid mutator transaction binding the contract method 0xa9693c4f.
 //
-// Solidity: function setPauser(address pauser) returns(bool)
-func (_AssetsBridge *AssetsBridgeSession) SetPauser(pauser common.Address) (*types.Transaction, error) {
-	return _AssetsBridge.Contract.SetPauser(&_AssetsBridge.TransactOpts, pauser)
+// Solidity: function setTripartyBlockDelay(uint256 delay) returns(bool)
+func (_AssetsBridge *AssetsBridgeSession) SetTripartyBlockDelay(delay *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.SetTripartyBlockDelay(&_AssetsBridge.TransactOpts, delay)
 }
 
-// SetPauser is a paid mutator transaction binding the contract method 0x2d88af4a.
+// SetTripartyBlockDelay is a paid mutator transaction binding the contract method 0xa9693c4f.
 //
-// Solidity: function setPauser(address pauser) returns(bool)
-func (_AssetsBridge *AssetsBridgeTransactorSession) SetPauser(pauser common.Address) (*types.Transaction, error) {
-	return _AssetsBridge.Contract.SetPauser(&_AssetsBridge.TransactOpts, pauser)
+// Solidity: function setTripartyBlockDelay(uint256 delay) returns(bool)
+func (_AssetsBridge *AssetsBridgeTransactorSession) SetTripartyBlockDelay(delay *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.SetTripartyBlockDelay(&_AssetsBridge.TransactOpts, delay)
+}
+
+// SetTripartyLimits is a paid mutator transaction binding the contract method 0x8de86f2d.
+//
+// Solidity: function setTripartyLimits(uint256 perRequestLimit, uint256 windowLimit) returns(bool)
+func (_AssetsBridge *AssetsBridgeTransactor) SetTripartyLimits(opts *bind.TransactOpts, perRequestLimit *big.Int, windowLimit *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.contract.Transact(opts, "setTripartyLimits", perRequestLimit, windowLimit)
+}
+
+// SetTripartyLimits is a paid mutator transaction binding the contract method 0x8de86f2d.
+//
+// Solidity: function setTripartyLimits(uint256 perRequestLimit, uint256 windowLimit) returns(bool)
+func (_AssetsBridge *AssetsBridgeSession) SetTripartyLimits(perRequestLimit *big.Int, windowLimit *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.SetTripartyLimits(&_AssetsBridge.TransactOpts, perRequestLimit, windowLimit)
+}
+
+// SetTripartyLimits is a paid mutator transaction binding the contract method 0x8de86f2d.
+//
+// Solidity: function setTripartyLimits(uint256 perRequestLimit, uint256 windowLimit) returns(bool)
+func (_AssetsBridge *AssetsBridgeTransactorSession) SetTripartyLimits(perRequestLimit *big.Int, windowLimit *big.Int) (*types.Transaction, error) {
+	return _AssetsBridge.Contract.SetTripartyLimits(&_AssetsBridge.TransactOpts, perRequestLimit, windowLimit)
 }
 
 // AssetsBridgeAssetsUnlockedIterator is returned from FilterAssetsUnlocked and is used to iterate over the raw logs and unpacked data for AssetsUnlocked events raised by the AssetsBridge contract.
@@ -1125,6 +1465,140 @@ func (_AssetsBridge *AssetsBridgeFilterer) ParseERC20TokenMappingDeleted(log typ
 	return event, nil
 }
 
+// AssetsBridgeMinBridgeOutAmountForBitcoinChainSetIterator is returned from FilterMinBridgeOutAmountForBitcoinChainSet and is used to iterate over the raw logs and unpacked data for MinBridgeOutAmountForBitcoinChainSet events raised by the AssetsBridge contract.
+type AssetsBridgeMinBridgeOutAmountForBitcoinChainSetIterator struct {
+	Event *AssetsBridgeMinBridgeOutAmountForBitcoinChainSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AssetsBridgeMinBridgeOutAmountForBitcoinChainSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AssetsBridgeMinBridgeOutAmountForBitcoinChainSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AssetsBridgeMinBridgeOutAmountForBitcoinChainSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *AssetsBridgeMinBridgeOutAmountForBitcoinChainSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AssetsBridgeMinBridgeOutAmountForBitcoinChainSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AssetsBridgeMinBridgeOutAmountForBitcoinChainSet represents a MinBridgeOutAmountForBitcoinChainSet event raised by the AssetsBridge contract.
+type AssetsBridgeMinBridgeOutAmountForBitcoinChainSet struct {
+	MinAmount *big.Int
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterMinBridgeOutAmountForBitcoinChainSet is a free log retrieval operation binding the contract event 0x2fe1c6175a511048a67b34ed04f2793150752f447d53609f5d4e03410e697a65.
+//
+// Solidity: event MinBridgeOutAmountForBitcoinChainSet(uint256 minAmount)
+func (_AssetsBridge *AssetsBridgeFilterer) FilterMinBridgeOutAmountForBitcoinChainSet(opts *bind.FilterOpts) (*AssetsBridgeMinBridgeOutAmountForBitcoinChainSetIterator, error) {
+
+	logs, sub, err := _AssetsBridge.contract.FilterLogs(opts, "MinBridgeOutAmountForBitcoinChainSet")
+	if err != nil {
+		return nil, err
+	}
+	return &AssetsBridgeMinBridgeOutAmountForBitcoinChainSetIterator{contract: _AssetsBridge.contract, event: "MinBridgeOutAmountForBitcoinChainSet", logs: logs, sub: sub}, nil
+}
+
+// WatchMinBridgeOutAmountForBitcoinChainSet is a free log subscription operation binding the contract event 0x2fe1c6175a511048a67b34ed04f2793150752f447d53609f5d4e03410e697a65.
+//
+// Solidity: event MinBridgeOutAmountForBitcoinChainSet(uint256 minAmount)
+func (_AssetsBridge *AssetsBridgeFilterer) WatchMinBridgeOutAmountForBitcoinChainSet(opts *bind.WatchOpts, sink chan<- *AssetsBridgeMinBridgeOutAmountForBitcoinChainSet) (event.Subscription, error) {
+
+	logs, sub, err := _AssetsBridge.contract.WatchLogs(opts, "MinBridgeOutAmountForBitcoinChainSet")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AssetsBridgeMinBridgeOutAmountForBitcoinChainSet)
+				if err := _AssetsBridge.contract.UnpackLog(event, "MinBridgeOutAmountForBitcoinChainSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseMinBridgeOutAmountForBitcoinChainSet is a log parse operation binding the contract event 0x2fe1c6175a511048a67b34ed04f2793150752f447d53609f5d4e03410e697a65.
+//
+// Solidity: event MinBridgeOutAmountForBitcoinChainSet(uint256 minAmount)
+func (_AssetsBridge *AssetsBridgeFilterer) ParseMinBridgeOutAmountForBitcoinChainSet(log types.Log) (*AssetsBridgeMinBridgeOutAmountForBitcoinChainSet, error) {
+	event := new(AssetsBridgeMinBridgeOutAmountForBitcoinChainSet)
+	if err := _AssetsBridge.contract.UnpackLog(event, "MinBridgeOutAmountForBitcoinChainSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
 // AssetsBridgeMinBridgeOutAmountSetIterator is returned from FilterMinBridgeOutAmountSet and is used to iterate over the raw logs and unpacked data for MinBridgeOutAmountSet events raised by the AssetsBridge contract.
 type AssetsBridgeMinBridgeOutAmountSetIterator struct {
 	Event *AssetsBridgeMinBridgeOutAmountSet // Event containing the contract specifics and raw log
@@ -1264,6 +1738,575 @@ func (_AssetsBridge *AssetsBridgeFilterer) WatchMinBridgeOutAmountSet(opts *bind
 func (_AssetsBridge *AssetsBridgeFilterer) ParseMinBridgeOutAmountSet(log types.Log) (*AssetsBridgeMinBridgeOutAmountSet, error) {
 	event := new(AssetsBridgeMinBridgeOutAmountSet)
 	if err := _AssetsBridge.contract.UnpackLog(event, "MinBridgeOutAmountSet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// AssetsBridgeTripartyBlockDelaySetIterator is returned from FilterTripartyBlockDelaySet and is used to iterate over the raw logs and unpacked data for TripartyBlockDelaySet events raised by the AssetsBridge contract.
+type AssetsBridgeTripartyBlockDelaySetIterator struct {
+	Event *AssetsBridgeTripartyBlockDelaySet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AssetsBridgeTripartyBlockDelaySetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AssetsBridgeTripartyBlockDelaySet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AssetsBridgeTripartyBlockDelaySet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *AssetsBridgeTripartyBlockDelaySetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AssetsBridgeTripartyBlockDelaySetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AssetsBridgeTripartyBlockDelaySet represents a TripartyBlockDelaySet event raised by the AssetsBridge contract.
+type AssetsBridgeTripartyBlockDelaySet struct {
+	Delay *big.Int
+	Raw   types.Log // Blockchain specific contextual infos
+}
+
+// FilterTripartyBlockDelaySet is a free log retrieval operation binding the contract event 0x1619a0d72591a340f8d5658ce3e50491ecb927648d21241327745c013982020e.
+//
+// Solidity: event TripartyBlockDelaySet(uint256 delay)
+func (_AssetsBridge *AssetsBridgeFilterer) FilterTripartyBlockDelaySet(opts *bind.FilterOpts) (*AssetsBridgeTripartyBlockDelaySetIterator, error) {
+
+	logs, sub, err := _AssetsBridge.contract.FilterLogs(opts, "TripartyBlockDelaySet")
+	if err != nil {
+		return nil, err
+	}
+	return &AssetsBridgeTripartyBlockDelaySetIterator{contract: _AssetsBridge.contract, event: "TripartyBlockDelaySet", logs: logs, sub: sub}, nil
+}
+
+// WatchTripartyBlockDelaySet is a free log subscription operation binding the contract event 0x1619a0d72591a340f8d5658ce3e50491ecb927648d21241327745c013982020e.
+//
+// Solidity: event TripartyBlockDelaySet(uint256 delay)
+func (_AssetsBridge *AssetsBridgeFilterer) WatchTripartyBlockDelaySet(opts *bind.WatchOpts, sink chan<- *AssetsBridgeTripartyBlockDelaySet) (event.Subscription, error) {
+
+	logs, sub, err := _AssetsBridge.contract.WatchLogs(opts, "TripartyBlockDelaySet")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AssetsBridgeTripartyBlockDelaySet)
+				if err := _AssetsBridge.contract.UnpackLog(event, "TripartyBlockDelaySet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseTripartyBlockDelaySet is a log parse operation binding the contract event 0x1619a0d72591a340f8d5658ce3e50491ecb927648d21241327745c013982020e.
+//
+// Solidity: event TripartyBlockDelaySet(uint256 delay)
+func (_AssetsBridge *AssetsBridgeFilterer) ParseTripartyBlockDelaySet(log types.Log) (*AssetsBridgeTripartyBlockDelaySet, error) {
+	event := new(AssetsBridgeTripartyBlockDelaySet)
+	if err := _AssetsBridge.contract.UnpackLog(event, "TripartyBlockDelaySet", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// AssetsBridgeTripartyBridgeRequestedIterator is returned from FilterTripartyBridgeRequested and is used to iterate over the raw logs and unpacked data for TripartyBridgeRequested events raised by the AssetsBridge contract.
+type AssetsBridgeTripartyBridgeRequestedIterator struct {
+	Event *AssetsBridgeTripartyBridgeRequested // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AssetsBridgeTripartyBridgeRequestedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AssetsBridgeTripartyBridgeRequested)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AssetsBridgeTripartyBridgeRequested)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *AssetsBridgeTripartyBridgeRequestedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AssetsBridgeTripartyBridgeRequestedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AssetsBridgeTripartyBridgeRequested represents a TripartyBridgeRequested event raised by the AssetsBridge contract.
+type AssetsBridgeTripartyBridgeRequested struct {
+	RequestId  *big.Int
+	Recipient  common.Address
+	Amount     *big.Int
+	Controller common.Address
+	Raw        types.Log // Blockchain specific contextual infos
+}
+
+// FilterTripartyBridgeRequested is a free log retrieval operation binding the contract event 0x9d8ea8aa77547277b47ff199802f61f794fff13b5e43ce283c1cc7a35f102c91.
+//
+// Solidity: event TripartyBridgeRequested(uint256 indexed requestId, address indexed recipient, uint256 amount, address controller)
+func (_AssetsBridge *AssetsBridgeFilterer) FilterTripartyBridgeRequested(opts *bind.FilterOpts, requestId []*big.Int, recipient []common.Address) (*AssetsBridgeTripartyBridgeRequestedIterator, error) {
+
+	var requestIdRule []interface{}
+	for _, requestIdItem := range requestId {
+		requestIdRule = append(requestIdRule, requestIdItem)
+	}
+	var recipientRule []interface{}
+	for _, recipientItem := range recipient {
+		recipientRule = append(recipientRule, recipientItem)
+	}
+
+	logs, sub, err := _AssetsBridge.contract.FilterLogs(opts, "TripartyBridgeRequested", requestIdRule, recipientRule)
+	if err != nil {
+		return nil, err
+	}
+	return &AssetsBridgeTripartyBridgeRequestedIterator{contract: _AssetsBridge.contract, event: "TripartyBridgeRequested", logs: logs, sub: sub}, nil
+}
+
+// WatchTripartyBridgeRequested is a free log subscription operation binding the contract event 0x9d8ea8aa77547277b47ff199802f61f794fff13b5e43ce283c1cc7a35f102c91.
+//
+// Solidity: event TripartyBridgeRequested(uint256 indexed requestId, address indexed recipient, uint256 amount, address controller)
+func (_AssetsBridge *AssetsBridgeFilterer) WatchTripartyBridgeRequested(opts *bind.WatchOpts, sink chan<- *AssetsBridgeTripartyBridgeRequested, requestId []*big.Int, recipient []common.Address) (event.Subscription, error) {
+
+	var requestIdRule []interface{}
+	for _, requestIdItem := range requestId {
+		requestIdRule = append(requestIdRule, requestIdItem)
+	}
+	var recipientRule []interface{}
+	for _, recipientItem := range recipient {
+		recipientRule = append(recipientRule, recipientItem)
+	}
+
+	logs, sub, err := _AssetsBridge.contract.WatchLogs(opts, "TripartyBridgeRequested", requestIdRule, recipientRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AssetsBridgeTripartyBridgeRequested)
+				if err := _AssetsBridge.contract.UnpackLog(event, "TripartyBridgeRequested", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseTripartyBridgeRequested is a log parse operation binding the contract event 0x9d8ea8aa77547277b47ff199802f61f794fff13b5e43ce283c1cc7a35f102c91.
+//
+// Solidity: event TripartyBridgeRequested(uint256 indexed requestId, address indexed recipient, uint256 amount, address controller)
+func (_AssetsBridge *AssetsBridgeFilterer) ParseTripartyBridgeRequested(log types.Log) (*AssetsBridgeTripartyBridgeRequested, error) {
+	event := new(AssetsBridgeTripartyBridgeRequested)
+	if err := _AssetsBridge.contract.UnpackLog(event, "TripartyBridgeRequested", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// AssetsBridgeTripartyControllerAllowedIterator is returned from FilterTripartyControllerAllowed and is used to iterate over the raw logs and unpacked data for TripartyControllerAllowed events raised by the AssetsBridge contract.
+type AssetsBridgeTripartyControllerAllowedIterator struct {
+	Event *AssetsBridgeTripartyControllerAllowed // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AssetsBridgeTripartyControllerAllowedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AssetsBridgeTripartyControllerAllowed)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AssetsBridgeTripartyControllerAllowed)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *AssetsBridgeTripartyControllerAllowedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AssetsBridgeTripartyControllerAllowedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AssetsBridgeTripartyControllerAllowed represents a TripartyControllerAllowed event raised by the AssetsBridge contract.
+type AssetsBridgeTripartyControllerAllowed struct {
+	Controller common.Address
+	IsAllowed  bool
+	Raw        types.Log // Blockchain specific contextual infos
+}
+
+// FilterTripartyControllerAllowed is a free log retrieval operation binding the contract event 0x95a02bc24206c08fea17c6a5c5b405461dd1f972564eaee405f8605fa30fb426.
+//
+// Solidity: event TripartyControllerAllowed(address indexed controller, bool isAllowed)
+func (_AssetsBridge *AssetsBridgeFilterer) FilterTripartyControllerAllowed(opts *bind.FilterOpts, controller []common.Address) (*AssetsBridgeTripartyControllerAllowedIterator, error) {
+
+	var controllerRule []interface{}
+	for _, controllerItem := range controller {
+		controllerRule = append(controllerRule, controllerItem)
+	}
+
+	logs, sub, err := _AssetsBridge.contract.FilterLogs(opts, "TripartyControllerAllowed", controllerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &AssetsBridgeTripartyControllerAllowedIterator{contract: _AssetsBridge.contract, event: "TripartyControllerAllowed", logs: logs, sub: sub}, nil
+}
+
+// WatchTripartyControllerAllowed is a free log subscription operation binding the contract event 0x95a02bc24206c08fea17c6a5c5b405461dd1f972564eaee405f8605fa30fb426.
+//
+// Solidity: event TripartyControllerAllowed(address indexed controller, bool isAllowed)
+func (_AssetsBridge *AssetsBridgeFilterer) WatchTripartyControllerAllowed(opts *bind.WatchOpts, sink chan<- *AssetsBridgeTripartyControllerAllowed, controller []common.Address) (event.Subscription, error) {
+
+	var controllerRule []interface{}
+	for _, controllerItem := range controller {
+		controllerRule = append(controllerRule, controllerItem)
+	}
+
+	logs, sub, err := _AssetsBridge.contract.WatchLogs(opts, "TripartyControllerAllowed", controllerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AssetsBridgeTripartyControllerAllowed)
+				if err := _AssetsBridge.contract.UnpackLog(event, "TripartyControllerAllowed", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseTripartyControllerAllowed is a log parse operation binding the contract event 0x95a02bc24206c08fea17c6a5c5b405461dd1f972564eaee405f8605fa30fb426.
+//
+// Solidity: event TripartyControllerAllowed(address indexed controller, bool isAllowed)
+func (_AssetsBridge *AssetsBridgeFilterer) ParseTripartyControllerAllowed(log types.Log) (*AssetsBridgeTripartyControllerAllowed, error) {
+	event := new(AssetsBridgeTripartyControllerAllowed)
+	if err := _AssetsBridge.contract.UnpackLog(event, "TripartyControllerAllowed", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// AssetsBridgeTripartyLimitsSetIterator is returned from FilterTripartyLimitsSet and is used to iterate over the raw logs and unpacked data for TripartyLimitsSet events raised by the AssetsBridge contract.
+type AssetsBridgeTripartyLimitsSetIterator struct {
+	Event *AssetsBridgeTripartyLimitsSet // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AssetsBridgeTripartyLimitsSetIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AssetsBridgeTripartyLimitsSet)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AssetsBridgeTripartyLimitsSet)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *AssetsBridgeTripartyLimitsSetIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AssetsBridgeTripartyLimitsSetIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AssetsBridgeTripartyLimitsSet represents a TripartyLimitsSet event raised by the AssetsBridge contract.
+type AssetsBridgeTripartyLimitsSet struct {
+	PerRequestLimit *big.Int
+	WindowLimit     *big.Int
+	Raw             types.Log // Blockchain specific contextual infos
+}
+
+// FilterTripartyLimitsSet is a free log retrieval operation binding the contract event 0x39b988a502a65ad0c6432374e89eda8e67b97f82f363ac6b5232c04206b82bc3.
+//
+// Solidity: event TripartyLimitsSet(uint256 perRequestLimit, uint256 windowLimit)
+func (_AssetsBridge *AssetsBridgeFilterer) FilterTripartyLimitsSet(opts *bind.FilterOpts) (*AssetsBridgeTripartyLimitsSetIterator, error) {
+
+	logs, sub, err := _AssetsBridge.contract.FilterLogs(opts, "TripartyLimitsSet")
+	if err != nil {
+		return nil, err
+	}
+	return &AssetsBridgeTripartyLimitsSetIterator{contract: _AssetsBridge.contract, event: "TripartyLimitsSet", logs: logs, sub: sub}, nil
+}
+
+// WatchTripartyLimitsSet is a free log subscription operation binding the contract event 0x39b988a502a65ad0c6432374e89eda8e67b97f82f363ac6b5232c04206b82bc3.
+//
+// Solidity: event TripartyLimitsSet(uint256 perRequestLimit, uint256 windowLimit)
+func (_AssetsBridge *AssetsBridgeFilterer) WatchTripartyLimitsSet(opts *bind.WatchOpts, sink chan<- *AssetsBridgeTripartyLimitsSet) (event.Subscription, error) {
+
+	logs, sub, err := _AssetsBridge.contract.WatchLogs(opts, "TripartyLimitsSet")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AssetsBridgeTripartyLimitsSet)
+				if err := _AssetsBridge.contract.UnpackLog(event, "TripartyLimitsSet", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseTripartyLimitsSet is a log parse operation binding the contract event 0x39b988a502a65ad0c6432374e89eda8e67b97f82f363ac6b5232c04206b82bc3.
+//
+// Solidity: event TripartyLimitsSet(uint256 perRequestLimit, uint256 windowLimit)
+func (_AssetsBridge *AssetsBridgeFilterer) ParseTripartyLimitsSet(log types.Log) (*AssetsBridgeTripartyLimitsSet, error) {
+	event := new(AssetsBridgeTripartyLimitsSet)
+	if err := _AssetsBridge.contract.UnpackLog(event, "TripartyLimitsSet", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

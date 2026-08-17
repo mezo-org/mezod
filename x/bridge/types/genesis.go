@@ -24,12 +24,10 @@ func DefaultGenesis() *GenesisState {
 		AssetsUnlockedEvents:           nil,
 		BitcoinChainMinBridgeOutAmount: sdkmath.NewInt(0),
 		TokenMinBridgeOutAmounts:       nil,
-		Pauser:                         evmtypes.ZeroHexAddress(),
 		LastOutflowReset:               0,
 		CurrentOutflowLimits:           nil,
 		CurrentOutflowAmounts:          nil,
 		AllowedTripartyControllers:     nil,
-		TripartyPaused:                 false,
 		TripartyBlockDelay:             1,
 		TripartyPerRequestLimit:        sdkmath.NewInt(0),
 		TripartyWindowLimit:            sdkmath.NewInt(0),
@@ -39,6 +37,8 @@ func DefaultGenesis() *GenesisState {
 		TripartyWindowConsumed:         sdkmath.NewInt(0),
 		TripartyWindowLastReset:        0,
 		TripartyControllerBtcMinted:    nil,
+		BridgeOutPaused:                false,
+		BridgeInPaused:                 false,
 	}
 }
 

@@ -326,7 +326,9 @@ var xxx_messageInfo_SetCodeTx proto.InternalMessageInfo
 
 // SetCodeAuthorization is a single EIP-7702 authorization tuple.
 type SetCodeAuthorization struct {
-	// chain_id is the chain on which the authorization is valid; 0 means any.
+	// chain_id is the chain on which the authorization is valid. A nil/missing
+	// value is rejected by Validate; the zero value is the EIP-7702 "any chain"
+	// sentinel and is accepted.
 	ChainID *cosmossdk_io_math.Int `protobuf:"bytes,1,opt,name=chain_id,json=chainId,proto3,customtype=cosmossdk.io/math.Int" json:"chainID"`
 	// address is the hex formatted address whose code the signer authorizes.
 	Address string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`

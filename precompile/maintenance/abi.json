@@ -1,11 +1,80 @@
 [
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "bridgeIn",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "bridgeOut",
+        "type": "bool"
+      }
+    ],
+    "name": "BridgeLockdownSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previous",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "current",
+        "type": "address"
+      }
+    ],
+    "name": "EmergencyTeamSet",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "getBridgeLockdown",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "bridgeIn",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "bridgeOut",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "getChainFeeSplitterAddress",
     "outputs": [
       {
         "internalType": "address",
         "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getEmergencyTeam",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "team",
         "type": "address"
       }
     ],
@@ -67,12 +136,55 @@
   {
     "inputs": [
       {
+        "internalType": "bool",
+        "name": "bridgeIn",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "bridgeOut",
+        "type": "bool"
+      }
+    ],
+    "name": "setBridgeLockdown",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "chainFeeSplitterAddress",
         "type": "address"
       }
     ],
     "name": "setChainFeeSplitterAddress",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "team",
+        "type": "address"
+      }
+    ],
+    "name": "setEmergencyTeam",
     "outputs": [
       {
         "internalType": "bool",

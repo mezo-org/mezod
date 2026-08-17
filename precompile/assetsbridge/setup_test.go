@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"math/big"
 	"slices"
 	"testing"
@@ -28,7 +27,6 @@ import (
 	"github.com/mezo-org/mezod/testutil"
 	utiltx "github.com/mezo-org/mezod/testutil/tx"
 	"github.com/mezo-org/mezod/x/evm/statedb"
-	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -117,7 +115,28 @@ func (s *PrecompileTestSuite) SetupTest() {
 	s.ctx = s.app.BaseApp.NewContextLegacy(false, header)
 }
 
+// latestSettings returns the settings of the latest assets bridge precompile
+// version.
+func latestSettings() *assetsbridge.Settings {
+	return &assetsbridge.Settings{
+		Observability:   true,
+		BTCManagement:   true,
+		ERC20Management: true,
+		SequenceTipView: true,
+		BridgeOut:       true,
+		Triparty:        true,
+	}
+}
+
 func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodName string) {
+	s.RunMethodTestCasesWithSettings(testcases, methodName, latestSettings())
+}
+
+func (s *PrecompileTestSuite) RunMethodTestCasesWithSettings(
+	testcases []TestCase,
+	methodName string,
+	settings *assetsbridge.Settings,
+) {
 	for _, tc := range testcases {
 		s.Run(tc.name, func() {
 			evm := &vm.EVM{
@@ -132,14 +151,7 @@ func (s *PrecompileTestSuite) RunMethodTestCases(testcases []TestCase, methodNam
 				s.poaKeeper,
 				s.bridgeKeeper,
 				authzKeeper,
-				&assetsbridge.Settings{
-					Observability:   true,
-					BTCManagement:   true,
-					ERC20Management: true,
-					SequenceTipView: true,
-					BridgeOut:       true,
-					Triparty:        true,
-				},
+				settings,
 			)
 			s.Require().NoError(err)
 			s.assetsBridgePrecompile = assetsBridgePrecompile
@@ -232,11 +244,7 @@ type FakeBridgeKeeper struct {
 	outflowCurrent  map[string]math.Int
 	lastResetHeight uint64
 
-	pauser sdk.AccAddress
-	paused bool
-
 	tripartyControllers             map[string]bool
-	tripartyPaused                  bool
 	tripartyBlockDelay              int64
 	tripartyPerRequestLimit         math.Int
 	tripartyWindowLimit             math.Int
@@ -257,7 +265,6 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		minAmountByToken:            make(map[string]math.Int),
 		minAmountForBitcoinChain:    math.ZeroInt(),
 		tripartyControllers:         make(map[string]bool),
-		tripartyPaused:              false,
 		tripartyBlockDelay:          1,
 		tripartyPerRequestLimit:     math.ZeroInt(),
 		tripartyWindowLimit:         math.ZeroInt(),
@@ -439,33 +446,6 @@ func (k *FakeBridgeKeeper) increaseCurrentOutflow(token []byte, amount math.Int)
 	k.outflowCurrent[key] = current.Add(amount)
 }
 
-func (k *FakeBridgeKeeper) GetPauser(_ sdk.Context) sdk.AccAddress {
-	return k.pauser
-}
-
-func (k *FakeBridgeKeeper) SetPauser(_ sdk.Context, pauser sdk.AccAddress) {
-	k.pauser = pauser
-}
-
-func (k *FakeBridgeKeeper) PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error {
-	pauser := k.GetPauser(ctx)
-	if evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
-		return fmt.Errorf("no pauser is set")
-	}
-
-	if !pauser.Equals(caller) {
-		return fmt.Errorf("caller is not the pauser")
-	}
-
-	k.paused = true
-
-	return nil
-}
-
-func (k *FakeBridgeKeeper) isPaused() bool {
-	return k.paused
-}
-
 func (k *FakeBridgeKeeper) IsAllowedTripartyController(_ sdk.Context, controller []byte) bool {
 	return k.tripartyControllers[common.BytesToAddress(controller).Hex()]
 }
@@ -477,10 +457,6 @@ func (k *FakeBridgeKeeper) AllowTripartyController(_ sdk.Context, controller []b
 	} else {
 		delete(k.tripartyControllers, key)
 	}
-}
-
-func (k *FakeBridgeKeeper) SetTripartyPaused(_ sdk.Context, isPaused bool) {
-	k.tripartyPaused = isPaused
 }
 
 func (k *FakeBridgeKeeper) GetTripartyBlockDelay(_ sdk.Context) int64 {
@@ -549,10 +525,6 @@ func (k *FakeBridgeKeeper) GetTripartyControllerBTCMinted(_ sdk.Context, control
 		return math.ZeroInt()
 	}
 	return amount
-}
-
-func (k *FakeBridgeKeeper) IsTripartyPaused(_ sdk.Context) bool {
-	return k.tripartyPaused
 }
 
 func (k *FakeBridgeKeeper) GetTripartyRequestSequenceTip(_ sdk.Context) math.Int {

@@ -150,6 +150,10 @@ The Maintenance precompile provides administrative functions for managing
 certain blockchain settings, such as enabling or disabling non-EIP155
 transactions and modifying precompile bytecode.
 
+It is also the single emergency surface of the chain. It carries the Emergency
+Team role management and the lockdown levels, described in
+[`docs/emergency-controls.md`](./emergency-controls.md).
+
 #### Address
 
 ```

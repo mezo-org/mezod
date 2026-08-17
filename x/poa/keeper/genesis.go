@@ -19,6 +19,13 @@ func (k Keeper) InitGenesis(ctx sdk.Context, data types.GenesisState) (res []abc
 
 	k.setOwner(ctx, sdk.MustAccAddressFromBech32(data.Owner))
 
+	if data.EmergencyTeam != "" {
+		k.SetEmergencyTeamUnchecked(
+			ctx,
+			sdk.MustAccAddressFromBech32(data.EmergencyTeam),
+		)
+	}
+
 	for _, validator := range data.Validators {
 		k.setValidator(ctx, validator)
 		k.setValidatorByConsAddr(ctx, validator)
@@ -76,6 +83,7 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		Owner:                k.GetOwner(ctx).String(),
 		Validators:           k.GetAllValidators(ctx),
 		PrivilegeAssignments: privilegeAssignments,
+		EmergencyTeam:        k.GetEmergencyTeam(ctx).String(),
 	}
 }
 

@@ -68,6 +68,112 @@ func TestValidateGenesis(t *testing.T) {
 	}
 }
 
+func TestValidateGenesisEmergencyTeam(t *testing.T) {
+	// Generate an owner address using the mockValidator function.
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
+	// Generate an emergency team address using the mockValidator function.
+	helper, _ = mockValidator()
+	emergencyTeam := sdk.AccAddress(helper.GetOperator())
+
+	validator, _ := mockValidator()
+
+	// An empty emergency team is valid. The role is optional.
+	genesis := types.NewGenesisState(
+		types.DefaultParams(),
+		owner,
+		[]types.Validator{validator},
+	)
+	if genesis.EmergencyTeam != "" {
+		t.Errorf("the default genesis state emergency team should be empty, got %v", genesis.EmergencyTeam)
+	}
+	if types.ValidateGenesis(genesis) != nil {
+		t.Errorf("the genesis state %v should be valid", genesis)
+	}
+
+	// A properly encoded emergency team is valid.
+	genesis.EmergencyTeam = emergencyTeam.String()
+	if types.ValidateGenesis(genesis) != nil {
+		t.Errorf("the genesis state %v should be valid", genesis)
+	}
+
+	// A malformed emergency team is invalid.
+	genesis.EmergencyTeam = "not-a-bech32-address"
+	if types.ValidateGenesis(genesis) == nil {
+		t.Errorf("the genesis state %v should not be valid", genesis)
+	}
+}
+
+func TestInitAndExportGenesisEmergencyTeam(t *testing.T) {
+	// Generate an owner address using the mockValidator function.
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
+	// Generate an emergency team address using the mockValidator function.
+	helper, _ = mockValidator()
+	emergencyTeam := sdk.AccAddress(helper.GetOperator())
+
+	validator, _ := mockValidator()
+
+	testGenesis := types.NewGenesisState(
+		types.DefaultParams(),
+		owner,
+		[]types.Validator{validator},
+	)
+	testGenesis.EmergencyTeam = emergencyTeam.String()
+
+	ctx, poaKeeper := mockContext()
+	poaKeeper.InitGenesis(ctx, testGenesis)
+
+	currentEmergencyTeam := poaKeeper.GetEmergencyTeam(ctx)
+	if !currentEmergencyTeam.Equals(emergencyTeam) {
+		t.Errorf(
+			"InitGenesis should set the emergency team to %v, got %v",
+			emergencyTeam,
+			currentEmergencyTeam,
+		)
+	}
+
+	exportedGenesis := poaKeeper.ExportGenesis(ctx)
+	if exportedGenesis.EmergencyTeam != emergencyTeam.String() {
+		t.Errorf(
+			"exported genesis emergency team should be %v, not %v",
+			emergencyTeam.String(),
+			exportedGenesis.EmergencyTeam,
+		)
+	}
+}
+
+func TestInitAndExportGenesisWithoutEmergencyTeam(t *testing.T) {
+	// Generate an owner address using the mockValidator function.
+	helper, _ := mockValidator()
+	owner := sdk.AccAddress(helper.GetOperator())
+
+	validator, _ := mockValidator()
+
+	testGenesis := types.NewGenesisState(
+		types.DefaultParams(),
+		owner,
+		[]types.Validator{validator},
+	)
+
+	ctx, poaKeeper := mockContext()
+	poaKeeper.InitGenesis(ctx, testGenesis)
+
+	if !poaKeeper.GetEmergencyTeam(ctx).Empty() {
+		t.Errorf("InitGenesis without an emergency team should leave the role unset")
+	}
+
+	exportedGenesis := poaKeeper.ExportGenesis(ctx)
+	if exportedGenesis.EmergencyTeam != "" {
+		t.Errorf(
+			"exported genesis emergency team should be empty, not %v",
+			exportedGenesis.EmergencyTeam,
+		)
+	}
+}
+
 func TestInitGenesis(t *testing.T) {
 	// Generate an owner address using the mockValidator function.
 	helper, _ := mockValidator()

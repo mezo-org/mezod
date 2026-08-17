@@ -1,58 +1,58 @@
 package keeper
 
 import (
-	"fmt"
-
-	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/mezo-org/mezod/x/bridge/types"
-	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
-// GetPauser returns the current pauser address.
-func (k Keeper) GetPauser(ctx sdk.Context) sdk.AccAddress {
+// SetBridgeOutPaused sets or removes the bridge-out paused flag. Pausing does
+// not change the outflow limits.
+func (k Keeper) SetBridgeOutPaused(ctx sdk.Context, isPaused bool) {
 	store := ctx.KVStore(k.storeKey)
 
-	pauser := store.Get(types.PauserKey)
-
-	if len(pauser) == 0 {
-		pauser = evmtypes.HexAddressToBytes(evmtypes.ZeroHexAddress())
+	if isPaused {
+		store.Set(types.BridgeOutPausedKey, []byte{0x01})
+	} else {
+		store.Delete(types.BridgeOutPausedKey)
 	}
+}
+
+// IsBridgeOutPaused checks if bridging out is paused.
+func (k Keeper) IsBridgeOutPaused(ctx sdk.Context) bool {
+	return ctx.KVStore(k.storeKey).Has(types.BridgeOutPausedKey)
+}
+
+// SetBridgeInPaused sets or removes the bridge-in paused flag. For now the flag
+// stops the triparty inbound path only; the validator-observed path has no
+// pause switch yet.
+func (k Keeper) SetBridgeInPaused(ctx sdk.Context, isPaused bool) {
+	store := ctx.KVStore(k.storeKey)
+
+	if isPaused {
+		store.Set(types.BridgeInPausedKey, []byte{0x01})
+	} else {
+		store.Delete(types.BridgeInPausedKey)
+	}
+}
+
+// IsBridgeInPaused checks if bridging in is paused.
+func (k Keeper) IsBridgeInPaused(ctx sdk.Context) bool {
+	return ctx.KVStore(k.storeKey).Has(types.BridgeInPausedKey)
+}
+
+// DeleteRetiredPauseState removes the retired pauser (key 0x93) and triparty
+// paused flag (key 0xA1) entries and returns the pauser that was set, or nil.
+// The v13.0.0 upgrade grants the emergency team role to the returned pauser.
+func (k Keeper) DeleteRetiredPauseState(ctx sdk.Context) sdk.AccAddress {
+	store := ctx.KVStore(k.storeKey)
+
+	pauserKey := []byte{0x93}
+	tripartyPausedKey := []byte{0xA1}
+
+	pauser := store.Get(pauserKey)
+
+	store.Delete(pauserKey)
+	store.Delete(tripartyPausedKey)
 
 	return pauser
-}
-
-// SetPauser sets the pauser address.
-func (k Keeper) SetPauser(ctx sdk.Context, pauser sdk.AccAddress) {
-	store := ctx.KVStore(k.storeKey)
-
-	if len(pauser) == 0 {
-		pauser = evmtypes.HexAddressToBytes(evmtypes.ZeroHexAddress())
-	}
-
-	store.Set(types.PauserKey, pauser)
-}
-
-// PauseBridgeOut sets the outflow limit to 0 for all supported tokens.
-func (k Keeper) PauseBridgeOut(ctx sdk.Context, caller sdk.AccAddress) error {
-	pauser := k.GetPauser(ctx)
-	if evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)) {
-		return fmt.Errorf("no pauser is set")
-	}
-
-	if !pauser.Equals(caller) {
-		return fmt.Errorf("caller is not the pauser")
-	}
-
-	// Set outflow limit to 0 for BTC token
-	btcToken := evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress)
-	k.SetOutflowLimit(ctx, btcToken, math.ZeroInt())
-
-	// Set outflow limit to 0 for all ERC20 tokens (using mezo token addresses)
-	mappings := k.GetERC20TokensMappings(ctx)
-	for _, mapping := range mappings {
-		k.SetOutflowLimit(ctx, evmtypes.HexAddressToBytes(mapping.MezoToken), math.ZeroInt())
-	}
-
-	return nil
 }

@@ -110,3 +110,44 @@ task('maintenance:getMaxPrecompilesCallsPerExecution', 'Gets the maximum number 
     const value = await maintenance.getMaxPrecompilesCallsPerExecution()
     console.log(value)
   })
+
+task('maintenance:setEmergencyTeam', 'Grants the Emergency Team role to the given address')
+  .addParam('signer', 'The owner address (msg.sender)')
+  .addParam('team', 'The address that takes the role (0x0 revokes the role)')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setEmergencyTeam(taskArguments.team)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('maintenance:getEmergencyTeam', 'Gets the current Emergency Team')
+  .setAction(async (taskArguments, hre) => {
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const team = await maintenance.getEmergencyTeam()
+    console.log(team)
+  })
+
+task('maintenance:setBridgeLockdown', 'Enables or disables the bridge lockdown, per direction')
+  .addParam('signer', 'The Emergency Team or owner address (msg.sender)')
+  .addParam('bridgeIn', 'Whether to stop bridging in (true/false)')
+  .addParam('bridgeOut', 'Whether to stop bridging out (true/false)')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setBridgeLockdown(
+      taskArguments.bridgeIn === 'true',
+      taskArguments.bridgeOut === 'true'
+    )
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('maintenance:getBridgeLockdown', 'Gets the bridge lockdown state, per direction')
+  .setAction(async (taskArguments, hre) => {
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const lockdown = await maintenance.getBridgeLockdown()
+    console.log('bridgeIn:', lockdown[0])
+    console.log('bridgeOut:', lockdown[1])
+  })

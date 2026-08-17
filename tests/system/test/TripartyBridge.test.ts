@@ -3,6 +3,7 @@ import hre from "hardhat"
 import { ethers } from "hardhat"
 import assetsbridgeabi from "../../../precompile/assetsbridge/abi.json"
 import btcabi from "../../../precompile/btctoken/abi.json"
+import maintenanceabi from "../../../precompile/maintenance/abi.json"
 import validatorpoolabi from "../../../precompile/validatorpool/abi.json"
 import { TripartyController } from "../typechain-types/TripartyController"
 import { getDeployedContract } from "./helpers/contract"
@@ -14,6 +15,8 @@ const assetsBridgePrecompileAddress =
   "0x7b7c000000000000000000000000000000000012"
 const btcTokenPrecompileAddress =
   "0x7b7c000000000000000000000000000000000000"
+const maintenancePrecompileAddress =
+  "0x7b7c000000000000000000000000000000000013"
 
 const BTC = (n: number | string) => ethers.parseEther(n.toString())
 
@@ -21,12 +24,30 @@ describe("TripartyBridge", function () {
   const { deployments } = hre
   let assetsBridge: any
   let btcToken: any
+  let maintenance: any
   let validatorPool: any
   let tripartyController: TripartyController
   let signers: any
   let poolOwner: any
   let eoaController: any
-  let pauser: any
+  let emergencyTeam: any
+
+  // The bridge-in lockdown pauses the triparty path. It is driven from the
+  // maintenance precompile by the Emergency Team or the PoA owner.
+  const setBridgeInLockdown = async function (signer: any, enabled: boolean) {
+    const lockdown = await maintenance.getBridgeLockdown()
+
+    await (
+      await maintenance
+        .connect(signer)
+        .setBridgeLockdown(enabled, lockdown.bridgeOut)
+    ).wait()
+  }
+
+  const isBridgeInLockdown = async function (): Promise<boolean> {
+    const lockdown = await maintenance.getBridgeLockdown()
+    return lockdown.bridgeIn
+  }
 
   const fixture = async function () {
     await deployments.fixture(["TripartyController"])
@@ -45,24 +66,28 @@ describe("TripartyBridge", function () {
       btcabi,
       ethers.provider,
     )
+    maintenance = new hre.ethers.Contract(
+      maintenancePrecompileAddress,
+      maintenanceabi,
+      ethers.provider,
+    )
     tripartyController = await getDeployedContract("TripartyController")
     signers = await ethers.getSigners()
     poolOwner = await ethers.getSigner(await validatorPool.owner())
     eoaController = signers[1]
-    pauser = signers[2]
+    emergencyTeam = signers[2]
 
-    // Set up pauser
+    // Set up the emergency team
     await (
-      await assetsBridge.connect(poolOwner).setPauser(pauser.address)
+      await maintenance
+        .connect(poolOwner)
+        .setEmergencyTeam(emergencyTeam.address)
     ).wait()
 
     // Reset triparty state for test isolation (live chain state persists
     // across describe blocks, unlike hardhat network snapshots).
-    const isPaused = await assetsBridge.isTripartyPaused()
-    if (isPaused) {
-      await (
-        await assetsBridge.connect(pauser).pauseTriparty(false)
-      ).wait()
+    if (await isBridgeInLockdown()) {
+      await setBridgeInLockdown(emergencyTeam, false)
     }
     await (
       await assetsBridge.connect(poolOwner).setTripartyBlockDelay(1)
@@ -102,7 +127,7 @@ describe("TripartyBridge", function () {
       try {
         await assetsBridge
           .connect(eoaController)
-          .allowTripartyController.staticCall(pauser.address, true)
+          .allowTripartyController.staticCall(emergencyTeam.address, true)
       } catch (error: any) {
         nonOwnerError = error.message
       }
@@ -256,7 +281,7 @@ describe("TripartyBridge", function () {
     })
   })
 
-  describe("Setting paused flag", function () {
+  describe("Setting the bridge-in lockdown", function () {
     let defaultPaused: boolean
     let afterPause: boolean
     let afterUnpause: boolean
@@ -264,17 +289,13 @@ describe("TripartyBridge", function () {
     before(async function () {
       await fixture()
 
-      defaultPaused = await assetsBridge.isTripartyPaused()
+      defaultPaused = await isBridgeInLockdown()
 
-      await (
-        await assetsBridge.connect(pauser).pauseTriparty(true)
-      ).wait()
-      afterPause = await assetsBridge.isTripartyPaused()
+      await setBridgeInLockdown(emergencyTeam, true)
+      afterPause = await isBridgeInLockdown()
 
-      await (
-        await assetsBridge.connect(pauser).pauseTriparty(false)
-      ).wait()
-      afterUnpause = await assetsBridge.isTripartyPaused()
+      await setBridgeInLockdown(emergencyTeam, false)
+      afterUnpause = await isBridgeInLockdown()
     })
 
     it("should be false by default", async function () {
@@ -1081,7 +1102,7 @@ describe("TripartyBridge", function () {
   describe("Pause blocks new requests", function () {
     let isPaused: boolean
     let bridgeError: string
-    let nonPauserError: string
+    let nonEmergencyTeamError: string
 
     before(async function () {
       await fixture()
@@ -1098,11 +1119,9 @@ describe("TripartyBridge", function () {
       ).wait()
 
       // Pause
-      await (
-        await assetsBridge.connect(pauser).pauseTriparty(true)
-      ).wait()
+      await setBridgeInLockdown(emergencyTeam, true)
 
-      isPaused = await assetsBridge.isTripartyPaused()
+      isPaused = await isBridgeInLockdown()
 
       const recipient = ethers.Wallet.createRandom().address
 
@@ -1115,11 +1134,11 @@ describe("TripartyBridge", function () {
       }
 
       try {
-        await assetsBridge
+        await maintenance
           .connect(eoaController)
-          .pauseTriparty.staticCall(true)
+          .setBridgeLockdown.staticCall(true, false)
       } catch (error: any) {
-        nonPauserError = error.message
+        nonEmergencyTeamError = error.message
       }
     })
 
@@ -1128,11 +1147,11 @@ describe("TripartyBridge", function () {
     })
 
     it("should revert bridgeTriparty when paused", async function () {
-      expect(bridgeError).to.include("triparty bridging is paused")
+      expect(bridgeError).to.include("bridge-in is paused")
     })
 
-    it("should revert pause from non-pauser", async function () {
-      expect(nonPauserError).to.include("caller is not the pauser")
+    it("should revert the lockdown from a non-emergency-team account", async function () {
+      expect(nonEmergencyTeamError).to.include("not the emergency team")
     })
   })
 
@@ -1183,9 +1202,7 @@ describe("TripartyBridge", function () {
         await assetsBridge.getTripartyRequestSequenceTip()
 
       // Immediately pause
-      await (
-        await assetsBridge.connect(pauser).pauseTriparty(true)
-      ).wait()
+      await setBridgeInLockdown(emergencyTeam, true)
 
       // Wait several blocks
       const currentBlock = await ethers.provider.getBlockNumber()
@@ -1197,11 +1214,9 @@ describe("TripartyBridge", function () {
         await assetsBridge.getTripartyProcessedSequenceTip()
 
       // Unpause to resume processing
-      await (
-        await assetsBridge.connect(pauser).pauseTriparty(false)
-      ).wait()
+      await setBridgeInLockdown(emergencyTeam, false)
 
-      isPausedAfterUnpause = await assetsBridge.isTripartyPaused()
+      isPausedAfterUnpause = await isBridgeInLockdown()
 
       // Wait for processing
       const blockAfterUnpause = await ethers.provider.getBlockNumber()

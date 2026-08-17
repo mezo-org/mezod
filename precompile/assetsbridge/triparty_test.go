@@ -92,61 +92,6 @@ func (s *PrecompileTestSuite) TestIsAllowedTripartyController() {
 	s.RunMethodTestCases(testcases, "isAllowedTripartyController")
 }
 
-func (s *PrecompileTestSuite) TestPauseTriparty() {
-	testcases := []TestCase{
-		{
-			name: "no pauser is set",
-			run: func() []interface{} {
-				return []interface{}{true}
-			},
-			as:          testPauserAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "no pauser is set",
-		},
-		{
-			name: "caller is not the pauser",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
-				return []interface{}{true}
-			},
-			as:          s.account1.EvmAddr,
-			basicPass:   true,
-			revert:      true,
-			errContains: "caller is not the pauser",
-		},
-		{
-			name: "happy path - pause",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
-				return []interface{}{true}
-			},
-			as:        testPauserAddr,
-			basicPass: true,
-			output:    []interface{}{true},
-			postCheck: func() {
-				s.Require().True(s.bridgeKeeper.tripartyPaused)
-			},
-		},
-		{
-			name: "happy path - unpause",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetPauser(s.ctx, testPauserAddr.Bytes())
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
-				return []interface{}{false}
-			},
-			as:        testPauserAddr,
-			basicPass: true,
-			output:    []interface{}{true},
-			postCheck: func() {
-				s.Require().False(s.bridgeKeeper.tripartyPaused)
-			},
-		},
-	}
-
-	s.RunMethodTestCases(testcases, "pauseTriparty")
-}
-
 func (s *PrecompileTestSuite) TestBridgeTriparty() {
 	testcases := []TestCase{
 		{
@@ -562,51 +507,6 @@ func (s *PrecompileTestSuite) TestGetTripartyControllerBTCMinted() {
 	}
 
 	s.RunMethodTestCases(testcases, "getTripartyControllerBTCMinted")
-}
-
-func (s *PrecompileTestSuite) TestIsTripartyPaused() {
-	testcases := []TestCase{
-		{
-			name: "default - not paused",
-			run: func() []interface{} {
-				return []interface{}{}
-			},
-			as:        s.account1.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{false},
-		},
-		{
-			name: "returns true when paused",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
-				return []interface{}{}
-			},
-			as:        s.account1.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{true},
-		},
-		{
-			name: "returns false after unpausing",
-			run: func() []interface{} {
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, true)
-				s.bridgeKeeper.SetTripartyPaused(s.ctx, false)
-				return []interface{}{}
-			},
-			as:        s.account1.EvmAddr,
-			basicPass: true,
-			output:    []interface{}{false},
-		},
-		{
-			name: "wrong number of inputs",
-			run: func() []interface{} {
-				return []interface{}{true}
-			},
-			as:        s.account1.EvmAddr,
-			basicPass: false,
-		},
-	}
-
-	s.RunMethodTestCases(testcases, "isTripartyPaused")
 }
 
 func (s *PrecompileTestSuite) TestGetTripartyRequestSequenceTip() {

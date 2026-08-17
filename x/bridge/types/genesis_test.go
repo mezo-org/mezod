@@ -661,7 +661,6 @@ func TestGenesisState_Validate(t *testing.T) {
 				genState.AllowedTripartyControllers = []string{
 					"0x1111111111111111111111111111111111111111",
 				}
-				genState.TripartyPaused = true
 				genState.TripartyBlockDelay = 10
 				genState.TripartyPerRequestLimit = sdkmath.NewInt(123)
 				genState.TripartyWindowLimit = sdkmath.NewInt(456)
@@ -684,6 +683,17 @@ func TestGenesisState_Validate(t *testing.T) {
 						Amount:     sdkmath.NewInt(200),
 					},
 				}
+				return genState
+			},
+			valid: true,
+		},
+		{
+			desc: "proper genesis with the lockdown flags set",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.BridgeInPaused = true
+				genState.BridgeOutPaused = true
 				return genState
 			},
 			valid: true,

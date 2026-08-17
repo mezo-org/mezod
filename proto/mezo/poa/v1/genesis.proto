@@ -18,4 +18,7 @@ message GenesisState {
   // assignments.
   repeated ValidatorPrivilegeAssignment privilege_assignments = 4
       [ (gogoproto.nullable) = false ];
+  // emergency_team is the initial global emergency team in Bech32 format. An
+  // empty value means the role is not granted.
+  string emergency_team = 5;
 }

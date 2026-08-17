@@ -1,5 +1,15 @@
 # RFC-6: Triparty BTC minting
 
+>[!WARNING]
+> The pausing part of this document is out of date. Release `v13.0.0` replaced
+> the `AssetsBridge` pauser role with the Emergency Team role, and the triparty
+> pause flag with the bridge-in half of the bridge lockdown. Both are driven
+> from the `Maintenance` precompile, through `setBridgeLockdown` and
+> `getBridgeLockdown`. The `AssetsBridge` methods `pauseTriparty` and
+> `isTripartyPaused` are removed and calls to them revert. See
+> [`docs/emergency-controls.md`](../emergency-controls.md). The rest of this
+> document still describes the triparty design.
+
 ## Background
 
 BTC is bridged from Ethereum to Mezo using the native bridge described in

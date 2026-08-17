@@ -1,7 +1,6 @@
 package keeper
 
 import (
-	"bytes"
 	"testing"
 
 	"cosmossdk.io/math"
@@ -10,72 +9,57 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testPauser = evmtypes.HexAddressToBytes("0xAbCdEfAbCdEfAbCdEfAbCdEfAbCdEfAbCdEfAbCdEf")
-	testCaller = evmtypes.HexAddressToBytes("0x1234567890AbcdEF1234567890aBcdef12345678")
-)
-
-func TestPauserManagement(t *testing.T) {
+func TestBridgeOutPaused(t *testing.T) {
 	ctx, k := mockContext()
 
-	pauser := k.GetPauser(ctx)
-	require.True(t, evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)))
+	require.False(t, k.IsBridgeOutPaused(ctx))
 
-	k.SetPauser(ctx, testPauser)
+	k.SetBridgeOutPaused(ctx, true)
+	require.True(t, k.IsBridgeOutPaused(ctx))
 
-	pauser = k.GetPauser(ctx)
-	require.True(t, bytes.Equal(testPauser, pauser))
+	// The bridge-out flag is independent from the bridge-in flag.
+	require.False(t, k.IsBridgeInPaused(ctx))
 
-	k.SetPauser(ctx, nil)
-
-	pauser = k.GetPauser(ctx)
-	require.True(t, evmtypes.IsZeroHexAddress(evmtypes.BytesToHexAddress(pauser)))
+	k.SetBridgeOutPaused(ctx, false)
+	require.False(t, k.IsBridgeOutPaused(ctx))
 }
 
-func TestPauseBridgeOut(t *testing.T) {
+func TestBridgeInPaused(t *testing.T) {
 	ctx, k := mockContext()
 
-	t.Run("should fail when no pauser is set", func(t *testing.T) {
-		err := k.PauseBridgeOut(ctx, testCaller)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "no pauser is set")
+	require.False(t, k.IsBridgeInPaused(ctx))
+
+	k.SetBridgeInPaused(ctx, true)
+	require.True(t, k.IsBridgeInPaused(ctx))
+
+	// The bridge-in flag is independent from the bridge-out flag.
+	require.False(t, k.IsBridgeOutPaused(ctx))
+
+	k.SetBridgeInPaused(ctx, false)
+	require.False(t, k.IsBridgeInPaused(ctx))
+}
+
+func TestBridgeOutPausedKeepsOutflowLimits(t *testing.T) {
+	ctx, k := mockContext()
+
+	btcToken := evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress)
+	k.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+
+	erc20Token := evmtypes.HexAddressToBytes("0x546758f4C2EfA4f37d66fF53644170F1d27AA1A0")
+	k.setERC20TokenMapping(ctx, &types.ERC20TokenMapping{
+		SourceToken: "0xac7f043Cf1BF10143926CC0035dBc46999512732",
+		MezoToken:   evmtypes.BytesToHexAddress(erc20Token),
 	})
+	k.SetOutflowLimit(ctx, erc20Token, math.NewInt(2000))
 
-	t.Run("should fail when pauser is zero address", func(t *testing.T) {
-		k.SetPauser(ctx, evmtypes.HexAddressToBytes(evmtypes.ZeroHexAddress()))
-		err := k.PauseBridgeOut(ctx, testCaller)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "no pauser is set")
-	})
+	k.SetBridgeOutPaused(ctx, true)
 
-	t.Run("should fail when caller is not the pauser", func(t *testing.T) {
-		k.SetPauser(ctx, testPauser)
-		err := k.PauseBridgeOut(ctx, testCaller)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "caller is not the pauser")
-	})
+	// Pausing must not destroy the outflow limit configuration.
+	require.Equal(t, math.NewInt(1000), k.GetOutflowLimit(ctx, btcToken))
+	require.Equal(t, math.NewInt(2000), k.GetOutflowLimit(ctx, erc20Token))
 
-	t.Run("should succeed when caller is the pauser", func(t *testing.T) {
-		k.SetPauser(ctx, testPauser)
+	k.SetBridgeOutPaused(ctx, false)
 
-		btcToken := evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress)
-		k.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
-
-		testERC20Token := evmtypes.HexAddressToBytes("0x546758f4C2EfA4f37d66fF53644170F1d27AA1A0")
-
-		k.setERC20TokenMapping(ctx, &types.ERC20TokenMapping{
-			SourceToken: "0xac7f043Cf1BF10143926CC0035dBc46999512732",
-			MezoToken:   evmtypes.BytesToHexAddress(testERC20Token),
-		})
-		k.SetOutflowLimit(ctx, testERC20Token, math.NewInt(2000))
-
-		err := k.PauseBridgeOut(ctx, testPauser)
-		require.NoError(t, err)
-
-		btcLimit := k.GetOutflowLimit(ctx, btcToken)
-		require.True(t, btcLimit.IsZero())
-
-		mezoLimit := k.GetOutflowLimit(ctx, testERC20Token)
-		require.True(t, mezoLimit.IsZero())
-	})
+	require.Equal(t, math.NewInt(1000), k.GetOutflowLimit(ctx, btcToken))
+	require.Equal(t, math.NewInt(2000), k.GetOutflowLimit(ctx, erc20Token))
 }

@@ -108,6 +108,12 @@ func (k Keeper) SaveAssetsUnlocked(
 	amount math.Int,
 	chain uint8,
 ) (*types.AssetsUnlockedEvent, error) {
+	// This is the single point covering BTC and ERC20 bridge-outs to both
+	// target chains.
+	if k.IsBridgeOutPaused(ctx) {
+		return nil, types.ErrBridgeOutPaused
+	}
+
 	if err := k.checkOutflowLimit(ctx, token, amount); err != nil {
 		return nil, fmt.Errorf("outflow limit check error: [%w]", err)
 	}

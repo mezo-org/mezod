@@ -193,6 +193,7 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v10.0.0`      | 12872000  | Planned upgrade with chain halt      | [v10.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v10.0.0)                                                                                                         |
 | `v11.0.0`      | 13206900  | Planned upgrade with chain halt      | [v11.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v11.0.0)                                                                                                         |
 | `v12.0.0`      | 14705350  | Planned upgrade with chain halt      | [v12.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v12.0.0)                                                                                                         |
+| `v13.0.0`      | TBD       | Planned upgrade with chain halt      | [v13.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v13.0.0)                                                                                                         |
 
 ### Mainnet
 
@@ -210,3 +211,4 @@ Consult the [tags list](https://github.com/mezo-org/mezod/tags) for full version
 | `v10.0.0` | 8773000 | Planned upgrade with chain halt      | [v10.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v10.0.0) |
 | `v11.0.0` | 9275000 | Planned upgrade with chain halt      | [v11.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v11.0.0) |
 | `v12.0.0` | 10885900 | Planned upgrade with chain halt      | [v12.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v12.0.0) |
+| `v13.0.0` | TBD     | Planned upgrade with chain halt      | [v13.0.0 release notes](https://github.com/mezo-org/mezod/releases/tag/v13.0.0) |

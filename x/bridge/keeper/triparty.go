@@ -68,23 +68,6 @@ func (k Keeper) getAllAllowedTripartyControllers(ctx sdk.Context) []string {
 	return out
 }
 
-// IsTripartyPaused checks if triparty bridging is paused.
-func (k Keeper) IsTripartyPaused(ctx sdk.Context) bool {
-	store := ctx.KVStore(k.storeKey)
-	return store.Has(types.TripartyPausedKey)
-}
-
-// SetTripartyPaused sets or removes the triparty paused flag.
-func (k Keeper) SetTripartyPaused(ctx sdk.Context, isPaused bool) {
-	store := ctx.KVStore(k.storeKey)
-
-	if isPaused {
-		store.Set(types.TripartyPausedKey, []byte{0x01})
-	} else {
-		store.Delete(types.TripartyPausedKey)
-	}
-}
-
 // GetTripartyBlockDelay returns the configured triparty block delay.
 // If not set, it returns the default value of 1. The return type is
 // int64 to match block heights (int64 in Cosmos SDK), so the delay
@@ -321,8 +304,8 @@ func (k Keeper) CreateTripartyBridgeRequest(
 	callbackData []byte,
 	controller string,
 ) (math.Int, error) {
-	if k.IsTripartyPaused(ctx) {
-		return math.Int{}, types.ErrTripartyPaused
+	if k.IsBridgeInPaused(ctx) {
+		return math.Int{}, types.ErrBridgeInPaused
 	}
 
 	if err := k.validateTripartyBridgeRequest(
@@ -631,8 +614,8 @@ func (k Keeper) getAllTripartyControllerBTCMinted(
 // completing or block subsequent requests. A mintBTC failure is fatal
 // and returns an error that will cause a consensus failure.
 func (k Keeper) ProcessTripartyBridgeRequests(ctx sdk.Context) error {
-	if k.IsTripartyPaused(ctx) {
-		k.Logger(ctx).Info("triparty bridging is paused; skipping processing")
+	if k.IsBridgeInPaused(ctx) {
+		k.Logger(ctx).Info("bridge-in is paused; skipping processing")
 		return nil
 	}
 
