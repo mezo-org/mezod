@@ -269,9 +269,11 @@ every address. So `([sender], [target])` passes that one pair only, and
 the extra clause is inactive and matches nothing, so the role clause is the only
 way through. That special case is level 3.
 
-Contract creation has no target. A non-empty target list never matches it, and
-an empty target list does. A role sender therefore always deploys, an extra
-sender deploys only while the target list is empty, and nobody else deploys.
+Contract creation has no target. A non-empty extra targets list never matches
+a contract creation, and an empty one does. The PoA owner and the Emergency
+Team can therefore always create contracts. A sender from the extra senders
+list can create contracts only while the extra targets list is empty. No other
+sender can create contracts while the lockdown is active.
 
 `setTxLockdownAllowlist` replaces both lists on every call, so pass the full
 wanted state. It works whether the lockdown is on or off, so the team can stage
@@ -282,12 +284,10 @@ Each list rejects the zero address and duplicate entries, and holds at most 256
 entries. The chain decodes both lists on every transaction, and the cap bounds
 that cost.
 
-The transaction lockdown installs no default allowlist. Earlier drafts of this
-document promised default senders and default targets, including the precompiles
-needed to diagnose the chain. The shipped design dropped them: the role clause
-is the only built-in permission, and every other address needs an explicit
-allowlist entry. Diagnosis does not need a default target, because queries
-bypass the lockdown.
+The transaction lockdown installs no default allowlist. The role clause is the
+only built-in permission, and every other address needs an explicit allowlist
+entry. Diagnosis does not need a default target, because queries bypass the
+lockdown.
 
 #### Level 3: no transactions
 
