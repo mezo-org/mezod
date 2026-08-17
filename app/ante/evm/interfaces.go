@@ -44,6 +44,12 @@ type EVMKeeper interface { //nolint: revive
 	GetParams(ctx sdk.Context) evmtypes.Params
 }
 
+// PoaKeeper exposes the x/poa role addresses needed by the ante handler.
+type PoaKeeper interface {
+	GetOwner(ctx sdk.Context) sdk.AccAddress
+	GetEmergencyTeam(ctx sdk.Context) sdk.AccAddress
+}
+
 type FeeMarketKeeper interface {
 	GetParams(ctx sdk.Context) (params feemarkettypes.Params)
 	AddTransientGasWanted(ctx sdk.Context, gasWanted uint64) (uint64, error)

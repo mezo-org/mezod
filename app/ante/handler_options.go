@@ -41,6 +41,7 @@ type HandlerOptions struct {
 	BankKeeper             evmtypes.BankKeeper
 	FeeMarketKeeper        evmante.FeeMarketKeeper
 	EvmKeeper              evmante.EVMKeeper
+	PoaKeeper              evmante.PoaKeeper
 	FeegrantKeeper         ante.FeegrantKeeper
 	ExtensionOptionChecker ante.ExtensionOptionChecker
 	SignModeHandler        *txsigning.HandlerMap
@@ -66,6 +67,9 @@ func (options HandlerOptions) Validate() error {
 	if options.EvmKeeper == nil {
 		return errorsmod.Wrap(errortypes.ErrLogic, "evm keeper is required for AnteHandler")
 	}
+	if options.PoaKeeper == nil {
+		return errorsmod.Wrap(errortypes.ErrLogic, "poa keeper is required for AnteHandler")
+	}
 	if options.SigGasConsumer == nil {
 		return errorsmod.Wrap(errortypes.ErrLogic, "signature gas consumer is required for AnteHandler")
 	}
@@ -89,6 +93,9 @@ func newEVMAnteHandler(options HandlerOptions) sdk.AnteHandler {
 		evmante.NewEthMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		evmante.NewEthValidateBasicDecorator(options.EvmKeeper),
 		evmante.NewEthSigVerificationDecorator(options.EvmKeeper),
+		// Check the transaction lockdown rule. Signature verification sets the
+		// sender, and a rejection here charges no gas.
+		evmante.NewEthTxLockdownDecorator(options.EvmKeeper, options.PoaKeeper),
 		evmante.NewEthAccountVerificationDecorator(options.AccountKeeper, options.EvmKeeper),
 		evmante.NewCanTransferDecorator(options.EvmKeeper),
 		evmante.NewEthGasConsumeDecorator(options.BankKeeper, options.EvmKeeper, options.MaxTxGasWanted),
