@@ -142,59 +142,6 @@ provides limited asset bridging functionalities, such as ERC-20 token mapping.
 See [IAssetsBridge](https://github.com/mezo-org/mezod/blob/main/precompile/assetsbridge/IAssetsBridge.sol)
 interface for a list of methods.
 
-#### Bridge-out chain set
-
-The chain keeps a set of the target chains that are enabled for bridge-outs.
-A target chain is `0` for Ethereum and `1` for Bitcoin. The set ships fully
-populated: genesis and the `v13.0.0` upgrade enable both chains.
-
-```solidity
-function removeBridgeOutChain(uint8 chain) external returns (bool);
-function addBridgeOutChain(uint8 chain) external returns (bool);
-function getBridgeOutChains() external view returns (uint8[] memory);
-```
-
-`removeBridgeOutChain` and `addBridgeOutChain` are restricted to the PoA owner.
-The Emergency Team holds no authority over the set. `removeBridgeOutChain`
-emits `BridgeOutChainRemoved(uint8 chain)` and `addBridgeOutChain` emits
-`BridgeOutChainAdded(uint8 chain)`. Neither event argument is indexed, so the
-chain sits in the log data. `getBridgeOutChains` returns the enabled chains in
-ascending order and is callable by anyone.
-
-Both setters revert and change no state when:
-
-- the caller is not the PoA owner;
-- `chain` is not a supported target chain, with `unsupported chain: <VALUE>`;
-- `removeBridgeOutChain` receives a chain outside the set, with `chain is not
-  enabled for bridge-outs`;
-- `addBridgeOutChain` receives a chain already in the set, with `chain is
-  already enabled for bridge-outs`.
-
-The set is fail-closed. A chain outside the set cannot receive bridge-outs, so
-an empty set disables every bridge-out. The check sits in `SaveAssetsUnlocked`
-in the `x/bridge` module, directly after the bridge lockdown check. It covers
-BTC and mapped ERC20 tokens, and it covers both direct calls and calls through
-another contract. A blocked bridge-out fails with `target chain is not enabled
-for bridge-outs`, the sequence tip does not advance, and no outflow is
-recorded.
-
-The check stops new bridge-outs only. Withdrawals already in flight complete as
-before: the sidecars attest them on Ethereum and the bridge-worker redeems them
-on Bitcoin. Bridge-ins are not affected.
-
-The set is independent from the bridge lockdown, which is level 1 of the
-lockdown mode described in
-[`docs/emergency-controls.md`](./emergency-controls.md#level-1-bridge-lockdown).
-Either control alone blocks the bridge-outs it covers.
-
-Through the Hardhat toolbox (see `precompile/hardhat/README.md` for the setup):
-
-```
-npx hardhat assetsBridge:getBridgeOutChains
-npx hardhat assetsBridge:removeBridgeOutChain --signer OWNER --chain 1
-npx hardhat assetsBridge:addBridgeOutChain --signer OWNER --chain 1
-```
-
 ### Maintenance Precompile
 
 #### Overview
