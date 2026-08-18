@@ -82,6 +82,24 @@ interface IAssetsBridge {
     );
 
     /**
+     * @notice Emitted when a target chain is removed from the set of chains
+     *         enabled for bridge-outs.
+     * @param chain The removed target chain, 0 for Ethereum, 1 for Bitcoin.
+     */
+    event BridgeOutChainRemoved(
+        uint8 chain
+    );
+
+    /**
+     * @notice Emitted when a target chain is added to the set of chains
+     *         enabled for bridge-outs.
+     * @param chain The added target chain, 0 for Ethereum, 1 for Bitcoin.
+     */
+    event BridgeOutChainAdded(
+        uint8 chain
+    );
+
+    /**
      * @notice Emitted when a triparty bridge request is made.
      * @param requestId The unique identifier of the bridge request.
      * @param recipient The address to receive the minted BTC.
@@ -251,6 +269,36 @@ interface IAssetsBridge {
     *      by getMinBridgeOutAmount for the BTC token.
     */
     function getMinBridgeOutAmountForBitcoinChain() external view returns (uint256);
+
+    /**
+     * @notice Removes a target chain from the set of chains enabled for
+     *         bridge-outs. Bridge-outs to a removed chain are rejected.
+     * @param chain The target chain, 0 for Ethereum, 1 for Bitcoin.
+     * @dev Requirements:
+     *      - The caller must be the contract owner,
+     *      - The chain must be a supported target chain,
+     *      - The chain must be enabled for bridge-outs.
+     * @return True if the call succeeded, false otherwise.
+     */
+    function removeBridgeOutChain(uint8 chain) external returns (bool);
+
+    /**
+     * @notice Adds a target chain to the set of chains enabled for bridge-outs.
+     * @param chain The target chain, 0 for Ethereum, 1 for Bitcoin.
+     * @dev Requirements:
+     *      - The caller must be the contract owner,
+     *      - The chain must be a supported target chain,
+     *      - The chain must not be enabled for bridge-outs yet.
+     * @return True if the call succeeded, false otherwise.
+     */
+    function addBridgeOutChain(uint8 chain) external returns (bool);
+
+    /**
+     * @notice Returns the set of target chains enabled for bridge-outs.
+     * @return The enabled target chains in ascending order, 0 for Ethereum,
+     *         1 for Bitcoin. An empty list means all bridge-outs are disabled.
+     */
+    function getBridgeOutChains() external view returns (uint8[] memory);
 
     /**
      * @notice Requests a triparty BTC mint through the bridge.

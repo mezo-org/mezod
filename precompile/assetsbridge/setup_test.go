@@ -125,6 +125,7 @@ func latestSettings() *assetsbridge.Settings {
 		SequenceTipView: true,
 		BridgeOut:       true,
 		Triparty:        true,
+		BridgeOutChains: true,
 	}
 }
 
@@ -237,6 +238,7 @@ type FakeBridgeKeeper struct {
 	currentSequenceTip       math.Int
 	minAmountByToken         map[string]math.Int
 	minAmountForBitcoinChain math.Int
+	bridgeOutChains          map[uint8]bool
 
 	burnErr error
 
@@ -264,6 +266,7 @@ func NewFakeBridgeKeeper(sourceBTCToken []byte) *FakeBridgeKeeper {
 		lastResetHeight:             0,
 		minAmountByToken:            make(map[string]math.Int),
 		minAmountForBitcoinChain:    math.ZeroInt(),
+		bridgeOutChains:             make(map[uint8]bool),
 		tripartyControllers:         make(map[string]bool),
 		tripartyBlockDelay:          1,
 		tripartyPerRequestLimit:     math.ZeroInt(),
@@ -406,6 +409,27 @@ func (k *FakeBridgeKeeper) SetMinBridgeOutAmountForBitcoinChain(
 	minAmount math.Int,
 ) {
 	k.minAmountForBitcoinChain = minAmount
+}
+
+func (k *FakeBridgeKeeper) IsBridgeOutChainEnabled(_ sdk.Context, chain uint8) bool {
+	return k.bridgeOutChains[chain]
+}
+
+func (k *FakeBridgeKeeper) EnableBridgeOutChain(_ sdk.Context, chain uint8) {
+	k.bridgeOutChains[chain] = true
+}
+
+func (k *FakeBridgeKeeper) DisableBridgeOutChain(_ sdk.Context, chain uint8) {
+	delete(k.bridgeOutChains, chain)
+}
+
+func (k *FakeBridgeKeeper) GetBridgeOutChains(_ sdk.Context) []uint8 {
+	chains := make([]uint8, 0, len(k.bridgeOutChains))
+	for chain := range k.bridgeOutChains {
+		chains = append(chains, chain)
+	}
+	slices.Sort(chains)
+	return chains
 }
 
 func (k *FakeBridgeKeeper) SetOutflowLimit(_ sdk.Context, token []byte, limit math.Int) {
