@@ -54,6 +54,12 @@ func mockContext() (sdk.Context, Keeper) {
 
 	keeper.SetSourceBTCToken(ctx, evmtypes.HexAddressToBytes(testSourceBTCToken))
 
+	// Genesis and the v13.0.0 upgrade seed the bridge-out chain set, so a
+	// running network always has both target chains enabled. Tests that need
+	// an empty set call clearBridgeOutChains.
+	keeper.EnableBridgeOutChain(ctx, types.TargetChainEthereum)
+	keeper.EnableBridgeOutChain(ctx, types.TargetChainBitcoin)
+
 	err = keeper.SetParams(ctx, types.DefaultParams())
 	if err != nil {
 		panic(err)

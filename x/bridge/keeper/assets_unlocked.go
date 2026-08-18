@@ -114,6 +114,10 @@ func (k Keeper) SaveAssetsUnlocked(
 		return nil, types.ErrBridgeOutPaused
 	}
 
+	if !k.IsBridgeOutChainEnabled(ctx, chain) {
+		return nil, types.ErrBridgeOutChainNotEnabled
+	}
+
 	if err := k.checkOutflowLimit(ctx, token, amount); err != nil {
 		return nil, fmt.Errorf("outflow limit check error: [%w]", err)
 	}

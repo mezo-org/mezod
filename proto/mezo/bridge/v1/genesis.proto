@@ -136,6 +136,10 @@ message GenesisState {
 
   // bridge_in_paused indicates whether bridging in is paused.
   bool bridge_in_paused = 27;
+
+  // bridge_out_chains is the list of target chains that accept bridge-outs.
+  // Each entry must fit in a uint8. A chain outside the list is disabled.
+  repeated uint32 bridge_out_chains = 28;
 }
 
 // CurrentOutflowAmount tracks the current outflow amount for a specific token.

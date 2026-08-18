@@ -533,7 +533,7 @@ func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
 			erc20Token,               // token
 			[]byte("sender_address"), // sender
 			math.NewInt(1500),        // amount
-			2,
+			0,
 		)
 		require.NoError(t, err, "transaction within limit should succeed")
 		require.NotNil(t, event)
@@ -549,7 +549,7 @@ func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
 			erc20Token,               // token
 			[]byte("sender_address"), // sender
 			math.NewInt(600),         // amount
-			2,
+			0,
 		)
 		require.Error(t, err, "transaction exceeding limit should fail")
 		require.ErrorContains(t, err, "outflow limit check error")
@@ -574,7 +574,7 @@ func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
 			zeroLimitToken,           // token
 			[]byte("sender_address"), // sender
 			math.NewInt(1),           // amount
-			2,
+			0,
 		)
 		require.Error(t, err, "transaction with zero limit should fail")
 		require.ErrorContains(t, err, "outflow limit check error")
@@ -591,7 +591,7 @@ func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
 			noLimitToken,             // token
 			[]byte("sender_address"), // sender
 			math.NewInt(1),           // amount
-			2,
+			0,
 		)
 		require.Error(t, err, "transaction with no limit set should fail")
 		require.ErrorContains(t, err, "outflow limit check error")
@@ -616,7 +616,7 @@ func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
 			exactLimitToken,          // token
 			[]byte("sender_address"), // sender
 			math.NewInt(100),         // amount
-			2,
+			0,
 		)
 		require.NoError(t, err, "transaction exactly at limit should succeed")
 		require.NotNil(t, event)
@@ -632,7 +632,7 @@ func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
 			exactLimitToken,          // token
 			[]byte("sender_address"), // sender
 			math.NewInt(1),           // amount
-			2,
+			0,
 		)
 		require.Error(t, err, "any additional transaction should fail")
 	})
@@ -658,7 +658,7 @@ func TestSaveAssetsUnlockedWithOutflowLimits(t *testing.T) {
 				largeLimitToken,                       // token
 				[]byte("sender_address"),              // sender
 				math.NewInt(1000000),                  // amount
-				2,
+				0,
 			)
 			require.NoError(t, err, "transaction with large limit should succeed")
 		}
@@ -761,6 +761,121 @@ func TestSaveAssetsUnlockedWhenBridgeOutPaused(t *testing.T) {
 		)
 		require.NoError(t, err)
 		require.NotNil(t, event)
+	})
+}
+
+func TestSaveAssetsUnlockedWhenBridgeOutChainDisabled(t *testing.T) {
+	cfg := sdk.GetConfig()
+	config.SetBech32Prefixes(cfg)
+
+	btcToken := evmtypes.HexAddressToBytes(evmtypes.BTCTokenPrecompileAddress)
+
+	bridgeOut := func(
+		ctx sdk.Context,
+		keeper Keeper,
+		chain uint8,
+	) (*types.AssetsUnlockedEvent, error) {
+		return keeper.SaveAssetsUnlocked(
+			ctx,
+			[]byte("recipient"),
+			btcToken,
+			[]byte("sender_address"),
+			math.NewInt(500),
+			chain,
+		)
+	}
+
+	t.Run("accepts both target chains in the seeded state", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+
+		require.Equal(
+			t,
+			[]uint8{types.TargetChainEthereum, types.TargetChainBitcoin},
+			keeper.GetBridgeOutChains(ctx),
+		)
+
+		_, err := bridgeOut(ctx, keeper, types.TargetChainEthereum)
+		require.NoError(t, err)
+
+		_, err = bridgeOut(ctx, keeper, types.TargetChainBitcoin)
+		require.NoError(t, err)
+	})
+
+	t.Run("rejects the bridge-out to a disabled chain", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+		keeper.DisableBridgeOutChain(ctx, types.TargetChainBitcoin)
+
+		_, err := bridgeOut(ctx, keeper, types.TargetChainBitcoin)
+		require.ErrorIs(t, err, types.ErrBridgeOutChainNotEnabled)
+
+		// The outflow must not be tracked for a rejected bridge-out.
+		require.True(t, keeper.getCurrentOutflow(ctx, btcToken).IsZero())
+
+		// The sequence tip must not advance for a rejected bridge-out.
+		require.True(t, keeper.GetAssetsUnlockedSequenceTip(ctx).IsZero())
+	})
+
+	t.Run("keeps the chains that stay in the set enabled", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+		keeper.DisableBridgeOutChain(ctx, types.TargetChainBitcoin)
+
+		event, err := bridgeOut(ctx, keeper, types.TargetChainEthereum)
+		require.NoError(t, err)
+		require.NotNil(t, event)
+	})
+
+	t.Run("rejects both target chains when the set is empty", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+		clearBridgeOutChains(ctx, keeper)
+
+		_, err := bridgeOut(ctx, keeper, types.TargetChainEthereum)
+		require.ErrorIs(t, err, types.ErrBridgeOutChainNotEnabled)
+
+		_, err = bridgeOut(ctx, keeper, types.TargetChainBitcoin)
+		require.ErrorIs(t, err, types.ErrBridgeOutChainNotEnabled)
+	})
+
+	t.Run("checks the pause flag before the chain set", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+		keeper.DisableBridgeOutChain(ctx, types.TargetChainBitcoin)
+		keeper.SetBridgeOutPaused(ctx, true)
+
+		_, err := bridgeOut(ctx, keeper, types.TargetChainBitcoin)
+		require.ErrorIs(t, err, types.ErrBridgeOutPaused)
+		require.NotErrorIs(t, err, types.ErrBridgeOutChainNotEnabled)
+	})
+
+	t.Run("checks the chain set before the outflow limit", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		// A zero limit alone fails with ErrOutflowLimitExceeded. The chain set
+		// takes precedence.
+		keeper.SetOutflowLimit(ctx, btcToken, math.ZeroInt())
+		keeper.DisableBridgeOutChain(ctx, types.TargetChainBitcoin)
+
+		_, err := bridgeOut(ctx, keeper, types.TargetChainBitcoin)
+		require.ErrorIs(t, err, types.ErrBridgeOutChainNotEnabled)
+		require.NotErrorIs(t, err, types.ErrOutflowLimitExceeded)
+	})
+
+	t.Run("accepts the bridge-out after enabling the chain again", func(t *testing.T) {
+		ctx, keeper := mockContext()
+		keeper.SetOutflowLimit(ctx, btcToken, math.NewInt(1000))
+		keeper.DisableBridgeOutChain(ctx, types.TargetChainBitcoin)
+
+		_, err := bridgeOut(ctx, keeper, types.TargetChainBitcoin)
+		require.ErrorIs(t, err, types.ErrBridgeOutChainNotEnabled)
+
+		keeper.EnableBridgeOutChain(ctx, types.TargetChainBitcoin)
+
+		event, err := bridgeOut(ctx, keeper, types.TargetChainBitcoin)
+		require.NoError(t, err)
+		require.NotNil(t, event)
+		require.Equal(t, math.NewInt(500), keeper.getCurrentOutflow(ctx, btcToken))
 	})
 }
 
