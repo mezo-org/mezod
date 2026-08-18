@@ -70,6 +70,18 @@ contract AssetsBridgeCaller is IAssetsBridge {
         return IAssetsBridge(precompile).getMinBridgeOutAmountForBitcoinChain();
     }
 
+    function removeBridgeOutChain(uint8 chain) external returns (bool) {
+        return IAssetsBridge(precompile).removeBridgeOutChain(chain);
+    }
+
+    function addBridgeOutChain(uint8 chain) external returns (bool) {
+        return IAssetsBridge(precompile).addBridgeOutChain(chain);
+    }
+
+    function getBridgeOutChains() external view returns (uint8[] memory) {
+        return IAssetsBridge(precompile).getBridgeOutChains();
+    }
+
     function bridgeTriparty(address recipient, uint256 amount, bytes calldata callbackData) external returns (uint256 requestId) {
         return IAssetsBridge(precompile).bridgeTriparty(recipient, amount, callbackData);
     }

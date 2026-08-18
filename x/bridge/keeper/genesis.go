@@ -44,6 +44,11 @@ func (k Keeper) InitGenesis(
 		}
 	}
 
+	// Validate rejects an entry that does not fit in a uint8.
+	for _, chain := range genState.BridgeOutChains {
+		k.EnableBridgeOutChain(ctx, uint8(chain)) //nolint:gosec
+	}
+
 	k.SetBridgeOutPaused(ctx, genState.BridgeOutPaused)
 	k.SetBridgeInPaused(ctx, genState.BridgeInPaused)
 	k.setLastOutflowReset(ctx, genState.LastOutflowReset)
@@ -131,5 +136,22 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		TripartyControllerBtcMinted:    k.getAllTripartyControllerBTCMinted(ctx),
 		BridgeOutPaused:                k.IsBridgeOutPaused(ctx),
 		BridgeInPaused:                 k.IsBridgeInPaused(ctx),
+		BridgeOutChains:                k.exportBridgeOutChains(ctx),
 	}
+}
+
+// exportBridgeOutChains returns the bridge-out chain set widened to uint32.
+// Protobuf has no 8-bit integer type.
+func (k Keeper) exportBridgeOutChains(ctx sdk.Context) []uint32 {
+	chains := k.GetBridgeOutChains(ctx)
+	if len(chains) == 0 {
+		return nil
+	}
+
+	out := make([]uint32, 0, len(chains))
+	for _, chain := range chains {
+		out = append(out, uint32(chain))
+	}
+
+	return out
 }

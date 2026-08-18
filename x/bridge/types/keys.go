@@ -75,6 +75,12 @@ var (
 	// If the key is present in the store, bridging in is paused.
 	BridgeInPausedKey = []byte{0x97}
 
+	// BridgeOutChainKeyPrefix is a prefix used to construct a key to a
+	// bridge-out chain entry. A key is constructed by taking this prefix and
+	// appending the target chain identifier. If the key is present in the
+	// store, the chain accepts bridge-outs.
+	BridgeOutChainKeyPrefix = []byte{0x98}
+
 	// TripartyControllerKeyPrefix is a prefix used to construct a key to a
 	// triparty controller entry. A key is constructed by taking this prefix
 	// and appending the controller address.
@@ -147,6 +153,12 @@ func GetCurrentOutflowKey(token []byte) []byte {
 // given Mezo token address.
 func GetMinBridgeOutAmountKey(mezoToken []byte) []byte {
 	return append(MinBridgeOutAmountKeyPrefix, mezoToken...)
+}
+
+// GetBridgeOutChainKey gets the key for a bridge-out chain entry by the target
+// chain identifier.
+func GetBridgeOutChainKey(chain uint8) []byte {
+	return append(BridgeOutChainKeyPrefix, chain)
 }
 
 // GetTripartyControllerKey gets the key for a triparty controller by address.

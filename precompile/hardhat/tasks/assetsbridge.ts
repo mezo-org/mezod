@@ -197,6 +197,38 @@ task(
   }
 )
 
+task('assetsBridge:removeBridgeOutChain', 'Removes a target chain from the set of chains enabled for bridge-outs')
+  .addParam('chain', 'The target chain, 0 for Ethereum, 1 for Bitcoin')
+  .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.removeBridgeOutChain(taskArguments.chain)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task('assetsBridge:addBridgeOutChain', 'Adds a target chain to the set of chains enabled for bridge-outs')
+  .addParam('chain', 'The target chain, 0 for Ethereum, 1 for Bitcoin')
+  .addParam('signer', 'The signer address (msg.sender) - must be PoA owner')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await bridge.addBridgeOutChain(taskArguments.chain)
+    const confirmed = await pending.wait()
+    console.log(confirmed.hash)
+  })
+
+task(
+  'assetsBridge:getBridgeOutChains',
+  'Returns the set of target chains enabled for bridge-outs',
+  async (_, hre) => {
+    const bridge = new hre.ethers.Contract(precompileAddress, abi, hre.ethers.provider)
+    const result = await bridge.getBridgeOutChains()
+    console.log(result.toString())
+  }
+)
+
 task('assetsBridge:bridgeTriparty', 'Requests a triparty BTC mint through the bridge')
   .addParam('recipient', 'The address to receive the minted BTC')
   .addParam('amount', 'The amount of BTC to mint')

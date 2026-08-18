@@ -698,6 +698,51 @@ func TestGenesisState_Validate(t *testing.T) {
 			},
 			valid: true,
 		},
+		{
+			desc: "bridge-out chain above the uint8 range",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.BridgeOutChains = []uint32{TargetChainEthereum, 256}
+				return genState
+			},
+			valid:       false,
+			errContains: "bridge-out chain 1 must be a valid uint8",
+		},
+		{
+			desc: "duplicate bridge-out chain",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.BridgeOutChains = []uint32{
+					TargetChainBitcoin,
+					TargetChainBitcoin,
+				}
+				return genState
+			},
+			valid:       false,
+			errContains: "bridge-out chain 1 is a duplicate",
+		},
+		{
+			desc: "proper genesis with an empty bridge-out chain set",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.BridgeOutChains = nil
+				return genState
+			},
+			valid: true,
+		},
+		{
+			desc: "proper genesis with a bridge-out chain at the uint8 maximum",
+			genState: func() *GenesisState {
+				genState := DefaultGenesis()
+				genState.SourceBtcToken = token
+				genState.BridgeOutChains = []uint32{TargetChainEthereum, 255}
+				return genState
+			},
+			valid: true,
+		},
 	} {
 		t.Run(
 			tc.desc, func(t *testing.T) {
@@ -710,4 +755,12 @@ func TestGenesisState_Validate(t *testing.T) {
 			},
 		)
 	}
+}
+
+func TestDefaultGenesisBridgeOutChains(t *testing.T) {
+	require.Equal(
+		t,
+		[]uint32{TargetChainEthereum, TargetChainBitcoin},
+		DefaultGenesis().BridgeOutChains,
+	)
 }

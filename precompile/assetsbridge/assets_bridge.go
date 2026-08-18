@@ -124,6 +124,8 @@ func NewPrecompileVersionMap(
 	// v6 retires the pause methods. The maintenance precompile is the single
 	// emergency surface. The retired methods are removed from the codebase,
 	// so all versions reject them; only the version literal tells them apart.
+	// v6 also adds the methods managing the set of chains enabled for
+	// bridge-outs.
 	contractV6, err := NewPrecompile(
 		poaKeeper,
 		bridgeKeeper,
@@ -135,6 +137,7 @@ func NewPrecompileVersionMap(
 			SequenceTipView: true,
 			BridgeOut:       true,
 			Triparty:        true,
+			BridgeOutChains: true,
 		},
 	)
 	if err != nil {
@@ -161,6 +164,7 @@ type Settings struct {
 	SequenceTipView bool // enable the method to expose the sequence tip
 	BridgeOut       bool // enable the bridgeOut method
 	Triparty        bool // enable triparty bridging methods
+	BridgeOutChains bool // enable methods managing the set of chains enabled for bridge-outs
 }
 
 // NewPrecompile creates a new Assets Bridge precompile.
@@ -230,6 +234,12 @@ func NewPrecompile(
 		methods = append(methods, newGetTripartyProcessedSequenceTipMethod(bridgeKeeper))
 	}
 
+	if settings.BridgeOutChains {
+		methods = append(methods, newRemoveBridgeOutChainMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newAddBridgeOutChainMethod(poaKeeper, bridgeKeeper))
+		methods = append(methods, newGetBridgeOutChainsMethod(bridgeKeeper))
+	}
+
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -274,6 +284,10 @@ type BridgeKeeper interface {
 	SetMinBridgeOutAmount(ctx sdk.Context, mezoToken []byte, minAmount math.Int) error
 	GetMinBridgeOutAmountForBitcoinChain(ctx sdk.Context) math.Int
 	SetMinBridgeOutAmountForBitcoinChain(ctx sdk.Context, minAmount math.Int)
+	IsBridgeOutChainEnabled(ctx sdk.Context, chain uint8) bool
+	EnableBridgeOutChain(ctx sdk.Context, chain uint8)
+	DisableBridgeOutChain(ctx sdk.Context, chain uint8)
+	GetBridgeOutChains(ctx sdk.Context) []uint8
 	GetParams(ctx sdk.Context) bridgetypes.Params
 	SaveAssetsUnlocked(
 		ctx sdk.Context,

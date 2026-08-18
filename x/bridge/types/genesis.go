@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"math"
 
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 
@@ -39,6 +40,7 @@ func DefaultGenesis() *GenesisState {
 		TripartyControllerBtcMinted:    nil,
 		BridgeOutPaused:                false,
 		BridgeInPaused:                 false,
+		BridgeOutChains:                []uint32{TargetChainEthereum, TargetChainBitcoin},
 	}
 }
 
@@ -329,6 +331,26 @@ func (gs GenesisState) Validate() error {
 				"pending triparty requests must form a gapless range between processed and request sequence tips",
 			)
 		}
+	}
+
+	seenBridgeOutChains := make(map[uint32]struct{}, len(gs.BridgeOutChains))
+	for i, chain := range gs.BridgeOutChains {
+		if chain > math.MaxUint8 {
+			return fmt.Errorf(
+				"bridge-out chain %d must be a valid uint8: %d",
+				i,
+				chain,
+			)
+		}
+
+		if _, ok := seenBridgeOutChains[chain]; ok {
+			return fmt.Errorf(
+				"bridge-out chain %d is a duplicate: %d",
+				i,
+				chain,
+			)
+		}
+		seenBridgeOutChains[chain] = struct{}{}
 	}
 
 	return nil

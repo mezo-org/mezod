@@ -137,6 +137,95 @@ func TestGenesisLockdownFlags(t *testing.T) {
 	}
 }
 
+func TestGenesisBridgeOutChains(t *testing.T) {
+	tests := map[string]struct {
+		bridgeOutChains []uint32
+		expectedSet     []uint8
+		expectedExport  []uint32
+	}{
+		"only Ethereum": {
+			bridgeOutChains: []uint32{types.TargetChainEthereum},
+			expectedSet:     []uint8{types.TargetChainEthereum},
+			expectedExport:  []uint32{types.TargetChainEthereum},
+		},
+		"both target chains": {
+			bridgeOutChains: []uint32{types.TargetChainEthereum, types.TargetChainBitcoin},
+			expectedSet:     []uint8{types.TargetChainEthereum, types.TargetChainBitcoin},
+			expectedExport:  []uint32{types.TargetChainEthereum, types.TargetChainBitcoin},
+		},
+		"unsorted entries": {
+			bridgeOutChains: []uint32{types.TargetChainBitcoin, types.TargetChainEthereum},
+			expectedSet:     []uint8{types.TargetChainEthereum, types.TargetChainBitcoin},
+			expectedExport:  []uint32{types.TargetChainEthereum, types.TargetChainBitcoin},
+		},
+		"chain at the byte maximum": {
+			bridgeOutChains: []uint32{types.TargetChainEthereum, 255},
+			expectedSet:     []uint8{types.TargetChainEthereum, 255},
+			expectedExport:  []uint32{types.TargetChainEthereum, 255},
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctx, k := mockContext()
+			// InitGenesis runs on a chain that has no bridge-out chain set.
+			clearBridgeOutChains(ctx, k)
+
+			genesisState := types.DefaultGenesis()
+			genesisState.SourceBtcToken = testSourceBTCToken
+			genesisState.BridgeOutChains = test.bridgeOutChains
+
+			accountKeeper := newMockAccountKeeper()
+			accountKeeper.On(
+				"GetModuleAccount",
+				ctx,
+				types.ModuleName,
+			).Return(authtypes.NewEmptyModuleAccount(types.ModuleName))
+
+			k.InitGenesis(ctx, *genesisState, accountKeeper)
+
+			for _, chain := range test.expectedSet {
+				require.True(t, k.IsBridgeOutChainEnabled(ctx, chain))
+			}
+			require.Equal(t, test.expectedSet, k.GetBridgeOutChains(ctx))
+
+			got := k.ExportGenesis(ctx)
+
+			require.NotNil(t, got)
+			// The export is sorted ascending, so an unsorted genesis does not
+			// round-trip entry for entry.
+			require.Equal(t, test.expectedExport, got.BridgeOutChains)
+			accountKeeper.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGenesisWithoutBridgeOutChains(t *testing.T) {
+	ctx, k := mockContext()
+	clearBridgeOutChains(ctx, k)
+
+	// A genesis exported before the bridge-out chain set existed carries no
+	// entry, which leaves every chain disabled.
+	genesisState := types.DefaultGenesis()
+	genesisState.SourceBtcToken = testSourceBTCToken
+	genesisState.BridgeOutChains = nil
+
+	accountKeeper := newMockAccountKeeper()
+	accountKeeper.On(
+		"GetModuleAccount",
+		ctx,
+		types.ModuleName,
+	).Return(authtypes.NewEmptyModuleAccount(types.ModuleName))
+
+	k.InitGenesis(ctx, *genesisState, accountKeeper)
+
+	require.False(t, k.IsBridgeOutChainEnabled(ctx, types.TargetChainEthereum))
+	require.False(t, k.IsBridgeOutChainEnabled(ctx, types.TargetChainBitcoin))
+	require.Empty(t, k.GetBridgeOutChains(ctx))
+	require.Empty(t, k.ExportGenesis(ctx).BridgeOutChains)
+	accountKeeper.AssertExpectations(t)
+}
+
 type mockAccountKeeper struct {
 	mock.Mock
 }

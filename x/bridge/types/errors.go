@@ -24,4 +24,5 @@ var (
 	ErrTripartyRecipientIsPrecompile   = sdkerrors.Register(ModuleName, 16, "triparty recipient is a custom precompile")
 	ErrBridgeOutPaused                 = sdkerrors.Register(ModuleName, 17, "bridge-out is paused")
 	ErrBridgeInPaused                  = sdkerrors.Register(ModuleName, 18, "bridge-in is paused")
+	ErrBridgeOutChainNotEnabled        = sdkerrors.Register(ModuleName, 19, "target chain is not enabled for bridge-outs")
 )

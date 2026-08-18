@@ -102,3 +102,72 @@ func (s *PrecompileTestSuite) TestRetiredPauseMethodsVersions() {
 		s.Require().NoError(err)
 	})
 }
+
+func (s *PrecompileTestSuite) TestBridgeOutChainMethodsVersions() {
+	versionMap, err := assetsbridge.NewPrecompileVersionMap(
+		s.poaKeeper,
+		s.bridgeKeeper,
+		&FakeAuthzKeeper{},
+	)
+	s.Require().NoError(err)
+
+	contractV5, ok := versionMap.GetByVersion(5)
+	s.Require().True(ok)
+
+	contractV6, ok := versionMap.GetByVersion(6)
+	s.Require().True(ok)
+
+	calls := []struct {
+		methodName string
+		inputs     []interface{}
+	}{
+		{"removeBridgeOutChain", []interface{}{uint8(1)}},
+		{"addBridgeOutChain", []interface{}{uint8(1)}},
+		{"getBridgeOutChains", nil},
+	}
+
+	for _, call := range calls {
+		s.Run(call.methodName+" is not registered in v5", func() {
+			err := s.callMethod(
+				contractV5,
+				call.methodName,
+				s.account1.EvmAddr,
+				call.inputs...,
+			)
+			s.Require().ErrorContains(err, "method not found in precompile")
+		})
+	}
+
+	// The chain set methods reject their own no-op, so the calls below run in
+	// an order that keeps every one of them valid.
+	s.bridgeKeeper.EnableBridgeOutChain(s.ctx, 1)
+
+	s.Run("removeBridgeOutChain is registered in v6", func() {
+		err := s.callMethod(
+			contractV6,
+			"removeBridgeOutChain",
+			s.account1.EvmAddr,
+			uint8(1),
+		)
+		s.Require().NoError(err)
+	})
+
+	s.Run("addBridgeOutChain is registered in v6", func() {
+		err := s.callMethod(
+			contractV6,
+			"addBridgeOutChain",
+			s.account1.EvmAddr,
+			uint8(1),
+		)
+		s.Require().NoError(err)
+	})
+
+	s.Run("getBridgeOutChains is registered in v6", func() {
+		err := s.callMethod(
+			contractV6,
+			"getBridgeOutChains",
+			s.account1.EvmAddr,
+		)
+		s.Require().NoError(err)
+	})
+}
