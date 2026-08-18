@@ -176,6 +176,14 @@ Lockdown never touches the bridge outflow limits. Limits stay a separate PoA
 owner tool, and the lockdown state is readable through `getBridgeLockdown`
 instead of masquerading as zero limits.
 
+The bridge lockdown is not the bridge-out chain set. The lockdown is incident
+response: the Emergency Team or the PoA owner stops every bridge-out at once.
+The bridge-out chain set is venue lifecycle: only the PoA owner removes a
+single target chain from it, or adds one back. It lives on the `AssetsBridge`
+precompile and is described in
+[Precompiles](./precompile.md#bridge-out-chain-set). The two controls are
+independent, and either one alone blocks the bridge-outs it covers.
+
 Through the Hardhat toolbox:
 
 ```
@@ -518,6 +526,7 @@ Emergency Team Safe or the PoA owner, so the Safe history names the signers.
 | Enable chain lockdown (level 4; enable-only)                                       | yes            | yes       |
 | Grant / revoke the Emergency Team role                                             | no             | yes       |
 | Outflow limits, min amounts, ERC20 mappings                                        | no             | yes       |
+| Remove / add a bridge-out chain                                                    | no             | yes       |
 | Triparty controllers and limits                                                    | no             | yes       |
 | Upgrade plans, precompile bytecode, EVM/feemarket params                           | no             | yes       |
 | Validator applications, kick, privileges                                           | no             | yes       |
