@@ -189,3 +189,42 @@ func TestMigrateEmergencyTeam(t *testing.T) {
 		require.True(t, mezoApp.PoaKeeper.GetEmergencyTeam(ctx).Empty())
 	})
 }
+
+func TestSeedBridgeOutChains(t *testing.T) {
+	t.Run("no chain is enabled before the upgrade", func(t *testing.T) {
+		mezoApp, ctx := setupApp(t)
+
+		// A chain whose state predates the bridge-out chain set has no
+		// entries, which blocks every bridge-out until the seeding runs.
+		for _, chain := range mezoApp.BridgeKeeper.GetBridgeOutChains(ctx) {
+			mezoApp.BridgeKeeper.DisableBridgeOutChain(ctx, chain)
+		}
+
+		require.NoError(t, v13_0.SeedBridgeOutChains(ctx, mezoApp.BridgeKeeper))
+
+		require.Equal(
+			t,
+			[]uint8{
+				bridgetypes.TargetChainEthereum,
+				bridgetypes.TargetChainBitcoin,
+			},
+			mezoApp.BridgeKeeper.GetBridgeOutChains(ctx),
+		)
+	})
+
+	t.Run("the chains are already enabled", func(t *testing.T) {
+		mezoApp, ctx := setupApp(t)
+
+		require.NoError(t, v13_0.SeedBridgeOutChains(ctx, mezoApp.BridgeKeeper))
+		require.NoError(t, v13_0.SeedBridgeOutChains(ctx, mezoApp.BridgeKeeper))
+
+		require.Equal(
+			t,
+			[]uint8{
+				bridgetypes.TargetChainEthereum,
+				bridgetypes.TargetChainBitcoin,
+			},
+			mezoApp.BridgeKeeper.GetBridgeOutChains(ctx),
+		)
+	})
+}

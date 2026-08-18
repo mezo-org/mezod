@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/mezo-org/mezod/app/upgrades"
 	bridgekeeper "github.com/mezo-org/mezod/x/bridge/keeper"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 	evmkeeper "github.com/mezo-org/mezod/x/evm/keeper"
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 	poakeeper "github.com/mezo-org/mezod/x/poa/keeper"
@@ -53,6 +54,10 @@ func CreateUpgradeHandler(
 			keepers.BridgeKeeper,
 		); err != nil {
 			return nil, fmt.Errorf("failed to migrate emergency team: %w", err)
+		}
+
+		if err := SeedBridgeOutChains(sdkCtx, keepers.BridgeKeeper); err != nil {
+			return nil, fmt.Errorf("failed to seed bridge-out chains: %w", err)
 		}
 
 		return mm.RunMigrations(ctx, configurator, fromVM)
@@ -176,6 +181,24 @@ func MigrateEmergencyTeam(
 	}
 
 	ctx.Logger().Info("emergency team migration done")
+
+	return nil
+}
+
+// SeedBridgeOutChains enables both target chains for bridge-outs. The chain set
+// is empty before the upgrade, so the seeding keeps the bridge-out path open.
+// Enabling a chain that is already enabled changes nothing.
+func SeedBridgeOutChains(ctx sdk.Context, bridgeKeeper bridgekeeper.Keeper) error {
+	ctx.Logger().Info("begin bridge-out chain seeding")
+
+	bridgeKeeper.EnableBridgeOutChain(ctx, bridgetypes.TargetChainEthereum)
+	bridgeKeeper.EnableBridgeOutChain(ctx, bridgetypes.TargetChainBitcoin)
+
+	ctx.Logger().Info(
+		"bridge-out chain seeding done",
+		"bridgeOutChains",
+		bridgeKeeper.GetBridgeOutChains(ctx),
+	)
 
 	return nil
 }
