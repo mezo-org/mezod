@@ -1,10 +1,12 @@
 package maintenance_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	errorsmod "cosmossdk.io/errors"
+	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"github.com/cometbft/cometbft/crypto/ed25519"
 	cryptocdc "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -58,6 +60,7 @@ type PrecompileTestSuite struct {
 	evmKeeper       *FakeEvmKeeper
 	feeMarketKeeper *FakeFeeMarketKeeper
 	bridgeKeeper    *FakeBridgeKeeper
+	upgradeKeeper   *FakeUpgradeKeeper
 	ctx             sdk.Context
 
 	account1, account2, account3 Key
@@ -119,6 +122,7 @@ func (s *PrecompileTestSuite) SetupTest() {
 	s.poaKeeper = NewFakePoaKeeper(s.account1.SdkAddr)
 	s.feeMarketKeeper = NewFakeFeeMarketKeeper()
 	s.bridgeKeeper = NewFakeBridgeKeeper()
+	s.upgradeKeeper = NewFakeUpgradeKeeper()
 
 	// init app
 	s.app = app.Setup(false, nil)
@@ -149,6 +153,7 @@ func (s *PrecompileTestSuite) RunMethodTestCasesWithSettings(
 				s.evmKeeper,
 				s.feeMarketKeeper,
 				s.bridgeKeeper,
+				s.upgradeKeeper,
 				settings,
 			)
 			s.Require().NoError(err)
@@ -332,6 +337,58 @@ func (k *FakeBridgeKeeper) IsBridgeOutPaused(_ sdk.Context) bool {
 
 func (k *FakeBridgeKeeper) SetBridgeOutPaused(_ sdk.Context, isPaused bool) {
 	k.bridgeOutPaused = isPaused
+}
+
+type FakeUpgradeKeeper struct {
+	scheduleUpgradeErr error
+	doneHeightErr      error
+	// handlers holds the upgrade names the binary can execute. It is empty by
+	// default, so no name has a handler.
+	handlers map[string]bool
+	// doneHeights holds the completion heights of applied upgrades by plan
+	// name. It is empty by default, so no plan name was completed.
+	doneHeights map[string]int64
+	// scheduledPlan is the plan passed to the last ScheduleUpgrade call. It is
+	// nil if no call succeeded yet.
+	scheduledPlan *upgradetypes.Plan
+}
+
+func NewFakeUpgradeKeeper() *FakeUpgradeKeeper {
+	return &FakeUpgradeKeeper{}
+}
+
+// reset clears the recorded plan and all the configured values. Test cases run
+// as subtests of a single suite test so they share this fake.
+func (k *FakeUpgradeKeeper) reset() {
+	*k = FakeUpgradeKeeper{}
+}
+
+func (k *FakeUpgradeKeeper) GetDoneHeight(
+	_ context.Context,
+	name string,
+) (int64, error) {
+	if k.doneHeightErr != nil {
+		return 0, k.doneHeightErr
+	}
+
+	return k.doneHeights[name], nil
+}
+
+func (k *FakeUpgradeKeeper) ScheduleUpgrade(
+	_ context.Context,
+	plan upgradetypes.Plan,
+) error {
+	if k.scheduleUpgradeErr != nil {
+		return k.scheduleUpgradeErr
+	}
+
+	k.scheduledPlan = &plan
+
+	return nil
+}
+
+func (k *FakeUpgradeKeeper) HasHandler(name string) bool {
+	return k.handlers[name]
 }
 
 func NewFakeEvmKeeper() *FakeEvmKeeper {

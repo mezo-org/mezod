@@ -5,7 +5,8 @@ Team role, the lockdown mode it drives, and the audit trail both leave behind.
 
 The Emergency Team role and the bridge lockdown ship in `v13.0.0`. They replace
 the `AssetsBridge` pauser role and the triparty pause flag, which the same
-release retires. The transaction lockdown ships in the same release.
+release retires. The transaction lockdown and the chain lockdown ship in the
+same release.
 
 ## Overview
 
@@ -112,14 +113,14 @@ an upgrade plan. See [Governance](./release-process.md#governance).
 
 Lockdown is the only power of the Emergency Team. It comes in levels, and each
 level stops more activity than the level below it. MEZO-5000 defines the model;
-`v13.0.0` implements levels 1, 2, and 3.
+`v13.0.0` implements every level.
 
-| Level | Name                    | Method                                                                   | Disable on chain | Status             |
-|-------|-------------------------|--------------------------------------------------------------------------|------------------|--------------------|
-| 1     | Bridge lockdown         | `setBridgeLockdown(bool,bool)`                                           | yes              | `v13.0.0`          |
-| 2     | Restricted transactions | `setTxLockdown(bool)` plus `setTxLockdownAllowlist(address[],address[])` | yes              | `v13.0.0`          |
-| 3     | No transactions         | `setTxLockdown(bool)`                                                    | yes              | `v13.0.0`          |
-| 4     | Chain lockdown          | `setChainLockdown`                                                       | no               | planned, MEZO-5000 |
+| Level | Name                    | Method                                                                   | Disable on chain | Status    |
+|-------|-------------------------|--------------------------------------------------------------------------|------------------|-----------|
+| 1     | Bridge lockdown         | `setBridgeLockdown(bool,bool)`                                           | yes              | `v13.0.0` |
+| 2     | Restricted transactions | `setTxLockdown(bool)` plus `setTxLockdownAllowlist(address[],address[])` | yes              | `v13.0.0` |
+| 3     | No transactions         | `setTxLockdown(bool)`                                                    | yes              | `v13.0.0` |
+| 4     | Chain lockdown          | `setChainLockdown(string)`                                               | no               | `v13.0.0` |
 
 ### The interface contract
 
@@ -134,8 +135,8 @@ Levels 2 and 3 share one setter and differ only in the allowlist, so they add a
 second pair, `setTxLockdownAllowlist` and `getTxLockdownAllowlist`, plus the
 `TxLockdownAllowlistSet` event.
 
-Level 4 is the exception. `setChainLockdown` takes no arguments, has no view,
-and cannot be disabled on chain.
+Level 4 is the exception. `setChainLockdown` takes the upgrade plan name, has
+no view, and cannot be disabled on chain.
 
 Both the Emergency Team and the PoA owner can call every setter.
 
@@ -352,6 +353,103 @@ is lost. The owner passes the role clause both as a sender and as a target.
 Confirm the result with `getTxLockdown` and with the `TxLockdownSet` event of the
 transaction.
 
+### Level 4: chain lockdown
+
+```solidity
+function setChainLockdown(string calldata planName) external returns (bool);
+```
+
+`setChainLockdown` is restricted to the Emergency Team and the PoA owner. It
+takes the upgrade plan name and has no view. The call emits `ChainLockdownSet`.
+This is the last level, and it is one-way on chain: the chain stops, and no
+method starts it again.
+
+The call schedules an upgrade plan in the `x/upgrade` module, under the given
+plan name and at the next block height. No upgrade handler in the running
+binary registers that name. At that height the `PreBlocker` of `x/upgrade`
+finds the plan, finds no handler, logs `UPGRADE "<name>" NEEDED`, and panics.
+Every validator runs the same code on the same block, so every validator stops
+at the same height. The halt needs no further transaction and no coordination.
+
+#### The plan name
+
+The caller picks the plan name, and the recovery release must carry exactly
+that name. On mainnet, name the plan after the next release, for example
+`v13.0.0` when the chain runs `v12.0.0`.
+
+The call validates the name and reverts without scheduling anything when the
+name cannot halt the chain:
+
+- An empty name reverts with `plan name cannot be empty`.
+- A name with a registered upgrade handler reverts with
+  `the binary has an upgrade handler for plan name "<name>"; the chain would
+  not halt`. Such a plan does not halt the chain: the `PreBlocker` runs the
+  handler and the chain continues. Every historical upgrade name has a handler;
+  see [Upgrades](./upgrades.md#historical-upgrades).
+- A name of a completed upgrade reverts with
+  `an upgrade with plan name "<name>" was already completed`.
+
+The `ChainLockdownSet` event of the transaction records the name. The halt
+height is the block of that transaction plus one.
+
+The call replaces any pending upgrade plan, because `ScheduleUpgrade` keeps one
+plan at a time. A planned upgrade that was scheduled and not yet executed is
+lost, and governance must schedule it again after the recovery. In an emergency
+that priority is intended, and the `ChainLockdownSet` event records what the
+lockdown scheduled instead.
+
+Through the Hardhat toolbox:
+
+```
+npx hardhat maintenance:setChainLockdown --signer TEAM --plan-name v13.0.0
+```
+
+The task prints the transaction hash before it waits for the receipt, because
+the node stops one block later.
+
+The drill `tests/system/chain-lockdown-drill.sh` runs the whole sequence against
+a localnode: it grants the role, calls the method, asserts the event and the
+halt, and prints both recovery paths. The drill kills the localnode. Never point
+it at a shared network.
+
+#### What stays observable
+
+The node logs and the local state. Each node keeps its data directory and its
+log, so the halt line and the state before the halt stay readable on disk. The
+halt is a panic, so the node process exits and JSON-RPC liveness is not
+guaranteed. Block production stops in any case, so no new state appears.
+
+Plan the diagnosis around that. Read every value you need through the JSON-RPC
+endpoint before the halt, or from the logs and the state after it. The lower
+levels leave queries working; level 4 does not.
+
+#### Recovery
+
+Recovery is off chain. No method disables level 4, and the halted chain accepts
+no transactions. Both paths need every validator to restart.
+
+Path 1 is the primary one. Ship a release whose upgrade handler registers
+exactly the plan name. Note the word exactly: a halt on `v14.0.0` needs a
+release named `v14.0.0`, because the `PreBlocker` matches the handler by the
+plan name. A patch release such as `v13.1.0` does not resolve that halt.
+Validators install the new binary and restart. The `PreBlocker` then finds the
+handler at the halt height, runs the migrations, and the chain continues as
+after a normal planned upgrade. Nobody schedules the plan again, because the
+plan is already in the store. See
+[Upgrades](./upgrades.md#recovery-release-after-a-chain-lockdown).
+
+Path 2 is the fallback. Validators restart the same binary and skip the plan:
+
+```
+mezod start --unsafe-skip-upgrades <HALT_HEIGHT>
+```
+
+The `PreBlocker` clears the plan, logs `UPGRADE "<name>" SKIPPED`, and the chain
+resumes with the state it had before the halt. Every validator must pass the
+same height, and the flag skips that height only. Use this path when the
+incident needs no code change, for example when the halt was a mistake or when a
+lower level already contains the incident.
+
 ## Audit trail
 
 Every write of the emergency controls emits an event from the `Maintenance`
@@ -364,6 +462,7 @@ nothing.
 | `BridgeLockdownSet`      | `BridgeLockdownSet(bool,bool)`                | `0x60257cbb964d7216fa05325ba9832a1c24fcf2999621d6cd1ec6f751ff119f9f` |
 | `TxLockdownSet`          | `TxLockdownSet(bool)`                         | `0xd48ad28283ff81706740f90ff0dc96f8e40e809900c17522ee5c9765e4911fa7` |
 | `TxLockdownAllowlistSet` | `TxLockdownAllowlistSet(address[],address[])` | `0xf86993c03d2e206de6de06ee07222572777f06e560ce60a7d23cd3b226ac8fd4` |
+| `ChainLockdownSet`       | `ChainLockdownSet(string)`                    | `0x4d0a372af84c10dd45e66aa10fe4381d69e762e336cf0edc7b2cf4d51464447a` |
 
 `EmergencyTeamSet(address indexed previous, address indexed current)` records
 every grant, rotation, and revocation. `previous` is the holder before the call
@@ -382,6 +481,13 @@ no `TxLockdownAllowlistSet` event marks that clearing.
 allowlist after the call, both dimensions at once, because the call replaces
 both lists. No argument of either event is indexed, so all of them sit in the
 log data. Decode the two arrays with the ABI; the topics carry no address.
+
+`ChainLockdownSet(string name)` records the name of the upgrade plan that halts
+the chain. The argument is not indexed, so it sits in the log data. This event
+is the whole on-chain trail of the halt: `setChainLockdown` schedules the plan
+through the `x/upgrade` keeper directly, so no `PlanSubmitted` event of the
+`Upgrade` precompile follows, and the keeper itself emits nothing. Read the
+event while the chain still answers, or from a node after the recovery.
 
 Query the whole history of the role with `eth_getLogs`:
 
@@ -409,7 +515,7 @@ Emergency Team Safe or the PoA owner, so the Safe history names the signers.
 |------------------------------------------------------------------------------------|----------------|-----------|
 | Enable / disable bridge lockdown (level 1)                                         | yes            | yes       |
 | Enable / disable transaction lockdown, set its allowlist (levels 2 and 3)          | yes            | yes       |
-| Enable chain lockdown (level 4, MEZO-5000; enable-only)                            | yes            | yes       |
+| Enable chain lockdown (level 4; enable-only)                                       | yes            | yes       |
 | Grant / revoke the Emergency Team role                                             | no             | yes       |
 | Outflow limits, min amounts, ERC20 mappings                                        | no             | yes       |
 | Triparty controllers and limits                                                    | no             | yes       |
@@ -419,13 +525,3 @@ Emergency Team Safe or the PoA owner, so the Safe history names the signers.
 Both parties can enable and disable every level, so no action waits for a
 separate governance confirmation. Level 4 is the exception: once chain lockdown
 is enabled, nobody disables it on chain.
-
-## Roadmap
-
-MEZO-5000 continues the level model with one reserved method name. It does not
-exist yet; the name is fixed here so the vocabulary stays stable.
-
-- `setChainLockdown(string planName)`: halts consensus through an immediate
-  upgrade under the given plan name. It is one-way on chain. The only recovery
-  is validators restarting with a binary that resolves the plan name, so this
-  level has no on-chain disable and no view.

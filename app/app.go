@@ -949,6 +949,7 @@ func customEvmPrecompiles(
 		&evmKeeper,
 		feemarketKeeper,
 		bridgeKeeper,
+		upgradeKeeper,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create maintenance precompile: [%w]", err)

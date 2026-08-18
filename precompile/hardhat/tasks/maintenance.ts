@@ -197,3 +197,21 @@ task('maintenance:getTxLockdownAllowlist', 'Gets the extra allowlists of the tra
     console.log('senders:', allowlist[0])
     console.log('targets:', allowlist[1])
   })
+
+task('maintenance:setChainLockdown', 'WARNING: HALTS THE CHAIN. Every validator stops at the next block and recovery is off chain')
+  .addParam('signer', 'The Emergency Team or owner address (msg.sender)')
+  .addParam('planName', 'The upgrade plan name; the recovery release must carry this exact name')
+  .setAction(async (taskArguments, hre) => {
+    const signer = await hre.ethers.getSigner(taskArguments.signer)
+    const maintenance = new hre.ethers.Contract(precompileAddress, abi, signer)
+    const pending = await maintenance.setChainLockdown(taskArguments.planName)
+    // Print the hash before the wait. The node stops one block after this
+    // transaction, so the receipt may never arrive.
+    console.log(pending.hash)
+    try {
+      await pending.wait()
+      console.log('confirmed, the chain halts at the next block')
+    } catch (err) {
+      console.log('cannot read the receipt, the node may already be down:', (err as Error).message)
+    }
+  })

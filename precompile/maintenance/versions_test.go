@@ -42,6 +42,7 @@ func (s *PrecompileTestSuite) TestEmergencyControlsVersions() {
 		s.evmKeeper,
 		s.feeMarketKeeper,
 		s.bridgeKeeper,
+		s.upgradeKeeper,
 	)
 	s.Require().NoError(err)
 
@@ -73,6 +74,7 @@ func (s *PrecompileTestSuite) TestEmergencyControlsVersions() {
 			[]interface{}{[]common.Address{}, []common.Address{}},
 		},
 		{"getTxLockdownAllowlist", nil},
+		{"setChainLockdown", []interface{}{"v13.0.0"}},
 	}
 
 	for _, call := range calls {

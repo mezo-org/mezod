@@ -1,9 +1,11 @@
 package maintenance
 
 import (
+	"context"
 	"embed"
 	"fmt"
 
+	upgradetypes "cosmossdk.io/x/upgrade/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/mezo-org/mezod/precompile"
@@ -26,9 +28,10 @@ func NewPrecompileVersionMap(
 	evmKeeper EvmKeeper,
 	feeMarketKeeper FeeMarketKeeper,
 	bridgeKeeper BridgeKeeper,
+	upgradeKeeper UpgradeKeeper,
 ) (*precompile.VersionMap, error) {
 	// v1 is just the EVM settings.
-	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
+	contractV1, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, upgradeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         false,
 		ChainFeeSplitter:    false,
@@ -40,7 +43,7 @@ func NewPrecompileVersionMap(
 	}
 
 	// v2 is the EVM settings and the precompiles settings.
-	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
+	contractV2, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, upgradeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    false,
@@ -52,7 +55,7 @@ func NewPrecompileVersionMap(
 	}
 
 	// v3 is the EVM settings, the precompiles settings and the chain fee splitter settings.
-	contractV3, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
+	contractV3, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, upgradeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    true,
@@ -65,7 +68,7 @@ func NewPrecompileVersionMap(
 
 	// v4 is the EVM settings, the precompiles settings, the chain fee splitter settings,
 	// and the gas price settings.
-	contractV4, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
+	contractV4, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, upgradeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    true,
@@ -77,7 +80,7 @@ func NewPrecompileVersionMap(
 	}
 
 	// v5 adds max precompiles calls per execution settings.
-	contractV5, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
+	contractV5, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, upgradeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    true,
@@ -89,7 +92,7 @@ func NewPrecompileVersionMap(
 	}
 
 	// v6 adds the SELFDESTRUCT toggle and the emergency controls.
-	contractV6, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, &Settings{
+	contractV6, err := NewPrecompile(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, upgradeKeeper, &Settings{
 		EVM:                 true,
 		Precompiles:         true,
 		ChainFeeSplitter:    true,
@@ -131,6 +134,7 @@ func NewPrecompile(
 	evmKeeper EvmKeeper,
 	feeMarketKeeper FeeMarketKeeper,
 	bridgeKeeper BridgeKeeper,
+	upgradeKeeper UpgradeKeeper,
 	settings *Settings,
 ) (*precompile.Contract, error) {
 	contractAbi, err := precompile.LoadAbiFile(filesystem, "abi.json")
@@ -145,7 +149,7 @@ func NewPrecompile(
 		"maintenance",
 	)
 
-	methods := newPrecompileMethods(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, settings)
+	methods := newPrecompileMethods(poaKeeper, evmKeeper, feeMarketKeeper, bridgeKeeper, upgradeKeeper, settings)
 	contract.RegisterMethods(methods...)
 
 	return contract, nil
@@ -158,6 +162,7 @@ func newPrecompileMethods(
 	evmKeeper EvmKeeper,
 	feeMarketKeeper FeeMarketKeeper,
 	bridgeKeeper BridgeKeeper,
+	upgradeKeeper UpgradeKeeper,
 	settings *Settings,
 ) []precompile.Method {
 	var methods []precompile.Method
@@ -200,6 +205,7 @@ func newPrecompileMethods(
 		methods = append(methods, newGetTxLockdownMethod(evmKeeper))
 		methods = append(methods, newSetTxLockdownAllowlistMethod(poaKeeper, evmKeeper))
 		methods = append(methods, newGetTxLockdownAllowlistMethod(evmKeeper))
+		methods = append(methods, newSetChainLockdownMethod(poaKeeper, upgradeKeeper))
 	}
 
 	return methods
@@ -217,6 +223,13 @@ type BridgeKeeper interface {
 	SetBridgeInPaused(ctx sdk.Context, isPaused bool)
 	IsBridgeOutPaused(ctx sdk.Context) bool
 	SetBridgeOutPaused(ctx sdk.Context, isPaused bool)
+}
+
+// UpgradeKeeper is an interface to the x/upgrade module keeper.
+type UpgradeKeeper interface {
+	GetDoneHeight(ctx context.Context, name string) (int64, error)
+	ScheduleUpgrade(ctx context.Context, plan upgradetypes.Plan) error
+	HasHandler(name string) bool
 }
 
 type EvmKeeper interface {

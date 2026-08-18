@@ -33,6 +33,12 @@ interface IMaintenance {
     event TxLockdownAllowlistSet(address[] senders, address[] targets);
 
     /**
+     * @notice Emitted when the chain lockdown is set.
+     * @param name The name of the upgrade plan that halts the chain.
+     */
+    event ChainLockdownSet(string name);
+
+    /**
      * @notice Enables/disables support for the non-EIP155 txs without replay protection.
      * @param value The new value of the flag.
      * @dev Must be called by contract owner.
@@ -182,4 +188,19 @@ interface IMaintenance {
         external
         view
         returns (address[] memory senders, address[] memory targets);
+
+    /**
+     * @notice Halts the chain. The call schedules an upgrade plan under the
+     *         given name, at the next block height.
+     * @param planName The name of the upgrade plan. It must not be empty, no
+     *        upgrade handler in the running binary may register it, and no
+     *        completed upgrade may carry it. The checks ensure the plan halts
+     *        the chain instead of upgrading it.
+     * @dev WARNING: every validator stops at the next block. The chain cannot
+     *      recover on chain. Recovery needs every validator to restart, either
+     *      with a release named after the plan or with --unsafe-skip-upgrades.
+     * @dev The call replaces any pending upgrade plan.
+     * @dev Must be called by the Emergency Team or the contract owner.
+     */
+    function setChainLockdown(string calldata planName) external returns (bool);
 }
