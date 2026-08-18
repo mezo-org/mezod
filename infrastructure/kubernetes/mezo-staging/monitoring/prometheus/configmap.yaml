@@ -21,8 +21,9 @@ data:
           - targets: ['bridge-worker.default.svc.cluster.local:2112']    
       - job_name: 'api-metrics'
         metrics_path: /api/v2/metrics
+        scheme: https
         static_configs:
-          - targets: ['api.test.mezo.org']
+          - targets: ['api.testnet.mezo.org']
       - job_name: 'blackbox'
         metrics_path: /probe
         params:
