@@ -17,10 +17,14 @@ data:
         static_configs:
           - targets: ['bridge-worker.default.svc.cluster.local:2112']    
       - job_name: 'api-metrics'
+        scrape_interval: 60s
+        scrape_timeout: 30s
         metrics_path: /api/v2/metrics
         static_configs:
           - targets: ['api.mezo.org']
       - job_name: 'blackbox'
+        scrape_interval: 60s
+        scrape_timeout: 10s
         metrics_path: /probe
         params:
           module: [http_2xx]  # Look for a HTTP 200 response.
@@ -35,6 +39,8 @@ data:
           - target_label: __address__
             replacement: blackbox-exporter:9115 
       - job_name: 'balance-exporter'
+        scrape_interval: 60s
+        scrape_timeout: 30s
         metrics_path: /metrics
         static_configs:
           - targets: ['balance-exporter:9115', 'balance-exporter:9116']
