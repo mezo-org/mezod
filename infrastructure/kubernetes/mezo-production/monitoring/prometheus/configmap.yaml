@@ -7,6 +7,7 @@ data:
   prometheus.yml: |
     global:
       scrape_interval: 30s
+      scrape_timeout: 30s
       evaluation_interval: 15s
 
     scrape_configs:
@@ -20,13 +21,11 @@ data:
           - targets: ['bridge-worker.default.svc.cluster.local:2112']    
       - job_name: 'api-metrics'
         scrape_interval: 60s
-        scrape_timeout: 30s
         metrics_path: /api/v2/metrics
         static_configs:
           - targets: ['api.mezo.org']
       - job_name: 'blackbox'
         scrape_interval: 60s
-        scrape_timeout: 10s
         metrics_path: /probe
         params:
           module: [http_2xx]  # Look for a HTTP 200 response.
@@ -42,13 +41,11 @@ data:
             replacement: blackbox-exporter:9115 
       - job_name: 'balance-exporter'
         scrape_interval: 5m
-        scrape_timeout: 30s
         metrics_path: /metrics
         static_configs:
           - targets: ['balance-exporter:9115', 'balance-exporter:9116']
       - job_name: 'earn-bot'
         scrape_interval: 60s
-        scrape_timeout: 30s
         scheme: https
         tls_config:
           insecure_skip_verify: false
