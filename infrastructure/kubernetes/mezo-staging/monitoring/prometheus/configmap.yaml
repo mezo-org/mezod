@@ -6,8 +6,8 @@ metadata:
 data:
   prometheus.yml: |
     global:
-      scrape_interval: 2s
-      evaluation_interval: 2s
+      scrape_interval: 15s
+      evaluation_interval: 15s
 
     rule_files:
       - "alert_rules.yml"
