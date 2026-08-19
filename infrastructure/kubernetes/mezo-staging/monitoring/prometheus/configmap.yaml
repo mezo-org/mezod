@@ -6,7 +6,7 @@ metadata:
 data:
   prometheus.yml: |
     global:
-      scrape_interval: 15s
+      scrape_interval: 30s
       evaluation_interval: 15s
 
     rule_files:
@@ -14,9 +14,11 @@ data:
 
     scrape_configs:
       - job_name: 'metrics-scraper'
+        scrape_interval: 15s
         static_configs:
           - targets: ['metrics-scraper:2112']
       - job_name: 'bridge-worker'
+        scrape_interval: 30s
         static_configs:
           - targets: ['bridge-worker.default.svc.cluster.local:2112']    
       - job_name: 'api-metrics'
