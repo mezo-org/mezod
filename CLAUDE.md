@@ -169,7 +169,8 @@ Three separate Hardhat projects — don't cross-import:
 
 ## Conventions
 
-- Commits **must** be GPG-signed (CI enforces; signing in the sandbox won't work — sign outside).
+- Commits **must** be signed. Never pass `--no-gpg-sign` or unset `commit.gpgsign` to get a commit
+  through; if signing isn't working, stop and ask rather than committing unsigned.
 - Each PR should update `docs/` or `x/<module>/spec/` when behavior changes. Follow the
   `.github/pull_request_template.md` sections (Introduction / Changes / Testing).
 - Module dependencies are blocked by `gomodguard` in `.golangci.yml` (etcd < 3.4.10, dgrijalva/jwt-go ≥
