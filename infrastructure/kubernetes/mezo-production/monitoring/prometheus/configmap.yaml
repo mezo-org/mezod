@@ -52,3 +52,11 @@ data:
         metrics_path: /metrics
         static_configs:
           - targets: ['earn-bot.mezo.org']
+      - job_name: 'liquidation-bot'
+        scrape_interval: 60s
+        scheme: https
+        tls_config:
+          insecure_skip_verify: false
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['liquidation-bot.mezo.org']
