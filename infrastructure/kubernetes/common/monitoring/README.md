@@ -104,6 +104,21 @@ config map of the given environment. Each chain has its own file: for example
 `addresses-base.txt` for Base. The exporter adds a prefix to the metrics of
 each chain, so Base balances appear as `base_account_balance`.
 
+The exporter reads the address files at start only. A changed config map
+reaches the container, but the exporter keeps the old list. After you change
+the addresses, restart the deployment:
+```Shell
+kubectl rollout restart deployment/balance-exporter -n monitoring
+```
+
+Prometheus also keeps its old configuration after a config map change. After
+you add or remove a scrape target, tell the running Prometheus to read the
+configuration again:
+```Shell
+kubectl port-forward -n monitoring svc/prometheus 9090:9090
+curl -X POST http://127.0.0.1:9090/-/reload
+```
+
 ### Static IP for the metrics-scraper service
 
 The metrics scraper service requires a static IP which is to be allowlisted

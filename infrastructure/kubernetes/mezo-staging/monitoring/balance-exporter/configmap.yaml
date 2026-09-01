@@ -6,9 +6,11 @@ metadata:
 data:
   addresses-mezo.txt: |
     testertesting:0x6e80164ea60673D64d5d6228beb684a1274Bb017
+    earn-bot:0xf8176Df5B9FbCf0Ed38c06970371ba89B7701bBb
   addresses-ethereum.txt: |
     bridge-reimbursement-pool:0xF6A9d3B42615ACcc70A4e60b389c851C8FB1524d
     bridge-worker:0x419b505186fe3880Ac6407AcD14dD0398d6e8Ec8
+    earn-bot:0xf8176Df5B9FbCf0Ed38c06970371ba89B7701bBb
   addresses-base.txt: |
     earn-bot:0xf8176Df5B9FbCf0Ed38c06970371ba89B7701bBb
   contracts.txt: |
