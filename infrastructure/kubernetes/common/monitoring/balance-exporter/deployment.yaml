@@ -59,7 +59,26 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: rpc-url
-                  key: ETHEREUM          
+                  key: ETHEREUM
+        - name: balance-exporter-base
+          image: nkuba/balance-exporter
+          ports:
+            - containerPort: 9117
+          volumeMounts:
+            - name: balance-exporter-config
+              mountPath: /etc/balance-exporter
+          env:
+            - name: PORT
+              value: "9117"
+            - name: ADDRESSES_FILE
+              value: /etc/balance-exporter/addresses-base.txt
+            - name: PREFIX
+              value: base_
+            - name: CHAIN_RPC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rpc-url
+                  key: BASE
 
       volumes:
         - name: balance-exporter-config

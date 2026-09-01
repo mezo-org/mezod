@@ -82,6 +82,28 @@ Here's an example of the `nodes-config.json` configuration file:
 }
 ```
 
+#### Balance Exporter
+
+One secret holds the JSON-RPC URLs of the chains watched by the balance
+exporter. The exporter runs one container per chain, and each container reads
+its own key:
+- `MEZO`: Mezo
+- `ETHEREUM`: Ethereum mainnet in production, Sepolia in staging
+- `BASE`: Base mainnet in production, Base Sepolia in staging
+
+To create the secret, use the following command:
+```Shell
+kubectl create secret generic rpc-url -n monitoring \
+  --from-literal=MEZO=<MEZO_RPC_URL> \
+  --from-literal=ETHEREUM=<ETHEREUM_RPC_URL> \
+  --from-literal=BASE=<BASE_RPC_URL>
+```
+
+The addresses to watch on each chain live in the `balance-exporter-config`
+config map of the given environment. Each chain has its own file: for example
+`addresses-base.txt` for Base. The exporter adds a prefix to the metrics of
+each chain, so Base balances appear as `base_account_balance`.
+
 ### Static IP for the metrics-scraper service
 
 The metrics scraper service requires a static IP which is to be allowlisted

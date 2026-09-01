@@ -13,4 +13,7 @@ spec:
     - name: ethereum
       port: 9116
       targetPort: 9116
+    - name: base
+      port: 9117
+      targetPort: 9117
   type: ClusterIP
