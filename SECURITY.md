@@ -19,10 +19,10 @@ rules, and reward tiers.
 
 ## Direct Reports
 
-_Due to the vulnerability reporting volume in the age of LLM agents,
+*Due to the vulnerability reporting volume in the age of LLM agents,
 vulnerabilities reported through `security@mezo.org` may be subject to **no
 response** unless they present a high-severity, highly exploitable, time
-sensitive issue._ Other reports should flow through the Cantina bounty program.
+sensitive issue.* Other reports should flow through the Cantina bounty program.
 
 For such issues, email `security@mezo.org`, following the guidelines at
 https://mezo.org/SECURITY.md . Sometimes vulnerabilities are more sensitive in
