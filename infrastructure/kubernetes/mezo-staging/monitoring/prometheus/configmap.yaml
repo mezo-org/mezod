@@ -55,6 +55,14 @@ data:
         metrics_path: /metrics
         static_configs:
           - targets: ['earn-bot.testnet.mezo.org']
+      - job_name: 'lending-vault-monitoring'
+        scrape_interval: 60s
+        scheme: https
+        tls_config:
+          insecure_skip_verify: false
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['lending-vault-monitoring.testnet.mezo.org']
 
   alert_rules.yml: |
     groups:
