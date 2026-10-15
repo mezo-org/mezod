@@ -108,6 +108,12 @@ const config: HardhatUserConfig = {
       tags: ['verify'],
       chainId: 56,
     },
+    robinhoodMainnet: {
+      url: process.env.ROBINHOOD_MAINNET_RPC_URL || "",
+      accounts: parseCommaDelimitedString(process.env.ROBINHOOD_MAINNET_PRIVATE_KEY as string),
+      tags: ['verify'],
+      chainId: 4663,
+    },
   },
   external: {
     deployments: {
