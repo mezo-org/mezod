@@ -63,7 +63,7 @@ Two distinct local setups (don't confuse them):
 - `make generate` — `go generate ./...` with a `GOFLAGS=-mod=mod` dance; used by `make bindings`.
 - Pre-commit: `pip install pre-commit && pre-commit install` to enable the hooks listed in
   `.pre-commit-config.yaml`.
-- Go toolchain: **go 1.24.0** (pinned in `go.mod` and Dockerfile).
+- Go toolchain: **go1.26.10** (`toolchain` in `go.mod`, Dockerfile, CI); `go 1.24.0` in `go.mod` is the minimum version.
 
 ## Architecture
 
