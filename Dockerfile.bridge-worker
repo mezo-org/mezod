@@ -1,15 +1,17 @@
 # hadolint global ignore=DL3018
-FROM golang:1.24.0-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.10-alpine AS builder
+
+ARG TARGETOS TARGETARCH
 
 WORKDIR /app
 COPY . .
 
 RUN go mod download && \
-    CGO_ENABLED=0 GOOS=linux go build -o bridge-worker ./cmd/bridge-worker
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o bridge-worker ./cmd/bridge-worker
 
-FROM alpine:3.21.3
+FROM alpine:3.22
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache upgrade && apk --no-cache add ca-certificates tzdata
 
 RUN mkdir -p  /etc/bridge-worker
 
