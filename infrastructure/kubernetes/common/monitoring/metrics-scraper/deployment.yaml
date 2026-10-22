@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: metrics-scraper
-          image: mezo/metrics-scraper@sha256:629cfbbc21bb8500a6fb8d66bc0b0efe15f2bc7d22c16ee096de3985ee355d66
+          image: mezo/metrics-scraper@sha256:cffb0ed52e8df013919ac8f81bbf759e1ff2c393b30202558f04e7667104c117
           imagePullPolicy: Always
           args:
             - --chain-id=$(CHAIN_ID)
