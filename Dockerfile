@@ -3,7 +3,7 @@
 #
 # Build layer
 #
-FROM golang:1.24.0-bullseye AS build
+FROM golang:1.26.10-bookworm AS build
 
 WORKDIR /go/src/github.com/mezo-org/mezod
 
