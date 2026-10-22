@@ -6,8 +6,10 @@ env:
 
 customConfigs:
   enabled: true
+  # json-rpc.api exposes only the namespaces our clients use; Blockscout needs txpool.
   appTomlTxt: |
     json-rpc.logs-filter-addr-cap=100
+    json-rpc.api=eth,txpool,net,web3,mezo
   clientTomlTxt: ""
   configTomlTxt: ""
 
