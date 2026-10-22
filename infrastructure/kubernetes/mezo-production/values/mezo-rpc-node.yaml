@@ -15,8 +15,10 @@ env:
 
 customConfigs:
   enabled: true
+  # json-rpc.api exposes only the namespaces our clients use; Blockscout needs txpool.
   appTomlTxt: |
     pruning=nothing
+    json-rpc.api=eth,txpool,net,web3,mezo
   clientTomlTxt: ""
   configTomlTxt: ""  
 

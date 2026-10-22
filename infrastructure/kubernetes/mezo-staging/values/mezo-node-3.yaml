@@ -6,10 +6,16 @@ env:
 
 customConfigs:
   enabled: true
+  # json-rpc.api exposes only the namespaces our clients use; Blockscout needs txpool.
   appTomlTxt: |
     json-rpc.logs-filter-addr-cap=100
+    json-rpc.api=eth,txpool,net,web3,mezo
   clientTomlTxt: ""
-  configTomlTxt: ""
+  # Validators that share a GKE node reach other validators from the same source IP,
+  # and a peer rejects the second one (allow_duplicate_ip = false). Persistent peers
+  # make every validator dial the others, so each one also gets inbound connections.
+  configTomlTxt: |
+    p2p.persistent_peers=2d4e0216da0d1ec18655d9588df21319025efab0@mezo-node-0.test.mezo.org:26656,eedead51f768b908e6ae068e5a8cda6236774010@mezo-node-1.test.mezo.org:26656,84805b6cb9c86673c1f1685f08f0276ea02ce814@mezo-node-2.test.mezo.org:26656,a41f966cd2e3e7c406127823dde10ac2a31ad680@mezo-node-4.test.mezo.org:26656
 
 secrets:
   credentials: "mezo-node-3" # created manually
