@@ -1,1 +1,0 @@
-op://Mezo DevOps/SSL_key_safe.test.mezo.org/notes
