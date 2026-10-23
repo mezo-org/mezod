@@ -1,0 +1,44 @@
+# hadolint global ignore=DL3018
+#
+# The upstream Blockscout release with the CA data of the current Alpine
+# ca-certificates package in each of its trust stores.
+FROM alpine:3.22 AS ca-bundle
+
+RUN apk --no-cache upgrade && apk --no-cache add ca-certificates
+
+# certifi compiles priv/cacerts.pem into certifi:cacerts/0, so a new
+# cacerts.pem alone does not change the roots that hackney uses. Rebuild
+# certifi.beam on the OTP release of the upstream image (27.1).
+FROM erlang:27.1-alpine AS certifi
+
+ARG CERTIFI_VERSION=2.12.0
+ARG CERTIFI_SHA256=ee68d85df22e554040cdb4be100f33873ac6051387baf6a8f6ce82272340ff1c
+
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+WORKDIR /certifi
+
+RUN wget -q -O certifi.tar "https://repo.hex.pm/tarballs/certifi-${CERTIFI_VERSION}.tar" && \
+    echo "${CERTIFI_SHA256}  certifi.tar" | sha256sum -c - && \
+    tar -xf certifi.tar contents.tar.gz && \
+    tar -xzf contents.tar.gz && \
+    mkdir ebin
+
+COPY --from=ca-bundle /etc/ssl/certs/ca-certificates.crt priv/cacerts.pem
+
+RUN erlc -o ebin src/certifi_pt.erl && \
+    erlc -pa ebin -o ebin src/certifi.erl
+
+FROM blockscout/blockscout:6.9.2@sha256:1d3f8fc81c5719e5b1ce37427ebb04082d9d6a57f8c49d0c693a21fbcfecc34d
+
+# OpenSSL also looks up roots in the hashed links of /etc/ssl/certs, so the
+# old per-certificate files must go, not only the bundle.
+USER 0:0
+RUN rm -rf /etc/ssl/certs /usr/share/ca-certificates
+USER 10001:10001
+
+COPY --from=ca-bundle /etc/ssl/certs /etc/ssl/certs
+COPY --from=ca-bundle /usr/share/ca-certificates /usr/share/ca-certificates
+COPY --from=ca-bundle --chown=10001:10001 /etc/ssl/certs/ca-certificates.crt /app/lib/castore-1.0.9/priv/cacerts.pem
+COPY --from=ca-bundle --chown=10001:10001 /etc/ssl/certs/ca-certificates.crt /app/lib/certifi-2.12.0/priv/cacerts.pem
+COPY --from=certifi --chown=10001:10001 /certifi/ebin/certifi.beam /app/lib/certifi-2.12.0/ebin/certifi.beam

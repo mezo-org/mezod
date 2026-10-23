@@ -17,6 +17,14 @@ This Helm release defines a Blockscout explorer for the mainnet chain.
 The release creates two stateful sets, for the app and the API, and
 exposes them using distinct ingress resources.
 
+The release runs the `mezo/blockscout` and `mezo/blockscout-frontend`
+images, built from `Dockerfile.blockscout` and
+`Dockerfile.blockscout-frontend` at the repository root. They add
+current CA data and a newer Node runtime to the upstream images. To
+move to a new Blockscout release, change the `FROM` digests in both
+Dockerfiles, rebuild and push the images, and pin the new digests in
+`values/blockscout-stack.yaml`.
+
 Before applying the Blockscout stack, create the following secret
 (only if it does not exist yet):
 
