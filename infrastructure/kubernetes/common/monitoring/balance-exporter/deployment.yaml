@@ -20,7 +20,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: balance-exporter-mezo
-          image: rtwatts/contracts-exporter:v2.0
+          image: mezo/balance-exporter@sha256:c231fd1d7da26cfbc48ed6dee18db24dabaa72a11250f62304c478eb42988292
           imagePullPolicy: Always
           ports:
             - containerPort: 9115
@@ -42,7 +42,7 @@ spec:
                   name: rpc-url
                   key: MEZO
         - name: balance-exporter-ethereum
-          image: nkuba/balance-exporter
+          image: mezo/balance-exporter@sha256:c231fd1d7da26cfbc48ed6dee18db24dabaa72a11250f62304c478eb42988292
           ports:
             - containerPort: 9116
           volumeMounts:
@@ -61,7 +61,7 @@ spec:
                   name: rpc-url
                   key: ETHEREUM
         - name: balance-exporter-base
-          image: nkuba/balance-exporter
+          image: mezo/balance-exporter@sha256:c231fd1d7da26cfbc48ed6dee18db24dabaa72a11250f62304c478eb42988292
           ports:
             - containerPort: 9117
           volumeMounts:
