@@ -54,6 +54,9 @@ blockscout:
     CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
     CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
     INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
+    # The chain starts at height 1 and a request for block 0 answers with block 1, so the catch-up fetcher never fills block 0 and the indexed blocks ratio stays below 1.
+    FIRST_BLOCK: "1"
+    TRACE_FIRST_BLOCK: "1"
     # These five variables cover every fetcher that follows a tokenURI, so Blockscout stores no NFT metadata.
     INDEXER_DISABLE_TOKEN_INSTANCE_REALTIME_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_RETRY_FETCHER: true
