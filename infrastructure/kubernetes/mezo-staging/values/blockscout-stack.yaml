@@ -57,6 +57,9 @@ blockscout:
     CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
     CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
     INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
+    # The testnet nodes were state-synced and serve blocks and state from height 5555001 on. Below it the catch-up fetcher and the contract code fetcher retry 404s forever.
+    FIRST_BLOCK: "5555001"
+    TRACE_FIRST_BLOCK: "5555001"
     # These five variables cover every fetcher that follows a tokenURI, so Blockscout stores no NFT metadata.
     INDEXER_DISABLE_TOKEN_INSTANCE_REALTIME_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_RETRY_FETCHER: true
