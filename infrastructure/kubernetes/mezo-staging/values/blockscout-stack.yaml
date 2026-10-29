@@ -54,6 +54,13 @@ blockscout:
     CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
     CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
     INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
+    # These five variables cover every fetcher that follows a tokenURI, so Blockscout stores no NFT metadata.
+    INDEXER_DISABLE_TOKEN_INSTANCE_REALTIME_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_RETRY_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_SANITIZE_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_ERC_721_SANITIZE_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_ERC_1155_SANITIZE_FETCHER: true
+    # Keep RE_CAPTCHA_DISABLED unset. A value of true opens the anonymous refetch-metadata route, which follows a tokenURI even with the fetchers above disabled.
     CACHE_ADDRESS_TRANSACTIONS_COUNTER_PERIOD: 5m
     COIN: BTC
     EXCHANGE_RATES_COINGECKO_COIN_ID: bitcoin
