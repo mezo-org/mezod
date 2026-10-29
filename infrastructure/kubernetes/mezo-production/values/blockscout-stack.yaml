@@ -45,12 +45,18 @@ blockscout:
     ETHEREUM_JSONRPC_TRACE_URL: secretref+k8s://v1/Secret/default/blockscout-stack/ETHEREUM_JSONRPC_HTTP_URL # Use the HTTP URL for tracing as well
     NETWORK: Mezo
     BLOCKSCOUT_PROTOCOL: https
-    SECRET_KEY_BASE: K4rV3pnwzqGMRZNbyWKryw6Co4qcvm9LvZhUpuf4qftDTsZMjzz4pzgVPZcUXMtf # Just an arbitrary 64-char string
     POOL_SIZE: 80 # Increased from the default value of 50 based on the original Blockscout Docker Compose config
     ECTO_USE_SSL: false # Switched off based on the original Blockscout Docker Compose config
     CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
     CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
     INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
+    # These five variables cover every fetcher that follows a tokenURI, so Blockscout stores no NFT metadata.
+    INDEXER_DISABLE_TOKEN_INSTANCE_REALTIME_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_RETRY_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_SANITIZE_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_ERC_721_SANITIZE_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_ERC_1155_SANITIZE_FETCHER: true
+    # Keep RE_CAPTCHA_DISABLED unset. A value of true opens the anonymous refetch-metadata route, which follows a tokenURI even with the fetchers above disabled.
     CACHE_ADDRESS_TRANSACTIONS_COUNTER_PERIOD: 5m
     COIN_BALANCE_ON_DEMAND_FETCHER_THRESHOLD: 5m
     COIN: BTC
@@ -63,6 +69,12 @@ blockscout:
           key: postgres-password # Created automatically by the Bitnami PostgreSQL chart
     - name: DATABASE_URL
       value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgresql.default.svc.cluster.local:5432/blockscout
+    # A secretKeyRef keeps the value out of the pod spec; a secretref+k8s:// value lands there in plain text.
+    - name: SECRET_KEY_BASE
+      valueFrom:
+        secretKeyRef:
+          name: blockscout-stack
+          key: SECRET_KEY_BASE
 
 frontend:
   image:

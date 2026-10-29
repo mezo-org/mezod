@@ -72,8 +72,12 @@ Before applying the Blockscout stack, create the following secret
 
 ```shell
 kubectl create secret generic blockscout-stack -n default \
-  --from-literal=WALLET_CONNECT_PROJECT_ID=<wallet-connect-project-id>
+  --from-literal=WALLET_CONNECT_PROJECT_ID=<wallet-connect-project-id> \
+  --from-literal=SECRET_KEY_BASE=<secret-key-base>
 ```
+
+Generate `SECRET_KEY_BASE` with `openssl rand -base64 48`. Blockscout
+requires at least 64 characters.
 
 ### Postgres database
 
