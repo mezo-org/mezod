@@ -15,11 +15,15 @@ config:
   testnet: false
   prometheus:
     enabled: false # This won't be needed for now.
+    ingressWhitelist:
+      enabled: false # Would add a second frontend Ingress for the metrics path. GKE ignores its nginx whitelist annotation.
+    blackbox:
+      enabled: false # Would render a ServiceMonitor, which needs the Prometheus operator CRDs. Not gated by prometheus.enabled.
 
 blockscout:
   image:
     repository: mezo/blockscout
-    tag: 6.9.2-ca20261020@sha256:c29053dbb290ce4d60be29ad3c23167f54ff72c51efb1be42280b94a218646ea
+    tag: 7.0.2@sha256:7826018cb3a1663b615cd0934a9fa05394c5940db2ba2a0c4d45c9e7823bbe84
   ingress:
     enabled: true
     hostname: api.explorer.mezo.org
@@ -46,7 +50,9 @@ blockscout:
     NETWORK: Mezo
     BLOCKSCOUT_PROTOCOL: https
     POOL_SIZE: 80 # Increased from the default value of 50 based on the original Blockscout Docker Compose config
-    ECTO_USE_SSL: false # Switched off based on the original Blockscout Docker Compose config
+    # Postgres runs in the cluster without TLS. ECTO_SSL_MODE replaces ECTO_USE_SSL from 11.1.0 on; older versions read only the old variable. Quoted: the chart drops env values that are falsy in YAML.
+    ECTO_USE_SSL: "false"
+    ECTO_SSL_MODE: disable
     CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
     CONTRACT_VERIFICATION_ALLOWED_VYPER_EVM_VERSIONS: byzantium,constantinople,petersburg,istanbul,berlin,london,default
     INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER: true # Disable internal transactions fetcher for now. It does not work in all cases and causes the whole indexer to stop.
@@ -56,8 +62,13 @@ blockscout:
     INDEXER_DISABLE_TOKEN_INSTANCE_SANITIZE_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_ERC_721_SANITIZE_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_ERC_1155_SANITIZE_FETCHER: true
+    # Two more fetchers that follow URLs taken from token metadata: the on-demand refetch worker (since 8.0.0) and the media type fetcher, which sends HEAD requests to image URLs (since 12.0.0).
+    INDEXER_DISABLE_TOKEN_INSTANCE_REFETCH_FETCHER: true
+    INDEXER_DISABLE_TOKEN_INSTANCE_MEDIA_TYPE_FETCHER: true
     # Keep RE_CAPTCHA_DISABLED unset. A value of true opens the anonymous refetch-metadata route, which follows a tokenURI even with the fetchers above disabled.
     CACHE_ADDRESS_TRANSACTIONS_COUNTER_PERIOD: 5m
+    # The heavy index operations run one after another and each one waits a check interval (default 10m) before it looks at its result. A version hop may gate on a chain of them.
+    MIGRATION_HEAVY_INDEX_OPERATIONS_CHECK_INTERVAL: 30s
     COIN_BALANCE_ON_DEMAND_FETCHER_THRESHOLD: 5m
     COIN: BTC
     EXCHANGE_RATES_COINGECKO_COIN_ID: bitcoin
@@ -101,8 +112,10 @@ frontend:
     NEXT_PUBLIC_NETWORK_CURRENCY_WEI_NAME: aBTC
     NEXT_PUBLIC_HOMEPAGE_PLATE_BACKGROUND: '#ff004d'
     NEXT_PUBLIC_COLOR_THEME_DEFAULT: light
-    NEXT_PUBLIC_NETWORK_LOGO: https://mezo.org/assets/mezo-vsve-pvk.svg
-    NEXT_PUBLIC_NETWORK_ICON: https://mezo.org/assets/mezo-favicon-h-eecjcq.svg
+    # The frontend downloads these at startup and refuses to start when a download fails.
+    NEXT_PUBLIC_NETWORK_LOGO: https://mezo.org/static/mezo-logo-inline.svg
+    NEXT_PUBLIC_NETWORK_LOGO_DARK: https://mezo.org/static/mezo-logo-inline-white.svg
+    NEXT_PUBLIC_NETWORK_ICON: https://mezo.org/favicon.svg
     NEXT_PUBLIC_VIEWS_TX_HIDDEN_FIELDS: '["burnt_fees"]'
     NEXT_PUBLIC_NETWORK_VERIFICATION_TYPE: validation
     NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: secretref+k8s://v1/Secret/default/blockscout-stack/WALLET_CONNECT_PROJECT_ID

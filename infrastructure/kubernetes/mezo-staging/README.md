@@ -60,12 +60,44 @@ The release creates two stateful sets, for the app and the API, and
 exposes them using distinct ingress resources.
 
 The release runs the `mezo/blockscout` and `mezo/blockscout-frontend`
-images, built from `Dockerfile.blockscout` and
-`Dockerfile.blockscout-frontend` at the repository root. They add
-current CA data and a newer Node runtime to the upstream images. To
-move to a new Blockscout release, change the `FROM` digests in both
-Dockerfiles, rebuild and push the images, and pin the new digests in
-`values/blockscout-stack.yaml`.
+images from Docker Hub, pinned by digest in `values/blockscout-stack.yaml`.
+Upstream publishes release images only to a private registry (backend
+since 9.1.0, frontend since v2.4.0), so the images are built from the
+upstream source with the Cloud Build configs in `infrastructure/cloudbuild`:
+
+```shell
+gcloud builds submit --no-source --project mezo-test-420708 \
+  --config infrastructure/cloudbuild/blockscout-backend.yaml \
+  --substitutions _VERSION=<backend-version>
+gcloud builds submit --no-source --project mezo-test-420708 \
+  --config infrastructure/cloudbuild/blockscout-frontend.yaml \
+  --substitutions _VERSION=<frontend-tag>
+```
+
+The builds push to the `mezo-staging-docker-internal` Artifact Registry
+repository. Pull the image from there, tag it as `mezo/blockscout:<version>`
+or `mezo/blockscout-frontend:<tag>`, push it to Docker Hub and pin the
+Docker Hub digest in the values file.
+
+Backend v11.0.0 and later ship under the Blockscout Software Licence. It
+allows a free explorer for your own chain and requires the "Made with
+Blockscout" attribution, which the frontend footer shows by default.
+
+To move to a new backend version, read the upstream release notes for the
+upgrade path first. The backend refuses to start when the previous version
+is too old: 11.x needs 10.2.3 or later with the
+`UpdateInternalTransactionsPrimaryKey` migration completed, 12.x needs
+11.0.2 or later with `FillInternalTransactionsAddressIds` completed. Check
+the `migrations_status` table before the next hop. Scale the backend
+deployment to zero before `helmfile apply`: the rolling update runs the old
+and the new pod side by side and the two connection pools exceed the
+Postgres `max_connections`.
+
+The GCE ingress controller copies the readiness probe path into the load
+balancer health check only when it creates the backend. The
+`blockscout-api-backend-config.yaml` BackendConfig keeps the health check on
+the current path. The release attaches it to the API Service in a postsync
+hook.
 
 Before applying the Blockscout stack, create the following secret
 (only if it does not exist yet):
