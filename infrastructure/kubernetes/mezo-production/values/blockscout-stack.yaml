@@ -45,7 +45,6 @@ blockscout:
     ETHEREUM_JSONRPC_TRACE_URL: secretref+k8s://v1/Secret/default/blockscout-stack/ETHEREUM_JSONRPC_HTTP_URL # Use the HTTP URL for tracing as well
     NETWORK: Mezo
     BLOCKSCOUT_PROTOCOL: https
-    SECRET_KEY_BASE: K4rV3pnwzqGMRZNbyWKryw6Co4qcvm9LvZhUpuf4qftDTsZMjzz4pzgVPZcUXMtf # Just an arbitrary 64-char string
     POOL_SIZE: 80 # Increased from the default value of 50 based on the original Blockscout Docker Compose config
     ECTO_USE_SSL: false # Switched off based on the original Blockscout Docker Compose config
     CONTRACT_VERIFICATION_ALLOWED_SOLIDITY_EVM_VERSIONS: homestead,tangerineWhistle,spuriousDragon,byzantium,constantinople,petersburg,istanbul,berlin,london,default
@@ -70,6 +69,12 @@ blockscout:
           key: postgres-password # Created automatically by the Bitnami PostgreSQL chart
     - name: DATABASE_URL
       value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgresql.default.svc.cluster.local:5432/blockscout
+    # A secretKeyRef keeps the value out of the pod spec; a secretref+k8s:// value lands there in plain text.
+    - name: SECRET_KEY_BASE
+      valueFrom:
+        secretKeyRef:
+          name: blockscout-stack
+          key: SECRET_KEY_BASE
 
 frontend:
   image:
