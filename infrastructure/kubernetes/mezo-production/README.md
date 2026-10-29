@@ -19,9 +19,9 @@ exposes them using distinct ingress resources.
 
 The release runs the `mezo/blockscout` and `mezo/blockscout-frontend`
 images from Docker Hub, pinned by digest in `values/blockscout-stack.yaml`.
-The images are built from the upstream source with the Cloud Build configs
-in `infrastructure/cloudbuild`; see the Blockscout section of the
-`mezo-staging` README for the build and the upgrade notes. Rehearse every
+The images are built from the upstream source by the `Blockscout Image`
+GitHub Actions workflow; see the Blockscout section of the `mezo-staging`
+README for the build and the upgrade notes. Rehearse every
 backend version hop on staging first.
 
 The GCE ingress controller copies the readiness probe path into the load

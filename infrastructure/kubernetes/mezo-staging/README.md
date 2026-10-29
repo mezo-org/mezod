@@ -63,21 +63,12 @@ The release runs the `mezo/blockscout` and `mezo/blockscout-frontend`
 images from Docker Hub, pinned by digest in `values/blockscout-stack.yaml`.
 Upstream publishes release images only to a private registry (backend
 since 9.1.0, frontend since v2.4.0), so the images are built from the
-upstream source with the Cloud Build configs in `infrastructure/cloudbuild`:
-
-```shell
-gcloud builds submit --no-source --project mezo-test-420708 \
-  --config infrastructure/cloudbuild/blockscout-backend.yaml \
-  --substitutions _VERSION=<backend-version>
-gcloud builds submit --no-source --project mezo-test-420708 \
-  --config infrastructure/cloudbuild/blockscout-frontend.yaml \
-  --substitutions _VERSION=<frontend-tag>
-```
-
-The builds push to the `mezo-staging-docker-internal` Artifact Registry
-repository. Pull the image from there, tag it as `mezo/blockscout:<version>`
-or `mezo/blockscout-frontend:<tag>`, push it to Docker Hub and pin the
-Docker Hub digest in the values file.
+upstream source by the `Blockscout Image` GitHub Actions workflow
+(`.github/workflows/blockscout-image.yaml`). Run it from the Actions tab
+with the component (`backend` or `frontend`) and the upstream release
+(`12.0.3` for the backend, `v2.12.1` for the frontend). It pushes
+`mezo/blockscout:<version>` or `mezo/blockscout-frontend:<tag>` to Docker
+Hub. Pin the Docker Hub digest in the values file.
 
 Backend v11.0.0 and later ship under the Blockscout Software Licence. It
 allows a free explorer for your own chain and requires the "Made with
