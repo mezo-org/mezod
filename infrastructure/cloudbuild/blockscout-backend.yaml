@@ -1,0 +1,54 @@
+# Builds the Blockscout backend image from the upstream source at a release
+# tag and pushes it to Artifact Registry. Upstream publishes release images
+# only to a private registry since v9.1.0, so this build replaces the pull.
+#
+# The build arguments repeat the ones of the upstream release workflow
+# (.github/workflows/release-default.yml in blockscout/blockscout).
+#
+# Run:
+#   gcloud builds submit --no-source --project mezo-test-420708 \
+#     --config infrastructure/cloudbuild/blockscout-backend.yaml \
+#     --substitutions _VERSION=12.0.3
+steps:
+  - name: gcr.io/cloud-builders/git
+    args:
+      - clone
+      - --depth
+      - "1"
+      - --branch
+      - v${_VERSION}
+      - https://github.com/blockscout/blockscout.git
+      - src
+  - name: gcr.io/cloud-builders/docker
+    dir: src
+    env:
+      - DOCKER_BUILDKIT=1
+    args:
+      - build
+      - --file
+      - docker/Dockerfile
+      - --build-arg
+      - DECODE_NOT_A_CONTRACT_CALLS=false
+      - --build-arg
+      - MIXPANEL_URL=
+      - --build-arg
+      - MIXPANEL_TOKEN=
+      - --build-arg
+      - AMPLITUDE_URL=
+      - --build-arg
+      - AMPLITUDE_API_KEY=
+      - --build-arg
+      - BLOCKSCOUT_VERSION=v${_VERSION}
+      - --build-arg
+      - RELEASE_VERSION=${_VERSION}
+      - --tag
+      - ${_IMAGE}:${_VERSION}
+      - .
+images:
+  - ${_IMAGE}:${_VERSION}
+options:
+  machineType: E2_HIGHCPU_32
+timeout: 5400s
+substitutions:
+  _VERSION: ""
+  _IMAGE: us-central1-docker.pkg.dev/mezo-test-420708/mezo-staging-docker-internal/blockscout
