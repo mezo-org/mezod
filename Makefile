@@ -156,6 +156,17 @@ build-docker-blockscout:
 build-docker-blockscout-frontend:
 	$(DOCKER) buildx build --platform linux/amd64 -t blockscout-frontend -f Dockerfile.blockscout-frontend .
 
+# Patched Pyth xc-price-pusher for pyth-pusher-{mezo,ethereum} (v10.5.0 + Node 24).
+PYTH_PUSHER_IMAGE := mezo/pyth-price-pusher
+
+build-docker-pyth-price-pusher:
+	$(DOCKER) buildx build --platform linux/amd64 \
+		-f infrastructure/docker/pyth-price-pusher/Dockerfile \
+		--build-arg PYTH_TAG=v10.5.0 \
+		--build-arg NODE_TAG=24.22.1-alpine \
+		-t $(PYTH_PUSHER_IMAGE):v10.5.0-node24.22.1 \
+		infrastructure/docker/pyth-price-pusher
+
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
 
