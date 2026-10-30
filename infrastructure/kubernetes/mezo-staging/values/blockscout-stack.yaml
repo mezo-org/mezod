@@ -60,16 +60,19 @@ blockscout:
     # The testnet nodes were state-synced and serve blocks and state from height 5555001 on. Below it the catch-up fetcher and the contract code fetcher retry 404s forever.
     FIRST_BLOCK: "5555001"
     TRACE_FIRST_BLOCK: "5555001"
-    # These five variables cover every fetcher that follows a tokenURI, so Blockscout stores no NFT metadata.
+    # These five variables stop the indexer fetchers that follow a tokenURI, so Blockscout stores no NFT metadata.
     INDEXER_DISABLE_TOKEN_INSTANCE_REALTIME_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_RETRY_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_SANITIZE_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_ERC_721_SANITIZE_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_ERC_1155_SANITIZE_FETCHER: true
-    # Two more fetchers that follow URLs taken from token metadata: the on-demand refetch worker (since 8.0.0) and the media type fetcher, which sends HEAD requests to image URLs (since 12.0.0).
+    # Two more fetchers that follow URLs taken from token metadata: the fetcher for instances marked for refetch and the media type fetcher, which sends HEAD requests to image URLs (since 12.0.0).
     INDEXER_DISABLE_TOKEN_INSTANCE_REFETCH_FETCHER: true
     INDEXER_DISABLE_TOKEN_INSTANCE_MEDIA_TYPE_FETCHER: true
-    # Keep RE_CAPTCHA_DISABLED unset. A value of true opens the anonymous refetch-metadata route, which follows a tokenURI even with the fetchers above disabled.
+    # The on-demand worker behind PATCH /api/v2/tokens/{address}/instances/{id}/refetch-metadata has no disable variable and the route takes anonymous requests.
+    # With no allowed protocol the URL validator refuses every http and https tokenURI before a DNS lookup. An empty value falls back to the default http,https, so a scheme nobody uses stands in for an empty list.
+    # The validator runs only while INDEXER_TOKEN_INSTANCE_HOST_FILTERING_ENABLED keeps its default of true. Remove this variable together with the five toggles if the explorer ever needs NFT metadata.
+    INDEXER_TOKEN_INSTANCE_ALLOWED_URI_PROTOCOLS: none
     CACHE_ADDRESS_TRANSACTIONS_COUNTER_PERIOD: 5m
     # The heavy index operations run one after another and each one waits a check interval (default 10m) before it looks at its result. A version hop may gate on a chain of them.
     MIGRATION_HEAVY_INDEX_OPERATIONS_CHECK_INTERVAL: 30s
