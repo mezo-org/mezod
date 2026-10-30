@@ -1,0 +1,76 @@
+---
+name: Blockscout Image
+# Builds a Blockscout backend or frontend image from the upstream source at
+# a release tag and pushes it to Docker Hub. Upstream publishes release
+# images only to a private registry (backend since 9.1.0, frontend since
+# v2.4.0). The build arguments repeat the ones of the upstream release
+# workflows.
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Image to build"
+        required: true
+        type: choice
+        options:
+          - backend
+          - frontend
+      version:
+        description: "Upstream release"
+        required: true
+        type: string
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏧 Checkout upstream repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.component == 'backend' && 'blockscout/blockscout' || 'blockscout/frontend' }}
+          ref: ${{ inputs.component == 'backend' && format('v{0}', inputs.version) || inputs.version }}
+
+      - name: 🛠️ Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 📦 Build and push the backend image
+        if: inputs.component == 'backend'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/mezo/blockscout:${{ inputs.version }}
+          build-args: |
+            DECODE_NOT_A_CONTRACT_CALLS=false
+            MIXPANEL_URL=
+            MIXPANEL_TOKEN=
+            AMPLITUDE_URL=
+            AMPLITUDE_API_KEY=
+            BLOCKSCOUT_VERSION=v${{ inputs.version }}
+            RELEASE_VERSION=${{ inputs.version }}
+
+      - name: 📝 Read the frontend commit
+        if: inputs.component == 'frontend'
+        id: frontend-commit
+        run: echo "short-sha=$(git rev-parse --short=8 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: 📦 Build and push the frontend image
+        if: inputs.component == 'frontend'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/mezo/blockscout-frontend:${{ inputs.version }}
+          build-args: |
+            GIT_COMMIT_SHA=${{ steps.frontend-commit.outputs.short-sha }}
+            GIT_TAG=${{ inputs.version }}
