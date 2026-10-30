@@ -16,7 +16,7 @@ on:
           - backend
           - frontend
       version:
-        description: "Upstream release: 12.0.3 for the backend, v2.12.1 for the frontend"
+        description: "Upstream release"
         required: true
         type: string
 
