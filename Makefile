@@ -150,6 +150,9 @@ build-docker-metrics-scraper:
 build-docker-bridge-worker:
 	$(DOCKER) buildx build --platform linux/amd64 -t bridge-worker -f Dockerfile.bridge-worker .	
 
+build-docker-blockscout:
+	$(DOCKER) buildx build --platform linux/amd64 -t blockscout -f Dockerfile.blockscout .
+
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
 

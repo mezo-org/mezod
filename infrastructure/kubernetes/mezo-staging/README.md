@@ -68,7 +68,18 @@ upstream source by the `Blockscout Image` GitHub Actions workflow
 with the component (`backend` or `frontend`) and the upstream release
 (`12.0.3` for the backend, `v2.12.1` for the frontend). It pushes
 `mezo/blockscout:<version>` or `mezo/blockscout-frontend:<tag>` to Docker
-Hub. Pin the Docker Hub digest in the values file.
+Hub.
+
+The backend release trusts the Alpine CA data of its build date and the
+Hex bundles of `certifi` and `castore`, which lag behind the Alpine
+package. The workflow therefore builds a second backend image from
+`Dockerfile.blockscout` at the repository root: it replaces the system
+store and both Hex bundles with the current Alpine `ca-certificates` data,
+rebuilds `certifi.beam` (certifi compiles its bundle into
+`certifi:cacerts/0`), and pushes `mezo/blockscout:<version>-ca<date>`.
+Pin the Docker Hub digest of that image in the values file, not the
+plain release. `make build-docker-blockscout` builds the same image
+locally from the defaults in the Dockerfile.
 
 Backend v11.0.0 and later ship under the Blockscout Software Licence. It
 allows a free explorer for your own chain and requires the "Made with
