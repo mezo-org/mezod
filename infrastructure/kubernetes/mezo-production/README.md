@@ -30,6 +30,15 @@ balancer health check only when it creates the backend. The
 the current path. The release attaches it to the API Service in a postsync
 hook.
 
+The backend and the frontend fetch URLs that token contracts choose, so the
+`blockscout-network-policy.yaml` NetworkPolicy limits their egress to the
+DNS pods, the database and the public internet on the web ports; the RPC
+endpoint is public. The pods never call the Kubernetes API, so the release
+also sets `automountServiceAccountToken: false` on the `blockscout-stack`
+service account. The chart has no setting for either, so the release applies
+both in postsync hooks. The policy takes effect only on nodes that run the
+Calico addon, which the Terraform module enables.
+
 Before applying the Blockscout stack, create the following secret
 (only if it does not exist yet):
 
