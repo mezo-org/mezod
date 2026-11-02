@@ -75,6 +75,26 @@ releases:
     installed: true
     namespace: default
     chart: blockscout/blockscout-stack
-    version: 1.5.0
+    version: 4.5.3
     values:
       - ./values/blockscout-stack.yaml
+    hooks:
+      # Attach the BackendConfig to the API Service. The chart renders no
+      # Service annotations, so the annotation cannot come from values.
+      - events: ["postsync"]
+        showlogs: true
+        command: kubectl
+        args:
+          - --context=gke_mezo-test-420708_us-central1_mezo-staging-gke-cluster
+          - apply
+          - --filename=./blockscout-api-backend-config.yaml
+      - events: ["postsync"]
+        showlogs: true
+        command: kubectl
+        args:
+          - --context=gke_mezo-test-420708_us-central1_mezo-staging-gke-cluster
+          - --namespace=default
+          - annotate
+          - --overwrite
+          - service/blockscout-stack-blockscout-svc
+          - cloud.google.com/backend-config={"default":"blockscout-api-backend-config"}

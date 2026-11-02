@@ -1,0 +1,19 @@
+# Health check of the GCE load balancer backend behind the Blockscout API
+# ingress. The GCE ingress controller copies the readiness probe path into
+# the health check only when it creates the backend, so a later probe change
+# leaves the load balancer on the old path. A BackendConfig keeps both in
+# sync. The blockscout-stack chart renders no Service annotations, so the
+# helmfile release attaches this object to the Service in a postsync hook.
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: blockscout-api-backend-config
+  namespace: default
+spec:
+  healthCheck:
+    type: HTTP
+    requestPath: /api/health/readiness
+    checkIntervalSec: 15
+    timeoutSec: 10
+    healthyThreshold: 1
+    unhealthyThreshold: 3
