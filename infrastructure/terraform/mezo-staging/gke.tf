@@ -1,6 +1,6 @@
 module "gke" {
   source     = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
-  version    = "30.2.0"
+  version    = "36.2.0"
   depends_on = [module.vpc]
 
   project_id                   = var.project_id
