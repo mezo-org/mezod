@@ -1,18 +1,27 @@
 # hadolint global ignore=DL3018
 #
 # The upstream Blockscout release with the CA data of the current Alpine
-# ca-certificates package in each of its trust stores.
+# ca-certificates package in each of its trust stores. The release ships
+# the Alpine package of its build date and the Hex bundles of certifi and
+# castore, which lag behind the Alpine package.
+#
+# The defaults fit the release named in BASE_IMAGE. The Hex versions come
+# from the upstream mix.lock, ERLANG_TAG from the upstream Dockerfile.
+ARG BASE_IMAGE=mezo/blockscout:12.0.3@sha256:6bed32d66b41ae62d4d06217aab81d9634bf3af46103547be844b8ad408a04a8
+ARG ERLANG_TAG=28.5.0.7-alpine-3.22.6
+
 FROM alpine:3.22 AS ca-bundle
 
 RUN apk --no-cache upgrade && apk --no-cache add ca-certificates
 
 # certifi compiles priv/cacerts.pem into certifi:cacerts/0, so a new
 # cacerts.pem alone does not change the roots that hackney uses. Rebuild
-# certifi.beam on the OTP release of the upstream image (27.1).
-FROM erlang:27.1-alpine AS certifi
+# certifi.beam on the OTP release of the upstream image. BEAM files do not
+# depend on the CPU architecture, so this stage runs on the build platform.
+FROM --platform=$BUILDPLATFORM hexpm/erlang:${ERLANG_TAG} AS certifi
 
-ARG CERTIFI_VERSION=2.12.0
-ARG CERTIFI_SHA256=ee68d85df22e554040cdb4be100f33873ac6051387baf6a8f6ce82272340ff1c
+ARG CERTIFI_VERSION=2.17.0
+ARG CERTIFI_SHA256=8122798a17f0293c80daada25d0f81c7f4d708c73fef782c7c9b1950e26e4d21
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -29,7 +38,10 @@ COPY --from=ca-bundle /etc/ssl/certs/ca-certificates.crt priv/cacerts.pem
 RUN erlc -o ebin src/certifi_pt.erl && \
     erlc -pa ebin -o ebin src/certifi.erl
 
-FROM blockscout/blockscout:6.9.2@sha256:1d3f8fc81c5719e5b1ce37427ebb04082d9d6a57f8c49d0c693a21fbcfecc34d
+FROM ${BASE_IMAGE}
+
+ARG CERTIFI_VERSION=2.17.0
+ARG CASTORE_VERSION=1.0.21
 
 # OpenSSL also looks up roots in the hashed links of /etc/ssl/certs, so the
 # old per-certificate files must go, not only the bundle.
@@ -39,6 +51,6 @@ USER 10001:10001
 
 COPY --from=ca-bundle /etc/ssl/certs /etc/ssl/certs
 COPY --from=ca-bundle /usr/share/ca-certificates /usr/share/ca-certificates
-COPY --from=ca-bundle --chown=10001:10001 /etc/ssl/certs/ca-certificates.crt /app/lib/castore-1.0.9/priv/cacerts.pem
-COPY --from=ca-bundle --chown=10001:10001 /etc/ssl/certs/ca-certificates.crt /app/lib/certifi-2.12.0/priv/cacerts.pem
-COPY --from=certifi --chown=10001:10001 /certifi/ebin/certifi.beam /app/lib/certifi-2.12.0/ebin/certifi.beam
+COPY --from=ca-bundle --chown=10001:10001 /etc/ssl/certs/ca-certificates.crt /app/lib/castore-${CASTORE_VERSION}/priv/cacerts.pem
+COPY --from=ca-bundle --chown=10001:10001 /etc/ssl/certs/ca-certificates.crt /app/lib/certifi-${CERTIFI_VERSION}/priv/cacerts.pem
+COPY --from=certifi --chown=10001:10001 /certifi/ebin/certifi.beam /app/lib/certifi-${CERTIFI_VERSION}/ebin/certifi.beam
