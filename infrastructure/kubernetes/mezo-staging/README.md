@@ -81,6 +81,10 @@ Pin the Docker Hub digest of that image in the values file, not the
 plain release. `make build-docker-blockscout` builds the same image
 locally from the defaults in the Dockerfile.
 
+The frontend runs on Node, which trusts the roots compiled into the Node
+binary. `NODE_OPTIONS=--use-openssl-ca` in the values makes it use the
+Alpine bundle of the image instead.
+
 Backend v11.0.0 and later ship under the Blockscout Software Licence. It
 allows a free explorer for your own chain and requires the "Made with
 Blockscout" attribution, which the frontend footer shows by default.

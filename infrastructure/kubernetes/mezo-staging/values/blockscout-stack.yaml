@@ -109,6 +109,9 @@ frontend:
       periodSeconds: 30
       timeoutSeconds: 10
   env:
+    # Node trusts the Alpine CA bundle of the image instead of the roots compiled
+    # into the Node binary. The Alpine package follows CA removals sooner.
+    NODE_OPTIONS: --use-openssl-ca
     NEXT_PUBLIC_API_PROTOCOL: https
     NEXT_PUBLIC_APP_PROTOCOL: https
     NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL: wss
