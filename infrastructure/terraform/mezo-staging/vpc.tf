@@ -1,6 +1,6 @@
 module "vpc" {
   source     = "terraform-google-modules/network/google"
-  version    = "9.1.0"
+  version    = "10.0.0"
   depends_on = [google_project_service.services]
 
   project_id   = var.project_id

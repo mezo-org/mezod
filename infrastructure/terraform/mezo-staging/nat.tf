@@ -1,6 +1,6 @@
 module "cloud_nat" {
   source     = "terraform-google-modules/cloud-nat/google"
-  version    = "5.0.0"
+  version    = "5.3.0"
   depends_on = [module.vpc]
 
   project_id = var.project_id

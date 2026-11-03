@@ -1,6 +1,6 @@
 module "gke" {
   source     = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
-  version    = "30.2.0"
+  version    = "36.2.0"
   depends_on = [module.vpc]
 
   project_id                   = var.project_id
@@ -15,6 +15,8 @@ module "gke" {
   remove_default_node_pool     = true
   enable_private_nodes         = true
   deletion_protection          = false
+  release_channel              = "RAPID"
+  kubernetes_version           = "1.35.9-gke.1505000"
 
   node_pools = [
     {
