@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: pyth-pusher-mezo
-          image: mezo/pyth-price-pusher:v10.5.0-node24.22.1
+          image: public.ecr.aws/pyth-network/xc-price-pusher:v13.2.0@sha256:af347fe0cea773d1e2866cb187edb80ba7a5663b1acf8c7cee9629f389810183
           imagePullPolicy: Always
           command:
             - "npm"
