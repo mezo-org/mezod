@@ -16,6 +16,8 @@ module "gke" {
   enable_private_nodes         = true
   deletion_protection          = false
   network_policy               = true
+  dns_allow_external_traffic   = true
+  enable_private_endpoint      = true
   release_channel              = "REGULAR"
   kubernetes_version           = "1.35.9-gke.1505000"
 
