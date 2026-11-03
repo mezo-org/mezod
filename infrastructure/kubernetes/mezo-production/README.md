@@ -18,12 +18,26 @@ The release creates two stateful sets, for the app and the API, and
 exposes them using distinct ingress resources.
 
 The release runs the `mezo/blockscout` and `mezo/blockscout-frontend`
-images, built from `Dockerfile.blockscout` and
-`Dockerfile.blockscout-frontend` at the repository root. They add
-current CA data and a newer Node runtime to the upstream images. To
-move to a new Blockscout release, change the `FROM` digests in both
-Dockerfiles, rebuild and push the images, and pin the new digests in
-`values/blockscout-stack.yaml`.
+images from Docker Hub, pinned by digest in `values/blockscout-stack.yaml`.
+The images are built from the upstream source by the `Blockscout Image`
+GitHub Actions workflow; see the Blockscout section of the `mezo-staging`
+README for the build and the upgrade notes. Rehearse every
+backend version hop on staging first.
+
+The GCE ingress controller copies the readiness probe path into the load
+balancer health check only when it creates the backend. The
+`blockscout-api-backend-config.yaml` BackendConfig keeps the health check on
+the current path. The release attaches it to the API Service in a postsync
+hook.
+
+The backend and the frontend fetch URLs that token contracts choose, so the
+`blockscout-network-policy.yaml` NetworkPolicy limits their egress to the
+DNS pods, the database and the public internet on the web ports; the RPC
+endpoint is public. The pods never call the Kubernetes API, so the release
+also sets `automountServiceAccountToken: false` on the `blockscout-stack`
+service account. The chart has no setting for either, so the release applies
+both in postsync hooks. The policy takes effect only on nodes that run the
+Calico addon, which the Terraform module enables.
 
 Before applying the Blockscout stack, create the following secret
 (only if it does not exist yet):

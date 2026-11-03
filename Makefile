@@ -153,9 +153,6 @@ build-docker-bridge-worker:
 build-docker-blockscout:
 	$(DOCKER) buildx build --platform linux/amd64 -t blockscout -f Dockerfile.blockscout .
 
-build-docker-blockscout-frontend:
-	$(DOCKER) buildx build --platform linux/amd64 -t blockscout-frontend -f Dockerfile.blockscout-frontend .
-
 $(MOCKS_DIR):
 	mkdir -p $(MOCKS_DIR)
 

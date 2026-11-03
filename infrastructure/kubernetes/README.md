@@ -20,8 +20,15 @@ Use `gcloud` to get credentials for the cluster and automatically
 configure `kubectl`:
 
 ```shell
-gcloud container clusters get-credentials --project <google_cloud_project_id> mezo-<environment>-gke-cluster --region=us-central1
+gcloud container clusters get-credentials --project <google_cloud_project_id> mezo-<environment>-gke-cluster --region=us-central1 --dns-endpoint
 ```
+
+The `--dns-endpoint` flag is required. The control plane of each cluster
+answers only on its DNS-based endpoint, where Google IAM checks the caller
+before the request reaches the API server; the public IP endpoint is
+disabled by the Terraform module. A kubeconfig entry created without the
+flag points at the private IP of the control plane, which is reachable
+only from inside the VPC.
 
 Verify that everything went as expected and `kubectl` points to the correct cluster:
 ```shell
