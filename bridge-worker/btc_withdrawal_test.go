@@ -3,8 +3,11 @@ package bridgeworker
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"math/big"
 	"testing"
+
+	sdkmath "cosmossdk.io/math"
 
 	"github.com/mezo-org/mezod/ethereum/bindings/tbtc"
 	gomock "go.uber.org/mock/gomock"
@@ -13,6 +16,7 @@ import (
 
 	"github.com/mezo-org/mezod/bridge-worker/bitcoin"
 	"github.com/mezo-org/mezod/ethereum/bindings/portal"
+	bridgetypes "github.com/mezo-org/mezod/x/bridge/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
@@ -314,4 +318,151 @@ func TestComputeAttestationKey(t *testing.T) {
 	}
 
 	require.Equal(t, expectedHash, hash[:])
+}
+
+type stubAssetsUnlockedEndpoint struct {
+	events []bridgetypes.AssetsUnlockedEvent
+}
+
+func (s *stubAssetsUnlockedEndpoint) GetAssetsUnlockedEvents(
+	_ context.Context,
+	_ sdkmath.Int,
+	_ sdkmath.Int,
+) ([]bridgetypes.AssetsUnlockedEvent, error) {
+	return s.events, nil
+}
+
+func TestPrepareBTCWithdrawal(t *testing.T) {
+	failingWallet := [20]byte{0x11}
+	fundedWallet := [20]byte{0x22}
+
+	recipientScript, err := bitcoin.PayToWitnessPublicKeyHash([20]byte{0x33})
+	require.NoError(t, err)
+	recipient, err := recipientScript.ToVarLenData()
+	require.NoError(t, err)
+
+	event := &portal.MezoBridgeAssetsUnlockConfirmed{
+		UnlockSequenceNumber: big.NewInt(1),
+		Amount:               btcToErc20Amount(big.NewInt(50000000)), // 0.5 BTC
+		Chain:                bitcoinTargetChain,
+	}
+
+	// The funded wallet's main UTXO holds 1 BTC.
+	fundedWalletScript, err := bitcoin.PayToWitnessPublicKeyHash(fundedWallet)
+	require.NoError(t, err)
+	fundedWalletTx := &bitcoin.Transaction{
+		Version: 1,
+		Outputs: []*bitcoin.TransactionOutput{
+			{Value: 100000000, PublicKeyScript: fundedWalletScript},
+		},
+	}
+	fundedWalletMainUtxo := &bitcoin.UnspentTransactionOutput{
+		Outpoint: &bitcoin.TransactionOutpoint{
+			TransactionHash: fundedWalletTx.Hash(),
+			OutputIndex:     0,
+		},
+		Value: 100000000,
+	}
+
+	errHistory := errors.New("history too large")
+
+	tests := map[string]struct {
+		expectFailingWallet func(*MockBitcoinChain)
+		expectFundedWallet  bool
+	}{
+		"first wallet's history cannot be fetched": {
+			expectFailingWallet: func(m *MockBitcoinChain) {
+				m.EXPECT().GetTxHashesForPublicKeyHash(failingWallet).
+					Return(nil, errHistory).Times(1)
+			},
+			expectFundedWallet: true,
+		},
+		"first wallet's main UTXO is not in its history": {
+			expectFailingWallet: func(m *MockBitcoinChain) {
+				m.EXPECT().GetTxHashesForPublicKeyHash(failingWallet).
+					Return([]bitcoin.Hash{}, nil).Times(1)
+			},
+			expectFundedWallet: true,
+		},
+		"no wallet's main UTXO can be determined": {
+			expectFailingWallet: func(m *MockBitcoinChain) {
+				m.EXPECT().GetTxHashesForPublicKeyHash(failingWallet).
+					Return(nil, errHistory).Times(1)
+				m.EXPECT().GetTxHashesForPublicKeyHash(fundedWallet).
+					Return(nil, errHistory).Times(1)
+			},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			mockTbtcBridgeContract := NewMockTbtcBridgeContract(ctrl)
+			mockBitcoinChain := NewMockBitcoinChain(ctrl)
+
+			mockTbtcBridgeContract.EXPECT().Wallets(failingWallet).Return(
+				tbtc.Wallet{State: walletStateLive, MainUtxoHash: [32]byte{0x01}},
+				nil,
+			).AnyTimes()
+			mockTbtcBridgeContract.EXPECT().Wallets(fundedWallet).Return(
+				tbtc.Wallet{
+					State:        walletStateLive,
+					MainUtxoHash: computeMainUtxoHash(fundedWalletMainUtxo),
+				},
+				nil,
+			).AnyTimes()
+
+			test.expectFailingWallet(mockBitcoinChain)
+
+			if test.expectFundedWallet {
+				mockBitcoinChain.EXPECT().GetTxHashesForPublicKeyHash(fundedWallet).
+					Return([]bitcoin.Hash{fundedWalletTx.Hash()}, nil).Times(1)
+				mockBitcoinChain.EXPECT().GetTransaction(fundedWalletTx.Hash()).
+					Return(fundedWalletTx, nil).Times(1)
+				mockTbtcBridgeContract.EXPECT().PendingRedemptions(gomock.Any()).
+					Return(tbtc.RedemptionRequest{}, nil).Times(1)
+			}
+
+			bwj := btcWithdrawalJob{
+				env: &environment{
+					logger:             log.NewNopLogger(),
+					tbtcBridgeContract: mockTbtcBridgeContract,
+					btcChain:           mockBitcoinChain,
+				},
+				assetsUnlockedEndpoint: &stubAssetsUnlockedEndpoint{
+					events: []bridgetypes.AssetsUnlockedEvent{
+						{Recipient: recipient},
+					},
+				},
+				liveWallets: [][20]byte{failingWallet, fundedWallet},
+			}
+
+			assetsUnlocked, walletPublicKeyHash, mainUtxo, err := bwj.prepareBTCWithdrawal(
+				context.Background(),
+				event,
+			)
+
+			if test.expectFundedWallet {
+				require.NoError(t, err)
+				require.Equal(t, recipient, assetsUnlocked.Recipient)
+				require.Equal(t, fundedWallet, walletPublicKeyHash)
+				require.Equal(
+					t,
+					portal.BitcoinTxUTXO{
+						TxHash:        fundedWalletTx.Hash(),
+						TxOutputIndex: 0,
+						TxOutputValue: 100000000,
+					},
+					*mainUtxo,
+				)
+				return
+			}
+
+			require.ErrorContains(t, err, "cannot find wallet to cover BTC withdrawal")
+			require.ErrorContains(t, err, hex.EncodeToString(failingWallet[:]))
+			require.ErrorContains(t, err, hex.EncodeToString(fundedWallet[:]))
+			require.ErrorContains(t, err, errHistory.Error())
+		})
+	}
 }
