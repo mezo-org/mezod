@@ -38,6 +38,24 @@ releases:
         command: kubectl
         args:
           - --context=gke_mezo-production_us-central1_mezo-production-gke-cluster
+          - apply
+          - --filename=./blockscout-network-policy.yaml
+      # The Blockscout pods never call the Kubernetes API. The chart has no
+      # setting for the token mount, and Helm keeps a field it does not render.
+      - events: ["postsync"]
+        showlogs: true
+        command: kubectl
+        args:
+          - --context=gke_mezo-production_us-central1_mezo-production-gke-cluster
+          - --namespace=default
+          - patch
+          - serviceaccount/blockscout-stack
+          - --patch={"automountServiceAccountToken":false}
+      - events: ["postsync"]
+        showlogs: true
+        command: kubectl
+        args:
+          - --context=gke_mezo-production_us-central1_mezo-production-gke-cluster
           - --namespace=default
           - annotate
           - --overwrite

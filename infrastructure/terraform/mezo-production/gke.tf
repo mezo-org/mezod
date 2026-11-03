@@ -15,6 +15,7 @@ module "gke" {
   remove_default_node_pool     = true
   enable_private_nodes         = true
   deletion_protection          = false
+  network_policy               = true
   release_channel              = "REGULAR"
   kubernetes_version           = "1.35.9-gke.1505000"
 
