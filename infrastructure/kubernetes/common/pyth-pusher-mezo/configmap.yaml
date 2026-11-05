@@ -6,11 +6,6 @@ metadata:
     app: pyth-pusher-mezo
 data:
   price-config.yaml: |
-    - alias: SolvBTC/USD
-      id: "0xf253cf87dc7d5ed5aa14cba5a6e79aee8bcfaef885a0e1b807035a0bbecc36fa"
-      time_difference: 7200
-      price_deviation: 2
-      confidence_ratio: 75
     - alias: BTC/USD
       id: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43"
       time_difference: 7200
