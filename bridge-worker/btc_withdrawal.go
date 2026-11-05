@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -995,7 +996,10 @@ func (bwj *btcWithdrawalJob) prepareBTCWithdrawal(
 
 	bwj.liveWalletsMutex.Unlock()
 
-	// Select a wallet that can cover the redemption.
+	// Select a wallet that can cover the redemption. A wallet whose main UTXO
+	// cannot be determined is skipped so that it does not block the wallets
+	// after it.
+	var walletErrs []error
 	for _, walletPublicKeyHash := range walletPublicKeyHashes {
 		wallet, err := bwj.env.tbtcBridgeContract.Wallets(walletPublicKeyHash)
 		if err != nil {
@@ -1012,10 +1016,17 @@ func (bwj *btcWithdrawalJob) prepareBTCWithdrawal(
 
 		mainUTXO, err := bwj.determineWalletMainUtxo(walletPublicKeyHash)
 		if err != nil {
-			return nil, [20]byte{}, nil, fmt.Errorf(
-				"failed to determine wallet main UTXO: [%w]",
-				err,
+			bwj.env.logger.Warn(
+				"failed to determine wallet main UTXO; skipping wallet",
+				"wallet", hex.EncodeToString(walletPublicKeyHash[:]),
+				"error", err,
 			)
+			walletErrs = append(walletErrs, fmt.Errorf(
+				"failed to determine main UTXO of wallet [%s]: [%w]",
+				hex.EncodeToString(walletPublicKeyHash[:]),
+				err,
+			))
+			continue
 		}
 
 		// Wallet has no main UTXO yet.
@@ -1079,6 +1090,13 @@ func (bwj *btcWithdrawalJob) prepareBTCWithdrawal(
 		}
 
 		return &assetsUnlocked, walletPublicKeyHash, &utxo, nil
+	}
+
+	if len(walletErrs) > 0 {
+		return nil, [20]byte{}, nil, fmt.Errorf(
+			"cannot find wallet to cover BTC withdrawal: [%w]",
+			errors.Join(walletErrs...),
+		)
 	}
 
 	return nil, [20]byte{}, nil, fmt.Errorf(
