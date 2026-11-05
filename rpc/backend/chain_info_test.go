@@ -362,6 +362,28 @@ func (suite *BackendTestSuite) TestFeeHistory() {
 			false,
 		},
 		{
+			"fail - user block count 2^63 higher than max block count",
+			func(_ sdk.AccAddress) {
+				suite.backend.cfg.JSONRPC.FeeHistoryCap = 2
+			},
+			1 << 63,
+			1,
+			nil,
+			nil,
+			false,
+		},
+		{
+			"fail - user block count max uint64 higher than max block count",
+			func(_ sdk.AccAddress) {
+				suite.backend.cfg.JSONRPC.FeeHistoryCap = 2
+			},
+			math.HexOrDecimal64(^uint64(0)),
+			1,
+			nil,
+			nil,
+			false,
+		},
+		{
 			"fail - Tendermint block fetching error ",
 			func(_ sdk.AccAddress) {
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
