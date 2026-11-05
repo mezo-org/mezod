@@ -181,11 +181,13 @@ func (b *Backend) FeeHistory(
 		blockEnd = int64(blockNumber) //nolint:gosec // checked for int overflow already
 	}
 
-	blocks := int64(userBlockCount)                     //nolint:gosec // checked for int overflow already
-	maxBlockCount := int64(b.cfg.JSONRPC.FeeHistoryCap) //nolint:gosec // checked for int overflow already
-	if blocks > maxBlockCount {
-		return nil, fmt.Errorf("FeeHistory user block count %d higher than %d", blocks, maxBlockCount)
+	// Check the cap before casting to int64: a count of 2^63 or more would
+	// become negative and pass the check.
+	maxBlockCount := uint64(b.cfg.JSONRPC.FeeHistoryCap) //nolint:gosec // validated to be positive
+	if uint64(userBlockCount) > maxBlockCount {
+		return nil, fmt.Errorf("FeeHistory user block count %d higher than %d", uint64(userBlockCount), maxBlockCount)
 	}
+	blocks := int64(userBlockCount) //nolint:gosec // not higher than the cap
 
 	if blockEnd+1 < blocks {
 		blocks = blockEnd + 1
