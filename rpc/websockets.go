@@ -86,12 +86,15 @@ type ErrorMessageJSON struct {
 }
 
 type websocketsServer struct {
-	rpcAddr  string // listen address of rest-server
-	wsAddr   string // listen address of ws server
-	certFile string
-	keyFile  string
-	api      *pubSubAPI
-	logger   log.Logger
+	rpcAddr string // listen address of rest-server
+	wsAddr  string // listen address of ws server
+	// maximum number of active eth_subscribe subscriptions a single connection
+	// may hold
+	subscriptionCap int
+	certFile        string
+	keyFile         string
+	api             *pubSubAPI
+	logger          log.Logger
 }
 
 func NewWebsocketsServer(clientCtx client.Context, logger log.Logger, cometWSClient *mezodtypes.CometWSClient, cfg *config.Config) WebsocketsServer {
@@ -99,12 +102,13 @@ func NewWebsocketsServer(clientCtx client.Context, logger log.Logger, cometWSCli
 	_, port, _ := net.SplitHostPort(cfg.JSONRPC.Address) // #nosec G703
 
 	return &websocketsServer{
-		rpcAddr:  "localhost:" + port, // FIXME: this shouldn't be hardcoded to localhost
-		wsAddr:   cfg.JSONRPC.WsAddress,
-		certFile: cfg.TLS.CertificatePath,
-		keyFile:  cfg.TLS.KeyPath,
-		api:      newPubSubAPI(clientCtx, logger, cometWSClient, cfg),
-		logger:   logger,
+		rpcAddr:         "localhost:" + port, // FIXME: this shouldn't be hardcoded to localhost
+		wsAddr:          cfg.JSONRPC.WsAddress,
+		subscriptionCap: int(cfg.JSONRPC.FilterCap),
+		certFile:        cfg.TLS.CertificatePath,
+		keyFile:         cfg.TLS.KeyPath,
+		api:             newPubSubAPI(clientCtx, logger, cometWSClient, cfg),
+		logger:          logger,
 	}
 }
 
@@ -268,6 +272,15 @@ func (s *websocketsServer) readLoop(wsConn *wsConn) {
 		case "eth_subscribe":
 			params, ok := s.getParamsAndCheckValid(msg, wsConn)
 			if !ok {
+				continue
+			}
+
+			// Reject the subscription when the connection already holds the
+			// maximum. Without this cap a single connection can open an
+			// unbounded number of subscriptions, each allocating a buffered
+			// channel and a goroutine, and exhaust the node's memory.
+			if len(subCtxs) >= s.subscriptionCap {
+				s.sendErrResponse(wsConn, "max number of subscriptions reached")
 				continue
 			}
 

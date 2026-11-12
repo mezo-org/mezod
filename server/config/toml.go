@@ -76,6 +76,7 @@ evm-timeout = "{{ .JSONRPC.EVMTimeout }}"
 txfee-cap = {{ .JSONRPC.TxFeeCap }}
 
 # FilterCap sets the global cap for total number of filters that can be created
+# over HTTP, and the per-connection cap on websocket subscriptions.
 filter-cap = {{ .JSONRPC.FilterCap }}
 
 # FeeHistoryCap sets the global cap for total number of blocks that can be fetched
