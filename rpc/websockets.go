@@ -49,6 +49,10 @@ import (
 	evmtypes "github.com/mezo-org/mezod/x/evm/types"
 )
 
+// wsReadLimit is the maximum size of a message read from a websocket
+// connection.
+const wsReadLimit = 32 * 1024 * 1024 // 32 MiB
+
 type WebsocketsServer interface {
 	Start()
 }
@@ -140,6 +144,8 @@ func (s *websocketsServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.logger.Debug("websocket upgrade failed", "error", err.Error())
 		return
 	}
+
+	conn.SetReadLimit(wsReadLimit)
 
 	s.readLoop(&wsConn{
 		mux:  new(sync.Mutex),
