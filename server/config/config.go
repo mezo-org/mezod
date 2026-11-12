@@ -169,7 +169,8 @@ type JSONRPCConfig struct {
 	EVMTimeout time.Duration `mapstructure:"evm-timeout"`
 	// TxFeeCap is the global tx-fee cap for send transaction
 	TxFeeCap float64 `mapstructure:"txfee-cap"`
-	// FilterCap is the global cap for total number of filters that can be created.
+	// FilterCap is the global cap for total number of filters that can be
+	// created over HTTP, and the per-connection cap on websocket subscriptions.
 	FilterCap int32 `mapstructure:"filter-cap"`
 	// FeeHistoryCap is the global cap for total number of blocks that can be fetched
 	FeeHistoryCap int32 `mapstructure:"feehistory-cap"`
