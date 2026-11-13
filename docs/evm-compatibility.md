@@ -965,6 +965,10 @@ Due to the nature of PoA consensus, the following methods might revert or return
 
 ### `debug` namespace
 
+The `debug` namespace is disabled by default, also in the `mezod` Docker image. A node operator
+can enable it by adding `debug` to `json-rpc.api` in `app.toml`. Enable it only on nodes that are
+not publicly reachable.
+
 #### debug_traceTransaction
 
 - **Description**: Replays a transaction, returning the detailed execution trace.
@@ -1029,7 +1033,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"txpool_status","params":[],"id":
 
 ### `personal` namespace
 
-The `personal` namespace is exposed, however it has been
+The `personal` namespace is disabled by default, also in the `mezod` Docker image. It has been
 [deprecated](https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-personal).
 It will be removed in the future releases and any usage is discouraged.
 
