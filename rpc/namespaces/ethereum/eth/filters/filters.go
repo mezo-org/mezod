@@ -117,6 +117,12 @@ func (f *Filter) Logs(_ context.Context, logLimit int, blockLimit int64) ([]*eth
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch header by hash %s: %w", f.criteria.BlockHash, err)
 		}
+		// TendermintBlockByHash returns (nil, nil) when the block is not found; do not
+		// dereference resBlock (fixes panic in eth_getLogs, see mezo-org/mezod#595).
+		if resBlock == nil || resBlock.Block == nil {
+			f.logger.Debug("block not found for filter block hash", "hash", f.criteria.BlockHash.Hex())
+			return nil, nil
+		}
 
 		blockRes, err := f.backend.TendermintBlockResultByNumber(&resBlock.Block.Height)
 		if err != nil {
