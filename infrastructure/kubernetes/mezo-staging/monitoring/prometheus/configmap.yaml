@@ -25,8 +25,9 @@ data:
       - job_name: 'api-metrics'
         scrape_interval: 60s
         metrics_path: /api/v2/metrics
+        scheme: https
         static_configs:
-          - targets: ['api.test.mezo.org']
+          - targets: ['api.testnet.mezo.org']
       - job_name: 'blackbox'
         scrape_interval: 60s
         metrics_path: /probe
