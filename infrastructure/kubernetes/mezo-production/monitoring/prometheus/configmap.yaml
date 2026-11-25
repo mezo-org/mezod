@@ -60,11 +60,11 @@ data:
         metrics_path: /metrics
         static_configs:
           - targets: ['liquidation-bot.mezo.org']
-      - job_name: 'lending-vault-monitoring'
+      - job_name: 'curation-monitoring'
         scrape_interval: 60s
         scheme: https
         tls_config:
           insecure_skip_verify: false
         metrics_path: /metrics
         static_configs:
-          - targets: ['lending-vault-monitoring.mezo.org']
+          - targets: ['curation-monitoring.mezo.org']
