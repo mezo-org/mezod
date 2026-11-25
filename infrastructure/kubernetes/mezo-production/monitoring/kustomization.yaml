@@ -17,7 +17,7 @@ configMapGenerator:
       - grafana/dashboards/mezo-nodes-private.json
       - grafana/dashboards/mezo-portal.json
       - grafana/dashboards/accounts.json
-      - grafana/dashboards/lending-vault.json
+      - grafana/dashboards/curation.json
 
 generatorOptions:
   disableNameSuffixHash: true
